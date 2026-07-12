@@ -32,8 +32,8 @@ body {
     display: flex;
     height: 100vh;
     padding: 1rem;
-    gap: 1rem;
     box-sizing: border-box;
+    /* remove gap so resizer sits flush, or adjust padding */
 }
 
 /* Glassmorphism utility */
@@ -49,11 +49,29 @@ body {
 /* Sidebar */
 .sidebar {
     width: 280px;
+    min-width: 200px;
+    max-width: 600px;
     display: flex;
     flex-direction: column;
     padding: 1.5rem;
     height: 100%;
     overflow: hidden;
+    flex-shrink: 0;
+}
+
+.resizer {
+    width: 10px;
+    cursor: col-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 5px;
+    transition: background 0.2s;
+    border-radius: 4px;
+}
+
+.resizer:hover, .resizer:active {
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .logo {
@@ -102,6 +120,7 @@ body {
     gap: 0.5rem;
     overflow-y: auto;
     flex: 1;
+    min-height: 0;
     padding-right: 0.5rem;
 }
 

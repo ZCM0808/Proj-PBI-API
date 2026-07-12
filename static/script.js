@@ -202,4 +202,39 @@ document.addEventListener('DOMContentLoaded', async () => {
             `;
         }
     });
+
+    // 拖拽改变侧边栏宽度
+    const resizer = document.getElementById('dragMe');
+    const sidebar = document.querySelector('.sidebar');
+    let isResizing = false;
+
+    resizer.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        document.body.style.cursor = 'col-resize';
+        // 防止拖拽时选中文本
+        document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        
+        // 获取容器的偏移量
+        const containerOffsetLeft = document.querySelector('.app-container').offsetLeft;
+        // 计算新宽度：鼠标位置 - 容器左边距 - 左侧 padding (16px)
+        let newWidth = e.clientX - containerOffsetLeft - 16;
+        
+        // 限制最小和最大宽度
+        if (newWidth < 200) newWidth = 200;
+        if (newWidth > 800) newWidth = 800;
+        
+        sidebar.style.width = `${newWidth}px`;
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (isResizing) {
+            isResizing = false;
+            document.body.style.cursor = 'default';
+            document.body.style.userSelect = 'auto';
+        }
+    });
 });
