@@ -7,6 +7,9 @@ function translateApiName(name) {
     res = res.replace(/([a-z])([A-Z])/g, '$1 $2');
 
     const dict = {
+        // 优先匹配长短语
+        'In Group': '在当前工作区中', 'To Group': '到工作区', 'As Admin': '作为管理员',
+        
         'Get': '获取', 'Post': '提交', 'Put': '设置', 'Patch': '更新', 'Delete': '删除',
         'Update': '更新', 'Create': '创建', 'Add': '添加', 'Remove': '移除', 'Refresh': '刷新',
         'Export': '导出', 'Import': '导入', 'Clone': '克隆', 'Bind': '绑定', 'Unbind': '解绑',
@@ -21,9 +24,7 @@ function translateApiName(name) {
         'Profile': '配置文件', 'Pipelines': '部署管道', 'Pipeline': '部署管道', 'Parameters': '参数',
         'Parameter': '参数', 'Tiles': '磁贴', 'Tile': '磁贴', 'Queries': '查询', 'Query': '查询',
         'History': '历史记录', 'Status': '状态', 'Details': '详情', 'Info': '信息', 'Result': '结果',
-        'Events': '事件', 'Pages': '页面', 'Page': '页面',
-        
-        'In Group': '在当前工作区中', 'To Group': '到工作区', 'As Admin': '作为管理员', 'In': '在'
+        'Events': '事件', 'Pages': '页面', 'Page': '页面', 'In': '在'
     };
 
     for (const [en, zh] of Object.entries(dict)) {
@@ -54,6 +55,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let pbiApis = [];
     let totalApisCalculated = 0;
+    
+    // 用于保存当前选中的项，以防搜索导致 DOM 重绘后丢失选中状态
+    let currentSelectedId = null;
 
     apiTree.innerHTML = '<div style="padding:1rem; text-align:center; color: var(--text-secondary);"><span class="loader"></span> 加载全部 API 中...</div>';
 
@@ -156,9 +160,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 itemEl.appendChild(badge);
                 itemEl.appendChild(nameEl);
 
+                const uniqueId = ep.method + '_' + ep.path;
+                
+                if (currentSelectedId === uniqueId) {
+                    itemEl.classList.add('active');
+                }
+
                 itemEl.addEventListener('click', () => {
                     document.querySelectorAll('.api-item').forEach(i => i.classList.remove('active'));
                     itemEl.classList.add('active');
+                    currentSelectedId = uniqueId;
 
                     // 填入数据
                     endpointInput.value = ep.path;
