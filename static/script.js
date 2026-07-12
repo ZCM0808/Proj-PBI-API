@@ -697,7 +697,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         setupFLIPModal(btnSettings, closeSettingsBtn, settingsModal, loadSettings);
 
-        saveSettingsBtn.addEventListener('click', async () => {
+        const settingsForm = document.getElementById('settings-form');
+        settingsForm.addEventListener('submit', async (e) => {
+            e.preventDefault(); // 阻止页面刷新，但允许浏览器捕获 submit 以保存表单历史
             saveSettingsBtn.disabled = true;
             saveSettingsBtn.textContent = '保存中...';
             

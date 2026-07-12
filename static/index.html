@@ -173,44 +173,46 @@
                 <h3>⚙️ 全局环境配置 (Global Settings)</h3>
                 <button id="close-settings-btn" class="close-btn">&times;</button>
             </div>
-            <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
-                <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary);">在此配置的所有参数将立即生效，且会在整个项目 (API & Pipeline) 中共享。</p>
-                <div class="form-group">
-                    <label>SQL_CONN_STR (数据库连接字符串)</label>
-                    <textarea id="set-sql" class="settings-input" rows="2" style="resize: vertical; min-height: 60px; line-height: 1.4;" placeholder="DRIVER={ODBC Driver 17 for SQL Server};SERVER=192.168.1.100;DATABASE=PBI_DWH;UID=sa;PWD=password"></textarea>
+            <form id="settings-form" autocomplete="on">
+                <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+                    <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary);">在此配置的所有参数将立即生效，且会在整个项目 (API & Pipeline) 中共享。</p>
+                    <div class="form-group">
+                        <label>SQL_CONN_STR (数据库连接字符串)</label>
+                        <input type="text" id="set-sql" name="pbi_sql_conn" class="settings-input" placeholder="DRIVER={ODBC Driver 17 for SQL Server};SERVER=192.168.1.100;DATABASE=PBI_DWH;UID=sa;PWD=password">
+                    </div>
+                    <div class="form-group">
+                        <label>PBI_WORKSPACE_ID</label>
+                        <input type="text" id="set-workspace" name="pbi_workspace_id" class="settings-input" placeholder="e.g. 5e8f1234-abcd-1234-abcd-1234567890ab">
+                    </div>
+                    <div class="form-group">
+                        <label>PBI_DATASET_ID</label>
+                        <input type="text" id="set-dataset" name="pbi_dataset_id" class="settings-input" placeholder="e.g. b39c1234-abcd-1234-abcd-1234567890ab">
+                    </div>
+                    <div class="form-group">
+                        <label>PBI_REPORT_ID</label>
+                        <input type="text" id="set-report" name="pbi_report_id" class="settings-input" placeholder="e.g. c12d1234-abcd-1234-abcd-1234567890ab">
+                    </div>
+                    <div style="border-top: 1px solid rgba(255,255,255,0.1); margin: 8px 0;"></div>
+                    <div class="form-group">
+                        <label>CLIENT_ID (Azure App)</label>
+                        <input type="text" id="set-client" name="pbi_client_id" class="settings-input" placeholder="e.g. f0123456-789a-bcde-f012-3456789abcde">
+                    </div>
+                    <div class="form-group">
+                        <label>CLIENT_SECRET (Azure App)</label>
+                        <input type="password" id="set-secret" name="pbi_client_secret" class="settings-input" placeholder="e.g. 8qC8Q~xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+                    </div>
+                    <div class="form-group">
+                        <label>TENANT_ID (Azure AD)</label>
+                        <input type="text" id="set-tenant" name="pbi_tenant_id" class="settings-input" placeholder="e.g. c8923456-789a-bcde-f012-3456789abcde">
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>PBI_WORKSPACE_ID</label>
-                    <input type="text" id="set-workspace" class="settings-input" placeholder="e.g. 5e8f1234-abcd-1234-abcd-1234567890ab">
+                <div class="modal-footer">
+                    <button type="submit" id="save-settings-btn" class="btn-settings-save">💾 保存配置 (Save & Apply)</button>
                 </div>
-                <div class="form-group">
-                    <label>PBI_DATASET_ID</label>
-                    <input type="text" id="set-dataset" class="settings-input" placeholder="e.g. b39c1234-abcd-1234-abcd-1234567890ab">
-                </div>
-                <div class="form-group">
-                    <label>PBI_REPORT_ID</label>
-                    <input type="text" id="set-report" class="settings-input" placeholder="e.g. c12d1234-abcd-1234-abcd-1234567890ab">
-                </div>
-                <div style="border-top: 1px solid rgba(255,255,255,0.1); margin: 8px 0;"></div>
-                <div class="form-group">
-                    <label>CLIENT_ID (Azure App)</label>
-                    <input type="text" id="set-client" class="settings-input" placeholder="e.g. f0123456-789a-bcde-f012-3456789abcde">
-                </div>
-                <div class="form-group">
-                    <label>CLIENT_SECRET (Azure App)</label>
-                    <input type="password" id="set-secret" class="settings-input" placeholder="e.g. 8qC8Q~xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
-                </div>
-                <div class="form-group">
-                    <label>TENANT_ID (Azure AD)</label>
-                    <input type="text" id="set-tenant" class="settings-input" placeholder="e.g. c8923456-789a-bcde-f012-3456789abcde">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button id="save-settings-btn" class="btn-settings-save">💾 保存配置 (Save & Apply)</button>
-            </div>
+            </form>
         </div>
     </div>
 
-    <script src="/static/script.js?v=20260712_v9"></script>
+    <script src="/static/script.js?v=20260712_v10"></script>
 </body>
 </html>
