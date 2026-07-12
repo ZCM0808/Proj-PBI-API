@@ -437,13 +437,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 存入请求历史
         if (endpoint) {
-            let reqHistory = JSON.parse(localStorage.getItem('apiReqHistory') || '[]');
-            const reqData = { method: method, url: endpoint, body: bodyStr, time: new Date().toLocaleString() };
-            // 简单去重：如果最新的和这次一模一样，就不重复存
-            if (reqHistory.length === 0 || reqHistory[0].method !== method || reqHistory[0].url !== endpoint || reqHistory[0].body !== bodyStr) {
-                reqHistory.unshift(reqData);
-                if (reqHistory.length > 20) reqHistory.pop();
-                localStorage.setItem('apiReqHistory', JSON.stringify(reqHistory));
+            try {
+                let reqHistory = JSON.parse(localStorage.getItem('apiReqHistory') || '[]');
+                const reqData = { method: method, url: endpoint, body: bodyStr, time: new Date().toLocaleString() };
+                // 简单去重：如果最新的和这次一模一样，就不重复存
+                if (reqHistory.length === 0 || reqHistory[0].method !== method || reqHistory[0].url !== endpoint || reqHistory[0].body !== bodyStr) {
+                    reqHistory.unshift(reqData);
+                    if (reqHistory.length > 20) reqHistory.pop();
+                    localStorage.setItem('apiReqHistory', JSON.stringify(reqHistory));
+                }
+            } catch (e) {
+                console.error('History save error:', e);
+                localStorage.removeItem('apiReqHistory');
             }
         }
 
@@ -557,7 +562,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const historyReqDropdown = document.getElementById('request-history-dropdown');
     
     const loadReqHistory = () => {
-        let history = JSON.parse(localStorage.getItem('apiReqHistory') || '[]');
+        let history = [];
+        try {
+            history = JSON.parse(localStorage.getItem('apiReqHistory') || '[]');
+        } catch(e) {
+            localStorage.removeItem('apiReqHistory');
+        }
         historyReqDropdown.innerHTML = '';
         if (history.length > 0) {
             history.forEach(h => {
@@ -589,9 +599,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 delBtn.onmouseout = () => { delBtn.style.color = '#6e7681'; delBtn.style.background = 'transparent'; };
                 delBtn.onclick = (e) => {
                     e.stopPropagation();
-                    let currHistory = JSON.parse(localStorage.getItem('apiReqHistory') || '[]');
-                    currHistory = currHistory.filter(curr => curr.time !== h.time || curr.url !== h.url);
-                    localStorage.setItem('apiReqHistory', JSON.stringify(currHistory));
+                    try {
+                        let currHistory = JSON.parse(localStorage.getItem('apiReqHistory') || '[]');
+                        currHistory = currHistory.filter(curr => curr.time !== h.time || curr.url !== h.url);
+                        localStorage.setItem('apiReqHistory', JSON.stringify(currHistory));
+                    } catch(e) {}
                     loadReqHistory();
                 };
                 
@@ -853,7 +865,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const historyDropdown = document.getElementById('sql-history-dropdown');
             if (!historyBtn || !historyDropdown) return;
             
-            let history = JSON.parse(localStorage.getItem('sqlHistory') || '[]');
+            let history = [];
+            try {
+                history = JSON.parse(localStorage.getItem('sqlHistory') || '[]');
+            } catch(e) {
+                localStorage.removeItem('sqlHistory');
+            }
             historyDropdown.innerHTML = '';
             
             if (history.length > 0) {
@@ -966,11 +983,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // 存入自定义的 SQL 历史记录
             if (payload.SQL_CONN_STR) {
-                let history = JSON.parse(localStorage.getItem('sqlHistory') || '[]');
-                history = history.filter(h => h !== payload.SQL_CONN_STR);
-                history.unshift(payload.SQL_CONN_STR);
-                if (history.length > 5) history.pop();
-                localStorage.setItem('sqlHistory', JSON.stringify(history));
+                try {
+                    let history = JSON.parse(localStorage.getItem('sqlHistory') || '[]');
+                    history = history.filter(h => h !== payload.SQL_CONN_STR);
+                    history.unshift(payload.SQL_CONN_STR);
+                    if (history.length > 5) history.pop();
+                    localStorage.setItem('sqlHistory', JSON.stringify(history));
+                } catch(e) {
+                    localStorage.removeItem('sqlHistory');
+                }
                 loadSQLHistory(); // 更新视图
             }
 
