@@ -205,7 +205,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderTree();
     } catch (e) {
         console.error("Failed to load swagger", e);
-        apiTree.innerHTML = '<div style="padding: 1rem; color: #ef4444;">无法加载完整的 API 列表，请刷新重试。</div>';
+        apiTree.innerHTML = `<div style="padding: 1rem; color: #ef4444;">无法加载完整的 API 列表，请刷新重试。<br><br><small style="color:var(--text-secondary);">${e.stack || e.message || e}</small></div>`;
     }
 
     // 绑定最小化/最大化面板事件
@@ -225,7 +225,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     
     function getBookmarks() {
-        return JSON.parse(localStorage.getItem('pbi-bookmarks') || '[]');
+        try {
+            const data = localStorage.getItem('pbi-bookmarks');
+            return data ? JSON.parse(data) : [];
+        } catch (e) {
+            console.error('Bookmarks parse error:', e);
+            return [];
+        }
     }
 
     function toggleBookmark(ep, e) {
