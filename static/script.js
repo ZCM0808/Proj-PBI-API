@@ -210,6 +210,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 绑定最小化/最大化面板事件
     const toggleInfoBtn = document.getElementById('toggle-info-btn');
+
+    function updateRequestMode(mode, text) {
+        const badge = document.getElementById('request-mode-badge');
+        if (!badge) return;
+        badge.innerHTML = text;
+        if (mode === 'free') {
+            badge.style.color = 'var(--accent)';
+            badge.style.borderColor = 'rgba(62, 166, 255, 0.5)';
+            badge.style.background = 'rgba(62, 166, 255, 0.1)';
+        } else {
+            badge.style.color = '#10b981';
+            badge.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+            badge.style.background = 'rgba(16, 185, 129, 0.1)';
+        }
+    }
+
     const selectedApiContent = document.getElementById('selected-api-content');
     
     toggleInfoBtn.addEventListener('click', () => {
@@ -371,6 +387,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     selectedApiContent.style.display = 'block'; // 点击新 API 时自动展开
                     toggleInfoBtn.innerHTML = '&minus;';
                     selectedApiName.textContent = ep.name;
+                    
+                    // 动态更新标题 Badge
+                    updateRequestMode('api', `Bound to: ${ep.name}`);
                     selectedApiZh.textContent = zhTranslated;
                     selectedApiDesc.textContent = ep.description;
                     selectedApiDesc.title = ep.description; // Hover to see full
@@ -494,6 +513,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         toggleMethodBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span>Unlock</span>';
         endpointInput.value = originalPath;
         bodyInput.value = originalBody;
+        
+        // 恢复标题
+        const apiName = document.getElementById('selected-api-name').textContent;
+        if (apiName) {
+            updateRequestMode('api', `Bound to: ${apiName}`);
+        }
     });
 
     // 新建空白请求 (New Request)
@@ -515,6 +540,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             responseStatus.textContent = 'Ready';
             responseStatus.className = 'response-status';
             endpointInput.focus();
+            
+            // 恢复为自由模式
+            updateRequestMode('free', 'Free Mode');
         });
     }
 
@@ -580,6 +608,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     bodyInput.value = h.body || '';
                     methodSelect.disabled = false;
                     historyReqDropdown.style.display = 'none';
+                    
+                    // 从历史记录加载，视为自由模式
+                    updateRequestMode('free', 'Free Mode (From History)');
                 };
                 
                 historyReqDropdown.appendChild(item);

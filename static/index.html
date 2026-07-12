@@ -93,7 +93,10 @@
 
             <div class="request-builder glass-panel">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                    <h2 style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500; margin: 0;">Request Configuration</h2>
+                    <h2 style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500; margin: 0; display: flex; align-items: center;">
+                        Request Configuration
+                        <span id="request-mode-badge" style="font-size: 0.65rem; font-weight: normal; color: var(--accent); border: 1px solid rgba(62, 166, 255, 0.5); background: rgba(62, 166, 255, 0.1); padding: 2px 6px; border-radius: 12px; margin-left: 8px;">Free Mode</span>
+                    </h2>
                     <div class="request-actions" style="display: flex; align-items: center; gap: 8px;">
                         <div style="position: relative;">
                             <button id="history-request-btn" class="icon-btn" title="最近的自由请求历史 (History)" type="button">
@@ -234,6 +237,6 @@
         </div>
     </div>
 
-    <script src="/static/script.js?v=20260712_v17"></script>
+    <script src="/static/script.js?v=20260712_v18"></script>
 </body>
 </html>
