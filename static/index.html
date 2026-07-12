@@ -177,32 +177,32 @@
                 <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary);">在此配置的所有参数将立即生效，且会在整个项目 (API & Pipeline) 中共享。</p>
                 <div class="form-group">
                     <label>SQL_CONN_STR (数据库连接字符串)</label>
-                    <input type="text" id="set-sql" class="settings-input" placeholder="DRIVER={ODBC Driver 17 for SQL Server};SERVER=...">
+                    <input type="text" id="set-sql" class="settings-input" placeholder="DRIVER={ODBC Driver 17 for SQL Server};SERVER=192.168.1.100;DATABASE=PBI_DWH;UID=sa;PWD=password">
                 </div>
                 <div class="form-group">
                     <label>PBI_WORKSPACE_ID</label>
-                    <input type="text" id="set-workspace" class="settings-input" placeholder="e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                    <input type="text" id="set-workspace" class="settings-input" placeholder="e.g. 5e8f1234-abcd-1234-abcd-1234567890ab">
                 </div>
                 <div class="form-group">
                     <label>PBI_DATASET_ID</label>
-                    <input type="text" id="set-dataset" class="settings-input" placeholder="e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                    <input type="text" id="set-dataset" class="settings-input" placeholder="e.g. b39c1234-abcd-1234-abcd-1234567890ab">
                 </div>
                 <div class="form-group">
                     <label>PBI_REPORT_ID</label>
-                    <input type="text" id="set-report" class="settings-input" placeholder="e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                    <input type="text" id="set-report" class="settings-input" placeholder="e.g. c12d1234-abcd-1234-abcd-1234567890ab">
                 </div>
                 <div style="border-top: 1px solid rgba(255,255,255,0.1); margin: 8px 0;"></div>
                 <div class="form-group">
-                    <label>CLIENT_ID</label>
-                    <input type="text" id="set-client" class="settings-input" placeholder="Azure App Client ID">
+                    <label>CLIENT_ID (Azure App)</label>
+                    <input type="text" id="set-client" class="settings-input" placeholder="e.g. f0123456-789a-bcde-f012-3456789abcde">
                 </div>
                 <div class="form-group">
-                    <label>CLIENT_SECRET</label>
-                    <input type="password" id="set-secret" class="settings-input" placeholder="Azure App Client Secret">
+                    <label>CLIENT_SECRET (Azure App)</label>
+                    <input type="password" id="set-secret" class="settings-input" placeholder="e.g. 8qC8Q~xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
                 </div>
                 <div class="form-group">
-                    <label>TENANT_ID</label>
-                    <input type="text" id="set-tenant" class="settings-input" placeholder="Azure Tenant ID">
+                    <label>TENANT_ID (Azure AD)</label>
+                    <input type="text" id="set-tenant" class="settings-input" placeholder="e.g. c8923456-789a-bcde-f012-3456789abcde">
                 </div>
             </div>
             <div class="modal-footer">
