@@ -786,13 +786,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             saveSettingsBtn.textContent = '保存中...';
             
             const payload = {
-                SQL_CONN_STR: document.getElementById('set-sql').value,
-                WORKSPACE_ID: document.getElementById('set-workspace').value,
-                DATASET_ID: document.getElementById('set-dataset').value,
-                REPORT_ID: document.getElementById('set-report').value,
-                CLIENT_ID: document.getElementById('set-client').value,
-                CLIENT_SECRET: document.getElementById('set-secret').value,
-                TENANT_ID: document.getElementById('set-tenant').value
+                SQL_CONN_STR: document.getElementById('set-sql').value.replace(/\r?\n|\r/g, '').trim(),
+                WORKSPACE_ID: document.getElementById('set-workspace').value.trim(),
+                DATASET_ID: document.getElementById('set-dataset').value.trim(),
+                REPORT_ID: document.getElementById('set-report').value.trim(),
+                CLIENT_ID: document.getElementById('set-client').value.trim(),
+                CLIENT_SECRET: document.getElementById('set-secret').value.trim(),
+                TENANT_ID: document.getElementById('set-tenant').value.trim()
             };
 
             // 存入自定义的 SQL 历史记录
