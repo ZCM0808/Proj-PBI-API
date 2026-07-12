@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 categories[category].push({
                     name: details.summary || details.operationId || path,
                     method: method.toUpperCase(),
-                    path: path.replace("https://api.powerbi.com/v1.0/myorg", ""), // clean path
+                    path: path.replace("/v1.0/myorg", ""), // clean path
                     body: sampleBody
                 });
             }
