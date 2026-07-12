@@ -210,6 +210,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 绑定最小化/最大化面板事件
     const toggleInfoBtn = document.getElementById('toggle-info-btn');
+    let activeApiElement = null;
 
     function updateRequestMode(mode, text) {
         const badge = document.getElementById('request-mode-badge');
@@ -352,11 +353,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 if (currentSelectedId === uniqueId) {
                     itemEl.classList.add('active');
+                    activeApiElement = itemEl;
                 }
 
                 itemEl.addEventListener('click', () => {
                     document.querySelectorAll('.api-item').forEach(i => i.classList.remove('active'));
                     itemEl.classList.add('active');
+                    activeApiElement = itemEl;
                     currentSelectedId = uniqueId;
 
                     // 保存初始状态
@@ -514,6 +517,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         endpointInput.value = originalPath;
         bodyInput.value = originalBody;
         
+        // 恢复 UI 状态
+        selectedApiInfo.style.display = 'block';
+        if (activeApiElement) {
+            activeApiElement.classList.add('active');
+        }
+        
         // 恢复标题
         const apiName = document.getElementById('selected-api-name').textContent;
         if (apiName) {
@@ -530,12 +539,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             endpointInput.value = '';
             bodyInput.value = '';
             toggleMethodBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span>Unlock</span>';
-            // 取消当前选中的 API 样式
+            // 取消当前选中的 API 样式，但保留 original 数据以便 Reset
             document.querySelectorAll('.api-item').forEach(el => el.classList.remove('active'));
             selectedApiInfo.style.display = 'none';
-            originalPath = '';
-            originalMethod = '';
-            originalBody = '';
             responseOutput.textContent = '// Response will appear here...';
             responseStatus.textContent = 'Ready';
             responseStatus.className = 'response-status';
