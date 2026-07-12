@@ -48,6 +48,7 @@ function translateApiName(name) {
         'Update': '更新', 'Create': '创建', 'Add': '添加', 'Remove': '移除', 'Refresh': '刷新',
         'Export': '导出', 'Import': '导入', 'Clone': '克隆', 'Bind': '绑定', 'Unbind': '解绑',
         'Take Over': '接管', 'Execute': '执行', 'Discover': '发现', 'Cancel': '取消', 'Assign': '分配',
+        'Unassign': '取消分配', 'Generate': '生成', 'Restore': '还原', 'Scan': '扫描', 'Embed': '嵌入',
         
         'Workspaces': '工作区', 'Workspace': '工作区', 'Groups': '工作区', 'Group': '工作区',
         'Datasets': '数据集', 'Dataset': '数据集', 'Reports': '报表', 'Report': '报表',
@@ -57,8 +58,12 @@ function translateApiName(name) {
         'Apps': '应用', 'App': '应用', 'Users': '用户', 'User': '用户', 'Profiles': '配置文件',
         'Profile': '配置文件', 'Pipelines': '部署管道', 'Pipeline': '部署管道', 'Parameters': '参数',
         'Parameter': '参数', 'Tiles': '磁贴', 'Tile': '磁贴', 'Queries': '查询', 'Query': '查询',
+        'Subscriptions': '订阅', 'Subscription': '订阅', 'Scorecards': '计分卡', 'Scorecard': '计分卡',
+        'Goals': '目标', 'Goal': '目标', 'Artifacts': '工件', 'Activity': '活动记录', 'Tenant': '租户',
         'History': '历史记录', 'Status': '状态', 'Details': '详情', 'Info': '信息', 'Result': '结果',
-        'Events': '事件', 'Pages': '页面', 'Page': '页面', 'In': '在'
+        'Events': '事件', 'Pages': '页面', 'Page': '页面', 'Token': '令牌', 'Imports': '导入任务',
+        'Exports': '导出任务', 'Orphaned': '孤立的', 'Widowed': '无主的', 'Admin': '管理',
+        'Available': '可用的', 'Features': '功能', 'In': '在'
     };
 
     for (const [en, zh] of Object.entries(dict)) {
@@ -155,9 +160,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         apiTree.innerHTML = '<div style="padding: 1rem; color: #ef4444;">无法加载完整的 API 列表，请刷新重试。</div>';
     }
 
-    // 绑定关闭详细信息面板事件
-    document.getElementById('close-info-btn').addEventListener('click', () => {
-        selectedApiInfo.style.display = 'none';
+    // 绑定最小化/最大化面板事件
+    const toggleInfoBtn = document.getElementById('toggle-info-btn');
+    const selectedApiContent = document.getElementById('selected-api-content');
+    
+    toggleInfoBtn.addEventListener('click', () => {
+        if (selectedApiContent.style.display === 'none') {
+            selectedApiContent.style.display = 'block';
+            toggleInfoBtn.innerHTML = '&minus;';
+            toggleInfoBtn.title = '最小化';
+        } else {
+            selectedApiContent.style.display = 'none';
+            toggleInfoBtn.innerHTML = '&#9633;'; // 正方形符号代表最大化/还原
+            toggleInfoBtn.title = '还原';
+        }
     });
 
     // 渲染 API 树
@@ -238,6 +254,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     // 展示详细信息面板
                     selectedApiInfo.style.display = 'block';
+                    selectedApiContent.style.display = 'block'; // 点击新 API 时自动展开
+                    toggleInfoBtn.innerHTML = '&minus;';
                     selectedApiName.textContent = ep.name;
                     selectedApiZh.textContent = zhTranslated;
                     selectedApiDesc.textContent = ep.description;
