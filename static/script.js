@@ -679,18 +679,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const saveSettingsBtn = document.getElementById('save-settings-btn');
 
     if (btnSettings && settingsModal) {
-        const loadSettings = async () => {
-            try {
-                const res = await fetch('/api/settings');
-                const data = await res.json();
-                document.getElementById('set-sql').value = data.SQL_CONN_STR || '';
-                document.getElementById('set-workspace').value = data.WORKSPACE_ID || '';
-                document.getElementById('set-dataset').value = data.DATASET_ID || '';
-                document.getElementById('set-report').value = data.REPORT_ID || '';
-                document.getElementById('set-client').value = data.CLIENT_ID || '';
-                document.getElementById('set-secret').value = data.CLIENT_SECRET || '';
-                document.getElementById('set-tenant').value = data.TENANT_ID || '';
-                
         const loadSQLHistory = () => {
             const historyBtn = document.getElementById('sql-history-btn');
             const historyDropdown = document.getElementById('sql-history-dropdown');
