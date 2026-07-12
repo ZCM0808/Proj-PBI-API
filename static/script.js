@@ -1,3 +1,39 @@
+// 简单的翻译字典，用于启发式翻译 API 名称
+function translateApiName(name) {
+    if (!name) return "";
+    let res = name;
+    
+    // 先处理 CamelCase (如 GetGroups -> Get Groups)
+    res = res.replace(/([a-z])([A-Z])/g, '$1 $2');
+
+    const dict = {
+        'Get': '获取', 'Post': '提交', 'Put': '设置', 'Patch': '更新', 'Delete': '删除',
+        'Update': '更新', 'Create': '创建', 'Add': '添加', 'Remove': '移除', 'Refresh': '刷新',
+        'Export': '导出', 'Import': '导入', 'Clone': '克隆', 'Bind': '绑定', 'Unbind': '解绑',
+        'Take Over': '接管', 'Execute': '执行', 'Discover': '发现', 'Cancel': '取消', 'Assign': '分配',
+        
+        'Workspaces': '工作区', 'Workspace': '工作区', 'Groups': '工作区', 'Group': '工作区',
+        'Datasets': '数据集', 'Dataset': '数据集', 'Reports': '报表', 'Report': '报表',
+        'Dashboards': '仪表板', 'Dashboard': '仪表板', 'Dataflows': '数据流', 'Dataflow': '数据流',
+        'Datamarts': '数据市场', 'Datamart': '数据市场', 'Gateways': '网关', 'Gateway': '网关',
+        'Datasources': '数据源', 'Datasource': '数据源', 'Capacities': '容量', 'Capacity': '容量',
+        'Apps': '应用', 'App': '应用', 'Users': '用户', 'User': '用户', 'Profiles': '配置文件',
+        'Profile': '配置文件', 'Pipelines': '部署管道', 'Pipeline': '部署管道', 'Parameters': '参数',
+        'Parameter': '参数', 'Tiles': '磁贴', 'Tile': '磁贴', 'Queries': '查询', 'Query': '查询',
+        'History': '历史记录', 'Status': '状态', 'Details': '详情', 'Info': '信息', 'Result': '结果',
+        'Events': '事件', 'Pages': '页面', 'Page': '页面',
+        
+        'In Group': '在当前工作区中', 'To Group': '到工作区', 'As Admin': '作为管理员', 'In': '在'
+    };
+
+    for (const [en, zh] of Object.entries(dict)) {
+        const regex = new RegExp(`\\b${en}\\b`, 'gi');
+        res = res.replace(regex, zh);
+    }
+    
+    return res;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     const methodSelect = document.getElementById('http-method');
     const endpointInput = document.getElementById('api-endpoint');
@@ -8,8 +44,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     const apiTree = document.getElementById('api-tree');
     const searchInput = document.getElementById('api-search');
+    
+    // 新增 UI 元素
+    const totalApiCountEl = document.getElementById('total-api-count');
+    const selectedApiInfo = document.getElementById('selected-api-info');
+    const selectedApiName = document.getElementById('selected-api-name');
+    const selectedApiZh = document.getElementById('selected-api-zh');
+    const selectedApiDesc = document.getElementById('selected-api-desc');
 
     let pbiApis = [];
+    let totalApisCalculated = 0;
 
     apiTree.innerHTML = '<div style="padding:1rem; text-align:center; color: var(--text-secondary);"><span class="loader"></span> 加载全部 API 中...</div>';
 
@@ -36,12 +80,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 categories[category].push({
                     name: details.summary || details.operationId || path,
+                    description: details.description || '无详细描述',
                     method: method.toUpperCase(),
                     path: path.replace("/v1.0/myorg", ""), // clean path
                     body: sampleBody
                 });
+                totalApisCalculated++;
             }
         }
+
+        // 更新总数
+        totalApiCountEl.textContent = totalApisCalculated;
 
         pbiApis = Object.keys(categories).map(cat => ({
             category: cat,
@@ -63,9 +112,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         pbiApis.forEach(category => {
             const filteredEndpoints = category.endpoints.filter(ep => {
                 const term = searchTerm.toLowerCase();
+                const zhName = translateApiName(ep.name).toLowerCase();
                 return ep.name.toLowerCase().includes(term) || 
                        ep.path.toLowerCase().includes(term) ||
-                       ep.method.toLowerCase().includes(term);
+                       ep.method.toLowerCase().includes(term) ||
+                       zhName.includes(term);
             });
 
             if (filteredEndpoints.length === 0) return;
@@ -96,7 +147,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 const nameEl = document.createElement('span');
                 nameEl.className = 'api-item-name';
-                nameEl.textContent = ep.name;
+                
+                // 显示中文翻译在列表上（也可以只显示英文，这里展示双语）
+                const zhTranslated = translateApiName(ep.name);
+                nameEl.innerHTML = `<div>${ep.name}</div><div style="font-size:0.7rem; color:var(--text-secondary); margin-top:2px;">${zhTranslated}</div>`;
                 nameEl.title = ep.path;
 
                 itemEl.appendChild(badge);
@@ -106,6 +160,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     document.querySelectorAll('.api-item').forEach(i => i.classList.remove('active'));
                     itemEl.classList.add('active');
 
+                    // 填入数据
                     endpointInput.value = ep.path;
                     methodSelect.value = ep.method;
                     
@@ -118,6 +173,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     } else {
                         bodyInput.value = '';
                     }
+
+                    // 展示详细信息面板
+                    selectedApiInfo.style.display = 'block';
+                    selectedApiName.textContent = ep.name;
+                    selectedApiZh.textContent = zhTranslated;
+                    selectedApiDesc.textContent = ep.description;
+                    selectedApiDesc.title = ep.description; // Hover to see full
                 });
 
                 listEl.appendChild(itemEl);
@@ -211,22 +273,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     resizer.addEventListener('mousedown', (e) => {
         isResizing = true;
         document.body.style.cursor = 'col-resize';
-        // 防止拖拽时选中文本
         document.body.style.userSelect = 'none';
     });
 
     document.addEventListener('mousemove', (e) => {
         if (!isResizing) return;
-        
-        // 获取容器的偏移量
         const containerOffsetLeft = document.querySelector('.app-container').offsetLeft;
-        // 计算新宽度：鼠标位置 - 容器左边距 - 左侧 padding (16px)
         let newWidth = e.clientX - containerOffsetLeft - 16;
-        
-        // 限制最小和最大宽度
         if (newWidth < 200) newWidth = 200;
         if (newWidth > 600) newWidth = 600;
-        
         sidebar.style.width = `${newWidth}px`;
     });
 

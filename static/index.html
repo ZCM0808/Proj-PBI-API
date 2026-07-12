@@ -21,11 +21,23 @@
             </div>
             
             <nav class="nav-menu">
+                <div class="nav-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <p class="nav-title" style="margin: 0;">API 资源树</p>
+                    <span class="api-count-badge" title="Total APIs">共 <span id="total-api-count">0</span> 个</span>
+                </div>
                 <div class="search-box">
                     <input type="text" id="api-search" placeholder="Search APIs...">
                 </div>
                 <div id="api-tree" class="api-tree">
                     <!-- API 列表将通过 JS 动态生成 -->
+                </div>
+                
+                <!-- 当前选中 API 信息 -->
+                <div id="selected-api-info" class="selected-api-info glass-panel" style="display: none; padding: 1rem; margin-top: 0.5rem; flex-shrink: 0; background: rgba(0,0,0,0.4); border-radius: 8px;">
+                    <div style="font-size: 0.75rem; color: var(--accent); margin-bottom: 0.25rem;">CURRENT SELECTION</div>
+                    <div id="selected-api-name" style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.25rem; color: var(--text-primary);"></div>
+                    <div id="selected-api-zh" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;"></div>
+                    <div id="selected-api-desc" style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;"></div>
                 </div>
             </nav>
             

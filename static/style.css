@@ -127,6 +127,15 @@ body {
     padding-right: 0.5rem;
 }
 
+.api-count-badge {
+    font-size: 0.75rem;
+    background: rgba(242, 200, 17, 0.15);
+    color: var(--accent);
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-weight: 600;
+}
+
 .api-category {
     margin-bottom: 0.5rem;
 }
