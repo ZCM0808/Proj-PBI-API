@@ -8,20 +8,10 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
 from src.config import Config
 from src.pbi_client import PBIClient
 
 app = FastAPI(title="Power BI API Explorer")
-
-# 添加 CORS 支持
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # 挂载静态文件
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -45,11 +35,15 @@ async def proxy_request(request: Request):
         return {"success": False, "error": "Invalid JSON format"}
         
     method = data.get("method", "GET").upper()
-    endpoint = data.get("endpoint", "")
+    endpoint = data.get("endpoint", "").strip()
     body = data.get("body", None)
     
+    # [安全验证] 防止 SSRF (服务器端请求伪造)
+    if endpoint.startswith("http://") or endpoint.startswith("https://"):
+        return {"success": False, "error": "Security Error: Absolute URLs are strictly prohibited to prevent SSRF and Token leakage. Please provide only the API path."}
+    
     # 简单的格式化，确保 endpoint 开头有 /
-    if not endpoint.startswith("/") and not endpoint.startswith("http"):
+    if not endpoint.startswith("/"):
         endpoint = "/" + endpoint
         
     kwargs = {}

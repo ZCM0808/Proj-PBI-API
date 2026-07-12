@@ -43,7 +43,10 @@ class PBIClient:
             endpoint: API 路径 (例如 '/groups' 或完整 URL)
             kwargs: 传递给 requests.request 的其他参数 (如 params, json, data)
         """
-        url = endpoint if endpoint.startswith("http") else f"{self.config.BASE_URL}{endpoint}"
+        # [安全验证] 双重防御：确保组装后的 URL 必须指向官方域
+        url = f"{self.config.BASE_URL}{endpoint}"
+        if not url.startswith("https://api.powerbi.com/"):
+            raise Exception("Security Violation: Target URL must belong to https://api.powerbi.com/")
         
         response = requests.request(
             method=method.upper(),
