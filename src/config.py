@@ -20,4 +20,5 @@ class Config:
 
     @property
     def authority_url(self) -> str:
-        return f"{self.AUTHORITY}{self.TENANT_ID}"
+        tenant = self.TENANT_ID if self.TENANT_ID else "organizations"
+        return f"{self.AUTHORITY}{tenant}"
