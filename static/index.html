@@ -6,6 +6,24 @@
     <title>Power BI API Explorer</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
+    <script>
+        // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸，
+        // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
+        (function() {
+            const sidebarWidth = localStorage.getItem('pbi-sidebar-width');
+            const requestHeight = localStorage.getItem('pbi-request-height');
+            let styleStr = '';
+            if (sidebarWidth) {
+                styleStr += `.sidebar { width: ${sidebarWidth}; min-width: ${sidebarWidth}; } `;
+            }
+            if (requestHeight) {
+                styleStr += `.request-builder { height: ${requestHeight}; flex: none; } `;
+            }
+            if (styleStr) {
+                document.write('<style>' + styleStr + '</style>');
+            }
+        })();
+    </script>
 </head>
 <body>
     <div class="app-container">
