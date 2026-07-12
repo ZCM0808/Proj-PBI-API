@@ -21,13 +21,12 @@
             </div>
             
             <nav class="nav-menu">
-                <p class="nav-title">常用接口快捷方式</p>
-                <ul id="quick-links">
-                    <li data-endpoint="/groups" data-method="GET">获取所有工作区</li>
-                    <li data-endpoint="/groups/{workspace_id}/reports" data-method="GET">获取工作区报表</li>
-                    <li data-endpoint="/groups/{workspace_id}/datasets" data-method="GET">获取工作区数据集</li>
-                    <li data-endpoint="/groups/{workspace_id}/datasets/{dataset_id}/refreshes" data-method="POST" data-body='{"notifyOption": "MailOnFailure"}'>刷新数据集</li>
-                </ul>
+                <div class="search-box">
+                    <input type="text" id="api-search" placeholder="Search APIs...">
+                </div>
+                <div id="api-tree" class="api-tree">
+                    <!-- API 列表将通过 JS 动态生成 -->
+                </div>
             </nav>
             
             <div class="doc-link">
