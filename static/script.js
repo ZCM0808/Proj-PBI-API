@@ -708,7 +708,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     item.onmouseout = () => item.style.background = 'transparent';
                     
                     const textSpan = document.createElement('span');
-                    textSpan.textContent = h.substring(0, 35) + '...';
+                    textSpan.textContent = h.length > 35 ? h.substring(0, 35) + '...' : h;
                     textSpan.title = h;
                     textSpan.style.flex = '1';
                     textSpan.style.overflow = 'hidden';
