@@ -401,24 +401,56 @@ document.addEventListener('DOMContentLoaded', async () => {
     const sidebar = document.querySelector('.sidebar');
     let isResizing = false;
 
+    // 垂直拖拽改变 Request 窗口高度
+    const vResizer = document.getElementById('vertical-resizer');
+    const requestBuilder = document.querySelector('.request-builder');
+    let isVerticalResizing = false;
+    let startY = 0;
+    let startHeight = 0;
+
     resizer.addEventListener('mousedown', (e) => {
         isResizing = true;
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
     });
 
+    vResizer.addEventListener('mousedown', (e) => {
+        isVerticalResizing = true;
+        startY = e.clientY;
+        startHeight = requestBuilder.getBoundingClientRect().height;
+        vResizer.classList.add('active');
+        document.body.style.cursor = 'row-resize';
+        document.body.style.userSelect = 'none';
+    });
+
     document.addEventListener('mousemove', (e) => {
-        if (!isResizing) return;
-        const containerOffsetLeft = document.querySelector('.app-container').offsetLeft;
-        let newWidth = e.clientX - containerOffsetLeft - 16;
-        if (newWidth < 200) newWidth = 200;
-        if (newWidth > 600) newWidth = 600;
-        sidebar.style.width = `${newWidth}px`;
+        if (isResizing) {
+            const containerOffsetLeft = document.querySelector('.app-container').offsetLeft;
+            let newWidth = e.clientX - containerOffsetLeft - 16;
+            if (newWidth < 200) newWidth = 200;
+            if (newWidth > 600) newWidth = 600;
+            sidebar.style.width = `${newWidth}px`;
+        }
+        
+        if (isVerticalResizing) {
+            const delta = e.clientY - startY;
+            const newHeight = startHeight + delta;
+            if (newHeight > 150 && newHeight < window.innerHeight - 150) {
+                requestBuilder.style.height = `${newHeight}px`;
+                requestBuilder.style.flex = 'none'; // 取消默认的 flex 行为，强制使用 height
+            }
+        }
     });
 
     document.addEventListener('mouseup', () => {
         if (isResizing) {
             isResizing = false;
+            document.body.style.cursor = 'default';
+            document.body.style.userSelect = 'auto';
+        }
+        if (isVerticalResizing) {
+            isVerticalResizing = false;
+            vResizer.classList.remove('active');
             document.body.style.cursor = 'default';
             document.body.style.userSelect = 'auto';
         }
