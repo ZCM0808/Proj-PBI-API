@@ -10,6 +10,18 @@ function generateMock(schema, definitions, level = 0) {
         return "string";
     }
     
+    // 支持 Swagger 的 allOf 继承结构
+    if (schema.allOf) {
+        let mergedObj = {};
+        for (const subSchema of schema.allOf) {
+            const subMock = generateMock(subSchema, definitions, level + 1);
+            if (typeof subMock === 'object' && !Array.isArray(subMock)) {
+                mergedObj = { ...mergedObj, ...subMock };
+            }
+        }
+        return mergedObj;
+    }
+    
     if (schema.type === 'object' || schema.properties) {
         const obj = {};
         for (const [key, prop] of Object.entries(schema.properties || {})) {
