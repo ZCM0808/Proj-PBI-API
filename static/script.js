@@ -492,11 +492,87 @@ document.addEventListener('DOMContentLoaded', async () => {
     const terminal = document.getElementById('pipeline-terminal');
 
     if (btnSmartOps) {
+        const modalContent = pipelineModal.querySelector('.modal-content');
+        let isAnimating = false;
+
         btnSmartOps.addEventListener('click', () => {
+            if (isAnimating) return;
+            isAnimating = true;
+            
+            const btnRect = btnSmartOps.getBoundingClientRect();
+            
             pipelineModal.style.display = 'flex';
+            // Wait a microtask to let CSS grid/flex layout calculate the center position
+            requestAnimationFrame(() => {
+                const finalRect = modalContent.getBoundingClientRect();
+                
+                const scaleX = btnRect.width / finalRect.width;
+                const scaleY = btnRect.height / finalRect.height;
+                const translateX = btnRect.left - finalRect.left;
+                const translateY = btnRect.top - finalRect.top;
+                
+                pipelineModal.animate([
+                    { opacity: 0 },
+                    { opacity: 1 }
+                ], { duration: 300, fill: 'forwards' });
+                
+                const contentAnim = modalContent.animate([
+                    { 
+                        transform: `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})`,
+                        transformOrigin: 'top left',
+                        opacity: 0
+                    },
+                    { 
+                        transform: 'translate(0, 0) scale(1, 1)',
+                        transformOrigin: 'top left',
+                        opacity: 1
+                    }
+                ], {
+                    duration: 400,
+                    easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)'
+                });
+                
+                contentAnim.onfinish = () => { isAnimating = false; };
+            });
         });
+
         closeModalBtn.addEventListener('click', () => {
-            pipelineModal.style.display = 'none';
+            if (isAnimating) return;
+            isAnimating = true;
+            
+            const btnRect = btnSmartOps.getBoundingClientRect();
+            const finalRect = modalContent.getBoundingClientRect();
+            
+            const scaleX = btnRect.width / finalRect.width;
+            const scaleY = btnRect.height / finalRect.height;
+            const translateX = btnRect.left - finalRect.left;
+            const translateY = btnRect.top - finalRect.top;
+            
+            pipelineModal.animate([
+                { opacity: 1 },
+                { opacity: 0 }
+            ], { duration: 350, fill: 'forwards' });
+            
+            const contentAnim = modalContent.animate([
+                { 
+                    transform: 'translate(0, 0) scale(1, 1)',
+                    transformOrigin: 'top left',
+                    opacity: 1
+                },
+                { 
+                    transform: `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})`,
+                    transformOrigin: 'top left',
+                    opacity: 0
+                }
+            ], {
+                duration: 350,
+                easing: 'cubic-bezier(0.4, 0, 0.2, 1)'
+            });
+            
+            contentAnim.onfinish = () => {
+                pipelineModal.style.display = 'none';
+                isAnimating = false;
+            };
         });
 
         startPipelineBtn.addEventListener('click', () => {
