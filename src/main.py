@@ -25,6 +25,19 @@ def get_ui():
     with open("static/index.html", "r", encoding="utf-8") as f:
         return f.read()
 
+@app.get("/api/settings")
+async def get_settings():
+    return Config.get_all()
+
+@app.post("/api/settings")
+async def update_settings(request: Request):
+    try:
+        data = await request.json()
+        Config.update_config(data)
+        return {"success": True, "message": "配置保存成功！"}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
 @app.get("/api/pipeline/run")
 async def run_pipeline():
     pipeline = PBIPipeline()

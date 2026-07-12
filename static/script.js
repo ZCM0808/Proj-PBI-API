@@ -620,6 +620,79 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // Settings Modal Logic
+    const btnSettings = document.getElementById('btn-settings');
+    const settingsModal = document.getElementById('settings-modal');
+    const closeSettingsBtn = document.getElementById('close-settings-btn');
+    const saveSettingsBtn = document.getElementById('save-settings-btn');
+
+    if (btnSettings && settingsModal) {
+        const loadSettings = async () => {
+            try {
+                const res = await fetch('/api/settings');
+                const data = await res.json();
+                document.getElementById('set-sql').value = data.SQL_CONN_STR || '';
+                document.getElementById('set-workspace').value = data.WORKSPACE_ID || '';
+                document.getElementById('set-dataset').value = data.DATASET_ID || '';
+                document.getElementById('set-report').value = data.REPORT_ID || '';
+                document.getElementById('set-client').value = data.CLIENT_ID || '';
+                document.getElementById('set-secret').value = data.CLIENT_SECRET || '';
+                document.getElementById('set-tenant').value = data.TENANT_ID || '';
+            } catch (err) {
+                console.error('Failed to load settings:', err);
+            }
+        };
+
+        btnSettings.addEventListener('click', async () => {
+            await loadSettings();
+            settingsModal.style.display = 'flex';
+        });
+
+        closeSettingsBtn.addEventListener('click', () => {
+            settingsModal.style.display = 'none';
+        });
+
+        saveSettingsBtn.addEventListener('click', async () => {
+            saveSettingsBtn.disabled = true;
+            saveSettingsBtn.textContent = '保存中...';
+            
+            const payload = {
+                SQL_CONN_STR: document.getElementById('set-sql').value,
+                WORKSPACE_ID: document.getElementById('set-workspace').value,
+                DATASET_ID: document.getElementById('set-dataset').value,
+                REPORT_ID: document.getElementById('set-report').value,
+                CLIENT_ID: document.getElementById('set-client').value,
+                CLIENT_SECRET: document.getElementById('set-secret').value,
+                TENANT_ID: document.getElementById('set-tenant').value
+            };
+
+            try {
+                const res = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    saveSettingsBtn.textContent = '✅ 已保存';
+                    setTimeout(() => {
+                        settingsModal.style.display = 'none';
+                        saveSettingsBtn.disabled = false;
+                        saveSettingsBtn.textContent = '💾 保存配置 (Save & Apply)';
+                    }, 1000);
+                } else {
+                    alert('保存失败: ' + result.message);
+                    saveSettingsBtn.disabled = false;
+                    saveSettingsBtn.textContent = '💾 保存配置 (Save & Apply)';
+                }
+            } catch (err) {
+                alert('网络错误: ' + err);
+                saveSettingsBtn.disabled = false;
+                saveSettingsBtn.textContent = '💾 保存配置 (Save & Apply)';
+            }
+        });
+    }
+
     // 拖拽改变侧边栏宽度
     const resizer = document.getElementById('dragMe');
     const sidebar = document.querySelector('.sidebar');

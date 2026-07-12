@@ -37,9 +37,14 @@
                 </svg>
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                     <h2>PBI Explorer</h2>
-                    <button id="btn-smart-ops" title="Run Smart DataOps Pipeline" style="background: var(--accent); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-weight: bold; display: flex; align-items: center; gap: 4px;">
-                        <span>🚀 Pipeline</span>
-                    </button>
+                    <div style="display: flex; gap: 8px;">
+                        <button id="btn-settings" title="Global Settings" style="background: transparent; color: var(--text-secondary); border: 1px solid rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold; display: flex; align-items: center; transition: all 0.2s;">
+                            <span>⚙️</span>
+                        </button>
+                        <button id="btn-smart-ops" title="Run Smart DataOps Pipeline" style="background: var(--accent); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-weight: bold; display: flex; align-items: center; gap: 4px;">
+                            <span>🚀 Pipeline</span>
+                        </button>
+                    </div>
                 </div>
             </div>
             
@@ -161,6 +166,51 @@
         </div>
     </div>
 
-    <script src="/static/script.js?v=20260712_v5"></script>
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content glass-panel" style="width: 500px;">
+            <div class="modal-header">
+                <h3>⚙️ 全局环境配置 (Global Settings)</h3>
+                <button id="close-settings-btn" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 12px;">
+                <p style="margin: 0; font-size: 0.85rem; color: var(--text-secondary);">在此配置的所有参数将立即生效，且会在整个项目 (API & Pipeline) 中共享。</p>
+                <div class="form-group">
+                    <label>SQL_CONN_STR (数据库连接字符串)</label>
+                    <input type="text" id="set-sql" class="endpoint-input" placeholder="DRIVER={ODBC Driver 17 for SQL Server};SERVER=...">
+                </div>
+                <div class="form-group">
+                    <label>PBI_WORKSPACE_ID</label>
+                    <input type="text" id="set-workspace" class="endpoint-input" placeholder="e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                </div>
+                <div class="form-group">
+                    <label>PBI_DATASET_ID</label>
+                    <input type="text" id="set-dataset" class="endpoint-input" placeholder="e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                </div>
+                <div class="form-group">
+                    <label>PBI_REPORT_ID</label>
+                    <input type="text" id="set-report" class="endpoint-input" placeholder="e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                </div>
+                <div style="border-top: 1px solid rgba(255,255,255,0.1); margin: 8px 0;"></div>
+                <div class="form-group">
+                    <label>CLIENT_ID</label>
+                    <input type="text" id="set-client" class="endpoint-input" placeholder="Azure App Client ID">
+                </div>
+                <div class="form-group">
+                    <label>CLIENT_SECRET</label>
+                    <input type="password" id="set-secret" class="endpoint-input" placeholder="Azure App Client Secret">
+                </div>
+                <div class="form-group">
+                    <label>TENANT_ID</label>
+                    <input type="text" id="set-tenant" class="endpoint-input" placeholder="Azure Tenant ID">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="save-settings-btn" class="btn-primary" style="width: 100%;">💾 保存配置 (Save & Apply)</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js?v=20260712_v6"></script>
 </body>
 </html>
