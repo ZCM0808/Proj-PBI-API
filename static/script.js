@@ -44,6 +44,34 @@ function generateMock(schema, definitions, level = 0) {
     return "";
 }
 
+function formatApiName(path, method) {
+    // 处理特定格式的端点名
+    return path.split('/').pop().replace(/([A-Z])/g, ' $1').trim() || path;
+}
+
+// JSON 语法高亮引擎
+function syntaxHighlight(json) {
+    if (typeof json != 'string') {
+         json = JSON.stringify(json, undefined, 2);
+    }
+    json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+        let cls = 'number';
+        if (/^"/.test(match)) {
+            if (/:$/.test(match)) {
+                cls = 'key';
+            } else {
+                cls = 'string';
+            }
+        } else if (/true|false/.test(match)) {
+            cls = 'boolean';
+        } else if (/null/.test(match)) {
+            cls = 'null';
+        }
+        return '<span class="' + cls + '">' + match + '</span>';
+    });
+}
+
 // 简单的翻译字典，用于启发式翻译 API 名称
 function translateApiName(name) {
     if (!name) return "";
@@ -230,6 +258,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             filteredEndpoints.forEach(ep => {
                 const itemEl = document.createElement('li');
                 itemEl.className = 'api-item';
+                itemEl.dataset.path = ep.path;
                 
                 const badge = document.createElement('span');
                 badge.className = `method-badge method-${ep.method}`;
@@ -302,9 +331,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    searchInput.addEventListener('input', (e) => {
-        renderTree(e.target.value);
-    });
+    // 搜索过滤逻辑 (Global Smart Search)
+    const apiSearchInput = document.getElementById('api-search-input');
+    if (apiSearchInput) {
+        apiSearchInput.addEventListener('input', (e) => {
+            renderTree(e.target.value);
+        });
+    }
 
     sendBtn.addEventListener('click', async () => {
         const method = methodSelect.value;
@@ -351,7 +384,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (data.success) {
                 responseStatus.textContent = `Success`;
                 responseStatus.className = 'response-status status-success';
-                responseOutput.textContent = JSON.stringify(data.data, null, 2);
+                // 注入高亮的 JSON 树状视图
+                responseOutput.innerHTML = syntaxHighlight(data.data);
+                responseOutput.className = 'json-viewer';
                 responseOutput.style.color = '#a78bfa';
             } else {
                 responseStatus.textContent = `Error`;
