@@ -24,7 +24,7 @@ class PBIPipeline:
             yield emit("info", "[1/4] 正在连接 SQL Server，校验源数据是否就绪...")
             await asyncio.sleep(0.5)
             try:
-                if "your_server" in self.config.SQL_CONN_STR:
+                if not self.config.SQL_CONN_STR or "your_server" in self.config.SQL_CONN_STR:
                     yield emit("warning", "⚠️ SQL_CONN_STR 尚未配置，跳过实际的数据库查询。")
                 elif not HAS_PYODBC:
                     yield emit("warning", "⚠️ 未检测到 pyodbc 模块，无法连接数据库，跳过强制校验。")
@@ -41,7 +41,7 @@ class PBIPipeline:
             yield emit("info", "[2/4] 向 Power BI 发起模型刷新指令...")
             await asyncio.sleep(0.5)
             try:
-                if "your_dataset_id" in self.config.DATASET_ID:
+                if not self.config.DATASET_ID or "your_dataset_id" in self.config.DATASET_ID:
                     yield emit("warning", "⚠️ PBI_DATASET_ID 尚未配置，跳过真实的刷新触发与监控。")
                 else:
                     # 此处模拟获取真实 Token 并触发刷新
@@ -56,7 +56,7 @@ class PBIPipeline:
             yield emit("info", "[3/4] 组装执行 DAX 探针，进行内存数据一致性终审...")
             await asyncio.sleep(0.5)
             try:
-                if "your_dataset_id" in self.config.DATASET_ID:
+                if not self.config.DATASET_ID or "your_dataset_id" in self.config.DATASET_ID:
                     yield emit("warning", "⚠️ 缺少 PBI_DATASET_ID，跳过 DAX 终审。")
                 else:
                     # 假装执行 DAX
@@ -69,7 +69,7 @@ class PBIPipeline:
             yield emit("info", "[4/4] 正在调用 ExportTo 接口生成千人千面 RLS 报告...")
             await asyncio.sleep(0.5)
             try:
-                if "your_report_id" in self.config.REPORT_ID:
+                if not self.config.REPORT_ID or "your_report_id" in self.config.REPORT_ID:
                     yield emit("warning", "⚠️ 缺少 PBI_REPORT_ID，跳过动态 PDF 生成和邮件发送。")
                 else:
                     yield emit("info", "✅ 云端 PDF 渲染完成，邮件已空投至指定用户！")

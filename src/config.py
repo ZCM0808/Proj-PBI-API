@@ -21,10 +21,10 @@ class Config:
     # ==========================================
     # Smart DataOps Pipeline 共享配置
     # ==========================================
-    SQL_CONN_STR: str = os.getenv("SQL_CONN_STR", "DRIVER={ODBC Driver 17 for SQL Server};SERVER=your_server;DATABASE=your_db;UID=user;PWD=password")
-    WORKSPACE_ID: str = os.getenv("PBI_WORKSPACE_ID", "your_workspace_id")
-    DATASET_ID: str = os.getenv("PBI_DATASET_ID", "your_dataset_id")
-    REPORT_ID: str = os.getenv("PBI_REPORT_ID", "your_report_id")
+    SQL_CONN_STR: str = os.getenv("SQL_CONN_STR", "")
+    WORKSPACE_ID: str = os.getenv("PBI_WORKSPACE_ID", "")
+    DATASET_ID: str = os.getenv("PBI_DATASET_ID", "")
+    REPORT_ID: str = os.getenv("PBI_REPORT_ID", "")
 
     @property
     def authority_url(self) -> str:
