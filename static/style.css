@@ -66,17 +66,21 @@ body {
     align-items: center;
     justify-content: center;
     margin: 0 5px;
-    transition: background 0.2s;
-    border-radius: 4px;
     z-index: 10;
+    background: transparent;
 }
 
-.resizer:hover, .resizer:active {
+.resizer::after {
+    content: '';
+    width: 4px;
+    height: 40px;
     background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    transition: background 0.2s;
 }
 
-.resizer:hover, .resizer.active {
-    background: rgba(167, 139, 250, 0.3);
+.resizer:hover::after, .resizer.active::after {
+    background: var(--accent);
 }
 
 /* Vertical Resizer */

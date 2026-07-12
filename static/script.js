@@ -408,8 +408,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     let startY = 0;
     let startHeight = 0;
 
+    // --- 恢复布局状态 ---
+    const savedSidebarWidth = localStorage.getItem('pbi-sidebar-width');
+    if (savedSidebarWidth) {
+        sidebar.style.width = savedSidebarWidth;
+        sidebar.style.minWidth = savedSidebarWidth;
+    }
+    const savedRequestHeight = localStorage.getItem('pbi-request-height');
+    if (savedRequestHeight) {
+        requestBuilder.style.height = savedRequestHeight;
+        requestBuilder.style.flex = 'none';
+    }
+    // --- 结束恢复 ---
+
     resizer.addEventListener('mousedown', (e) => {
         isResizing = true;
+        resizer.classList.add('active');
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
     });
@@ -430,6 +444,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (newWidth < 200) newWidth = 200;
             if (newWidth > 600) newWidth = 600;
             sidebar.style.width = `${newWidth}px`;
+            sidebar.style.minWidth = `${newWidth}px`;
         }
         
         if (isVerticalResizing) {
@@ -445,14 +460,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.addEventListener('mouseup', () => {
         if (isResizing) {
             isResizing = false;
+            resizer.classList.remove('active');
             document.body.style.cursor = 'default';
             document.body.style.userSelect = 'auto';
+            localStorage.setItem('pbi-sidebar-width', sidebar.style.width);
         }
         if (isVerticalResizing) {
             isVerticalResizing = false;
             vResizer.classList.remove('active');
             document.body.style.cursor = 'default';
             document.body.style.userSelect = 'auto';
+            localStorage.setItem('pbi-request-height', requestBuilder.style.height);
         }
     });
 });
