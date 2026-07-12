@@ -484,25 +484,66 @@ document.addEventListener('DOMContentLoaded', async () => {
         bodyInput.value = originalBody;
     });
 
-    // Pipeline Modal Logic
-    const btnSmartOps = document.getElementById('btn-smart-ops');
-    const pipelineModal = document.getElementById('pipeline-modal');
-    const closeModalBtn = document.getElementById('close-modal-btn');
-    const startPipelineBtn = document.getElementById('start-pipeline-btn');
-    const terminal = document.getElementById('pipeline-terminal');
+    // --- Modal FLIP & Drag Helper ---
+    function makeDraggable(modalContent, dragHandle) {
+        let isDragging = false;
+        let startX, startY, initialLeft, initialTop;
+        
+        modalContent.style.position = 'relative';
+        dragHandle.style.cursor = 'grab';
 
-    if (btnSmartOps) {
-        const modalContent = pipelineModal.querySelector('.modal-content');
+        dragHandle.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            dragHandle.style.cursor = 'grabbing';
+            startX = e.clientX;
+            startY = e.clientY;
+            
+            const style = window.getComputedStyle(modalContent);
+            initialLeft = parseInt(style.left, 10) || 0;
+            initialTop = parseInt(style.top, 10) || 0;
+            
+            document.body.style.userSelect = 'none';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            modalContent.style.left = `${initialLeft + dx}px`;
+            modalContent.style.top = `${initialTop + dy}px`;
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                dragHandle.style.cursor = 'grab';
+                document.body.style.userSelect = '';
+            }
+        });
+    }
+
+    function setupFLIPModal(btnOpen, btnClose, modalOverlay, onLoadCallback = null) {
+        if (!btnOpen || !btnClose || !modalOverlay) return;
+        const modalContent = modalOverlay.querySelector('.modal-content');
+        const modalHeader = modalOverlay.querySelector('.modal-header');
         let isAnimating = false;
 
-        btnSmartOps.addEventListener('click', () => {
+        makeDraggable(modalContent, modalHeader);
+
+        btnOpen.addEventListener('click', async () => {
             if (isAnimating) return;
             isAnimating = true;
             
-            const btnRect = btnSmartOps.getBoundingClientRect();
+            if (onLoadCallback) {
+                await onLoadCallback();
+            }
+
+            modalContent.style.left = '0px';
+            modalContent.style.top = '0px';
             
-            pipelineModal.style.display = 'flex';
-            // Wait a microtask to let CSS grid/flex layout calculate the center position
+            const btnRect = btnOpen.getBoundingClientRect();
+            
+            modalOverlay.style.display = 'flex';
             requestAnimationFrame(() => {
                 const finalRect = modalContent.getBoundingClientRect();
                 
@@ -511,7 +552,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const translateX = btnRect.left - finalRect.left;
                 const translateY = btnRect.top - finalRect.top;
                 
-                pipelineModal.animate([
+                modalOverlay.animate([
                     { opacity: 0 },
                     { opacity: 1 }
                 ], { duration: 300, fill: 'forwards' });
@@ -536,11 +577,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         });
 
-        closeModalBtn.addEventListener('click', () => {
+        btnClose.addEventListener('click', () => {
             if (isAnimating) return;
             isAnimating = true;
             
-            const btnRect = btnSmartOps.getBoundingClientRect();
+            const btnRect = btnOpen.getBoundingClientRect();
             const finalRect = modalContent.getBoundingClientRect();
             
             const scaleX = btnRect.width / finalRect.width;
@@ -548,7 +589,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const translateX = btnRect.left - finalRect.left;
             const translateY = btnRect.top - finalRect.top;
             
-            pipelineModal.animate([
+            modalOverlay.animate([
                 { opacity: 1 },
                 { opacity: 0 }
             ], { duration: 350, fill: 'forwards' });
@@ -570,10 +611,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             
             contentAnim.onfinish = () => {
-                pipelineModal.style.display = 'none';
+                modalOverlay.style.display = 'none';
                 isAnimating = false;
             };
         });
+    }
+
+    // Pipeline Modal Logic
+    const btnSmartOps = document.getElementById('btn-smart-ops');
+    const pipelineModal = document.getElementById('pipeline-modal');
+    const closePipelineBtn = document.getElementById('close-modal-btn');
+    const startPipelineBtn = document.getElementById('start-pipeline-btn');
+    const terminal = document.getElementById('pipeline-terminal');
+
+    if (btnSmartOps) {
+        setupFLIPModal(btnSmartOps, closePipelineBtn, pipelineModal);
 
         startPipelineBtn.addEventListener('click', () => {
             terminal.innerHTML = '';
@@ -643,14 +695,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         };
 
-        btnSettings.addEventListener('click', async () => {
-            await loadSettings();
-            settingsModal.style.display = 'flex';
-        });
-
-        closeSettingsBtn.addEventListener('click', () => {
-            settingsModal.style.display = 'none';
-        });
+        setupFLIPModal(btnSettings, closeSettingsBtn, settingsModal, loadSettings);
 
         saveSettingsBtn.addEventListener('click', async () => {
             saveSettingsBtn.disabled = true;
