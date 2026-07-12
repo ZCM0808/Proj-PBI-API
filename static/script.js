@@ -411,6 +411,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (apiSearchInput) {
         apiSearchInput.addEventListener('input', (e) => {
             renderTree(e.target.value);
+            // 搜索时如果输入了关键字，自动切换为全部展开图标（因为搜索会强制展开结果）
+            if (e.target.value.trim() !== '') {
+                allExpanded = true;
+                if (toggleAllBtn) {
+                    toggleAllBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"></path></svg>';
+                }
+            }
+        });
+    }
+
+    // 全部折叠 / 展开逻辑
+    let allExpanded = true;
+    const toggleAllBtn = document.getElementById('toggle-all-categories-btn');
+    if (toggleAllBtn) {
+        toggleAllBtn.addEventListener('click', () => {
+            allExpanded = !allExpanded;
+            const categoryLists = document.querySelectorAll('.api-category-list');
+            const categoryIcons = document.querySelectorAll('.api-category-icon');
+            
+            categoryLists.forEach(list => {
+                list.style.display = allExpanded ? 'block' : 'none';
+            });
+            
+            categoryIcons.forEach(icon => {
+                icon.innerHTML = allExpanded ? '&#9660;' : '&#9654;';
+            });
+            
+            toggleAllBtn.innerHTML = allExpanded ? 
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"></path></svg>' : // 展开时的向上收起箭头
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg>';  // 折叠时的向下展开箭头
         });
     }
 
