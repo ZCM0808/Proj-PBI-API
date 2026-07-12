@@ -753,3 +753,56 @@ textarea:focus {
 .btn-pipeline:disabled::after {
     display: none;
 }
+
+/* Settings Modal Styles */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.form-group label {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+.settings-input {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 1.05rem;
+    font-family: 'Fira Code', monospace;
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    color: white;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.settings-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.2);
+}
+
+.btn-settings-save {
+    width: 100%;
+    padding: 14px 24px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-settings-save:hover {
+    background: #9061f9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(167, 139, 250, 0.4);
+}
+.btn-settings-save:disabled {
+    background: #30363d;
+    color: #8b949e;
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+}
