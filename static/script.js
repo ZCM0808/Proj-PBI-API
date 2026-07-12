@@ -703,6 +703,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         opt.textContent = h.substring(0, 25) + '...';
                         historySelect.appendChild(opt);
                     });
+                    const clearOpt = document.createElement('option');
+                    clearOpt.value = "__clear__";
+                    clearOpt.textContent = "❌ 清空历史 (Clear All)";
+                    historySelect.appendChild(clearOpt);
                 } else {
                     historySelect.style.display = 'none';
                 }
@@ -714,7 +718,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const historySelect = document.getElementById('sql-history');
         if (historySelect) {
             historySelect.addEventListener('change', (e) => {
-                if (e.target.value) {
+                if (e.target.value === '__clear__') {
+                    if(confirm('确定要清空所有 SQL 连接历史记录吗？(Are you sure to clear all history?)')) {
+                        localStorage.removeItem('sqlHistory');
+                        historySelect.style.display = 'none';
+                        historySelect.innerHTML = '<option value="">📜 历史记录 (History)</option>';
+                    }
+                    e.target.value = ''; // 重置为默认选项
+                } else if (e.target.value) {
                     document.getElementById('set-sql').value = e.target.value;
                     e.target.value = ''; // 重置为默认选项
                 }
