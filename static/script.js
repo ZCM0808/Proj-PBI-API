@@ -525,7 +525,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (data.status === 'error' || data.status === 'success') {
                     evtSource.close();
                     startPipelineBtn.disabled = false;
-                    startPipelineBtn.textContent = '⚡ 重新启动 (Restart)';
+                    startPipelineBtn.innerHTML = '✨ 再次执行全链路扫描 (Run Again)';
                     startPipelineBtn.style.opacity = '1';
                 }
             };
@@ -538,7 +538,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 terminal.appendChild(line);
                 evtSource.close();
                 startPipelineBtn.disabled = false;
-                startPipelineBtn.textContent = '⚡ 重新启动 (Restart)';
+                startPipelineBtn.innerHTML = '✨ 再次执行全链路扫描 (Run Again)';
                 startPipelineBtn.style.opacity = '1';
             };
         });
