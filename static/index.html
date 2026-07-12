@@ -177,11 +177,11 @@
                 <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
                     <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary);">在此配置的所有参数将立即生效，且会在整个项目 (API & Pipeline) 中共享。</p>
                     <div class="form-group">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; position: relative;">
                             <label>SQL_CONN_STR (数据库连接字符串)</label>
-                            <select id="sql-history" style="font-size: 0.8rem; background: rgba(0,0,0,0.3); color: var(--text-secondary); border: 1px solid var(--panel-border); border-radius: 4px; padding: 2px 4px; cursor: pointer; display: none; max-width: 150px; text-overflow: ellipsis;">
-                                <option value="">📜 历史记录 (History)</option>
-                            </select>
+                            <button type="button" id="sql-history-btn" style="font-size: 0.8rem; background: rgba(0,0,0,0.3); color: var(--text-secondary); border: 1px solid var(--panel-border); border-radius: 4px; padding: 4px 8px; cursor: pointer; display: none;">📜 历史记录 (History)</button>
+                            <div id="sql-history-dropdown" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: #1f2428; border: 1px solid var(--panel-border); border-radius: 6px; z-index: 1000; width: 350px; max-height: 250px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+                            </div>
                         </div>
                         <textarea id="set-sql" name="pbi_sql_conn" class="settings-input" rows="2" style="resize: vertical; min-height: 60px; line-height: 1.4;" placeholder="DRIVER={ODBC Driver 17 for SQL Server};SERVER=192.168.1.100;DATABASE=PBI_DWH;UID=sa;PWD=password"></textarea>
                     </div>
@@ -218,6 +218,6 @@
         </div>
     </div>
 
-    <script src="/static/script.js?v=20260712_v12"></script>
+    <script src="/static/script.js?v=20260712_v13"></script>
 </body>
 </html>

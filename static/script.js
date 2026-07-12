@@ -691,43 +691,100 @@ document.addEventListener('DOMContentLoaded', async () => {
                 document.getElementById('set-secret').value = data.CLIENT_SECRET || '';
                 document.getElementById('set-tenant').value = data.TENANT_ID || '';
                 
-                // 加载自定义 SQL 历史记录
-                const historySelect = document.getElementById('sql-history');
-                let history = JSON.parse(localStorage.getItem('sqlHistory') || '[]');
-                if (history.length > 0) {
-                    historySelect.style.display = 'block';
-                    historySelect.innerHTML = '<option value="">📜 历史记录 (History)</option>';
-                    history.forEach(h => {
-                        const opt = document.createElement('option');
-                        opt.value = h;
-                        opt.textContent = h.substring(0, 25) + '...';
-                        historySelect.appendChild(opt);
-                    });
-                    const clearOpt = document.createElement('option');
-                    clearOpt.value = "__clear__";
-                    clearOpt.textContent = "❌ 清空历史 (Clear All)";
-                    historySelect.appendChild(clearOpt);
-                } else {
-                    historySelect.style.display = 'none';
-                }
+        const loadSQLHistory = () => {
+            const historyBtn = document.getElementById('sql-history-btn');
+            const historyDropdown = document.getElementById('sql-history-dropdown');
+            if (!historyBtn || !historyDropdown) return;
+            
+            let history = JSON.parse(localStorage.getItem('sqlHistory') || '[]');
+            historyDropdown.innerHTML = '';
+            
+            if (history.length > 0) {
+                historyBtn.style.display = 'block';
+                history.forEach(h => {
+                    const item = document.createElement('div');
+                    item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); cursor: pointer; color: var(--text-secondary); font-size: 0.8rem; transition: background 0.2s;';
+                    item.onmouseover = () => item.style.background = 'rgba(255,255,255,0.05)';
+                    item.onmouseout = () => item.style.background = 'transparent';
+                    
+                    const textSpan = document.createElement('span');
+                    textSpan.textContent = h.substring(0, 35) + '...';
+                    textSpan.title = h;
+                    textSpan.style.flex = '1';
+                    textSpan.style.overflow = 'hidden';
+                    textSpan.style.textOverflow = 'ellipsis';
+                    textSpan.style.whiteSpace = 'nowrap';
+                    textSpan.onclick = () => {
+                        document.getElementById('set-sql').value = h;
+                        historyDropdown.style.display = 'none';
+                    };
+                    
+                    const delBtn = document.createElement('span');
+                    delBtn.innerHTML = '&times;';
+                    delBtn.title = '删除此条记录 (Remove)';
+                    delBtn.style.cssText = 'margin-left: 8px; font-size: 1.1rem; color: var(--text-secondary); cursor: pointer; padding: 0 4px; border-radius: 4px;';
+                    delBtn.onmouseover = () => { delBtn.style.color = '#ff6b6b'; delBtn.style.background = 'rgba(255,107,107,0.1)'; };
+                    delBtn.onmouseout = () => { delBtn.style.color = 'var(--text-secondary)'; delBtn.style.background = 'transparent'; };
+                    delBtn.onclick = (e) => {
+                        e.stopPropagation(); // 防止触发选中事件
+                        let currHistory = JSON.parse(localStorage.getItem('sqlHistory') || '[]');
+                        currHistory = currHistory.filter(curr => curr !== h);
+                        localStorage.setItem('sqlHistory', JSON.stringify(currHistory));
+                        loadSQLHistory(); // 重新渲染下拉框
+                    };
+                    
+                    item.appendChild(textSpan);
+                    item.appendChild(delBtn);
+                    historyDropdown.appendChild(item);
+                });
+                
+                const clearAll = document.createElement('div');
+                clearAll.style.cssText = 'padding: 8px 12px; color: #ff6b6b; cursor: pointer; font-size: 0.8rem; text-align: center; transition: background 0.2s;';
+                clearAll.textContent = '❌ 清空全部历史 (Clear All)';
+                clearAll.onmouseover = () => clearAll.style.background = 'rgba(255,107,107,0.1)';
+                clearAll.onmouseout = () => clearAll.style.background = 'transparent';
+                clearAll.onclick = () => {
+                    if(confirm('确定要清空所有 SQL 连接历史记录吗？(Are you sure to clear all history?)')) {
+                        localStorage.removeItem('sqlHistory');
+                        loadSQLHistory();
+                        historyDropdown.style.display = 'none';
+                    }
+                };
+                historyDropdown.appendChild(clearAll);
+            } else {
+                historyBtn.style.display = 'none';
+                historyDropdown.style.display = 'none';
+            }
+        };
+
+        const loadSettings = async () => {
+            try {
+                const res = await fetch('/api/settings');
+                const data = await res.json();
+                document.getElementById('set-sql').value = data.SQL_CONN_STR || '';
+                document.getElementById('set-workspace').value = data.WORKSPACE_ID || '';
+                document.getElementById('set-dataset').value = data.DATASET_ID || '';
+                document.getElementById('set-report').value = data.REPORT_ID || '';
+                document.getElementById('set-client').value = data.CLIENT_ID || '';
+                document.getElementById('set-secret').value = data.CLIENT_SECRET || '';
+                document.getElementById('set-tenant').value = data.TENANT_ID || '';
+                
+                loadSQLHistory();
             } catch (err) {
                 console.error('Failed to load settings:', err);
             }
         };
 
-        const historySelect = document.getElementById('sql-history');
-        if (historySelect) {
-            historySelect.addEventListener('change', (e) => {
-                if (e.target.value === '__clear__') {
-                    if(confirm('确定要清空所有 SQL 连接历史记录吗？(Are you sure to clear all history?)')) {
-                        localStorage.removeItem('sqlHistory');
-                        historySelect.style.display = 'none';
-                        historySelect.innerHTML = '<option value="">📜 历史记录 (History)</option>';
-                    }
-                    e.target.value = ''; // 重置为默认选项
-                } else if (e.target.value) {
-                    document.getElementById('set-sql').value = e.target.value;
-                    e.target.value = ''; // 重置为默认选项
+        // 绑定下拉框开关逻辑
+        const historyBtn = document.getElementById('sql-history-btn');
+        const historyDropdown = document.getElementById('sql-history-dropdown');
+        if (historyBtn && historyDropdown) {
+            historyBtn.onclick = () => {
+                historyDropdown.style.display = historyDropdown.style.display === 'none' ? 'block' : 'none';
+            };
+            document.addEventListener('click', (e) => {
+                if (!historyBtn.contains(e.target) && !historyDropdown.contains(e.target)) {
+                    historyDropdown.style.display = 'none';
                 }
             });
         }
@@ -757,6 +814,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 history.unshift(payload.SQL_CONN_STR);
                 if (history.length > 5) history.pop();
                 localStorage.setItem('sqlHistory', JSON.stringify(history));
+                loadSQLHistory(); // 更新视图
             }
 
             try {
