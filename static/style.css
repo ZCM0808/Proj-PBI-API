@@ -537,3 +537,53 @@ textarea:focus {
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+/* =========================================
+   响应式设计 (Responsive Design for Mobile & Tablet)
+   ========================================= */
+@media (max-width: 768px) {
+    .app-container {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+        overflow-y: auto;
+    }
+
+    .sidebar {
+        width: 100% !important;
+        height: 40vh; /* 移动端顶部占 40% 屏幕高度 */
+        min-width: 100% !important;
+    }
+
+    /* 移动端改为上下布局，取消原有的鼠标拖拽条 */
+    .resizer, .vertical-resizer {
+        display: none !important;
+    }
+
+    .main-content {
+        padding: 1rem 0;
+        height: auto;
+        overflow: visible;
+    }
+
+    .input-group.row {
+        flex-direction: column;
+        gap: 0.8rem;
+    }
+
+    .method-selector select, .endpoint-input, #api-endpoint, .btn-primary {
+        width: 100%;
+    }
+
+    .request-builder {
+        height: auto !important;
+    }
+
+    textarea {
+        min-height: 200px;
+    }
+
+    .response-container {
+        min-height: 400px;
+    }
+}
