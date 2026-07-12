@@ -223,11 +223,42 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    let expandedCategories = new Set();
+    
+    function getBookmarks() {
+        return JSON.parse(localStorage.getItem('pbi-bookmarks') || '[]');
+    }
+
+    function toggleBookmark(ep, e) {
+        if (e) e.stopPropagation();
+        const bookmarks = getBookmarks();
+        const index = bookmarks.findIndex(b => b.path === ep.path && b.method === ep.method);
+        if (index >= 0) {
+            bookmarks.splice(index, 1);
+        } else {
+            bookmarks.push(ep);
+        }
+        localStorage.setItem('pbi-bookmarks', JSON.stringify(bookmarks));
+        const searchInput = document.getElementById('api-search-input');
+        renderTree(searchInput ? searchInput.value : "");
+    }
+
     // 渲染 API 树
     function renderTree(searchTerm = "") {
         apiTree.innerHTML = '';
         
-        pbiApis.forEach(category => {
+        const bookmarks = getBookmarks();
+        // 伪造一个书签分类
+        const categoryList = [];
+        if (bookmarks.length > 0) {
+            categoryList.push({
+                category: "⭐ 收藏夹 (Bookmarks)",
+                endpoints: bookmarks
+            });
+        }
+        categoryList.push(...pbiApis);
+        
+        categoryList.forEach(category => {
             const filteredEndpoints = category.endpoints.filter(ep => {
                 const term = searchTerm.toLowerCase();
                 const zhName = translateApiName(ep.name).toLowerCase();
@@ -249,11 +280,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const listEl = document.createElement('ul');
             listEl.className = 'api-list';
-            if (searchTerm) {
+            if (searchTerm || expandedCategories.has(category.category) || category.category === "⭐ 收藏夹 (Bookmarks)") {
                 listEl.style.display = 'flex';
+                titleEl.classList.add('active'); // 添加三角旋转状态（如果 CSS 里有写的话）
             } else {
                 listEl.style.display = 'none'; // 默认折叠以应对大量 API
             }
+            
+            titleEl.addEventListener('click', () => {
+                const isHidden = listEl.style.display === 'none';
+                listEl.style.display = isHidden ? 'flex' : 'none';
+                titleEl.classList.toggle('active', isHidden);
+                if (isHidden) {
+                    expandedCategories.add(category.category);
+                } else {
+                    expandedCategories.delete(category.category);
+                }
+            });
             
             filteredEndpoints.forEach(ep => {
                 const itemEl = document.createElement('li');
@@ -272,8 +315,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 nameEl.innerHTML = `<div>${ep.name}</div><div style="font-size:0.7rem; color:var(--text-secondary); margin-top:2px;">${zhTranslated}</div>`;
                 nameEl.title = ep.path;
 
+                // 收藏按钮
+                const starBtn = document.createElement('button');
+                const isBookmarked = getBookmarks().some(b => b.path === ep.path && b.method === ep.method);
+                starBtn.className = isBookmarked ? 'bookmark-btn active' : 'bookmark-btn';
+                starBtn.innerHTML = isBookmarked ? '★' : '☆';
+                starBtn.title = isBookmarked ? "取消收藏" : "加入收藏";
+                starBtn.onclick = (e) => toggleBookmark(ep, e);
+
                 itemEl.appendChild(badge);
                 itemEl.appendChild(nameEl);
+                itemEl.appendChild(starBtn);
 
                 const uniqueId = ep.method + '_' + ep.path;
                 
@@ -320,10 +372,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
 
                 listEl.appendChild(itemEl);
-            });
-
-            titleEl.addEventListener('click', () => {
-                listEl.style.display = listEl.style.display === 'none' ? 'flex' : 'none';
             });
 
             categoryEl.appendChild(listEl);
