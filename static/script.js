@@ -39,6 +39,8 @@ function translateApiName(name) {
     
     // 先处理 CamelCase (如 GetGroups -> Get Groups)
     res = res.replace(/([a-z])([A-Z])/g, '$1 $2');
+    // 把下划线和连字符替换为空格，防止 \b 词边界匹配失效（因为下划线算作单词字符）
+    res = res.replace(/[_-]/g, ' ');
 
     const dict = {
         // 优先匹配长短语
