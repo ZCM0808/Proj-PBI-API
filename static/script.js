@@ -413,6 +413,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
+        // 存入请求历史
+        if (endpoint) {
+            let reqHistory = JSON.parse(localStorage.getItem('apiReqHistory') || '[]');
+            const reqData = { method: method, url: endpoint, body: bodyStr, time: new Date().toLocaleString() };
+            // 简单去重：如果最新的和这次一模一样，就不重复存
+            if (reqHistory.length === 0 || reqHistory[0].method !== method || reqHistory[0].url !== endpoint || reqHistory[0].body !== bodyStr) {
+                reqHistory.unshift(reqData);
+                if (reqHistory.length > 20) reqHistory.pop();
+                localStorage.setItem('apiReqHistory', JSON.stringify(reqHistory));
+            }
+        }
+
         sendBtn.disabled = true;
         sendBtn.innerHTML = '<span class="loader"></span> <span>Sending...</span>';
         responseStatus.textContent = 'Sending request...';
@@ -483,6 +495,126 @@ document.addEventListener('DOMContentLoaded', async () => {
         endpointInput.value = originalPath;
         bodyInput.value = originalBody;
     });
+
+    // 新建空白请求 (New Request)
+    const newRequestBtn = document.getElementById('new-request-btn');
+    if (newRequestBtn) {
+        newRequestBtn.addEventListener('click', () => {
+            methodSelect.disabled = false;
+            methodSelect.value = 'GET';
+            endpointInput.value = '';
+            bodyInput.value = '';
+            toggleMethodBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span>Unlock</span>';
+            // 取消当前选中的 API 样式
+            document.querySelectorAll('.api-item').forEach(el => el.classList.remove('active'));
+            selectedApiInfo.style.display = 'none';
+            originalPath = '';
+            originalMethod = '';
+            originalBody = '';
+            responseOutput.textContent = '// Response will appear here...';
+            responseStatus.textContent = 'Ready';
+            responseStatus.className = 'response-status';
+            endpointInput.focus();
+        });
+    }
+
+    // 请求历史记录 (History)
+    const historyReqBtn = document.getElementById('history-request-btn');
+    const historyReqDropdown = document.getElementById('request-history-dropdown');
+    
+    const loadReqHistory = () => {
+        let history = JSON.parse(localStorage.getItem('apiReqHistory') || '[]');
+        historyReqDropdown.innerHTML = '';
+        if (history.length > 0) {
+            history.forEach(h => {
+                const item = document.createElement('div');
+                item.style.cssText = 'padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; display: flex; flex-direction: column; gap: 6px; transition: background 0.2s;';
+                item.onmouseover = () => item.style.background = 'rgba(255,255,255,0.05)';
+                item.onmouseout = () => item.style.background = 'transparent';
+                
+                const topRow = document.createElement('div');
+                topRow.style.cssText = 'display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;';
+                
+                const methodUrl = document.createElement('div');
+                methodUrl.style.cssText = 'flex: 1; word-break: break-all;';
+                const methodColor = h.method === 'GET' ? '#3b82f6' : (h.method === 'POST' ? '#10b981' : (h.method === 'DELETE' ? '#ef4444' : '#f59e0b'));
+                methodUrl.innerHTML = `<span style="color: ${methodColor}; font-weight: bold; margin-right: 8px; font-size: 0.8rem;">${h.method}</span><span style="color: #c9d1d9; font-size: 0.85rem; font-family: 'Fira Code', monospace;">${h.url}</span>`;
+                
+                const rightCol = document.createElement('div');
+                rightCol.style.cssText = 'display: flex; flex-direction: column; align-items: flex-end; gap: 4px;';
+                
+                const timeSpan = document.createElement('span');
+                timeSpan.style.cssText = 'font-size: 0.7rem; color: #6e7681;';
+                timeSpan.textContent = h.time || '';
+                
+                const delBtn = document.createElement('span');
+                delBtn.innerHTML = '&times;';
+                delBtn.title = '删除此条记录';
+                delBtn.style.cssText = 'font-size: 1.1rem; color: #6e7681; cursor: pointer; padding: 0 4px; border-radius: 4px; line-height: 1;';
+                delBtn.onmouseover = () => { delBtn.style.color = '#ff6b6b'; delBtn.style.background = 'rgba(255,107,107,0.1)'; };
+                delBtn.onmouseout = () => { delBtn.style.color = '#6e7681'; delBtn.style.background = 'transparent'; };
+                delBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    let currHistory = JSON.parse(localStorage.getItem('apiReqHistory') || '[]');
+                    currHistory = currHistory.filter(curr => curr.time !== h.time || curr.url !== h.url);
+                    localStorage.setItem('apiReqHistory', JSON.stringify(currHistory));
+                    loadReqHistory();
+                };
+                
+                rightCol.appendChild(delBtn);
+                rightCol.appendChild(timeSpan);
+                topRow.appendChild(methodUrl);
+                topRow.appendChild(rightCol);
+                item.appendChild(topRow);
+                
+                if (h.body) {
+                    const bodyPreview = document.createElement('div');
+                    bodyPreview.style.cssText = 'font-size: 0.75rem; color: #8b949e; font-family: "Fira Code", monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: rgba(0,0,0,0.2); padding: 4px 6px; border-radius: 4px;';
+                    bodyPreview.textContent = h.body;
+                    item.appendChild(bodyPreview);
+                }
+                
+                item.onclick = () => {
+                    methodSelect.value = h.method;
+                    endpointInput.value = h.url;
+                    bodyInput.value = h.body || '';
+                    methodSelect.disabled = false;
+                    historyReqDropdown.style.display = 'none';
+                };
+                
+                historyReqDropdown.appendChild(item);
+            });
+            
+            const clearAll = document.createElement('div');
+            clearAll.style.cssText = 'padding: 10px 12px; color: #ff6b6b; cursor: pointer; font-size: 0.8rem; text-align: center; transition: background 0.2s;';
+            clearAll.textContent = '❌ 清空所有请求历史 (Clear All)';
+            clearAll.onmouseover = () => clearAll.style.background = 'rgba(255,107,107,0.1)';
+            clearAll.onmouseout = () => clearAll.style.background = 'transparent';
+            clearAll.onclick = () => {
+                if(confirm('确定要清空所有自由请求历史记录吗？(Are you sure to clear all request history?)')) {
+                    localStorage.removeItem('apiReqHistory');
+                    loadReqHistory();
+                    historyReqDropdown.style.display = 'none';
+                }
+            };
+            historyReqDropdown.appendChild(clearAll);
+            
+        } else {
+            historyReqDropdown.innerHTML = '<div style="padding: 16px; color: #6e7681; font-size: 0.85rem; text-align: center;">📜 暂无请求历史 (No Request History)</div>';
+        }
+    };
+    
+    if (historyReqBtn && historyReqDropdown) {
+        historyReqBtn.addEventListener('click', () => {
+            loadReqHistory();
+            historyReqDropdown.style.display = historyReqDropdown.style.display === 'none' ? 'block' : 'none';
+        });
+        document.addEventListener('click', (e) => {
+            if (!historyReqBtn.contains(e.target) && !historyReqDropdown.contains(e.target)) {
+                historyReqDropdown.style.display = 'none';
+            }
+        });
+    }
 
     // --- Modal FLIP & Drag Helper ---
     function makeDraggable(modalContent, dragHandle) {
