@@ -422,20 +422,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // 全部折叠 / 展开逻辑
-    let allExpanded = true;
+    let allExpanded = false; // 初始大多是折叠状态
     const toggleAllBtn = document.getElementById('toggle-all-categories-btn');
     if (toggleAllBtn) {
         toggleAllBtn.addEventListener('click', () => {
             allExpanded = !allExpanded;
-            const categoryLists = document.querySelectorAll('.api-category-list');
-            const categoryIcons = document.querySelectorAll('.api-category-icon');
+            const categoryLists = document.querySelectorAll('.api-list');
+            const categoryTitles = document.querySelectorAll('.api-category-title');
             
             categoryLists.forEach(list => {
-                list.style.display = allExpanded ? 'block' : 'none';
+                list.style.display = allExpanded ? 'flex' : 'none';
             });
             
-            categoryIcons.forEach(icon => {
-                icon.innerHTML = allExpanded ? '&#9660;' : '&#9654;';
+            categoryTitles.forEach(title => {
+                title.classList.toggle('active', allExpanded);
+                const catNameEl = title.querySelector('span');
+                if (catNameEl) {
+                    const catName = catNameEl.textContent;
+                    if (allExpanded) {
+                        expandedCategories.add(catName);
+                    } else {
+                        expandedCategories.delete(catName);
+                    }
+                }
             });
             
             toggleAllBtn.innerHTML = allExpanded ? 
