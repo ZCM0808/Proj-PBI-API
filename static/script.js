@@ -111,6 +111,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // 用于保存当前选中的项，以防搜索导致 DOM 重绘后丢失选中状态
     let currentSelectedId = null;
+    
+    // 记录选中时的初始状态以支持回滚
+    let originalMethod = 'GET';
+    let originalPath = '';
+    let originalBody = '';
 
     apiTree.innerHTML = '<div style="padding:1rem; text-align:center; color: var(--text-secondary);"><span class="loader"></span> 加载全部 API 中...</div>';
 
@@ -252,20 +257,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                     itemEl.classList.add('active');
                     currentSelectedId = uniqueId;
 
-                    // 填入数据
-                    endpointInput.value = ep.path;
-                    methodSelect.value = ep.method;
-                    methodSelect.disabled = true; // 锁定 Method，防止用户误修改
+                    // 保存初始状态
+                    originalMethod = ep.method;
+                    originalPath = ep.path;
                     
                     if (ep.body) {
                         try {
-                            bodyInput.value = JSON.stringify(JSON.parse(ep.body), null, 2);
+                            originalBody = JSON.stringify(JSON.parse(ep.body), null, 2);
                         } catch(e) {
-                            bodyInput.value = ep.body;
+                            originalBody = ep.body;
                         }
                     } else {
-                        bodyInput.value = '';
+                        originalBody = '';
                     }
+
+                    // 填入数据
+                    endpointInput.value = originalPath;
+                    methodSelect.value = originalMethod;
+                    methodSelect.disabled = true; // 锁定 Method
+                    bodyInput.value = originalBody;
+                    
+                    // 恢复 Unlock 按钮状态
+                    document.getElementById('toggle-method-btn').innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span>Unlock</span>';
 
                     // 展示详细信息面板
                     selectedApiInfo.style.display = 'block';
@@ -361,6 +374,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    // Unlock 和 Reset 按钮逻辑
+    const toggleMethodBtn = document.getElementById('toggle-method-btn');
+    const resetRequestBtn = document.getElementById('reset-request-btn');
+
+    toggleMethodBtn.addEventListener('click', () => {
+        methodSelect.disabled = !methodSelect.disabled;
+        if (methodSelect.disabled) {
+            toggleMethodBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span>Unlock</span>';
+        } else {
+            toggleMethodBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg><span>Lock</span>';
+        }
+    });
+
+    resetRequestBtn.addEventListener('click', () => {
+        if (!originalPath) return; // 没有选中过任何 API 则不重置
+        methodSelect.value = originalMethod;
+        methodSelect.disabled = true;
+        toggleMethodBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span>Unlock</span>';
+        endpointInput.value = originalPath;
+        bodyInput.value = originalBody;
+    });
+
     // 拖拽改变侧边栏宽度
     const resizer = document.getElementById('dragMe');
     const sidebar = document.querySelector('.sidebar');
@@ -387,10 +422,5 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.body.style.cursor = 'default';
             document.body.style.userSelect = 'auto';
         }
-    });
-
-    // 如果用户手动修改了 URL 路径，说明他们在进行自定义测试，此时解锁 Method 下拉框
-    endpointInput.addEventListener('input', () => {
-        methodSelect.disabled = false;
     });
 });
