@@ -21,8 +21,8 @@ body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-color);
     color: var(--text-primary);
-    min-height: 100vh;
-    overflow-x: hidden;
+    height: 100vh;
+    overflow: hidden;
     background-image: 
         radial-gradient(circle at 15% 50%, rgba(242, 200, 17, 0.05), transparent 25%),
         radial-gradient(circle at 85% 30%, rgba(56, 189, 248, 0.05), transparent 25%);
@@ -33,6 +33,7 @@ body {
     height: 100vh;
     padding: 1rem;
     gap: 1rem;
+    box-sizing: border-box;
 }
 
 /* Glassmorphism utility */
@@ -51,6 +52,8 @@ body {
     display: flex;
     flex-direction: column;
     padding: 1.5rem;
+    height: 100%;
+    overflow: hidden;
 }
 
 .logo {
@@ -196,6 +199,7 @@ body {
     gap: 1rem;
     overflow-y: auto;
     padding-right: 0.5rem;
+    height: 100%;
 }
 
 /* Scrollbar */
