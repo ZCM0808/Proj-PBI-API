@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Power BI API Explorer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar glass-panel">
+            <div class="logo">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="3" y="12" width="5" height="9" fill="#F2C811"/>
+                    <rect x="9" y="7" width="5" height="14" fill="#F2C811"/>
+                    <rect x="15" y="2" width="5" height="19" fill="#F2C811"/>
+                </svg>
+                <h2>PBI Explorer</h2>
+            </div>
+            
+            <nav class="nav-menu">
+                <p class="nav-title">常用接口快捷方式</p>
+                <ul id="quick-links">
+                    <li data-endpoint="/groups" data-method="GET">获取所有工作区</li>
+                    <li data-endpoint="/groups/{workspace_id}/reports" data-method="GET">获取工作区报表</li>
+                    <li data-endpoint="/groups/{workspace_id}/datasets" data-method="GET">获取工作区数据集</li>
+                    <li data-endpoint="/groups/{workspace_id}/datasets/{dataset_id}/refreshes" data-method="POST" data-body='{"notifyOption": "MailOnFailure"}'>刷新数据集</li>
+                </ul>
+            </nav>
+            
+            <div class="doc-link">
+                <a href="https://learn.microsoft.com/en-us/rest/api/power-bi/" target="_blank">
+                    查看官方 API 文档 &rarr;
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-bar">
+                <h1>Power BI API 测试控制台</h1>
+                <p>完全动态化，输入任何 Power BI REST API 路径即可调用</p>
+            </header>
+
+            <div class="request-builder glass-panel">
+                <div class="input-group row">
+                    <div class="method-selector">
+                        <select id="http-method">
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="PATCH">PATCH</option>
+                            <option value="DELETE">DELETE</option>
+                        </select>
+                    </div>
+                    <div class="endpoint-input">
+                        <span class="base-url-hint">https://api.powerbi.com/v1.0/myorg</span>
+                        <input type="text" id="api-endpoint" placeholder="/groups" value="/groups">
+                    </div>
+                    <button id="send-btn" class="btn-primary">
+                        <span>Send Request</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                    </button>
+                </div>
+
+                <div class="body-editor-container">
+                    <div class="editor-header">
+                        <span>Request Body (JSON)</span>
+                        <span class="hint">仅适用于 POST/PUT/PATCH 等包含请求体的方法</span>
+                    </div>
+                    <textarea id="request-body" placeholder='{\n  "key": "value"\n}'></textarea>
+                </div>
+            </div>
+
+            <div class="response-container glass-panel">
+                <div class="response-header">
+                    <span>Response</span>
+                    <div class="response-status" id="response-status">Waiting for request...</div>
+                </div>
+                <div class="response-body">
+                    <pre><code id="response-output">API 响应结果将在这里显示...</code></pre>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
