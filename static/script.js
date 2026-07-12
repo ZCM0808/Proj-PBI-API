@@ -117,6 +117,7 @@ function translateApiName(name) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    let expandedCategories = new Set();
     const methodSelect = document.getElementById('http-method');
     const endpointInput = document.getElementById('api-endpoint');
     const bodyInput = document.getElementById('request-body');
@@ -222,8 +223,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             toggleInfoBtn.title = '还原';
         }
     });
-
-    let expandedCategories = new Set();
     
     function getBookmarks() {
         return JSON.parse(localStorage.getItem('pbi-bookmarks') || '[]');
