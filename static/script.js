@@ -1,3 +1,37 @@
+// 递归根据 Swagger Schema 提取并生成 Mock 请求体数据
+function generateMock(schema, definitions, level = 0) {
+    if (level > 4) return "..."; // 防止循环引用无限递归
+    
+    if (schema.$ref) {
+        const defName = schema.$ref.split('/').pop();
+        if (definitions && definitions[defName]) {
+            return generateMock(definitions[defName], definitions, level + 1);
+        }
+        return "string";
+    }
+    
+    if (schema.type === 'object' || schema.properties) {
+        const obj = {};
+        for (const [key, prop] of Object.entries(schema.properties || {})) {
+            obj[key] = generateMock(prop, definitions, level + 1);
+        }
+        return obj;
+    }
+    
+    if (schema.type === 'array') {
+        if (schema.items) {
+            return [generateMock(schema.items, definitions, level + 1)];
+        }
+        return [];
+    }
+    
+    if (schema.type === 'string') return "string";
+    if (schema.type === 'integer' || schema.type === 'number') return 0;
+    if (schema.type === 'boolean') return false;
+    
+    return "";
+}
+
 // 简单的翻译字典，用于启发式翻译 API 名称
 function translateApiName(name) {
     if (!name) return "";
@@ -66,6 +100,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const swagger = await res.json();
         
         const categories = {};
+        const definitions = swagger.definitions || {};
 
         for (const [path, methods] of Object.entries(swagger.paths)) {
             for (const [method, details] of Object.entries(methods)) {
@@ -77,9 +112,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                     categories[category] = [];
                 }
                 
+                let sampleBodyObj = null;
+                if (details.parameters) {
+                    const bodyParam = details.parameters.find(p => p.in === 'body');
+                    if (bodyParam && bodyParam.schema) {
+                        sampleBodyObj = generateMock(bodyParam.schema, definitions);
+                    }
+                }
+                
                 let sampleBody = '';
-                if (['post', 'put', 'patch'].includes(method.toLowerCase())) {
-                    sampleBody = '{\n  // 请参考文档填入参数\n}'; 
+                if (sampleBodyObj) {
+                    // 生成有具体字段含义的 JSON
+                    sampleBody = JSON.stringify(sampleBodyObj, null, 2);
+                } else if (['post', 'put', 'patch'].includes(method.toLowerCase())) {
+                    sampleBody = '{\n  // 当前接口无需请求体，或官方文档未指明\n}'; 
                 }
 
                 categories[category].push({
@@ -108,6 +154,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error("Failed to load swagger", e);
         apiTree.innerHTML = '<div style="padding: 1rem; color: #ef4444;">无法加载完整的 API 列表，请刷新重试。</div>';
     }
+
+    // 绑定关闭详细信息面板事件
+    document.getElementById('close-info-btn').addEventListener('click', () => {
+        selectedApiInfo.style.display = 'none';
+    });
 
     // 渲染 API 树
     function renderTree(searchTerm = "") {
@@ -220,7 +271,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        if (bodyStr && !bodyStr.includes('请参考文档填入参数')) {
+        // 获取 body 时忽略提示文本
+        if (bodyStr && !bodyStr.includes('当前接口无需请求体')) {
             try {
                 body = JSON.parse(bodyStr);
             } catch (e) {
