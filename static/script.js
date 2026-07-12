@@ -255,6 +255,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // 填入数据
                     endpointInput.value = ep.path;
                     methodSelect.value = ep.method;
+                    methodSelect.disabled = true; // 锁定 Method，防止用户误修改
                     
                     if (ep.body) {
                         try {
@@ -386,5 +387,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.body.style.cursor = 'default';
             document.body.style.userSelect = 'auto';
         }
+    });
+
+    // 如果用户手动修改了 URL 路径，说明他们在进行自定义测试，此时解锁 Method 下拉框
+    endpointInput.addEventListener('input', () => {
+        methodSelect.disabled = false;
     });
 });
