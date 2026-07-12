@@ -1,8 +1,13 @@
 import asyncio
 import json
-import pyodbc
 from typing import AsyncGenerator
 from .pbi_client import PBIClient
+
+try:
+    import pyodbc
+    HAS_PYODBC = True
+except ImportError:
+    HAS_PYODBC = False
 
 # 占位配置，用户需在此处填入真实的连接信息
 SQL_CONN_STR = "DRIVER={ODBC Driver 17 for SQL Server};SERVER=your_server;DATABASE=your_db;UID=user;PWD=password"
@@ -25,6 +30,8 @@ class PBIPipeline:
             try:
                 if "your_server" in SQL_CONN_STR:
                     yield emit("warning", "⚠️ SQL_CONN_STR 尚未配置，跳过实际的数据库查询。")
+                elif not HAS_PYODBC:
+                    yield emit("warning", "⚠️ 未检测到 pyodbc 模块，无法连接数据库，跳过强制校验。")
                 else:
                     with pyodbc.connect(SQL_CONN_STR, timeout=3) as conn:
                         cursor = conn.cursor()
