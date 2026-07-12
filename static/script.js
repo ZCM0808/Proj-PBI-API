@@ -690,10 +690,36 @@ document.addEventListener('DOMContentLoaded', async () => {
                 document.getElementById('set-client').value = data.CLIENT_ID || '';
                 document.getElementById('set-secret').value = data.CLIENT_SECRET || '';
                 document.getElementById('set-tenant').value = data.TENANT_ID || '';
+                
+                // 加载自定义 SQL 历史记录
+                const historySelect = document.getElementById('sql-history');
+                let history = JSON.parse(localStorage.getItem('sqlHistory') || '[]');
+                if (history.length > 0) {
+                    historySelect.style.display = 'block';
+                    historySelect.innerHTML = '<option value="">📜 历史记录 (History)</option>';
+                    history.forEach(h => {
+                        const opt = document.createElement('option');
+                        opt.value = h;
+                        opt.textContent = h.substring(0, 25) + '...';
+                        historySelect.appendChild(opt);
+                    });
+                } else {
+                    historySelect.style.display = 'none';
+                }
             } catch (err) {
                 console.error('Failed to load settings:', err);
             }
         };
+
+        const historySelect = document.getElementById('sql-history');
+        if (historySelect) {
+            historySelect.addEventListener('change', (e) => {
+                if (e.target.value) {
+                    document.getElementById('set-sql').value = e.target.value;
+                    e.target.value = ''; // 重置为默认选项
+                }
+            });
+        }
 
         setupFLIPModal(btnSettings, closeSettingsBtn, settingsModal, loadSettings);
 
@@ -712,6 +738,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 CLIENT_SECRET: document.getElementById('set-secret').value,
                 TENANT_ID: document.getElementById('set-tenant').value
             };
+
+            // 存入自定义的 SQL 历史记录
+            if (payload.SQL_CONN_STR) {
+                let history = JSON.parse(localStorage.getItem('sqlHistory') || '[]');
+                history = history.filter(h => h !== payload.SQL_CONN_STR);
+                history.unshift(payload.SQL_CONN_STR);
+                if (history.length > 5) history.pop();
+                localStorage.setItem('sqlHistory', JSON.stringify(history));
+            }
 
             try {
                 const res = await fetch('/api/settings', {

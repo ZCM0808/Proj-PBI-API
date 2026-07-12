@@ -177,8 +177,13 @@
                 <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
                     <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary);">在此配置的所有参数将立即生效，且会在整个项目 (API & Pipeline) 中共享。</p>
                     <div class="form-group">
-                        <label>SQL_CONN_STR (数据库连接字符串)</label>
-                        <input type="text" id="set-sql" name="pbi_sql_conn" class="settings-input" placeholder="DRIVER={ODBC Driver 17 for SQL Server};SERVER=192.168.1.100;DATABASE=PBI_DWH;UID=sa;PWD=password">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <label>SQL_CONN_STR (数据库连接字符串)</label>
+                            <select id="sql-history" style="font-size: 0.8rem; background: rgba(0,0,0,0.3); color: var(--text-secondary); border: 1px solid var(--panel-border); border-radius: 4px; padding: 2px 4px; cursor: pointer; display: none; max-width: 150px; text-overflow: ellipsis;">
+                                <option value="">📜 历史记录 (History)</option>
+                            </select>
+                        </div>
+                        <textarea id="set-sql" name="pbi_sql_conn" class="settings-input" rows="2" style="resize: vertical; min-height: 60px; line-height: 1.4;" placeholder="DRIVER={ODBC Driver 17 for SQL Server};SERVER=192.168.1.100;DATABASE=PBI_DWH;UID=sa;PWD=password"></textarea>
                     </div>
                     <div class="form-group">
                         <label>PBI_WORKSPACE_ID</label>
@@ -213,6 +218,6 @@
         </div>
     </div>
 
-    <script src="/static/script.js?v=20260712_v10"></script>
+    <script src="/static/script.js?v=20260712_v11"></script>
 </body>
 </html>
