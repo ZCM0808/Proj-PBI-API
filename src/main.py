@@ -15,8 +15,9 @@ def main():
     print()
 
     try:
-        # 获取工作区列表
-        workspaces = client.get_workspaces()
+        # 获取工作区列表 (使用通用方法)
+        response_data = client.request("GET", "/groups")
+        workspaces = response_data.get("value", [])
         print(f"找到 {len(workspaces)} 个工作区:")
         for ws in workspaces:
             print(f"  - {ws.get('name')} (ID: {ws.get('id')})")

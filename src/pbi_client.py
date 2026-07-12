@@ -34,30 +34,31 @@ class PBIClient:
             "Content-Type": "application/json",
         }
 
-    def get_workspaces(self) -> list[dict]:
-        """获取所有工作区"""
-        url = f"{self.config.BASE_URL}/groups"
-        response = requests.get(url, headers=self.headers, timeout=30)
+    def request(self, method: str, endpoint: str, **kwargs) -> dict:
+        """
+        通用 API 请求方法，避免硬编码逻辑。
+        
+        参数:
+            method: HTTP 方法 (例如 'GET', 'POST', 'PATCH', 'DELETE')
+            endpoint: API 路径 (例如 '/groups' 或完整 URL)
+            kwargs: 传递给 requests.request 的其他参数 (如 params, json, data)
+        """
+        url = endpoint if endpoint.startswith("http") else f"{self.config.BASE_URL}{endpoint}"
+        
+        response = requests.request(
+            method=method.upper(),
+            url=url,
+            headers=self.headers,
+            timeout=kwargs.pop('timeout', 30),
+            **kwargs
+        )
+        
         response.raise_for_status()
-        return response.json().get("value", [])
-
-    def get_datasets(self, workspace_id: str) -> list[dict]:
-        """获取工作区中的所有数据集"""
-        url = f"{self.config.BASE_URL}/groups/{workspace_id}/datasets"
-        response = requests.get(url, headers=self.headers, timeout=30)
-        response.raise_for_status()
-        return response.json().get("value", [])
-
-    def get_reports(self, workspace_id: str) -> list[dict]:
-        """获取工作区中的所有报表"""
-        url = f"{self.config.BASE_URL}/groups/{workspace_id}/reports"
-        response = requests.get(url, headers=self.headers, timeout=30)
-        response.raise_for_status()
-        return response.json().get("value", [])
-
-    def refresh_dataset(self, workspace_id: str, dataset_id: str) -> dict:
-        """触发数据集刷新"""
-        url = f"{self.config.BASE_URL}/groups/{workspace_id}/datasets/{dataset_id}/refreshes"
-        response = requests.post(url, headers=self.headers, timeout=30)
-        response.raise_for_status()
-        return {"status": "刷新已触发"}
+        
+        # 尝试解析 JSON 返回，对于没有主体的响应（如 202, 204）返回空字典
+        if response.content:
+            try:
+                return response.json()
+            except ValueError:
+                return {"status_code": response.status_code, "text": response.text}
+        return {"status_code": response.status_code}
