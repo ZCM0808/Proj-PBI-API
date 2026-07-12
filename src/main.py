@@ -6,10 +6,11 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import uvicorn
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from src.config import Config
 from src.pbi_client import PBIClient
+from src.pipeline import PBIPipeline
 
 app = FastAPI(title="Power BI API Explorer")
 
@@ -23,6 +24,11 @@ def get_ui():
     """返回 Web UI 主页"""
     with open("static/index.html", "r", encoding="utf-8") as f:
         return f.read()
+
+@app.get("/api/pipeline/run")
+async def run_pipeline():
+    pipeline = PBIPipeline()
+    return StreamingResponse(pipeline.run(), media_type="text/event-stream")
 
 @app.post("/api/proxy")
 async def proxy_request(request: Request):

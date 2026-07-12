@@ -484,6 +484,66 @@ document.addEventListener('DOMContentLoaded', async () => {
         bodyInput.value = originalBody;
     });
 
+    // Pipeline Modal Logic
+    const btnSmartOps = document.getElementById('btn-smart-ops');
+    const pipelineModal = document.getElementById('pipeline-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const startPipelineBtn = document.getElementById('start-pipeline-btn');
+    const terminal = document.getElementById('pipeline-terminal');
+
+    if (btnSmartOps) {
+        btnSmartOps.addEventListener('click', () => {
+            pipelineModal.style.display = 'flex';
+        });
+        closeModalBtn.addEventListener('click', () => {
+            pipelineModal.style.display = 'none';
+        });
+
+        startPipelineBtn.addEventListener('click', () => {
+            terminal.innerHTML = '';
+            startPipelineBtn.disabled = true;
+            startPipelineBtn.textContent = '运行中 (Running)...';
+            startPipelineBtn.style.opacity = '0.5';
+
+            const evtSource = new EventSource('/api/pipeline/run');
+            
+            evtSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                const line = document.createElement('div');
+                line.className = 'terminal-line';
+                
+                let cls = 'info';
+                if (data.status === 'success') cls = 'success';
+                else if (data.status === 'warning') cls = 'warning';
+                else if (data.status === 'error') cls = 'error';
+                
+                const timeStr = new Date().toLocaleTimeString('en-US', {hour12: false});
+                line.innerHTML = `<span style="color:#8b949e">[${timeStr}]</span> <span class="${cls}">${data.message}</span>`;
+                terminal.appendChild(line);
+                terminal.scrollTop = terminal.scrollHeight; // Auto-scroll
+                
+                if (data.status === 'error' || data.status === 'success') {
+                    evtSource.close();
+                    startPipelineBtn.disabled = false;
+                    startPipelineBtn.textContent = '⚡ 重新启动 (Restart)';
+                    startPipelineBtn.style.opacity = '1';
+                }
+            };
+
+            evtSource.onerror = function(err) {
+                console.error('SSE Error:', err);
+                const line = document.createElement('div');
+                line.className = 'terminal-line error';
+                line.textContent = '[系统] 与服务器的流式连接断开。';
+                terminal.appendChild(line);
+                evtSource.close();
+                startPipelineBtn.disabled = false;
+                startPipelineBtn.textContent = '⚡ 重新启动 (Restart)';
+                startPipelineBtn.style.opacity = '1';
+            };
+        });
+    }
+
     // 拖拽改变侧边栏宽度
     const resizer = document.getElementById('dragMe');
     const sidebar = document.querySelector('.sidebar');

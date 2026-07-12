@@ -662,3 +662,42 @@ textarea:focus {
         min-height: 400px;
     }
 }
+
+/* Modal and Terminal Styles */
+.modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 1000;
+}
+.modal-content {
+    width: 600px; max-width: 90%;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    display: flex; flex-direction: column;
+}
+.modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.modal-header h3 { margin: 0; font-size: 1.1rem; }
+.close-btn { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
+.modal-body { padding: 1.5rem; }
+.terminal-view {
+    background: #0d1117; color: #c9d1d9;
+    font-family: 'Fira Code', monospace; font-size: 0.85rem;
+    padding: 1rem; border-radius: 6px;
+    height: 300px; overflow-y: auto;
+    border: 1px solid #30363d;
+}
+.terminal-line { margin-bottom: 6px; line-height: 1.4; }
+.terminal-line .info { color: #58a6ff; }
+.terminal-line .success { color: #3fb950; }
+.terminal-line .warning { color: #d29922; }
+.terminal-line .error { color: #f85149; font-weight: bold; }
+.modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
