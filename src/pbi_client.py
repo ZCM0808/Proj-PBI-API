@@ -10,7 +10,6 @@ class PBIClient:
 
     def __init__(self, config: Config | None = None):
         self.config = config or Config()
-        self._access_token: str | None = None
         self._app = ConfidentialClientApplication(
             client_id=self.config.CLIENT_ID,
             client_credential=self.config.CLIENT_SECRET,
@@ -21,8 +20,7 @@ class PBIClient:
         """获取访问令牌"""
         result = self._app.acquire_token_for_client(scopes=self.config.SCOPE)
         if "access_token" in result:
-            self._access_token = result["access_token"]
-            return self._access_token
+            return result["access_token"]
         raise Exception(f"获取令牌失败: {result.get('error_description', '未知错误')}")
 
     @property
