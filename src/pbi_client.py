@@ -53,7 +53,17 @@ class PBIClient:
             **kwargs
         )
         
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            error_msg = str(e)
+            if e.response is not None and e.response.text:
+                try:
+                    error_detail = e.response.json()
+                    error_msg = f"{error_msg}\n{error_detail}"
+                except ValueError:
+                    error_msg = f"{error_msg}\n{e.response.text}"
+            raise Exception(error_msg)
         
         # 尝试解析 JSON 返回，对于没有主体的响应（如 202, 204）返回空字典
         if response.content:
