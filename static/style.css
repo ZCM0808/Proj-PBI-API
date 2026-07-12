@@ -776,6 +776,9 @@ textarea:focus {
     color: white;
     transition: border-color 0.2s, box-shadow 0.2s;
 }
+textarea.settings-input {
+    font-size: 0.95rem; /* 稍微缩小多行文本域的字体，便于容纳长连接字符串 */
+}
 .settings-input:focus {
     outline: none;
     border-color: var(--accent);
