@@ -225,7 +225,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // 限制最小和最大宽度
         if (newWidth < 200) newWidth = 200;
-        if (newWidth > 800) newWidth = 800;
+        if (newWidth > 600) newWidth = 600;
         
         sidebar.style.width = `${newWidth}px`;
     });
