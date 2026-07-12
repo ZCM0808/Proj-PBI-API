@@ -103,7 +103,12 @@
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                                 <span>History</span>
                             </button>
-                            <div id="request-history-dropdown" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: #1f2428; border: 1px solid var(--panel-border); border-radius: 6px; z-index: 1000; width: 450px; max-height: 350px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.8);">
+                            <div id="request-history-dropdown" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: #1f2428; border: 1px solid var(--panel-border); border-radius: 6px; z-index: 1000; width: 450px; max-height: 400px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.8); display: flex; flex-direction: column;">
+                                <div style="padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); position: sticky; top: 0; background: #1f2428; z-index: 10;">
+                                    <input type="text" id="history-search-input" placeholder="Fuzzy search URL, Method, or Body..." style="width: 100%; padding: 6px 8px; border-radius: 4px; border: 1px solid var(--panel-border); background: rgba(0,0,0,0.2); color: var(--text-primary); font-size: 0.8rem; outline: none;">
+                                </div>
+                                <div id="history-list-container" style="display: flex; flex-direction: column;"></div>
+                                <div id="history-clear-all" style="padding: 10px 12px; color: #ff6b6b; cursor: pointer; font-size: 0.8rem; text-align: center; transition: background 0.2s; border-top: 1px solid rgba(255,255,255,0.05); position: sticky; bottom: 0; background: #1f2428;">❌ 清空所有请求历史 (Clear All)</div>
                             </div>
                         </div>
                         
@@ -237,6 +242,6 @@
         </div>
     </div>
 
-    <script src="/static/script.js?v=20260712_v19"></script>
+    <script src="/static/script.js?v=20260712_v20"></script>
 </body>
 </html>

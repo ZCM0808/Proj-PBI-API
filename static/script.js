@@ -438,8 +438,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 存入请求历史
         if (endpoint) {
             try {
+                let modeMark = 'Free Mode';
+                const badge = document.getElementById('request-mode-badge');
+                if (badge && badge.textContent.includes('Bound to:')) {
+                    modeMark = badge.textContent.replace('Bound to: ', '').trim();
+                }
+
                 let reqHistory = JSON.parse(localStorage.getItem('apiReqHistory') || '[]');
-                const reqData = { method: method, url: endpoint, body: bodyStr, time: new Date().toLocaleString() };
+                const reqData = { method: method, url: endpoint, body: bodyStr, time: new Date().toLocaleString(), mode: modeMark };
                 // 简单去重：如果最新的和这次一模一样，就不重复存
                 if (reqHistory.length === 0 || reqHistory[0].method !== method || reqHistory[0].url !== endpoint || reqHistory[0].body !== bodyStr) {
                     reqHistory.unshift(reqData);
@@ -560,15 +566,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 请求历史记录 (History)
     const historyReqBtn = document.getElementById('history-request-btn');
     const historyReqDropdown = document.getElementById('request-history-dropdown');
+    const historyListContainer = document.getElementById('history-list-container');
+    const historySearchInput = document.getElementById('history-search-input');
+    const historyClearAll = document.getElementById('history-clear-all');
     
-    const loadReqHistory = () => {
+    const loadReqHistory = (searchTerm = "") => {
         let history = [];
         try {
             history = JSON.parse(localStorage.getItem('apiReqHistory') || '[]');
         } catch(e) {
             localStorage.removeItem('apiReqHistory');
         }
-        historyReqDropdown.innerHTML = '';
+        
+        if (searchTerm) {
+            const term = searchTerm.toLowerCase();
+            history = history.filter(h => 
+                h.url.toLowerCase().includes(term) || 
+                h.method.toLowerCase().includes(term) || 
+                (h.body && h.body.toLowerCase().includes(term)) ||
+                (h.mode && h.mode.toLowerCase().includes(term)) ||
+                (h.time && h.time.toLowerCase().includes(term))
+            );
+        }
+
+        if (!historyListContainer) return;
+        historyListContainer.innerHTML = '';
+        
         if (history.length > 0) {
             history.forEach(h => {
                 const item = document.createElement('div');
@@ -582,7 +605,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const methodUrl = document.createElement('div');
                 methodUrl.style.cssText = 'flex: 1; word-break: break-all;';
                 const methodColor = h.method === 'GET' ? '#3b82f6' : (h.method === 'POST' ? '#10b981' : (h.method === 'DELETE' ? '#ef4444' : '#f59e0b'));
-                methodUrl.innerHTML = `<span style="color: ${methodColor}; font-weight: bold; margin-right: 8px; font-size: 0.8rem;">${h.method}</span><span style="color: #c9d1d9; font-size: 0.85rem; font-family: 'Fira Code', monospace;">${h.url}</span>`;
+                
+                const modeColor = (h.mode && h.mode !== 'Free Mode') ? '#10b981' : 'var(--accent)';
+                const modeHtml = `<div style="display: inline-block; padding: 1px 6px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); color: ${modeColor}; background: rgba(0,0,0,0.3); font-size: 0.65rem; margin-bottom: 6px;">${h.mode || 'Free Mode'}</div><br>`;
+                
+                methodUrl.innerHTML = `${modeHtml}<span style="color: ${methodColor}; font-weight: bold; margin-right: 8px; font-size: 0.8rem;">${h.method}</span><span style="color: #c9d1d9; font-size: 0.85rem; font-family: 'Fira Code', monospace;">${h.url}</span>`;
                 
                 const rightCol = document.createElement('div');
                 rightCol.style.cssText = 'display: flex; flex-direction: column; align-items: flex-end; gap: 4px;';
@@ -604,7 +631,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         currHistory = currHistory.filter(curr => curr.time !== h.time || curr.url !== h.url);
                         localStorage.setItem('apiReqHistory', JSON.stringify(currHistory));
                     } catch(e) {}
-                    loadReqHistory();
+                    loadReqHistory(historySearchInput ? historySearchInput.value : "");
                 };
                 
                 rightCol.appendChild(delBtn);
@@ -626,37 +653,46 @@ document.addEventListener('DOMContentLoaded', async () => {
                     bodyInput.value = h.body || '';
                     methodSelect.disabled = false;
                     historyReqDropdown.style.display = 'none';
+                    if (historySearchInput) historySearchInput.value = '';
                     
-                    // 从历史记录加载，视为自由模式
                     updateRequestMode('free', 'Free Mode (From History)');
                 };
                 
-                historyReqDropdown.appendChild(item);
+                historyListContainer.appendChild(item);
             });
-            
-            const clearAll = document.createElement('div');
-            clearAll.style.cssText = 'padding: 10px 12px; color: #ff6b6b; cursor: pointer; font-size: 0.8rem; text-align: center; transition: background 0.2s;';
-            clearAll.textContent = '❌ 清空所有请求历史 (Clear All)';
-            clearAll.onmouseover = () => clearAll.style.background = 'rgba(255,107,107,0.1)';
-            clearAll.onmouseout = () => clearAll.style.background = 'transparent';
-            clearAll.onclick = () => {
-                if(confirm('确定要清空所有自由请求历史记录吗？(Are you sure to clear all request history?)')) {
-                    localStorage.removeItem('apiReqHistory');
-                    loadReqHistory();
-                    historyReqDropdown.style.display = 'none';
-                }
-            };
-            historyReqDropdown.appendChild(clearAll);
-            
         } else {
-            historyReqDropdown.innerHTML = '<div style="padding: 16px; color: #6e7681; font-size: 0.85rem; text-align: center;">📜 暂无请求历史 (No Request History)</div>';
+            historyListContainer.innerHTML = '<div style="padding: 16px; color: #6e7681; font-size: 0.85rem; text-align: center;">📜 暂无记录 (No Records Found)</div>';
         }
     };
     
+    if (historySearchInput) {
+        historySearchInput.addEventListener('input', (e) => loadReqHistory(e.target.value));
+        historySearchInput.addEventListener('click', (e) => e.stopPropagation());
+    }
+
+    if (historyClearAll) {
+        historyClearAll.onmouseover = () => historyClearAll.style.background = 'rgba(255,107,107,0.1)';
+        historyClearAll.onmouseout = () => historyClearAll.style.background = '#1f2428';
+        historyClearAll.onclick = () => {
+            if(confirm('确定要清空所有请求历史记录吗？(Are you sure to clear all request history?)')) {
+                localStorage.removeItem('apiReqHistory');
+                if (historySearchInput) historySearchInput.value = '';
+                loadReqHistory();
+                if (historyReqDropdown) historyReqDropdown.style.display = 'none';
+            }
+        };
+    }
+    
     if (historyReqBtn && historyReqDropdown) {
         historyReqBtn.addEventListener('click', () => {
-            loadReqHistory();
-            historyReqDropdown.style.display = historyReqDropdown.style.display === 'none' ? 'block' : 'none';
+            if (historyReqDropdown.style.display === 'none') {
+                if (historySearchInput) historySearchInput.value = '';
+                loadReqHistory();
+                historyReqDropdown.style.display = 'flex';
+                if (historySearchInput) setTimeout(() => historySearchInput.focus(), 50);
+            } else {
+                historyReqDropdown.style.display = 'none';
+            }
         });
         document.addEventListener('click', (e) => {
             if (!historyReqBtn.contains(e.target) && !historyReqDropdown.contains(e.target)) {
