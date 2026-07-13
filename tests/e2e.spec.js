@@ -91,9 +91,10 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     // 拦截网络请求并等待发出
     const requestPromise = page.waitForRequest(request => request.url().includes('/api/settings') && request.method() === 'POST');
 
-    // 强制点击保存（防止由于动画或 Modal 结构导致元素被遮挡）
+    // 等待 FLIP 动画完全结束 (350ms) 后再点击保存，确保元素完全静止
+    await page.waitForTimeout(400);
     const saveBtn = page.locator('#save-settings-btn');
-    await saveBtn.click({ force: true });
+    await saveBtn.click();
 
     // 验证网络请求的 Payload 中是否已经没有换行符
     const request = await requestPromise;

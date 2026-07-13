@@ -673,11 +673,13 @@ textarea:focus {
 .modal-overlay {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
     background: rgba(0, 0, 0, 0.6);
-    display: flex; justify-content: center; align-items: center;
+    display: flex; justify-content: center; align-items: flex-start;
+    padding-top: 5vh; padding-bottom: 5vh; overflow-y: auto;
     z-index: 1000;
 }
 .modal-content {
     width: 600px; max-width: 90%;
+    margin: 0 auto;
     background: var(--panel-bg);
     border: 1px solid var(--panel-border);
     border-radius: 12px;
