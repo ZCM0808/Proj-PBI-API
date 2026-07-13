@@ -176,18 +176,30 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // 智能提取前置条件 (Prerequisites)
                 let prerequisites = [];
                 if (path.includes('/admin/')) {
-                    prerequisites.push('🔒 **Admin API 特权**：调用者必须是全局/Fabric 管理员，或者在 Tenant 设置中开启了 "Allow service principals to use read-only admin APIs"。');
+                    prerequisites.push('🔒 **Admin API 特权**：调用者必须是 **全局/Fabric 管理员 (Global Admin)**，或者在 Tenant 设置中开启了 "**Allow service principals to use read-only admin APIs**" 才能由 **Service Principal** 身份调用。');
                 }
                 if (path.includes('/capacities') || path.includes('/exportTo')) {
-                    prerequisites.push('💎 **Premium 容量限制**：当前目标必须挂载于 Premium (P/A SKU) 或 Fabric (F SKU) 容量节点下。');
+                    prerequisites.push('💎 **Premium 容量限制**：当前目标必须挂载于 **Premium (P/A SKU)** 或 **Fabric (F SKU)** 容量节点下。');
                 }
                 
                 const descStr = details.description || '';
                 const permMatch = descStr.match(/## Permissions\n+([\s\S]*?)(?=##|$)/);
-                if (permMatch) prerequisites.push('🔑 **官方要求**：' + permMatch[1].trim());
+                if (permMatch) {
+                    let permText = permMatch[1].trim()
+                        .replace(/service principal/gi, '**service principal**')
+                        .replace(/delegated permissions/gi, '**delegated permissions**')
+                        .replace(/Fabric administrator/gi, '**Fabric administrator**')
+                        .replace(/Power BI admin/gi, '**Power BI admin**');
+                    prerequisites.push('🔑 **官方要求**：' + permText);
+                }
                 
                 const scopeMatch = descStr.match(/## Required Scope\n+([\s\S]*?)(?=##|$)/);
-                if (scopeMatch) prerequisites.push('🎯 **权限范围 (Scope)**：' + scopeMatch[1].trim());
+                if (scopeMatch) {
+                    let scopeText = scopeMatch[1].trim()
+                        .replace(/Tenant\.Read\.All/gi, '**Tenant.Read.All**')
+                        .replace(/Tenant\.ReadWrite\.All/gi, '**Tenant.ReadWrite.All**');
+                    prerequisites.push('🎯 **权限范围 (Scope)**：' + scopeText);
+                }
 
                 let sampleBody = '';
                 if (sampleBodyObj) {
