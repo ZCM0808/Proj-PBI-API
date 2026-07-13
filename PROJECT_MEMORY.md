@@ -70,7 +70,7 @@ python src/main.py
 1. **强制中文**：任何与用户的非代码文字交流，必须使用中文。
 2. **术语扫盲**：如果在对话中使用了技术黑话（如 UX、FLIP、JSON 等），必须带上科普后缀，格式为：`词汇(解释或全拼)`。例如：`LocalStorage(浏览器本地存储)`。
 3. **Markdown 产出**：只有在用户明确许可时才能生成 `.md` 文件。如果不指定路径，默认全部写入 `C:\Users\ZCM\Desktop` 桌面目录。（注：本文档属项目内核记忆文件，经特许存放于项目根目录）。
-4. **工具优先级**：优先使用 `grep_search` 等专用工具替代 bash 的 `cat/ls/grep`。
+4. **工具优先级与文件操作**：优先使用 `grep_search` 等专用工具替代 bash 的 `cat/ls/grep`。**严禁使用 PowerShell (`Set-Content`, `echo`) 拼接或修改文件**，以防破坏全局 UTF-8 编码引发极其严重的中文/特殊字符乱码事故，强制使用内置的 `replace_file_content` 原子化工具。
 5. **代码洁癖**：保持“0 错误、0 高危漏洞”标准。前端的 `script.js` 经常用 `node -c` 自检。
 
 ---
@@ -87,7 +87,8 @@ python src/main.py
 4. **End-to-End Testing (端到端测试)**：
    - 引入业界顶级框架 `Playwright` 模拟真实用户行为，测试所有核心 UI 操作 (如 Badge 切换、API 树状图渲染逻辑、弹窗显示隐藏等)。
 5. **Visual Regression Testing (视觉回归测试)**：
-   - 通过 Playwright 的 `toHaveScreenshot()` 进行全页面像素级对比，精准拦截微小的 CSS 或层级覆盖 Bug。
+   - 通过 Playwright 的 `toHaveScreenshot()` 进行全页面像素级对比，精准拦截微小的 CSS 错误、层级覆盖 Bug、或是任何因编码错误导致的乱码。
+   - **自测铁律 (TDD Loop)**：在任何涉及 UI/CSS/DOM 的修改后，**交付前必须强制在后台运行 `npx playwright test` 并等待执行结果**，绝不能依赖肉眼查错！
 6. **CI/CD Pipeline (持续集成流水线)**：
    - GitHub Actions (`.github/workflows/ci.yml`) 将上述所有流程自动化，在 Push 时跑通所有测试。
 
