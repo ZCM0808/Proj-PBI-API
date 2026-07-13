@@ -156,7 +156,8 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     // 等待核心元素渲染完成
     await expect(page.locator('#api-tree')).toBeVisible();
     
-    // 对整个页面进行像素级快照对比 (第一次运行会自动生成 baseline)
-    await expect(page).toHaveScreenshot('homepage-baseline.png', { fullPage: true, maxDiffPixels: 100 });
+    // Windows 11 (本地) 和 Windows Server (GitHub CI) 的系统字体渲染会有微小差异
+    // 允许最多 5% 的像素差异阈值
+    await expect(page).toHaveScreenshot('homepage-baseline.png', { fullPage: true, maxDiffPixels: 100, maxDiffPixelRatio: 0.05 });
   });
 });

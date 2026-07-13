@@ -25,11 +25,11 @@ jobs:
 
       - name: Static Analysis (Ruff & Mypy)
         run: |
-          ruff check src/
-          mypy src/ --ignore-missing-imports
+          python -m ruff check src/
+          python -m mypy src/ --ignore-missing-imports
 
       - name: Python Unit & API Contract Tests
-        run: pytest tests/ -v
+        run: python -m pytest tests/ -v
 
       - name: Set up Node.js for Frontend E2E
         uses: actions/setup-node@v5
