@@ -369,7 +369,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    min-height: 150px;
+    min-height: 110px; overflow-y: auto;
 }
 
 .row {
