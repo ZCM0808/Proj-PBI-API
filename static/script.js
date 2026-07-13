@@ -1178,10 +1178,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.style.userSelect = 'none';
     });
 
+    let minAllowedHeight = 150;
     vResizer.addEventListener('mousedown', (e) => {
         isVerticalResizing = true;
         startY = e.clientY;
         startHeight = requestBuilder.getBoundingClientRect().height;
+        const oldH = requestBuilder.style.height; requestBuilder.style.height = 'auto'; minAllowedHeight = requestBuilder.scrollHeight; requestBuilder.style.height = oldH;
         vResizer.classList.add('active');
         document.body.style.cursor = 'row-resize';
         document.body.style.userSelect = 'none';
@@ -1200,10 +1202,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (isVerticalResizing) {
             const delta = e.clientY - startY;
             const baseHeight = startHeight + delta;
-            const bodyEditor = document.getElementById('request-body-container');
-            const isBodyVisible = bodyEditor && bodyEditor.style.display !== 'none';
-            // 自动测量当前面板里所有控件（含 Padding 和 Gap）加起来需要多高
-            const minAllowedHeight = isBodyVisible ? 240 : 100;
+            
             const finalHeight = Math.max(minAllowedHeight, Math.min(baseHeight, window.innerHeight - 150));
             if (true) {
                 requestBuilder.style.height = finalHeight + 'px';
