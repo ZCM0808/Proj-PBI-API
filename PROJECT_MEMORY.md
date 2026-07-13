@@ -74,4 +74,22 @@ python src/main.py
 5. **代码洁癖**：保持“0 错误、0 高危漏洞”标准。前端的 `script.js` 经常用 `node -c` 自检。
 
 ---
-> **最后更新状态**：已完成 History 全局高级搜索、Badge 双模驱动、SQL Env 防御等重大 Feature 迭代，系统处于 v22 稳定基线。
+
+## 6. QA 与自动化测试防线 (QA & Automated Testing Best Practices)
+项目目前实施了现代工业级“大前端 + 稳定后端”的五大质量防线，所有的改动必须通过以下卡点：
+
+1. **Static Analysis (静态检查)**：
+   - 使用 `Ruff` 和 `Mypy` 对 Python 后端进行极速的格式化与类型安全推导。
+2. **Pre-commit Hooks (提交前安全钩子)**：
+   - 每次 `git commit` 时触发，自动修复代码格式，阻断脏代码污染 Git 历史。
+3. **Unit Testing & API Contract Testing (单元与契约测试)**：
+   - 后端使用 `Pytest` 验证核心逻辑 (如 `Config` 单例加载) 以及 FastAPI 路由返回的 JSON/HTML 数据结构是否符合契约标准。
+4. **End-to-End Testing (端到端测试)**：
+   - 引入业界顶级框架 `Playwright` 模拟真实用户行为，测试所有核心 UI 操作 (如 Badge 切换、API 树状图渲染逻辑、弹窗显示隐藏等)。
+5. **Visual Regression Testing (视觉回归测试)**：
+   - 通过 Playwright 的 `toHaveScreenshot()` 进行全页面像素级对比，精准拦截微小的 CSS 或层级覆盖 Bug。
+6. **CI/CD Pipeline (持续集成流水线)**：
+   - GitHub Actions (`.github/workflows/ci.yml`) 将上述所有流程自动化，在 Push 时跑通所有测试。
+
+---
+> **最后更新状态**：已完成全局最佳测试实践 (Playwright + Pytest) 的整合，引入 GitHub Actions 流水线，并更新了 PAT。系统处于高度健壮状态。
