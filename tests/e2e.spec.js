@@ -43,4 +43,13 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     const badge = page.locator('#request-mode-badge');
     await expect(badge).toHaveText(/Free Mode/);
   });
+
+  test('视觉回归测试 (Visual Regression): 主页 UI 必须与基准快照保持像素级一致', async ({ page }) => {
+    // 隐藏可能动态变化的元素（如时间、请求耗时等，如果有的话）
+    // 等待核心元素渲染完成
+    await expect(page.locator('#api-tree')).toBeVisible();
+    
+    // 对整个页面进行像素级快照对比 (第一次运行会自动生成 baseline)
+    await expect(page).toHaveScreenshot('homepage-baseline.png', { fullPage: true, maxDiffPixels: 100 });
+  });
 });
