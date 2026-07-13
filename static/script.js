@@ -550,6 +550,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         sendBtn.innerHTML = '<span class="loader"></span> <span>Sending...</span>';
         responseStatus.textContent = 'Sending request...';
         responseStatus.className = 'response-status';
+        responseOutput.style.color = '';
         responseOutput.textContent = '...';
 
         try {
@@ -603,6 +604,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             responseStatus.className = 'response-status status-error';
             responseOutput.textContent = err.message;
             responseOutput.style.color = '#ef4444';
+            window.currentJsonResponse = null;
+            const toggleBtn = document.getElementById('view-toggle-btn');
+            if (toggleBtn) toggleBtn.style.display = 'none';
         } finally {
             sendBtn.disabled = false;
             sendBtn.innerHTML = `
@@ -1322,7 +1326,7 @@ function createJsonNode(value, isLast, keyName, depth = 0) {
     
     const collapsedText = document.createElement('span');
     collapsedText.className = 'json-collapsed-text json-hidden';
-    collapsedText.textContent = isArray ? ' Array(' + keys.length + ') ' : ' ... ';
+    collapsedText.textContent = (isArray ? ' Array(' + keys.length + ') ' : ' ... ') + closeChar + (isLast ? '' : ',');
     
     const childrenContainer = document.createElement('div');
     childrenContainer.className = isArray ? 'json-array' : 'json-dict';
