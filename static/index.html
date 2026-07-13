@@ -166,7 +166,10 @@
             <div class="response-container glass-panel">
                 <div class="response-header">
                     <span>Response</span>
-                    <div class="response-status" id="response-status">Waiting for request...</div>
+                    <div style="margin-left:auto; display:flex; gap:12px; align-items:center;">
+                        <button id="view-toggle-btn" class="icon-btn" style="padding: 2px 8px; font-size:0.75rem; border: 1px solid var(--panel-border); background: rgba(0,0,0,0.2); border-radius: 4px; display: none;">Tree View</button>
+                        <div class="response-status" id="response-status">Waiting for request...</div>
+                    </div>
                 </div>
                 <div class="response-body">
                     <pre><code id="response-output">API 响应结果将在这里显示...</code></pre>
@@ -246,6 +249,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="/static/script.js?v=32"></script>
+    <script src="/static/script.js?v=36"></script>
 </body>
 </html>
