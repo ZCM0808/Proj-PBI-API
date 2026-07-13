@@ -583,8 +583,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (typeof renderJsonTree === 'function') {
                     renderJsonTree(data.data, responseOutput);
                 }
-                responseOutput.className = 'json-viewer';
-                responseOutput.style.color = '#a78bfa';
             } else {
                 responseStatus.textContent = `Error`;
                 responseStatus.className = 'response-status status-error';
@@ -598,7 +596,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (typeof renderJsonTree === 'function') {
                     renderJsonTree(window.currentJsonResponse, responseOutput);
                 }
-                responseOutput.style.color = '#ef4444';
             }
 
         } catch (err) {
