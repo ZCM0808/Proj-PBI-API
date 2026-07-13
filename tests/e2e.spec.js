@@ -160,4 +160,11 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     // 允许最多 5% 的像素差异阈值
     await expect(page).toHaveScreenshot('homepage-baseline.png', { fullPage: true, maxDiffPixels: 100, maxDiffPixelRatio: 0.05 });
   });
+
+  test('???????? (Component Visual Regression): ????? API ?????,????????', async ({ page }) => {
+    await expect(page.locator('#api-tree')).toBeVisible();
+    const sidebar = page.locator('.sidebar');
+    // ??? sidebar ???,?????????????????
+    await expect(sidebar).toHaveScreenshot('sidebar-baseline.png', { maxDiffPixelRatio: 0.05 });
+  });
 });
