@@ -1199,9 +1199,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (isVerticalResizing) {
             const delta = e.clientY - startY;
-            const newHeight = startHeight + delta;
-            const bodyEditor = document.getElementById('request-body-container'); const isBodyVisible = bodyEditor && bodyEditor.style.display !== 'none'; const minAllowedHeight = isBodyVisible ? 260 : 110; newHeight = Math.max(minAllowedHeight, Math.min(newHeight, window.innerHeight - 150)); if (true) {
-                requestBuilder.style.height = `${newHeight}px`;
+            const baseHeight = startHeight + delta;
+            const bodyEditor = document.getElementById('request-body-container');
+            const isBodyVisible = bodyEditor && bodyEditor.style.display !== 'none';
+            const minAllowedHeight = isBodyVisible ? 260 : 110;
+            const finalHeight = Math.max(minAllowedHeight, Math.min(baseHeight, window.innerHeight - 150));
+            if (true) {
+                requestBuilder.style.height = finalHeight + 'px';
+                
                 requestBuilder.style.flex = 'none'; // 取消默认的 flex 行为，强制使用 height
             }
         }
