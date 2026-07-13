@@ -173,6 +173,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
                 
+                // 智能提取前置条件 (Prerequisites)
+                let prerequisites = [];
+                if (path.includes('/admin/')) {
+                    prerequisites.push('🔒 **Admin API 特权**：调用者必须是全局/Fabric 管理员，或者在 Tenant 设置中开启了 "Allow service principals to use read-only admin APIs"。');
+                }
+                if (path.includes('/capacities') || path.includes('/exportTo')) {
+                    prerequisites.push('💎 **Premium 容量限制**：当前目标必须挂载于 Premium (P/A SKU) 或 Fabric (F SKU) 容量节点下。');
+                }
+                
+                const descStr = details.description || '';
+                const permMatch = descStr.match(/## Permissions\n+([\s\S]*?)(?=##|$)/);
+                if (permMatch) prerequisites.push('🔑 **官方要求**：' + permMatch[1].trim());
+                
+                const scopeMatch = descStr.match(/## Required Scope\n+([\s\S]*?)(?=##|$)/);
+                if (scopeMatch) prerequisites.push('🎯 **权限范围 (Scope)**：' + scopeMatch[1].trim());
+
                 let sampleBody = '';
                 if (sampleBodyObj) {
                     // 生成有具体字段含义的 JSON
@@ -183,10 +199,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 categories[category].push({
                     name: details.summary || details.operationId || path,
-                    description: details.description || '无详细描述',
+                    description: descStr,
                     method: method.toUpperCase(),
                     path: path.replace("/v1.0/myorg", ""), // clean path
-                    body: sampleBody
+                    body: sampleBody,
+                    prerequisites: prerequisites
                 });
                 totalApisCalculated++;
             }
@@ -394,7 +411,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // 动态更新标题 Badge
                     updateRequestMode('api', `Bound to: ${ep.name}`);
                     selectedApiZh.textContent = zhTranslated;
-                    selectedApiDesc.textContent = ep.description;
+
+                    // 渲染描述与警示前置条件
+                    let finalDescHtml = ep.description ? ep.description.replace(/\n/g, '<br>') : '<span style="color:var(--text-secondary)">暂无描述</span>';
+                    
+                    if (ep.prerequisites && ep.prerequisites.length > 0) {
+                        const prereqItems = ep.prerequisites.map(p => `<li style="margin-bottom: 6px;">${p.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</li>`).join('');
+                        const alertBox = `
+                            <div style="margin-top: 16px; padding: 12px 16px; background: rgba(210, 153, 34, 0.1); border-left: 4px solid #d29922; border-radius: 4px;">
+                                <div style="color: #d29922; font-weight: bold; margin-bottom: 8px; font-size: 0.9rem; display: flex; align-items: center; gap: 6px;">
+                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8.22 1.754a.25.25 0 00-.44 0L1.698 13.132a.25.25 0 00.22.368h12.164a.25.25 0 00.22-.368L8.22 1.754zm-1.763-.707c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0114.082 15H1.918a1.75 1.75 0 01-1.543-2.575L6.457 1.047zM9 11a1 1 0 11-2 0 1 1 0 012 0zm-.25-5.25a.75.75 0 00-1.5 0v2.5a.75.75 0 001.5 0v-2.5z"></path></svg>
+                                    运行前置条件 (Prerequisites)
+                                </div>
+                                <ul style="margin: 0; padding-left: 24px; color: #c9d1d9; font-size: 0.85rem; line-height: 1.5;">
+                                    ${prereqItems}
+                                </ul>
+                            </div>
+                        `;
+                        finalDescHtml = alertBox + '<div style="margin-top: 12px; opacity: 0.8; font-size: 0.85rem;">' + finalDescHtml + '</div>';
+                    }
+                    
+                    selectedApiDesc.innerHTML = finalDescHtml;
                     selectedApiDesc.title = ep.description; // Hover to see full
                 });
 
