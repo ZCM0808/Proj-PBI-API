@@ -89,6 +89,23 @@ python src/main.py
 5. **Visual Regression Testing (视觉回归测试)**：
    - 通过 Playwright 的 `toHaveScreenshot()` 进行全页面像素级对比，精准拦截微小的 CSS 错误、层级覆盖 Bug、或是任何因编码错误导致的乱码。
    - **自测铁律 (TDD Loop)**：在任何涉及 UI/CSS/DOM 的修改后，**交付前必须强制在后台运行 `npx playwright test` 并等待执行结果**，绝不能依赖肉眼查错！
+
+### 当前核心测试覆盖地图 (12 Core Test Cases)
+**🟢 后端防线：Pytest (4 个用例)**
+1. `test_config_structure`: 验证 PBIConfig 单例加载敏感字段的完整性。
+2. `test_config_get_all`: 验证下发环境变量的 JSON 结构与敏感信息脱敏。
+3. `test_frontend_delivery_contract`: 根路由 `/` 契约，确保正确交付前端 `index.html`。
+4. `test_api_settings_contract`: 校验 `/api/settings` GET/POST 接口读写连通性。
+
+**🔵 前端防线：Playwright E2E (8 个用例)**
+1. `下拉框防污染`: 刷新后历史下拉框必须默认隐藏。
+2. `侧边栏交互`: 一键“展开/折叠”按钮正确控制树状图层级。
+3. `模式切换引擎`: 点击 New Request 正确切换 Badge 为 Free Mode。
+4. `官方绑定模式`: 点击 API 树节点实现表单参数绑定，Reset 按钮完美一键复原。
+5. `配置项清洗防御`: **(重中之重)** 验证设置弹窗成功拦截并抹除恶意的多行 SQL_CONN_STR 回车换行符，防止污染后端。
+6. `历史记录搜索`: 验证全局 Fuzzy Search 模糊搜索与清空机制的可用性。
+7. `全页视觉回归`: 主页像素级快照对比，严防乱码与全局 CSS 崩塌。
+8. `组件视觉回归`: 侧边栏专门快照对比，严防长字符串文本溢出撑破布局。
 6. **CI/CD Pipeline (持续集成流水线)**：
    - GitHub Actions (`.github/workflows/ci.yml`) 将上述所有流程自动化，在 Push 时跑通所有测试。
 
