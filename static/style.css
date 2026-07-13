@@ -364,12 +364,12 @@ body {
 }
 
 /* Request Builder */
-.request-builder {
+.request-builder { overflow: hidden;
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    min-height: 150px;
+    min-height: 70px;
 }
 
 .row {
@@ -495,7 +495,7 @@ body {
 textarea {
     width: 100%;
     flex: 1;
-    min-height: 80px;
+    min-height: 0px;
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid var(--panel-border);
     border-radius: 8px;
@@ -630,7 +630,7 @@ textarea:focus {
         width: 100%;
     }
 
-    .request-builder {
+    .request-builder { overflow: hidden;
         height: auto !important;
         h2 {
             margin: 0;

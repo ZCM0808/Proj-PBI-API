@@ -1200,7 +1200,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (isVerticalResizing) {
             const delta = e.clientY - startY;
             const newHeight = startHeight + delta;
-            if (newHeight > 150 && newHeight < window.innerHeight - 150) {
+            if (newHeight > 70 && newHeight < window.innerHeight - 150) {
                 requestBuilder.style.height = `${newHeight}px`;
                 requestBuilder.style.flex = 'none'; // 取消默认的 flex 行为，强制使用 height
             }
