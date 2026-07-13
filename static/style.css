@@ -171,10 +171,12 @@ body {
 }
 
 .api-tree {
+    overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    overflow-y: auto;
+    
     flex: 1;
     min-height: 0;
     padding-right: 0.5rem;
@@ -276,6 +278,8 @@ body {
 .method-DELETE { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
 
 .api-item-name {
+    overflow-wrap: anywhere;
+    word-break: break-word;
     font-size: 0.8rem;
     color: var(--text-primary);
     line-height: 1.3;
@@ -303,7 +307,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    overflow-y: auto;
+    
     padding-right: 0.5rem;
     height: 100%;
 }
@@ -369,7 +373,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    min-height: 110px; overflow-y: auto;
+     
 }
 
 .row {
@@ -601,7 +605,7 @@ textarea:focus {
         flex-direction: column;
         height: auto;
         min-height: 100vh;
-        overflow-y: auto;
+        
     }
 
     .sidebar {
@@ -651,6 +655,8 @@ textarea:focus {
     }
 
     .api-tree {
+    overflow-y: auto;
+    overflow-x: hidden;
         padding: 1rem 1.5rem;
     }
 
@@ -689,7 +695,7 @@ textarea:focus {
     background: #0d1117; color: #c9d1d9;
     font-family: 'Fira Code', monospace; font-size: 0.85rem;
     padding: 1rem; border-radius: 6px;
-    height: 300px; overflow-y: auto;
+    height: 300px; 
     border: 1px solid #30363d;
 }
 .terminal-line { margin-bottom: 6px; line-height: 1.4; }
