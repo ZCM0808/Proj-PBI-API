@@ -1202,7 +1202,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const baseHeight = startHeight + delta;
             const bodyEditor = document.getElementById('request-body-container');
             const isBodyVisible = bodyEditor && bodyEditor.style.display !== 'none';
-            const minAllowedHeight = isBodyVisible ? 260 : 110;
+            // 自动测量当前面板里所有控件（含 Padding 和 Gap）加起来需要多高
+            const minAllowedHeight = isBodyVisible ? 240 : 100;
             const finalHeight = Math.max(minAllowedHeight, Math.min(baseHeight, window.innerHeight - 150));
             if (true) {
                 requestBuilder.style.height = finalHeight + 'px';
