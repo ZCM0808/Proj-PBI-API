@@ -712,6 +712,8 @@ textarea:focus {
 
 /* 究极炫酷的 Pipeline 执行按钮 */
 .btn-pipeline {
+    position: relative;
+    overflow: hidden;
     width: 100%;
     background: linear-gradient(135deg, #a78bfa 0%, #f2c811 100%);
     color: #1a1a24;
@@ -727,8 +729,6 @@ textarea:focus {
     justify-content: center;
     align-items: center;
     gap: 8px;
-    position: relative;
-    
 }
 
 .btn-pipeline::after {
