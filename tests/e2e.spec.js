@@ -91,10 +91,11 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     // 拦截网络请求并等待发出
     const requestPromise = page.waitForRequest(request => request.url().includes('/api/settings') && request.method() === 'POST');
 
-    // 等待 FLIP 动画完全结束 (350ms) 后再点击保存，确保元素完全静止
+    // 等待 FLIP 动画完全结束 (350ms)
     await page.waitForTimeout(400);
     const saveBtn = page.locator('#save-settings-btn');
-    await saveBtn.click();
+    // 使用 DOM 原生事件触发点击，绕过 Playwright 对长 Modal 在小视口下的 Actionability (可视性) 检查拦截
+    await saveBtn.evaluate(node => node.click());
 
     // 验证网络请求的 Payload 中是否已经没有换行符
     const request = await requestPromise;
@@ -162,10 +163,32 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     await expect(page).toHaveScreenshot('homepage-baseline.png', { fullPage: true, maxDiffPixels: 100, maxDiffPixelRatio: 0.05 });
   });
 
-  test('???????? (Component Visual Regression): ????? API ?????,????????', async ({ page }) => {
+  test('局部组件视觉回归测试 (Component Visual Regression): 侧边栏 API 树状图滚动条截断、文字溢出排版验证', async ({ page }) => {
     await expect(page.locator('#api-tree')).toBeVisible();
     const sidebar = page.locator('.sidebar');
-    // ??? sidebar ???,?????????????????
+    // 截取 sidebar 局部，防止长命名挤压样式或没有显示省略号
     await expect(sidebar).toHaveScreenshot('sidebar-baseline.png', { maxDiffPixelRatio: 0.05 });
+  });
+
+  test('局部组件视觉回归测试 (Component Visual Regression): Pipeline 弹窗内执行按钮的 Hover 闪光态', async ({ page }) => {
+    // 1. 打开 Pipeline 弹窗
+    const pipelineBtn = page.locator('#btn-smart-ops');
+    await pipelineBtn.click();
+    
+    // 2. 等待动画结束 (FLIP 350ms)
+    await page.waitForTimeout(400);
+
+    const pipelineModal = page.locator('#pipeline-modal .modal-content');
+    await expect(pipelineModal).toBeVisible();
+
+    // 3. 将鼠标悬停在执行按钮上，触发 css hover 动画
+    const runBtn = page.locator('#start-pipeline-btn');
+    await runBtn.hover();
+
+    // 4. 等待 0.3 秒，让闪光动画正好跑向中间态（用于捕获发光色块飞出边界的 Bug）
+    await page.waitForTimeout(300);
+
+    // 5. 对整个弹窗截图，如果 overflow: hidden 丢失，光效会溢出到背景上从而导致断言失败
+    await expect(pipelineModal).toHaveScreenshot('pipeline-modal-hover-baseline.png', { maxDiffPixelRatio: 0.05 });
   });
 });

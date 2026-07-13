@@ -97,7 +97,7 @@ python src/main.py
 3. `test_frontend_delivery_contract`: 根路由 `/` 契约，确保正确交付前端 `index.html`。
 4. `test_api_settings_contract`: 校验 `/api/settings` GET/POST 接口读写连通性。
 
-**🔵 前端防线：Playwright E2E (8 个用例)**
+**🔵 前端防线：Playwright E2E (9 个用例)**
 1. `下拉框防污染`: 刷新后历史下拉框必须默认隐藏。
 2. `侧边栏交互`: 一键“展开/折叠”按钮正确控制树状图层级。
 3. `模式切换引擎`: 点击 New Request 正确切换 Badge 为 Free Mode。
@@ -106,6 +106,7 @@ python src/main.py
 6. `历史记录搜索`: 验证全局 Fuzzy Search 模糊搜索与清空机制的可用性。
 7. `全页视觉回归`: 主页像素级快照对比，严防乱码与全局 CSS 崩塌。
 8. `组件视觉回归`: 侧边栏专门快照对比，严防长字符串文本溢出撑破布局。
+9. `弹窗动效视觉回归`: Pipeline 弹窗按钮 Hover 闪光态快照对比，严格监控 absolute 动画元素是否因缺少 overflow 而溢出污染背景。
 6. **CI/CD Pipeline (持续集成流水线)**：
    - GitHub Actions (`.github/workflows/ci.yml`) 将上述所有流程自动化，在 Push 时跑通所有测试。
 
