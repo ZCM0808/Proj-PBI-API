@@ -5,7 +5,7 @@ module.exports = defineConfig({
   fullyParallel: true,
   retries: 0,
   workers: 1,
-  reporter: 'list',
+  reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: 'http://127.0.0.1:8000',
     trace: 'on-first-retry',
