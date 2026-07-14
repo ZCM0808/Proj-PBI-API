@@ -864,7 +864,7 @@ textarea.settings-input {
 }
 
 /* 基于 opacity 的平滑淡出与淡入 */
-.modal-overlay {
+.confirm-modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
@@ -880,12 +880,12 @@ textarea.settings-input {
     transition: opacity 0.22s ease, backdrop-filter 0.22s ease;
 }
 
-.modal-overlay.show {
+.confirm-modal-overlay.show {
     opacity: 1;
     backdrop-filter: blur(4px);
 }
 
-.modal-overlay.show .confirm-modal-content {
+.confirm-modal-overlay.show .confirm-modal-content {
     transform: scale(1);
 }
 
