@@ -52,34 +52,32 @@ async def run_pipeline():
 @app.post("/api/proxy")
 async def proxy_request(request: Request):
     """
-    通用代理接口，接收前端传来的参数并转发给 Power BI REST API。
+    通用代理接口，接收前端传来的参数并转发给 Power BI 或 Fabric REST API。
     """
     try:
         data = await request.json()
     except Exception:
         return {"success": False, "error": "Invalid JSON format"}
-
+        
     method = data.get("method", "GET").upper()
     endpoint = data.get("endpoint", "").strip()
     body = data.get("body", None)
-
+    api_type = data.get("api_type", "powerbi").strip().lower()
+    
     # [安全验证] 防止 SSRF (服务器端请求伪造)
     if endpoint.startswith("http://") or endpoint.startswith("https://"):
-        return {
-            "success": False,
-            "error": "Security Error: Absolute URLs are strictly prohibited to prevent SSRF and Token leakage. Please provide only the API path.",
-        }
-
+        return {"success": False, "error": "Security Error: Absolute URLs are strictly prohibited to prevent SSRF and Token leakage. Please provide only the API path."}
+    
     # 简单的格式化，确保 endpoint 开头有 /
     if not endpoint.startswith("/"):
         endpoint = "/" + endpoint
-
+        
     kwargs = {}
     if body:
         kwargs["json"] = body
-
+        
     try:
-        response_data = client.request(method, endpoint, **kwargs)
+        response_data = client.request(method, endpoint, api_type=api_type, **kwargs)
         return {"success": True, "data": response_data}
     except Exception as e:
         return {"success": False, "error": str(e)}

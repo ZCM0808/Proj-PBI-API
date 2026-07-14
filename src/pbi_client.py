@@ -16,9 +16,10 @@ class PBIClient:
             authority=self.config.authority_url,
         )
 
-    def _get_token(self) -> str:
+    def _get_token(self, api_type: str = "powerbi") -> str:
         """获取访问令牌"""
-        result = self._app.acquire_token_for_client(scopes=self.config.SCOPE)
+        scope = ["https://api.fabric.microsoft.com/.default"] if api_type == "fabric" else self.config.SCOPE
+        result = self._app.acquire_token_for_client(scopes=scope)
         if "access_token" in result:
             return result["access_token"]
         raise Exception(f"获取令牌失败: {result.get('error_description', '未知错误')}")
@@ -26,34 +27,47 @@ class PBIClient:
     @property
     def headers(self) -> dict:
         """请求头"""
-        token = self._get_token()
+        token = self._get_token("powerbi")
         return {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         }
 
-    def request(self, method: str, endpoint: str, **kwargs) -> dict:
+    def request(self, method: str, endpoint: str, api_type: str = "powerbi", **kwargs) -> dict:
         """
         通用 API 请求方法，避免硬编码逻辑。
 
         参数:
             method: HTTP 方法 (例如 'GET', 'POST', 'PATCH', 'DELETE')
             endpoint: API 路径 (例如 '/groups' 或完整 URL)
+            api_type: 接口类型 ('powerbi' 或 'fabric')
             kwargs: 传递给 requests.request 的其他参数 (如 params, json, data)
         """
+        base_url = "https://api.fabric.microsoft.com" if api_type == "fabric" else self.config.BASE_URL
+        
+        # 兼容处理，确保拼接时路径斜线没有重复
+        if endpoint.startswith("/") and base_url.endswith("/"):
+            url = f"{base_url}{endpoint[1:]}"
+        else:
+            url = f"{base_url}{endpoint}"
+            
         # [安全验证] 双重防御：确保组装后的 URL 必须指向官方域
-        url = f"{self.config.BASE_URL}{endpoint}"
-        if not url.startswith("https://api.powerbi.com/"):
-            raise Exception(
-                "Security Violation: Target URL must belong to https://api.powerbi.com/"
-            )
-
+        if not (url.startswith("https://api.powerbi.com/") or url.startswith("https://api.fabric.microsoft.com/")):
+            raise Exception("Security Violation: Target URL must belong to Power BI or Fabric domains.")
+        
+        # 获取对应类型的 Token 并生成 headers
+        token = self._get_token(api_type)
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        }
+        
         response = requests.request(
             method=method.upper(),
             url=url,
-            headers=self.headers,
-            timeout=kwargs.pop("timeout", 30),
-            **kwargs,
+            headers=headers,
+            timeout=kwargs.pop('timeout', 30),
+            **kwargs
         )
 
         try:

@@ -817,3 +817,31 @@ textarea.settings-input {
     cursor: not-allowed;
     transform: none;
 }
+
+/* Flag Badges for Quick Filters */
+.flag-badge {
+    padding: 2px 7px;
+    font-size: 0.65rem;
+    font-weight: 500;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+}
+
+.flag-badge:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.18);
+    color: var(--text-primary);
+}
+
+.flag-badge.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0f1115;
+    font-weight: 600;
+    box-shadow: 0 0 10px rgba(242, 200, 17, 0.3);
+}

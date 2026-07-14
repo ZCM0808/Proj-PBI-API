@@ -146,15 +146,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     let originalPath = '';
     let originalBody = '';
 
+    let currentApiType = 'powerbi';
+    let currentActiveFlag = 'ALL';
+
     apiTree.innerHTML = '<div style="padding:1rem; text-align:center; color: var(--text-secondary);"><span class="loader"></span> 加载全部 API 中...</div>';
 
     try {
-        const res = await fetch('/static/swagger.json');
-        const swagger = await res.json();
+        const [resPbi, resFabric] = await Promise.all([
+            fetch('/static/swagger.json'),
+            fetch('/static/fabric_swagger.json')
+        ]);
+        const swagger = await resPbi.json();
+        const fabricSwagger = await resFabric.json();
         
         const categories = {};
         const definitions = swagger.definitions || {};
 
+        // 1. 解析 Power BI API
         for (const [path, methods] of Object.entries(swagger.paths)) {
             for (const [method, details] of Object.entries(methods)) {
                 if (!['get', 'post', 'put', 'patch', 'delete'].includes(method.toLowerCase())) continue;
@@ -173,7 +181,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
                 
-                // 智能提取前置条件 (Prerequisites)
                 let prerequisites = [];
                 if (path.includes('/admin/')) {
                     prerequisites.push('🔒 **Admin API 特权**：调用者必须是 **全局/Fabric 管理员 (Global Admin)**，或者在 Tenant 设置中开启了 "**Allow service principals to use read-only admin APIs**" 才能由 **Service Principal** 身份调用。');
@@ -203,7 +210,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 let sampleBody = '';
                 if (sampleBodyObj) {
-                    // 生成有具体字段含义的 JSON
                     sampleBody = JSON.stringify(sampleBodyObj, null, 2);
                 } else if (['post', 'put', 'patch'].includes(method.toLowerCase())) {
                     sampleBody = '{\n  // 当前接口无需请求体，或官方文档未指明\n}'; 
@@ -215,9 +221,53 @@ document.addEventListener('DOMContentLoaded', async () => {
                     method: method.toUpperCase(),
                     path: path.replace("/v1.0/myorg", ""), // clean path
                     body: sampleBody,
-                    prerequisites: prerequisites
+                    prerequisites: prerequisites,
+                    flag: 'PBI',
+                    isFabric: false
                 });
                 totalApisCalculated++;
+            }
+        }
+
+        // 2. 解析 Fabric API
+        if (fabricSwagger && fabricSwagger.paths) {
+            for (const [path, methods] of Object.entries(fabricSwagger.paths)) {
+                for (const [method, details] of Object.entries(methods)) {
+                    if (!['get', 'post', 'put', 'patch', 'delete'].includes(method.toLowerCase())) continue;
+                    
+                    const category = details.tags && details.tags.length > 0 ? details.tags[0] : 'Fabric';
+                    
+                    if (!categories[category]) {
+                        categories[category] = [];
+                    }
+                    
+                    let sampleBody = '';
+                    if (details.parameters) {
+                        const bodyParam = details.parameters.find(p => p.in === 'body');
+                        if (bodyParam && bodyParam.schema) {
+                            sampleBody = JSON.stringify(generateMock(bodyParam.schema, definitions), null, 2);
+                        }
+                    }
+                    
+                    let flag = 'Core';
+                    if (category === 'Lakehouse') flag = 'Lakehouse';
+                    else if (category === 'Warehouse') flag = 'Warehouse';
+                    else if (category === 'Notebook') flag = 'Notebook';
+                    else if (category === 'KQL') flag = 'KQL';
+                    else if (category === 'DataFactory') flag = 'DataFactory';
+                    
+                    categories[category].push({
+                        name: details.summary || details.operationId || path,
+                        description: details.description || '',
+                        method: method.toUpperCase(),
+                        path: path,
+                        body: sampleBody,
+                        prerequisites: [],
+                        flag: flag,
+                        isFabric: true
+                    });
+                    totalApisCalculated++;
+                }
             }
         }
 
@@ -228,7 +278,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             category: cat,
             endpoints: categories[cat]
         }));
-        
         pbiApis.sort((a, b) => a.category.localeCompare(b.category));
         
         renderTree();
@@ -273,6 +322,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         localStorage.setItem('pbi-details-collapsed', isDetailsCollapsed);
     });
+
+    // 绑定 Flag 过滤点击事件
+    document.querySelectorAll('.flag-badge').forEach(badge => {
+        badge.addEventListener('click', () => {
+            document.querySelectorAll('.flag-badge').forEach(b => b.classList.remove('active'));
+            badge.classList.add('active');
+            currentActiveFlag = badge.getAttribute('data-flag');
+            const searchInput = document.getElementById('api-search-input');
+            renderTree(searchInput ? searchInput.value : "");
+        });
+    });
     
     function getBookmarks() {
         try {
@@ -315,6 +375,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         categoryList.forEach(category => {
             const filteredEndpoints = category.endpoints.filter(ep => {
+                // Flag 快速筛选
+                if (currentActiveFlag !== 'ALL' && ep.flag !== currentActiveFlag) {
+                    return false;
+                }
                 const term = searchTerm.toLowerCase();
                 const zhName = translateApiName(ep.name).toLowerCase();
                 return ep.name.toLowerCase().includes(term) || 
@@ -365,9 +429,53 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const nameEl = document.createElement('span');
                 nameEl.className = 'api-item-name';
                 
+                // 渲染微缩 Flag 标志
+                const flagEl = document.createElement('span');
+                flagEl.style.fontSize = '0.55rem';
+                flagEl.style.padding = '1px 4px';
+                flagEl.style.borderRadius = '4px';
+                flagEl.style.marginLeft = '6px';
+                flagEl.style.background = 'rgba(255,255,255,0.08)';
+                flagEl.style.color = 'var(--text-secondary)';
+                flagEl.style.border = '1px solid rgba(255,255,255,0.1)';
+                flagEl.style.display = 'inline-block';
+                flagEl.style.verticalAlign = 'middle';
+                flagEl.textContent = ep.flag === 'DataFactory' ? 'DF' : (ep.flag === 'Lakehouse' ? 'LH' : (ep.flag === 'Warehouse' ? 'WH' : (ep.flag === 'Notebook' ? 'NB' : ep.flag)));
+                
+                if (ep.flag === 'PBI') {
+                    flagEl.style.color = '#F2C811';
+                    flagEl.style.borderColor = 'rgba(242, 200, 17, 0.3)';
+                    flagEl.style.background = 'rgba(242, 200, 17, 0.05)';
+                } else if (ep.flag === 'Lakehouse') {
+                    flagEl.style.color = '#38bdf8';
+                    flagEl.style.borderColor = 'rgba(56, 189, 248, 0.3)';
+                    flagEl.style.background = 'rgba(56, 189, 248, 0.05)';
+                } else if (ep.flag === 'Warehouse') {
+                    flagEl.style.color = '#a78bfa';
+                    flagEl.style.borderColor = 'rgba(167, 139, 250, 0.3)';
+                    flagEl.style.background = 'rgba(167, 139, 250, 0.05)';
+                } else if (ep.flag === 'KQL') {
+                    flagEl.style.color = '#f43f5e';
+                    flagEl.style.borderColor = 'rgba(244, 63, 94, 0.3)';
+                    flagEl.style.background = 'rgba(244, 63, 94, 0.05)';
+                } else if (ep.flag === 'Notebook') {
+                    flagEl.style.color = '#34d399';
+                    flagEl.style.borderColor = 'rgba(52, 211, 153, 0.3)';
+                    flagEl.style.background = 'rgba(52, 211, 153, 0.05)';
+                } else if (ep.flag === 'Core') {
+                    flagEl.style.color = '#fb923c';
+                    flagEl.style.borderColor = 'rgba(251, 146, 60, 0.3)';
+                    flagEl.style.background = 'rgba(251, 146, 60, 0.05)';
+                } else if (ep.flag === 'DataFactory') {
+                    flagEl.style.color = '#ec4899';
+                    flagEl.style.borderColor = 'rgba(236, 72, 153, 0.3)';
+                    flagEl.style.background = 'rgba(236, 72, 153, 0.05)';
+                }
+
                 // 显示中文翻译在列表上（也可以只显示英文，这里展示双语）
                 const zhTranslated = translateApiName(ep.name);
-                nameEl.innerHTML = `<div>${ep.name}</div><div style="font-size:0.7rem; color:var(--text-secondary); margin-top:2px;">${zhTranslated}</div>`;
+                nameEl.innerHTML = `<div style="display:flex; align-items:center;"><span>${ep.name}</span></div><div style="font-size:0.7rem; color:var(--text-secondary); margin-top:2px;">${zhTranslated}</div>`;
+                nameEl.querySelector('div').appendChild(flagEl);
                 nameEl.title = ep.path;
 
                 // 收藏按钮
@@ -398,6 +506,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // 保存初始状态
                     originalMethod = ep.method;
                     originalPath = ep.path;
+                    currentApiType = ep.isFabric ? 'fabric' : 'powerbi'; // 记录是 Power BI 还是 Fabric API
                     
                     if (ep.body) {
                         try {
@@ -565,6 +674,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         responseOutput.textContent = '...';
 
         try {
+            let apiTypeToSend = currentApiType;
+            // 智能识别 Free Mode 路径类型
+            const badge = document.getElementById('request-mode-badge');
+            if (badge && badge.textContent.includes('Free Mode')) {
+                const lowerEndpoint = endpoint.toLowerCase();
+                if (lowerEndpoint.includes('/lakehouses') || 
+                    lowerEndpoint.includes('/warehouses') || 
+                    lowerEndpoint.includes('/notebooks') || 
+                    lowerEndpoint.includes('/kqldatabases') ||
+                    lowerEndpoint.includes('/items') ||
+                    lowerEndpoint.includes('/fabrics') ||
+                    (lowerEndpoint.startsWith('/workspaces') && !lowerEndpoint.includes('/admin/workspaces'))) {
+                    apiTypeToSend = 'fabric';
+                } else {
+                    apiTypeToSend = 'powerbi';
+                }
+            }
+
             const res = await fetch('/api/proxy', {
                 method: 'POST',
                 headers: {
@@ -573,7 +700,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 body: JSON.stringify({
                     method,
                     endpoint,
-                    body
+                    body,
+                    api_type: apiTypeToSend
                 })
             });
 

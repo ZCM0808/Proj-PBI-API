@@ -53,11 +53,21 @@
                     <p class="nav-title" style="margin: 0;">API 资源树</p>
                     <span class="api-count-badge" title="Total APIs">共 <span id="total-api-count">0</span> 个</span>
                 </div>
-                <div style="display: flex; gap: 8px; margin-bottom: 1rem;">
+                <div style="display: flex; gap: 8px; margin-bottom: 0.5rem;">
                     <input type="text" id="api-search-input" placeholder="搜索 API... (支持拼音/英文)" class="url-input" style="flex: 1; border-radius: 6px; min-width: 0;">
                     <button id="toggle-all-categories-btn" class="icon-btn" title="全部折叠 / 展开 (Expand / Collapse All)" type="button" style="padding: 0 8px;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"></path></svg>
                     </button>
+                </div>
+                <div class="flag-filter-container" style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 1rem; padding: 2px 0;">
+                    <span class="flag-badge active" data-flag="ALL">ALL</span>
+                    <span class="flag-badge" data-flag="PBI">PBI</span>
+                    <span class="flag-badge" data-flag="Core">Core</span>
+                    <span class="flag-badge" data-flag="Lakehouse">LH</span>
+                    <span class="flag-badge" data-flag="Warehouse">WH</span>
+                    <span class="flag-badge" data-flag="Notebook">NB</span>
+                    <span class="flag-badge" data-flag="KQL">KQL</span>
+                    <span class="flag-badge" data-flag="DataFactory">DF</span>
                 </div>
                 <div id="api-tree" class="api-tree">
                     <!-- API 列表将通过 JS 动态生成 -->

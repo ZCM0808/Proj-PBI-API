@@ -1,0 +1,267 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "version": "v1.0",
+    "title": "Microsoft Fabric Client"
+  },
+  "paths": {
+    "/workspaces": {
+      "get": {
+        "tags": ["Core"],
+        "summary": "List Workspaces",
+        "description": "Returns a list of workspaces that the user has access to."
+      },
+      "post": {
+        "tags": ["Core"],
+        "summary": "Create Workspace",
+        "description": "Creates a new workspace in the tenant.",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "displayName": { "type": "string", "example": "My Fabric Workspace" },
+                "description": { "type": "string", "example": "Workspace created via Fabric API" }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "/workspaces/{workspaceId}": {
+      "get": {
+        "tags": ["Core"],
+        "summary": "Get Workspace",
+        "description": "Returns the workspace with the specified ID."
+      },
+      "patch": {
+        "tags": ["Core"],
+        "summary": "Update Workspace",
+        "description": "Updates the properties of the specified workspace.",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "displayName": { "type": "string" },
+                "description": { "type": "string" }
+              }
+            }
+          }
+        ]
+      },
+      "delete": {
+        "tags": ["Core"],
+        "summary": "Delete Workspace",
+        "description": "Deletes the specified workspace."
+      }
+    },
+    "/workspaces/{workspaceId}/items": {
+      "get": {
+        "tags": ["Core"],
+        "summary": "List Items",
+        "description": "Returns a list of items within the specified workspace."
+      },
+      "post": {
+        "tags": ["Core"],
+        "summary": "Create Item",
+        "description": "Creates a new item (e.g. Lakehouse, Notebook, Report) in the workspace.",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "displayName": { "type": "string" },
+                "type": { "type": "string", "enum": ["Lakehouse", "Warehouse", "Notebook", "KQLDatabase", "DataPipeline"] }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "/workspaces/{workspaceId}/lakehouses": {
+      "get": {
+        "tags": ["Lakehouse"],
+        "summary": "List Lakehouses",
+        "description": "Returns a list of Lakehouses in the specified workspace."
+      },
+      "post": {
+        "tags": ["Lakehouse"],
+        "summary": "Create Lakehouse",
+        "description": "Creates a new Lakehouse in the specified workspace.",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "displayName": { "type": "string" }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "/workspaces/{workspaceId}/lakehouses/{lakehouseId}": {
+      "get": {
+        "tags": ["Lakehouse"],
+        "summary": "Get Lakehouse",
+        "description": "Returns the specified Lakehouse."
+      }
+    },
+    "/workspaces/{workspaceId}/lakehouses/{lakehouseId}/tables": {
+      "get": {
+        "tags": ["Lakehouse"],
+        "summary": "List Lakehouse Tables",
+        "description": "Returns a list of tables inside the specified Lakehouse."
+      }
+    },
+    "/workspaces/{workspaceId}/warehouses": {
+      "get": {
+        "tags": ["Warehouse"],
+        "summary": "List Warehouses",
+        "description": "Returns a list of Warehouses in the workspace."
+      },
+      "post": {
+        "tags": ["Warehouse"],
+        "summary": "Create Warehouse",
+        "description": "Creates a new SQL Warehouse.",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "displayName": { "type": "string" }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "/workspaces/{workspaceId}/warehouses/{warehouseId}": {
+      "get": {
+        "tags": ["Warehouse"],
+        "summary": "Get Warehouse",
+        "description": "Returns the specified Warehouse."
+      }
+    },
+    "/workspaces/{workspaceId}/notebooks": {
+      "get": {
+        "tags": ["Notebook"],
+        "summary": "List Notebooks",
+        "description": "Returns a list of Spark Notebooks in the workspace."
+      },
+      "post": {
+        "tags": ["Notebook"],
+        "summary": "Create Notebook",
+        "description": "Creates a new Spark Notebook.",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "displayName": { "type": "string" }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "/workspaces/{workspaceId}/notebooks/{notebookId}": {
+      "get": {
+        "tags": ["Notebook"],
+        "summary": "Get Notebook",
+        "description": "Returns the specified Notebook metadata."
+      }
+    },
+    "/workspaces/{workspaceId}/notebooks/{notebookId}/jobs/instances": {
+      "post": {
+        "tags": ["Notebook"],
+        "summary": "Run Notebook Job",
+        "description": "Triggers an execution job for the specified Spark Notebook."
+      }
+    },
+    "/workspaces/{workspaceId}/kqlDatabases": {
+      "get": {
+        "tags": ["KQL"],
+        "summary": "List KQL Databases",
+        "description": "Returns a list of Kusto KQL Databases in the workspace."
+      },
+      "post": {
+        "tags": ["KQL"],
+        "summary": "Create KQL Database",
+        "description": "Creates a new KQL Database.",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "displayName": { "type": "string" },
+                "creationMode": { "type": "string", "enum": ["New", "Restore"] }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "/workspaces/{workspaceId}/kqlDatabases/{kqlDatabaseId}": {
+      "get": {
+        "tags": ["KQL"],
+        "summary": "Get KQL Database",
+        "description": "Returns the specified KQL Database."
+      }
+    },
+    "/workspaces/{workspaceId}/pipelines": {
+      "get": {
+        "tags": ["DataFactory"],
+        "summary": "List Data Factory Pipelines",
+        "description": "Returns a list of Data Factory Pipelines."
+      },
+      "post": {
+        "tags": ["DataFactory"],
+        "summary": "Create Data Factory Pipeline",
+        "description": "Creates a new Data Factory Data Pipeline.",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "displayName": { "type": "string" }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "/workspaces/{workspaceId}/pipelines/{pipelineId}/jobs/instances": {
+      "post": {
+        "tags": ["DataFactory"],
+        "summary": "Run Data Pipeline Job",
+        "description": "Triggers an execution run of the Data Factory Pipeline."
+      }
+    }
+  }
+}
