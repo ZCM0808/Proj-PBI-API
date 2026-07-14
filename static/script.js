@@ -505,7 +505,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     function toggleBookmark(ep, e) {
         if (e) e.stopPropagation();
         const bookmarks = getBookmarks();
-        const index = bookmarks.findIndex(b => b.path === ep.path && b.method === ep.method);
+        
+        // 使用强健的清洗比对来防止遗留脏数据导致的取消收藏失败
+        const cleanEpPath = (ep.path || '').replace("/v1.0/myorg", "");
+        const index = bookmarks.findIndex(b => {
+            const cleanBPath = (b.path || '').replace("/v1.0/myorg", "");
+            return cleanBPath === cleanEpPath && 
+                   (b.method || '').toUpperCase() === (ep.method || '').toUpperCase();
+        });
+        
         if (index >= 0) {
             bookmarks.splice(index, 1);
         } else {
@@ -525,7 +533,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const bookmarks = rawBookmarks.map(bm => {
             const cleanBmPath = (bm.path || '').replace("/v1.0/myorg", "");
             for (const cat of pbiApis) {
-                const found = cat.endpoints.find(e => e.path === cleanBmPath && e.method === bm.method);
+                const found = cat.endpoints.find(e => 
+                    e.path === cleanBmPath && 
+                    e.method.toUpperCase() === (bm.method || '').toUpperCase()
+                );
                 if (found) return found;
             }
             return bm;
