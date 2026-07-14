@@ -160,8 +160,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function getOfficialDocUrl(ep) {
-        // 如果 ep 上没有显式的 category 属性，尝试根据 ep.flag 或者是伪目录进行猜测，或者设为默认
+        let isFabric = ep.isFabric;
         let rawCategory = ep.category || '';
+        
+        // 智能根据 path 兜底猜测 (强力防范 LocalStorage 书签老历史数据缺失 isFabric 属性)
+        const pathLower = (ep.path || '').toLowerCase();
+        if (pathLower.includes('/lakehouses') || 
+            pathLower.includes('/warehouses') || 
+            pathLower.includes('/notebooks') || 
+            pathLower.includes('/kqldatabases') ||
+            pathLower.includes('/items') ||
+            pathLower.includes('/fabrics') ||
+            pathLower.includes('/pipelines') ||
+            (pathLower.startsWith('/workspaces') && !pathLower.includes('/admin/workspaces'))) {
+            isFabric = true;
+            if (!rawCategory) {
+                if (pathLower.includes('/lakehouses')) rawCategory = 'Lakehouse';
+                else if (pathLower.includes('/warehouses')) rawCategory = 'Warehouse';
+                else if (pathLower.includes('/notebooks')) rawCategory = 'Notebook';
+                else if (pathLower.includes('/kqldatabases')) rawCategory = 'KQL';
+                else if (pathLower.includes('/pipelines')) rawCategory = 'DataFactory';
+                else rawCategory = 'Core';
+            }
+        }
+
         if (!rawCategory && ep.flag) {
             rawCategory = ep.flag;
         }
@@ -188,7 +210,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             .trim()
             .replace(/\s+/g, '-');
 
-        if (ep.isFabric) {
+        if (isFabric) {
             // 如果 category 为空，直接跳转至 Fabric REST 总主页，防范 404 重定向
             if (!category || category === 'fabric' || category === 'others') {
                 return 'https://learn.microsoft.com/en-us/rest/api/fabric/';
@@ -608,7 +630,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // 保存初始状态
                     originalMethod = ep.method;
                     originalPath = ep.path;
-                    currentApiType = ep.isFabric ? 'fabric' : 'powerbi'; // 记录是 Power BI 还是 Fabric API
+                    // 动态猜测以校正 LocalStorage 老历史脏数据丢失 isFabric 属性
+                    let isFabricForNode = ep.isFabric;
+                    const pathLower = (ep.path || '').toLowerCase();
+                    if (pathLower.includes('/lakehouses') || 
+                        pathLower.includes('/warehouses') || 
+                        pathLower.includes('/notebooks') || 
+                        pathLower.includes('/kqldatabases') ||
+                        pathLower.includes('/items') ||
+                        pathLower.includes('/fabrics') ||
+                        pathLower.includes('/pipelines') ||
+                        (pathLower.startsWith('/workspaces') && !pathLower.includes('/admin/workspaces'))) {
+                        isFabricForNode = true;
+                    }
+                    currentApiType = isFabricForNode ? 'fabric' : 'powerbi'; // 记录是 Power BI 还是 Fabric API
                     updateBaseUrlHint(currentApiType);
                     
                     if (ep.body) {
