@@ -151,11 +151,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function updateBaseUrlHint(apiType) {
         const hintEl = document.getElementById('base-url-hint');
-        if (!hintEl) return;
-        if (apiType === 'fabric') {
-            hintEl.textContent = 'https://api.fabric.microsoft.com/v1.0';
-        } else {
-            hintEl.textContent = 'https://api.powerbi.com/v1.0/myorg';
+        if (hintEl) {
+            if (apiType === 'fabric') {
+                hintEl.textContent = 'https://api.fabric.microsoft.com/v1.0';
+            } else {
+                hintEl.textContent = 'https://api.powerbi.com/v1.0/myorg';
+            }
+        }
+        
+        // 动态同步更新侧边栏最底部的全局 API 文档链接和文字
+        const globalDocLink = document.getElementById('global-doc-link');
+        if (globalDocLink) {
+            if (apiType === 'fabric') {
+                globalDocLink.href = 'https://learn.microsoft.com/en-us/rest/api/fabric/';
+                globalDocLink.innerHTML = '查看官方 Fabric API 文档 &rarr;';
+            } else {
+                globalDocLink.href = 'https://learn.microsoft.com/en-us/rest/api/power-bi/';
+                globalDocLink.innerHTML = '查看官方 Power BI API 文档 &rarr;';
+            }
         }
     }
 
@@ -674,7 +687,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const docBtn = document.getElementById('official-doc-btn');
                     if (docBtn) {
                         docBtn.href = getOfficialDocUrl(ep);
-                        console.log("DEBUG_CLICK_EP:", JSON.stringify(ep), "resolved_url:", docBtn.href);
                     }
                     selectedApiName.textContent = ep.name;
                     
