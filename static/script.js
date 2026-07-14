@@ -968,17 +968,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const baseUrl = currentApiType === 'fabric' ? 'https://api.fabric.microsoft.com/v1.0' : 'https://api.powerbi.com/v1.0/myorg';
             const absoluteUrl = `${baseUrl}${endpoint}`;
             
-            let curlCmd = `curl -X ${method} "${absoluteUrl}"`;
-            curlCmd += ` \
-  -H "Content-Type: application/json"`;
+            let curlCmd = 'curl -X ' + method + ' "' + absoluteUrl + '"';
+            curlCmd += ' \\\n  -H "Content-Type: application/json"';
             if (token) {
-                curlCmd += ` \
-  -H "Authorization: Bearer ${token}"`;
+                curlCmd += ' \\\n  -H "Authorization: Bearer ' + token + '"';
             }
             if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && body) {
                 const escapedBody = body.replace(/'/g, "'\\''");
-                curlCmd += ` \
-  -d '${escapedBody}'`;
+                curlCmd += ' \\\n  -d \'' + escapedBody + '\'';
             }
             
             navigator.clipboard.writeText(curlCmd).then(() => {
