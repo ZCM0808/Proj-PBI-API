@@ -520,7 +520,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderTree(searchTerm = "") {
         apiTree.innerHTML = '';
         
-        const bookmarks = getBookmarks();
+        const rawBookmarks = getBookmarks();
+        // 用最新加载的 API 列表去映射书签，以防旧版本 LocalStorage 书签缺少 operationId 和 category
+        const bookmarks = rawBookmarks.map(bm => {
+            const allApis = [...pbiApis, ...fabricApis];
+            for (const cat of allApis) {
+                const found = cat.endpoints.find(e => e.path === bm.path && e.method === bm.method);
+                if (found) return found;
+            }
+            return bm;
+        });
+        
         // 伪造一个书签分类
         const categoryList = [];
         if (bookmarks.length > 0) {
