@@ -9,8 +9,6 @@ on:
 jobs:
   quality-gate:
     runs-on: windows-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v5
 
@@ -45,18 +43,7 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: Run Playwright UI Tests (E2E & Visual)
-        run: npx playwright test --update-snapshots
-        env:
-          CI: true
-
-      - name: Commit and Push Updated Snapshots
-        if: always()
-        run: |
-          git config --global user.name "ZCM0808"
-          git config --global user.email "ZCM0808@users.noreply.github.com"
-          git add tests/
-          git commit -m "chore: update playwright baseline snapshots [ci skip]" || echo "No changes to commit"
-          git push origin main
+        run: npx playwright test
 
       - uses: actions/upload-artifact@v5
         if: always()
