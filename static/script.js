@@ -160,19 +160,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function getOfficialDocUrl(ep) {
-        const category = (ep.category || 'core').toLowerCase().replace(/\s+/g, '-');
+        // 如果 ep 上没有显式的 category 属性，尝试根据 ep.flag 或者是伪目录进行猜测，或者设为默认
+        let rawCategory = ep.category || '';
+        if (!rawCategory && ep.flag) {
+            rawCategory = ep.flag;
+        }
+        
+        let category = rawCategory.toLowerCase().replace(/\s+/g, '-');
+        
+        // 微软 REST API 官方路径转换映射
+        if (category === 'datafactory') {
+            category = 'datafactory';
+        } else if (category === 'kqldatabase' || category === 'kql') {
+            category = 'kqldatabase';
+        } else if (category === 'lakehouse') {
+            category = 'lakehouse';
+        } else if (category === 'warehouse') {
+            category = 'warehouse';
+        } else if (category === 'notebook') {
+            category = 'notebook';
+        } else if (category === 'core') {
+            category = 'core';
+        }
+        
         const name = (ep.name || '').toLowerCase()
             .replace(/[^a-z0-9\s-]/g, '')
             .trim()
             .replace(/\s+/g, '-');
 
         if (ep.isFabric) {
-            if (category === 'fabric') {
+            // 如果 category 为空，直接跳转至 Fabric REST 总主页，防范 404 重定向
+            if (!category || category === 'fabric' || category === 'others') {
                 return 'https://learn.microsoft.com/en-us/rest/api/fabric/';
             }
             return `https://learn.microsoft.com/en-us/rest/api/fabric/${category}`;
         } else {
-            if (category === 'others') {
+            if (!category || category === 'others') {
                 return 'https://learn.microsoft.com/en-us/rest/api/power-bi/';
             }
             return `https://learn.microsoft.com/en-us/rest/api/power-bi/${category}/${name}`;
@@ -295,7 +318,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     body: sampleBody,
                     prerequisites: prerequisites,
                     flag: 'PBI',
-                    isFabric: false
+                    isFabric: false,
+                    category: category
                 });
                 totalApisCalculated++;
             }
@@ -336,7 +360,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         body: sampleBody,
                         prerequisites: [],
                         flag: flag,
-                        isFabric: true
+                        isFabric: true,
+                        category: category
                     });
                     totalApisCalculated++;
                 }
