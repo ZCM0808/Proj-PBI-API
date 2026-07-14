@@ -189,7 +189,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // 将 ep.name (summary) 转换为 URL slug: "List Data Factory Pipelines" -> "list-data-factory-pipelines"
-        const slug = (ep.name || '').toLowerCase()
+        let slug = (ep.name || '').toLowerCase()
             .replace(/[^a-z0-9\s-]/g, '')
             .trim()
             .replace(/\s+/g, '-');
@@ -209,6 +209,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                 'core': 'core'
             };
             const service = serviceMap[category] || 'core';
+            
+            // 微软 Learn 的 slug 不会重复 service 关键词
+            // 例如 "List Data Factory Pipelines" -> slug 应为 "list-data-pipelines" (去掉 "factory-")
+            // 例如 "List Lakehouse Tables" -> slug 应为 "list-tables" (去掉 "lakehouse-")
+            const redundantWords = {
+                'datafactory': ['factory-', 'data-factory-'],
+                'lakehouse': ['lakehouse-'],
+                'warehouse': ['warehouse-'],
+                'notebook': ['notebook-'],
+                'kql': ['kql-']
+            };
+            if (redundantWords[category]) {
+                for (const word of redundantWords[category]) {
+                    slug = slug.replace(word, '');
+                }
+            }
             
             // 根据 path 路径推断 resource-group（微软文档的二级分类）
             let resourceGroup = 'items';
