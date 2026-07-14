@@ -971,3 +971,39 @@ textarea.settings-input {
 .btn-cancel:active {
     transform: scale(0.92) !important;
 }
+
+/* =========================================
+   复制 cURL 请求按钮与书签激活样式
+   ========================================= */
+#copy-btn {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0 1.2rem;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 0.95rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#copy-btn:hover {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: rgba(255, 255, 255, 0.25) !important;
+    color: white !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+#copy-btn:active {
+    transform: scale(0.95) !important;
+}
+
+.flag-badge[data-flag="BOOKMARK"].active {
+    background: #F2C811 !important;
+    border-color: #F2C811 !important;
+    color: #0f1115 !important;
+    box-shadow: 0 0 12px rgba(242, 200, 17, 0.45) !important;
+}

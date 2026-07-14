@@ -446,9 +446,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         categoryList.push(...pbiApis);
         
         categoryList.forEach(category => {
+            // 如果处于书签筛选模式，只保留并渲染“收藏夹”虚拟目录
+            if (currentActiveFlag === 'BOOKMARK' && category.category !== "⭐ 收藏夹 (Bookmarks)") {
+                return;
+            }
+
             const filteredEndpoints = category.endpoints.filter(ep => {
                 // Flag 快速筛选
-                if (currentActiveFlag !== 'ALL' && ep.flag !== currentActiveFlag) {
+                if (currentActiveFlag !== 'ALL' && currentActiveFlag !== 'BOOKMARK' && ep.flag !== currentActiveFlag) {
                     return false;
                 }
                 const term = searchTerm.toLowerCase();
@@ -948,6 +953,48 @@ document.addEventListener('DOMContentLoaded', async () => {
         proceedBtn.addEventListener('click', () => {
             hideModalWithAnimation();
             executeRequest();
+        });
+    }
+
+    // 复制 cURL 请求绑定
+    const copyBtn = document.getElementById('copy-btn');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+            const method = methodSelect.value;
+            const endpoint = endpointInput.value.trim();
+            const body = bodyInput.value.trim();
+            const token = document.getElementById('token-input')?.value.trim() || '';
+            
+            const baseUrl = currentApiType === 'fabric' ? 'https://api.fabric.microsoft.com/v1.0' : 'https://api.powerbi.com/v1.0/myorg';
+            const absoluteUrl = `${baseUrl}${endpoint}`;
+            
+            let curlCmd = `curl -X ${method} "${absoluteUrl}"`;
+            curlCmd += ` \
+  -H "Content-Type: application/json"`;
+            if (token) {
+                curlCmd += ` \
+  -H "Authorization: Bearer ${token}"`;
+            }
+            if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && body) {
+                const escapedBody = body.replace(/'/g, "'\\''");
+                curlCmd += ` \
+  -d '${escapedBody}'`;
+            }
+            
+            navigator.clipboard.writeText(curlCmd).then(() => {
+                const btnText = copyBtn.querySelector('span');
+                const origText = btnText.textContent;
+                btnText.textContent = 'Copied!';
+                copyBtn.style.borderColor = '#10b981';
+                copyBtn.style.color = '#10b981';
+                setTimeout(() => {
+                    btnText.textContent = origText;
+                    copyBtn.style.borderColor = '';
+                    copyBtn.style.color = '';
+                }, 1200);
+            }).catch(err => {
+                console.error('Copy failed:', err);
+            });
         });
     }
 

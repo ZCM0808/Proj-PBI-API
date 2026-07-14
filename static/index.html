@@ -61,6 +61,7 @@
                 </div>
                 <div class="flag-filter-container" style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 1rem; padding: 2px 0;">
                     <span class="flag-badge active" data-flag="ALL">ALL</span>
+                    <span class="flag-badge" data-flag="BOOKMARK" style="border-color: rgba(242, 200, 17, 0.25); color: rgba(242, 200, 17, 0.85); font-weight: 600;">⭐ BKM</span>
                     <span class="flag-badge" data-flag="PBI">PBI</span>
                     <span class="flag-badge" data-flag="Core">Core</span>
                     <span class="flag-badge" data-flag="Lakehouse">LH</span>
@@ -161,6 +162,10 @@
                         <span class="base-url-hint" id="base-url-hint">https://api.powerbi.com/v1.0/myorg</span>
                         <input type="text" id="api-endpoint" placeholder="例如: /groups/{workspaceId}/datasets" value="">
                     </div>
+                    <button id="copy-btn" type="button" title="复制完整 cURL 格式请求" style="height: 100%;">
+                        <span>Copy</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    </button>
                     <button id="send-btn" class="btn-primary">
                         <span>Send Request</span>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
