@@ -736,6 +736,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                     
                     const docUrl = getOfficialDocUrl(ep);
+                    console.log('Generated Doc URL:', docUrl, 'for API:', ep.name);
                     const docBtn = document.getElementById('official-doc-btn');
                     if (docBtn) {
                         docBtn.href = docUrl;
