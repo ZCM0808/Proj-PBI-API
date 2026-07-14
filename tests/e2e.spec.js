@@ -159,8 +159,8 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     await expect(page.locator('#api-tree')).toBeVisible();
     
     // Windows 11 (本地) 和 Windows Server (GitHub CI) 的系统字体渲染会有微小差异
-    // 允许最多 5% 的像素差异阈值
-    await expect(page).toHaveScreenshot('homepage-baseline.png', { fullPage: true, maxDiffPixels: 100, maxDiffPixelRatio: 0.05 });
+    // 允许最多 5% 的像素差异阈值，且适当宽限至 500 像素以兼容亚像素抗锯齿微差
+    await expect(page).toHaveScreenshot('homepage-baseline.png', { fullPage: true, maxDiffPixels: 500, maxDiffPixelRatio: 0.05 });
   });
 
   test('局部组件视觉回归测试 (Component Visual Regression): 侧边栏 API 树状图滚动条截断、文字溢出排版验证', async ({ page }) => {
