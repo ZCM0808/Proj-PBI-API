@@ -831,7 +831,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
             `;
         }
-    });
+    }
 
     // Unlock 和 Reset 按钮逻辑
     const toggleMethodBtn = document.getElementById('toggle-method-btn');
@@ -865,7 +865,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (apiName) {
             updateRequestMode('api', `Bound to: ${apiName}`);
         }
-    }
+    });
 
     sendBtn.addEventListener('click', () => {
         const method = methodSelect.value;
