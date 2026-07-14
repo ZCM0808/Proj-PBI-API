@@ -55,7 +55,8 @@ body {
     flex-direction: column;
     padding: 1.5rem;
     height: 100%;
-    
+    position: relative;
+    z-index: 10;
     flex-shrink: 0;
 }
 
