@@ -724,20 +724,48 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 存入请求历史
         if (endpoint) {
             try {
-                let modeMark = 'Free Mode';
+                let reqHistory = JSON.parse(localStorage.getItem('apiReqHistory') || '[]');
+                
+                // 1. 清洗掉 3 天前（72小时）的老历史记录
+                const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
+                reqHistory = reqHistory.filter(h => {
+                    const ts = h.timestamp || (h.time ? new Date(h.time).getTime() : Date.now());
+                    return ts >= threeDaysAgo;
+                });
+
+                // 2. 智能提取 api_type
+                let apiTypeForHistory = currentApiType;
                 const badge = document.getElementById('request-mode-badge');
-                if (badge && badge.textContent.includes('Bound to:')) {
-                    modeMark = badge.textContent.replace('Bound to: ', '').trim();
+                if (badge && badge.textContent.includes('Free Mode')) {
+                    const lowerEndpoint = endpoint.toLowerCase();
+                    if (lowerEndpoint.includes('/lakehouses') || 
+                        lowerEndpoint.includes('/warehouses') || 
+                        lowerEndpoint.includes('/notebooks') || 
+                        lowerEndpoint.includes('/kqldatabases') ||
+                        lowerEndpoint.includes('/items') ||
+                        lowerEndpoint.includes('/fabrics') ||
+                        (lowerEndpoint.startsWith('/workspaces') && !lowerEndpoint.includes('/admin/workspaces'))) {
+                        apiTypeForHistory = 'fabric';
+                    } else {
+                        apiTypeForHistory = 'powerbi';
+                    }
                 }
 
-                let reqHistory = JSON.parse(localStorage.getItem('apiReqHistory') || '[]');
-                const reqData = { method: method, url: endpoint, body: bodyStr, time: new Date().toLocaleString(), mode: modeMark };
-                // 简单去重：如果最新的和这次一模一样，就不重复存
-                if (reqHistory.length === 0 || reqHistory[0].method !== method || reqHistory[0].url !== endpoint || reqHistory[0].body !== bodyStr) {
-                    reqHistory.unshift(reqData);
-                    if (reqHistory.length > 20) reqHistory.pop();
-                    localStorage.setItem('apiReqHistory', JSON.stringify(reqHistory));
-                }
+                // 3. 构建历史数据项，允许重复且带时间戳
+                const reqData = { 
+                    method: method, 
+                    url: endpoint, 
+                    body: bodyStr, 
+                    time: new Date().toLocaleString(), 
+                    timestamp: Date.now(), 
+                    api_type: apiTypeForHistory 
+                };
+
+                reqHistory.unshift(reqData);
+                // 限制最多保留 100 条历史，防止 LocalStorage 被填满
+                if (reqHistory.length > 100) reqHistory.pop();
+                
+                localStorage.setItem('apiReqHistory', JSON.stringify(reqHistory));
             } catch (e) {
                 console.error('History save error:', e);
                 localStorage.removeItem('apiReqHistory');
@@ -954,12 +982,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     const historySearchInput = document.getElementById('history-search-input');
     const historyClearAll = document.getElementById('history-clear-all');
     
-    const loadReqHistory = (searchTerm = "") => {
+const loadReqHistory = (searchTerm = "") => {
         let history = [];
         try {
             history = JSON.parse(localStorage.getItem('apiReqHistory') || '[]');
         } catch(e) {
             localStorage.removeItem('apiReqHistory');
+        }
+        
+        // 1. 在展示前先执行一次 3 天内数据的清洗
+        const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
+        let cleaned = false;
+        history = history.filter(h => {
+            const ts = h.timestamp || (h.time ? new Date(h.time).getTime() : Date.now());
+            if (ts < threeDaysAgo) {
+                cleaned = true;
+                return false;
+            }
+            return true;
+        });
+        if (cleaned) {
+            try {
+                localStorage.setItem('apiReqHistory', JSON.stringify(history));
+            } catch(e) {}
         }
         
         if (searchTerm) {
@@ -968,7 +1013,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 h.url.toLowerCase().includes(term) || 
                 h.method.toLowerCase().includes(term) || 
                 (h.body && h.body.toLowerCase().includes(term)) ||
-                (h.mode && h.mode.toLowerCase().includes(term)) ||
                 (h.time && h.time.toLowerCase().includes(term))
             );
         }
@@ -990,10 +1034,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 methodUrl.style.cssText = 'flex: 1; word-break: break-all;';
                 const methodColor = h.method === 'GET' ? '#3b82f6' : (h.method === 'POST' ? '#10b981' : (h.method === 'DELETE' ? '#ef4444' : '#f59e0b'));
                 
-                const modeColor = (h.mode && h.mode !== 'Free Mode') ? '#10b981' : 'var(--accent)';
-                const modeHtml = `<div style="display: inline-block; padding: 1px 6px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); color: ${modeColor}; background: rgba(0,0,0,0.3); font-size: 0.65rem; margin-bottom: 6px;">${h.mode || 'Free Mode'}</div><br>`;
+                // 识别并展示前缀，不再显示 API 描述名称
+                const prefix = h.api_type === 'fabric' ? 'https://api.fabric.microsoft.com/v1.0' : 'https://api.powerbi.com/v1.0/myorg';
+                const prefixText = h.api_type === 'fabric' ? 'Fabric' : 'Power BI';
+                const badgeColor = h.api_type === 'fabric' ? '#38bdf8' : '#F2C811';
                 
-                methodUrl.innerHTML = `${modeHtml}<span style="color: ${methodColor}; font-weight: bold; margin-right: 8px; font-size: 0.8rem;">${h.method}</span><span style="color: #c9d1d9; font-size: 0.85rem; font-family: 'Fira Code', monospace;">${h.url}</span>`;
+                const modeHtml = `<div style="display: inline-block; padding: 1px 6px; border-radius: 4px; border: 1px solid ${badgeColor}33; color: ${badgeColor}; background: ${badgeColor}0d; font-size: 0.65rem; margin-bottom: 6px; font-weight: 500;">${prefixText}</div><br>`;
+                
+                methodUrl.innerHTML = `${modeHtml}<span style="color: ${methodColor}; font-weight: bold; margin-right: 8px; font-size: 0.8rem;">${h.method}</span><span style="font-size: 0.75rem; color: #8b949e; font-family: 'Fira Code', monospace; display: block; margin-top: 4px; line-height: 1.4;"><span style="color: #6e7681; opacity: 0.7;">${prefix}</span>${h.url}</span>`;
                 
                 const rightCol = document.createElement('div');
                 rightCol.style.cssText = 'display: flex; flex-direction: column; align-items: flex-end; gap: 4px;';
@@ -1012,7 +1060,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     e.stopPropagation();
                     try {
                         let currHistory = JSON.parse(localStorage.getItem('apiReqHistory') || '[]');
-                        currHistory = currHistory.filter(curr => curr.time !== h.time || curr.url !== h.url);
+                        // 用 timestamp 和 url 唯一删除
+                        currHistory = currHistory.filter(curr => {
+                            if (h.timestamp && curr.timestamp) {
+                                return curr.timestamp !== h.timestamp || curr.url !== h.url;
+                            }
+                            return curr.time !== h.time || curr.url !== h.url;
+                        });
                         localStorage.setItem('apiReqHistory', JSON.stringify(currHistory));
                     } catch(e) {}
                     loadReqHistory(historySearchInput ? historySearchInput.value : "");
@@ -1049,8 +1103,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             historyListContainer.innerHTML = '<div style="padding: 16px; color: #6e7681; font-size: 0.85rem; text-align: center;">📜 暂无记录 (No Records Found)</div>';
         }
     };
-    
-    if (historySearchInput) {
+
+        if (historySearchInput) {
         historySearchInput.addEventListener('input', (e) => loadReqHistory(e.target.value));
         historySearchInput.addEventListener('click', (e) => e.stopPropagation());
     }
