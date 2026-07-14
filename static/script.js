@@ -161,7 +161,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function getOfficialDocUrl(ep) {
         let isFabric = ep.isFabric;
-        let rawCategory = ep.category || '';
         
         // 智能根据 path 兜底猜测 (强力防范 LocalStorage 书签老历史数据缺失 isFabric 属性)
         const pathLower = (ep.path || '').toLowerCase();
@@ -174,52 +173,28 @@ document.addEventListener('DOMContentLoaded', async () => {
             pathLower.includes('/pipelines') ||
             (pathLower.startsWith('/workspaces') && !pathLower.includes('/admin/workspaces'))) {
             isFabric = true;
-            if (!rawCategory) {
-                if (pathLower.includes('/lakehouses')) rawCategory = 'Lakehouse';
-                else if (pathLower.includes('/warehouses')) rawCategory = 'Warehouse';
-                else if (pathLower.includes('/notebooks')) rawCategory = 'Notebook';
-                else if (pathLower.includes('/kqldatabases')) rawCategory = 'KQL';
-                else if (pathLower.includes('/pipelines')) rawCategory = 'DataFactory';
-                else rawCategory = 'Core';
-            }
         }
-
-        if (!rawCategory && ep.flag) {
-            rawCategory = ep.flag;
-        }
-        
-        let category = rawCategory.toLowerCase().replace(/\s+/g, '-');
-        
-        // 微软 REST API 官方路径转换映射
-        if (category === 'datafactory') {
-            category = 'datafactory';
-        } else if (category === 'kqldatabase' || category === 'kql') {
-            category = 'kqldatabase';
-        } else if (category === 'lakehouse') {
-            category = 'lakehouse';
-        } else if (category === 'warehouse') {
-            category = 'warehouse';
-        } else if (category === 'notebook') {
-            category = 'notebook';
-        } else if (category === 'core') {
-            category = 'core';
-        }
-        
-        const name = (ep.name || '').toLowerCase()
-            .replace(/[^a-z0-9\s-]/g, '')
-            .trim()
-            .replace(/\s+/g, '-');
 
         if (isFabric) {
-            // 如果 category 为空，直接跳转至 Fabric REST 总主页，防范 404 重定向
-            if (!category || category === 'fabric' || category === 'others') {
-                return 'https://learn.microsoft.com/en-us/rest/api/fabric/';
-            }
-            return `https://learn.microsoft.com/en-us/rest/api/fabric/${category}`;
+            // 最佳实践：微软 Fabric REST 采用扁平化结构，无二级子文件夹目录
+            // 统一直达 Fabric 官方 REST API 的总目录参考主页，避免 404 导致重定向到 power-bi 页面
+            return 'https://learn.microsoft.com/en-us/rest/api/fabric/';
         } else {
+            let rawCategory = ep.category || '';
+            if (!rawCategory && ep.flag) {
+                rawCategory = ep.flag;
+            }
+            
+            let category = rawCategory.toLowerCase().replace(/\s+/g, '-');
             if (!category || category === 'others') {
                 return 'https://learn.microsoft.com/en-us/rest/api/power-bi/';
             }
+            
+            const name = (ep.name || '').toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '')
+                .trim()
+                .replace(/\s+/g, '-');
+
             return `https://learn.microsoft.com/en-us/rest/api/power-bi/${category}/${name}`;
         }
     }
