@@ -246,13 +246,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!rawCategory && ep.flag) {
                 rawCategory = ep.flag;
             }
-            
-            let category = rawCategory.toLowerCase().replace(/\s+/g, '-');
-            if (!category || category === 'others') {
+            // CamelCase 拆分: "AvailableFeatures" -> "available-features", "PushDatasets" -> "push-datasets"
+            let category = rawCategory
+                .replace(/([a-z])([A-Z])/g, '$1-$2')
+                .replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2')
+                .toLowerCase()
+                .replace(/\s+/g, '-');
+            if (!category || category === 'others' || category === 'pbi') {
                 return 'https://learn.microsoft.com/en-us/rest/api/power-bi/';
             }
+            
+            // Power BI 使用 operationId 的后半段作为 URL slug
+            // 例如 "AvailableFeatures_GetAvailableFeatures" -> "get-available-features"
+            let pbiSlug = slug;
+            if (ep.operationId) {
+                const parts = ep.operationId.split('_');
+                const opPart = parts.length > 1 ? parts.slice(1).join('-') : parts[0];
+                pbiSlug = opPart
+                    .replace(/([a-z])([A-Z])/g, '$1-$2')
+                    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2')
+                    .toLowerCase();
+            }
 
-            return `https://learn.microsoft.com/en-us/rest/api/power-bi/${category}/${slug}`;
+            return `https://learn.microsoft.com/en-us/rest/api/power-bi/${category}/${pbiSlug}`;
         }
     }
 
@@ -366,6 +382,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 categories[category].push({
                     name: details.summary || details.operationId || path,
+                    operationId: details.operationId || '',
                     description: descStr,
                     method: method.toUpperCase(),
                     path: path.replace("/v1.0/myorg", ""), // clean path
