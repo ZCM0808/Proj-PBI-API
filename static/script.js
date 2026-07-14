@@ -491,9 +491,28 @@ document.addEventListener('DOMContentLoaded', async () => {
             const categoryEl = document.createElement('div');
             categoryEl.className = 'api-category';
             
+            // 翻译分类标题以防范 Pipelines 命名混淆
+            function getCategoryDisplayTitle(catName) {
+                const nameUpper = catName.toUpperCase();
+                if (nameUpper === 'PIPELINES') {
+                    return '📋 Pipelines (Deployment / PBI 部署管道)';
+                } else if (nameUpper === 'DATAFACTORY') {
+                    return '🏭 Data Factory (DF / 数据工厂)';
+                } else if (nameUpper === 'LAKEHOUSE') {
+                    return '🌊 Lakehouse (LH / 湖仓)';
+                } else if (nameUpper === 'WAREHOUSE') {
+                    return '🧱 Warehouse (WH / 数据仓库)';
+                } else if (nameUpper === 'NOTEBOOK') {
+                    return '📓 Notebook (NB / 笔记本)';
+                } else if (nameUpper === 'KQL') {
+                    return '📊 KQL Database (KQL数据库)';
+                }
+                return catName;
+            }
+
             const titleEl = document.createElement('div');
             titleEl.className = 'api-category-title';
-            titleEl.innerHTML = `<span>${category.category}</span> <span>${filteredEndpoints.length}</span>`;
+            titleEl.innerHTML = `<span>${getCategoryDisplayTitle(category.category)}</span> <span>${filteredEndpoints.length}</span>`;
             categoryEl.appendChild(titleEl);
 
             const listEl = document.createElement('ul');
@@ -655,6 +674,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const docBtn = document.getElementById('official-doc-btn');
                     if (docBtn) {
                         docBtn.href = getOfficialDocUrl(ep);
+                        console.log("DEBUG_CLICK_EP:", JSON.stringify(ep), "resolved_url:", docBtn.href);
                     }
                     selectedApiName.textContent = ep.name;
                     
