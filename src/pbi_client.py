@@ -18,7 +18,8 @@ class PBIClient:
 
     def _get_token(self, api_type: str = "powerbi") -> str:
         """获取访问令牌"""
-        scope = ["https://api.fabric.microsoft.com/.default"] if api_type == "fabric" else self.config.SCOPE
+        api_type_clean = api_type.strip().lower()
+        scope = ["https://api.fabric.microsoft.com/.default"] if api_type_clean == "fabric" else self.config.SCOPE
         result = self._app.acquire_token_for_client(scopes=scope)
         if "access_token" in result:
             return result["access_token"]
@@ -43,7 +44,8 @@ class PBIClient:
             api_type: 接口类型 ('powerbi' 或 'fabric')
             kwargs: 传递给 requests.request 的其他参数 (如 params, json, data)
         """
-        base_url = "https://api.fabric.microsoft.com" if api_type == "fabric" else self.config.BASE_URL
+        api_type_clean = api_type.strip().lower()
+        base_url = "https://api.fabric.microsoft.com" if api_type_clean == "fabric" else self.config.BASE_URL
         
         # 兼容处理，确保拼接时路径斜线没有重复
         if endpoint.startswith("/") and base_url.endswith("/"):

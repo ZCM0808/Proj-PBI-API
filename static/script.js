@@ -186,12 +186,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     apiTree.innerHTML = '<div style="padding:1rem; text-align:center; color: var(--text-secondary);"><span class="loader"></span> 加载全部 API 中...</div>';
 
     try {
-        const [resPbi, resFabric] = await Promise.all([
-            fetch('/static/swagger.json'),
-            fetch('/static/fabric_swagger.json')
-        ]);
-        const swagger = await resPbi.json();
-        const fabricSwagger = await resFabric.json();
+        let swagger = { paths: {}, definitions: {} };
+        let fabricSwagger = { paths: {} };
+
+        try {
+            const resPbi = await fetch('/static/swagger.json');
+            if (resPbi.ok) {
+                swagger = await resPbi.json();
+            } else {
+                console.error("Failed to load Power BI Swagger: server returned status", resPbi.status);
+            }
+        } catch (e) {
+            console.error("Failed to load Power BI Swagger:", e);
+        }
+
+        try {
+            const resFabric = await fetch('/static/fabric_swagger.json');
+            if (resFabric.ok) {
+                fabricSwagger = await resFabric.json();
+            } else {
+                console.warn("Failed to load Fabric Swagger: server returned status", resFabric.status);
+            }
+        } catch (e) {
+            console.warn("Failed to load Fabric Swagger:", e);
+        }
         
         const categories = {};
         const definitions = swagger.definitions || {};
