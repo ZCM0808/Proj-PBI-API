@@ -523,8 +523,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const rawBookmarks = getBookmarks();
         // 用最新加载的 API 列表去映射书签，以防旧版本 LocalStorage 书签缺少 operationId 和 category
         const bookmarks = rawBookmarks.map(bm => {
-            const allApis = [...pbiApis, ...fabricApis];
-            for (const cat of allApis) {
+            for (const cat of pbiApis) {
                 const found = cat.endpoints.find(e => e.path === bm.path && e.method === bm.method);
                 if (found) return found;
             }
