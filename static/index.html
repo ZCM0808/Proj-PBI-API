@@ -76,9 +76,9 @@
                 
                 <!-- 当前选中 API 信息 -->
                 <div id="selected-api-info" class="selected-api-info glass-panel" style="display: none; padding: 1rem; margin-top: 0.5rem; flex-shrink: 0; background: rgba(0,0,0,0.4); border-radius: 8px;">
-                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.25rem;">
+                    <div id="info-header-row" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.25rem; cursor: pointer; user-select: none;" title="点击最小化/最大化 (Click to toggle)">
                         <div style="font-size: 0.75rem; color: var(--accent);">CURRENT SELECTION</div>
-                        <button id="toggle-info-btn" title="最小化/最大化" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 0 4px; font-size: 1.2rem; line-height: 1;">&minus;</button>
+                        <button id="toggle-info-btn" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 0 4px; font-size: 1.2rem; line-height: 1;">&minus;</button>
                     </div>
                     <div id="selected-api-content">
                         <div id="selected-api-name" style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.25rem; color: var(--text-primary);"></div>

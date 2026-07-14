@@ -475,8 +475,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const selectedApiContent = document.getElementById('selected-api-content');
+    const infoHeaderRow = document.getElementById('info-header-row');
     
-    toggleInfoBtn.addEventListener('click', () => {
+    infoHeaderRow.addEventListener('click', (e) => {
         if (selectedApiContent.style.display === 'none') {
             selectedApiContent.style.display = 'block';
             toggleInfoBtn.innerHTML = '&minus;';
