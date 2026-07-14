@@ -845,3 +845,87 @@ textarea.settings-input {
     font-weight: 600;
     box-shadow: 0 0 10px rgba(242, 200, 17, 0.3);
 }
+
+/* =========================================
+   写操作确认模态窗 (Write Confirmation Modal)
+   ========================================= */
+.confirm-modal-content {
+    background: rgba(20, 20, 25, 0.85);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.6);
+    border-radius: 12px;
+    padding: 1.5rem;
+    max-width: 440px;
+    width: 90%;
+    transform: scale(0.95);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    margin: auto;
+}
+
+.modal-overlay[style*="display: flex"] .confirm-modal-content {
+    transform: scale(1);
+}
+
+.confirm-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1rem;
+}
+
+.confirm-modal-header h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.warning-icon {
+    font-size: 1.3rem;
+    color: #f59e0b;
+}
+
+.confirm-modal-body {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+}
+
+.confirm-modal-path-container {
+    background: rgba(0, 0, 0, 0.35);
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-top: 10px;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.75rem;
+    color: #a78bfa;
+    word-break: break-all;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.confirm-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.btn-warning-action {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+    border: none !important;
+    color: #fff !important;
+}
+
+.btn-warning-action:hover {
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.4) !important;
+    background: linear-gradient(135deg, #f87171 0%, #ef4444 100%) !important;
+}
+
+/* 官方文档链接按钮 hover 效果 */
+.btn-doc-link:hover {
+    background: rgba(242, 200, 17, 0.12) !important;
+    border-color: rgba(242, 200, 17, 0.6) !important;
+    color: var(--text-primary) !important;
+    box-shadow: 0 0 8px rgba(242, 200, 17, 0.15);
+}

@@ -159,6 +159,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    function getOfficialDocUrl(ep) {
+        const category = (ep.category || 'core').toLowerCase().replace(/\s+/g, '-');
+        const name = (ep.name || '').toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .trim()
+            .replace(/\s+/g, '-');
+
+        if (ep.isFabric) {
+            if (category === 'fabric') {
+                return 'https://learn.microsoft.com/en-us/rest/api/fabric/';
+            }
+            return `https://learn.microsoft.com/en-us/rest/api/fabric/${category}`;
+        } else {
+            if (category === 'others') {
+                return 'https://learn.microsoft.com/en-us/rest/api/power-bi/';
+            }
+            return `https://learn.microsoft.com/en-us/rest/api/power-bi/${category}/${name}`;
+        }
+    }
+
     // 智能在 Free Mode 下监听 URL 输入，切换前缀提示
     document.addEventListener('DOMContentLoaded', () => {
         const endpointInput = document.getElementById('api-endpoint');
@@ -591,6 +611,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                         toggleInfoBtn.innerHTML = '&minus;';
                         toggleInfoBtn.title = '最小化';
                     }
+                    
+                    const docBtn = document.getElementById('official-doc-btn');
+                    if (docBtn) {
+                        docBtn.href = getOfficialDocUrl(ep);
+                    }
                     selectedApiName.textContent = ep.name;
                     
                     // 动态更新标题 Badge
@@ -675,7 +700,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    sendBtn.addEventListener('click', async () => {
+    async function executeRequest() {
         const method = methodSelect.value;
         const endpoint = endpointInput.value.trim();
         let bodyStr = bodyInput.value.trim();
@@ -840,7 +865,54 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (apiName) {
             updateRequestMode('api', `Bound to: ${apiName}`);
         }
+    }
+
+    sendBtn.addEventListener('click', () => {
+        const method = methodSelect.value;
+        const endpoint = endpointInput.value.trim();
+        
+        if (!endpoint) {
+            alert('请填写 API 路径');
+            return;
+        }
+
+        const isWriteOperation = ['POST', 'DELETE', 'PUT', 'PATCH'].includes(method.toUpperCase());
+        
+        if (isWriteOperation) {
+            const modal = document.getElementById('confirm-modal');
+            const badge = document.getElementById('confirm-method-badge');
+            const pathText = document.getElementById('confirm-path-text');
+            
+            if (modal && badge && pathText) {
+                badge.textContent = method;
+                badge.className = `method-badge method-${method}`;
+                pathText.textContent = endpoint;
+                modal.style.display = 'flex';
+            } else {
+                executeRequest();
+            }
+        } else {
+            executeRequest();
+        }
     });
+
+    // 绑定弹窗控制
+    document.addEventListener('DOMContentLoaded', () => {
+        const modal = document.getElementById('confirm-modal');
+        const cancelBtn = document.getElementById('confirm-cancel-btn');
+        const proceedBtn = document.getElementById('confirm-proceed-btn');
+        
+        if (modal && cancelBtn && proceedBtn) {
+            cancelBtn.addEventListener('click', () => {
+                modal.style.display = 'none';
+            });
+            proceedBtn.addEventListener('click', () => {
+                modal.style.display = 'none';
+                executeRequest();
+            });
+        }
+    });
+
 
     // 新建空白请求 (New Request)
     const newRequestBtn = document.getElementById('new-request-btn');
