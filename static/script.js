@@ -175,7 +175,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function getOfficialDocUrl(ep) {
         let isFabric = ep.isFabric;
         
-        // 智能根据 path 兜底猜测 (强力防范 LocalStorage 书签老历史数据缺失 isFabric 属性)
+        // 智能根据 path 兜底猜测 (防范 LocalStorage 书签老数据缺失 isFabric 属性)
         const pathLower = (ep.path || '').toLowerCase();
         if (pathLower.includes('/lakehouses') || 
             pathLower.includes('/warehouses') || 
@@ -188,10 +188,43 @@ document.addEventListener('DOMContentLoaded', async () => {
             isFabric = true;
         }
 
+        // 将 ep.name (summary) 转换为 URL slug: "List Data Factory Pipelines" -> "list-data-factory-pipelines"
+        const slug = (ep.name || '').toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .trim()
+            .replace(/\s+/g, '-');
+
         if (isFabric) {
-            // 最佳实践：微软 Fabric REST 采用扁平化结构，无二级子文件夹目录
-            // 统一直达 Fabric 官方 REST API 的总目录参考主页，避免 404 导致重定向到 power-bi 页面
-            return 'https://learn.microsoft.com/en-us/rest/api/fabric/';
+            // Fabric 文档 URL 结构: /rest/api/fabric/{service}/{resource-group}/{operation-slug}
+            // 微软的 service 名称与 Swagger tag 不完全一致，需要映射
+            const category = (ep.category || ep.flag || '').toLowerCase();
+            
+            // Swagger tag -> 微软文档 service 名映射
+            const serviceMap = {
+                'datafactory': 'datapipeline',
+                'kql': 'kqldatabase',
+                'lakehouse': 'lakehouse',
+                'warehouse': 'warehouse',
+                'notebook': 'notebook',
+                'core': 'core'
+            };
+            const service = serviceMap[category] || 'core';
+            
+            // 根据 path 路径推断 resource-group（微软文档的二级分类）
+            let resourceGroup = 'items';
+            if (pathLower.includes('/workspaces') && !pathLower.includes('/lakehouses') &&
+                !pathLower.includes('/warehouses') && !pathLower.includes('/notebooks') &&
+                !pathLower.includes('/kqldatabases') && !pathLower.includes('/pipelines') &&
+                !pathLower.includes('/items')) {
+                resourceGroup = 'workspaces';
+            } else if (pathLower.includes('/tables')) {
+                resourceGroup = 'tables';
+            }
+            
+            if (!slug) {
+                return `https://learn.microsoft.com/en-us/rest/api/fabric/${service}`;
+            }
+            return `https://learn.microsoft.com/en-us/rest/api/fabric/${service}/${resourceGroup}/${slug}`;
         } else {
             let rawCategory = ep.category || '';
             if (!rawCategory && ep.flag) {
@@ -202,13 +235,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!category || category === 'others') {
                 return 'https://learn.microsoft.com/en-us/rest/api/power-bi/';
             }
-            
-            const name = (ep.name || '').toLowerCase()
-                .replace(/[^a-z0-9\s-]/g, '')
-                .trim()
-                .replace(/\s+/g, '-');
 
-            return `https://learn.microsoft.com/en-us/rest/api/power-bi/${category}/${name}`;
+            return `https://learn.microsoft.com/en-us/rest/api/power-bi/${category}/${slug}`;
         }
     }
 
@@ -684,9 +712,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                         toggleInfoBtn.title = '最小化';
                     }
                     
+                    const docUrl = getOfficialDocUrl(ep);
                     const docBtn = document.getElementById('official-doc-btn');
                     if (docBtn) {
-                        docBtn.href = getOfficialDocUrl(ep);
+                        docBtn.href = docUrl;
+                    }
+                    // 同步底部全局文档链接为当前选中 API 的精确文档页面
+                    const globalDocLink = document.getElementById('global-doc-link');
+                    if (globalDocLink) {
+                        globalDocLink.href = docUrl;
+                        globalDocLink.innerHTML = `查看 ${ep.name} 官方文档 &rarr;`;
                     }
                     selectedApiName.textContent = ep.name;
                     
