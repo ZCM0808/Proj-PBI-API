@@ -149,6 +149,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentApiType = 'powerbi';
     let currentActiveFlag = 'ALL';
 
+    function updateBaseUrlHint(apiType) {
+        const hintEl = document.getElementById('base-url-hint');
+        if (!hintEl) return;
+        if (apiType === 'fabric') {
+            hintEl.textContent = 'https://api.fabric.microsoft.com/v1.0';
+        } else {
+            hintEl.textContent = 'https://api.powerbi.com/v1.0/myorg';
+        }
+    }
+
+    // 智能在 Free Mode 下监听 URL 输入，切换前缀提示
+    document.addEventListener('DOMContentLoaded', () => {
+        const endpointInput = document.getElementById('api-endpoint');
+        if (endpointInput) {
+            endpointInput.addEventListener('input', () => {
+                const badge = document.getElementById('request-mode-badge');
+                if (badge && badge.textContent.includes('Free Mode')) {
+                    const val = endpointInput.value.toLowerCase();
+                    if (val.includes('/lakehouses') || 
+                        val.includes('/warehouses') || 
+                        val.includes('/notebooks') || 
+                        val.includes('/kqldatabases') ||
+                        val.includes('/items') ||
+                        val.includes('/fabrics') ||
+                        (val.startsWith('/workspaces') && !val.includes('/admin/workspaces'))) {
+                        updateBaseUrlHint('fabric');
+                    } else {
+                        updateBaseUrlHint('powerbi');
+                    }
+                }
+            });
+        }
+    });
+
     apiTree.innerHTML = '<div style="padding:1rem; text-align:center; color: var(--text-secondary);"><span class="loader"></span> 加载全部 API 中...</div>';
 
     try {
@@ -507,6 +541,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     originalMethod = ep.method;
                     originalPath = ep.path;
                     currentApiType = ep.isFabric ? 'fabric' : 'powerbi'; // 记录是 Power BI 还是 Fabric API
+                    updateBaseUrlHint(currentApiType);
                     
                     if (ep.body) {
                         try {
@@ -796,6 +831,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             methodSelect.disabled = false;
             methodSelect.value = 'GET';
             endpointInput.value = '';
+            endpointInput.dispatchEvent(new Event('input'));
             bodyInput.value = '';
             toggleMethodBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span>Unlock</span>';
             // 取消当前选中的 API 样式，但保留 original 数据以便 Reset
@@ -904,6 +940,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (historySearchInput) historySearchInput.value = '';
                     
                     updateRequestMode('free', 'Free Mode (From History)');
+                    endpointInput.dispatchEvent(new Event('input'));
                 };
                 
                 historyListContainer.appendChild(item);
