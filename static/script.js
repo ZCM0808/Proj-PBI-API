@@ -159,17 +159,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
         
-        // 动态同步更新侧边栏最底部的全局 API 文档链接和文字
-        const globalDocLink = document.getElementById('global-doc-link');
-        if (globalDocLink) {
-            if (apiType === 'fabric') {
-                globalDocLink.href = 'https://learn.microsoft.com/en-us/rest/api/fabric/';
-                globalDocLink.innerHTML = '查看官方 Fabric API 文档 &rarr;';
-            } else {
-                globalDocLink.href = 'https://learn.microsoft.com/en-us/rest/api/power-bi/';
-                globalDocLink.innerHTML = '查看官方 Power BI API 文档 &rarr;';
-            }
-        }
     }
 
     function getOfficialDocUrl(ep) {
@@ -750,12 +739,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const docBtn = document.getElementById('official-doc-btn');
                     if (docBtn) {
                         docBtn.href = docUrl;
-                    }
-                    // 同步底部全局文档链接为当前选中 API 的精确文档页面
-                    const globalDocLink = document.getElementById('global-doc-link');
-                    if (globalDocLink) {
-                        globalDocLink.href = docUrl;
-                        globalDocLink.innerHTML = `查看 ${ep.name} 官方文档 &rarr;`;
                     }
                     selectedApiName.textContent = ep.name;
                     
