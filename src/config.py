@@ -30,7 +30,7 @@ class Config:
     def authority_url(self) -> str:
         tenant = self.TENANT_ID if self.TENANT_ID else "organizations"
         return f"{self.AUTHORITY}{tenant}"
-        
+
     @classmethod
     def get_all(cls) -> dict:
         return {
@@ -40,7 +40,7 @@ class Config:
             "SQL_CONN_STR": cls.SQL_CONN_STR,
             "WORKSPACE_ID": cls.WORKSPACE_ID,
             "DATASET_ID": cls.DATASET_ID,
-            "REPORT_ID": cls.REPORT_ID
+            "REPORT_ID": cls.REPORT_ID,
         }
 
     @classmethod
@@ -49,7 +49,7 @@ class Config:
         if not os.path.exists(env_file):
             with open(env_file, "w", encoding="utf-8") as f:
                 f.write("")
-                
+
         key_map = {
             "CLIENT_ID": "PBI_CLIENT_ID",
             "CLIENT_SECRET": "PBI_CLIENT_SECRET",
@@ -57,9 +57,9 @@ class Config:
             "SQL_CONN_STR": "SQL_CONN_STR",
             "WORKSPACE_ID": "PBI_WORKSPACE_ID",
             "DATASET_ID": "PBI_DATASET_ID",
-            "REPORT_ID": "PBI_REPORT_ID"
+            "REPORT_ID": "PBI_REPORT_ID",
         }
-        
+
         for k, v in updates.items():
             if hasattr(cls, k) and k in key_map:
                 setattr(cls, k, v)

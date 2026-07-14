@@ -240,6 +240,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 绑定最小化/最大化面板事件
     const toggleInfoBtn = document.getElementById('toggle-info-btn');
     let activeApiElement = null;
+    let isDetailsCollapsed = localStorage.getItem('pbi-details-collapsed') === 'true';
 
     function updateRequestMode(mode, text) {
         const badge = document.getElementById('request-mode-badge');
@@ -263,11 +264,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             selectedApiContent.style.display = 'block';
             toggleInfoBtn.innerHTML = '&minus;';
             toggleInfoBtn.title = '最小化';
+            isDetailsCollapsed = false;
         } else {
             selectedApiContent.style.display = 'none';
             toggleInfoBtn.innerHTML = '&#9633;'; // 正方形符号代表最大化/还原
             toggleInfoBtn.title = '还原';
+            isDetailsCollapsed = true;
         }
+        localStorage.setItem('pbi-details-collapsed', isDetailsCollapsed);
     });
     
     function getBookmarks() {
@@ -416,8 +420,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     // 展示详细信息面板
                     selectedApiInfo.style.display = 'block';
-                    selectedApiContent.style.display = 'block'; // 点击新 API 时自动展开
-                    toggleInfoBtn.innerHTML = '&minus;';
+                    if (isDetailsCollapsed) {
+                        selectedApiContent.style.display = 'none';
+                        toggleInfoBtn.innerHTML = '&#9633;';
+                        toggleInfoBtn.title = '还原';
+                    } else {
+                        selectedApiContent.style.display = 'block';
+                        toggleInfoBtn.innerHTML = '&minus;';
+                        toggleInfoBtn.title = '最小化';
+                    }
                     selectedApiName.textContent = ep.name;
                     
                     // 动态更新标题 Badge

@@ -1,7 +1,7 @@
 """Power BI REST API 客户端"""
 
 import requests
-from msal import ConfidentialClientApplication
+from msal import ConfidentialClientApplication  # type: ignore[import-untyped]
 from src.config import Config
 
 
@@ -35,7 +35,7 @@ class PBIClient:
     def request(self, method: str, endpoint: str, **kwargs) -> dict:
         """
         通用 API 请求方法，避免硬编码逻辑。
-        
+
         参数:
             method: HTTP 方法 (例如 'GET', 'POST', 'PATCH', 'DELETE')
             endpoint: API 路径 (例如 '/groups' 或完整 URL)
@@ -44,16 +44,18 @@ class PBIClient:
         # [安全验证] 双重防御：确保组装后的 URL 必须指向官方域
         url = f"{self.config.BASE_URL}{endpoint}"
         if not url.startswith("https://api.powerbi.com/"):
-            raise Exception("Security Violation: Target URL must belong to https://api.powerbi.com/")
-        
+            raise Exception(
+                "Security Violation: Target URL must belong to https://api.powerbi.com/"
+            )
+
         response = requests.request(
             method=method.upper(),
             url=url,
             headers=self.headers,
-            timeout=kwargs.pop('timeout', 30),
-            **kwargs
+            timeout=kwargs.pop("timeout", 30),
+            **kwargs,
         )
-        
+
         try:
             response.raise_for_status()
         except requests.exceptions.HTTPError as e:
@@ -65,7 +67,7 @@ class PBIClient:
                 except ValueError:
                     error_msg = f"{error_msg}\n{e.response.text}"
             raise Exception(error_msg)
-        
+
         # 尝试解析 JSON 返回，对于没有主体的响应（如 202, 204）返回空字典
         if response.content:
             try:
