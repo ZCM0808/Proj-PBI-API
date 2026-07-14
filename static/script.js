@@ -887,7 +887,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 badge.textContent = method;
                 badge.className = `method-badge method-${method}`;
                 pathText.textContent = endpoint;
+                
                 modal.style.display = 'flex';
+                modal.offsetHeight; // 强制触发 DOM 重绘以触发 CSS 过渡动画
+                modal.classList.add('show');
             } else {
                 executeRequest();
             }
@@ -901,12 +904,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cancelBtn = document.getElementById('confirm-cancel-btn');
     const proceedBtn = document.getElementById('confirm-proceed-btn');
     
+    function hideModalWithAnimation() {
+        if (modal) {
+            modal.classList.remove('show');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 220); // 配合 CSS 0.22s 磨砂过渡
+        }
+    }
+    
     if (modal && cancelBtn && proceedBtn) {
         cancelBtn.addEventListener('click', () => {
-            modal.style.display = 'none';
+            hideModalWithAnimation();
         });
         proceedBtn.addEventListener('click', () => {
-            modal.style.display = 'none';
+            hideModalWithAnimation();
             executeRequest();
         });
     }

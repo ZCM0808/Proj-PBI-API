@@ -858,12 +858,34 @@ textarea.settings-input {
     padding: 1.5rem;
     max-width: 440px;
     width: 90%;
-    transform: scale(0.95);
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform: scale(0.9);
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
     margin: auto;
 }
 
-.modal-overlay[style*="display: flex"] .confirm-modal-content {
+/* 基于 opacity 的平滑淡出与淡入 */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(0px);
+    opacity: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    transition: opacity 0.22s ease, backdrop-filter 0.22s ease;
+}
+
+.modal-overlay.show {
+    opacity: 1;
+    backdrop-filter: blur(4px);
+}
+
+.modal-overlay.show .confirm-modal-content {
     transform: scale(1);
 }
 
@@ -915,11 +937,16 @@ textarea.settings-input {
     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
     border: none !important;
     color: #fff !important;
+    transition: all 0.2s;
 }
 
 .btn-warning-action:hover {
     box-shadow: 0 0 12px rgba(239, 68, 68, 0.4) !important;
     background: linear-gradient(135deg, #f87171 0%, #ef4444 100%) !important;
+}
+
+.btn-warning-action:active {
+    transform: scale(0.95);
 }
 
 /* 官方文档链接按钮 hover 效果 */
@@ -928,4 +955,17 @@ textarea.settings-input {
     border-color: rgba(242, 200, 17, 0.6) !important;
     color: var(--text-primary) !important;
     box-shadow: 0 0 8px rgba(242, 200, 17, 0.15);
+}
+
+/* 物理触压回弹的取消按钮 */
+.btn-cancel {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: rgba(255, 255, 255, 0.25) !important;
+    color: white !important;
+}
+.btn-cancel:active {
+    transform: scale(0.92) !important;
 }
