@@ -897,21 +897,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // 绑定弹窗控制
-    document.addEventListener('DOMContentLoaded', () => {
-        const modal = document.getElementById('confirm-modal');
-        const cancelBtn = document.getElementById('confirm-cancel-btn');
-        const proceedBtn = document.getElementById('confirm-proceed-btn');
-        
-        if (modal && cancelBtn && proceedBtn) {
-            cancelBtn.addEventListener('click', () => {
-                modal.style.display = 'none';
-            });
-            proceedBtn.addEventListener('click', () => {
-                modal.style.display = 'none';
-                executeRequest();
-            });
-        }
-    });
+    const modal = document.getElementById('confirm-modal');
+    const cancelBtn = document.getElementById('confirm-cancel-btn');
+    const proceedBtn = document.getElementById('confirm-proceed-btn');
+    
+    if (modal && cancelBtn && proceedBtn) {
+        cancelBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+        proceedBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+            executeRequest();
+        });
+    }
 
 
     // 新建空白请求 (New Request)
