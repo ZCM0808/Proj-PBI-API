@@ -521,10 +521,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         apiTree.innerHTML = '';
         
         const rawBookmarks = getBookmarks();
-        // 用最新加载的 API 列表去映射书签，以防旧版本 LocalStorage 书签缺少 operationId 和 category
+        // 用最新加载的 API 列表去映射书签，以防旧版本 LocalStorage 书签缺少 operationId 和 category，甚至由于遗留 Bug 带有未清洗的旧 Path
         const bookmarks = rawBookmarks.map(bm => {
+            const cleanBmPath = (bm.path || '').replace("/v1.0/myorg", "");
             for (const cat of pbiApis) {
-                const found = cat.endpoints.find(e => e.path === bm.path && e.method === bm.method);
+                const found = cat.endpoints.find(e => e.path === cleanBmPath && e.method === bm.method);
                 if (found) return found;
             }
             return bm;
