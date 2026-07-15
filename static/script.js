@@ -85,6 +85,30 @@ window.renderContextDropdowns = function() {
     populate('active-report', rData);
 };
 
+window.renderEnvIdentity = function() {
+    const appName = localStorage.getItem('pbi_app_name');
+    const tenantId = localStorage.getItem('pbi_tenant_id');
+    const tenantEl = document.getElementById('display-tenant');
+    const clientEl = document.getElementById('display-client');
+    
+    if (tenantEl) {
+        if (tenantId) {
+            tenantEl.style.display = 'inline';
+            tenantEl.querySelector('strong').textContent = tenantId;
+        } else {
+            tenantEl.style.display = 'none';
+        }
+    }
+    if (clientEl) {
+        if (appName) {
+            clientEl.style.display = 'inline';
+            clientEl.querySelector('strong').textContent = appName;
+        } else {
+            clientEl.style.display = 'none';
+        }
+    }
+};
+
 window.getInjectedEndpoint = function(endpoint) {
     let newEndpoint = endpoint;
     const ws = document.getElementById('active-workspace')?.value;
@@ -374,6 +398,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 智能在 Free Mode 下监听 URL 输入，切换前缀提示
     document.addEventListener('DOMContentLoaded', () => {
         window.renderContextDropdowns();
+        window.renderEnvIdentity();
         
         // 初始化 DOM 元素
         const endpointInput = document.getElementById('api-endpoint');
@@ -1813,7 +1838,10 @@ const loadReqHistory = (searchTerm = "") => {
                     });
                     const result = await res.json();
                     if (result.success) {
-                        alert(result.message);
+                        alert(result.message + (result.app_name ? ("\n应用名称: " + result.app_name) : ""));
+                        if (result.app_name) localStorage.setItem('pbi_app_name', result.app_name);
+                        if (result.tenant_id) localStorage.setItem('pbi_tenant_id', result.tenant_id);
+                        window.renderEnvIdentity();
                     } else {
                         alert(result.message);
                     }

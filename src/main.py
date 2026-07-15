@@ -67,7 +67,19 @@ async def verify_settings(request: Request):
         scope = ["https://analysis.windows.net/powerbi/api/.default"]
         result = app.acquire_token_for_client(scopes=scope)
         if "access_token" in result:
-            return {"success": True, "message": "验证成功！(Authentication Successful)"}
+            app_name = "Unknown App"
+            try:
+                import base64, json
+                token = result["access_token"]
+                payload = token.split(".")[1]
+                payload += "=" * (-len(payload) % 4)
+                decoded = base64.b64decode(payload).decode("utf-8")
+                jwt_data = json.loads(decoded)
+                app_name = jwt_data.get("app_displayname", "Unknown App")
+            except Exception:
+                pass
+                
+            return {"success": True, "message": f"验证成功！(Authentication Successful)", "app_name": app_name, "tenant_id": tenant_id}
         else:
             return {"success": False, "message": f"验证失败: {result.get('error_description', '未知错误')}"}
     except Exception as e:
