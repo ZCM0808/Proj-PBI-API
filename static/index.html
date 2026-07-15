@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Power BI API Explorer</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20260715_v3">
+    <link rel="stylesheet" href="/static/style.css?v=20260715_v4">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -125,7 +125,8 @@
             </header>
 
             <div class="request-builder glass-panel">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                <div class="request-builder-top" style="display: flex; flex-direction: column; gap: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
                     <h2 style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500; margin: 0; display: flex; align-items: center;">
                         Request Configuration
                         <span id="request-mode-badge" style="font-size: 0.65rem; font-weight: normal; color: var(--accent); border: 1px solid rgba(62, 166, 255, 0.5); background: rgba(62, 166, 255, 0.1); padding: 2px 6px; border-radius: 12px; margin-left: 8px;">Free Mode</span>
@@ -164,13 +165,13 @@
                 </div>
 
                 <!-- Env Identity -->
-                <div id="env-identity" style="display: flex; gap: 16px; margin-bottom: 8px; font-size: 0.75rem; color: var(--text-secondary);">
+                <div id="env-identity" style="display: flex; gap: 16px; font-size: 0.75rem; color: var(--text-secondary);">
                     <span id="display-tenant" style="display: none;">🏢 Tenant: <strong style="color: var(--accent); font-weight: 500;">Unknown</strong></span>
                     <span id="display-client" style="display: none;">🔑 Client App: <strong style="color: var(--accent); font-weight: 500;">Unknown</strong></span>
                 </div>
 
                 <!-- Context Toolbar -->
-                <div id="context-toolbar" style="display: flex; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <div id="context-toolbar" style="display: flex; gap: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">
                     <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
                         <label style="font-size: 0.7rem; color: var(--text-secondary); width: 60px;">Workspace</label>
                         <select id="active-workspace" class="settings-input" style="padding: 4px 8px; font-size: 0.75rem; height: 26px;"><option value="">-- None --</option></select>
@@ -183,6 +184,7 @@
                         <label style="font-size: 0.7rem; color: var(--text-secondary); width: 45px;">Report</label>
                         <select id="active-report" class="settings-input" style="padding: 4px 8px; font-size: 0.75rem; height: 26px;"><option value="">-- None --</option></select>
                     </div>
+                </div>
                 </div>
 
                 <div class="input-group row">
@@ -360,6 +362,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="/static/script.js?v=51"></script>
+    <script src="/static/script.js?v=52"></script>
 </body>
 </html>
