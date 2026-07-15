@@ -169,7 +169,7 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     }));
 
     // 直接导航到主页，这是该 Context 下的首次请求，绝对不会命中浏览器本地缓存
-    await newPage.goto('/');
+    await newPage.goto('http://127.0.0.1:8000/');
     
     // 1. 使用 expect.poll 等待 localStorage 被正确写入
     await expect.poll(async () => {
