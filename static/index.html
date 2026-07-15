@@ -170,15 +170,36 @@
                 <div id="context-toolbar" style="display: flex; gap: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">
                     <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
                         <label style="font-size: 0.7rem; color: var(--text-secondary); width: 60px;">Workspace</label>
-                        <select id="active-workspace" class="settings-input" style="padding: 4px 8px; font-size: 0.75rem; height: 26px;"><option value="">-- None --</option></select>
+                        <div class="custom-select-wrapper" id="wrapper-workspace" style="position: relative; flex: 1; min-width: 0;">
+                            <div class="custom-select-trigger" id="trigger-workspace" onclick="toggleCustomSelect('workspace')" style="padding: 4px 8px; height: 38px; background: rgba(0,0,0,0.2); border: 1px solid var(--panel-border); border-radius: 4px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; user-select: none; transition: border-color 0.2s;">
+                                <span class="cs-name" style="color: var(--text-primary); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">-- None --</span>
+                                <span class="cs-id" style="color: var(--text-secondary); font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: none;"></span>
+                            </div>
+                            <div class="custom-select-options" id="options-workspace" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #1f2428; border: 1px solid var(--panel-border); border-radius: 4px; z-index: 1000; max-height: 300px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.8); margin-top: 4px;"></div>
+                            <input type="hidden" id="active-workspace" value="">
+                        </div>
                     </div>
                     <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
                         <label style="font-size: 0.7rem; color: var(--text-secondary); width: 50px;">Dataset</label>
-                        <select id="active-dataset" class="settings-input" style="padding: 4px 8px; font-size: 0.75rem; height: 26px;"><option value="">-- None --</option></select>
+                        <div class="custom-select-wrapper" id="wrapper-dataset" style="position: relative; flex: 1; min-width: 0;">
+                            <div class="custom-select-trigger" id="trigger-dataset" onclick="toggleCustomSelect('dataset')" style="padding: 4px 8px; height: 38px; background: rgba(0,0,0,0.2); border: 1px solid var(--panel-border); border-radius: 4px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; user-select: none; transition: border-color 0.2s;">
+                                <span class="cs-name" style="color: var(--text-primary); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">-- None --</span>
+                                <span class="cs-id" style="color: var(--text-secondary); font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: none;"></span>
+                            </div>
+                            <div class="custom-select-options" id="options-dataset" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #1f2428; border: 1px solid var(--panel-border); border-radius: 4px; z-index: 1000; max-height: 300px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.8); margin-top: 4px;"></div>
+                            <input type="hidden" id="active-dataset" value="">
+                        </div>
                     </div>
                     <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
                         <label style="font-size: 0.7rem; color: var(--text-secondary); width: 45px;">Report</label>
-                        <select id="active-report" class="settings-input" style="padding: 4px 8px; font-size: 0.75rem; height: 26px;"><option value="">-- None --</option></select>
+                        <div class="custom-select-wrapper" id="wrapper-report" style="position: relative; flex: 1; min-width: 0;">
+                            <div class="custom-select-trigger" id="trigger-report" onclick="toggleCustomSelect('report')" style="padding: 4px 8px; height: 38px; background: rgba(0,0,0,0.2); border: 1px solid var(--panel-border); border-radius: 4px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; user-select: none; transition: border-color 0.2s;">
+                                <span class="cs-name" style="color: var(--text-primary); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">-- None --</span>
+                                <span class="cs-id" style="color: var(--text-secondary); font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: none;"></span>
+                            </div>
+                            <div class="custom-select-options" id="options-report" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #1f2428; border: 1px solid var(--panel-border); border-radius: 4px; z-index: 1000; max-height: 300px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.8); margin-top: 4px;"></div>
+                            <input type="hidden" id="active-report" value="">
+                        </div>
                     </div>
                 </div>
                 </div>
@@ -393,6 +414,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="/static/script.js?v=20260715_v12"></script>
+    <script src="/static/script.js?v=20260715_v13"></script>
 </body>
 </html>

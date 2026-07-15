@@ -168,29 +168,88 @@ window.getListData = function(containerId) {
     return data;
 };
 
+window.toggleCustomSelect = function(type) {
+    const optionsDiv = document.getElementById(`options-${type}`);
+    const isVisible = optionsDiv.style.display === 'block';
+    
+    // Close all
+    document.querySelectorAll('.custom-select-options').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.custom-select-trigger').forEach(el => el.style.borderColor = 'var(--panel-border)');
+    
+    if (!isVisible) {
+        optionsDiv.style.display = 'block';
+        document.getElementById(`trigger-${type}`).style.borderColor = 'var(--accent)';
+    }
+};
+
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.custom-select-wrapper')) {
+        document.querySelectorAll('.custom-select-options').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.custom-select-trigger').forEach(el => el.style.borderColor = 'var(--panel-border)');
+    }
+});
+
+window.selectCustomOption = function(type, id, alias) {
+    const input = document.getElementById(`active-${type}`);
+    const trigger = document.getElementById(`trigger-${type}`);
+    if (!input || !trigger) return;
+    
+    const nameEl = trigger.querySelector('.cs-name');
+    const idEl = trigger.querySelector('.cs-id');
+    
+    input.value = id;
+    if (id) {
+        nameEl.textContent = alias;
+        idEl.textContent = id;
+        idEl.style.display = 'block';
+    } else {
+        nameEl.textContent = '-- None --';
+        idEl.style.display = 'none';
+    }
+    
+    document.getElementById(`options-${type}`).style.display = 'none';
+    trigger.style.borderColor = 'var(--panel-border)';
+};
+
 window.renderContextDropdowns = function() {
     const wData = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
     const dData = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
     const rData = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
-    
-    const populate = (selectId, data) => {
-        const select = document.getElementById(selectId);
-        if (!select) return;
-        const currentVal = select.value;
-        select.innerHTML = '<option value="">-- None --</option>';
+
+    const populate = (type, data) => {
+        const input = document.getElementById(`active-${type}`);
+        const optionsDiv = document.getElementById(`options-${type}`);
+        if (!input || !optionsDiv) return;
+        
+        const currentVal = input.value;
+        let html = `<div onclick="selectCustomOption('${type}', '', '')" style="padding: 6px 8px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid rgba(255,255,255,0.05);" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+            <div style="color: var(--text-secondary); font-size: 0.75rem;">-- None --</div>
+        </div>`;
+        
         data.forEach(item => {
-            const opt = document.createElement('option');
-            opt.value = item.id;
-            opt.textContent = `${item.alias} (${item.id})`;
-            select.appendChild(opt);
+            const safeAlias = (item.alias || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const safeId = item.id.replace(/'/g, "\\'");
+            html += `<div onclick="selectCustomOption('${type}', '${safeId}', '${safeAlias}')" style="padding: 6px 8px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid rgba(255,255,255,0.05);" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                <div style="color: var(--text-primary); font-size: 0.75rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.alias}</div>
+                <div style="color: var(--text-secondary); font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.id}</div>
+            </div>`;
         });
-        if (data.some(d => d.id === currentVal)) select.value = currentVal;
-        else if (data.length > 0) select.value = data[0].id;
+        
+        optionsDiv.innerHTML = html;
+        
+        if (data.some(d => d.id === currentVal)) {
+            const selected = data.find(d => d.id === currentVal);
+            selectCustomOption(type, selected.id, selected.alias);
+        } else if (data.length > 0) {
+            selectCustomOption(type, data[0].id, data[0].alias);
+        } else {
+            selectCustomOption(type, '', '');
+        }
     };
     
-    populate('active-workspace', wData);
-    populate('active-dataset', dData);
-    populate('active-report', rData);
+    populate('workspace', wData);
+    populate('dataset', dData);
+    populate('report', rData);
 };
 
 window.renderEnvIdentity = function() {
