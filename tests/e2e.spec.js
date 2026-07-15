@@ -237,4 +237,70 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     // 5. 对整个弹窗截图，如果 overflow: hidden 丢失，光效会溢出到背景上从而导致断言失败
     await expect(pipelineModal).toHaveScreenshot('pipeline-modal-hover-baseline.png', { maxDiffPixelRatio: 0.05 });
   });
+
+  test('结构防御 (DOM Hierarchy): context-toolbar 必须严格被 request-builder-top 包裹，防止掉落外层导致间距异常', async ({ page }) => {
+    // 这里使用 CSS 严格的直接子代选择器 `>` 
+    // 如果之前那种 </div> 提前闭合的 Bug 再现，这里就会找不到元素并报错
+    const toolbarInTop = page.locator('.request-builder-top > #context-toolbar');
+    await expect(toolbarInTop).toBeVisible();
+    
+    const envInTop = page.locator('.request-builder-top > #env-identity');
+    await expect(envInTop).toBeVisible();
+  });
+
+  test('溢出防御 (Overflow Defense): 动作按钮组绝对不能跑到右侧面板之外', async ({ page }) => {
+    const mainContent = page.locator('.main-content');
+    const resetBtn = page.locator('#reset-request-btn');
+    
+    const mainBox = await mainContent.boundingBox();
+    const btnBox = await resetBtn.boundingBox();
+    
+    // 断言按钮存在
+    expect(btnBox).not.toBeNull();
+    expect(mainBox).not.toBeNull();
+    
+    // 按钮的右边界必须小于等于父容器的右边界 (加上微小的容差值防次像素取整)
+    expect(btnBox.x + btnBox.width).toBeLessThanOrEqual(mainBox.x + mainBox.width + 1);
+  });
+
+  test('弹性布局抗挤压测试 (Flex bounds): 请求体 textarea 不能被上方的错误空白完全挤压', async ({ page }) => {
+    const requestBody = page.locator('#request-body');
+    await expect(requestBody).toBeVisible();
+    
+    const box = await requestBody.boundingBox();
+    expect(box).not.toBeNull();
+    
+    // 正常情况下 flex:1 应该保证它至少有一点高度来显示一行，而不是 0
+    expect(box.height).toBeGreaterThan(30);
+  });
+
+  test('垂直调整器防御 (Vertical Resizer): 向上极限拖拽时，请求面板不能被压到不可用状态', async ({ page }) => {
+    const resizer = page.locator('#vertical-resizer');
+    const requestBuilder = page.locator('.request-builder');
+    
+    const resizerBox = await resizer.boundingBox();
+    expect(resizerBox).not.toBeNull();
+    
+    // 鼠标拖拽动作模拟：点住中间，疯狂往上拖拽 1000 像素
+    await page.mouse.move(resizerBox.x + resizerBox.width / 2, resizerBox.y + resizerBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(resizerBox.x + resizerBox.width / 2, resizerBox.y - 1000, { steps: 10 });
+    await page.mouse.up();
+    
+    // 断言高度是否被限制在了可用的最小值 (如 150px 左右)
+    const builderBox = await requestBuilder.boundingBox();
+    expect(builderBox.height).toBeGreaterThanOrEqual(140); // 给一点点容错
+    
+    // 断言即便被压扁，URL 输入框仍然在视口内可见
+    await expect(page.locator('#api-endpoint')).toBeInViewport();
+  });
+
+  test('局部组件视觉回归测试 (Component Visual Regression): Request 面板防间距空洞及布局偏移检查', async ({ page }) => {
+    // 截取 request-builder 局部
+    const requestBuilder = page.locator('.request-builder');
+    await expect(requestBuilder).toBeVisible();
+    
+    // 如果再出现莫名其妙的 24px Gap 导致排版撑大，这个快照将精准拦截
+    await expect(requestBuilder).toHaveScreenshot('request-panel-baseline.png', { maxDiffPixelRatio: 0.05 });
+  });
 });
