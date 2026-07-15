@@ -504,8 +504,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // 智能在 Free Mode 下监听 URL 输入，切换前缀提示
-    document.addEventListener('DOMContentLoaded', async () => {
-        console.log("DOMContentLoaded fired!");
+        console.log("App initialization started!");
         try {
             const res = await fetch('/api/settings');
             const data = await res.json();
@@ -531,7 +530,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.renderEnvIdentity();
         
         // 初始化 DOM 元素
-        const endpointInput = document.getElementById('api-endpoint');
         if (endpointInput) {
             endpointInput.addEventListener('input', () => {
                 const badge = document.getElementById('request-mode-badge');
@@ -551,7 +549,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
         }
-    });
 
     apiTree.innerHTML = '<div style="padding:1rem; text-align:center; color: var(--text-secondary);"><span class="loader"></span> 加载全部 API 中...</div>';
 
