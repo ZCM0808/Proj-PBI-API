@@ -74,6 +74,30 @@ async def verify_settings(request: Request):
         return {"success": False, "message": f"验证异常: {str(e)}"}
 
 
+@app.post("/api/settings/verify-sql")
+async def verify_sql_settings(request: Request):
+    """验证 SQL 连接凭证"""
+    try:
+        data = await request.json()
+        sql_conn_str = data.get("pbi_sql_conn", "").strip()
+
+        if not sql_conn_str:
+            return {"success": False, "message": "SQL_CONN_STR is required for verification."}
+
+        try:
+            import pyodbc
+            # 尝试连接，设置短超时防止长时间阻塞
+            conn = pyodbc.connect(sql_conn_str, timeout=3)
+            conn.close()
+            return {"success": True, "message": "SQL 连接成功！(SQL Connection Successful)"}
+        except ImportError:
+            return {"success": False, "message": "请先安装 pyodbc 库: pip install pyodbc"}
+        except Exception as e:
+            return {"success": False, "message": f"SQL 连接失败: {str(e)}"}
+    except Exception as e:
+        return {"success": False, "message": f"验证异常: {str(e)}"}
+
+
 @app.get("/api/pipeline/run")
 async def run_pipeline():
     pipeline = PBIPipeline()

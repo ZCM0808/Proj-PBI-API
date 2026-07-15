@@ -238,17 +238,55 @@
                 <button id="close-settings-btn" class="close-btn">&times;</button>
             </div>
             <form id="settings-form" autocomplete="on">
-                <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+                <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px; max-height: 60vh; overflow-y: auto; padding-right: 8px;">
                     <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary);">在此配置的所有参数将立即生效，且会在整个项目 (API & Pipeline) 中共享。</p>
+
+                    <!-- Authentication Configs -->
+                    <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; border: 1px solid var(--panel-border);">
+                        <h4 style="margin: 0 0 12px 0; font-size: 0.9rem; color: #a78bfa;">Azure App Authentication</h4>
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <label>TENANT_ID (Azure AD)</label>
+                            <input type="text" id="set-tenant" name="pbi_tenant_id" class="settings-input" placeholder="e.g. c8923456-789a-bcde-f012-3456789abcde">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <label>CLIENT_ID (Azure App)</label>
+                            <input type="text" id="set-client" name="pbi_client_id" class="settings-input" placeholder="e.g. f0123456-789a-bcde-f012-3456789abcde">
+                        </div>
+                        <div class="form-group">
+                            <label>CLIENT_SECRET (Azure App)</label>
+                            <div style="position: relative; display: flex; align-items: center; margin-bottom: 8px;">
+                                <input type="password" id="set-secret" name="pbi_client_secret" class="settings-input" placeholder="e.g. 8qC8Q~xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="padding-right: 36px;">
+                                <button type="button" id="toggle-secret-btn" style="position: absolute; right: 8px; background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px;" title="Toggle Visibility">
+                                    <svg id="eye-icon-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block;">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                    <svg id="eye-icon-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                            <button type="button" id="verify-settings-btn" class="btn-settings-save" style="background: rgba(167, 139, 250, 0.2); color: #a78bfa; width: 100%; padding: 6px; font-size: 0.85rem;">⚡ 验证凭证 (Verify Auth)</button>
+                        </div>
+                    </div>
+
+                    <div style="border-top: 1px solid rgba(255,255,255,0.1); margin: 4px 0;"></div>
+
+                    <!-- SQL Config -->
                     <div class="form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center; position: relative;">
                             <label>SQL_CONN_STR (数据库连接字符串)</label>
-                            <button type="button" id="sql-history-btn" style="font-size: 0.8rem; background: rgba(0,0,0,0.3); color: var(--text-secondary); border: 1px solid var(--panel-border); border-radius: 4px; padding: 4px 8px; cursor: pointer; display: none;">📜 历史记录 (History)</button>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" id="verify-sql-btn" style="font-size: 0.8rem; background: rgba(52, 211, 153, 0.2); color: #34d399; border: 1px solid var(--panel-border); border-radius: 4px; padding: 4px 8px; cursor: pointer;">⚡ 验证 (Verify SQL)</button>
+                                <button type="button" id="sql-history-btn" style="font-size: 0.8rem; background: rgba(0,0,0,0.3); color: var(--text-secondary); border: 1px solid var(--panel-border); border-radius: 4px; padding: 4px 8px; cursor: pointer; display: none;">📜 历史记录 (History)</button>
+                            </div>
                             <div id="sql-history-dropdown" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: #1f2428; border: 1px solid var(--panel-border); border-radius: 6px; z-index: 1000; width: 350px; max-height: 250px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
                             </div>
                         </div>
                         <textarea id="set-sql" name="pbi_sql_conn" class="settings-input" rows="2" style="resize: vertical; min-height: 60px; line-height: 1.4;" placeholder="DRIVER={ODBC Driver 17 for SQL Server};SERVER=192.168.1.100;DATABASE=PBI_DWH;UID=sa;PWD=password"></textarea>
                     </div>
+
                     <div class="form-group">
                         <label>PBI_WORKSPACE_ID</label>
                         <input type="text" id="set-workspace" name="pbi_workspace_id" class="settings-input" placeholder="e.g. 5e8f1234-abcd-1234-abcd-1234567890ab">
@@ -261,34 +299,8 @@
                         <label>PBI_REPORT_ID</label>
                         <input type="text" id="set-report" name="pbi_report_id" class="settings-input" placeholder="e.g. c12d1234-abcd-1234-abcd-1234567890ab">
                     </div>
-                    <div style="border-top: 1px solid rgba(255,255,255,0.1); margin: 8px 0;"></div>
-                    <div class="form-group">
-                        <label>TENANT_ID (Azure AD)</label>
-                        <input type="text" id="set-tenant" name="pbi_tenant_id" class="settings-input" placeholder="e.g. c8923456-789a-bcde-f012-3456789abcde">
-                    </div>
-                    <div class="form-group">
-                        <label>CLIENT_ID (Azure App)</label>
-                        <input type="text" id="set-client" name="pbi_client_id" class="settings-input" placeholder="e.g. f0123456-789a-bcde-f012-3456789abcde">
-                    </div>
-                    <div class="form-group">
-                        <label>CLIENT_SECRET (Azure App)</label>
-                        <div style="position: relative; display: flex; align-items: center;">
-                            <input type="password" id="set-secret" name="pbi_client_secret" class="settings-input" placeholder="e.g. 8qC8Q~xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="padding-right: 36px;">
-                            <button type="button" id="toggle-secret-btn" style="position: absolute; right: 8px; background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px;" title="Toggle Visibility">
-                                <svg id="eye-icon-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block;">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                    <circle cx="12" cy="12" r="3"></circle>
-                                </svg>
-                                <svg id="eye-icon-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
-                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                                    <line x1="1" y1="1" x2="23" y2="23"></line>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
                 </div>
-                <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
-                    <button type="button" id="verify-settings-btn" class="btn-settings-save" style="background: rgba(167, 139, 250, 0.2); color: #a78bfa;">⚡ 验证连接 (Verify)</button>
+                <div class="modal-footer" style="display: flex; justify-content: flex-end; align-items: center;">
                     <button type="submit" id="save-settings-btn" class="btn-settings-save">💾 保存配置 (Save & Apply)</button>
                 </div>
             </form>
@@ -316,6 +328,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="/static/script.js?v=46"></script>
+    <script src="/static/script.js?v=47"></script>
 </body>
 </html>

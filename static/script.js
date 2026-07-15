@@ -1684,6 +1684,43 @@ const loadReqHistory = (searchTerm = "") => {
             });
         }
 
+        const verifySqlBtn = document.getElementById('verify-sql-btn');
+        if (verifySqlBtn) {
+            verifySqlBtn.addEventListener('click', async () => {
+                const sqlConn = document.getElementById('set-sql').value.replace(/\r?\n|\r/g, '').trim();
+
+                if (!sqlConn) {
+                    alert("请先填写 SQL_CONN_STR！");
+                    return;
+                }
+
+                const originalText = verifySqlBtn.textContent;
+                verifySqlBtn.disabled = true;
+                verifySqlBtn.textContent = '⏳ 验证中...';
+
+                try {
+                    const res = await fetch('/api/settings/verify-sql', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            pbi_sql_conn: sqlConn
+                        })
+                    });
+                    const result = await res.json();
+                    if (result.success) {
+                        alert(result.message);
+                    } else {
+                        alert(result.message);
+                    }
+                } catch (err) {
+                    alert('网络错误: ' + err);
+                } finally {
+                    verifySqlBtn.disabled = false;
+                    verifySqlBtn.textContent = originalText;
+                }
+            });
+        }
+
         const settingsForm = document.getElementById('settings-form');
         settingsForm.addEventListener('submit', async (e) => {
             e.preventDefault(); // 阻止页面刷新，但允许浏览器捕获 submit 以保存表单历史
