@@ -771,7 +771,7 @@ textarea:focus {
     gap: 4px;
 }
 .form-group label {
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     font-weight: 500;
     color: var(--text-secondary);
 }
