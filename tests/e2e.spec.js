@@ -165,17 +165,13 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
       })
     }));
 
-    const responsePromise = page.waitForResponse(response => response.url().includes('/api/settings'));
     // 重新加载页面以触发 DOMContentLoaded 中的拉取逻辑
     await page.reload();
     
-    // 留出时间给 await fetch 和渲染完成
-    await responsePromise;
-    await page.waitForTimeout(300);
-    
-    // 1. 验证 localStorage 被正确写入
-    const localWorkspaces = await page.evaluate(() => localStorage.getItem('pbi_workspaces'));
-    expect(localWorkspaces).toContain('mock-ws-id-123');
+    // 1. 使用 expect.poll 等待 localStorage 被正确写入 (最多等待 2 秒)
+    await expect.poll(async () => {
+      return await page.evaluate(() => localStorage.getItem('pbi_workspaces'));
+    }, { timeout: 2000 }).toContain('mock-ws-id-123');
 
     // 2. 验证主页右上角的下拉菜单被正确渲染
     const workspaceDropdown = page.locator('#active-workspace');
