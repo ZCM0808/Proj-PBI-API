@@ -76,10 +76,11 @@ async def verify_settings(request: Request):
         # Test default PowerBI scope
         scope = ["https://analysis.windows.net/powerbi/api/.default"]
         
+        import asyncio
         if auth_mode == "interactive":
-            result = app.acquire_token_interactive(scopes=scope)
+            result = await asyncio.to_thread(app.acquire_token_interactive, scopes=scope)
         else:
-            result = app.acquire_token_for_client(scopes=scope)
+            result = await asyncio.to_thread(app.acquire_token_for_client, scopes=scope)
         if "access_token" in result:
             app_name = "Unknown App"
             try:
@@ -95,7 +96,7 @@ async def verify_settings(request: Request):
                     app_name = jwt_data.get("name", "Current User") + " (User)"
                 else:
                     # 尝试获取 Graph token 以提取应用名称
-                    graph_result = app.acquire_token_for_client(scopes=["https://graph.microsoft.com/.default"])
+                    graph_result = await asyncio.to_thread(app.acquire_token_for_client, scopes=["https://graph.microsoft.com/.default"])
                     if "access_token" in graph_result:
                         token = graph_result["access_token"]
                         payload = token.split(".")[1]
@@ -123,11 +124,14 @@ async def verify_sql_settings(request: Request):
         if not sql_conn_str:
             return {"success": False, "message": "SQL_CONN_STR is required for verification."}
 
+        import asyncio
         try:
             import pyodbc  # type: ignore
             # 尝试连接，设置短超时防止长时间阻塞
-            conn = pyodbc.connect(sql_conn_str, timeout=3)
-            conn.close()
+            def test_conn():
+                conn = pyodbc.connect(sql_conn_str, timeout=3)
+                conn.close()
+            await asyncio.to_thread(test_conn)
             return {"success": True, "message": "SQL 连接成功！(SQL Connection Successful)"}
         except ImportError:
             return {"success": False, "message": "请先安装 pyodbc 库: pip install pyodbc"}
@@ -171,7 +175,10 @@ async def proxy_request(request: Request):
         kwargs["json"] = body
         
     try:
-        response_data = client.request(method, endpoint, api_type=api_type, **kwargs)
+        import asyncio
+        response_data = await asyncio.to_thread(
+            client.request, method, endpoint, api_type=api_type, **kwargs
+        )
         return {"success": True, "data": response_data}
     except Exception as e:
         return {"success": False, "error": str(e)}
