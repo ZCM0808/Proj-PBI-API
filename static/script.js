@@ -7,44 +7,77 @@ window.addListRow = function(containerId, alias = "", id = "") {
     const row = document.createElement('div');
     row.style.cssText = "display: flex; gap: 8px; align-items: center;";
     row.innerHTML = `
+        <input type="radio" name="${containerId}-radio" style="cursor: pointer; margin-right: 4px;" title="选中测试 (Select for verification)">
         <input type="text" class="settings-input alias-input" placeholder="Alias (e.g. DEV)" value="${alias}" style="flex: 1; min-width: 0; padding: 4px 8px; font-size: 0.75rem;">
         <input type="text" class="settings-input id-input" placeholder="GUID" value="${id}" style="flex: 2; min-width: 0; padding: 4px 8px; font-size: 0.75rem;">
-        <button type="button" class="verify-guid-btn" title="Verify GUID" style="background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; cursor: pointer; font-size: 0.7rem; border-radius: 4px; padding: 2px 6px;">⚡</button>
         <button type="button" onclick="if(this.parentElement.parentElement.children.length > 1) { this.parentElement.remove(); } else { alert('必须保留至少一个输入框！(At least one row must be kept)'); }" style="color: #ff6b6b; background: transparent; border: none; cursor: pointer; font-size: 1.2rem; line-height: 1; padding: 0 4px; opacity: 0.3; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'">&times;</button>
     `;
-    
-    const verifyBtn = row.querySelector('.verify-guid-btn');
-    verifyBtn.onclick = async () => {
-        const guid = row.querySelector('.id-input').value.trim();
-        if (!guid) return alert('请先输入 GUID (Please enter a GUID first)');
-        verifyBtn.textContent = '...';
-        verifyBtn.disabled = true;
-        try {
-            const res = await fetch('/api/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ method: 'GET', endpoint: '/' + type + '/' + guid, api_type: 'powerbi' })
-            });
-            const result = await res.json();
-            if (res.ok && !result.error) {
-                if (result.id || result.name || (result.value && !result.error)) {
-                    alert('✅ 验证成功 (Verified): ' + (result.name || guid));
-                } else if (result.error) {
-                    alert('❌ 验证失败 (Failed): ' + (result.error.message || JSON.stringify(result.error)));
-                } else {
-                    alert('✅ 请求成功，但未能解析具体名称。');
-                }
-            } else {
-                alert('❌ 请求失败: ' + (result.error?.message || JSON.stringify(result)));
-            }
-        } catch (e) {
-            alert('❌ 网络错误: ' + e);
-        }
-        verifyBtn.textContent = '⚡';
-        verifyBtn.disabled = false;
-    };
-    
     container.appendChild(row);
+    
+    // Automatically select the first radio if none are selected
+    const existingRadios = container.querySelectorAll(`input[name="${containerId}-radio"]`);
+    if (existingRadios.length === 1) {
+        existingRadios[0].checked = true;
+    }
+};
+
+window.verifySelectedGuid = async function(type, containerId, event) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    const selectedRadio = container.querySelector(`input[type="radio"]:checked`);
+    if (!selectedRadio) {
+        alert('请先选中一条要测试的记录 (Please select a record to verify)');
+        return;
+    }
+    
+    const row = selectedRadio.parentElement;
+    const input = row.querySelector('.id-input');
+    const guid = input.value.trim();
+    if (!guid) {
+        alert('请先填写该记录的 GUID！(Please enter a GUID to verify)');
+        return;
+    }
+    
+    const clientId = document.getElementById('set-client').value.trim();
+    const clientSecret = document.getElementById('set-secret').value.trim();
+    const tenantId = document.getElementById('set-tenant').value.trim();
+
+    if (!clientId || !clientSecret || !tenantId) {
+        alert("请先填写 TENANT_ID, CLIENT_ID, 和 CLIENT_SECRET！(Missing credentials)");
+        return;
+    }
+
+    const btn = event.currentTarget;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '⏳';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/api/test/guid', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                pbi_client_id: clientId,
+                pbi_client_secret: clientSecret,
+                pbi_tenant_id: tenantId,
+                type: type,
+                guid: guid
+            })
+        });
+        const result = await res.json();
+        
+        if (result.success) {
+            alert(`✅ 验证通过！(Valid)\n名称: ${result.name}`);
+        } else {
+            alert(`❌ 验证失败 (Failed):\n${result.message}`);
+        }
+    } catch (e) {
+        alert('❌ 请求异常: ' + e);
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
 };
 
 window.scanItems = async function(type, event) {
