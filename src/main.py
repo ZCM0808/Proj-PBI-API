@@ -171,6 +171,58 @@ def main():
     uvicorn.run("src.main:app", host="127.0.0.1", port=8000, reload=True)
 
 
+@app.post("/api/test/guid")
+async def test_guid(request: Request):
+    """Test a specific GUID via Power BI API"""
+    import asyncio
+    import requests
+    from msal import ConfidentialClientApplication
+
+    try:
+        data = await request.json()
+        client_id = data.get("pbi_client_id", "").strip()
+        client_secret = data.get("pbi_client_secret", "").strip()
+        tenant_id = data.get("pbi_tenant_id", "").strip()
+        item_type = data.get("type", "").strip()
+        guid = data.get("guid", "").strip()
+
+        if not all([client_id, client_secret, tenant_id, item_type, guid]):
+            return {"success": False, "message": "Missing credentials or GUID"}
+
+        authority_url = f"https://login.microsoftonline.com/{tenant_id}"
+        app_msal = ConfidentialClientApplication(
+            client_id=client_id,
+            client_credential=client_secret,
+            authority=authority_url,
+        )
+        
+        scope = ["https://analysis.windows.net/powerbi/api/.default"]
+        result = await asyncio.to_thread(app_msal.acquire_token_for_client, scopes=scope)
+        
+        if "access_token" not in result:
+            return {"success": False, "message": f"Auth failed: {result.get('error_description', 'Unknown Error')}"}
+        
+        access_token = result["access_token"]
+        endpoint = f"https://api.powerbi.com/v1.0/myorg/{item_type}/{guid}"
+            
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/json"
+        }
+        
+        response = await asyncio.to_thread(requests.get, endpoint, headers=headers)
+        
+        if response.status_code == 200:
+            resp_data = response.json()
+            name = resp_data.get("name", "Unknown")
+            return {"success": True, "message": "Valid!", "name": name}
+        else:
+            return {"success": False, "message": f"API Error: {response.status_code} - {response.text}"}
+
+    except Exception as e:
+        return {"success": False, "message": f"Server Error: {str(e)}"}
+
+
 @app.post("/api/scan/{item_type}")
 async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | None = None):
     """Scan workspaces, datasets, or reports using provided credentials"""
