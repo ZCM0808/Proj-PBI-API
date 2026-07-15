@@ -87,7 +87,7 @@ async def verify_settings(request: Request):
             except Exception:
                 pass
                 
-            return {"success": True, "message": f"凭证验证成功！(Auth Success)\nClient App: {app_name}"}
+            return {"success": True, "message": f"凭证验证成功！(Auth Success)\nClient App: {app_name}", "app_name": app_name}
         
         return {"success": False, "message": f"Auth failed: {result.get('error_description', result.get('error', 'Unknown Error'))}"}
     except Exception as e:

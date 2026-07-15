@@ -505,9 +505,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 智能在 Free Mode 下监听 URL 输入，切换前缀提示
     document.addEventListener('DOMContentLoaded', async () => {
+        console.log("DOMContentLoaded fired!");
         try {
             const res = await fetch('/api/settings');
             const data = await res.json();
+            console.log("Fetched settings:", data);
             
             if (data.PBI_WORKSPACES) {
                 localStorage.setItem('pbi_workspaces', JSON.stringify(data.PBI_WORKSPACES));
@@ -517,6 +519,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             if (data.PBI_REPORTS) {
                 localStorage.setItem('pbi_reports', JSON.stringify(data.PBI_REPORTS));
+            }
+            if (data.TENANT_ID) {
+                localStorage.setItem('pbi_tenant_id', data.TENANT_ID);
             }
         } catch (e) {
             console.error('Failed to pre-fetch settings:', e);
@@ -1889,6 +1894,11 @@ const loadReqHistory = (searchTerm = "") => {
                     });
                     const result = await res.json();
                     if (result.success) {
+                        if (result.app_name) {
+                            localStorage.setItem('pbi_app_name', result.app_name);
+                        }
+                        localStorage.setItem('pbi_tenant_id', tenantId);
+                        window.renderEnvIdentity();
                         alert(result.message + (result.app_name ? ("\n应用名称: " + result.app_name) : ""));
                     } else {
                         alert(result.message);
