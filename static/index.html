@@ -162,6 +162,23 @@
                         </button>
                     </div>
                 </div>
+
+                <!-- Context Toolbar -->
+                <div id="context-toolbar" style="display: flex; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
+                        <label style="font-size: 0.7rem; color: var(--text-secondary); width: 60px;">Workspace</label>
+                        <select id="active-workspace" class="settings-input" style="padding: 4px 8px; font-size: 0.75rem; height: 26px;"><option value="">-- None --</option></select>
+                    </div>
+                    <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
+                        <label style="font-size: 0.7rem; color: var(--text-secondary); width: 50px;">Dataset</label>
+                        <select id="active-dataset" class="settings-input" style="padding: 4px 8px; font-size: 0.75rem; height: 26px;"><option value="">-- None --</option></select>
+                    </div>
+                    <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
+                        <label style="font-size: 0.7rem; color: var(--text-secondary); width: 45px;">Report</label>
+                        <select id="active-report" class="settings-input" style="padding: 4px 8px; font-size: 0.75rem; height: 26px;"><option value="">-- None --</option></select>
+                    </div>
+                </div>
+
                 <div class="input-group row">
                     <div class="method-selector">
                         <select id="http-method">
@@ -288,16 +305,25 @@
                     </div>
 
                     <div class="form-group">
-                        <label>PBI_WORKSPACE_ID</label>
-                        <input type="text" id="set-workspace" name="pbi_workspace_id" class="settings-input" placeholder="e.g. 5e8f1234-abcd-1234-abcd-1234567890ab">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <label>PBI_WORKSPACES (工作区字典)</label>
+                            <button type="button" onclick="addListRow('workspace-list')" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; border-radius: 4px; cursor: pointer;">+ Add</button>
+                        </div>
+                        <div id="workspace-list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
                     </div>
                     <div class="form-group">
-                        <label>PBI_DATASET_ID</label>
-                        <input type="text" id="set-dataset" name="pbi_dataset_id" class="settings-input" placeholder="e.g. b39c1234-abcd-1234-abcd-1234567890ab">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <label>PBI_DATASETS (数据集字典)</label>
+                            <button type="button" onclick="addListRow('dataset-list')" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; border-radius: 4px; cursor: pointer;">+ Add</button>
+                        </div>
+                        <div id="dataset-list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
                     </div>
                     <div class="form-group">
-                        <label>PBI_REPORT_ID</label>
-                        <input type="text" id="set-report" name="pbi_report_id" class="settings-input" placeholder="e.g. c12d1234-abcd-1234-abcd-1234567890ab">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <label>PBI_REPORTS (报表字典)</label>
+                            <button type="button" onclick="addListRow('report-list')" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; border-radius: 4px; cursor: pointer;">+ Add</button>
+                        </div>
+                        <div id="report-list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
                     </div>
                 </div>
                 <div class="modal-footer" style="display: flex; justify-content: flex-end; align-items: center;">
@@ -328,6 +354,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="/static/script.js?v=48"></script>
+    <script src="/static/script.js?v=49"></script>
 </body>
 </html>

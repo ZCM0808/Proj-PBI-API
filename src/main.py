@@ -99,8 +99,8 @@ async def verify_sql_settings(request: Request):
 
 
 @app.get("/api/pipeline/run")
-async def run_pipeline():
-    pipeline = PBIPipeline()
+async def run_pipeline(workspace_id: str = "", dataset_id: str = "", report_id: str = ""):
+    pipeline = PBIPipeline(workspace_id=workspace_id, dataset_id=dataset_id, report_id=report_id)
     return StreamingResponse(pipeline.run(), media_type="text/event-stream")
 
 

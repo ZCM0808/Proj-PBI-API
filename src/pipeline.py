@@ -13,9 +13,12 @@ except ImportError:
 
 
 class PBIPipeline:
-    def __init__(self) -> None:
+    def __init__(self, workspace_id: str = "", dataset_id: str = "", report_id: str = "") -> None:
         self.config = Config()
         self.pbi_client = PBIClient(self.config)
+        self.workspace_id = workspace_id or self.config.WORKSPACE_ID
+        self.dataset_id = dataset_id or self.config.DATASET_ID
+        self.report_id = report_id or self.config.REPORT_ID
 
     async def run(self) -> AsyncGenerator[str, None]:
         def emit(status: str, msg: str) -> str:
@@ -52,8 +55,8 @@ class PBIPipeline:
             await asyncio.sleep(0.5)
             try:
                 if (
-                    not self.config.DATASET_ID
-                    or "your_dataset_id" in self.config.DATASET_ID
+                    not self.dataset_id
+                    or "your_dataset_id" in self.dataset_id
                 ):
                     yield emit(
                         "warning",
@@ -73,8 +76,8 @@ class PBIPipeline:
             await asyncio.sleep(0.5)
             try:
                 if (
-                    not self.config.DATASET_ID
-                    or "your_dataset_id" in self.config.DATASET_ID
+                    not self.dataset_id
+                    or "your_dataset_id" in self.dataset_id
                 ):
                     yield emit("warning", "⚠️ 缺少 PBI_DATASET_ID，跳过 DAX 终审。")
                 else:
@@ -89,8 +92,8 @@ class PBIPipeline:
             await asyncio.sleep(0.5)
             try:
                 if (
-                    not self.config.REPORT_ID
-                    or "your_report_id" in self.config.REPORT_ID
+                    not self.report_id
+                    or "your_report_id" in self.report_id
                 ):
                     yield emit(
                         "warning", "⚠️ 缺少 PBI_REPORT_ID，跳过动态 PDF 生成和邮件发送。"

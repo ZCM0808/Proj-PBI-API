@@ -1,3 +1,78 @@
+// Global Context Management Functions
+window.addListRow = function(containerId, alias = "", id = "") {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const row = document.createElement('div');
+    row.style.cssText = "display: flex; gap: 8px; align-items: center;";
+    row.innerHTML = `
+        <input type="text" class="settings-input alias-input" placeholder="Alias (e.g. DEV)" value="${alias}" style="flex: 1; min-width: 0; padding: 4px 8px; font-size: 0.75rem;">
+        <input type="text" class="settings-input id-input" placeholder="GUID" value="${id}" style="flex: 2; min-width: 0; padding: 4px 8px; font-size: 0.75rem;">
+        <button type="button" onclick="this.parentElement.remove()" style="color: #ff6b6b; background: transparent; border: none; cursor: pointer; font-size: 1.2rem; line-height: 1; padding: 0 4px;">&times;</button>
+    `;
+    container.appendChild(row);
+};
+
+window.getListData = function(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return [];
+    const rows = container.children;
+    const data = [];
+    for (let row of rows) {
+        const alias = row.querySelector('.alias-input').value.trim();
+        const id = row.querySelector('.id-input').value.trim();
+        if (alias || id) data.push({ alias, id });
+    }
+    return data;
+};
+
+window.renderContextDropdowns = function() {
+    const wData = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+    const dData = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
+    const rData = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+    
+    const populate = (selectId, data) => {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+        const currentVal = select.value;
+        select.innerHTML = '<option value="">-- None --</option>';
+        data.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item.id;
+            opt.textContent = `${item.alias} (${item.id.substring(0,6)}...)`;
+            select.appendChild(opt);
+        });
+        if (data.some(d => d.id === currentVal)) select.value = currentVal;
+        else if (data.length > 0) select.value = data[0].id;
+    };
+    
+    populate('active-workspace', wData);
+    populate('active-dataset', dData);
+    populate('active-report', rData);
+};
+
+window.getInjectedEndpoint = function(endpoint) {
+    let newEndpoint = endpoint;
+    const ws = document.getElementById('active-workspace')?.value;
+    const ds = document.getElementById('active-dataset')?.value;
+    const rp = document.getElementById('active-report')?.value;
+    
+    if (ws) {
+        newEndpoint = newEndpoint.replace(/\{workspaceId\}/gi, ws)
+                                 .replace(/\{\{workspaceId\}\}/gi, ws)
+                                 .replace(/\{groupId\}/gi, ws)
+                                 .replace(/\{\{groupId\}\}/gi, ws);
+    }
+    if (ds) {
+        newEndpoint = newEndpoint.replace(/\{datasetId\}/gi, ds)
+                                 .replace(/\{\{datasetId\}\}/gi, ds);
+    }
+    if (rp) {
+        newEndpoint = newEndpoint.replace(/\{reportId\}/gi, rp)
+                                 .replace(/\{\{reportId\}\}/gi, rp);
+    }
+    return newEndpoint;
+};
+
 // 递归根据 Swagger Schema 提取并生成 Mock 请求体数据
 function generateMock(schema, definitions, level = 0) {
     if (level > 4) return "..."; // 防止循环引用无限递归
@@ -263,6 +338,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 智能在 Free Mode 下监听 URL 输入，切换前缀提示
     document.addEventListener('DOMContentLoaded', () => {
+        window.renderContextDropdowns();
+        
+        // 初始化 DOM 元素
         const endpointInput = document.getElementById('api-endpoint');
         if (endpointInput) {
             endpointInput.addEventListener('input', () => {
@@ -848,7 +926,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function executeRequest() {
         const method = methodSelect.value;
-        const endpoint = endpointInput.value.trim();
+        const endpoint = window.getInjectedEndpoint(endpointInput.value.trim());
         let bodyStr = bodyInput.value.trim();
         let body = null;
         
@@ -1043,7 +1121,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     sendBtn.addEventListener('click', () => {
         const method = methodSelect.value;
-        const endpoint = endpointInput.value.trim();
+        const endpoint = window.getInjectedEndpoint(endpointInput.value.trim());
         
         if (!endpoint) {
             alert('请填写 API 路径');
@@ -1102,7 +1180,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (copyBtn) {
         copyBtn.addEventListener('click', () => {
             const method = methodSelect.value;
-            const endpoint = endpointInput.value.trim();
+            const endpoint = window.getInjectedEndpoint(endpointInput.value.trim());
             const body = bodyInput.value.trim();
             const token = document.getElementById('token-input')?.value.trim() || '';
             
@@ -1486,7 +1564,12 @@ const loadReqHistory = (searchTerm = "") => {
             startPipelineBtn.textContent = '运行中 (Running)...';
             startPipelineBtn.style.opacity = '0.5';
 
-            const evtSource = new EventSource('/api/pipeline/run');
+            const ws = document.getElementById('active-workspace')?.value || '';
+            const ds = document.getElementById('active-dataset')?.value || '';
+            const rp = document.getElementById('active-report')?.value || '';
+            const params = new URLSearchParams({ workspace_id: ws, dataset_id: ds, report_id: rp });
+
+            const evtSource = new EventSource(`/api/pipeline/run?${params.toString()}`);
             
             evtSource.onmessage = function(event) {
                 const data = JSON.parse(event.data);
@@ -1608,9 +1691,21 @@ const loadReqHistory = (searchTerm = "") => {
                 const res = await fetch('/api/settings');
                 const data = await res.json();
                 document.getElementById('set-sql').value = data.SQL_CONN_STR || '';
-                document.getElementById('set-workspace').value = data.WORKSPACE_ID || '';
-                document.getElementById('set-dataset').value = data.DATASET_ID || '';
-                document.getElementById('set-report').value = data.REPORT_ID || '';
+                // Load local storage lists
+                const loadList = (containerId, key) => {
+                    const container = document.getElementById(containerId);
+                    if (!container) return;
+                    container.innerHTML = '';
+                    const items = JSON.parse(localStorage.getItem(key) || '[]');
+                    if (items.length === 0) {
+                        window.addListRow(containerId); // one empty row default
+                    } else {
+                        items.forEach(item => window.addListRow(containerId, item.alias, item.id));
+                    }
+                };
+                loadList('workspace-list', 'pbi_workspaces');
+                loadList('dataset-list', 'pbi_datasets');
+                loadList('report-list', 'pbi_reports');
                 document.getElementById('set-client').value = data.CLIENT_ID || '';
                 document.getElementById('set-secret').value = data.CLIENT_SECRET || '';
                 document.getElementById('set-tenant').value = data.TENANT_ID || '';
@@ -1739,11 +1834,14 @@ const loadReqHistory = (searchTerm = "") => {
             saveSettingsBtn.disabled = true;
             saveSettingsBtn.textContent = '保存中...';
             
+            // Save lists to local storage
+            localStorage.setItem('pbi_workspaces', JSON.stringify(window.getListData('workspace-list')));
+            localStorage.setItem('pbi_datasets', JSON.stringify(window.getListData('dataset-list')));
+            localStorage.setItem('pbi_reports', JSON.stringify(window.getListData('report-list')));
+            window.renderContextDropdowns();
+            
             const payload = {
                 SQL_CONN_STR: document.getElementById('set-sql').value.replace(/\r?\n|\r/g, '').trim(),
-                WORKSPACE_ID: document.getElementById('set-workspace').value.trim(),
-                DATASET_ID: document.getElementById('set-dataset').value.trim(),
-                REPORT_ID: document.getElementById('set-report').value.trim(),
                 CLIENT_ID: document.getElementById('set-client').value.trim(),
                 CLIENT_SECRET: document.getElementById('set-secret').value.trim(),
                 TENANT_ID: document.getElementById('set-tenant').value.trim()
