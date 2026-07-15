@@ -1955,7 +1955,10 @@ const loadReqHistory = (searchTerm = "") => {
                 SQL_CONN_STR: document.getElementById('set-sql').value.replace(/\r?\n|\r/g, '').trim(),
                 CLIENT_ID: document.getElementById('set-client').value.trim(),
                 CLIENT_SECRET: document.getElementById('set-secret').value.trim(),
-                TENANT_ID: document.getElementById('set-tenant').value.trim()
+                TENANT_ID: document.getElementById('set-tenant').value.trim(),
+                PBI_WORKSPACES: window.getListData('workspace-list'),
+                PBI_DATASETS: window.getListData('dataset-list'),
+                PBI_REPORTS: window.getListData('report-list')
             };
 
             try {
