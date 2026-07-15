@@ -171,34 +171,64 @@ def main():
     uvicorn.run("src.main:app", host="127.0.0.1", port=8000, reload=True)
 
 
-@app.get("/api/scan/{item_type}")
-async def scan_pbi_items(item_type: str, workspace_id: str | None = None):
-    """Scan workspaces, datasets, or reports"""
+@app.post("/api/scan/{item_type}")
+async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | None = None):
+    """Scan workspaces, datasets, or reports using provided credentials"""
     import asyncio
-    global client
     
-    if item_type == "workspaces":
-        endpoint = "https://api.powerbi.com/v1.0/myorg/groups"
-    elif item_type == "datasets":
-        if workspace_id:
-            endpoint = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets"
-        else:
-            endpoint = "https://api.powerbi.com/v1.0/myorg/datasets"
-    elif item_type == "reports":
-        if workspace_id:
-            endpoint = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/reports"
-        else:
-            endpoint = "https://api.powerbi.com/v1.0/myorg/reports"
-    else:
-        return {"success": False, "error": "Invalid item type"}
-
     try:
-        response_data = await asyncio.to_thread(
-            client.request, "GET", endpoint
+        data = await request.json()
+        client_id = data.get("pbi_client_id", "").strip()
+        client_secret = data.get("pbi_client_secret", "").strip()
+        tenant_id = data.get("pbi_tenant_id", "").strip()
+        
+        if not all([client_id, client_secret, tenant_id]):
+            return {"success": False, "error": "Missing credentials. Please fill TENANT_ID, CLIENT_ID, and CLIENT_SECRET."}
+
+        authority_url = f"https://login.microsoftonline.com/{tenant_id}"
+        from msal import ConfidentialClientApplication
+        app = ConfidentialClientApplication(
+            client_id=client_id,
+            client_credential=client_secret,
+            authority=authority_url,
         )
+        
+        scope = ["https://analysis.windows.net/powerbi/api/.default"]
+        result = await asyncio.to_thread(app.acquire_token_for_client, scopes=scope)
+        
+        if "access_token" not in result:
+            return {"success": False, "error": f"Auth failed: {result.get('error_description', 'Unknown Error')}"}
+        
+        access_token = result["access_token"]
+        
+        if item_type == "workspaces":
+            endpoint = "https://api.powerbi.com/v1.0/myorg/groups"
+        elif item_type == "datasets":
+            if workspace_id:
+                endpoint = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets"
+            else:
+                endpoint = "https://api.powerbi.com/v1.0/myorg/datasets"
+        elif item_type == "reports":
+            if workspace_id:
+                endpoint = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/reports"
+            else:
+                endpoint = "https://api.powerbi.com/v1.0/myorg/reports"
+        else:
+            return {"success": False, "error": "Invalid item type"}
+
+        import requests
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/json"
+        }
+        
+        response = await asyncio.to_thread(requests.get, endpoint, headers=headers)
+        response.raise_for_status()
+        response_data = response.json()
+
         items = response_data.get("value", [])
-        result = [{"id": item.get("id"), "name": item.get("name")} for item in items]
-        return {"success": True, "data": result}
+        result_items = [{"id": item.get("id"), "name": item.get("name")} for item in items]
+        return {"success": True, "data": result_items}
     except Exception as e:
         return {"success": False, "error": str(e)}
 

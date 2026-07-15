@@ -1,0 +1,23 @@
+{
+    "AccessToken": {
+        "-login.microsoftonline.com-accesstoken-1846a56a-668f-405d-9ffd-574db4da5ce4-78a11419-9556-437d-843b-55d8396908e1-https://analysis.windows.net/powerbi/api/.default": {
+            "credential_type": "AccessToken",
+            "secret": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6ImFGa21LVkZjLTRXVjZzWENCdk5aa1hJNTA1WSIsImtpZCI6ImFGa21LVkZjLTRXVjZzWENCdk5aa1hJNTA1WSJ9.eyJhdWQiOiJodHRwczovL2FuYWx5c2lzLndpbmRvd3MubmV0L3Bvd2VyYmkvYXBpIiwiaXNzIjoiaHR0cHM6Ly9zdHMud2luZG93cy5uZXQvNzhhMTE0MTktOTU1Ni00MzdkLTg0M2ItNTVkODM5NjkwOGUxLyIsImlhdCI6MTc4NDA5ODQ5MiwibmJmIjoxNzg0MDk4NDkyLCJleHAiOjE3ODQxMDIzOTIsImFpbyI6IkFTUUEyLzhjQUFBQTBOU2svM05Fc2R1OTdBbXN4b2t5bFdtYXUxTWd2a1BGNEFJLzFwa2hLMkk9IiwiYXBwaWQiOiIxODQ2YTU2YS02NjhmLTQwNWQtOWZmZC01NzRkYjRkYTVjZTQiLCJhcHBpZGFjciI6IjEiLCJpZHAiOiJodHRwczovL3N0cy53aW5kb3dzLm5ldC83OGExMTQxOS05NTU2LTQzN2QtODQzYi01NWQ4Mzk2OTA4ZTEvIiwiaWR0eXAiOiJhcHAiLCJvaWQiOiIzZTg2OGFkYy0yZjllLTRiY2UtYjE1My1hMThlNGIwZDllYjQiLCJyaCI6IjEuQWIwQUdSU2hlRmFWZlVPRU8xWFlPV2tJNFFrQUFBQUFBQUFBd0FBQUFBQUFBQUFBQUFDOUFBLiIsInN1YiI6IjNlODY4YWRjLTJmOWUtNGJjZS1iMTUzLWExOGU0YjBkOWViNCIsInRpZCI6Ijc4YTExNDE5LTk1NTYtNDM3ZC04NDNiLTU1ZDgzOTY5MDhlMSIsInV0aSI6IjlERE1XRDZBeDAyRDZVOWNzV2dOQUEiLCJ2ZXIiOiIxLjAiLCJ4bXNfYWN0X2ZjdCI6IjMgOSIsInhtc19mdGQiOiJXck1ZbkFYZWlFT1dWQzMtS1NfRWI0MFBzX1dpMnZFb2JjWlFsdUNwcUFRQmRYTmxZWE4wTFdSemJYTSIsInhtc19pZHJlbCI6IjcgMTQiLCJ4bXNfcmQiOiIwLjQyTGpZQkppMnNzb0pNTEJLU1R3U21OTl9FR19JLTd0Tnh1NzVkZGtHd21KY0hBSUNYQXlRTUFCS0Mwa3dzRXRKUEJJUUhLT3Z1YXJOMHBPQmFza3hOczVBQSIsInhtc19zdWJfZmN0IjoiMyA5In0.PMN6QAUPL_yNnrrySlxeGHQqTc3ZLPx8IjedWYOJGJnu7eDkYUoys2y_XbhwOUVcncSgkrydIvx4L7z4F9dRQnW3b_6RXi6rPnvliqLPfezSN8VWkp5M5am40LeiY3HnDDhXHFkeFZNTTYHmwG61YuNm1DZrEZx6SHbyfJKCZCVP6wLR_tz01Sdg7UEgS50q1WYYFT3sAVpBIs0aDaq0j1iiYdlmvdnjmhy-CKpgtNE7dQZR7oG7OWFzs6qu4ZmNS-gL-PO5tL70dJOsha-QCEd5cVppe4XNbreSnpCkGNbuqNNQk-9K1BsHP4OVJepG0zblN_3i2-bLasfQ7rJx-w",
+            "home_account_id": null,
+            "environment": "login.microsoftonline.com",
+            "client_id": "1846a56a-668f-405d-9ffd-574db4da5ce4",
+            "target": "https://analysis.windows.net/powerbi/api/.default",
+            "realm": "78a11419-9556-437d-843b-55d8396908e1",
+            "token_type": "Bearer",
+            "cached_at": "1784098791",
+            "expires_on": "1784102390",
+            "extended_expires_on": "1784102390"
+        }
+    },
+    "AppMetadata": {
+        "appmetadata-login.microsoftonline.com-1846a56a-668f-405d-9ffd-574db4da5ce4": {
+            "client_id": "1846a56a-668f-405d-9ffd-574db4da5ce4",
+            "environment": "login.microsoftonline.com"
+        }
+    }
+}

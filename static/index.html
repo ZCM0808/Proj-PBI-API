@@ -314,7 +314,7 @@
 
                     <div class="form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <label>PBI_WORKSPACES (工作区字典)</label>
+                            <label style="cursor: pointer; user-select: none;" onclick="const list = document.getElementById('workspace-list'); list.style.display = list.style.display === 'none' ? 'flex' : 'none';" title="Click to toggle collapse/expand">PBI_WORKSPACES (工作区字典)</label>
                             <div style="display: flex; gap: 6px;">
                                 <button type="button" onclick="scanItems('workspaces', event)" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.3); color: #a78bfa; border-radius: 4px; cursor: pointer;">🔍 Scan</button>
                                 <button type="button" onclick="addListRow('workspace-list')" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; border-radius: 4px; cursor: pointer;">+ Add</button>
@@ -324,7 +324,7 @@
                     </div>
                     <div class="form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <label>PBI_DATASETS (数据集字典)</label>
+                            <label style="cursor: pointer; user-select: none;" onclick="const list = document.getElementById('dataset-list'); list.style.display = list.style.display === 'none' ? 'flex' : 'none';" title="Click to toggle collapse/expand">PBI_DATASETS (数据集字典)</label>
                             <div style="display: flex; gap: 6px;">
                                 <button type="button" onclick="scanItems('datasets', event)" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.3); color: #a78bfa; border-radius: 4px; cursor: pointer;">🔍 Scan</button>
                                 <button type="button" onclick="addListRow('dataset-list')" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; border-radius: 4px; cursor: pointer;">+ Add</button>
@@ -334,7 +334,7 @@
                     </div>
                     <div class="form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <label>PBI_REPORTS (报表字典)</label>
+                            <label style="cursor: pointer; user-select: none;" onclick="const list = document.getElementById('report-list'); list.style.display = list.style.display === 'none' ? 'flex' : 'none';" title="Click to toggle collapse/expand">PBI_REPORTS (报表字典)</label>
                             <div style="display: flex; gap: 6px;">
                                 <button type="button" onclick="scanItems('reports', event)" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.3); color: #a78bfa; border-radius: 4px; cursor: pointer;">🔍 Scan</button>
                                 <button type="button" onclick="addListRow('report-list')" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; border-radius: 4px; cursor: pointer;">+ Add</button>

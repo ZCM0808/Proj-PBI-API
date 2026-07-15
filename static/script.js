@@ -10,7 +10,7 @@ window.addListRow = function(containerId, alias = "", id = "") {
         <input type="text" class="settings-input alias-input" placeholder="Alias (e.g. DEV)" value="${alias}" style="flex: 1; min-width: 0; padding: 4px 8px; font-size: 0.75rem;">
         <input type="text" class="settings-input id-input" placeholder="GUID" value="${id}" style="flex: 2; min-width: 0; padding: 4px 8px; font-size: 0.75rem;">
         <button type="button" class="verify-guid-btn" title="Verify GUID" style="background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; cursor: pointer; font-size: 0.7rem; border-radius: 4px; padding: 2px 6px;">⚡</button>
-        <button type="button" onclick="this.parentElement.remove()" style="color: #ff6b6b; background: transparent; border: none; cursor: pointer; font-size: 1.2rem; line-height: 1; padding: 0 4px; opacity: 0.3; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'">&times;</button>
+        <button type="button" onclick="if(this.parentElement.parentElement.children.length > 1) { this.parentElement.remove(); } else { alert('必须保留至少一个输入框！(At least one row must be kept)'); }" style="color: #ff6b6b; background: transparent; border: none; cursor: pointer; font-size: 1.2rem; line-height: 1; padding: 0 4px; opacity: 0.3; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'">&times;</button>
     `;
     
     const verifyBtn = row.querySelector('.verify-guid-btn');
@@ -54,7 +54,15 @@ window.scanItems = async function(type, event) {
     btn.disabled = true;
     
     try {
-        const res = await fetch(`/api/scan/${type}`);
+        const res = await fetch(`/api/scan/${type}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                pbi_client_id: document.getElementById('set-client').value.trim(),
+                pbi_client_secret: document.getElementById('set-secret').value.trim(),
+                pbi_tenant_id: document.getElementById('set-tenant').value.trim()
+            })
+        });
         const data = await res.json();
         
         if (data.success && data.data && data.data.length > 0) {
