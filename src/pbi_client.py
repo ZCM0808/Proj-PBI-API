@@ -1,7 +1,7 @@
 """Power BI REST API 客户端"""
 
 import requests
-from msal import ConfidentialClientApplication  # type: ignore[import-untyped]
+from msal import ConfidentialClientApplication, PublicClientApplication  # type: ignore[import-untyped]
 from src.config import Config
 
 
@@ -10,20 +10,35 @@ class PBIClient:
 
     def __init__(self, config: Config | None = None):
         self.config = config or Config()
-        self._app = ConfidentialClientApplication(
-            client_id=self.config.CLIENT_ID,
-            client_credential=self.config.CLIENT_SECRET,
-            authority=self.config.authority_url,
-        )
+        if self.config.AUTH_MODE == "interactive":
+            self._app = PublicClientApplication(
+                client_id=self.config.CLIENT_ID,
+                authority=self.config.authority_url,
+            )
+        else:
+            self._app = ConfidentialClientApplication(
+                client_id=self.config.CLIENT_ID,
+                client_credential=self.config.CLIENT_SECRET,
+                authority=self.config.authority_url,
+            )
 
     def _get_token(self, api_type: str = "powerbi") -> str:
         """获取访问令牌"""
         api_type_clean = api_type.strip().lower()
         scope = ["https://api.fabric.microsoft.com/.default"] if api_type_clean == "fabric" else self.config.SCOPE
-        result = self._app.acquire_token_for_client(scopes=scope)
-        if "access_token" in result:
+        if self.config.AUTH_MODE == "interactive":
+            accounts = self._app.get_accounts()
+            if accounts:
+                result = self._app.acquire_token_silent(scope, account=accounts[0])
+                if result and "access_token" in result:
+                    return result["access_token"]
+            result = self._app.acquire_token_interactive(scopes=scope)
+        else:
+            result = self._app.acquire_token_for_client(scopes=scope)
+            
+        if result and "access_token" in result:
             return result["access_token"]
-        raise Exception(f"获取令牌失败: {result.get('error_description', '未知错误')}")
+        raise Exception(f"获取令牌失败: {result.get('error_description', '未知错误') if result else '未返回结果'}")
 
     @property
     def headers(self) -> dict:

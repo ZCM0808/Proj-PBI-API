@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Power BI API Explorer</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20260715_v4">
+    <link rel="stylesheet" href="/static/style.css?v=20260715_v5">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -269,6 +269,21 @@
                     <!-- Authentication Configs -->
                     <div style="background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; border: 1px solid var(--panel-border);">
                         <h4 style="margin: 0 0 8px 0; font-size: 0.75rem; color: #a78bfa;">Azure App Authentication</h4>
+                        
+                        <div class="settings-group" style="margin-bottom: 8px;">
+                            <label>认证模式 (Auth Mode) <span style="color: #ff6b6b;">*</span></label>
+                            <div style="display: flex; gap: 16px; margin-top: 4px; margin-bottom: 8px;">
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                                    <input type="radio" name="auth-mode" value="service_principal" checked> 
+                                    <span>Service Principal (App)</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                                    <input type="radio" name="auth-mode" value="interactive"> 
+                                    <span>Interactive (User Login)</span>
+                                </label>
+                            </div>
+                        </div>
+
                         <div class="form-group" style="margin-bottom: 8px;">
                             <label>TENANT_ID (Azure AD)</label>
                             <input type="text" id="set-tenant" name="pbi_tenant_id" class="settings-input" placeholder="e.g. c8923456-789a-bcde-f012-3456789abcde">
@@ -277,7 +292,7 @@
                             <label>CLIENT_ID (Azure App)</label>
                             <input type="text" id="set-client" name="pbi_client_id" class="settings-input" placeholder="e.g. f0123456-789a-bcde-f012-3456789abcde">
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" id="client-secret-group">
                             <label>CLIENT_SECRET (Azure App)</label>
                             <div style="position: relative; display: flex; align-items: center; margin-bottom: 8px;">
                                 <input type="password" id="set-secret" name="pbi_client_secret" class="settings-input" placeholder="e.g. 8qC8Q~xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="padding-right: 36px;">
@@ -362,6 +377,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="/static/script.js?v=52"></script>
+    <script src="/static/script.js?v=53"></script>
 </body>
 </html>

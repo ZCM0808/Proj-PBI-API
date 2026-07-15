@@ -38,6 +38,8 @@ async def update_settings(request: Request):
     try:
         data = await request.json()
         Config.update_config(data)
+        global client
+        client = PBIClient(Config())
         return {"success": True, "message": "配置保存成功！"}
     except Exception as e:
         return {"success": False, "message": str(e)}
@@ -53,33 +55,54 @@ async def verify_settings(request: Request):
         client_secret = data.get("pbi_client_secret", "").strip()
         tenant_id = data.get("pbi_tenant_id", "").strip()
 
-        if not all([client_id, client_secret, tenant_id]):
-            return {"success": False, "message": "TENANT_ID, CLIENT_ID, and CLIENT_SECRET are required for verification."}
+        auth_mode = data.get("pbi_auth_mode", "service_principal")
+
+        if auth_mode == "service_principal" and not all([client_id, client_secret, tenant_id]):
+            return {"success": False, "message": "TENANT_ID, CLIENT_ID, and CLIENT_SECRET are required for Service Principal."}
+        if auth_mode == "interactive" and not all([client_id, tenant_id]):
+            return {"success": False, "message": "TENANT_ID and CLIENT_ID are required for Interactive Login."}
 
         authority_url = f"https://login.microsoftonline.com/{tenant_id}"
-        app = ConfidentialClientApplication(
-            client_id=client_id,
-            client_credential=client_secret,
-            authority=authority_url,
-        )
+        from msal import ConfidentialClientApplication, PublicClientApplication
+        if auth_mode == "interactive":
+            app = PublicClientApplication(client_id=client_id, authority=authority_url)
+        else:
+            app = ConfidentialClientApplication(
+                client_id=client_id,
+                client_credential=client_secret,
+                authority=authority_url,
+            )
         
         # Test default PowerBI scope
         scope = ["https://analysis.windows.net/powerbi/api/.default"]
-        result = app.acquire_token_for_client(scopes=scope)
+        
+        if auth_mode == "interactive":
+            result = app.acquire_token_interactive(scopes=scope)
+        else:
+            result = app.acquire_token_for_client(scopes=scope)
         if "access_token" in result:
             app_name = "Unknown App"
             try:
-                # 尝试获取 Graph token 以提取应用名称 (PowerBI token 往往不包含 app_displayname)
-                graph_result = app.acquire_token_for_client(scopes=["https://graph.microsoft.com/.default"])
-                if "access_token" in graph_result:
-                    import base64
-                    import json
-                    token = graph_result["access_token"]
+                import base64
+                import json
+                if auth_mode == "interactive":
+                    # 对于交互式登录，Token中包含人类用户的姓名 (name)
+                    token = result["access_token"]
                     payload = token.split(".")[1]
                     payload += "=" * (-len(payload) % 4)
                     decoded = base64.b64decode(payload).decode("utf-8")
                     jwt_data = json.loads(decoded)
-                    app_name = jwt_data.get("app_displayname", "Unknown App")
+                    app_name = jwt_data.get("name", "Current User") + " (User)"
+                else:
+                    # 尝试获取 Graph token 以提取应用名称
+                    graph_result = app.acquire_token_for_client(scopes=["https://graph.microsoft.com/.default"])
+                    if "access_token" in graph_result:
+                        token = graph_result["access_token"]
+                        payload = token.split(".")[1]
+                        payload += "=" * (-len(payload) % 4)
+                        decoded = base64.b64decode(payload).decode("utf-8")
+                        jwt_data = json.loads(decoded)
+                        app_name = jwt_data.get("app_displayname", "Unknown App")
             except Exception:
                 pass
                 

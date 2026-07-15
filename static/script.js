@@ -1770,6 +1770,19 @@ const loadReqHistory = (searchTerm = "") => {
                 document.getElementById('set-secret').value = data.CLIENT_SECRET || '';
                 document.getElementById('set-tenant').value = data.TENANT_ID || '';
                 
+                // Auth Mode
+                const savedAuthMode = data.AUTH_MODE || localStorage.getItem('pbi_auth_mode') || 'service_principal';
+                const radio = document.querySelector(`input[name="auth-mode"][value="${savedAuthMode}"]`);
+                if (radio) {
+                    radio.checked = true;
+                }
+                const clientSecretGroup = document.getElementById('client-secret-group');
+                if (savedAuthMode === 'interactive' && clientSecretGroup) {
+                    clientSecretGroup.style.display = 'none';
+                } else if (clientSecretGroup) {
+                    clientSecretGroup.style.display = 'block';
+                }
+
                 loadSQLHistory();
             } catch (err) {
                 console.error('Failed to load settings:', err);
@@ -1810,15 +1823,32 @@ const loadReqHistory = (searchTerm = "") => {
             });
         }
 
+        const authModeRadios = document.querySelectorAll('input[name="auth-mode"]');
+        const clientSecretGroup = document.getElementById('client-secret-group');
+        if (authModeRadios.length > 0 && clientSecretGroup) {
+            authModeRadios.forEach(r => r.addEventListener('change', (e) => {
+                if (e.target.value === 'interactive') {
+                    clientSecretGroup.style.display = 'none';
+                } else {
+                    clientSecretGroup.style.display = 'block';
+                }
+            }));
+        }
+
         const verifySettingsBtn = document.getElementById('verify-settings-btn');
         if (verifySettingsBtn) {
             verifySettingsBtn.addEventListener('click', async () => {
                 const clientId = document.getElementById('set-client').value.trim();
                 const clientSecret = document.getElementById('set-secret').value.trim();
                 const tenantId = document.getElementById('set-tenant').value.trim();
+                const authMode = document.querySelector('input[name="auth-mode"]:checked')?.value || 'service_principal';
 
-                if (!clientId || !clientSecret || !tenantId) {
+                if (authMode === 'service_principal' && (!clientId || !clientSecret || !tenantId)) {
                     alert("请先填写 TENANT_ID, CLIENT_ID, 和 CLIENT_SECRET！");
+                    return;
+                }
+                if (authMode === 'interactive' && (!clientId || !tenantId)) {
+                    alert("Interactive 模式需要填写 TENANT_ID 和 CLIENT_ID！");
                     return;
                 }
 
@@ -1833,7 +1863,8 @@ const loadReqHistory = (searchTerm = "") => {
                         body: JSON.stringify({
                             pbi_client_id: clientId,
                             pbi_client_secret: clientSecret,
-                            pbi_tenant_id: tenantId
+                            pbi_tenant_id: tenantId,
+                            pbi_auth_mode: authMode
                         })
                     });
                     const result = await res.json();
@@ -1903,11 +1934,15 @@ const loadReqHistory = (searchTerm = "") => {
             localStorage.setItem('pbi_reports', JSON.stringify(window.getListData('report-list')));
             window.renderContextDropdowns();
             
+            const authMode = document.querySelector('input[name="auth-mode"]:checked')?.value || 'service_principal';
+            localStorage.setItem('pbi_auth_mode', authMode);
+            
             const payload = {
                 SQL_CONN_STR: document.getElementById('set-sql').value.replace(/\r?\n|\r/g, '').trim(),
                 CLIENT_ID: document.getElementById('set-client').value.trim(),
                 CLIENT_SECRET: document.getElementById('set-secret').value.trim(),
-                TENANT_ID: document.getElementById('set-tenant').value.trim()
+                TENANT_ID: document.getElementById('set-tenant').value.trim(),
+                AUTH_MODE: authMode
             };
 
             // 存入自定义的 SQL 历史记录
