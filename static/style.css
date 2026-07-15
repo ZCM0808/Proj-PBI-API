@@ -768,26 +768,26 @@ textarea:focus {
 .form-group {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
 }
 .form-group label {
-    font-size: 0.95rem;
+    font-size: 0.8rem;
     font-weight: 500;
     color: var(--text-secondary);
 }
 .settings-input {
     width: 100%;
-    padding: 12px 14px;
-    font-size: 1.05rem;
+    padding: 6px 10px;
+    font-size: 0.85rem;
     font-family: 'Fira Code', monospace;
     background: rgba(0,0,0,0.2);
     border: 1px solid var(--panel-border);
-    border-radius: 6px;
+    border-radius: 4px;
     color: white;
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 textarea.settings-input {
-    font-size: 0.95rem; /* 稍微缩小多行文本域的字体，便于容纳长连接字符串 */
+    font-size: 0.85rem; /* 稍微小点字体，容纳长字符串 */
 }
 .settings-input:focus {
     outline: none;
@@ -797,13 +797,13 @@ textarea.settings-input {
 
 .btn-settings-save {
     width: 100%;
-    padding: 14px 24px;
-    font-size: 1.1rem;
+    padding: 8px 16px;
+    font-size: 0.9rem;
     font-weight: bold;
     background: var(--accent);
     color: white;
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
     cursor: pointer;
     transition: all 0.2s;
 }
