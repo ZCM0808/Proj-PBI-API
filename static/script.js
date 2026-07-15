@@ -47,6 +47,67 @@ window.addListRow = function(containerId, alias = "", id = "") {
     container.appendChild(row);
 };
 
+window.scanItems = async function(type, event) {
+    const btn = event.currentTarget;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '⏳ Scanning...';
+    btn.disabled = true;
+    
+    try {
+        const res = await fetch(`/api/scan/${type}`);
+        const data = await res.json();
+        
+        if (data.success && data.data && data.data.length > 0) {
+            const modal = document.getElementById('scan-modal');
+            const title = document.getElementById('scan-modal-title');
+            const container = document.getElementById('scan-results-container');
+            const addBtn = document.getElementById('scan-modal-add-btn');
+            
+            title.textContent = `🔍 Scan Results: ${type.charAt(0).toUpperCase() + type.slice(1)} (${data.data.length} found)`;
+            container.innerHTML = '';
+            
+            data.data.forEach(item => {
+                const row = document.createElement('label');
+                row.style.cssText = 'display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background 0.2s;';
+                row.onmouseover = () => row.style.background = 'rgba(255,255,255,0.05)';
+                row.onmouseout = () => row.style.background = 'transparent';
+                
+                row.innerHTML = `
+                    <input type="checkbox" value="${item.id}" data-name="${item.name.replace(/"/g, '&quot;')}" checked>
+                    <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8rem;" title="${item.name}">${item.name}</span>
+                    <span style="color: var(--text-secondary); font-size: 0.7rem; font-family: monospace;">${item.id}</span>
+                `;
+                container.appendChild(row);
+            });
+            
+            modal.style.display = 'flex';
+            
+            addBtn.onclick = () => {
+                const checked = container.querySelectorAll('input[type="checkbox"]:checked');
+                const targetListId = type === 'workspaces' ? 'workspace-list' : (type === 'datasets' ? 'dataset-list' : 'report-list');
+                
+                const listContainer = document.getElementById(targetListId);
+                const currentInputs = listContainer.querySelectorAll('.id-input');
+                if (currentInputs.length === 1 && !currentInputs[0].value) {
+                    listContainer.innerHTML = '';
+                }
+
+                checked.forEach(cb => {
+                    window.addListRow(targetListId, cb.getAttribute('data-name'), cb.value);
+                });
+                modal.style.display = 'none';
+            };
+        } else {
+            alert(`No ${type} found, or scan failed.\nMessage: ` + (data.error || 'Empty result'));
+        }
+    } catch (e) {
+        alert('Scan Error: ' + e);
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+};
+
 window.getListData = function(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return [];

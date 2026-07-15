@@ -12,7 +12,6 @@ class Config:
     CLIENT_ID: str = os.getenv("PBI_CLIENT_ID", "")
     CLIENT_SECRET: str = os.getenv("PBI_CLIENT_SECRET", "")
     TENANT_ID: str = os.getenv("PBI_TENANT_ID", "")
-    AUTH_MODE: str = os.getenv("PBI_AUTH_MODE", "service_principal")
     AUTHORITY: str = os.getenv("PBI_AUTHORITY", "https://login.microsoftonline.com/")
     SCOPE: list[str] = [
         os.getenv("PBI_SCOPE", "https://analysis.windows.net/powerbi/api/.default")
@@ -38,7 +37,6 @@ class Config:
             "CLIENT_ID": cls.CLIENT_ID,
             "CLIENT_SECRET": cls.CLIENT_SECRET,
             "TENANT_ID": cls.TENANT_ID,
-            "AUTH_MODE": cls.AUTH_MODE,
             "SQL_CONN_STR": cls.SQL_CONN_STR,
             "WORKSPACE_ID": cls.WORKSPACE_ID,
             "DATASET_ID": cls.DATASET_ID,

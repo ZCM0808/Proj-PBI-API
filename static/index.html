@@ -273,21 +273,7 @@
                             <button type="button" id="verify-settings-btn" title="Verify Auth" style="background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; cursor: pointer; font-size: 0.7rem; border-radius: 4px; padding: 2px 6px;">⚡</button>
                         </div>
                         
-                        <div class="settings-group" style="margin-bottom: 8px;">
-                            <label>认证模式 (Auth Mode) <span style="color: #ff6b6b;">*</span></label>
-                            <div style="display: flex; gap: 16px; margin-top: 4px; margin-bottom: 8px;">
-                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
-                                    <input type="radio" name="auth-mode" value="service_principal" checked> 
-                                    <span>Service Principal (App)</span>
-                                </label>
-                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
-                                    <input type="radio" name="auth-mode" value="interactive"> 
-                                    <span>Interactive (User Login)</span>
-                                </label>
-                            </div>
-                        </div>
 
-                        <div class="form-group" style="margin-bottom: 8px;">
                             <label>TENANT_ID (Azure AD)</label>
                             <input type="text" id="set-tenant" name="pbi_tenant_id" class="settings-input" placeholder="e.g. c8923456-789a-bcde-f012-3456789abcde">
                         </div>
@@ -330,21 +316,30 @@
                     <div class="form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label>PBI_WORKSPACES (工作区字典)</label>
-                            <button type="button" onclick="addListRow('workspace-list')" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; border-radius: 4px; cursor: pointer;">+ Add</button>
+                            <div style="display: flex; gap: 6px;">
+                                <button type="button" onclick="scanItems('workspaces', event)" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.3); color: #a78bfa; border-radius: 4px; cursor: pointer;">🔍 Scan</button>
+                                <button type="button" onclick="addListRow('workspace-list')" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; border-radius: 4px; cursor: pointer;">+ Add</button>
+                            </div>
                         </div>
                         <div id="workspace-list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
                     </div>
                     <div class="form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label>PBI_DATASETS (数据集字典)</label>
-                            <button type="button" onclick="addListRow('dataset-list')" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; border-radius: 4px; cursor: pointer;">+ Add</button>
+                            <div style="display: flex; gap: 6px;">
+                                <button type="button" onclick="scanItems('datasets', event)" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.3); color: #a78bfa; border-radius: 4px; cursor: pointer;">🔍 Scan</button>
+                                <button type="button" onclick="addListRow('dataset-list')" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; border-radius: 4px; cursor: pointer;">+ Add</button>
+                            </div>
                         </div>
                         <div id="dataset-list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
                     </div>
                     <div class="form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label>PBI_REPORTS (报表字典)</label>
-                            <button type="button" onclick="addListRow('report-list')" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; border-radius: 4px; cursor: pointer;">+ Add</button>
+                            <div style="display: flex; gap: 6px;">
+                                <button type="button" onclick="scanItems('reports', event)" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.3); color: #a78bfa; border-radius: 4px; cursor: pointer;">🔍 Scan</button>
+                                <button type="button" onclick="addListRow('report-list')" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; border-radius: 4px; cursor: pointer;">+ Add</button>
+                            </div>
                         </div>
                         <div id="report-list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
                     </div>
@@ -372,6 +367,25 @@
             <div class="confirm-modal-footer">
                 <button id="confirm-cancel-btn" class="btn-cancel" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-primary); padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; transition: background 0.2s;">取消</button>
                 <button id="confirm-proceed-btn" class="btn-primary btn-warning-action" style="padding: 6px 14px; border-radius: 4px; font-size: 0.8rem; cursor: pointer;">确认发送</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scan Results Modal -->
+    <div id="scan-modal" class="modal-overlay" style="display: none; z-index: 2000;">
+        <div class="modal-content glass-panel" style="width: 500px; padding: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 id="scan-modal-title" style="margin: 0; font-size: 1rem;">🔍 扫描结果 (Scan Results)</h3>
+                <button type="button" onclick="document.getElementById('scan-modal').style.display='none'" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.2rem;">&times;</button>
+            </div>
+            <div style="margin-bottom: 8px; font-size: 0.8rem; color: var(--text-secondary);">
+                勾选需要添加到配置面板的项目 (Select items to add to config):
+            </div>
+            <div id="scan-results-container" style="max-height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; background: rgba(0,0,0,0.2); border-radius: 6px; border: 1px solid var(--panel-border); padding: 8px;">
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn-pipeline" style="background: rgba(255,255,255,0.1); color: #fff; width: auto; padding: 6px 12px;" onclick="document.getElementById('scan-modal').style.display='none'">取消 (Cancel)</button>
+                <button type="button" class="btn-pipeline" style="width: auto; padding: 6px 12px; background: rgba(167, 139, 250, 0.2); color: #a78bfa; border: 1px solid rgba(167, 139, 250, 0.3);" id="scan-modal-add-btn">✅ 添加选中项 (Add Selected)</button>
             </div>
         </div>
     </div>

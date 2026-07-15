@@ -48,70 +48,50 @@ async def update_settings(request: Request):
 @app.post("/api/settings/verify")
 async def verify_settings(request: Request):
     """验证客户端凭证"""
-    from msal import ConfidentialClientApplication # type: ignore[import-untyped]
     try:
         data = await request.json()
         client_id = data.get("pbi_client_id", "").strip()
         client_secret = data.get("pbi_client_secret", "").strip()
         tenant_id = data.get("pbi_tenant_id", "").strip()
 
-        auth_mode = data.get("pbi_auth_mode", "service_principal")
-
-        if auth_mode == "service_principal" and not all([client_id, client_secret, tenant_id]):
+        if not all([client_id, client_secret, tenant_id]):
             return {"success": False, "message": "TENANT_ID, CLIENT_ID, and CLIENT_SECRET are required for Service Principal."}
-        if auth_mode == "interactive" and not all([client_id, tenant_id]):
-            return {"success": False, "message": "TENANT_ID and CLIENT_ID are required for Interactive Login."}
 
         authority_url = f"https://login.microsoftonline.com/{tenant_id}"
-        from msal import ConfidentialClientApplication, PublicClientApplication
-        if auth_mode == "interactive":
-            app = PublicClientApplication(client_id=client_id, authority=authority_url)
-        else:
-            app = ConfidentialClientApplication(
-                client_id=client_id,
-                client_credential=client_secret,
-                authority=authority_url,
-            )
+        from msal import ConfidentialClientApplication
+        app = ConfidentialClientApplication(
+            client_id=client_id,
+            client_credential=client_secret,
+            authority=authority_url,
+        )
         
         # Test default PowerBI scope
         scope = ["https://analysis.windows.net/powerbi/api/.default"]
         
         import asyncio
-        if auth_mode == "interactive":
-            result = await asyncio.to_thread(app.acquire_token_interactive, scopes=scope)
-        else:
-            result = await asyncio.to_thread(app.acquire_token_for_client, scopes=scope)
+        result = await asyncio.to_thread(app.acquire_token_for_client, scopes=scope)
+        
         if "access_token" in result:
             app_name = "Unknown App"
             try:
                 import base64
                 import json
-                if auth_mode == "interactive":
-                    # 对于交互式登录，Token中包含人类用户的姓名 (name)
-                    token = result["access_token"]
+                # 尝试获取 Graph token 以提取应用名称
+                graph_result = await asyncio.to_thread(app.acquire_token_for_client, scopes=["https://graph.microsoft.com/.default"])
+                if "access_token" in graph_result:
+                    token = graph_result["access_token"]
                     payload = token.split(".")[1]
-                    payload += "=" * (-len(payload) % 4)
-                    decoded = base64.b64decode(payload).decode("utf-8")
-                    jwt_data = json.loads(decoded)
-                    app_name = jwt_data.get("name", "Current User") + " (User)"
-                else:
-                    # 尝试获取 Graph token 以提取应用名称
-                    graph_result = await asyncio.to_thread(app.acquire_token_for_client, scopes=["https://graph.microsoft.com/.default"])
-                    if "access_token" in graph_result:
-                        token = graph_result["access_token"]
-                        payload = token.split(".")[1]
-                        payload += "=" * (-len(payload) % 4)
-                        decoded = base64.b64decode(payload).decode("utf-8")
-                        jwt_data = json.loads(decoded)
-                        app_name = jwt_data.get("app_displayname", "Unknown App")
+                    payload += "=" * ((4 - len(payload) % 4) % 4)
+                    jwt_data = json.loads(base64.b64decode(payload).decode('utf-8'))
+                    app_name = jwt_data.get("app_displayname") or jwt_data.get("name") or "Service Principal"
             except Exception:
                 pass
                 
-            return {"success": True, "message": "验证成功！(Authentication Successful)", "app_name": app_name, "tenant_id": tenant_id}
-        else:
-            return {"success": False, "message": f"验证失败: {result.get('error_description', '未知错误')}"}
+            return {"success": True, "message": f"凭证验证成功！(Auth Success)\nClient App: {app_name}"}
+        
+        return {"success": False, "message": f"Auth failed: {result.get('error_description', result.get('error', 'Unknown Error'))}"}
     except Exception as e:
-        return {"success": False, "message": f"验证异常: {str(e)}"}
+        return {"success": False, "message": f"Server Error: {str(e)}"}
 
 
 @app.post("/api/settings/verify-sql")
@@ -190,6 +170,37 @@ def main():
     print("Please visit: http://127.0.0.1:8000")
     uvicorn.run("src.main:app", host="127.0.0.1", port=8000, reload=True)
 
+
+@app.get("/api/scan/{item_type}")
+async def scan_pbi_items(item_type: str, workspace_id: str | None = None):
+    """Scan workspaces, datasets, or reports"""
+    import asyncio
+    global client
+    
+    if item_type == "workspaces":
+        endpoint = "https://api.powerbi.com/v1.0/myorg/groups"
+    elif item_type == "datasets":
+        if workspace_id:
+            endpoint = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets"
+        else:
+            endpoint = "https://api.powerbi.com/v1.0/myorg/datasets"
+    elif item_type == "reports":
+        if workspace_id:
+            endpoint = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/reports"
+        else:
+            endpoint = "https://api.powerbi.com/v1.0/myorg/reports"
+    else:
+        return {"success": False, "error": "Invalid item type"}
+
+    try:
+        response_data = await asyncio.to_thread(
+            client.request, "GET", endpoint
+        )
+        items = response_data.get("value", [])
+        result = [{"id": item.get("id"), "name": item.get("name")} for item in items]
+        return {"success": True, "data": result}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 if __name__ == "__main__":
     main()
