@@ -69,13 +69,16 @@ async def verify_settings(request: Request):
         if "access_token" in result:
             app_name = "Unknown App"
             try:
-                import base64, json
-                token = result["access_token"]
-                payload = token.split(".")[1]
-                payload += "=" * (-len(payload) % 4)
-                decoded = base64.b64decode(payload).decode("utf-8")
-                jwt_data = json.loads(decoded)
-                app_name = jwt_data.get("app_displayname", "Unknown App")
+                # 尝试获取 Graph token 以提取应用名称 (PowerBI token 往往不包含 app_displayname)
+                graph_result = app.acquire_token_for_client(scopes=["https://graph.microsoft.com/.default"])
+                if "access_token" in graph_result:
+                    import base64, json
+                    token = graph_result["access_token"]
+                    payload = token.split(".")[1]
+                    payload += "=" * (-len(payload) % 4)
+                    decoded = base64.b64decode(payload).decode("utf-8")
+                    jwt_data = json.loads(decoded)
+                    app_name = jwt_data.get("app_displayname", "Unknown App")
             except Exception:
                 pass
                 
