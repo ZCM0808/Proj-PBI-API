@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Power BI API Explorer</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20260715_v5">
+    <link rel="stylesheet" href="/static/style.css?v=20260715_v6">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -268,7 +268,10 @@
 
                     <!-- Authentication Configs -->
                     <div style="background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; border: 1px solid var(--panel-border);">
-                        <h4 style="margin: 0 0 8px 0; font-size: 0.75rem; color: #a78bfa;">Azure App Authentication</h4>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <h4 style="margin: 0; font-size: 0.75rem; color: #a78bfa;">Azure App Authentication</h4>
+                            <button type="button" id="verify-settings-btn" style="font-size: 0.75rem; background: rgba(167, 139, 250, 0.2); color: #a78bfa; border: 1px solid rgba(167, 139, 250, 0.3); border-radius: 4px; padding: 2px 8px; cursor: pointer; display: flex; align-items: center; gap: 4px;">⚡ 验证凭证</button>
+                        </div>
                         
                         <div class="settings-group" style="margin-bottom: 8px;">
                             <label>认证模式 (Auth Mode) <span style="color: #ff6b6b;">*</span></label>
@@ -307,7 +310,6 @@
                                     </svg>
                                 </button>
                             </div>
-                            <button type="button" id="verify-settings-btn" class="btn-settings-save" style="background: rgba(167, 139, 250, 0.2); color: #a78bfa; width: 100%; padding: 4px; font-size: 0.8rem;">⚡ 验证凭证 (Verify Auth)</button>
                         </div>
                     </div>
 
@@ -318,7 +320,7 @@
                         <div style="display: flex; justify-content: space-between; align-items: center; position: relative;">
                             <label>SQL_CONN_STR (数据库连接字符串)</label>
                             <div style="display: flex; gap: 6px;">
-                                <button type="button" id="verify-sql-btn" style="font-size: 0.75rem; background: rgba(52, 211, 153, 0.2); color: #34d399; border: 1px solid var(--panel-border); border-radius: 4px; padding: 2px 6px; cursor: pointer;">⚡ 验证 (Verify)</button>
+                                <button type="button" id="verify-sql-btn" style="font-size: 0.75rem; background: rgba(167, 139, 250, 0.2); color: #a78bfa; border: 1px solid rgba(167, 139, 250, 0.3); border-radius: 4px; padding: 2px 8px; cursor: pointer; display: flex; align-items: center; gap: 4px;">⚡ 验证连接</button>
                                 <button type="button" id="sql-history-btn" style="font-size: 0.75rem; background: rgba(0,0,0,0.3); color: var(--text-secondary); border: 1px solid var(--panel-border); border-radius: 4px; padding: 2px 6px; cursor: pointer; display: none;">📜 历史记录</button>
                             </div>
                             <div id="sql-history-dropdown" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: #1f2428; border: 1px solid var(--panel-border); border-radius: 6px; z-index: 1000; width: 350px; max-height: 250px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
@@ -377,6 +379,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="/static/script.js?v=53"></script>
+    <script src="/static/script.js?v=54"></script>
 </body>
 </html>

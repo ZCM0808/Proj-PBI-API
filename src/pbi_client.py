@@ -1,7 +1,8 @@
 """Power BI REST API 客户端"""
 
+import os
 import requests
-from msal import ConfidentialClientApplication, PublicClientApplication  # type: ignore[import-untyped]
+from msal import ConfidentialClientApplication, PublicClientApplication, SerializableTokenCache  # type: ignore[import-untyped]
 from src.config import Config
 
 
@@ -10,17 +11,30 @@ class PBIClient:
 
     def __init__(self, config: Config | None = None):
         self.config = config or Config()
+        self.cache = SerializableTokenCache()
+        self.cache_file = ".msal_token_cache.json"
+        if os.path.exists(self.cache_file):
+            with open(self.cache_file, "r") as f:
+                self.cache.deserialize(f.read())
+
         if self.config.AUTH_MODE == "interactive":
             self._app = PublicClientApplication(
                 client_id=self.config.CLIENT_ID,
                 authority=self.config.authority_url,
+                token_cache=self.cache
             )
         else:
             self._app = ConfidentialClientApplication(
                 client_id=self.config.CLIENT_ID,
                 client_credential=self.config.CLIENT_SECRET,
                 authority=self.config.authority_url,
+                token_cache=self.cache
             )
+
+    def _save_cache(self):
+        if self.cache.has_state_changed:
+            with open(self.cache_file, "w") as f:
+                f.write(self.cache.serialize())
 
     def _get_token(self, api_type: str = "powerbi") -> str:
         """获取访问令牌"""
@@ -31,11 +45,13 @@ class PBIClient:
             if accounts:
                 result = self._app.acquire_token_silent(scope, account=accounts[0])
                 if result and "access_token" in result:
+                    self._save_cache()
                     return result["access_token"]
             result = self._app.acquire_token_interactive(scopes=scope)
         else:
             result = self._app.acquire_token_for_client(scopes=scope)
             
+        self._save_cache()
         if result and "access_token" in result:
             return result["access_token"]
         raise Exception(f"获取令牌失败: {result.get('error_description', '未知错误') if result else '未返回结果'}")
