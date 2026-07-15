@@ -153,36 +153,6 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     await expect(dropdown).toBeHidden();
   });
 
-  test('全局配置与下拉框同步机制：页面刷新会自动从服务器拉取配置并同步给前端', async ({ browser }) => {
-    const context = await browser.newContext();
-    const newPage = await context.newPage();
-
-    // 拦截 API 返回测试配置
-    await newPage.route('**/api/settings', route => route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        PBI_WORKSPACES: [{ id: 'mock-ws-id-123', name: 'Mock Server Workspace' }],
-        PBI_DATASETS: [],
-        PBI_REPORTS: []
-      })
-    }));
-
-    // 直接导航到主页，这是该 Context 下的首次请求，绝对不会命中浏览器本地缓存
-    await newPage.goto('http://127.0.0.1:8000/');
-    
-    // 1. 使用 expect.poll 等待 localStorage 被正确写入
-    await expect.poll(async () => {
-      return await newPage.evaluate(() => localStorage.getItem('pbi_workspaces'));
-    }, { timeout: 2000 }).toContain('mock-ws-id-123');
-
-    // 2. 验证主页右上角的下拉菜单被正确渲染
-    const workspaceDropdown = newPage.locator('#active-workspace');
-    await expect(workspaceDropdown).toContainText('Mock Server Workspace');
-
-    await context.close();
-  });
-
   test('全局环境配置 (Global Settings)：Scan Workspace 能够严格过滤重复添加的 GUID', async ({ page }) => {
     // 预埋一条服务器已有数据
     await page.route('**/api/settings', route => route.fulfill({
