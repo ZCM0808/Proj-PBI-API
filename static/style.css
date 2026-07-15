@@ -352,22 +352,6 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.2);
 }
-
-.top-bar {
-    padding: 1rem 0;
-}
-
-.top-bar h1 {
-    font-size: 1.75rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-}
-
-.top-bar p {
-    color: var(--text-secondary);
-    font-size: 0.95rem;
-}
-
 /* Request Builder */
 .request-builder { 
     padding: 1.5rem;
