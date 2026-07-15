@@ -11,7 +11,7 @@ module.exports = defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'python src/main.py',
+    command: process.platform === 'win32' ? '.venv\\\\Scripts\\\\python.exe src/main.py' : '.venv/bin/python src/main.py',
     url: 'http://127.0.0.1:8000',
     reuseExistingServer: !process.env.CI,
     stdout: 'ignore',
