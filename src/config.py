@@ -22,9 +22,12 @@ class Config:
     # Smart DataOps Pipeline 共享配置
     # ==========================================
     SQL_CONN_STR: str = os.getenv("SQL_CONN_STR", "")
-    WORKSPACE_ID: str = os.getenv("PBI_WORKSPACE_ID", "")
-    DATASET_ID: str = os.getenv("PBI_DATASET_ID", "")
-    REPORT_ID: str = os.getenv("PBI_REPORT_ID", "")
+    
+    import json
+
+    PBI_WORKSPACES: list = json.loads(os.getenv("PBI_WORKSPACES", "[]")) if os.getenv("PBI_WORKSPACES") else []
+    PBI_DATASETS: list = json.loads(os.getenv("PBI_DATASETS", "[]")) if os.getenv("PBI_DATASETS") else []
+    PBI_REPORTS: list = json.loads(os.getenv("PBI_REPORTS", "[]")) if os.getenv("PBI_REPORTS") else []
 
     @property
     def authority_url(self) -> str:
@@ -38,9 +41,9 @@ class Config:
             "CLIENT_SECRET": cls.CLIENT_SECRET,
             "TENANT_ID": cls.TENANT_ID,
             "SQL_CONN_STR": cls.SQL_CONN_STR,
-            "WORKSPACE_ID": cls.WORKSPACE_ID,
-            "DATASET_ID": cls.DATASET_ID,
-            "REPORT_ID": cls.REPORT_ID,
+            "PBI_WORKSPACES": cls.PBI_WORKSPACES,
+            "PBI_DATASETS": cls.PBI_DATASETS,
+            "PBI_REPORTS": cls.PBI_REPORTS,
         }
 
     @classmethod
@@ -56,12 +59,14 @@ class Config:
             "TENANT_ID": "PBI_TENANT_ID",
             "AUTH_MODE": "PBI_AUTH_MODE",
             "SQL_CONN_STR": "SQL_CONN_STR",
-            "WORKSPACE_ID": "PBI_WORKSPACE_ID",
-            "DATASET_ID": "PBI_DATASET_ID",
-            "REPORT_ID": "PBI_REPORT_ID",
+            "PBI_WORKSPACES": "PBI_WORKSPACES",
+            "PBI_DATASETS": "PBI_DATASETS",
+            "PBI_REPORTS": "PBI_REPORTS",
         }
 
         for k, v in updates.items():
             if hasattr(cls, k) and k in key_map:
                 setattr(cls, k, v)
-                set_key(env_file, key_map[k], v)
+                import json
+                val_to_save = json.dumps(v, ensure_ascii=False) if isinstance(v, list) else v
+                set_key(env_file, key_map[k], val_to_save)
