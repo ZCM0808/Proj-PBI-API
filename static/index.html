@@ -226,7 +226,11 @@
                 <div class="response-header">
                     <span>Response</span>
                     <div style="margin-left:auto; display:flex; gap:12px; align-items:center;">
-                        <button id="view-toggle-btn" class="icon-btn" style="padding: 2px 8px; font-size:0.75rem; border: 1px solid var(--panel-border); background: rgba(0,0,0,0.2); border-radius: 4px; display: none;">Tree View</button>
+                        <div id="view-mode-toggles" style="display: none; gap: 4px; border: 1px solid var(--panel-border); border-radius: 4px; overflow: hidden; background: rgba(0,0,0,0.2);">
+                            <button class="view-mode-btn" data-mode="table" style="border:none; background:transparent; color:var(--text-secondary); padding: 2px 8px; font-size:0.7rem; cursor:pointer;" title="Table View">Table</button>
+                            <button class="view-mode-btn active" data-mode="tree" style="border:none; background:var(--accent); color:#fff; padding: 2px 8px; font-size:0.7rem; cursor:pointer;" title="Tree View">Tree</button>
+                            <button class="view-mode-btn" data-mode="raw" style="border:none; background:transparent; color:var(--text-secondary); padding: 2px 8px; font-size:0.7rem; cursor:pointer;" title="Raw JSON">Raw</button>
+                        </div>
                         <div class="response-status" id="response-status">Waiting for request...</div>
                     </div>
                 </div>
@@ -393,6 +397,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="/static/script.js?v=20260715_v9"></script>
+    <script src="/static/script.js?v=20260715_v10"></script>
 </body>
 </html>

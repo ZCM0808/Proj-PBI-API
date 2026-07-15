@@ -1232,26 +1232,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                 responseOutput.className = 'json-viewer';
                 responseOutput.style.color = '#a78bfa';
                 window.currentJsonResponse = data.data;
-                const toggleBtn = document.getElementById('view-toggle-btn');
-                if (toggleBtn) {
-                    toggleBtn.style.display = 'block';
-                    toggleBtn.textContent = 'Raw View';
-                }
+                const toggleGroup = document.getElementById('view-mode-toggles');
+                if (toggleGroup) toggleGroup.style.display = 'flex';
+                
+                // Default to Tree or Table view
                 if (typeof renderJsonTree === 'function') {
-                    renderJsonTree(data.data, responseOutput);
+                    if (Array.isArray(data.data) || (data.data && Array.isArray(data.data.value))) {
+                        updateViewMode('table');
+                    } else {
+                        updateViewMode('tree');
+                    }
                 }
             } else {
                 responseStatus.textContent = `Error`;
                 responseStatus.className = 'response-status status-error';
                 responseOutput.textContent = JSON.stringify(data.error || data, null, 2);
                 window.currentJsonResponse = data.error || data;
-                const toggleBtn = document.getElementById('view-toggle-btn');
-                if (toggleBtn) {
-                    toggleBtn.style.display = 'block';
-                    toggleBtn.textContent = 'Raw View';
-                }
+                const toggleGroup = document.getElementById('view-mode-toggles');
+                if (toggleGroup) toggleGroup.style.display = 'flex';
+                
                 if (typeof renderJsonTree === 'function') {
-                    renderJsonTree(window.currentJsonResponse, responseOutput);
+                    updateViewMode('tree');
                 }
             }
 
@@ -1261,8 +1262,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             responseOutput.textContent = err.message;
             responseOutput.style.color = '#ef4444';
             window.currentJsonResponse = null;
-            const toggleBtn = document.getElementById('view-toggle-btn');
-            if (toggleBtn) toggleBtn.style.display = 'none';
+            const toggleGroup = document.getElementById('view-mode-toggles');
+            if (toggleGroup) toggleGroup.style.display = 'none';
         } finally {
             sendBtn.disabled = false;
             sendBtn.innerHTML = `
@@ -2079,22 +2080,138 @@ const loadReqHistory = (searchTerm = "") => {
     });
 });
 
-document.addEventListener('DOMContentLoaded', () => {
-    const toggleBtn = document.getElementById('view-toggle-btn');
-    if(toggleBtn) {
-        toggleBtn.addEventListener('click', () => {
-            const out = document.getElementById('response-output');
-            if(!window.currentJsonResponse) return;
-            if(toggleBtn.textContent === 'Raw View') {
-                out.innerHTML = syntaxHighlight(window.currentJsonResponse);
-                out.className = 'json-viewer';
-                toggleBtn.textContent = 'Tree View';
-            } else {
-                renderJsonTree(window.currentJsonResponse, out);
-                toggleBtn.textContent = 'Raw View';
+function renderJsonTable(data, container) {
+    container.innerHTML = '';
+    container.className = 'json-table-viewer';
+    
+    let arr = null;
+    if (Array.isArray(data)) {
+        arr = data;
+    } else if (data && typeof data === 'object' && Array.isArray(data.value)) {
+        arr = data.value;
+    }
+    
+    if (arr && arr.length > 0 && typeof arr[0] === 'object') {
+        const keys = new Set();
+        arr.forEach(item => {
+            if(item && typeof item === 'object') {
+                Object.keys(item).forEach(k => keys.add(k));
             }
         });
+        const columns = Array.from(keys);
+        
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = "width: 100%; overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.8rem;";
+        
+        const table = document.createElement('table');
+        table.style.cssText = "width: 100%; border-collapse: collapse; text-align: left;";
+        
+        const thead = document.createElement('thead');
+        const trHead = document.createElement('tr');
+        columns.forEach(col => {
+            const th = document.createElement('th');
+            th.textContent = col;
+            th.style.cssText = "border: 1px solid var(--panel-border); padding: 8px; background: rgba(0,0,0,0.2); color: var(--text-secondary); white-space: nowrap;";
+            trHead.appendChild(th);
+        });
+        thead.appendChild(trHead);
+        table.appendChild(thead);
+        
+        const tbody = document.createElement('tbody');
+        arr.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.style.cssText = "transition: background 0.2s; cursor: default;";
+            tr.onmouseover = () => tr.style.background = "rgba(255,255,255,0.02)";
+            tr.onmouseout = () => tr.style.background = "transparent";
+            columns.forEach(col => {
+                const td = document.createElement('td');
+                td.style.cssText = "border: 1px solid var(--panel-border); padding: 8px; color: var(--text-primary); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;";
+                let val = item ? item[col] : undefined;
+                if (typeof val === 'object' && val !== null) {
+                    td.textContent = JSON.stringify(val);
+                } else {
+                    td.textContent = val !== undefined && val !== null ? String(val) : '';
+                }
+                td.title = td.textContent; // Tooltip for truncated text
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        wrapper.appendChild(table);
+        container.appendChild(wrapper);
+    } else {
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = "width: 100%; overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.8rem;";
+        const table = document.createElement('table');
+        table.style.cssText = "width: 100%; border-collapse: collapse; text-align: left;";
+        
+        const thead = document.createElement('thead');
+        const trHead = document.createElement('tr');
+        trHead.innerHTML = '<th style="border: 1px solid var(--panel-border); padding: 8px; background: rgba(0,0,0,0.2); color: var(--text-secondary); width: 30%;">Key</th><th style="border: 1px solid var(--panel-border); padding: 8px; background: rgba(0,0,0,0.2); color: var(--text-secondary);">Value</th>';
+        thead.appendChild(trHead);
+        table.appendChild(thead);
+        
+        const tbody = document.createElement('tbody');
+        for (const [k, v] of Object.entries(data || {})) {
+            const tr = document.createElement('tr');
+            tr.style.cssText = "transition: background 0.2s; cursor: default;";
+            tr.onmouseover = () => tr.style.background = "rgba(255,255,255,0.02)";
+            tr.onmouseout = () => tr.style.background = "transparent";
+            
+            const th = document.createElement('td');
+            th.textContent = k;
+            th.style.cssText = "border: 1px solid var(--panel-border); padding: 8px; color: var(--accent); font-weight: 500; white-space: nowrap;";
+            
+            const td = document.createElement('td');
+            td.style.cssText = "border: 1px solid var(--panel-border); padding: 8px; color: var(--text-primary); max-width: 500px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;";
+            if (typeof v === 'object' && v !== null) {
+                td.textContent = JSON.stringify(v);
+            } else {
+                td.textContent = v !== undefined && v !== null ? String(v) : '';
+            }
+            td.title = td.textContent;
+            
+            tr.appendChild(th);
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+        }
+        table.appendChild(tbody);
+        wrapper.appendChild(table);
+        container.appendChild(wrapper);
     }
+}
+
+window.updateViewMode = function(mode) {
+    if (!window.currentJsonResponse) return;
+    const out = document.getElementById('response-output');
+    const btns = document.querySelectorAll('.view-mode-btn');
+    
+    btns.forEach(b => {
+        if (b.getAttribute('data-mode') === mode) {
+            b.style.background = 'var(--accent)';
+            b.style.color = '#fff';
+        } else {
+            b.style.background = 'transparent';
+            b.style.color = 'var(--text-secondary)';
+        }
+    });
+
+    if (mode === 'raw') {
+        out.innerHTML = syntaxHighlight(window.currentJsonResponse);
+        out.className = 'json-viewer';
+    } else if (mode === 'tree') {
+        renderJsonTree(window.currentJsonResponse, out);
+    } else if (mode === 'table') {
+        renderJsonTable(window.currentJsonResponse, out);
+    }
+};
+
+const viewModeBtns = document.querySelectorAll('.view-mode-btn');
+viewModeBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        updateViewMode(e.target.getAttribute('data-mode'));
+    });
 });
 
 function renderJsonTree(data, container) {
