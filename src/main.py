@@ -72,7 +72,8 @@ async def verify_settings(request: Request):
                 # 尝试获取 Graph token 以提取应用名称 (PowerBI token 往往不包含 app_displayname)
                 graph_result = app.acquire_token_for_client(scopes=["https://graph.microsoft.com/.default"])
                 if "access_token" in graph_result:
-                    import base64, json
+                    import base64
+                    import json
                     token = graph_result["access_token"]
                     payload = token.split(".")[1]
                     payload += "=" * (-len(payload) % 4)
@@ -82,7 +83,7 @@ async def verify_settings(request: Request):
             except Exception:
                 pass
                 
-            return {"success": True, "message": f"验证成功！(Authentication Successful)", "app_name": app_name, "tenant_id": tenant_id}
+            return {"success": True, "message": "验证成功！(Authentication Successful)", "app_name": app_name, "tenant_id": tenant_id}
         else:
             return {"success": False, "message": f"验证失败: {result.get('error_description', '未知错误')}"}
     except Exception as e:
@@ -100,7 +101,7 @@ async def verify_sql_settings(request: Request):
             return {"success": False, "message": "SQL_CONN_STR is required for verification."}
 
         try:
-            import pyodbc
+            import pyodbc  # type: ignore
             # 尝试连接，设置短超时防止长时间阻塞
             conn = pyodbc.connect(sql_conn_str, timeout=3)
             conn.close()
