@@ -2,13 +2,48 @@
 window.addListRow = function(containerId, alias = "", id = "") {
     const container = document.getElementById(containerId);
     if (!container) return;
+    const type = containerId === 'workspace-list' ? 'groups' : (containerId === 'dataset-list' ? 'datasets' : 'reports');
+    
     const row = document.createElement('div');
     row.style.cssText = "display: flex; gap: 8px; align-items: center;";
     row.innerHTML = `
         <input type="text" class="settings-input alias-input" placeholder="Alias (e.g. DEV)" value="${alias}" style="flex: 1; min-width: 0; padding: 4px 8px; font-size: 0.75rem;">
         <input type="text" class="settings-input id-input" placeholder="GUID" value="${id}" style="flex: 2; min-width: 0; padding: 4px 8px; font-size: 0.75rem;">
-        <button type="button" onclick="this.parentElement.remove()" style="color: #ff6b6b; background: transparent; border: none; cursor: pointer; font-size: 1.2rem; line-height: 1; padding: 0 4px;">&times;</button>
+        <button type="button" class="verify-guid-btn" title="Verify GUID" style="background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; cursor: pointer; font-size: 0.7rem; border-radius: 4px; padding: 2px 6px;">⚡</button>
+        <button type="button" onclick="this.parentElement.remove()" style="color: #ff6b6b; background: transparent; border: none; cursor: pointer; font-size: 1.2rem; line-height: 1; padding: 0 4px; opacity: 0.3; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'">&times;</button>
     `;
+    
+    const verifyBtn = row.querySelector('.verify-guid-btn');
+    verifyBtn.onclick = async () => {
+        const guid = row.querySelector('.id-input').value.trim();
+        if (!guid) return alert('请先输入 GUID (Please enter a GUID first)');
+        verifyBtn.textContent = '...';
+        verifyBtn.disabled = true;
+        try {
+            const res = await fetch('/api/proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ method: 'GET', endpoint: '/' + type + '/' + guid, api_type: 'powerbi' })
+            });
+            const result = await res.json();
+            if (res.ok && !result.error) {
+                if (result.id || result.name || (result.value && !result.error)) {
+                    alert('✅ 验证成功 (Verified): ' + (result.name || guid));
+                } else if (result.error) {
+                    alert('❌ 验证失败 (Failed): ' + (result.error.message || JSON.stringify(result.error)));
+                } else {
+                    alert('✅ 请求成功，但未能解析具体名称。');
+                }
+            } else {
+                alert('❌ 请求失败: ' + (result.error?.message || JSON.stringify(result)));
+            }
+        } catch (e) {
+            alert('❌ 网络错误: ' + e);
+        }
+        verifyBtn.textContent = '⚡';
+        verifyBtn.disabled = false;
+    };
+    
     container.appendChild(row);
 };
 
