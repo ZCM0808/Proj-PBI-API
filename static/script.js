@@ -1001,7 +1001,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // 显示中文翻译在列表上（也可以只显示英文，这里展示双语）
                 const zhTranslated = translateApiName(ep.name);
-                nameEl.innerHTML = `<div style="display:flex; align-items:center;"><span>${ep.name}</span></div><div style="font-size:0.7rem; color:var(--text-secondary); margin-top:2px;">${zhTranslated}</div>`;
+                
+                let categoryBadgeHtml = '';
+                if (category.category === "⭐ 收藏夹 (Bookmarks)" && ep.category) {
+                    categoryBadgeHtml = `<span style="font-size:0.6rem; padding:1px 4px; border-radius:3px; background:rgba(255,255,255,0.1); color:#aaa; margin-left:6px; border:1px solid rgba(255,255,255,0.2);">${ep.category}</span>`;
+                }
+                
+                nameEl.innerHTML = `<div style="display:flex; align-items:center;"><span>${ep.name}</span>${categoryBadgeHtml}</div><div style="font-size:0.7rem; color:var(--text-secondary); margin-top:2px;">${zhTranslated}</div>`;
                 nameEl.querySelector('div').appendChild(flagEl);
                 nameEl.title = ep.path;
 
