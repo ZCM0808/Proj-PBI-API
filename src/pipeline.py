@@ -16,9 +16,9 @@ class PBIPipeline:
     def __init__(self, workspace_id: str = "", dataset_id: str = "", report_id: str = "") -> None:
         self.config = Config()
         self.pbi_client = PBIClient(self.config)
-        self.workspace_id = workspace_id or self.config.WORKSPACE_ID
-        self.dataset_id = dataset_id or self.config.DATASET_ID
-        self.report_id = report_id or self.config.REPORT_ID
+        self.workspace_id = workspace_id or (self.config.PBI_WORKSPACES[0]["id"] if self.config.PBI_WORKSPACES else "")
+        self.dataset_id = dataset_id or (self.config.PBI_DATASETS[0]["id"] if self.config.PBI_DATASETS else "")
+        self.report_id = report_id or (self.config.PBI_REPORTS[0]["id"] if self.config.PBI_REPORTS else "")
 
     async def run(self) -> AsyncGenerator[str, None]:
         def emit(status: str, msg: str) -> str:

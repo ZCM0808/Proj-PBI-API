@@ -58,7 +58,7 @@ async def verify_settings(request: Request):
             return {"success": False, "message": "TENANT_ID, CLIENT_ID, and CLIENT_SECRET are required for Service Principal."}
 
         authority_url = f"https://login.microsoftonline.com/{tenant_id}"
-        from msal import ConfidentialClientApplication
+        from msal import ConfidentialClientApplication  # type: ignore[import-untyped]
         app = ConfidentialClientApplication(
             client_id=client_id,
             client_credential=client_secret,
@@ -176,7 +176,7 @@ async def test_guid(request: Request):
     """Test a specific GUID via Power BI API"""
     import asyncio
     import requests
-    from msal import ConfidentialClientApplication
+    from msal import ConfidentialClientApplication  # type: ignore[import-untyped]
 
     try:
         data = await request.json()
@@ -238,7 +238,7 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
             return {"success": False, "error": "Missing credentials. Please fill TENANT_ID, CLIENT_ID, and CLIENT_SECRET."}
 
         authority_url = f"https://login.microsoftonline.com/{tenant_id}"
-        from msal import ConfidentialClientApplication
+        from msal import ConfidentialClientApplication  # type: ignore[import-untyped]
         app = ConfidentialClientApplication(
             client_id=client_id,
             client_credential=client_secret,
