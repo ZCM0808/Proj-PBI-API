@@ -133,8 +133,14 @@ window.scanItems = async function(type, event) {
                     listContainer.innerHTML = '';
                 }
 
+                const existingGuids = new Set(Array.from(listContainer.querySelectorAll('.id-input')).map(input => input.value.trim()));
+
                 checked.forEach(cb => {
-                    window.addListRow(targetListId, cb.getAttribute('data-name'), cb.value);
+                    const guid = cb.value;
+                    if (!existingGuids.has(guid)) {
+                        window.addListRow(targetListId, cb.getAttribute('data-name'), guid);
+                        existingGuids.add(guid);
+                    }
                 });
                 modal.style.display = 'none';
             };
@@ -498,7 +504,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // 智能在 Free Mode 下监听 URL 输入，切换前缀提示
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const res = await fetch('/api/settings');
+            const data = await res.json();
+            
+            if (data.PBI_WORKSPACES && data.PBI_WORKSPACES.length > 0 && !localStorage.getItem('pbi_workspaces')) {
+                localStorage.setItem('pbi_workspaces', JSON.stringify(data.PBI_WORKSPACES));
+            }
+            if (data.PBI_DATASETS && data.PBI_DATASETS.length > 0 && !localStorage.getItem('pbi_datasets')) {
+                localStorage.setItem('pbi_datasets', JSON.stringify(data.PBI_DATASETS));
+            }
+            if (data.PBI_REPORTS && data.PBI_REPORTS.length > 0 && !localStorage.getItem('pbi_reports')) {
+                localStorage.setItem('pbi_reports', JSON.stringify(data.PBI_REPORTS));
+            }
+        } catch (e) {
+            console.error('Failed to pre-fetch settings:', e);
+        }
+
         window.renderContextDropdowns();
         window.renderEnvIdentity();
         
@@ -1785,20 +1808,31 @@ const loadReqHistory = (searchTerm = "") => {
                 const data = await res.json();
                 document.getElementById('set-sql').value = data.SQL_CONN_STR || '';
                 // Load local storage lists
-                const loadList = (containerId, key) => {
+                const loadList = (containerId, key, serverList) => {
                     const container = document.getElementById(containerId);
                     if (!container) return;
                     container.innerHTML = '';
-                    const items = JSON.parse(localStorage.getItem(key) || '[]');
+                    
+                    let items = [];
+                    // Prefer server list if available and local is empty
+                    const localItems = JSON.parse(localStorage.getItem(key) || '[]');
+                    if (localItems.length > 0) {
+                        items = localItems;
+                    } else if (serverList && serverList.length > 0) {
+                        items = serverList;
+                        localStorage.setItem(key, JSON.stringify(items));
+                        window.renderContextDropdowns();
+                    }
+                    
                     if (items.length === 0) {
                         window.addListRow(containerId); // one empty row default
                     } else {
-                        items.forEach(item => window.addListRow(containerId, item.alias, item.id));
+                        items.forEach(item => window.addListRow(containerId, item.alias || item.name, item.id));
                     }
                 };
-                loadList('workspace-list', 'pbi_workspaces');
-                loadList('dataset-list', 'pbi_datasets');
-                loadList('report-list', 'pbi_reports');
+                loadList('workspace-list', 'pbi_workspaces', data.PBI_WORKSPACES);
+                loadList('dataset-list', 'pbi_datasets', data.PBI_DATASETS);
+                loadList('report-list', 'pbi_reports', data.PBI_REPORTS);
                 document.getElementById('set-client').value = data.CLIENT_ID || '';
                 document.getElementById('set-secret').value = data.CLIENT_SECRET || '';
                 document.getElementById('set-tenant').value = data.TENANT_ID || '';
