@@ -1216,7 +1216,7 @@ const loadReqHistory = (searchTerm = "") => {
                 topRow.style.cssText = 'display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;';
                 
                 const methodUrl = document.createElement('div');
-                methodUrl.style.cssText = 'flex: 1; word-break: break-all;';
+                methodUrl.style.cssText = 'flex: 1;';
                 const methodColor = h.method === 'GET' ? '#3b82f6' : (h.method === 'POST' ? '#10b981' : (h.method === 'DELETE' ? '#ef4444' : '#f59e0b'));
                 
                 // 识别并展示前缀，不再显示 API 描述名称
@@ -1224,21 +1224,23 @@ const loadReqHistory = (searchTerm = "") => {
                 const prefixText = h.api_type === 'fabric' ? 'Fabric' : 'Power BI';
                 const badgeColor = h.api_type === 'fabric' ? '#38bdf8' : '#F2C811';
                 
-                const modeHtml = `<div style="display: inline-block; padding: 1px 6px; border-radius: 4px; border: 1px solid ${badgeColor}33; color: ${badgeColor}; background: ${badgeColor}0d; font-size: 0.65rem; margin-bottom: 6px; font-weight: 500;">${prefixText}</div><br>`;
+                const modeHtml = `<span style="display: inline-block; padding: 1px 6px; border-radius: 4px; border: 1px solid ${badgeColor}33; color: ${badgeColor}; background: ${badgeColor}0d; font-size: 0.65rem; font-weight: 500;">${prefixText}</span>`;
                 
-                methodUrl.innerHTML = `${modeHtml}<span style="color: ${methodColor}; font-weight: bold; margin-right: 8px; font-size: 0.8rem;">${h.method}</span><span style="font-size: 0.75rem; color: #8b949e; font-family: 'Fira Code', monospace; display: block; margin-top: 4px; line-height: 1.4;"><span style="color: #6e7681; opacity: 0.7;">${prefix}</span>${h.url}</span>`;
+                methodUrl.innerHTML = `<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;">
+                    ${modeHtml}
+                    <span style="color: ${methodColor}; font-weight: bold; font-size: 0.8rem;">${h.method}</span>
+                    <span style="font-size: 0.75rem; color: #8b949e; font-family: 'Fira Code', monospace; word-break: break-all; line-height: 1.4;">
+                        <span style="color: #6e7681; opacity: 0.7;">${prefix}</span>${h.url}
+                    </span>
+                </div>`;
                 
                 const rightCol = document.createElement('div');
                 rightCol.style.cssText = 'display: flex; flex-direction: column; align-items: flex-end; gap: 4px;';
                 
-                const timeSpan = document.createElement('span');
-                timeSpan.style.cssText = 'font-size: 0.7rem; color: #6e7681;';
-                timeSpan.textContent = h.time || '';
-                
                 const delBtn = document.createElement('span');
                 delBtn.innerHTML = '&times;';
                 delBtn.title = '删除此条记录';
-                delBtn.style.cssText = 'font-size: 1.1rem; color: #6e7681; cursor: pointer; padding: 0 4px; border-radius: 4px; line-height: 1;';
+                delBtn.style.cssText = 'font-size: 1.1rem; color: #6e7681; cursor: pointer; padding: 0 4px; border-radius: 4px; line-height: 1; margin-top: -2px;';
                 delBtn.onmouseover = () => { delBtn.style.color = '#ff6b6b'; delBtn.style.background = 'rgba(255,107,107,0.1)'; };
                 delBtn.onmouseout = () => { delBtn.style.color = '#6e7681'; delBtn.style.background = 'transparent'; };
                 delBtn.onclick = (e) => {
@@ -1258,7 +1260,6 @@ const loadReqHistory = (searchTerm = "") => {
                 };
                 
                 rightCol.appendChild(delBtn);
-                rightCol.appendChild(timeSpan);
                 topRow.appendChild(methodUrl);
                 topRow.appendChild(rightCol);
                 item.appendChild(topRow);
@@ -1269,6 +1270,17 @@ const loadReqHistory = (searchTerm = "") => {
                     bodyPreview.textContent = h.body;
                     item.appendChild(bodyPreview);
                 }
+                
+                // bottom row for time
+                const bottomRow = document.createElement('div');
+                bottomRow.style.cssText = 'display: flex; justify-content: flex-end; margin-top: 2px;';
+                
+                const timeSpan = document.createElement('span');
+                timeSpan.style.cssText = 'font-size: 0.65rem; color: rgba(110, 118, 129, 0.7);';
+                timeSpan.textContent = h.time || '';
+                
+                bottomRow.appendChild(timeSpan);
+                item.appendChild(bottomRow);
                 
                 item.onclick = () => {
                     methodSelect.value = h.method;
