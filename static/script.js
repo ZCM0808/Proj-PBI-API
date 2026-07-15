@@ -1072,7 +1072,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     bodyInput.value = originalBody;
                     
                     // 恢复 Unlock 按钮状态
-                    document.getElementById('toggle-method-btn').innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>';
+                    document.getElementById('toggle-method-btn').innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span>Unlock</span>';
 
                     // 展示详细信息面板
                     selectedApiInfo.style.display = 'block';
@@ -1093,12 +1093,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                         docBtn.href = docUrl;
                     }
                     
-                    let categoryBadgeHTMLRightPanel = '';
-                    const trueCategory = ep.category || category.category;
-                    if (trueCategory && trueCategory !== "⭐ 收藏夹 (Bookmarks)") {
-                        categoryBadgeHTMLRightPanel = `<span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 12px; background: rgba(167, 139, 250, 0.15); color: #a78bfa; margin-left: 8px; vertical-align: middle;">${trueCategory}</span>`;
+                    selectedApiName.textContent = ep.name;
+                    
+                    const rightPanelCatContainer = document.getElementById('right-panel-category-container');
+                    const rightPanelCatBadge = document.getElementById('right-panel-category-badge');
+                    if (rightPanelCatContainer && rightPanelCatBadge) {
+                        const trueCategory = ep.category || category.category;
+                        if (trueCategory && trueCategory !== "⭐ 收藏夹 (Bookmarks)") {
+                            rightPanelCatBadge.innerHTML = `<span style="font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; background: rgba(167, 139, 250, 0.15); color: #a78bfa; border: 1px solid rgba(167, 139, 250, 0.25); display: inline-flex; align-items: center; gap: 4px; font-weight: 500;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>${trueCategory}</span>`;
+                        } else {
+                            rightPanelCatBadge.innerHTML = '';
+                        }
                     }
-                    selectedApiName.innerHTML = `<span style="vertical-align: middle;">${ep.name}</span>${categoryBadgeHTMLRightPanel}`;
                     
                     // 动态更新标题 Badge
                     updateRequestMode('api', `Bound to: ${ep.name}`);
@@ -1351,9 +1357,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     toggleMethodBtn.addEventListener('click', () => {
         methodSelect.disabled = !methodSelect.disabled;
         if (methodSelect.disabled) {
-            toggleMethodBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>';
+            toggleMethodBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span>Unlock</span>';
         } else {
-            toggleMethodBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>';
+            toggleMethodBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg><span>Lock</span>';
         }
     });
 
@@ -1361,7 +1367,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!originalPath) return; // 没有选中过任何 API 则不重置
         methodSelect.value = originalMethod;
         methodSelect.disabled = true;
-        toggleMethodBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>';
+        toggleMethodBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span>Unlock</span>';
         endpointInput.value = originalPath;
         bodyInput.value = originalBody;
         
