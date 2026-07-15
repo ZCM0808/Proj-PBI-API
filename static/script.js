@@ -181,7 +181,7 @@ window.renderContextDropdowns = function() {
         data.forEach(item => {
             const opt = document.createElement('option');
             opt.value = item.id;
-            opt.textContent = `${item.alias} (${item.id.substring(0,6)}...)`;
+            opt.textContent = `${item.alias} (${item.id})`;
             select.appendChild(opt);
         });
         if (data.some(d => d.id === currentVal)) select.value = currentVal;
