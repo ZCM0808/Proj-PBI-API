@@ -153,6 +153,78 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     await expect(dropdown).toBeHidden();
   });
 
+  test('全局配置与下拉框同步机制：页面刷新会自动从服务器拉取配置并同步给前端', async ({ page }) => {
+    // 拦截 API 返回测试配置
+    await page.route('**/api/settings', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        PBI_WORKSPACES: [{ id: 'mock-ws-id-123', name: 'Mock Server Workspace' }],
+        PBI_DATASETS: [],
+        PBI_REPORTS: []
+      })
+    }));
+
+    // 重新加载页面以触发 DOMContentLoaded 中的拉取逻辑
+    await page.reload();
+    // 留出时间给 await fetch 和渲染
+    await page.waitForTimeout(500);
+    
+    // 1. 验证 localStorage 被正确写入
+    const localWorkspaces = await page.evaluate(() => localStorage.getItem('pbi_workspaces'));
+    expect(localWorkspaces).toContain('mock-ws-id-123');
+
+    // 2. 验证主页右上角的下拉菜单被正确渲染
+    const workspaceDropdown = page.locator('#active-workspace');
+    await expect(workspaceDropdown).toContainText('Mock Server Workspace');
+  });
+
+  test('全局环境配置 (Global Settings)：Scan Workspace 能够严格过滤重复添加的 GUID', async ({ page }) => {
+    // 预埋一条服务器已有数据
+    await page.route('**/api/settings', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        PBI_WORKSPACES: [{ id: 'duplicate-ws', name: 'Already Added WS' }]
+      })
+    }));
+    await page.reload();
+    await page.waitForTimeout(300);
+
+    // 点击全局设置按钮
+    await page.locator('#btn-settings').click();
+    await expect(page.locator('#settings-modal')).toBeVisible();
+
+    // 拦截 scan 接口，返回包含一个已存在的 GUID 和一个新的 GUID
+    await page.route('**/api/scan/workspaces', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: [
+          { id: 'duplicate-ws', name: 'Already Added WS (Should be skipped)' },
+          { id: 'new-fresh-ws', name: 'New Fresh WS' }
+        ]
+      })
+    }));
+
+    // 点击 Workspace 的 Scan 按钮 (找第一个包含 Scan 字样的按钮)
+    const scanBtn = page.locator('button', { hasText: '🔍 Scan' }).first();
+    await scanBtn.click();
+
+    // 弹窗可见并点击全部添加 (Add Selected)
+    const scanModal = page.locator('#scan-modal');
+    await expect(scanModal).toBeVisible();
+    await page.locator('#scan-modal-add-btn').click();
+    
+    // 验证去重逻辑：由于原来有 duplicate-ws，现在加入一个重复的和一个新的，最终 input 的数量必须是 2
+    const workspaceInputs = page.locator('#workspace-list .id-input');
+    await expect(workspaceInputs).toHaveCount(2);
+    // 验证新加入的正确渲染
+    const newWsInput = page.locator('#workspace-list .id-input').nth(1);
+    await expect(newWsInput).toHaveValue('new-fresh-ws');
+  });
+
   test('视觉回归测试 (Visual Regression): 主页 UI 必须与基准快照保持像素级一致', async ({ page }) => {
     // 隐藏可能动态变化的元素（如时间、请求耗时等，如果有的话）
     // 等待核心元素渲染完成
