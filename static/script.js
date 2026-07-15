@@ -509,13 +509,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const res = await fetch('/api/settings');
             const data = await res.json();
             
-            if (data.PBI_WORKSPACES && data.PBI_WORKSPACES.length > 0 && !localStorage.getItem('pbi_workspaces')) {
+            if (data.PBI_WORKSPACES) {
                 localStorage.setItem('pbi_workspaces', JSON.stringify(data.PBI_WORKSPACES));
             }
-            if (data.PBI_DATASETS && data.PBI_DATASETS.length > 0 && !localStorage.getItem('pbi_datasets')) {
+            if (data.PBI_DATASETS) {
                 localStorage.setItem('pbi_datasets', JSON.stringify(data.PBI_DATASETS));
             }
-            if (data.PBI_REPORTS && data.PBI_REPORTS.length > 0 && !localStorage.getItem('pbi_reports')) {
+            if (data.PBI_REPORTS) {
                 localStorage.setItem('pbi_reports', JSON.stringify(data.PBI_REPORTS));
             }
         } catch (e) {
