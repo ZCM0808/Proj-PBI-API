@@ -43,6 +43,37 @@ async def update_settings(request: Request):
         return {"success": False, "message": str(e)}
 
 
+@app.post("/api/settings/verify")
+async def verify_settings(request: Request):
+    """验证客户端凭证"""
+    from msal import ConfidentialClientApplication # type: ignore[import-untyped]
+    try:
+        data = await request.json()
+        client_id = data.get("pbi_client_id", "").strip()
+        client_secret = data.get("pbi_client_secret", "").strip()
+        tenant_id = data.get("pbi_tenant_id", "").strip()
+
+        if not all([client_id, client_secret, tenant_id]):
+            return {"success": False, "message": "TENANT_ID, CLIENT_ID, and CLIENT_SECRET are required for verification."}
+
+        authority_url = f"https://login.microsoftonline.com/{tenant_id}"
+        app = ConfidentialClientApplication(
+            client_id=client_id,
+            client_credential=client_secret,
+            authority=authority_url,
+        )
+        
+        # Test default PowerBI scope
+        scope = ["https://analysis.windows.net/powerbi/api/.default"]
+        result = app.acquire_token_for_client(scopes=scope)
+        if "access_token" in result:
+            return {"success": True, "message": "验证成功！(Authentication Successful)"}
+        else:
+            return {"success": False, "message": f"验证失败: {result.get('error_description', '未知错误')}"}
+    except Exception as e:
+        return {"success": False, "message": f"验证异常: {str(e)}"}
+
+
 @app.get("/api/pipeline/run")
 async def run_pipeline():
     pipeline = PBIPipeline()

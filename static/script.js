@@ -1625,6 +1625,65 @@ const loadReqHistory = (searchTerm = "") => {
 
         setupFLIPModal(btnSettings, closeSettingsBtn, settingsModal, loadSettings);
 
+        const toggleSecretBtn = document.getElementById('toggle-secret-btn');
+        const setSecretInput = document.getElementById('set-secret');
+        const eyeIconShow = document.getElementById('eye-icon-show');
+        const eyeIconHide = document.getElementById('eye-icon-hide');
+        if (toggleSecretBtn && setSecretInput && eyeIconShow && eyeIconHide) {
+            toggleSecretBtn.addEventListener('click', () => {
+                if (setSecretInput.type === 'password') {
+                    setSecretInput.type = 'text';
+                    eyeIconShow.style.display = 'none';
+                    eyeIconHide.style.display = 'block';
+                } else {
+                    setSecretInput.type = 'password';
+                    eyeIconShow.style.display = 'block';
+                    eyeIconHide.style.display = 'none';
+                }
+            });
+        }
+
+        const verifySettingsBtn = document.getElementById('verify-settings-btn');
+        if (verifySettingsBtn) {
+            verifySettingsBtn.addEventListener('click', async () => {
+                const clientId = document.getElementById('set-client').value.trim();
+                const clientSecret = document.getElementById('set-secret').value.trim();
+                const tenantId = document.getElementById('set-tenant').value.trim();
+
+                if (!clientId || !clientSecret || !tenantId) {
+                    alert("请先填写 TENANT_ID, CLIENT_ID, 和 CLIENT_SECRET！");
+                    return;
+                }
+
+                const originalText = verifySettingsBtn.textContent;
+                verifySettingsBtn.disabled = true;
+                verifySettingsBtn.textContent = '⏳ 验证中...';
+
+                try {
+                    const res = await fetch('/api/settings/verify', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            pbi_client_id: clientId,
+                            pbi_client_secret: clientSecret,
+                            pbi_tenant_id: tenantId
+                        })
+                    });
+                    const result = await res.json();
+                    if (result.success) {
+                        alert(result.message);
+                    } else {
+                        alert(result.message);
+                    }
+                } catch (err) {
+                    alert('网络错误: ' + err);
+                } finally {
+                    verifySettingsBtn.disabled = false;
+                    verifySettingsBtn.textContent = originalText;
+                }
+            });
+        }
+
         const settingsForm = document.getElementById('settings-form');
         settingsForm.addEventListener('submit', async (e) => {
             e.preventDefault(); // 阻止页面刷新，但允许浏览器捕获 submit 以保存表单历史
