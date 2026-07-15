@@ -861,7 +861,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     e.path === cleanBmPath && 
                     e.method.toUpperCase() === (bm.method || '').toUpperCase()
                 );
-                if (found) return found;
+                if (found) return { ...found, category: cat.category };
             }
             return bm;
         });
@@ -1004,7 +1004,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 let categoryBadgeHtml = '';
                 if (category.category === "⭐ 收藏夹 (Bookmarks)" && ep.category) {
-                    categoryBadgeHtml = `<span style="font-size:0.6rem; padding:1px 4px; border-radius:3px; background:rgba(255,255,255,0.1); color:#aaa; margin-left:6px; border:1px solid rgba(255,255,255,0.2);">${ep.category}</span>`;
+                    categoryBadgeHtml = `<span style="font-size:0.6rem; padding:2px 6px; border-radius:10px; background:rgba(167, 139, 250, 0.15); color:#a78bfa; margin-left:8px; border:1px solid rgba(167, 139, 250, 0.25); font-weight:600;">${ep.category}</span>`;
                 }
                 
                 nameEl.innerHTML = `<div style="display:flex; align-items:center;"><span>${ep.name}</span>${categoryBadgeHtml}</div><div style="font-size:0.7rem; color:var(--text-secondary); margin-top:2px;">${zhTranslated}</div>`;
@@ -1092,7 +1092,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (docBtn) {
                         docBtn.href = docUrl;
                     }
-                    selectedApiName.textContent = ep.name;
+                    
+                    let categoryBadgeHTMLRightPanel = '';
+                    const trueCategory = ep.category || category.category;
+                    if (trueCategory && trueCategory !== "⭐ 收藏夹 (Bookmarks)") {
+                        categoryBadgeHTMLRightPanel = `<span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 12px; background: rgba(167, 139, 250, 0.15); color: #a78bfa; margin-left: 8px; vertical-align: middle;">${trueCategory}</span>`;
+                    }
+                    selectedApiName.innerHTML = `<span style="vertical-align: middle;">${ep.name}</span>${categoryBadgeHTMLRightPanel}`;
                     
                     // 动态更新标题 Badge
                     updateRequestMode('api', `Bound to: ${ep.name}`);
