@@ -165,10 +165,13 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
       })
     }));
 
+    const responsePromise = page.waitForResponse(response => response.url().includes('/api/settings'));
     // 重新加载页面以触发 DOMContentLoaded 中的拉取逻辑
     await page.reload();
-    // 留出时间给 await fetch 和渲染
-    await page.waitForTimeout(500);
+    
+    // 留出时间给 await fetch 和渲染完成
+    await responsePromise;
+    await page.waitForTimeout(300);
     
     // 1. 验证 localStorage 被正确写入
     const localWorkspaces = await page.evaluate(() => localStorage.getItem('pbi_workspaces'));
