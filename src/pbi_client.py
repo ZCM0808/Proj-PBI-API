@@ -29,7 +29,7 @@ class PBIClient:
         scope = ["https://api.fabric.microsoft.com/.default"] if api_type_clean == "fabric" else self.config.SCOPE
         
         result = None
-        if self.config.USERNAME and self.config.PASSWORD:
+        if self.config.AUTH_MODE == "personal":
             app = PublicClientApplication(
                 client_id=self.config.CLIENT_ID,
                 authority=self.config.authority_url,

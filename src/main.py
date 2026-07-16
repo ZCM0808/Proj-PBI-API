@@ -55,6 +55,7 @@ async def verify_settings(request: Request):
         username = data.get("pbi_username", "").strip()
         password = data.get("pbi_password", "").strip()
         tenant_id = data.get("pbi_tenant_id", "").strip()
+        auth_mode = data.get("pbi_auth_mode", "service_principal")
 
         if not client_id or not tenant_id:
             return {"success": False, "message": "TENANT_ID and CLIENT_ID are required."}
@@ -67,7 +68,9 @@ async def verify_settings(request: Request):
         import asyncio
         
         result = None
-        if username and password:
+        if auth_mode == "personal":
+            if not username or not password:
+                return {"success": False, "message": "USERNAME and PASSWORD are required for Personal Auth Mode."}
             app = PublicClientApplication(
                 client_id=client_id,
                 authority=authority_url,
@@ -105,7 +108,7 @@ async def verify_settings(request: Request):
             except Exception:
                 pass
                 
-            return {"success": True, "message": f"凭证验证成功！(Auth Success)\nAuth Mode: {'ROPC (User)' if username else 'Service Principal'}\nClient App: {app_name}", "app_name": app_name}
+            return {"success": True, "message": f"凭证验证成功！(Auth Success)\nAuth Mode: {'Personal Auth (Delegated)' if auth_mode == 'personal' else 'Service Principal'}\nClient App: {app_name}", "app_name": app_name}
         
         return {"success": False, "message": f"Auth failed: {result.get('error_description', result.get('error', 'Unknown Error'))}"}
     except Exception as e:

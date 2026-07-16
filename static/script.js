@@ -2136,6 +2136,14 @@ const loadReqHistory = (searchTerm = "") => {
                 document.getElementById('set-username').value = data.USERNAME || '';
                 document.getElementById('set-password').value = data.PASSWORD || '';
                 document.getElementById('set-tenant').value = data.TENANT_ID || '';
+                
+                const authModeRadios = document.getElementsByName('pbi_auth_mode');
+                for (let radio of authModeRadios) {
+                    if (radio.value === (data.AUTH_MODE || 'service_principal')) {
+                        radio.checked = true;
+                        break;
+                    }
+                }
 
             } catch (err) {
                 console.error('Failed to load settings:', err);
@@ -2170,8 +2178,18 @@ const loadReqHistory = (searchTerm = "") => {
                 const username = document.getElementById('set-username').value.trim();
                 const password = document.getElementById('set-password').value.trim();
                 const tenantId = document.getElementById('set-tenant').value.trim();
-                if ((!clientId || !tenantId) || (!clientSecret && (!username || !password))) {
-                    alert("请填写 TENANT_ID, CLIENT_ID, 以及 (CLIENT_SECRET 或 USERNAME/PASSWORD)！");
+                
+                let authMode = 'service_principal';
+                const authModeRadios = document.getElementsByName('pbi_auth_mode');
+                for (let radio of authModeRadios) {
+                    if (radio.checked) authMode = radio.value;
+                }
+                
+                if (authMode === 'personal' && (!clientId || !tenantId || !username || !password)) {
+                    alert("Personal Auth 需要填写 TENANT_ID, CLIENT_ID, USERNAME 和 PASSWORD！");
+                    return;
+                } else if (authMode === 'service_principal' && (!clientId || !tenantId || !clientSecret)) {
+                    alert("Service Principal 需要填写 TENANT_ID, CLIENT_ID 和 CLIENT_SECRET！");
                     return;
                 }
 
@@ -2188,7 +2206,8 @@ const loadReqHistory = (searchTerm = "") => {
                             pbi_client_secret: clientSecret,
                             pbi_username: username,
                             pbi_password: password,
-                            pbi_tenant_id: tenantId
+                            pbi_tenant_id: tenantId,
+                            pbi_auth_mode: authMode
                         })
                     });
                     const result = await res.json();
@@ -2260,6 +2279,12 @@ const loadReqHistory = (searchTerm = "") => {
             localStorage.setItem('pbi_reports', JSON.stringify(window.getListData('report-list')));
             window.renderContextDropdowns();
             
+            let authMode = 'service_principal';
+            const authModeRadios = document.getElementsByName('pbi_auth_mode');
+            for (let radio of authModeRadios) {
+                if (radio.checked) authMode = radio.value;
+            }
+            
             const payload = {
                 SQL_CONN_STR: document.getElementById('set-sql').value.replace(/\r?\n|\r/g, '').trim(),
                 CLIENT_ID: document.getElementById('set-client').value.trim(),
@@ -2267,6 +2292,7 @@ const loadReqHistory = (searchTerm = "") => {
                 USERNAME: document.getElementById('set-username').value.trim(),
                 PASSWORD: document.getElementById('set-password').value.trim(),
                 TENANT_ID: document.getElementById('set-tenant').value.trim(),
+                AUTH_MODE: authMode,
                 PBI_WORKSPACES: window.getListData('workspace-list'),
                 PBI_DATASETS: window.getListData('dataset-list'),
                 PBI_REPORTS: window.getListData('report-list')

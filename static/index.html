@@ -335,6 +335,19 @@
                             <h4 style="margin: 0; font-size: 0.75rem; color: #a78bfa;">Azure App Authentication</h4>
                             <button type="button" id="verify-settings-btn" title="Verify Auth" style="background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; cursor: pointer; font-size: 0.7rem; border-radius: 4px; padding: 2px 6px;">⚡</button>
                         </div>
+                        <div class="form-group" style="margin-bottom: 12px; padding: 8px; background: rgba(0,0,0,0.15); border-radius: 4px;">
+                            <label style="margin-bottom: 6px; display: block; font-weight: bold;">Active Auth Mode (认证模式选择)</label>
+                            <div style="display: flex; flex-direction: column; gap: 6px;">
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.8rem; color: var(--text-primary);">
+                                    <input type="radio" name="pbi_auth_mode" value="service_principal" checked style="margin: 0; accent-color: #a78bfa;">
+                                    <span><strong>Service Principal</strong> (Azure App: Client ID + Secret)</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.8rem; color: var(--text-primary);">
+                                    <input type="radio" name="pbi_auth_mode" value="personal" style="margin: 0; accent-color: #a78bfa;">
+                                    <span><strong>Personal Auth</strong> (Delegated: Username + Password/Popup)</span>
+                                </label>
+                            </div>
+                        </div>
                         <div class="form-group" style="margin-bottom: 8px;">
                             <label>TENANT_ID (Azure AD)</label>
                             <input type="text" id="set-tenant" name="pbi_tenant_id" class="settings-input" placeholder="e.g. c8923456-789a-bcde-f012-3456789abcde">
@@ -370,11 +383,6 @@
                                 <button type="button" onclick="const p = document.getElementById('set-password'); p.type = p.type === 'password' ? 'text' : 'password';" style="position: absolute; right: 8px; background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px;" title="Toggle Visibility">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path></svg>
                                 </button>
-                            </div>
-                            <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 6px; line-height: 1.4; background: rgba(0,0,0,0.1); padding: 6px; border-radius: 4px; border-left: 2px solid #a78bfa;">
-                                <strong>💡 Auth Priority Logic:</strong><br>
-                                • <strong>Highest (Personal Auth):</strong> If USERNAME & PASSWORD are provided, they are used globally (Delegated Token). This mode grants access to BOTH your Personal "My Workspace" AND any Group Workspaces you are a member of.<br>
-                                • <strong>Fallback (Azure App Auth):</strong> If left blank, the system falls back to CLIENT_SECRET (Service Principal). This mode CANNOT access Personal "My Workspace".
                             </div>
                         </div>
                     </div>

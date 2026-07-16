@@ -11,6 +11,7 @@ class Config:
 
     CLIENT_ID: str = os.getenv("PBI_CLIENT_ID", "")
     CLIENT_SECRET: str = os.getenv("PBI_CLIENT_SECRET", "")
+    AUTH_MODE: str = os.getenv("PBI_AUTH_MODE", "service_principal") # 'service_principal' or 'personal'
     USERNAME: str = os.getenv("PBI_USERNAME", "")
     PASSWORD: str = os.getenv("PBI_PASSWORD", "")
     TENANT_ID: str = os.getenv("PBI_TENANT_ID", "")
@@ -41,6 +42,7 @@ class Config:
         return {
             "CLIENT_ID": cls.CLIENT_ID,
             "CLIENT_SECRET": cls.CLIENT_SECRET,
+            "AUTH_MODE": cls.AUTH_MODE,
             "USERNAME": cls.USERNAME,
             "PASSWORD": cls.PASSWORD,
             "TENANT_ID": cls.TENANT_ID,
@@ -60,10 +62,10 @@ class Config:
         key_map = {
             "CLIENT_ID": "PBI_CLIENT_ID",
             "CLIENT_SECRET": "PBI_CLIENT_SECRET",
+            "AUTH_MODE": "PBI_AUTH_MODE",
             "USERNAME": "PBI_USERNAME",
             "PASSWORD": "PBI_PASSWORD",
             "TENANT_ID": "PBI_TENANT_ID",
-            "AUTH_MODE": "PBI_AUTH_MODE",
             "SQL_CONN_STR": "SQL_CONN_STR",
             "PBI_WORKSPACES": "PBI_WORKSPACES",
             "PBI_DATASETS": "PBI_DATASETS",
