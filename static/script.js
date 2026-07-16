@@ -457,6 +457,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const moonIcon = document.getElementById('theme-icon-moon');
     
     function updateThemeIcons() {
+        if (!sunIcon || !moonIcon) return;
         if (document.documentElement.getAttribute('data-theme') === 'light') {
             sunIcon.style.display = 'none';
             moonIcon.style.display = 'block';

@@ -1,7 +1,7 @@
 :root {
     --bg-color: #0f1115;
     --panel-bg: rgba(25, 28, 36, 0.6);
-    --panel-border: var(--overlay-8);
+    --panel-border: rgba(255, 255, 255, 0.08);
     --text-primary: #e2e8f0;
     --text-secondary: #94a3b8;
     --accent: #F2C811; /* Power BI Yellow */
@@ -9,18 +9,17 @@
     --accent-glow: rgba(242, 200, 17, 0.2);
     --success: #10b981;
     --error: #ef4444;
+    --overlay-5: rgba(255, 255, 255, 0.05);
+    --overlay-8: rgba(255, 255, 255, 0.08);
+    --overlay-10: rgba(255, 255, 255, 0.1);
+    --overlay-15: rgba(255, 255, 255, 0.15);
+    --overlay-20: rgba(255, 255, 255, 0.2);
+    --overlay-30: rgba(255, 255, 255, 0.3);
     
-    --overlay-5: var(--overlay-5);
-    --overlay-8: var(--overlay-8);
-    --overlay-10: var(--overlay-10);
-    --overlay-15: var(--overlay-15);
-    --overlay-20: var(--overlay-20);
-    --overlay-30: var(--overlay-30);
+    --shadow-base: rgba(0, 0, 0, 0.3);
+    --shadow-dark: rgba(0, 0, 0, 0.6);
     
-    --shadow-base: var(--shadow-base);
-    --shadow-dark: var(--shadow-dark);
-    
-    --input-bg: var(--shadow-base);
+    --input-bg: rgba(0, 0, 0, 0.3);
     --input-bg-light: rgba(0, 0, 0, 0.2);
 }
 
