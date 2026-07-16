@@ -821,8 +821,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         });
         const paramOptionsContainer = document.getElementById('param-filter-options');
+        const triggerLabel = document.getElementById('param-filter-label');
         if (paramOptionsContainer && allApiParams.size > 0) {
             const sortedParams = Array.from(allApiParams).sort();
+            const totalParams = sortedParams.length;
+            
+            triggerLabel.textContent = `🔍 过滤必需的参数 (0/${totalParams})...`;
+            
+            // Prevent clicks inside the dropdown from bubbling up and closing it
+            paramOptionsContainer.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+            
             sortedParams.forEach(param => {
                 const label = document.createElement('label');
                 label.style.cssText = "display: flex; align-items: center; gap: 8px; padding: 6px 10px; cursor: pointer; border-bottom: 1px solid var(--panel-border); font-size: 0.8rem; color: var(--text-primary); transition: background 0.2s;";
@@ -839,11 +849,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     } else {
                         currentParamFilters = currentParamFilters.filter(p => p !== param);
                     }
-                    const triggerLabel = document.getElementById('param-filter-label');
                     if (currentParamFilters.length > 0) {
-                        triggerLabel.innerHTML = `<span style="color: var(--accent); font-weight: bold;">[${currentParamFilters.length}]</span> <span style="font-size:0.75rem;">${currentParamFilters.join(', ')}</span>`;
+                        triggerLabel.innerHTML = `<span style="color: var(--accent); font-weight: bold;">[${currentParamFilters.length}/${totalParams}]</span> <span style="font-size:0.75rem;">${currentParamFilters.join(', ')}</span>`;
                     } else {
-                        triggerLabel.textContent = '🔍 过滤必需的参数 (Filter by Parameters)...';
+                        triggerLabel.textContent = `🔍 过滤必需的参数 (0/${totalParams})...`;
                     }
                     const searchInput = document.getElementById('api-search-input');
                     renderTree(searchInput ? searchInput.value : "");
