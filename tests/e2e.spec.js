@@ -5,8 +5,12 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
   test.beforeEach(async ({ page }) => {
     // 导航到主页
     await page.goto('/');
-    // 清空缓存以保证测试环境干净
-    await page.evaluate(() => localStorage.clear());
+    // 清空缓存并注入稳定的 Mock 环境变量以保证测试环境（本地和CI）绝对一致
+    await page.evaluate(() => {
+        localStorage.clear();
+        localStorage.setItem('pbi_tenant_id', 'mock-tenant-1234');
+        localStorage.setItem('pbi_app_name', 'Mock App');
+    });
     await page.reload();
   });
 
