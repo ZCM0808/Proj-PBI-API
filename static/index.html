@@ -125,7 +125,6 @@
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                     <h2 style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500; margin: 0; display: flex; align-items: center;">
                         Request Configuration
-                        <span id="request-mode-badge" style="font-size: 0.65rem; font-weight: normal; color: var(--accent); border: 1px solid rgba(62, 166, 255, 0.5); background: rgba(62, 166, 255, 0.1); padding: 2px 6px; border-radius: 12px; margin-left: 8px;">Free Mode</span>
                     </h2>
                     </div>
 <!-- Env Identity -->
@@ -173,8 +172,11 @@
                 </div> <!-- END request-builder-top -->
 
                 <div class="endpoint-section-wrapper" style="display: flex; flex-direction: column; gap: 8px;">
-                    <div id="right-panel-category-container" style="display: flex; justify-content: space-between; align-items: flex-end; min-height: 24px;">
-                    <div style="flex: 1;"><span id="right-panel-category-badge"></span></div>
+                    <div id="right-panel-category-container" style="display: flex; justify-content: space-between; align-items: center; min-height: 24px;">
+                    <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
+                        <span id="right-panel-category-badge"><span style="font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; background: rgba(62, 166, 255, 0.15); color: #3eb6ff; border: 1px solid rgba(62, 166, 255, 0.25); display: inline-flex; align-items: center; gap: 4px; font-weight: 500;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4l2-9 5 18 3-9h6"></path></svg>Custom</span></span>
+                        <span id="request-mode-badge" style="font-size: 0.65rem; font-weight: normal; color: var(--accent); border: 1px solid rgba(62, 166, 255, 0.5); background: rgba(62, 166, 255, 0.1); padding: 2px 6px; border-radius: 12px;">Free Mode</span>
+                    </div>
                     <div class="request-actions" style="display: flex; align-items: center; gap: 8px;">
                         <div style="position: relative;">
                             <button id="history-request-btn" class="icon-btn" title="最近的自由请求历史 (History)" type="button">
