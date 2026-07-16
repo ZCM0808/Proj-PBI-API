@@ -879,8 +879,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     renderTree(searchInput ? searchInput.value : "");
                 });
                 
+                let displayParam = '{' + param + '}';
+                if (param === 'groupId') {
+                    displayParam += ' <span style="color: var(--text-secondary); font-size: 0.7rem;">(Workspace)</span>';
+                }
+                
                 label.appendChild(checkbox);
-                label.appendChild(document.createTextNode('{' + param + '}'));
+                const textSpan = document.createElement('span');
+                textSpan.innerHTML = displayParam;
+                label.appendChild(textSpan);
                 paramOptionsContainer.appendChild(label);
             });
         }
