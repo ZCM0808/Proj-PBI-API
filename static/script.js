@@ -446,6 +446,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let originalMethod = 'GET';
     let originalPath = '';
     let originalBody = '';
+    let originalCategoryHtml = '';
 
     let currentApiType = 'powerbi';
     let currentActiveFlag = 'ALL';
@@ -1110,6 +1111,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         } else {
                             rightPanelCatBadge.innerHTML = `<span style="font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; background: rgba(62, 166, 255, 0.15); color: #3eb6ff; border: 1px solid rgba(62, 166, 255, 0.25); display: inline-flex; align-items: center; gap: 4px; font-weight: 500;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4l2-9 5 18 3-9h6"></path></svg>Custom</span>`;
                         }
+                        originalCategoryHtml = rightPanelCatBadge.innerHTML;
                     }
                     
                     // 动态更新标题 Badge
@@ -1383,10 +1385,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             activeApiElement.classList.add('active');
         }
         
-        // 恢复标题
+        // 恢复标题和 Category
         const apiName = document.getElementById('selected-api-name').textContent;
         if (apiName) {
             updateRequestMode('api', `Bound to: ${apiName}`);
+        }
+        const rightPanelCatBadge = document.getElementById('right-panel-category-badge');
+        if (rightPanelCatBadge && originalCategoryHtml) {
+            rightPanelCatBadge.innerHTML = originalCategoryHtml;
         }
     });
 
