@@ -1,10 +1,11 @@
 :root {
-    --bg-color: var(--accent-text);
+    --bg-color: #0f1115;
     --panel-bg: rgba(25, 28, 36, 0.6);
     --panel-border: rgba(255, 255, 255, 0.08);
     --text-primary: #e2e8f0;
     --text-secondary: #94a3b8;
-    --accent: #F2C811; /* Power BI Yellow */\n    --accent-text: #0f1115;
+    --accent: #F2C811; /* Power BI Yellow */
+    --accent-text: #0f1115;
     --accent-hover: #d4af37;
     --accent-glow: rgba(242, 200, 17, 0.2);
     --success: #10b981;
@@ -62,6 +63,7 @@
     --text-primary: #0f172a;
     --text-secondary: #475569;
     --accent: #F2C811;
+    --accent-text: #0f1115;
     --accent-hover: #d4af37;
     --accent-glow: rgba(212, 175, 55, 0.3);
     
@@ -1040,7 +1042,7 @@ select.settings-input option {
 .btn-warning-action {
     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
     border: none !important;
-    color: var(--text-primary) !important;
+    color: #fff !important;
     transition: all 0.2s;
 }
 
