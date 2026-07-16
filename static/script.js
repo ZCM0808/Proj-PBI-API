@@ -1011,10 +1011,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                        
                 if (!matchesSearch) return false;
                 
-                // URL Parameter 快速筛选 (OR 关系，包含任意选中参数即可)
+                // URL Parameter 快速筛选 (AND 关系，必须包含所有选中的参数)
                 if (currentParamFilters.length > 0) {
-                    const hasAnyParam = currentParamFilters.some(param => ep.path.includes('{' + param + '}'));
-                    if (!hasAnyParam) return false;
+                    const hasAllParams = currentParamFilters.every(param => ep.path.includes('{' + param + '}'));
+                    if (!hasAllParams) return false;
                 }
                 
                 return true;
