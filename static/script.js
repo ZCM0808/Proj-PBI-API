@@ -2133,6 +2133,8 @@ const loadReqHistory = (searchTerm = "") => {
                 loadList('report-list', 'pbi_reports', data.PBI_REPORTS);
                 document.getElementById('set-client').value = data.CLIENT_ID || '';
                 document.getElementById('set-secret').value = data.CLIENT_SECRET || '';
+                document.getElementById('set-username').value = data.USERNAME || '';
+                document.getElementById('set-password').value = data.PASSWORD || '';
                 document.getElementById('set-tenant').value = data.TENANT_ID || '';
 
             } catch (err) {
@@ -2165,9 +2167,11 @@ const loadReqHistory = (searchTerm = "") => {
             verifySettingsBtn.addEventListener('click', async () => {
                 const clientId = document.getElementById('set-client').value.trim();
                 const clientSecret = document.getElementById('set-secret').value.trim();
+                const username = document.getElementById('set-username').value.trim();
+                const password = document.getElementById('set-password').value.trim();
                 const tenantId = document.getElementById('set-tenant').value.trim();
-                if (!clientId || !clientSecret || !tenantId) {
-                    alert("请先填写 TENANT_ID, CLIENT_ID, 和 CLIENT_SECRET！");
+                if ((!clientId || !tenantId) || (!clientSecret && (!username || !password))) {
+                    alert("请填写 TENANT_ID, CLIENT_ID, 以及 (CLIENT_SECRET 或 USERNAME/PASSWORD)！");
                     return;
                 }
 
@@ -2182,6 +2186,8 @@ const loadReqHistory = (searchTerm = "") => {
                         body: JSON.stringify({
                             pbi_client_id: clientId,
                             pbi_client_secret: clientSecret,
+                            pbi_username: username,
+                            pbi_password: password,
                             pbi_tenant_id: tenantId
                         })
                     });
@@ -2258,6 +2264,8 @@ const loadReqHistory = (searchTerm = "") => {
                 SQL_CONN_STR: document.getElementById('set-sql').value.replace(/\r?\n|\r/g, '').trim(),
                 CLIENT_ID: document.getElementById('set-client').value.trim(),
                 CLIENT_SECRET: document.getElementById('set-secret').value.trim(),
+                USERNAME: document.getElementById('set-username').value.trim(),
+                PASSWORD: document.getElementById('set-password').value.trim(),
                 TENANT_ID: document.getElementById('set-tenant').value.trim(),
                 PBI_WORKSPACES: window.getListData('workspace-list'),
                 PBI_DATASETS: window.getListData('dataset-list'),

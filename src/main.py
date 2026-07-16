@@ -52,24 +52,36 @@ async def verify_settings(request: Request):
         data = await request.json()
         client_id = data.get("pbi_client_id", "").strip()
         client_secret = data.get("pbi_client_secret", "").strip()
+        username = data.get("pbi_username", "").strip()
+        password = data.get("pbi_password", "").strip()
         tenant_id = data.get("pbi_tenant_id", "").strip()
 
-        if not all([client_id, client_secret, tenant_id]):
-            return {"success": False, "message": "TENANT_ID, CLIENT_ID, and CLIENT_SECRET are required for Service Principal."}
+        if not client_id or not tenant_id:
+            return {"success": False, "message": "TENANT_ID and CLIENT_ID are required."}
 
         authority_url = f"https://login.microsoftonline.com/{tenant_id}"
-        from msal import ConfidentialClientApplication  # type: ignore[import-untyped]
-        app = ConfidentialClientApplication(
-            client_id=client_id,
-            client_credential=client_secret,
-            authority=authority_url,
-        )
+        from msal import ConfidentialClientApplication, PublicClientApplication  # type: ignore[import-untyped]
         
         # Test default PowerBI scope
         scope = ["https://analysis.windows.net/powerbi/api/.default"]
-        
         import asyncio
-        result = await asyncio.to_thread(app.acquire_token_for_client, scopes=scope)
+        
+        result = None
+        if username and password:
+            app = PublicClientApplication(
+                client_id=client_id,
+                authority=authority_url,
+            )
+            result = await asyncio.to_thread(app.acquire_token_by_username_password, username=username, password=password, scopes=scope)
+        else:
+            if not client_secret:
+                return {"success": False, "message": "CLIENT_SECRET or USERNAME/PASSWORD is required."}
+            app = ConfidentialClientApplication(
+                client_id=client_id,
+                client_credential=client_secret,
+                authority=authority_url,
+            )
+            result = await asyncio.to_thread(app.acquire_token_for_client, scopes=scope)
         
         if "access_token" in result:
             app_name = "Unknown App"
@@ -87,7 +99,7 @@ async def verify_settings(request: Request):
             except Exception:
                 pass
                 
-            return {"success": True, "message": f"凭证验证成功！(Auth Success)\nClient App: {app_name}", "app_name": app_name}
+            return {"success": True, "message": f"凭证验证成功！(Auth Success)\nAuth Mode: {'ROPC (User)' if username else 'Service Principal'}\nClient App: {app_name}", "app_name": app_name}
         
         return {"success": False, "message": f"Auth failed: {result.get('error_description', result.get('error', 'Unknown Error'))}"}
     except Exception as e:

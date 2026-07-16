@@ -359,6 +359,19 @@
                                 </button>
                             </div>
                         </div>
+                        <div class="form-group" style="margin-bottom: 8px; border-top: 1px dashed var(--panel-border); padding-top: 8px;">
+                            <label>USERNAME (Optional, for Personal Workspace)</label>
+                            <input type="text" id="set-username" name="pbi_username" class="settings-input" placeholder="e.g. user@myorg.com">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 8px;">
+                            <label>PASSWORD (Optional, for Personal Workspace)</label>
+                            <div style="position: relative; display: flex; align-items: center;">
+                                <input type="password" id="set-password" name="pbi_password" class="settings-input" placeholder="User password" style="padding-right: 36px;">
+                                <button type="button" onclick="const p = document.getElementById('set-password'); p.type = p.type === 'password' ? 'text' : 'password';" style="position: absolute; right: 8px; background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px;" title="Toggle Visibility">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path></svg>
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <div style="border-top: 1px solid var(--panel-border); margin: 4px 0;"></div>

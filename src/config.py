@@ -11,6 +11,8 @@ class Config:
 
     CLIENT_ID: str = os.getenv("PBI_CLIENT_ID", "")
     CLIENT_SECRET: str = os.getenv("PBI_CLIENT_SECRET", "")
+    USERNAME: str = os.getenv("PBI_USERNAME", "")
+    PASSWORD: str = os.getenv("PBI_PASSWORD", "")
     TENANT_ID: str = os.getenv("PBI_TENANT_ID", "")
     AUTHORITY: str = os.getenv("PBI_AUTHORITY", "https://login.microsoftonline.com/")
     SCOPE: list[str] = [
@@ -39,6 +41,8 @@ class Config:
         return {
             "CLIENT_ID": cls.CLIENT_ID,
             "CLIENT_SECRET": cls.CLIENT_SECRET,
+            "USERNAME": cls.USERNAME,
+            "PASSWORD": cls.PASSWORD,
             "TENANT_ID": cls.TENANT_ID,
             "SQL_CONN_STR": cls.SQL_CONN_STR,
             "PBI_WORKSPACES": cls.PBI_WORKSPACES,
@@ -56,6 +60,8 @@ class Config:
         key_map = {
             "CLIENT_ID": "PBI_CLIENT_ID",
             "CLIENT_SECRET": "PBI_CLIENT_SECRET",
+            "USERNAME": "PBI_USERNAME",
+            "PASSWORD": "PBI_PASSWORD",
             "TENANT_ID": "PBI_TENANT_ID",
             "AUTH_MODE": "PBI_AUTH_MODE",
             "SQL_CONN_STR": "SQL_CONN_STR",

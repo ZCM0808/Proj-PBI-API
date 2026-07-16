@@ -2,7 +2,7 @@
 
 import os
 import requests
-from msal import ConfidentialClientApplication, SerializableTokenCache  # type: ignore[import-untyped]
+from msal import ConfidentialClientApplication, PublicClientApplication, SerializableTokenCache  # type: ignore[import-untyped]
 from src.config import Config
 
 
@@ -28,14 +28,26 @@ class PBIClient:
         api_type_clean = api_type.strip().lower()
         scope = ["https://api.fabric.microsoft.com/.default"] if api_type_clean == "fabric" else self.config.SCOPE
         
-        app = ConfidentialClientApplication(
-            client_id=self.config.CLIENT_ID,
-            client_credential=self.config.CLIENT_SECRET,
-            authority=self.config.authority_url,
-            token_cache=self.cache
-        )
-        
-        result = app.acquire_token_for_client(scopes=scope)
+        result = None
+        if self.config.USERNAME and self.config.PASSWORD:
+            app = PublicClientApplication(
+                client_id=self.config.CLIENT_ID,
+                authority=self.config.authority_url,
+                token_cache=self.cache
+            )
+            result = app.acquire_token_by_username_password(
+                username=self.config.USERNAME,
+                password=self.config.PASSWORD,
+                scopes=scope
+            )
+        else:
+            app = ConfidentialClientApplication(
+                client_id=self.config.CLIENT_ID,
+                client_credential=self.config.CLIENT_SECRET,
+                authority=self.config.authority_url,
+                token_cache=self.cache
+            )
+            result = app.acquire_token_for_client(scopes=scope)
             
         self._save_cache()
         if result and "access_token" in result:
