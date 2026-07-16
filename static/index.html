@@ -162,7 +162,7 @@
                 <!-- Context Toolbar -->
                 <div id="context-toolbar" style="display: flex; gap: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">
                     <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
-                        <label style="font-size: 0.7rem; color: var(--text-secondary); width: 60px;">Workspace</label>
+                        <label style="font-size: 0.7rem; color: var(--text-secondary); width: 120px;">Workspace (groupId)</label>
                         <div class="custom-select-wrapper" id="wrapper-workspace" style="position: relative; flex: 1; min-width: 0;">
                             <div class="custom-select-trigger" id="trigger-workspace" onclick="toggleCustomSelect('workspace')" style="padding: 4px 8px; height: 38px; background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 4px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; user-select: none; transition: border-color 0.2s;">
                                 <span class="cs-name" style="color: var(--text-primary); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">-- None --</span>
@@ -173,7 +173,7 @@
                         </div>
                     </div>
                     <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
-                        <label style="font-size: 0.7rem; color: var(--text-secondary); width: 50px;">Dataset</label>
+                        <label style="font-size: 0.7rem; color: var(--text-secondary); width: 110px;">Dataset (datasetId)</label>
                         <div class="custom-select-wrapper" id="wrapper-dataset" style="position: relative; flex: 1; min-width: 0;">
                             <div class="custom-select-trigger" id="trigger-dataset" onclick="toggleCustomSelect('dataset')" style="padding: 4px 8px; height: 38px; background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 4px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; user-select: none; transition: border-color 0.2s;">
                                 <span class="cs-name" style="color: var(--text-primary); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">-- None --</span>
@@ -184,7 +184,7 @@
                         </div>
                     </div>
                     <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
-                        <label style="font-size: 0.7rem; color: var(--text-secondary); width: 45px;">Report</label>
+                        <label style="font-size: 0.7rem; color: var(--text-secondary); width: 100px;">Report (reportId)</label>
                         <div class="custom-select-wrapper" id="wrapper-report" style="position: relative; flex: 1; min-width: 0;">
                             <div class="custom-select-trigger" id="trigger-report" onclick="toggleCustomSelect('report')" style="padding: 4px 8px; height: 38px; background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 4px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; user-select: none; transition: border-color 0.2s;">
                                 <span class="cs-name" style="color: var(--text-primary); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">-- None --</span>
@@ -368,7 +368,7 @@
 
                     <div class="form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="const list = document.getElementById('workspace-list'); const icon = this.querySelector('.collapse-icon'); if (list.style.display === 'none') { list.style.display = 'flex'; icon.textContent = '▼'; } else { list.style.display = 'none'; icon.textContent = '▶'; }" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_WORKSPACES (工作区字典)</label>
+                            <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="const list = document.getElementById('workspace-list'); const icon = this.querySelector('.collapse-icon'); if (list.style.display === 'none') { list.style.display = 'flex'; icon.textContent = '▼'; } else { list.style.display = 'none'; icon.textContent = '▶'; }" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_WORKSPACES (工作区字典 / groupId)</label>
                             <div style="display: flex; gap: 6px;">
                                 <button type="button" onclick="verifySelectedGuid('groups', 'workspace-list', event)" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; border-radius: 4px; cursor: pointer;" title="Verify Selected">⚡</button>
                                 <button type="button" onclick="scanItems('workspaces', event)" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.3); color: #a78bfa; border-radius: 4px; cursor: pointer;">🔍 Scan</button>
@@ -379,7 +379,7 @@
                     </div>
                     <div class="form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="const list = document.getElementById('dataset-list'); const icon = this.querySelector('.collapse-icon'); if (list.style.display === 'none') { list.style.display = 'flex'; icon.textContent = '▼'; } else { list.style.display = 'none'; icon.textContent = '▶'; }" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_DATASETS (数据集字典)</label>
+                            <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="const list = document.getElementById('dataset-list'); const icon = this.querySelector('.collapse-icon'); if (list.style.display === 'none') { list.style.display = 'flex'; icon.textContent = '▼'; } else { list.style.display = 'none'; icon.textContent = '▶'; }" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_DATASETS (数据集字典 / datasetId)</label>
                             <div style="display: flex; gap: 6px;">
                                 <button type="button" onclick="verifySelectedGuid('datasets', 'dataset-list', event)" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; border-radius: 4px; cursor: pointer;" title="Verify Selected">⚡</button>
                                 <button type="button" onclick="scanItems('datasets', event)" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.3); color: #a78bfa; border-radius: 4px; cursor: pointer;">🔍 Scan</button>
@@ -390,7 +390,7 @@
                     </div>
                     <div class="form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="const list = document.getElementById('report-list'); const icon = this.querySelector('.collapse-icon'); if (list.style.display === 'none') { list.style.display = 'flex'; icon.textContent = '▼'; } else { list.style.display = 'none'; icon.textContent = '▶'; }" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_REPORTS (报表字典)</label>
+                            <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="const list = document.getElementById('report-list'); const icon = this.querySelector('.collapse-icon'); if (list.style.display === 'none') { list.style.display = 'flex'; icon.textContent = '▼'; } else { list.style.display = 'none'; icon.textContent = '▶'; }" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_REPORTS (报表字典 / reportId)</label>
                             <div style="display: flex; gap: 6px;">
                                 <button type="button" onclick="verifySelectedGuid('reports', 'report-list', event)" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; border-radius: 4px; cursor: pointer;" title="Verify Selected">⚡</button>
                                 <button type="button" onclick="scanItems('reports', event)" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.3); color: #a78bfa; border-radius: 4px; cursor: pointer;">🔍 Scan</button>
