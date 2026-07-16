@@ -92,7 +92,7 @@ async def verify_settings(request: Request):
             )
             result = await asyncio.to_thread(app.acquire_token_for_client, scopes=scope)
         
-        if "access_token" in result:
+        if result and "access_token" in result:
             app_name = "Unknown App"
             try:
                 import base64
@@ -110,7 +110,8 @@ async def verify_settings(request: Request):
                 
             return {"success": True, "message": f"凭证验证成功！(Auth Success)\nAuth Mode: {'Personal Auth (Delegated)' if auth_mode == 'personal' else 'Service Principal'}\nClient App: {app_name}", "app_name": app_name}
         
-        return {"success": False, "message": f"Auth failed: {result.get('error_description', result.get('error', 'Unknown Error'))}"}
+        error_desc = result.get('error_description', result.get('error', 'Unknown Error')) if result else "No result returned"
+        return {"success": False, "message": f"Auth failed: {error_desc}"}
     except Exception as e:
         return {"success": False, "message": f"Server Error: {str(e)}"}
 
