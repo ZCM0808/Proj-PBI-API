@@ -3,21 +3,40 @@ window.addListRow = function(containerId, alias = "", id = "") {
     const container = document.getElementById(containerId);
     if (!container) return;
     const type = containerId === 'workspace-list' ? 'groups' : (containerId === 'dataset-list' ? 'datasets' : 'reports');
+    const typeStr = containerId.split('-')[0];
     
     const row = document.createElement('div');
     row.style.cssText = "display: flex; gap: 8px; align-items: center;";
     row.innerHTML = `
-        <input type="radio" name="${containerId}-radio" style="cursor: pointer; margin-right: 4px;" title="选中测试 (Select for verification)">
+        <input type="radio" name="${containerId}-radio" style="cursor: pointer; margin-right: 4px;" title="选中为默认/活动 (Set as Default/Active)">
         <input type="text" class="settings-input alias-input" placeholder="Alias (e.g. DEV)" value="${alias}" style="flex: 1; min-width: 0; padding: 4px 8px; font-size: 0.75rem;">
         <input type="text" class="settings-input id-input" placeholder="GUID" value="${id}" style="flex: 2; min-width: 0; padding: 4px 8px; font-size: 0.75rem;">
         <button type="button" onclick="if(this.parentElement.parentElement.children.length > 1) { this.parentElement.remove(); } else { alert('必须保留至少一个输入框！(At least one row must be kept)'); }" style="color: #ff6b6b; background: transparent; border: none; cursor: pointer; font-size: 1.2rem; line-height: 1; padding: 0 4px; opacity: 0.3; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'">&times;</button>
     `;
     container.appendChild(row);
     
-    // Automatically select the first radio if none are selected
+    const radio = row.querySelector('input[type="radio"]');
+    const idInput = row.querySelector('.id-input');
+    const aliasInput = row.querySelector('.alias-input');
+    
+    radio.addEventListener('change', () => {
+        if (radio.checked && idInput.value.trim()) {
+            const currentId = idInput.value.trim();
+            const currentAlias = aliasInput.value.trim();
+            localStorage.setItem(`pbi-active-${typeStr}`, currentId);
+            if (window.selectCustomOption) {
+                window.selectCustomOption(typeStr, currentId, currentAlias);
+            }
+        }
+    });
+
+    const activeId = localStorage.getItem(`pbi-active-${typeStr}`);
     const existingRadios = container.querySelectorAll(`input[name="${containerId}-radio"]`);
-    if (existingRadios.length === 1) {
-        existingRadios[0].checked = true;
+    
+    if (activeId && id === activeId) {
+        radio.checked = true;
+    } else if (!activeId && existingRadios.length === 1) {
+        radio.checked = true;
     }
 };
 
@@ -1992,6 +2011,25 @@ const loadReqHistory = (searchTerm = "") => {
             };
         });
     }
+
+    // Global modal click outside to close
+    document.querySelectorAll('.modal-overlay, .confirm-modal-overlay').forEach(modal => {
+        modal.addEventListener('mousedown', (e) => {
+            if (e.target === modal) {
+                const closeBtn = modal.querySelector('.close-btn') || 
+                                 modal.querySelector('#confirm-cancel-btn') || 
+                                 modal.querySelector('#close-modal-btn');
+                                 
+                if (closeBtn) {
+                    closeBtn.click();
+                } else {
+                    const closeBtnByOnClick = modal.querySelector('button[onclick*="style.display=\'none\'"]');
+                    if (closeBtnByOnClick) closeBtnByOnClick.click();
+                    else modal.style.display = 'none';
+                }
+            }
+        });
+    });
 
     // Pipeline Modal Logic
     const btnSmartOps = document.getElementById('btn-smart-ops');
