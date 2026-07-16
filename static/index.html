@@ -360,16 +360,21 @@
                             </div>
                         </div>
                         <div class="form-group" style="margin-bottom: 8px; border-top: 1px dashed var(--panel-border); padding-top: 8px;">
-                            <label>USERNAME (Optional, for Personal Workspace)</label>
+                            <label>USERNAME (Optional, for Personal & Group Workspace)</label>
                             <input type="text" id="set-username" name="pbi_username" class="settings-input" placeholder="e.g. user@myorg.com">
                         </div>
                         <div class="form-group" style="margin-bottom: 8px;">
-                            <label>PASSWORD (Optional, for Personal Workspace)</label>
+                            <label>PASSWORD (Optional, for Personal & Group Workspace)</label>
                             <div style="position: relative; display: flex; align-items: center;">
                                 <input type="password" id="set-password" name="pbi_password" class="settings-input" placeholder="User password" style="padding-right: 36px;">
                                 <button type="button" onclick="const p = document.getElementById('set-password'); p.type = p.type === 'password' ? 'text' : 'password';" style="position: absolute; right: 8px; background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px;" title="Toggle Visibility">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path></svg>
                                 </button>
+                            </div>
+                            <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 6px; line-height: 1.4; background: rgba(0,0,0,0.1); padding: 6px; border-radius: 4px; border-left: 2px solid #a78bfa;">
+                                <strong>💡 Auth Priority Logic:</strong><br>
+                                • <strong>Highest (Personal Auth):</strong> If USERNAME & PASSWORD are provided, they are used globally (Delegated Token). This mode grants access to BOTH your Personal "My Workspace" AND any Group Workspaces you are a member of.<br>
+                                • <strong>Fallback (Azure App Auth):</strong> If left blank, the system falls back to CLIENT_SECRET (Service Principal). This mode CANNOT access Personal "My Workspace".
                             </div>
                         </div>
                     </div>
