@@ -450,6 +450,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let currentApiType = 'powerbi';
     let currentActiveFlag = 'ALL';
+    
+    let currentParamFilters = [];
+    let allApiParams = new Set();
 
     // Theme logic
     const themeBtn = document.getElementById('theme-toggle-btn');
@@ -808,6 +811,65 @@ document.addEventListener('DOMContentLoaded', async () => {
         }));
         pbiApis.sort((a, b) => a.category.localeCompare(b.category));
         
+        // 提取所有必需参数并初始化 Filter 下拉框
+        pbiApis.forEach(cat => {
+            cat.endpoints.forEach(ep => {
+                const matches = ep.path.match(/\{([^}]+)\}/g);
+                if (matches) {
+                    matches.forEach(m => allApiParams.add(m.replace(/[{}]/g, '')));
+                }
+            });
+        });
+        const paramOptionsContainer = document.getElementById('param-filter-options');
+        if (paramOptionsContainer && allApiParams.size > 0) {
+            const sortedParams = Array.from(allApiParams).sort();
+            sortedParams.forEach(param => {
+                const label = document.createElement('label');
+                label.style.cssText = "display: flex; align-items: center; gap: 8px; padding: 6px 10px; cursor: pointer; border-bottom: 1px solid var(--panel-border); font-size: 0.8rem; color: var(--text-primary); transition: background 0.2s;";
+                label.onmouseover = () => label.style.background = 'var(--overlay-10)';
+                label.onmouseout = () => label.style.background = 'transparent';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = param;
+                checkbox.style.cursor = 'pointer';
+                checkbox.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        currentParamFilters.push(param);
+                    } else {
+                        currentParamFilters = currentParamFilters.filter(p => p !== param);
+                    }
+                    const triggerLabel = document.getElementById('param-filter-label');
+                    if (currentParamFilters.length > 0) {
+                        triggerLabel.innerHTML = `<span style="color: var(--accent); font-weight: bold;">[${currentParamFilters.length}]</span> <span style="font-size:0.75rem;">${currentParamFilters.join(', ')}</span>`;
+                    } else {
+                        triggerLabel.textContent = '🔍 过滤必需的参数 (Filter by Parameters)...';
+                    }
+                    const searchInput = document.getElementById('api-search-input');
+                    renderTree(searchInput ? searchInput.value : "");
+                });
+                
+                label.appendChild(checkbox);
+                label.appendChild(document.createTextNode('{' + param + '}'));
+                paramOptionsContainer.appendChild(label);
+            });
+        }
+
+        const paramFilterTrigger = document.getElementById('param-filter-trigger');
+        if (paramFilterTrigger) {
+            paramFilterTrigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const opts = document.getElementById('param-filter-options');
+                opts.style.display = opts.style.display === 'none' ? 'block' : 'none';
+            });
+            document.addEventListener('click', (e) => {
+                const opts = document.getElementById('param-filter-options');
+                if (opts && !paramFilterTrigger.contains(e.target) && !opts.contains(e.target)) {
+                    opts.style.display = 'none';
+                }
+            });
+        }
+        
         renderTree();
     } catch (e) {
         console.error("Failed to load swagger", e);
@@ -942,10 +1004,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 const term = searchTerm.toLowerCase();
                 const zhName = translateApiName(ep.name).toLowerCase();
-                return ep.name.toLowerCase().includes(term) || 
+                const matchesSearch = ep.name.toLowerCase().includes(term) || 
                        ep.path.toLowerCase().includes(term) ||
                        ep.method.toLowerCase().includes(term) ||
                        zhName.includes(term);
+                       
+                if (!matchesSearch) return false;
+                
+                // URL Parameter 快速筛选 (OR 关系，包含任意选中参数即可)
+                if (currentParamFilters.length > 0) {
+                    const hasAnyParam = currentParamFilters.some(param => ep.path.includes('{' + param + '}'));
+                    if (!hasAnyParam) return false;
+                }
+                
+                return true;
             });
 
             if (filteredEndpoints.length === 0) return;
