@@ -504,7 +504,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const hintEl = document.getElementById('base-url-hint');
         if (hintEl) {
             if (apiType === 'fabric') {
-                hintEl.textContent = 'https://api.fabric.microsoft.com/v1.0';
+                hintEl.textContent = 'https://api.fabric.microsoft.com/v1';
             } else {
                 hintEl.textContent = 'https://api.powerbi.com/v1.0/myorg';
             }

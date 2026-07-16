@@ -62,7 +62,7 @@ class PBIClient:
             kwargs: 传递给 requests.request 的其他参数 (如 params, json, data)
         """
         api_type_clean = api_type.strip().lower()
-        base_url = "https://api.fabric.microsoft.com" if api_type_clean == "fabric" else self.config.BASE_URL
+        base_url = "https://api.fabric.microsoft.com/v1" if api_type_clean == "fabric" else self.config.BASE_URL
         
         # 兼容处理，确保拼接时路径斜线没有重复
         if endpoint.startswith("/") and base_url.endswith("/"):
