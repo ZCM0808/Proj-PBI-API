@@ -1609,8 +1609,8 @@ const loadReqHistory = (searchTerm = "") => {
         if (history.length > 0) {
             history.forEach(h => {
                 const item = document.createElement('div');
-                item.style.cssText = 'padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; display: flex; flex-direction: column; gap: 6px; transition: background 0.2s;';
-                item.onmouseover = () => item.style.background = 'rgba(255,255,255,0.05)';
+                item.style.cssText = 'padding: 10px 12px; border-bottom: 1px solid var(--panel-border); cursor: pointer; display: flex; flex-direction: column; gap: 6px; transition: background 0.2s;';
+                item.onmouseover = () => item.style.background = 'var(--overlay-10)';
                 item.onmouseout = () => item.style.background = 'transparent';
                 
                 const topRow = document.createElement('div');

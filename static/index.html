@@ -98,7 +98,7 @@
                         margin: -4px -6px 0.25rem -6px; /* Offset padding to align text */
                     }
                     .info-header-row:hover {
-                        background-color: rgba(255, 255, 255, 0.1);
+                        background-color: var(--overlay-10);
                     }
                     .info-header-row:hover #toggle-info-btn {
                         color: var(--accent) !important;
@@ -108,7 +108,7 @@
                         transition: all 0.2s;
                     }
                 </style>
-                <div id="selected-api-info" class="selected-api-info glass-panel" style="display: none; padding: 1rem; margin-top: 0.5rem; flex-shrink: 0; background: rgba(0,0,0,0.4); border-radius: 8px;">
+                <div id="selected-api-info" class="selected-api-info glass-panel" style="display: none; padding: 1rem; margin-top: 0.5rem; flex-shrink: 0; background: var(--input-bg); border-radius: 8px;">
                     <div id="info-header-row" class="info-header-row" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.25rem; cursor: pointer; user-select: none;" title="点击最小化/最大化 (Click to toggle)">
                         <div style="font-size: 0.75rem; color: var(--accent);">CURRENT SELECTION</div>
                         <button id="toggle-info-btn" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 0 4px; font-size: 1.2rem; line-height: 1;">&minus;</button>
@@ -198,12 +198,12 @@
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                                 <span>History</span>
                             </button>
-                            <div id="request-history-dropdown" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: #1f2428; border: 1px solid var(--panel-border); border-radius: 6px; z-index: 1000; width: 450px; max-height: 400px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.8); flex-direction: column;">
-                                <div style="padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); position: sticky; top: 0; background: #1f2428; z-index: 10;">
-                                    <input type="text" id="history-search-input" placeholder="Fuzzy search URL, Method, or Body..." style="width: 100%; padding: 6px 8px; border-radius: 4px; border: 1px solid var(--panel-border); background: rgba(0,0,0,0.2); color: var(--text-primary); font-size: 0.8rem; outline: none;">
+                            <div id="request-history-dropdown" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: var(--dropdown-bg); border: 1px solid var(--panel-border); border-radius: 6px; z-index: 1000; width: 450px; max-height: 400px; overflow-y: auto; box-shadow: 0 4px 12px var(--shadow-dark); flex-direction: column;">
+                                <div style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); position: sticky; top: 0; background: var(--dropdown-bg); z-index: 2;">
+                                    <input type="text" id="history-search-input" placeholder="Fuzzy search URL, Method, or Body..." style="width: 100%; padding: 6px 8px; border-radius: 4px; border: 1px solid var(--panel-border); background: var(--input-bg-light); color: var(--text-primary); font-size: 0.8rem; outline: none;">
                                 </div>
                                 <div id="history-list-container" style="display: flex; flex-direction: column;"></div>
-                                <div id="history-clear-all" style="padding: 10px 12px; color: #ff6b6b; cursor: pointer; font-size: 0.8rem; text-align: center; transition: background 0.2s; border-top: 1px solid rgba(255,255,255,0.05); position: sticky; bottom: 0; background: #1f2428;">❌ 清空所有请求历史 (Clear All)</div>
+                                <div id="history-clear-all" style="padding: 10px 12px; color: var(--error); cursor: pointer; font-size: 0.8rem; text-align: center; transition: background 0.2s; border-top: 1px solid var(--panel-border); position: sticky; bottom: 0; background: var(--dropdown-bg);">❌ 清空所有请求历史 (Clear All)</div>
                             </div>
                         </div>
                         
