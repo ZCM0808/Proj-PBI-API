@@ -189,8 +189,9 @@ async def proxy_request(request: Request):
 def main():
     """Start Web Server"""
     print("=== Power BI API Web Explorer Starting ===")
-    print("Please visit: http://127.0.0.1:8000")
-    uvicorn.run("src.main:app", host="127.0.0.1", port=8000, reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    print(f"Please visit: http://127.0.0.1:{port}")
+    uvicorn.run("src.main:app", host="127.0.0.1", port=port, reload=True)
 
 
 @app.post("/api/test/guid")
