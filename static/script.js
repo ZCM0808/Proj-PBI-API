@@ -451,6 +451,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentApiType = 'powerbi';
     let currentActiveFlag = 'ALL';
 
+    // Theme logic
+    const themeBtn = document.getElementById('theme-toggle-btn');
+    const sunIcon = document.getElementById('theme-icon-sun');
+    const moonIcon = document.getElementById('theme-icon-moon');
+    
+    function updateThemeIcons() {
+        if (document.documentElement.getAttribute('data-theme') === 'light') {
+            sunIcon.style.display = 'none';
+            moonIcon.style.display = 'block';
+        } else {
+            sunIcon.style.display = 'block';
+            moonIcon.style.display = 'none';
+        }
+    }
+    updateThemeIcons();
+
+    if (themeBtn) {
+        themeBtn.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            if (newTheme === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+            }
+            localStorage.setItem('pbi-theme', newTheme);
+            updateThemeIcons();
+        });
+    }
+
     function updateBaseUrlHint(apiType) {
         const hintEl = document.getElementById('base-url-hint');
         if (hintEl) {

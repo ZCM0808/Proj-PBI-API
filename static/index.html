@@ -5,11 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Power BI API Explorer</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20260716_v1">
+    <link rel="stylesheet" href="/static/style.css?v=20260716_v2">
     <script>
-        // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸，
+        // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
         (function() {
+            // Theme initialization
+            var theme = localStorage.getItem('pbi-theme') || 'dark';
+            if (theme === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
             const sidebarWidth = localStorage.getItem('pbi-sidebar-width');
             const requestHeight = localStorage.getItem('pbi-request-height');
             let styleStr = '';
@@ -51,7 +56,13 @@
             <nav class="nav-menu">
                 <div class="nav-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                     <p class="nav-title" style="margin: 0;">API 资源树</p>
-                    <span class="api-count-badge" title="Total APIs">共 <span id="total-api-count">0</span> 个</span>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span class="api-count-badge" title="Total APIs">共 <span id="total-api-count">0</span> 个</span>
+                        <button id="theme-toggle-btn" class="icon-btn" title="切换主题 (Toggle Theme)" type="button" style="padding: 0 4px; height: 20px; min-width: 20px; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
+                            <svg id="theme-icon-sun" style="display: none;" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                            <svg id="theme-icon-moon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                        </button>
+                    </div>
                 </div>
                 <div style="display: flex; gap: 8px; margin-bottom: 0.5rem;">
                     <input type="text" id="api-search-input" placeholder="搜索 API... (支持拼音/英文)" class="url-input" style="flex: 1; border-radius: 6px; min-width: 0;">
@@ -421,6 +432,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="/static/script.js?v=20260716_v2"></script>
+    <script src="/static/script.js?v=20260716_v3"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 :root {
     --bg-color: #0f1115;
     --panel-bg: rgba(25, 28, 36, 0.6);
-    --panel-border: rgba(255, 255, 255, 0.08);
+    --panel-border: var(--overlay-8);
     --text-primary: #e2e8f0;
     --text-secondary: #94a3b8;
     --accent: #F2C811; /* Power BI Yellow */
@@ -9,7 +9,45 @@
     --accent-glow: rgba(242, 200, 17, 0.2);
     --success: #10b981;
     --error: #ef4444;
+    
+    --overlay-5: var(--overlay-5);
+    --overlay-8: var(--overlay-8);
+    --overlay-10: var(--overlay-10);
+    --overlay-15: var(--overlay-15);
+    --overlay-20: var(--overlay-20);
+    --overlay-30: var(--overlay-30);
+    
+    --shadow-base: var(--shadow-base);
+    --shadow-dark: var(--shadow-dark);
+    
+    --input-bg: var(--shadow-base);
+    --input-bg-light: rgba(0, 0, 0, 0.2);
 }
+
+[data-theme="light"] {
+    --bg-color: #f1f5f9;
+    --panel-bg: rgba(255, 255, 255, 0.85);
+    --panel-border: rgba(0, 0, 0, 0.1);
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --accent: #d4af37;
+    --accent-hover: #b48c22;
+    --accent-glow: rgba(212, 175, 55, 0.3);
+    
+    --overlay-5: rgba(0, 0, 0, 0.04);
+    --overlay-8: rgba(0, 0, 0, 0.06);
+    --overlay-10: rgba(0, 0, 0, 0.08);
+    --overlay-15: rgba(0, 0, 0, 0.12);
+    --overlay-20: rgba(0, 0, 0, 0.15);
+    --overlay-30: rgba(0, 0, 0, 0.25);
+    
+    --shadow-base: rgba(0, 0, 0, 0.08);
+    --shadow-dark: rgba(0, 0, 0, 0.15);
+    
+    --input-bg: rgba(255, 255, 255, 0.7);
+    --input-bg-light: rgba(255, 255, 255, 0.5);
+}
+
 
 * {
     box-sizing: border-box;
@@ -43,7 +81,7 @@ body {
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--panel-border);
     border-radius: 16px;
-    box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 24px -1px var(--shadow-base);
 }
 
 /* Sidebar */
@@ -75,7 +113,7 @@ body {
     content: '';
     width: 4px;
     height: 40px;
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--overlay-10);
     border-radius: 4px;
     transition: background 0.2s;
 }
@@ -100,7 +138,7 @@ body {
     content: '';
     width: 40px;
     height: 4px;
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--overlay-10);
     border-radius: 4px;
     transition: background 0.2s;
 }
@@ -122,7 +160,7 @@ body {
 }
 #api-search-input {
     width: 100%;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--shadow-base);
     border: 1px solid var(--panel-border);
     color: var(--text-primary);
     padding: 0.6rem 1rem;
@@ -157,7 +195,7 @@ body {
 
 .search-box input {
     width: 100%;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--shadow-base);
     border: 1px solid var(--panel-border);
     color: var(--text-primary);
     padding: 0.6rem 1rem;
@@ -219,7 +257,7 @@ body {
     flex-direction: column;
     gap: 0.2rem;
     padding-left: 0.5rem;
-    border-left: 1px solid rgba(255, 255, 255, 0.05);
+    border-left: 1px solid var(--overlay-5);
 }
 
 .api-item {
@@ -233,7 +271,7 @@ body {
 }
 
 .api-item:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--overlay-5);
 }
 
 .api-item.active {
@@ -322,8 +360,8 @@ body {
     display: flex;
     align-items: center;
     gap: 0.3rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--overlay-5);
+    border: 1px solid var(--overlay-10);
     color: var(--text-secondary);
     padding: 0.3rem 0.6rem;
     border-radius: 4px;
@@ -333,7 +371,7 @@ body {
 }
 
 .icon-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--overlay-10);
     color: var(--text-primary);
 }
 
@@ -346,11 +384,11 @@ body {
     background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--overlay-10);
     border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--overlay-20);
 }
 /* Request Builder */
 .request-builder { 
@@ -368,7 +406,7 @@ body {
 }
 
 .input-group select, .input-group input {
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--shadow-base);
     border: 1px solid var(--panel-border);
     color: var(--text-primary);
     padding: 0.75rem 1rem;
@@ -396,7 +434,7 @@ body {
 .endpoint-input {
     flex: 1;
     display: flex;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--shadow-base);
     border: 1px solid var(--panel-border);
     border-radius: 8px;
     align-items: center;
@@ -413,7 +451,7 @@ body {
     color: var(--text-secondary);
     font-size: 0.9rem;
     border-right: 1px solid var(--panel-border);
-    background: rgba(0,0,0,0.2);
+    background: var(--input-bg-light);
     height: 100%;
     display: flex;
     align-items: center;
@@ -479,14 +517,14 @@ body {
 
 .editor-header .hint {
     font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.3);
+    color: var(--overlay-30);
 }
 
 textarea {
     width: 100%;
     flex: 1;
     min-height: 80px;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--shadow-base);
     border: 1px solid var(--panel-border);
     border-radius: 8px;
     color: var(--text-primary);
@@ -524,7 +562,7 @@ textarea:focus {
     font-size: 0.85rem;
     padding: 0.25rem 0.75rem;
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--overlay-5);
     color: var(--text-secondary);
 }
 
@@ -556,7 +594,7 @@ textarea:focus {
     flex: 1;
     padding: 1.5rem;
     overflow: auto;
-    background: rgba(0, 0, 0, 0.2);
+    background: var(--input-bg-light);
 }
 
 .response-body pre {
@@ -634,7 +672,7 @@ textarea:focus {
     .search-container input {
         width: 100%;
         padding: 0.5rem;
-        background: rgba(0,0,0,0.3);
+        background: var(--shadow-base);
         border: 1px solid var(--panel-border);
         border-radius: 4px;
         color: white;
@@ -658,7 +696,7 @@ textarea:focus {
 /* Modal and Terminal Styles */
 .modal-overlay {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-    background: rgba(0, 0, 0, 0.6);
+    background: var(--shadow-dark);
     display: flex; justify-content: center; align-items: flex-start;
     padding-top: 5vh; padding-bottom: 5vh; overflow-y: auto;
     z-index: 1000;
@@ -674,7 +712,7 @@ textarea:focus {
 .modal-header {
     display: flex; justify-content: space-between; align-items: center;
     padding: 1rem 1.5rem;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
+    border-bottom: 1px solid var(--overlay-10);
 }
 .modal-header h3 { margin: 0; font-size: 1.1rem; }
 .close-btn { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
@@ -693,7 +731,7 @@ textarea:focus {
 .terminal-line .error { color: #f85149; font-weight: bold; }
 .modal-footer {
     padding: 1rem 1.5rem;
-    border-top: 1px solid rgba(255,255,255,0.1);
+    border-top: 1px solid var(--overlay-10);
 }
 
 /* 究极炫酷的 Pipeline 执行按钮 */
@@ -764,7 +802,7 @@ textarea:focus {
     padding: 6px 10px;
     font-size: 0.85rem;
     font-family: 'Fira Code', monospace;
-    background: rgba(0,0,0,0.2);
+    background: var(--input-bg-light);
     border: 1px solid var(--panel-border);
     border-radius: 4px;
     color: white;
@@ -827,8 +865,8 @@ select.settings-input option {
     font-size: 0.65rem;
     font-weight: 500;
     border-radius: 10px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--overlay-5);
+    border: 1px solid var(--overlay-8);
     color: var(--text-secondary);
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -836,7 +874,7 @@ select.settings-input option {
 }
 
 .flag-badge:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--overlay-10);
     border-color: rgba(255, 255, 255, 0.18);
     color: var(--text-primary);
 }
@@ -855,8 +893,8 @@ select.settings-input option {
 .confirm-modal-content {
     background: rgba(20, 20, 25, 0.85);
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.6);
+    border: 1px solid var(--overlay-10);
+    box-shadow: 0 12px 40px 0 var(--shadow-dark);
     border-radius: 12px;
     padding: 1.5rem;
     max-width: 440px;
@@ -927,7 +965,7 @@ select.settings-input option {
     font-size: 0.75rem;
     color: #a78bfa;
     word-break: break-all;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--overlay-5);
 }
 
 .confirm-modal-footer {
@@ -977,9 +1015,9 @@ select.settings-input option {
    复制 cURL 请求按钮与书签激活样式
    ========================================= */
 #copy-btn {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--overlay-5);
     color: var(--text-primary);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--overlay-10);
     padding: 0 1.2rem;
     border-radius: 8px;
     font-weight: 500;
