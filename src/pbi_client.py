@@ -17,12 +17,6 @@ class PBIClient:
             with open(self.cache_file, "r") as f:
                 self.cache.deserialize(f.read())
 
-        self._app = ConfidentialClientApplication(
-            client_id=self.config.CLIENT_ID,
-            client_credential=self.config.CLIENT_SECRET,
-            authority=self.config.authority_url,
-            token_cache=self.cache
-        )
 
     def _save_cache(self):
         if self.cache.has_state_changed:
@@ -33,7 +27,15 @@ class PBIClient:
         """获取访问令牌"""
         api_type_clean = api_type.strip().lower()
         scope = ["https://api.fabric.microsoft.com/.default"] if api_type_clean == "fabric" else self.config.SCOPE
-        result = self._app.acquire_token_for_client(scopes=scope)
+        
+        app = ConfidentialClientApplication(
+            client_id=self.config.CLIENT_ID,
+            client_credential=self.config.CLIENT_SECRET,
+            authority=self.config.authority_url,
+            token_cache=self.cache
+        )
+        
+        result = app.acquire_token_for_client(scopes=scope)
             
         self._save_cache()
         if result and "access_token" in result:
