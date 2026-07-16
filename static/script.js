@@ -2310,7 +2310,7 @@ window.updateViewMode = function(mode) {
     btns.forEach(b => {
         if (b.getAttribute('data-mode') === mode) {
             b.style.background = 'var(--accent)';
-            b.style.color = '#fff';
+            b.style.color = 'var(--accent-text)';
         } else {
             b.style.background = 'transparent';
             b.style.color = 'var(--text-secondary)';

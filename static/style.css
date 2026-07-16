@@ -1,10 +1,10 @@
 :root {
-    --bg-color: #0f1115;
+    --bg-color: var(--accent-text);
     --panel-bg: rgba(25, 28, 36, 0.6);
     --panel-border: rgba(255, 255, 255, 0.08);
     --text-primary: #e2e8f0;
     --text-secondary: #94a3b8;
-    --accent: #F2C811; /* Power BI Yellow */
+    --accent: #F2C811; /* Power BI Yellow */\n    --accent-text: #0f1115;
     --accent-hover: #d4af37;
     --accent-glow: rgba(242, 200, 17, 0.2);
     --success: #10b981;
@@ -58,15 +58,15 @@
 [data-theme="light"] {
     --bg-color: #f1f5f9;
     --panel-bg: rgba(255, 255, 255, 0.85);
-    --panel-border: rgba(0, 0, 0, 0.1);
-    --text-primary: #1e293b;
-    --text-secondary: #64748b;
-    --accent: #d4af37;
-    --accent-hover: #b48c22;
+    --panel-border: rgba(0, 0, 0, 0.15);
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --accent: #F2C811;
+    --accent-hover: #d4af37;
     --accent-glow: rgba(212, 175, 55, 0.3);
     
-    --overlay-5: rgba(0, 0, 0, 0.04);
-    --overlay-8: rgba(0, 0, 0, 0.06);
+    --overlay-5: rgba(0, 0, 0, 0.05);
+    --overlay-8: rgba(0, 0, 0, 0.08);
     --overlay-10: rgba(0, 0, 0, 0.08);
     --overlay-15: rgba(0, 0, 0, 0.12);
     --overlay-20: rgba(0, 0, 0, 0.15);
@@ -945,7 +945,7 @@ select.settings-input option {
 .flag-badge.active {
     background: var(--accent);
     border-color: var(--accent);
-    color: #0f1115;
+    color: var(--accent-text);
     font-weight: 600;
     box-shadow: 0 0 10px rgba(242, 200, 17, 0.3);
 }
