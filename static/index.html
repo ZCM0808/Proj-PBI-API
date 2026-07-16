@@ -162,7 +162,10 @@
                 <!-- Context Toolbar -->
                 <div id="context-toolbar" style="display: flex; gap: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">
                     <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
-                        <label style="font-size: 0.7rem; color: var(--text-secondary); width: 120px;">Workspace (groupId)</label>
+                        <div style="display: flex; flex-direction: column; width: 80px; justify-content: center;">
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 2px;">Workspace</label>
+                            <span style="font-size: 0.6rem; color: var(--text-tertiary);">(groupId)</span>
+                        </div>
                         <div class="custom-select-wrapper" id="wrapper-workspace" style="position: relative; flex: 1; min-width: 0;">
                             <div class="custom-select-trigger" id="trigger-workspace" onclick="toggleCustomSelect('workspace')" style="padding: 4px 8px; height: 38px; background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 4px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; user-select: none; transition: border-color 0.2s;">
                                 <span class="cs-name" style="color: var(--text-primary); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">-- None --</span>
@@ -173,7 +176,10 @@
                         </div>
                     </div>
                     <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
-                        <label style="font-size: 0.7rem; color: var(--text-secondary); width: 110px;">Dataset (datasetId)</label>
+                        <div style="display: flex; flex-direction: column; width: 80px; justify-content: center;">
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 2px;">Dataset</label>
+                            <span style="font-size: 0.6rem; color: var(--text-tertiary);">(datasetId)</span>
+                        </div>
                         <div class="custom-select-wrapper" id="wrapper-dataset" style="position: relative; flex: 1; min-width: 0;">
                             <div class="custom-select-trigger" id="trigger-dataset" onclick="toggleCustomSelect('dataset')" style="padding: 4px 8px; height: 38px; background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 4px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; user-select: none; transition: border-color 0.2s;">
                                 <span class="cs-name" style="color: var(--text-primary); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">-- None --</span>
@@ -184,7 +190,10 @@
                         </div>
                     </div>
                     <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
-                        <label style="font-size: 0.7rem; color: var(--text-secondary); width: 100px;">Report (reportId)</label>
+                        <div style="display: flex; flex-direction: column; width: 80px; justify-content: center;">
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 2px;">Report</label>
+                            <span style="font-size: 0.6rem; color: var(--text-tertiary);">(reportId)</span>
+                        </div>
                         <div class="custom-select-wrapper" id="wrapper-report" style="position: relative; flex: 1; min-width: 0;">
                             <div class="custom-select-trigger" id="trigger-report" onclick="toggleCustomSelect('report')" style="padding: 4px 8px; height: 38px; background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 4px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; user-select: none; transition: border-color 0.2s;">
                                 <span class="cs-name" style="color: var(--text-primary); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">-- None --</span>

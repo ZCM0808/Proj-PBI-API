@@ -207,6 +207,9 @@ window.selectCustomOption = function(type, id, alias) {
         idEl.style.display = 'none';
     }
     
+    // Persist selection
+    localStorage.setItem(`pbi-active-${type}`, id);
+    
     document.getElementById(`options-${type}`).style.display = 'none';
     trigger.style.borderColor = 'var(--panel-border)';
 };
@@ -221,7 +224,10 @@ window.renderContextDropdowns = function() {
         const optionsDiv = document.getElementById(`options-${type}`);
         if (!input || !optionsDiv) return;
         
-        const currentVal = input.value;
+        // Restore from localStorage or use current input value
+        const savedVal = localStorage.getItem(`pbi-active-${type}`);
+        const currentVal = savedVal !== null ? savedVal : input.value;
+        
         let html = `<div onclick="selectCustomOption('${type}', '', '')" style="padding: 6px 8px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid var(--panel-border);" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'">
             <div style="color: var(--text-secondary); font-size: 0.75rem;">-- None --</div>
         </div>`;
