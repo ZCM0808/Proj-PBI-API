@@ -233,6 +233,10 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
         client_id = data.get("pbi_client_id", "").strip()
         client_secret = data.get("pbi_client_secret", "").strip()
         tenant_id = data.get("pbi_tenant_id", "").strip()
+        body_workspace_id = data.get("workspace_id", "").strip()
+        # Prefer body parameter over query parameter
+        if body_workspace_id:
+            workspace_id = body_workspace_id
         
         if not all([client_id, client_secret, tenant_id]):
             return {"success": False, "error": "Missing credentials. Please fill TENANT_ID, CLIENT_ID, and CLIENT_SECRET."}

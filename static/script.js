@@ -86,6 +86,12 @@ window.scanItems = async function(type, event) {
     btn.innerHTML = '⏳ Scanning...';
     btn.disabled = true;
     
+    let workspaceId = document.getElementById('active-workspace')?.value || '';
+    if (!workspaceId) {
+        const wList = window.getListData('workspace-list');
+        if (wList.length > 0) workspaceId = wList[0].id;
+    }
+    
     try {
         const res = await fetch(`/api/scan/${type}`, {
             method: 'POST',
@@ -93,7 +99,8 @@ window.scanItems = async function(type, event) {
             body: JSON.stringify({
                 pbi_client_id: document.getElementById('set-client').value.trim(),
                 pbi_client_secret: document.getElementById('set-secret').value.trim(),
-                pbi_tenant_id: document.getElementById('set-tenant').value.trim()
+                pbi_tenant_id: document.getElementById('set-tenant').value.trim(),
+                workspace_id: workspaceId
             })
         });
         const data = await res.json();
