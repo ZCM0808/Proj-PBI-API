@@ -467,6 +467,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     updateThemeIcons();
+    
+    // Listen to OS theme changes if user hasn't explicitly overridden it
+    if (window.matchMedia) {
+        window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', e => {
+            if (!localStorage.getItem('pbi-theme')) {
+                const newTheme = e.matches ? 'light' : 'dark';
+                if (newTheme === 'light') {
+                    document.documentElement.setAttribute('data-theme', 'light');
+                } else {
+                    document.documentElement.removeAttribute('data-theme');
+                }
+                updateThemeIcons();
+            }
+        });
+    }
 
     if (themeBtn) {
         themeBtn.addEventListener('click', () => {

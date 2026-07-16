@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<body>
+<select id="active-workspace"></select>
+<script>
+    const data = {
+        PBI_WORKSPACES: [{"alias": "my", "id": "C06A2729-EE28-4471-AF27-803B56A3D8CC"}]
+    };
+    if (data.PBI_WORKSPACES) {
+        localStorage.setItem('pbi_workspaces', JSON.stringify(data.PBI_WORKSPACES));
+    }
+    
+    const wData = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+    const select = document.getElementById('active-workspace');
+    select.innerHTML = '<option value="">-- None --</option>';
+    wData.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.id;
+        opt.textContent = `${item.alias} (${item.id.substring(0,6)}...)`;
+        select.appendChild(opt);
+    });
+    console.log(select.innerHTML);
+</script>
+</body>
+</html>
