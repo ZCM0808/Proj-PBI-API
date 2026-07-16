@@ -833,8 +833,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                 e.stopPropagation();
             });
             
+            // Add search input inside the dropdown
+            const searchBox = document.createElement('div');
+            searchBox.style.cssText = "padding: 6px; border-bottom: 1px solid var(--panel-border); position: sticky; top: 0; background: var(--dropdown-bg); z-index: 10;";
+            const paramSearchInput = document.createElement('input');
+            paramSearchInput.type = 'text';
+            paramSearchInput.placeholder = 'Search parameters...';
+            paramSearchInput.style.cssText = "width: 100%; box-sizing: border-box; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); font-size: 0.75rem; outline: none;";
+            searchBox.appendChild(paramSearchInput);
+            paramOptionsContainer.appendChild(searchBox);
+            
+            paramSearchInput.addEventListener('input', (e) => {
+                const term = e.target.value.toLowerCase();
+                const labels = paramOptionsContainer.querySelectorAll('.param-option-label');
+                labels.forEach(label => {
+                    const paramText = label.getAttribute('data-param').toLowerCase();
+                    label.style.display = paramText.includes(term) ? 'flex' : 'none';
+                });
+            });
+            
             sortedParams.forEach(param => {
                 const label = document.createElement('label');
+                label.className = 'param-option-label';
+                label.setAttribute('data-param', param);
                 label.style.cssText = "display: flex; align-items: center; gap: 8px; padding: 6px 10px; cursor: pointer; border-bottom: 1px solid var(--panel-border); font-size: 0.8rem; color: var(--text-primary); transition: background 0.2s;";
                 label.onmouseover = () => label.style.background = 'var(--overlay-10)';
                 label.onmouseout = () => label.style.background = 'transparent';
