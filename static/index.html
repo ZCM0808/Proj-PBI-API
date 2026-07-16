@@ -47,10 +47,10 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                     <h2>PBI Explorer</h2>
                     <div style="display: flex; gap: 8px;">
-                        <button id="btn-settings" title="Global Settings" style="background: transparent; color: var(--text-secondary); border: 1px solid rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold; display: flex; align-items: center; transition: all 0.2s;">
+                        <button id="btn-settings" title="Global Settings" style="background: transparent; color: var(--text-secondary); border: 1px solid var(--panel-border); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold; display: flex; align-items: center; transition: all 0.2s;">
                             <span>⚙️</span>
                         </button>
-                        <button id="btn-smart-ops" title="Run Smart DataOps Pipeline" style="background: var(--accent); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-weight: bold; display: flex; align-items: center; gap: 4px;">
+                        <button id="btn-smart-ops" title="Run Smart DataOps Pipeline" style="background: var(--accent); color: var(--accent-text); border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-weight: bold; display: flex; align-items: center; gap: 4px;">
                             <span>🚀 Pipeline</span>
                         </button>
                     </div>
@@ -310,7 +310,7 @@
                     <p style="margin: 0; font-size: 0.75rem; color: var(--text-secondary);">在此配置的所有参数将立即生效，且会在整个项目 (API & Pipeline) 中共享。</p>
 
                     <!-- Authentication Configs -->
-                    <div style="background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; border: 1px solid var(--panel-border);">
+                    <div style="background: var(--input-bg-light); padding: 8px; border-radius: 6px; border: 1px solid var(--panel-border);">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                             <h4 style="margin: 0; font-size: 0.75rem; color: #a78bfa;">Azure App Authentication</h4>
                             <button type="button" id="verify-settings-btn" title="Verify Auth" style="background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; cursor: pointer; font-size: 0.7rem; border-radius: 4px; padding: 2px 6px;">⚡</button>
@@ -341,10 +341,10 @@
                         </div>
                     </div>
 
-                    <div style="border-top: 1px solid rgba(255,255,255,0.1); margin: 4px 0;"></div>
+                    <div style="border-top: 1px solid var(--panel-border); margin: 4px 0;"></div>
 
                     <!-- SQL Config -->
-                    <div style="background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; border: 1px solid var(--panel-border); margin-bottom: 12px;">
+                    <div style="background: var(--input-bg-light); padding: 8px; border-radius: 6px; border: 1px solid var(--panel-border); margin-bottom: 12px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                             <h4 style="margin: 0; font-size: 0.75rem; color: #a78bfa;">SQL Database</h4>
                             <button type="button" id="verify-sql-btn" title="Verify SQL Connection" style="background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; cursor: pointer; font-size: 0.7rem; border-radius: 4px; padding: 2px 6px;">⚡</button>
