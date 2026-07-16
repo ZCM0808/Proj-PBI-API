@@ -35,11 +35,28 @@ class PBIClient:
                 authority=self.config.authority_url,
                 token_cache=self.cache
             )
-            result = app.acquire_token_by_username_password(
-                username=self.config.USERNAME,
-                password=self.config.PASSWORD,
-                scopes=scope
-            )
+            
+            # First try silent cache
+            accounts = app.get_accounts(username=self.config.USERNAME)
+            if accounts:
+                result = app.acquire_token_silent(scope, account=accounts[0])
+                
+            if not result:
+                result = app.acquire_token_by_username_password(
+                    username=self.config.USERNAME,
+                    password=self.config.PASSWORD,
+                    scopes=scope
+                )
+                
+            # Fallback to interactive if MFA is required or interaction needed
+            if result and "error" in result:
+                error_codes = result.get("error_codes", [])
+                error_msg = result.get("error", "").lower()
+                if 50076 in error_codes or 50158 in error_codes or 65001 in error_codes or "interaction_required" in error_msg or "invalid_grant" in error_msg:
+                    result = app.acquire_token_interactive(
+                        scopes=scope,
+                        login_hint=self.config.USERNAME
+                    )
         else:
             app = ConfidentialClientApplication(
                 client_id=self.config.CLIENT_ID,

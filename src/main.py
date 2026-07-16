@@ -73,6 +73,12 @@ async def verify_settings(request: Request):
                 authority=authority_url,
             )
             result = await asyncio.to_thread(app.acquire_token_by_username_password, username=username, password=password, scopes=scope)
+            
+            if result and "error" in result:
+                error_codes = result.get("error_codes", [])
+                error_msg = result.get("error", "").lower()
+                if 50076 in error_codes or 50158 in error_codes or 65001 in error_codes or "interaction_required" in error_msg or "invalid_grant" in error_msg:
+                    result = await asyncio.to_thread(app.acquire_token_interactive, scopes=scope, login_hint=username)
         else:
             if not client_secret:
                 return {"success": False, "message": "CLIENT_SECRET or USERNAME/PASSWORD is required."}
