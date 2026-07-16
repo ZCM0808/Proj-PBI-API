@@ -843,7 +843,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const searchBox = document.createElement('div');
             searchBox.style.cssText = "padding: 6px; border-bottom: 1px solid var(--panel-border); position: sticky; top: 0; background: var(--dropdown-bg); z-index: 10;";
             const paramSearchInput = document.createElement('input');
-            paramSearchInput.type = 'text';
+            paramSearchInput.type = 'search';
             paramSearchInput.placeholder = 'Search parameters...';
             paramSearchInput.style.cssText = "width: 100%; box-sizing: border-box; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); font-size: 0.75rem; outline: none;";
             searchBox.appendChild(paramSearchInput);
