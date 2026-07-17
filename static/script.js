@@ -689,6 +689,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
         }
+
+        const autoResizeTextarea = (el) => {
+            if (!el) return;
+            // 如果用户手动通过拖拽调整了 request-builder 的高度，这里就可能被限制，
+            // 但让它尽量伸展。
+            el.style.height = 'auto';
+            const newHeight = Math.min(Math.max(el.scrollHeight, 80), 500);
+            el.style.height = newHeight + 'px';
+        };
+
+        if (bodyInput) {
+            bodyInput.addEventListener('input', () => autoResizeTextarea(bodyInput));
+        }
         
         const formatBtn = document.getElementById('format-req-body-btn');
         if (formatBtn) {
@@ -702,6 +715,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 try {
                     bodyInputBox.value = JSON.stringify(JSON.parse(val), null, 2);
+                    autoResizeTextarea(bodyInputBox);
                 } catch (e) {
                     alert('JSON 格式有误 (Invalid JSON format):\n' + e.message);
                 }
@@ -1257,7 +1271,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     methodSelect.value = ep.method;
                     methodSelect.disabled = true; // 锁定 Method
                     bodyInput.value = ep.body;
-                    bodyInput.style.height = ''; // 恢复默认高度
+                    autoResizeTextarea(bodyInput);
                 }
 
                 itemEl.addEventListener('click', () => {
@@ -1305,7 +1319,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     methodSelect.value = originalMethod;
                     methodSelect.disabled = true; // 锁定 Method
                     bodyInput.value = originalBody;
-                    bodyInput.style.height = ''; // 恢复默认高度
+                    autoResizeTextarea(bodyInput);
                     
                     // 恢复 Unlock 按钮状态
                     document.getElementById('toggle-method-btn').innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span>Unlock</span>';
@@ -1918,6 +1932,7 @@ const loadReqHistory = (searchTerm = "") => {
                     methodSelect.value = h.method;
                     endpointInput.value = h.url;
                     bodyInput.value = h.body || '';
+                    autoResizeTextarea(bodyInput);
                     methodSelect.disabled = true;
                     historyReqDropdown.style.display = 'none';
                     if (historySearchInput) historySearchInput.value = '';
