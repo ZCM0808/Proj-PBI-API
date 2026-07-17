@@ -693,13 +693,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const autoResizeTextarea = (el) => {
             if (!el) return;
             const rb = document.querySelector('.request-builder');
-            // 如果用户手动通过拖拽调整了 request-builder 的高度，交由 flex: 1 接管
+            // 如果用户手动通过拖拽调整了 request-builder 的高度，
+            // 此时强制将其高度恢复为 auto，避免内部 textarea 拉伸时发生溢出遮挡
             if (rb && rb.style.height && rb.style.height !== 'auto') {
-                el.style.flex = '1';
-                el.style.height = 'auto';
-                return;
+                rb.style.height = 'auto';
             }
-            // 否则暂时移除 flex: 1，以便真正通过 height 撑开
+            // 暂时移除 flex: 1，以便真正通过 height 撑开
             el.style.flex = 'none';
             el.style.height = 'auto';
             const newHeight = Math.min(Math.max(el.scrollHeight, 80), 500);
