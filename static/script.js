@@ -632,11 +632,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             // 例如 "AvailableFeatures_GetAvailableFeatures" -> "get-available-features"
             let pbiSlug = slug;
             if (ep.operationId) {
-                const parts = ep.operationId.split('_');
-                const opPart = parts.length > 1 ? parts.slice(1).join('-') : parts[0];
-                pbiSlug = opPart
+                pbiSlug = ep.operationId
                     .replace(/([a-z])([A-Z])/g, '$1-$2')
                     .replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2')
+                    .replace(/_/g, '-')
                     .toLowerCase();
             }
 
@@ -959,6 +958,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!badge) return;
         badge.innerHTML = text;
         if (mode === 'free') {
+            badge.style.pointerEvents = 'auto';
             badge.style.color = 'var(--accent)';
             badge.style.borderColor = 'rgba(62, 166, 255, 0.5)';
             badge.style.background = 'rgba(62, 166, 255, 0.1)';
@@ -968,7 +968,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (catBadge) {
                 catBadge.innerHTML = `<span style="font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; background: rgba(62, 166, 255, 0.15); color: #3eb6ff; border: 1px solid rgba(62, 166, 255, 0.25); display: inline-flex; align-items: center; gap: 4px; font-weight: 500;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4l2-9 5 18 3-9h6"></path></svg>Custom</span>`;
             }
+        } else if (mode === 'history') {
+            badge.style.color = '#a78bfa';
+            badge.style.borderColor = 'rgba(167, 139, 250, 0.5)';
+            badge.style.background = 'rgba(167, 139, 250, 0.1)';
+            badge.style.pointerEvents = 'none';
         } else {
+            badge.style.pointerEvents = 'auto';
             badge.style.color = '#10b981';
             badge.style.borderColor = 'rgba(16, 185, 129, 0.5)';
             badge.style.background = 'rgba(16, 185, 129, 0.1)';
@@ -1124,7 +1130,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const listEl = document.createElement('ul');
             listEl.className = 'api-list';
-            if (searchTerm || expandedCategories.has(category.category) || category.category === "⭐ 收藏夹 (Bookmarks)") {
+            if (searchTerm || expandedCategories.has(category.category)) {
                 listEl.style.display = 'flex';
                 titleEl.classList.add('active'); // 添加三角旋转状态（如果 CSS 里有写的话）
             } else {
@@ -1205,7 +1211,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     categoryBadgeHtml = `<span style="font-size:0.6rem; padding:2px 6px; border-radius:10px; background:rgba(167, 139, 250, 0.15); color:#a78bfa; margin-left:8px; border:1px solid rgba(167, 139, 250, 0.25); font-weight:600;">${ep.category}</span>`;
                 }
                 
-                nameEl.innerHTML = `<div style="display:flex; align-items:center;"><span>${ep.name}</span>${categoryBadgeHtml}</div><div style="font-size:0.7rem; color:var(--text-secondary); margin-top:2px;">${zhTranslated}</div>`;
+                const opName = ep.operationId && ep.operationId !== ep.name ? ' / ' + ep.operationId : '';
+                nameEl.innerHTML = `<div style="display:flex; align-items:center;"><span>${ep.name}${opName}</span>${categoryBadgeHtml}</div><div style="font-size:0.7rem; color:var(--text-secondary); margin-top:2px;">${zhTranslated}</div>`;
                 nameEl.querySelector('div').appendChild(flagEl);
                 nameEl.title = ep.path;
 
@@ -1264,10 +1271,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
 
                     // 填入数据
-                    endpointInput.value = originalPath;
+                    let populatedPath = originalPath;
+                    if (populatedPath === '/admin/workspaces/getInfo') {
+                        populatedPath += '?datasetSchema=true&datasetExpressions=true';
+                    }
+                    endpointInput.value = populatedPath;
                     methodSelect.value = originalMethod;
                     methodSelect.disabled = true; // 锁定 Method
                     bodyInput.value = originalBody;
+                    bodyInput.style.height = '150px'; // 恢复默认高度
                     
                     // 恢复 Unlock 按钮状态
                     document.getElementById('toggle-method-btn').innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span>Unlock</span>';
@@ -1312,6 +1324,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // 渲染描述与警示前置条件
                     let finalDescHtml = ep.description ? ep.description.replace(/\n/g, '<br>') : '<span style="color:var(--text-secondary)">暂无描述</span>';
                     
+                    if (originalPath.includes('{scanId}')) {
+                        finalDescHtml = '<div style="margin-bottom: 12px; padding: 10px; background: rgba(56, 189, 248, 0.1); border-left: 3px solid #38bdf8; border-radius: 4px; color: #e1e4e8; font-size: 0.85rem;"><strong style="color:#38bdf8;">💡 提示 (Tip):</strong> 你需要先调用 <strong>WorkspaceInfo GetInfo</strong> 接口获得 <code>scanId</code>，然后将其替换到上方 URL 路径中的 <code>{scanId}</code> 位置。</div>' + finalDescHtml;
+                    }
+
                     if (ep.prerequisites && ep.prerequisites.length > 0) {
                         const prereqItems = ep.prerequisites.map(p => `<li style="margin-bottom: 6px;">${p.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</li>`).join('');
                         const alertBox = `
@@ -1879,7 +1895,7 @@ const loadReqHistory = (searchTerm = "") => {
                     historyReqDropdown.style.display = 'none';
                     if (historySearchInput) historySearchInput.value = '';
                     
-                    updateRequestMode('free', 'Free Mode (From History)');
+                    updateRequestMode('history', '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:middle;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Historical Request');
                     endpointInput.dispatchEvent(new Event('input'));
                 };
                 

@@ -286,6 +286,9 @@
                         <span>Request Body (JSON)</span>
                         <div style="margin-left:auto; display:flex; gap:12px; align-items:center;">
                             <span class="hint">仅适用于 POST/PUT/PATCH 等包含请求体的方法</span>
+                            <button id="format-req-body-btn" class="icon-btn" title="Format JSON" type="button" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: rgba(255,255,255,0.1); border-radius: 4px; background: transparent; cursor: pointer; margin-right: 6px;" onclick="try { document.getElementById('request-body').value = JSON.stringify(JSON.parse(document.getElementById('request-body').value), null, 2); } catch(e) { alert('Invalid JSON format!'); }">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                            </button>
                             <button id="copy-req-body-btn" class="icon-btn" title="Copy Request Body" type="button" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: rgba(255,255,255,0.1); border-radius: 4px; background: transparent; cursor: pointer;">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                             </button>
@@ -501,6 +504,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="/static/script.js?v=20260717_v5"></script>
+    <script src="/static/script.js?v=20260717_v6"></script>
 </body>
 </html>
