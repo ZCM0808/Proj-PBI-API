@@ -689,6 +689,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
         }
+        
+        const formatBtn = document.getElementById('format-req-body-btn');
+        if (formatBtn) {
+            formatBtn.addEventListener('click', () => {
+                const bodyInputBox = document.getElementById('request-body');
+                if (!bodyInputBox) return;
+                const val = bodyInputBox.value.trim();
+                if (!val) {
+                    alert('请先输入需要格式化的 JSON (Please input JSON to format first)!');
+                    return;
+                }
+                try {
+                    bodyInputBox.value = JSON.stringify(JSON.parse(val), null, 2);
+                } catch (e) {
+                    alert('JSON 格式有误 (Invalid JSON format):\n' + e.message);
+                }
+            });
+        }
 
     apiTree.innerHTML = '<div style="padding:1rem; text-align:center; color: var(--text-secondary);"><span class="loader"></span> 加载全部 API 中...</div>';
 
@@ -1212,7 +1230,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 
                 const opName = ep.operationId && ep.operationId !== ep.name ? ' / ' + ep.operationId : '';
-                nameEl.innerHTML = `<div style="display:flex; align-items:center;"><span>${ep.name}${opName}</span>${categoryBadgeHtml}</div><div style="font-size:0.7rem; color:var(--text-secondary); margin-top:2px;">${zhTranslated}</div>`;
+                nameEl.innerHTML = `<div style="display:flex; align-items:center;"><strong style="color:var(--text-primary); font-weight: 600;">${ep.name}</strong><span style="font-size:0.85em; color:var(--text-secondary); margin-left: 4px;">${opName}</span>${categoryBadgeHtml}</div><div style="font-size:0.7rem; color:var(--text-secondary); margin-top:2px;">${zhTranslated}</div>`;
                 nameEl.querySelector('div').appendChild(flagEl);
                 nameEl.title = ep.path;
 
@@ -1233,6 +1251,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (currentSelectedId === uniqueId) {
                     itemEl.classList.add('active');
                     activeApiElement = itemEl;
+                    endpointInput.value = ep.path;
+                    methodSelect.value = ep.method;
+                    methodSelect.disabled = true; // 锁定 Method
+                    bodyInput.value = ep.body;
+                    bodyInput.style.height = ''; // 恢复默认高度
                 }
 
                 itemEl.addEventListener('click', () => {
@@ -1278,7 +1301,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     methodSelect.value = originalMethod;
                     methodSelect.disabled = true; // 锁定 Method
                     bodyInput.value = originalBody;
-                    bodyInput.style.height = '150px'; // 恢复默认高度
+                    bodyInput.style.height = ''; // 恢复默认高度
                     
                     // 恢复 Unlock 按钮状态
                     document.getElementById('toggle-method-btn').innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span>Unlock</span>';
@@ -1323,7 +1346,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // 渲染描述与警示前置条件
                     let finalDescHtml = ep.description ? ep.description.replace(/\n/g, '<br>') : '<span style="color:var(--text-secondary)">暂无描述</span>';
                     
-                    if (originalPath.includes('{scanId}')) {
+                    if (originalPath.toLowerCase().includes('{scanid}')) {
                         finalDescHtml = '<div style="margin-bottom: 12px; padding: 10px; background: rgba(56, 189, 248, 0.1); border-left: 3px solid #38bdf8; border-radius: 4px; color: #e1e4e8; font-size: 0.85rem;"><strong style="color:#38bdf8;">💡 提示 (Tip):</strong> 你需要先调用 <strong>WorkspaceInfo GetInfo</strong> 接口获得 <code>scanId</code>，然后将其替换到上方 URL 路径中的 <code>{scanId}</code> 位置。</div>' + finalDescHtml;
                     }
 
@@ -1890,7 +1913,7 @@ const loadReqHistory = (searchTerm = "") => {
                     methodSelect.value = h.method;
                     endpointInput.value = h.url;
                     bodyInput.value = h.body || '';
-                    methodSelect.disabled = false;
+                    methodSelect.disabled = true;
                     historyReqDropdown.style.display = 'none';
                     if (historySearchInput) historySearchInput.value = '';
                     
