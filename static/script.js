@@ -1269,7 +1269,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     originalMethod = ep.method;
                     originalPath = ep.path;
                     if (originalPath === '/admin/workspaces/getInfo') {
-                        originalPath += '?datasetSchema=true&datasetExpressions=true';
+                        originalPath += '?lineage=true&datasourceDetails=true&datasetSchema=true&datasetExpressions=true&getArtifactUsers=true';
+                    } else if (originalPath === '/admin/workspaces/modified') {
+                        originalPath += '?modifiedSince=2024-01-01T00:00:00.0000000Z&excludePersonalWorkspaces=true';
                     }
                     // 动态猜测以校正 LocalStorage 老历史脏数据丢失 isFabric 属性
                     let isFabricForNode = ep.isFabric;
