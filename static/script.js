@@ -1244,6 +1244,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // 保存初始状态
                     originalMethod = ep.method;
                     originalPath = ep.path;
+                    if (originalPath === '/admin/workspaces/getInfo') {
+                        originalPath += '?datasetSchema=true&datasetExpressions=true';
+                    }
                     // 动态猜测以校正 LocalStorage 老历史脏数据丢失 isFabric 属性
                     let isFabricForNode = ep.isFabric;
                     const pathLower = (ep.path || '').toLowerCase();
@@ -1271,11 +1274,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
 
                     // 填入数据
-                    let populatedPath = originalPath;
-                    if (populatedPath === '/admin/workspaces/getInfo') {
-                        populatedPath += '?datasetSchema=true&datasetExpressions=true';
-                    }
-                    endpointInput.value = populatedPath;
+                    endpointInput.value = originalPath;
                     methodSelect.value = originalMethod;
                     methodSelect.disabled = true; // 锁定 Method
                     bodyInput.value = originalBody;
