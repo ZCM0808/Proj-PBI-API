@@ -255,9 +255,9 @@
                             <option value="DELETE">DELETE</option>
                         </select>
                     </div>
-                    <div class="endpoint-input">
-                        <span class="base-url-hint" id="base-url-hint">https://api.powerbi.com/v1.0/myorg</span>
-                        <input type="text" id="api-endpoint" placeholder="例如: /groups/{workspaceId}/datasets" value="">
+                    <div class="endpoint-input" style="align-items: flex-start;">
+                        <span class="base-url-hint" id="base-url-hint" style="padding-top: 12px; height: auto; min-height: 100%;">https://api.powerbi.com/v1.0/myorg</span>
+                        <textarea id="api-endpoint" placeholder="例如: /groups/{workspaceId}/datasets" style="flex: 1; border: none; background: transparent; padding: 12px 10px; font-family: inherit; font-size: 0.95rem; color: var(--text-primary); resize: none; outline: none; line-height: 1.4; word-break: break-all;" rows="2"></textarea>
                     </div>
                     <button id="copy-btn" type="button" title="复制完整 cURL 格式请求" style="height: 100%;">
                         <span>Copy</span>
