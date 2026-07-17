@@ -273,7 +273,10 @@
                 <div class="body-editor-container">
                     <div class="editor-header">
                         <span>Request Body (JSON)</span>
-                        <span class="hint">仅适用于 POST/PUT/PATCH 等包含请求体的方法</span>
+                        <div style="margin-left:auto; display:flex; gap:12px; align-items:center;">
+                            <span class="hint">仅适用于 POST/PUT/PATCH 等包含请求体的方法</span>
+                            <button id="copy-req-body-btn" class="icon-btn" title="Copy Request Body" type="button" style="padding: 2px 6px; font-size: 0.7rem; color: var(--text-secondary); border-color: rgba(255,255,255,0.1);">Copy</button>
+                        </div>
                     </div>
                     <textarea id="request-body" placeholder="[当前 API 接口无需提供 Request Body 请求体]"></textarea>
                 </div>
@@ -285,6 +288,7 @@
                 <div class="response-header">
                     <span>Response</span>
                     <div style="margin-left:auto; display:flex; gap:12px; align-items:center;">
+                        <button id="copy-res-body-btn" class="icon-btn" title="Copy Response JSON" type="button" style="padding: 2px 6px; font-size: 0.7rem; color: var(--text-secondary); border-color: rgba(255,255,255,0.1);">Copy</button>
                         <div id="view-mode-toggles" style="display: none; gap: 4px; border: 1px solid var(--panel-border); border-radius: 4px; overflow: hidden; background: rgba(0,0,0,0.2);">
                             <button class="view-mode-btn" data-mode="table" style="border:none; background:transparent; color:var(--text-secondary); padding: 2px 8px; font-size:0.7rem; cursor:pointer;" title="Table View">Table</button>
                             <button class="view-mode-btn active" data-mode="tree" style="border:none; background:var(--accent); color:var(--accent-text); padding: 2px 8px; font-size:0.7rem; cursor:pointer;" title="Tree View">Tree</button>

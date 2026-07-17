@@ -1404,56 +1404,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // 存入请求历史
-        if (endpoint) {
-            try {
-                let reqHistory = JSON.parse(localStorage.getItem('apiReqHistory') || '[]');
-                
-                // 1. 清洗掉 3 天前（72小时）的老历史记录
-                const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
-                reqHistory = reqHistory.filter(h => {
-                    const ts = h.timestamp || (h.time ? new Date(h.time).getTime() : Date.now());
-                    return ts >= threeDaysAgo;
-                });
-
-                // 2. 智能提取 api_type
-                let apiTypeForHistory = currentApiType;
-                const badge = document.getElementById('request-mode-badge');
-                if (badge && badge.textContent.includes('Free Mode')) {
-                    const lowerEndpoint = endpoint.toLowerCase();
-                    if (lowerEndpoint.includes('/lakehouses') || 
-                        lowerEndpoint.includes('/warehouses') || 
-                        lowerEndpoint.includes('/notebooks') || 
-                        lowerEndpoint.includes('/kqldatabases') ||
-                        lowerEndpoint.includes('/items') ||
-                        lowerEndpoint.includes('/fabrics') ||
-                        (lowerEndpoint.startsWith('/workspaces') && !lowerEndpoint.includes('/admin/workspaces'))) {
-                        apiTypeForHistory = 'fabric';
-                    } else {
-                        apiTypeForHistory = 'powerbi';
-                    }
-                }
-
-                // 3. 构建历史数据项，允许重复且带时间戳
-                const reqData = { 
-                    method: method, 
-                    url: endpoint, 
-                    body: bodyStr, 
-                    time: new Date().toLocaleString(), 
-                    timestamp: Date.now(), 
-                    api_type: apiTypeForHistory 
-                };
-
-                reqHistory.unshift(reqData);
-                // 限制最多保留 100 条历史，防止 LocalStorage 被填满
-                if (reqHistory.length > 100) reqHistory.pop();
-                
-                localStorage.setItem('apiReqHistory', JSON.stringify(reqHistory));
-            } catch (e) {
-                console.error('History save error:', e);
-                localStorage.removeItem('apiReqHistory');
-            }
-        }
 
         sendBtn.disabled = true;
         sendBtn.innerHTML = '<span class="loader"></span> <span>Sending...</span>';
@@ -1515,6 +1465,57 @@ document.addEventListener('DOMContentLoaded', async () => {
                         updateViewMode('tree');
                     }
                 }
+
+                // 仅在成功时存入请求历史
+                if (endpoint) {
+                    try {
+                        let reqHistory = JSON.parse(localStorage.getItem('apiReqHistory') || '[]');
+                        
+                        // 1. 清洗掉 3 天前（72小时）的老历史记录
+                        const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
+                        reqHistory = reqHistory.filter(h => {
+                            const ts = h.timestamp || (h.time ? new Date(h.time).getTime() : Date.now());
+                            return ts >= threeDaysAgo;
+                        });
+
+                        // 2. 智能提取 api_type
+                        let apiTypeForHistory = currentApiType;
+                        const badge = document.getElementById('request-mode-badge');
+                        if (badge && badge.textContent.includes('Free Mode')) {
+                            const lowerEndpoint = endpoint.toLowerCase();
+                            if (lowerEndpoint.includes('/lakehouses') || 
+                                lowerEndpoint.includes('/warehouses') || 
+                                lowerEndpoint.includes('/notebooks') || 
+                                lowerEndpoint.includes('/kqldatabases') ||
+                                lowerEndpoint.includes('/items') ||
+                                lowerEndpoint.includes('/fabrics') ||
+                                (lowerEndpoint.startsWith('/workspaces') && !lowerEndpoint.includes('/admin/workspaces'))) {
+                                apiTypeForHistory = 'fabric';
+                            } else {
+                                apiTypeForHistory = 'powerbi';
+                            }
+                        }
+
+                        // 3. 构建历史数据项，允许重复且带时间戳
+                        const reqData = { 
+                            method: method, 
+                            url: endpoint, 
+                            body: bodyStr, 
+                            time: new Date().toLocaleString(), 
+                            timestamp: Date.now(), 
+                            api_type: apiTypeForHistory 
+                        };
+
+                        reqHistory.unshift(reqData);
+                        // 限制最多保留 100 条历史，防止 LocalStorage 被填满
+                        if (reqHistory.length > 100) reqHistory.pop();
+                        
+                        localStorage.setItem('apiReqHistory', JSON.stringify(reqHistory));
+                    } catch (e) {
+                        console.error('History save error:', e);
+                        localStorage.removeItem('apiReqHistory');
+                    }
+                }
             } else {
                 responseStatus.textContent = `Error`;
                 responseStatus.className = 'response-status status-error';
@@ -1548,6 +1549,48 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Unlock 和 Reset 按钮逻辑
     const toggleMethodBtn = document.getElementById('toggle-method-btn');
     const resetRequestBtn = document.getElementById('reset-request-btn');
+
+    // 复制按钮逻辑
+    const copyReqBodyBtn = document.getElementById('copy-req-body-btn');
+    if (copyReqBodyBtn) {
+        copyReqBodyBtn.addEventListener('click', async () => {
+            const bodyContent = document.getElementById('request-body').value;
+            if (bodyContent) {
+                try {
+                    await navigator.clipboard.writeText(bodyContent);
+                    const oldText = copyReqBodyBtn.innerText;
+                    copyReqBodyBtn.innerText = 'Copied!';
+                    copyReqBodyBtn.style.color = 'var(--accent)';
+                    setTimeout(() => {
+                        copyReqBodyBtn.innerText = oldText;
+                        copyReqBodyBtn.style.color = '';
+                    }, 2000);
+                } catch(e) {
+                    console.error('Failed to copy', e);
+                }
+            }
+        });
+    }
+
+    const copyResBodyBtn = document.getElementById('copy-res-body-btn');
+    if (copyResBodyBtn) {
+        copyResBodyBtn.addEventListener('click', async () => {
+            if (window.currentJsonResponse) {
+                try {
+                    await navigator.clipboard.writeText(JSON.stringify(window.currentJsonResponse, null, 2));
+                    const oldText = copyResBodyBtn.innerText;
+                    copyResBodyBtn.innerText = 'Copied!';
+                    copyResBodyBtn.style.color = 'var(--accent)';
+                    setTimeout(() => {
+                        copyResBodyBtn.innerText = oldText;
+                        copyResBodyBtn.style.color = '';
+                    }, 2000);
+                } catch(e) {
+                    console.error('Failed to copy', e);
+                }
+            }
+        });
+    }
 
     toggleMethodBtn.addEventListener('click', () => {
         methodSelect.disabled = !methodSelect.disabled;
