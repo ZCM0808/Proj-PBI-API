@@ -252,6 +252,23 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     await expect(envInTop).toBeVisible();
   });
 
+  test('结构防御 (DOM Hierarchy): Response 面板必须严格被 main-content 包裹，防止意外的闭合标签导致布局崩塌', async ({ page }) => {
+    const mainContent = page.locator('.main-content');
+    const responseContainer = page.locator('.response-container');
+    
+    // 物理坐标断言防御
+    const mainContentBox = await mainContent.boundingBox();
+    const responseBox = await responseContainer.boundingBox();
+    
+    expect(mainContentBox).not.toBeNull();
+    expect(responseBox).not.toBeNull();
+    
+    // Response 的左边界必须大于等于 Main Content 的左边界，绝不允许溢出到左侧菜单区域
+    expect(responseBox.x).toBeGreaterThanOrEqual(mainContentBox.x);
+    // 同时也利用严格的直接子代选择器验证 DOM 树归属关系
+    await expect(page.locator('.main-content > .response-container')).toBeVisible();
+  });
+
   test('溢出防御 (Overflow Defense): 动作按钮组绝对不能跑到右侧面板之外', async ({ page }) => {
     const mainContent = page.locator('.main-content');
     const resetBtn = page.locator('#reset-request-btn');
