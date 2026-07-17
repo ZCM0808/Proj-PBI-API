@@ -1229,8 +1229,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     categoryBadgeHtml = `<span style="font-size:0.6rem; padding:2px 6px; border-radius:10px; background:rgba(167, 139, 250, 0.15); color:#a78bfa; margin-left:8px; border:1px solid rgba(167, 139, 250, 0.25); font-weight:600;">${ep.category}</span>`;
                 }
                 
-                const opName = ep.operationId && ep.operationId !== ep.name ? ' / ' + ep.operationId : '';
-                nameEl.innerHTML = `<div style="display:flex; align-items:center;"><strong style="color:var(--text-primary); font-weight: 600;">${ep.name}</strong><span style="font-size:0.85em; color:var(--text-secondary); margin-left: 4px;">${opName}</span>${categoryBadgeHtml}</div><div style="font-size:0.7rem; color:var(--text-secondary); margin-top:2px;">${zhTranslated}</div>`;
+                const primaryName = ep.operationId ? ep.operationId : ep.name;
+                const secondaryName = (ep.name && ep.name !== primaryName) ? ' / ' + ep.name : '';
+                nameEl.innerHTML = `<div style="display:flex; align-items:center;"><strong style="color:var(--text-primary); font-weight: 600;">${primaryName}</strong><span style="font-size:0.85em; color:var(--text-secondary); margin-left: 4px;">${secondaryName}</span>${categoryBadgeHtml}</div><div style="font-size:0.7rem; color:var(--text-secondary); margin-top:2px;">${zhTranslated}</div>`;
                 nameEl.querySelector('div').appendChild(flagEl);
                 nameEl.title = ep.path;
 
@@ -1325,7 +1326,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         docBtn.href = docUrl;
                     }
                     
-                    selectedApiName.textContent = ep.name;
+                    const displayApiName = ep.operationId ? ep.operationId : ep.name;
+                    selectedApiName.textContent = displayApiName;
                     
                     const rightPanelCatContainer = document.getElementById('right-panel-category-container');
                     const rightPanelCatBadge = document.getElementById('right-panel-category-badge');
@@ -1340,7 +1342,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                     
                     // 动态更新标题 Badge
-                    updateRequestMode('api', `Bound to: ${ep.name}`);
+                    updateRequestMode('api', `Bound to: ${displayApiName}`);
                     selectedApiZh.textContent = zhTranslated;
 
                     // 渲染描述与警示前置条件
