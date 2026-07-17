@@ -904,8 +904,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                     if (currentParamFilters.length > 0) {
                         triggerLabel.innerHTML = `<span style="color: var(--accent); font-weight: bold;">[${currentParamFilters.length}/${totalParams}]</span> <span style="font-size:0.75rem;">${currentParamFilters.join(', ')}</span>`;
+                        const clearBtn = document.getElementById('param-filter-clear');
+                        if (clearBtn) clearBtn.style.display = 'inline-flex';
                     } else {
                         triggerLabel.textContent = `🔍 过滤必需的参数 (0/${totalParams})...`;
+                        const clearBtn = document.getElementById('param-filter-clear');
+                        if (clearBtn) clearBtn.style.display = 'none';
                     }
                     const searchInput = document.getElementById('api-search-input');
                     renderTree(searchInput ? searchInput.value : "");
