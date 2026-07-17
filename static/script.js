@@ -692,8 +692,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const autoResizeTextarea = (el) => {
             if (!el) return;
-            // 如果用户手动通过拖拽调整了 request-builder 的高度，这里就可能被限制，
-            // 但让它尽量伸展。
+            const rb = document.querySelector('.request-builder');
+            // 如果用户手动通过拖拽调整了 request-builder 的高度，交由 flex: 1 接管
+            if (rb && rb.style.height && rb.style.height !== 'auto') {
+                el.style.flex = '1';
+                el.style.height = 'auto';
+                return;
+            }
+            // 否则暂时移除 flex: 1，以便真正通过 height 撑开
+            el.style.flex = 'none';
             el.style.height = 'auto';
             const newHeight = Math.min(Math.max(el.scrollHeight, 80), 500);
             el.style.height = newHeight + 'px';
@@ -2465,6 +2472,14 @@ const loadReqHistory = (searchTerm = "") => {
     let minAllowedHeight = 150;
     vResizer.addEventListener('mousedown', (e) => {
         isVerticalResizing = true;
+        
+        // 用户开始拖拽时，重置 request-body 的强制高度，让其跟随 request-builder 布局
+        const bodyInputBox = document.getElementById('request-body');
+        if (bodyInputBox) {
+            bodyInputBox.style.flex = '1';
+            bodyInputBox.style.height = 'auto';
+        }
+
         startY = e.clientY;
         startHeight = requestBuilder.getBoundingClientRect().height;
         const oldH = requestBuilder.style.height; requestBuilder.style.height = 'auto'; minAllowedHeight = requestBuilder.scrollHeight; requestBuilder.style.height = oldH;
