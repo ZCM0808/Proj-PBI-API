@@ -1102,6 +1102,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const term = searchTerm.toLowerCase();
                 const zhName = translateApiName(ep.name).toLowerCase();
                 const matchesSearch = ep.name.toLowerCase().includes(term) || 
+                       (ep.operationId && ep.operationId.toLowerCase().includes(term)) ||
                        ep.path.toLowerCase().includes(term) ||
                        ep.method.toLowerCase().includes(term) ||
                        zhName.includes(term);
