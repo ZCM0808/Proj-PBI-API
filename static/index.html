@@ -245,9 +245,9 @@
                     </div>
                 </div>
 
-                <div class="input-group row">
+                <div class="input-group row" style="align-items: center;">
                     <div class="method-selector">
-                        <select id="http-method">
+                        <select id="http-method" style="height: 46px; padding: 0 1rem;">
                             <option value="GET">GET</option>
                             <option value="POST">POST</option>
                             <option value="PUT">PUT</option>
@@ -255,17 +255,15 @@
                             <option value="DELETE">DELETE</option>
                         </select>
                     </div>
-                    <div class="endpoint-input" style="flex-direction: column; align-items: stretch; overflow: hidden; padding: 0;">
-                        <div style="background: var(--input-bg-light); border-bottom: 1px solid var(--panel-border); padding: 4px 12px; display: flex; align-items: center;">
-                            <span class="base-url-hint" id="base-url-hint" style="border: none; padding: 0; background: transparent; font-size: 0.75rem; height: auto;">https://api.powerbi.com/v1.0/myorg</span>
-                        </div>
-                        <textarea id="api-endpoint" placeholder="例如: /groups/{workspaceId}/datasets" style="flex: 1; border: none; background: transparent; padding: 8px 12px; font-family: inherit; font-size: 0.95rem; color: var(--text-primary); resize: none; outline: none; line-height: 1.4; word-break: break-all;" rows="2"></textarea>
+                    <div class="endpoint-input" style="align-items: stretch; padding: 0;">
+                        <span class="base-url-hint" id="base-url-hint" style="font-size: 0.9rem; padding: 0 1rem; border-right: 1px solid var(--panel-border); border-bottom: none; display: flex; align-items: center; background: var(--input-bg-light); height: auto;">https://api.powerbi.com/v1.0/myorg</span>
+                        <textarea id="api-endpoint" placeholder="例如: /groups/{workspaceId}/datasets" style="flex: 1; border: none; background: transparent; padding: 12px 10px; font-family: inherit; font-size: 1rem; color: var(--text-primary); resize: vertical; outline: none; line-height: 1.4; word-break: break-all; min-height: 46px;" rows="2"></textarea>
                     </div>
-                    <button id="copy-btn" type="button" title="复制完整 cURL 格式请求" style="height: 100%;">
+                    <button id="copy-btn" type="button" title="复制完整 cURL 格式请求" style="height: 46px; padding: 0 12px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--panel-border); border-radius: 8px; background: var(--shadow-base); color: var(--text-primary); cursor: pointer;">
                         <span>Copy</span>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                     </button>
-                    <button id="send-btn" class="btn-primary">
+                    <button id="send-btn" class="btn-primary" style="height: 46px;">
                         <span>Send Request</span>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
                     </button>
