@@ -2667,31 +2667,35 @@ window.updateViewMode = function(mode) {
         out.className = '';
         out.style.height = '100%';
         if (!responseEditor) {
-            const { JSONEditor } = window['vanilla-jsoneditor'] || window;
-            responseEditor = new JSONEditor({
-                target: out,
-                props: {
-                    content: { json: window.currentJsonResponse },
-                    readOnly: true,
-                    mainMenuBar: false,
-                    navigationBar: true
-                }
-            });
-        } else {
-            // Check if DOM contains the editor; if not, recreate or re-append
-            if (!out.hasChildNodes()) {
-                const { JSONEditor } = window['vanilla-jsoneditor'] || window;
+            import('https://cdn.jsdelivr.net/npm/vanilla-jsoneditor@0.23.2/standalone.js').then(({ JSONEditor }) => {
                 responseEditor = new JSONEditor({
                     target: out,
                     props: {
                         content: { json: window.currentJsonResponse },
                         readOnly: true,
                         mainMenuBar: false,
-                        navigationBar: true
+                        navigationBar: true,
+                        mode: 'tree'
                     }
                 });
+            });
+        } else {
+            // Check if DOM contains the editor; if not, recreate or re-append
+            if (!out.hasChildNodes()) {
+                import('https://cdn.jsdelivr.net/npm/vanilla-jsoneditor@0.23.2/standalone.js').then(({ JSONEditor }) => {
+                    responseEditor = new JSONEditor({
+                        target: out,
+                        props: {
+                            content: { json: window.currentJsonResponse },
+                            readOnly: true,
+                            mainMenuBar: false,
+                            navigationBar: true,
+                            mode: 'tree'
+                        }
+                    });
+                });
             } else {
-                responseEditor.set({ json: window.currentJsonResponse });
+                responseEditor.updateProps({ content: { json: window.currentJsonResponse } });
             }
         }
     } else {
