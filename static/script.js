@@ -2664,14 +2664,8 @@ window.updateViewMode = function(mode) {
         out.style.height = '100%';
         out.style.overflow = 'auto'; // ensure scrolling works
         
-        if (!responseEditor) {
-            responseEditor = document.createElement('json-viewer');
-            out.appendChild(responseEditor);
-        } else {
-            if (!out.hasChildNodes()) {
-                out.appendChild(responseEditor);
-            }
-        }
+        responseEditor = document.createElement('json-viewer');
+        out.appendChild(responseEditor);
         
         // assign data and expand top level
         responseEditor.data = window.currentJsonResponse;
