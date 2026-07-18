@@ -305,6 +305,14 @@
                 <div class="response-header">
                     <span>Response</span>
                     <div style="margin-left:auto; display:flex; gap:12px; align-items:center;">
+                        <div id="tree-expand-toggles" style="display: none; gap: 4px; align-items: center; margin-right: 8px;">
+                            <button id="tree-expand-all-btn" class="icon-btn" title="Expand All" style="padding: 2px 4px; color: var(--text-secondary); background: transparent; border: 1px solid var(--panel-border); border-radius: 4px; cursor: pointer; display: flex; align-items: center;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 13 12 18 17 13"></polyline><polyline points="7 6 12 11 17 6"></polyline></svg>
+                            </button>
+                            <button id="tree-collapse-all-btn" class="icon-btn" title="Collapse All" style="padding: 2px 4px; color: var(--text-secondary); background: transparent; border: 1px solid var(--panel-border); border-radius: 4px; cursor: pointer; display: flex; align-items: center;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 11 12 6 7 11"></polyline><polyline points="17 18 12 13 7 18"></polyline></svg>
+                            </button>
+                        </div>
                         <div id="view-mode-toggles" style="display: none; gap: 4px; border: 1px solid var(--panel-border); border-radius: 4px; overflow: hidden; background: rgba(0,0,0,0.2); align-items: center;">
                             <button class="view-mode-btn" data-mode="table" style="border:none; background:transparent; color:var(--text-secondary); padding: 2px 8px; font-size:0.7rem; cursor:pointer;" title="Table View">Table</button>
                             <button class="view-mode-btn active" data-mode="tree" style="border:none; background:var(--accent); color:var(--accent-text); padding: 2px 8px; font-size:0.7rem; cursor:pointer;" title="Tree View">Tree</button>
@@ -505,6 +513,6 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
-    <script src="/static/script.js?v=20260718_v35"></script>
+    <script src="/static/script.js?v=20260718_v36"></script>
 </body>
 </html>

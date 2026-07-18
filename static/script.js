@@ -2591,7 +2591,42 @@ function renderJsonTable(data, container, nodePath = '') {
         columns.forEach(col => {
             const th = document.createElement('th');
             th.textContent = col;
-            th.style.cssText = "border: 1px solid var(--panel-border); padding: 8px; background: rgba(0,0,0,0.2); color: var(--text-secondary); white-space: nowrap;";
+            th.style.cssText = "border: 1px solid var(--panel-border); padding: 8px; background: rgba(0,0,0,0.2); color: var(--text-secondary); white-space: nowrap; position: relative;";
+            
+            const resizer = document.createElement('div');
+            resizer.style.cssText = "position: absolute; right: 0; top: 0; bottom: 0; width: 4px; cursor: col-resize; z-index: 1; transition: background 0.2s;";
+            resizer.onmouseover = () => resizer.style.background = 'var(--accent)';
+            resizer.onmouseout = () => resizer.style.background = 'transparent';
+            
+            resizer.addEventListener('mousedown', (e) => {
+                const startX = e.pageX;
+                const startWidth = th.offsetWidth;
+                
+                const onMouseMove = (moveEvent) => {
+                    const newWidth = Math.max(30, startWidth + (moveEvent.pageX - startX));
+                    th.style.width = newWidth + 'px';
+                    th.style.minWidth = newWidth + 'px';
+                    th.style.maxWidth = newWidth + 'px';
+                    if (table.style.tableLayout !== 'fixed') {
+                        Array.from(trHead.children).forEach(h => {
+                            h.style.width = h.offsetWidth + 'px';
+                        });
+                        table.style.tableLayout = 'fixed';
+                    }
+                };
+                
+                const onMouseUp = () => {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                };
+                
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+                e.stopPropagation();
+                e.preventDefault();
+            });
+            
+            th.appendChild(resizer);
             trHead.appendChild(th);
         });
         thead.appendChild(trHead);
@@ -2636,7 +2671,47 @@ function renderJsonTable(data, container, nodePath = '') {
         
         const thead = document.createElement('thead');
         const trHead = document.createElement('tr');
-        trHead.innerHTML = '<th style="border: 1px solid var(--panel-border); padding: 8px; background: rgba(0,0,0,0.2); color: var(--text-secondary); width: 30%;">Key</th><th style="border: 1px solid var(--panel-border); padding: 8px; background: rgba(0,0,0,0.2); color: var(--text-secondary);">Value</th>';
+        ['Key', 'Value'].forEach((col, i) => {
+            const th = document.createElement('th');
+            th.textContent = col;
+            th.style.cssText = `border: 1px solid var(--panel-border); padding: 8px; background: rgba(0,0,0,0.2); color: var(--text-secondary); position: relative; ${i === 0 ? 'width: 30%;' : ''}`;
+            
+            const resizer = document.createElement('div');
+            resizer.style.cssText = "position: absolute; right: 0; top: 0; bottom: 0; width: 4px; cursor: col-resize; z-index: 1; transition: background 0.2s;";
+            resizer.onmouseover = () => resizer.style.background = 'var(--accent)';
+            resizer.onmouseout = () => resizer.style.background = 'transparent';
+            
+            resizer.addEventListener('mousedown', (e) => {
+                const startX = e.pageX;
+                const startWidth = th.offsetWidth;
+                
+                const onMouseMove = (moveEvent) => {
+                    const newWidth = Math.max(30, startWidth + (moveEvent.pageX - startX));
+                    th.style.width = newWidth + 'px';
+                    th.style.minWidth = newWidth + 'px';
+                    th.style.maxWidth = newWidth + 'px';
+                    if (table.style.tableLayout !== 'fixed') {
+                        Array.from(trHead.children).forEach(h => {
+                            h.style.width = h.offsetWidth + 'px';
+                        });
+                        table.style.tableLayout = 'fixed';
+                    }
+                };
+                
+                const onMouseUp = () => {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                };
+                
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+                e.stopPropagation();
+                e.preventDefault();
+            });
+            
+            th.appendChild(resizer);
+            trHead.appendChild(th);
+        });
         thead.appendChild(trHead);
         table.appendChild(thead);
         
@@ -2697,6 +2772,11 @@ window.updateViewMode = function(mode, tablePath = '') {
             b.style.color = 'var(--text-secondary)';
         }
     });
+
+    const expandToggles = document.getElementById('tree-expand-toggles');
+    if (expandToggles) {
+        expandToggles.style.display = mode === 'tree' ? 'flex' : 'none';
+    }
 
     if (mode === 'tree') {
         out.innerHTML = '';
@@ -2898,10 +2978,51 @@ function renderCustomJsonTree(data, container) {
         wrapper.appendChild(bracketCloseWrapper);
 
         updateState();
+        
+        wrapper._expandDeep = () => {
+            if (isCollapsed) {
+                isCollapsed = false;
+                updateState();
+            }
+            if (rendered) {
+                Array.from(content.children).forEach(c => {
+                    if (c._expandDeep) c._expandDeep();
+                });
+            }
+        };
+        
+        wrapper._collapseDeep = () => {
+            if (!isCollapsed && depth > 0) { // Keep root expanded
+                isCollapsed = true;
+                updateState();
+            }
+            if (rendered) {
+                Array.from(content.children).forEach(c => {
+                    if (c._collapseDeep) c._collapseDeep();
+                });
+            }
+        };
 
         return wrapper;
     }
 
-    container.appendChild(createNode(null, data, '', 0, true));
+    const rootNode = createNode(null, data, '', 0, true);
+    container.appendChild(rootNode);
+    container._expandAll = () => rootNode._expandDeep && rootNode._expandDeep();
+    container._collapseAll = () => rootNode._collapseDeep && rootNode._collapseDeep();
 }
 
+const expandBtn = document.getElementById('tree-expand-all-btn');
+if (expandBtn) {
+    expandBtn.addEventListener('click', () => {
+        const out = document.getElementById('response-output');
+        if (out && out._expandAll) out._expandAll();
+    });
+}
+const collapseBtn = document.getElementById('tree-collapse-all-btn');
+if (collapseBtn) {
+    collapseBtn.addEventListener('click', () => {
+        const out = document.getElementById('response-output');
+        if (out && out._collapseAll) out._collapseAll();
+    });
+}
