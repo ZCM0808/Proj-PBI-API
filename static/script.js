@@ -2539,15 +2539,29 @@ const loadReqHistory = (searchTerm = "") => {
     });
 });
 
-function renderJsonTable(data, container) {
+function renderJsonTable(data, container, nodePath = '') {
     container.innerHTML = '';
     container.className = 'json-table-viewer';
     
     let arr = null;
-    if (Array.isArray(data)) {
-        arr = data;
-    } else if (data && typeof data === 'object' && Array.isArray(data.value)) {
-        arr = data.value;
+    let targetData = data;
+    
+    if (nodePath) {
+        const parts = nodePath.split('.');
+        for (let p of parts) {
+            if (targetData && targetData[p] !== undefined) {
+                targetData = targetData[p];
+            } else {
+                targetData = null;
+                break;
+            }
+        }
+    }
+    
+    if (Array.isArray(targetData)) {
+        arr = targetData;
+    } else if (targetData && typeof targetData === 'object' && Array.isArray(targetData.value)) {
+        arr = targetData.value;
     }
     
     if (arr && arr.length > 0 && typeof arr[0] === 'object') {
@@ -2612,7 +2626,7 @@ function renderJsonTable(data, container) {
         table.appendChild(thead);
         
         const tbody = document.createElement('tbody');
-        for (const [k, v] of Object.entries(data || {})) {
+        for (const [k, v] of Object.entries(targetData || {})) {
             const tr = document.createElement('tr');
             tr.style.cssText = "transition: background 0.2s; cursor: default;";
             tr.onmouseover = () => tr.style.background = "rgba(255,255,255,0.02)";
@@ -2658,6 +2672,11 @@ window.updateViewMode = function(mode) {
         }
     });
 
+    const pathContainer = document.getElementById('table-node-path-container');
+    if (pathContainer) {
+        pathContainer.style.display = mode === 'table' ? 'flex' : 'none';
+    }
+
     if (mode === 'tree') {
         out.innerHTML = '';
         out.className = '';
@@ -2686,7 +2705,8 @@ window.updateViewMode = function(mode) {
             out.innerHTML = syntaxHighlight(window.currentJsonResponse);
             out.className = 'json-viewer';
         } else if (mode === 'table') {
-            renderJsonTable(window.currentJsonResponse, out);
+            const path = document.getElementById('table-node-path-input')?.value || '';
+            renderJsonTable(window.currentJsonResponse, out, path);
         }
     }
 };
@@ -2725,4 +2745,13 @@ function updateParamHints(endpointUrl) {
     hintContainer.style.alignItems = 'flex-start';
 }
 
+
+
+
+document.getElementById('table-node-path-input')?.addEventListener('input', (e) => {
+    const out = document.getElementById('response-output');
+    if (out && window.currentJsonResponse && document.querySelector('.view-mode-btn.active')?.getAttribute('data-mode') === 'table') {
+        renderJsonTable(window.currentJsonResponse, out, e.target.value.trim());
+    }
+});
 
