@@ -2446,10 +2446,11 @@ const loadReqHistory = (searchTerm = "") => {
         sidebar.style.width = savedSidebarWidth;
         sidebar.style.minWidth = savedSidebarWidth;
     }
+    const bodyEditorContainer = document.querySelector('.body-editor-container');
     const savedRequestHeight = localStorage.getItem('pbi-request-height');
     if (savedRequestHeight) {
-        requestBuilder.style.height = savedRequestHeight;
-        requestBuilder.style.flex = 'none';
+        bodyEditorContainer.style.height = savedRequestHeight;
+        bodyEditorContainer.style.flex = 'none';
     }
     // --- 结束恢复 ---
 
@@ -2464,16 +2465,9 @@ const loadReqHistory = (searchTerm = "") => {
     vResizer.addEventListener('mousedown', (e) => {
         isVerticalResizing = true;
         
-        // 用户开始拖拽时，重置 request-body 的强制高度，让其跟随 request-builder 布局
-        const bodyInputBox = document.getElementById('request-body');
-        if (bodyInputBox) {
-            bodyInputBox.style.flex = '1';
-            bodyInputBox.style.height = 'auto';
-        }
-
         startY = e.clientY;
-        startHeight = requestBuilder.getBoundingClientRect().height;
-        const oldH = requestBuilder.style.height; requestBuilder.style.height = 'auto'; minAllowedHeight = requestBuilder.scrollHeight; requestBuilder.style.height = oldH;
+        startHeight = bodyEditorContainer.getBoundingClientRect().height;
+        minAllowedHeight = 100;
         vResizer.classList.add('active');
         document.body.style.cursor = 'row-resize';
         document.body.style.userSelect = 'none';
@@ -2495,9 +2489,9 @@ const loadReqHistory = (searchTerm = "") => {
             
             const finalHeight = Math.max(minAllowedHeight, Math.min(baseHeight, window.innerHeight - 150));
             if (true) {
-                requestBuilder.style.height = finalHeight + 'px';
+                bodyEditorContainer.style.height = finalHeight + 'px';
                 
-                requestBuilder.style.flex = 'none'; // 取消默认的 flex 行为，强制使用 height
+                bodyEditorContainer.style.flex = 'none';
             }
         }
     });
@@ -2515,7 +2509,7 @@ const loadReqHistory = (searchTerm = "") => {
             vResizer.classList.remove('active');
             document.body.style.cursor = 'default';
             document.body.style.userSelect = 'auto';
-            localStorage.setItem('pbi-request-height', requestBuilder.style.height);
+            localStorage.setItem('pbi-request-height', bodyEditorContainer.style.height);
         }
     });
 });
