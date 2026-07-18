@@ -167,12 +167,12 @@
                 <!-- Context Toolbar -->
                 <div id="context-toolbar" style="display: flex; gap: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">
                     <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
-                        <div style="display: flex; flex-direction: row; width: 100px; justify-content: flex-start; align-items: baseline; gap: 4px;">
-                            <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0;">Workspace</label>
-                            <span style="font-size: 0.6rem; color: var(--text-tertiary);">(groupId)</span>
+                        <div style="display: flex; flex-direction: column; justify-content: center; align-items: flex-start;">
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0; line-height: 1.2;">Workspace</label>
+                            <span style="font-size: 0.6rem; color: var(--text-tertiary); line-height: 1.2;">(groupId)</span>
                         </div>
                         <div class="custom-select-wrapper" id="wrapper-workspace" style="position: relative; flex: 1; min-width: 0;">
-                            <div class="custom-select-trigger" id="trigger-workspace" onclick="toggleCustomSelect('workspace')" style="padding: 4px 8px; height: 38px; background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 4px; display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 6px; cursor: pointer; user-select: none; transition: border-color 0.2s;">
+                            <div class="custom-select-trigger" id="trigger-workspace" onclick="toggleCustomSelect('workspace')" style="padding: 4px 8px; height: 38px; background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 4px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; user-select: none; transition: border-color 0.2s;">
                                 <span class="cs-name" style="color: var(--text-primary); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">-- None --</span>
                                 <span class="cs-id" style="color: var(--text-secondary); font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: none;"></span>
                             </div>
@@ -181,12 +181,12 @@
                         </div>
                     </div>
                     <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
-                        <div style="display: flex; flex-direction: row; width: 100px; justify-content: flex-start; align-items: baseline; gap: 4px;">
-                            <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0;">Dataset</label>
-                            <span style="font-size: 0.6rem; color: var(--text-tertiary);">(datasetId)</span>
+                        <div style="display: flex; flex-direction: column; justify-content: center; align-items: flex-start;">
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0; line-height: 1.2;">Dataset</label>
+                            <span style="font-size: 0.6rem; color: var(--text-tertiary); line-height: 1.2;">(datasetId)</span>
                         </div>
                         <div class="custom-select-wrapper" id="wrapper-dataset" style="position: relative; flex: 1; min-width: 0;">
-                            <div class="custom-select-trigger" id="trigger-dataset" onclick="toggleCustomSelect('dataset')" style="padding: 4px 8px; height: 38px; background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 4px; display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 6px; cursor: pointer; user-select: none; transition: border-color 0.2s;">
+                            <div class="custom-select-trigger" id="trigger-dataset" onclick="toggleCustomSelect('dataset')" style="padding: 4px 8px; height: 38px; background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 4px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; user-select: none; transition: border-color 0.2s;">
                                 <span class="cs-name" style="color: var(--text-primary); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">-- None --</span>
                                 <span class="cs-id" style="color: var(--text-secondary); font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: none;"></span>
                             </div>
@@ -195,12 +195,12 @@
                         </div>
                     </div>
                     <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
-                        <div style="display: flex; flex-direction: row; width: 100px; justify-content: flex-start; align-items: baseline; gap: 4px;">
-                            <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0;">Report</label>
-                            <span style="font-size: 0.6rem; color: var(--text-tertiary);">(reportId)</span>
+                        <div style="display: flex; flex-direction: column; justify-content: center; align-items: flex-start;">
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0; line-height: 1.2;">Report</label>
+                            <span style="font-size: 0.6rem; color: var(--text-tertiary); line-height: 1.2;">(reportId)</span>
                         </div>
                         <div class="custom-select-wrapper" id="wrapper-report" style="position: relative; flex: 1; min-width: 0;">
-                            <div class="custom-select-trigger" id="trigger-report" onclick="toggleCustomSelect('report')" style="padding: 4px 8px; height: 38px; background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 4px; display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 6px; cursor: pointer; user-select: none; transition: border-color 0.2s;">
+                            <div class="custom-select-trigger" id="trigger-report" onclick="toggleCustomSelect('report')" style="padding: 4px 8px; height: 38px; background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 4px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; user-select: none; transition: border-color 0.2s;">
                                 <span class="cs-name" style="color: var(--text-primary); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">-- None --</span>
                                 <span class="cs-id" style="color: var(--text-secondary); font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: none;"></span>
                             </div>
@@ -510,6 +510,6 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
-    <script src="/static/script.js?v=20260718_v53"></script>
+    <script src="/static/script.js?v=20260718_v54"></script>
 </body>
 </html>
