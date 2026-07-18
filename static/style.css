@@ -1113,7 +1113,7 @@ select.settings-input option {
 
 
 /* Vanilla JSONEditor Customizations */
-.jse-theme-dark, .jse-main {
+#response-output.jse-theme-dark, #response-output.jse-theme-light, #response-output {
     --jse-theme-color: var(--accent);
     --jse-theme-color-highlight: var(--accent-hover);
     --jse-background-color: transparent;
@@ -1121,4 +1121,45 @@ select.settings-input option {
     --jse-font-size-mono: 13px;
     --jse-line-height: 1.3;
     --jse-padding: 4px;
+}
+
+#response-output .jse-header-outer {
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: 16px !important;
+}
+#response-output .jse-json-node {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+#response-output {
+    --jse-font-size-mono: 12px !important;
+    --jse-line-height: 1.15 !important;
+}
+
+/* EXTREME COMPACT MODE FOR TREE VIEW */
+.jse-tree-mode .jse-header-outer {
+    min-height: 16px !important;
+    height: 18px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+.jse-tree-mode .jse-contents {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+.jse-tree-mode .jse-json-node {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.jse-tree-mode .jse-button {
+    height: 18px !important;
+    min-height: 18px !important;
+    padding: 0 4px !important;
+}
+.jse-tree-mode {
+    --jse-line-height: 1.1 !important;
+    --jse-font-size-mono: 13px !important;
 }
