@@ -2576,6 +2576,13 @@ function renderJsonTable(data, container, nodePath = '') {
         const wrapper = document.createElement('div');
         wrapper.style.cssText = "width: 100%; overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.8rem;";
         
+        if (nodePath) {
+            const title = document.createElement('div');
+            title.textContent = "Table Path: " + nodePath;
+            title.style.cssText = "margin-bottom: 8px; font-weight: 600; color: var(--accent); font-size: 0.9rem;";
+            wrapper.appendChild(title);
+        }
+        
         const table = document.createElement('table');
         table.style.cssText = "width: 100%; border-collapse: collapse; text-align: left;";
         
@@ -2616,6 +2623,14 @@ function renderJsonTable(data, container, nodePath = '') {
     } else {
         const wrapper = document.createElement('div');
         wrapper.style.cssText = "width: 100%; overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.8rem;";
+        
+        if (nodePath) {
+            const title = document.createElement('div');
+            title.textContent = "Table Path: " + nodePath;
+            title.style.cssText = "margin-bottom: 8px; font-weight: 600; color: var(--accent); font-size: 0.9rem;";
+            wrapper.appendChild(title);
+        }
+        
         const table = document.createElement('table');
         table.style.cssText = "width: 100%; border-collapse: collapse; text-align: left;";
         
@@ -2744,7 +2759,7 @@ function renderCustomJsonTree(data, container) {
     container.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
     container.style.fontSize = '0.85rem';
     container.style.lineHeight = '1.5';
-    container.style.color = '#d4d4d4';
+    container.style.color = 'var(--syntax-bracket, #d4d4d4)';
     container.style.padding = '10px';
     container.style.overflow = 'auto';
     container.style.background = 'transparent';
@@ -2753,16 +2768,16 @@ function renderCustomJsonTree(data, container) {
         const span = document.createElement('span');
         if (val === null) {
             span.textContent = 'null';
-            span.style.color = '#569cd6';
+            span.style.color = 'var(--syntax-bool, #569cd6)';
         } else if (typeof val === 'boolean') {
             span.textContent = val.toString();
-            span.style.color = '#569cd6';
+            span.style.color = 'var(--syntax-bool, #569cd6)';
         } else if (typeof val === 'number') {
             span.textContent = val.toString();
-            span.style.color = '#b5cea8';
+            span.style.color = 'var(--syntax-number, #b5cea8)';
         } else if (typeof val === 'string') {
             span.textContent = '"' + val + '"';
-            span.style.color = '#ce9178';
+            span.style.color = 'var(--syntax-string, #ce9178)';
         }
         return span;
     }
@@ -2775,7 +2790,7 @@ function renderCustomJsonTree(data, container) {
         const keySpan = document.createElement('span');
         if (key !== null) {
             keySpan.textContent = '"' + key + '": ';
-            keySpan.style.color = '#9cdcfe';
+            keySpan.style.color = 'var(--syntax-key, #9cdcfe)';
         }
 
         if (obj === null || typeof obj !== 'object') {
