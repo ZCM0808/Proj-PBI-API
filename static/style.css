@@ -1110,3 +1110,15 @@ select.settings-input option {
     color: #0f1115 !important;
     box-shadow: 0 0 12px rgba(242, 200, 17, 0.45) !important;
 }
+
+
+/* Vanilla JSONEditor Customizations */
+.jse-theme-dark, .jse-main {
+    --jse-theme-color: var(--accent);
+    --jse-theme-color-highlight: var(--accent-hover);
+    --jse-background-color: transparent;
+    --jse-panel-background: transparent;
+    --jse-font-size-mono: 13px;
+    --jse-line-height: 1.3;
+    --jse-padding: 4px;
+}

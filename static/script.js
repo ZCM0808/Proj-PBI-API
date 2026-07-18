@@ -1538,12 +1538,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (toggleGroup) toggleGroup.style.display = 'flex';
                 
                 // Default to Tree or Table view
-                if (typeof renderJsonTree === 'function') {
-                    if (Array.isArray(data.data) || (data.data && Array.isArray(data.data.value))) {
-                        updateViewMode('table');
-                    } else {
-                        updateViewMode('tree');
-                    }
+                if (Array.isArray(data.data) || (data.data && Array.isArray(data.data.value))) {
+                    updateViewMode('table');
+                } else {
+                    updateViewMode('tree');
                 }
 
                 // 仅在成功时存入请求历史
@@ -1604,9 +1602,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const toggleGroup = document.getElementById('view-mode-toggles');
                 if (toggleGroup) toggleGroup.style.display = 'flex';
                 
-                if (typeof renderJsonTree === 'function') {
-                    updateViewMode('tree');
-                }
+                updateViewMode('tree');
             }
 
         } catch (err) {
