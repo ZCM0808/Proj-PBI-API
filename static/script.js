@@ -711,6 +711,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         const formatBtn = document.getElementById('format-req-body-btn');
         if (formatBtn) {
+            const originalFormatHTML = formatBtn.innerHTML;
             formatBtn.addEventListener('click', () => {
                 const bodyInputBox = document.getElementById('request-body');
                 if (!bodyInputBox) return;
@@ -723,11 +724,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     bodyInputBox.value = JSON.stringify(JSON.parse(val), null, 2);
                     autoResizeTextarea(bodyInputBox);
                     
-                    const oldHTML = formatBtn.innerHTML;
                     formatBtn.innerHTML = '<span style="font-size: 12px; padding: 0 4px;">Formatted!</span>';
                     formatBtn.style.color = 'var(--accent)';
                     setTimeout(() => {
-                        formatBtn.innerHTML = oldHTML;
+                        formatBtn.innerHTML = originalFormatHTML;
                         formatBtn.style.color = '';
                     }, 2000);
                 } catch (e) {
@@ -1628,16 +1628,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 复制按钮逻辑
     const copyReqBodyBtn = document.getElementById('copy-req-body-btn');
     if (copyReqBodyBtn) {
+        const origReqBodyBtnHTML = copyReqBodyBtn.innerHTML;
         copyReqBodyBtn.addEventListener('click', async () => {
             const bodyContent = document.getElementById('request-body').value;
             if (bodyContent) {
                 try {
                     await navigator.clipboard.writeText(bodyContent);
-                    const oldHTML = copyReqBodyBtn.innerHTML;
                     copyReqBodyBtn.innerHTML = '<span style="font-size: 12px; padding: 0 4px;">Copied!</span>';
                     copyReqBodyBtn.style.color = 'var(--accent)';
                     setTimeout(() => {
-                        copyReqBodyBtn.innerHTML = oldHTML;
+                        copyReqBodyBtn.innerHTML = origReqBodyBtnHTML;
                         copyReqBodyBtn.style.color = '';
                     }, 2000);
                 } catch(e) {
@@ -1649,15 +1649,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const copyResBodyBtn = document.getElementById('copy-res-body-btn');
     if (copyResBodyBtn) {
+        const origResBodyBtnHTML = copyResBodyBtn.innerHTML;
         copyResBodyBtn.addEventListener('click', async () => {
             if (window.currentJsonResponse) {
                 try {
                     await navigator.clipboard.writeText(JSON.stringify(window.currentJsonResponse, null, 2));
-                    const oldHTML = copyResBodyBtn.innerHTML;
                     copyResBodyBtn.innerHTML = '<span style="font-size: 12px; padding: 0 4px;">Copied!</span>';
                     copyResBodyBtn.style.color = 'var(--accent)';
                     setTimeout(() => {
-                        copyResBodyBtn.innerHTML = oldHTML;
+                        copyResBodyBtn.innerHTML = origResBodyBtnHTML;
                         copyResBodyBtn.style.color = '';
                     }, 2000);
                 } catch(e) {
@@ -1760,6 +1760,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 复制 cURL 请求绑定
     const copyBtn = document.getElementById('copy-btn');
     if (copyBtn) {
+        const origMainCopyBtnHTML = copyBtn.innerHTML;
         copyBtn.addEventListener('click', () => {
             const method = methodSelect.value;
             const endpoint = window.getInjectedEndpoint(endpointInput.value.trim());
@@ -1780,12 +1781,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             navigator.clipboard.writeText(curlCmd).then(() => {
-                const oldHTML = copyBtn.innerHTML;
                 copyBtn.innerHTML = '<span style="font-size: 12px; font-weight: bold;">Copied!</span>';
                 copyBtn.style.borderColor = '#10b981';
                 copyBtn.style.color = '#10b981';
                 setTimeout(() => {
-                    copyBtn.innerHTML = oldHTML;
+                    copyBtn.innerHTML = origMainCopyBtnHTML;
                     copyBtn.style.borderColor = '';
                     copyBtn.style.color = '';
                 }, 1200);
