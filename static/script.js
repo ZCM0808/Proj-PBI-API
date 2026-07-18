@@ -646,11 +646,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     // 智能在 Free Mode 下监听 URL 输入，切换前缀提示
-        console.log("App initialization started!");
+
         try {
             const res = await fetch('/api/settings');
             const data = await res.json();
-            console.log("Fetched settings:", data);
+
             
             if (data.PBI_WORKSPACES) {
                 localStorage.setItem('pbi_workspaces', JSON.stringify(data.PBI_WORKSPACES));
@@ -1356,7 +1356,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                     
                     const docUrl = getOfficialDocUrl(ep);
-                    console.log('Generated Doc URL:', docUrl, 'for API:', ep.name);
+
                     const docBtn = document.getElementById('official-doc-btn');
                     if (docBtn) {
                         docBtn.href = docUrl;
