@@ -2659,11 +2659,6 @@ window.updateViewMode = function(mode) {
             b.style.color = 'var(--text-secondary)';
         }
     });
-    
-    const treeControls = document.getElementById('tree-controls');
-    if (treeControls) {
-        treeControls.style.display = mode === 'tree' ? 'flex' : 'none';
-    }
 
     if (mode === 'raw') {
         out.innerHTML = syntaxHighlight(window.currentJsonResponse);
@@ -2681,27 +2676,6 @@ viewModeBtns.forEach(btn => {
         updateViewMode(e.target.getAttribute('data-mode'));
     });
 });
-
-const treeExpandAllBtn = document.getElementById('tree-expand-all');
-if (treeExpandAllBtn) {
-    treeExpandAllBtn.addEventListener('click', () => {
-        for (let i = 0; i < 4; i++) {
-            document.querySelectorAll('.json-tree-container .json-toggle').forEach(t => {
-                if (t.textContent === '\u25b6') t.click();
-            });
-        }
-    });
-}
-
-const treeCollapseAllBtn = document.getElementById('tree-collapse-all');
-if (treeCollapseAllBtn) {
-    treeCollapseAllBtn.addEventListener('click', () => {
-        const toggles = Array.from(document.querySelectorAll('.json-tree-container .json-toggle'));
-        toggles.reverse().forEach(t => {
-            if (t.textContent === '\u25bc') t.click();
-        });
-    });
-}
 
 function updateParamHints(endpointUrl) {
     const hintContainer = document.getElementById('param-hint-container');
