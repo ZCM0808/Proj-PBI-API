@@ -2687,17 +2687,7 @@ function updateParamHints(endpointUrl) {
         return;
     }
     
-    const hints = {
-        '{scanId}': '从 <code>WorkspaceInfo_PostWorkspaceInfo</code> 的响应中获取 (Returns from Start Workspace Scan API)',
-        '{workspaceId}': '也称为 Group ID，可从 URL 或 <code>Groups_GetGroups</code> 接口获取',
-        '{datasetId}': '可从 <code>Datasets_GetDatasetsInGroup</code> 等接口获取',
-        '{reportId}': '可从 <code>Reports_GetReportsInGroup</code> 等接口获取',
-        '{dashboardId}': '可从 <code>Dashboards_GetDashboardsInGroup</code> 等接口获取',
-        '{capacityId}': '可从 <code>Capacities_GetCapacities</code> 接口获取',
-        '{dataflowId}': '可从 <code>Dataflows_GetDataflows</code> 接口获取',
-        '{appId}': '可从 <code>Apps_GetApps</code> 接口获取',
-        '{gatewayId}': '可从 <code>Gateways_GetGateways</code> 接口获取'
-    };
+    const hints = window.PARAM_HINTS || {};
     
     let html = '<strong>参数获取提示 (Parameter Hints):</strong> <ul style="margin: 0; padding-left: 20px; font-size: 0.8rem; margin-top: 4px;">';
     matches.forEach(m => {
