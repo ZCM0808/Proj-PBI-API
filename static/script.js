@@ -2484,15 +2484,14 @@ const loadReqHistory = (searchTerm = "") => {
         }
         
         if (isVerticalResizing) {
-            const delta = e.clientY - startY;
+            const maxClientY = window.innerHeight - 200; // Leave 200px for the response container
+            const clampedY = Math.min(e.clientY, maxClientY);
+            const delta = clampedY - startY;
             const baseHeight = startHeight + delta;
             
-            const finalHeight = Math.max(minAllowedHeight, Math.min(baseHeight, window.innerHeight - 150));
-            if (true) {
-                bodyEditorContainer.style.height = finalHeight + 'px';
-                
-                bodyEditorContainer.style.flex = 'none';
-            }
+            const finalHeight = Math.max(minAllowedHeight, baseHeight);
+            bodyEditorContainer.style.height = finalHeight + 'px';
+            bodyEditorContainer.style.flex = 'none';
         }
     });
 
