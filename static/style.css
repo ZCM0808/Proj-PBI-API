@@ -1126,20 +1126,20 @@ select.settings-input option {
 #response-output .jse-header-outer {
     padding: 0 !important;
     margin: 0 !important;
-    min-height: 16px !important;
+    min-height: 15px !important;
 }
 #response-output .jse-json-node {
     padding-top: 0 !important;
     padding-bottom: 0 !important;
 }
 #response-output {
-    --jse-font-size-mono: 12px !important;
+    --jse-font-size-mono: 13px !important;
     --jse-line-height: 1.15 !important;
 }
 
 /* EXTREME COMPACT MODE FOR TREE VIEW */
 .jse-tree-mode .jse-header-outer {
-    min-height: 16px !important;
+    min-height: 15px !important;
     height: 18px !important;
     padding: 0 !important;
     margin: 0 !important;
@@ -1162,4 +1162,38 @@ select.settings-input option {
 .jse-tree-mode {
     --jse-line-height: 1.1 !important;
     --jse-font-size-mono: 13px !important;
+}
+
+
+/* SAFE BUT SUPER RUTHLESS COMPACT OVERRIDE */
+#response-output .jse-menu .jse-copy {
+    order: 99 !important;
+    margin-left: auto !important;
+    display: flex !important;
+}
+#response-output .jse-header-outer, 
+#response-output .jse-json-node, 
+#response-output .jse-row {
+    min-height: 16px !important;
+    height: 16px !important;
+    line-height: 16px !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+#response-output .jse-contents-outer, 
+#response-output .jse-items, 
+#response-output .jse-props,
+#response-output .jse-contents {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    gap: 0 !important;
+}
+#response-output .jse-tree-mode {
+    --jse-line-height: 1.15 !important;
+    --jse-font-size-mono: 13px !important;
+    --jse-padding: 0 !important;
 }
