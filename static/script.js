@@ -2484,7 +2484,7 @@ const loadReqHistory = (searchTerm = "") => {
         }
         
         if (isVerticalResizing) {
-            const maxClientY = window.innerHeight - 200; // Leave 200px for the response container
+            const maxClientY = window.innerHeight - 280; // Leave enough space for response container + paddings/gaps to prevent overflow
             const clampedY = Math.min(e.clientY, maxClientY);
             const delta = clampedY - startY;
             const baseHeight = startHeight + delta;
