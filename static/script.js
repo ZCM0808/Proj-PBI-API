@@ -2626,7 +2626,12 @@ function renderJsonTable(data, container, nodePath = '') {
         table.appendChild(thead);
         
         const tbody = document.createElement('tbody');
-        for (const [k, v] of Object.entries(targetData || {})) {
+        const entries = Object.entries(targetData || {});
+        if (entries.length === 0) {
+            container.innerHTML = `<div style="padding: 16px; color: var(--text-secondary);">No data found at node path '${nodePath}'. Please check the path or select from the dropdown.</div>`;
+            return;
+        }
+        for (const [k, v] of entries) {
             const tr = document.createElement('tr');
             tr.style.cssText = "transition: background 0.2s; cursor: default;";
             tr.onmouseover = () => tr.style.background = "rgba(255,255,255,0.02)";
@@ -2751,15 +2756,40 @@ function updateParamHints(endpointUrl) {
 
 
 
-document.getElementById('table-node-path-input')?.addEventListener('input', (e) => {
-    const out = document.getElementById('response-output');
-    if (out && window.currentJsonResponse && document.querySelector('.view-mode-btn.active')?.getAttribute('data-mode') === 'table') {
-        renderJsonTable(window.currentJsonResponse, out, e.target.value.trim());
-    }
-});
+const tableNodeInput = document.getElementById('table-node-path-input');
+if (tableNodeInput) {
+    tableNodeInput.addEventListener('input', (e) => {
+        const out = document.getElementById('response-output');
+        if (out && window.currentJsonResponse && document.querySelector('.view-mode-btn.active')?.getAttribute('data-mode') === 'table') {
+            renderJsonTable(window.currentJsonResponse, out, e.target.value.trim());
+        }
+    });
+    tableNodeInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const keyword = e.target.value.trim().toLowerCase();
+            if (!keyword) return;
+            
+            // Find the best match if the exact path doesn't exist
+            const exactMatch = window._tableNodePaths?.find(p => p.toLowerCase() === keyword);
+            if (!exactMatch) {
+                const partialMatch = window._tableNodePaths?.find(p => p.toLowerCase().includes(keyword));
+                if (partialMatch) {
+                    e.target.value = partialMatch;
+                    // Trigger render manually since we changed the value
+                    const out = document.getElementById('response-output');
+                    if (out && window.currentJsonResponse && document.querySelector('.view-mode-btn.active')?.getAttribute('data-mode') === 'table') {
+                        renderJsonTable(window.currentJsonResponse, out, partialMatch);
+                    }
+                }
+            }
+        }
+    });
+}
 
 
 
+window._tableNodePaths = [];
 function updateTableNodeSuggestions(jsonObj) {
     const datalist = document.getElementById('table-node-path-list');
     if (!datalist) return;
@@ -2776,11 +2806,9 @@ function updateTableNodeSuggestions(jsonObj) {
         for (const [key, value] of Object.entries(obj)) {
             if (!value || typeof value !== 'object') continue;
             
-            // Construct the path
             const newPath = currentPath ? currentPath + '.' + key : key;
             paths.add(newPath);
             
-            // Stop recursing if it's an array to avoid iterating over all indices
             if (!Array.isArray(value)) {
                 traverse(value, newPath, depth + 1);
             }
@@ -2788,8 +2816,9 @@ function updateTableNodeSuggestions(jsonObj) {
     }
     
     traverse(jsonObj, '', 1);
+    window._tableNodePaths = Array.from(paths).sort();
     
-    Array.from(paths).sort().forEach(path => {
+    window._tableNodePaths.forEach(path => {
         const option = document.createElement('option');
         option.value = path;
         datalist.appendChild(option);
