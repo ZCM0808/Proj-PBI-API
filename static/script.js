@@ -2693,32 +2693,17 @@ window.updateViewMode = function(mode) {
 
     if (mode === 'tree') {
         out.innerHTML = '';
-        out.className = '';
+        out.className = 'response-body';
         out.style.height = '100%';
         out.style.overflow = 'auto'; // ensure scrolling works
-        
-        responseEditor = document.createElement('json-viewer');
-        out.appendChild(responseEditor);
-        
-        // assign data and expand top level
-        responseEditor.data = window.currentJsonResponse;
-        // Optional: you can expand it if desired using responseEditor.expand('1') or similar 
-        // wait for element to process
-        setTimeout(() => {
-            if (responseEditor && typeof responseEditor.expandAll === 'function') {
-                responseEditor.expandAll(); // if library supports
-            }
-        }, 50);
-        
+        renderCustomJsonTree(window.currentJsonResponse, out);
     } else {
-        if (responseEditor) {
-            out.innerHTML = '';
-            responseEditor = null;
-        }
+        out.innerHTML = '';
         if (mode === 'raw') {
             out.innerHTML = syntaxHighlight(window.currentJsonResponse);
             out.className = 'json-viewer';
         } else if (mode === 'table') {
+            out.className = 'response-body';
             const path = document.getElementById('table-node-path-input')?.value || '';
             renderJsonTable(window.currentJsonResponse, out, path);
         }
