@@ -2779,6 +2779,12 @@ window.updateViewMode = function(mode, tablePath = '') {
     }
 
     if (mode === 'tree') {
+        window.treeAllExpanded = false;
+        const toggleBtn = document.getElementById('tree-toggle-all-btn');
+        if (toggleBtn) {
+            toggleBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>';
+        }
+        
         out.innerHTML = '';
         out.className = 'response-body';
         out.style.height = '100%';
@@ -3012,17 +3018,20 @@ function renderCustomJsonTree(data, container) {
     container._collapseAll = () => rootNode._collapseDeep && rootNode._collapseDeep();
 }
 
-const expandBtn = document.getElementById('tree-expand-all-btn');
-if (expandBtn) {
-    expandBtn.addEventListener('click', () => {
+const toggleBtn = document.getElementById('tree-toggle-all-btn');
+if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+        window.treeAllExpanded = !window.treeAllExpanded;
         const out = document.getElementById('response-output');
-        if (out && out._expandAll) out._expandAll();
-    });
-}
-const collapseBtn = document.getElementById('tree-collapse-all-btn');
-if (collapseBtn) {
-    collapseBtn.addEventListener('click', () => {
-        const out = document.getElementById('response-output');
-        if (out && out._collapseAll) out._collapseAll();
+        if (out) {
+            if (window.treeAllExpanded && out._expandAll) {
+                out._expandAll();
+            } else if (!window.treeAllExpanded && out._collapseAll) {
+                out._collapseAll();
+            }
+        }
+        toggleBtn.innerHTML = window.treeAllExpanded ? 
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"></path></svg>' : // 展开时的向上收起箭头
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>';  // 折叠时的向下展开箭头
     });
 }
