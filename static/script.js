@@ -693,25 +693,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
 
-        const autoResizeTextarea = (el) => {
-            if (!el) return;
-            const rb = document.querySelector('.request-builder');
-            // 如果用户手动通过拖拽调整了 request-builder 的高度，
-            // 此时强制将其高度恢复为 auto，避免内部 textarea 拉伸时发生溢出遮挡
-            if (rb && rb.style.height && rb.style.height !== 'auto') {
-                rb.style.height = 'auto';
-            }
-            // 暂时移除 flex: 1，以便真正通过 height 撑开
-            el.style.flex = 'none';
-            el.style.height = 'auto';
-            const newHeight = Math.min(Math.max(el.scrollHeight, 80), 500);
-            el.style.height = newHeight + 'px';
-        };
-
-        if (bodyInput) {
-            bodyInput.addEventListener('input', () => autoResizeTextarea(bodyInput));
-        }
         
+                
         const formatBtn = document.getElementById('format-req-body-btn');
         if (formatBtn) {
             const originalFormatHTML = formatBtn.innerHTML;
@@ -725,8 +708,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 try {
                     bodyInputBox.value = JSON.stringify(JSON.parse(val), null, 2);
-                    autoResizeTextarea(bodyInputBox);
-                    
+                                        
                     formatBtn.innerHTML = '<span style="font-size: 12px; padding: 0 4px;">Formatted!</span>';
                     formatBtn.style.color = 'var(--accent)';
                     setTimeout(() => {
@@ -1289,8 +1271,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     methodSelect.value = ep.method;
                     methodSelect.disabled = true; // 锁定 Method
                     bodyInput.value = ep.body;
-                    autoResizeTextarea(bodyInput);
-                }
+                                    }
 
                 itemEl.addEventListener('click', () => {
                     document.querySelectorAll('.api-item').forEach(i => i.classList.remove('active'));
@@ -1338,8 +1319,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     methodSelect.value = originalMethod;
                     methodSelect.disabled = true; // 锁定 Method
                     bodyInput.value = originalBody;
-                    autoResizeTextarea(bodyInput);
-                    
+                                        
                     // 恢复 Unlock 按钮状态
                     document.getElementById('toggle-method-btn').innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span>Unlock</span>';
 
@@ -1951,8 +1931,7 @@ const loadReqHistory = (searchTerm = "") => {
                     endpointInput.value = h.url;
                     updateParamHints(h.url);
                     bodyInput.value = h.body || '';
-                    autoResizeTextarea(bodyInput);
-                    methodSelect.disabled = true;
+                                        methodSelect.disabled = true;
                     historyReqDropdown.style.display = 'none';
                     if (historySearchInput) historySearchInput.value = '';
                     
