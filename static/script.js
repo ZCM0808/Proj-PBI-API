@@ -2645,6 +2645,8 @@ function renderJsonTable(data, container) {
     }
 }
 
+let responseEditor = null;
+
 window.updateViewMode = function(mode) {
     if (!window.currentJsonResponse) return;
     const out = document.getElementById('response-output');
@@ -2660,13 +2662,49 @@ window.updateViewMode = function(mode) {
         }
     });
 
-    if (mode === 'raw') {
-        out.innerHTML = syntaxHighlight(window.currentJsonResponse);
-        out.className = 'json-viewer';
-    } else if (mode === 'tree') {
-        renderJsonTree(window.currentJsonResponse, out);
-    } else if (mode === 'table') {
-        renderJsonTable(window.currentJsonResponse, out);
+    if (mode === 'tree') {
+        out.innerHTML = '';
+        out.className = '';
+        out.style.height = '100%';
+        if (!responseEditor) {
+            const { JSONEditor } = window['vanilla-jsoneditor'] || window;
+            responseEditor = new JSONEditor({
+                target: out,
+                props: {
+                    content: { json: window.currentJsonResponse },
+                    readOnly: true,
+                    mainMenuBar: false,
+                    navigationBar: true
+                }
+            });
+        } else {
+            // Check if DOM contains the editor; if not, recreate or re-append
+            if (!out.hasChildNodes()) {
+                const { JSONEditor } = window['vanilla-jsoneditor'] || window;
+                responseEditor = new JSONEditor({
+                    target: out,
+                    props: {
+                        content: { json: window.currentJsonResponse },
+                        readOnly: true,
+                        mainMenuBar: false,
+                        navigationBar: true
+                    }
+                });
+            } else {
+                responseEditor.set({ json: window.currentJsonResponse });
+            }
+        }
+    } else {
+        if (responseEditor) {
+            responseEditor.destroy();
+            responseEditor = null;
+        }
+        if (mode === 'raw') {
+            out.innerHTML = syntaxHighlight(window.currentJsonResponse);
+            out.className = 'json-viewer';
+        } else if (mode === 'table') {
+            renderJsonTable(window.currentJsonResponse, out);
+        }
     }
 };
 
@@ -2704,125 +2742,4 @@ function updateParamHints(endpointUrl) {
     hintContainer.style.alignItems = 'flex-start';
 }
 
-function renderJsonTree(data, container) {
-    container.innerHTML = '';
-    container.className = 'json-tree-container';
-    container.appendChild(createJsonNode(data, true, null, 0));
-}
 
-function createJsonNode(value, isLast, keyName, depth = 0) {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'json-line';
-    
-    const contentSpan = document.createElement('span');
-    if (keyName !== null) {
-        const keySpan = document.createElement('span');
-        keySpan.className = 'json-key';
-        keySpan.textContent = '"' + keyName + '": ';
-        contentSpan.appendChild(keySpan);
-    }
-    
-    if (value === null) {
-        const valSpan = document.createElement('span');
-        valSpan.className = 'json-null';
-        valSpan.textContent = 'null';
-        contentSpan.appendChild(valSpan);
-        if (!isLast) contentSpan.appendChild(document.createTextNode(','));
-        wrapper.appendChild(contentSpan);
-        return wrapper;
-    }
-    
-    if (typeof value !== 'object') {
-        const type = typeof value;
-        const valSpan = document.createElement('span');
-        valSpan.className = 'json-' + type;
-        valSpan.textContent = type === 'string' ? '"' + value + '"' : String(value);
-        contentSpan.appendChild(valSpan);
-        if (!isLast) contentSpan.appendChild(document.createTextNode(','));
-        wrapper.appendChild(contentSpan);
-        return wrapper;
-    }
-    
-    const isArray = Array.isArray(value);
-    const openChar = isArray ? '[' : '{';
-    const closeChar = isArray ? ']' : '}';
-    const keys = Object.keys(value);
-    
-    if (keys.length === 0) {
-        contentSpan.appendChild(document.createTextNode(openChar + closeChar + (isLast ? '' : ',')));
-        wrapper.appendChild(contentSpan);
-        return wrapper;
-    }
-    
-    const toggle = document.createElement('span');
-    toggle.className = 'json-toggle';
-    
-    contentSpan.appendChild(document.createTextNode(openChar));
-    
-    const collapsedText = document.createElement('span');
-    collapsedText.className = 'json-collapsed-text json-hidden';
-    collapsedText.textContent = (isArray ? ' Array(' + keys.length + ') ' : ' ... ') + closeChar + (isLast ? '' : ',');
-    
-    const childrenContainer = document.createElement('div');
-    childrenContainer.className = isArray ? 'json-array' : 'json-dict';
-    
-    let isRendered = false;
-    const maxItems = 500;
-    
-    function renderChildren() {
-        if (isRendered) return;
-        isRendered = true;
-        const renderKeys = keys.slice(0, maxItems);
-        renderKeys.forEach((k, i) => {
-            const childIsLast = (i === keys.length - 1);
-            childrenContainer.appendChild(createJsonNode(value[k], childIsLast, isArray ? null : k, depth + 1));
-        });
-        if (keys.length > maxItems) {
-            const moreSpan = document.createElement('div');
-            moreSpan.style.color = '#8b949e';
-            moreSpan.style.fontStyle = 'italic';
-            moreSpan.textContent = '... and ' + (keys.length - maxItems) + ' more items hidden to prevent browser crash ...';
-            childrenContainer.appendChild(moreSpan);
-        }
-    }
-    
-    const footer = document.createElement('div');
-    footer.textContent = closeChar + (isLast ? '' : ',');
-    
-    const autoExpand = depth < 2;
-    
-    if (!autoExpand) {
-        childrenContainer.classList.add('json-hidden');
-        footer.classList.add('json-hidden');
-        collapsedText.classList.remove('json-hidden');
-        toggle.textContent = '\u25b6';
-    } else {
-        renderChildren();
-        toggle.textContent = '\u25bc';
-    }
-    
-    toggle.onclick = () => {
-        const isCollapsed = childrenContainer.classList.contains('json-hidden');
-        if (isCollapsed) {
-            renderChildren();
-            childrenContainer.classList.remove('json-hidden');
-            footer.classList.remove('json-hidden');
-            collapsedText.classList.add('json-hidden');
-            toggle.textContent = '\u25bc';
-        } else {
-            childrenContainer.classList.add('json-hidden');
-            footer.classList.add('json-hidden');
-            collapsedText.classList.remove('json-hidden');
-            toggle.textContent = '\u25b6';
-        }
-    };
-    collapsedText.onclick = toggle.onclick;
-    
-    wrapper.appendChild(toggle);
-    wrapper.appendChild(contentSpan);
-    wrapper.appendChild(collapsedText);
-    wrapper.appendChild(childrenContainer);
-    wrapper.appendChild(footer);
-    
-    return wrapper;
-}
