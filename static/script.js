@@ -643,6 +643,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+
+
     // 智能在 Free Mode 下监听 URL 输入，切换前缀提示
         console.log("App initialization started!");
         try {
@@ -672,6 +674,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 初始化 DOM 元素
         if (endpointInput) {
             endpointInput.addEventListener('input', () => {
+                updateParamHints(endpointInput.value);
                 const badge = document.getElementById('request-mode-badge');
                 if (badge && badge.textContent.includes('Free Mode')) {
                     const val = endpointInput.value.toLowerCase();
@@ -1282,6 +1285,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     itemEl.classList.add('active');
                     activeApiElement = itemEl;
                     endpointInput.value = ep.path;
+                    updateParamHints(ep.path);
                     methodSelect.value = ep.method;
                     methodSelect.disabled = true; // 锁定 Method
                     bodyInput.value = ep.body;
@@ -1330,6 +1334,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     // 填入数据
                     endpointInput.value = originalPath;
+                    updateParamHints(originalPath);
                     methodSelect.value = originalMethod;
                     methodSelect.disabled = true; // 锁定 Method
                     bodyInput.value = originalBody;
@@ -1682,6 +1687,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         methodSelect.disabled = true;
         toggleMethodBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span>Unlock</span>';
         endpointInput.value = originalPath;
+        updateParamHints(originalPath);
         bodyInput.value = originalBody;
         
         // 恢复 UI 状态
@@ -1803,6 +1809,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             methodSelect.disabled = false;
             methodSelect.value = 'GET';
             endpointInput.value = '';
+            updateParamHints('');
             endpointInput.dispatchEvent(new Event('input'));
             bodyInput.value = '';
             toggleMethodBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span>Unlock</span>';
@@ -1944,6 +1951,7 @@ const loadReqHistory = (searchTerm = "") => {
                 item.onclick = () => {
                     methodSelect.value = h.method;
                     endpointInput.value = h.url;
+                    updateParamHints(h.url);
                     bodyInput.value = h.body || '';
                     autoResizeTextarea(bodyInput);
                     methodSelect.disabled = true;
@@ -2651,6 +2659,11 @@ window.updateViewMode = function(mode) {
             b.style.color = 'var(--text-secondary)';
         }
     });
+    
+    const treeControls = document.getElementById('tree-controls');
+    if (treeControls) {
+        treeControls.style.display = mode === 'tree' ? 'flex' : 'none';
+    }
 
     if (mode === 'raw') {
         out.innerHTML = syntaxHighlight(window.currentJsonResponse);
@@ -2668,6 +2681,64 @@ viewModeBtns.forEach(btn => {
         updateViewMode(e.target.getAttribute('data-mode'));
     });
 });
+
+const treeExpandAllBtn = document.getElementById('tree-expand-all');
+if (treeExpandAllBtn) {
+    treeExpandAllBtn.addEventListener('click', () => {
+        for (let i = 0; i < 4; i++) {
+            document.querySelectorAll('.json-tree-container .json-toggle').forEach(t => {
+                if (t.textContent === '\u25b6') t.click();
+            });
+        }
+    });
+}
+
+const treeCollapseAllBtn = document.getElementById('tree-collapse-all');
+if (treeCollapseAllBtn) {
+    treeCollapseAllBtn.addEventListener('click', () => {
+        const toggles = Array.from(document.querySelectorAll('.json-tree-container .json-toggle'));
+        toggles.reverse().forEach(t => {
+            if (t.textContent === '\u25bc') t.click();
+        });
+    });
+}
+
+function updateParamHints(endpointUrl) {
+    const hintContainer = document.getElementById('param-hint-container');
+    if (!hintContainer) return;
+    
+    const matches = endpointUrl.match(/\{([a-zA-Z0-9_]+)\}/g);
+    if (!matches || matches.length === 0) {
+        hintContainer.style.display = 'none';
+        return;
+    }
+    
+    const hints = {
+        '{scanId}': '从 <code>WorkspaceInfo_PostWorkspaceInfo</code> 的响应中获取 (Returns from Start Workspace Scan API)',
+        '{workspaceId}': '也称为 Group ID，可从 URL 或 <code>Groups_GetGroups</code> 接口获取',
+        '{datasetId}': '可从 <code>Datasets_GetDatasetsInGroup</code> 等接口获取',
+        '{reportId}': '可从 <code>Reports_GetReportsInGroup</code> 等接口获取',
+        '{dashboardId}': '可从 <code>Dashboards_GetDashboardsInGroup</code> 等接口获取',
+        '{capacityId}': '可从 <code>Capacities_GetCapacities</code> 接口获取',
+        '{dataflowId}': '可从 <code>Dataflows_GetDataflows</code> 接口获取',
+        '{appId}': '可从 <code>Apps_GetApps</code> 接口获取',
+        '{gatewayId}': '可从 <code>Gateways_GetGateways</code> 接口获取'
+    };
+    
+    let html = '<strong>参数获取提示 (Parameter Hints):</strong> <ul style="margin: 0; padding-left: 20px; font-size: 0.8rem; margin-top: 4px;">';
+    matches.forEach(m => {
+        if (hints[m]) {
+            html += `<li><b>${m}</b>: ${hints[m]}</li>`;
+        } else {
+            html += `<li><b>${m}</b>: 请参考上游相关 API 获取该 ID</li>`;
+        }
+    });
+    html += '</ul>';
+    hintContainer.innerHTML = html;
+    hintContainer.style.display = 'flex';
+    hintContainer.style.flexDirection = 'column';
+    hintContainer.style.alignItems = 'flex-start';
+}
 
 function renderJsonTree(data, container) {
     container.innerHTML = '';
