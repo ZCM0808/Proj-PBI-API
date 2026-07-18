@@ -722,6 +722,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 try {
                     bodyInputBox.value = JSON.stringify(JSON.parse(val), null, 2);
                     autoResizeTextarea(bodyInputBox);
+                    
+                    const oldHTML = formatBtn.innerHTML;
+                    formatBtn.innerHTML = '<span style="font-size: 12px; padding: 0 4px;">Formatted!</span>';
+                    formatBtn.style.color = 'var(--accent)';
+                    setTimeout(() => {
+                        formatBtn.innerHTML = oldHTML;
+                        formatBtn.style.color = '';
+                    }, 2000);
                 } catch (e) {
                     alert('JSON 格式有误 (Invalid JSON format):\n' + e.message);
                 }
@@ -1625,11 +1633,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (bodyContent) {
                 try {
                     await navigator.clipboard.writeText(bodyContent);
-                    const oldText = copyReqBodyBtn.innerText;
-                    copyReqBodyBtn.innerText = 'Copied!';
+                    const oldHTML = copyReqBodyBtn.innerHTML;
+                    copyReqBodyBtn.innerHTML = '<span style="font-size: 12px; padding: 0 4px;">Copied!</span>';
                     copyReqBodyBtn.style.color = 'var(--accent)';
                     setTimeout(() => {
-                        copyReqBodyBtn.innerText = oldText;
+                        copyReqBodyBtn.innerHTML = oldHTML;
                         copyReqBodyBtn.style.color = '';
                     }, 2000);
                 } catch(e) {
@@ -1645,11 +1653,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (window.currentJsonResponse) {
                 try {
                     await navigator.clipboard.writeText(JSON.stringify(window.currentJsonResponse, null, 2));
-                    const oldText = copyResBodyBtn.innerText;
-                    copyResBodyBtn.innerText = 'Copied!';
+                    const oldHTML = copyResBodyBtn.innerHTML;
+                    copyResBodyBtn.innerHTML = '<span style="font-size: 12px; padding: 0 4px;">Copied!</span>';
                     copyResBodyBtn.style.color = 'var(--accent)';
                     setTimeout(() => {
-                        copyResBodyBtn.innerText = oldText;
+                        copyResBodyBtn.innerHTML = oldHTML;
                         copyResBodyBtn.style.color = '';
                     }, 2000);
                 } catch(e) {
@@ -1772,13 +1780,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             navigator.clipboard.writeText(curlCmd).then(() => {
-                const btnText = copyBtn.querySelector('span');
-                const origText = btnText.textContent;
-                btnText.textContent = 'Copied!';
+                const oldHTML = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<span style="font-size: 12px; font-weight: bold;">Copied!</span>';
                 copyBtn.style.borderColor = '#10b981';
                 copyBtn.style.color = '#10b981';
                 setTimeout(() => {
-                    btnText.textContent = origText;
+                    copyBtn.innerHTML = oldHTML;
                     copyBtn.style.borderColor = '';
                     copyBtn.style.color = '';
                 }, 1200);
