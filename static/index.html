@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Power BI API Explorer</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20260718_v33">
+    <link rel="stylesheet" href="/static/style.css?v=20260718_v34">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -305,11 +305,6 @@
                 <div class="response-header">
                     <span>Response</span>
                     <div style="margin-left:auto; display:flex; gap:12px; align-items:center;">
-                        <div id="table-node-path-container" style="display: none; align-items: center; gap: 4px; margin-right: 8px;">
-                            <span style="font-size: 0.7rem; color: var(--text-secondary);">Table Node:</span>
-                            <input type="text" id="table-node-path-input" list="table-node-path-list" placeholder="e.g. dataset.tables" style="width: 100px; padding: 2px 6px; font-size: 0.7rem; border-radius: 4px; border: 1px solid var(--panel-border); background: var(--overlay-5); color: var(--text-primary); outline: none;">
-                            <datalist id="table-node-path-list"></datalist>
-                        </div>
                         <div id="view-mode-toggles" style="display: none; gap: 4px; border: 1px solid var(--panel-border); border-radius: 4px; overflow: hidden; background: rgba(0,0,0,0.2); align-items: center;">
                             <button class="view-mode-btn" data-mode="table" style="border:none; background:transparent; color:var(--text-secondary); padding: 2px 8px; font-size:0.7rem; cursor:pointer;" title="Table View">Table</button>
                             <button class="view-mode-btn active" data-mode="tree" style="border:none; background:var(--accent); color:var(--accent-text); padding: 2px 8px; font-size:0.7rem; cursor:pointer;" title="Tree View">Tree</button>
@@ -510,6 +505,6 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
-    <script src="/static/script.js?v=20260718_v33"></script>
+    <script src="/static/script.js?v=20260718_v34"></script>
 </body>
 </html>

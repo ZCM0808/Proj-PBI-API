@@ -2668,7 +2668,7 @@ function renderJsonTable(data, container, nodePath = '') {
 
 let responseEditor = null;
 
-window.updateViewMode = function(mode) {
+window.updateViewMode = function(mode, tablePath = '') {
     if (!window.currentJsonResponse) return;
     const out = document.getElementById('response-output');
     const btns = document.querySelectorAll('.view-mode-btn');
@@ -2683,14 +2683,6 @@ window.updateViewMode = function(mode) {
         }
     });
 
-    const pathContainer = document.getElementById('table-node-path-container');
-    if (pathContainer) {
-        pathContainer.style.display = mode === 'table' ? 'flex' : 'none';
-        if (mode === 'table') {
-            updateTableNodeSuggestions(window.currentJsonResponse);
-        }
-    }
-
     if (mode === 'tree') {
         out.innerHTML = '';
         out.className = 'response-body';
@@ -2704,8 +2696,7 @@ window.updateViewMode = function(mode) {
             out.className = 'json-viewer';
         } else if (mode === 'table') {
             out.className = 'response-body';
-            const path = document.getElementById('table-node-path-input')?.value || '';
-            renderJsonTable(window.currentJsonResponse, out, path);
+            renderJsonTable(window.currentJsonResponse, out, tablePath);
         }
     }
 };
@@ -2746,75 +2737,6 @@ function updateParamHints(endpointUrl) {
 
 
 
-
-const tableNodeInput = document.getElementById('table-node-path-input');
-if (tableNodeInput) {
-    tableNodeInput.addEventListener('input', (e) => {
-        const out = document.getElementById('response-output');
-        if (out && window.currentJsonResponse && document.querySelector('.view-mode-btn.active')?.getAttribute('data-mode') === 'table') {
-            renderJsonTable(window.currentJsonResponse, out, e.target.value.trim());
-        }
-    });
-    tableNodeInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            const keyword = e.target.value.trim().toLowerCase();
-            if (!keyword) return;
-            
-            // Find the best match if the exact path doesn't exist
-            const exactMatch = window._tableNodePaths?.find(p => p.toLowerCase() === keyword);
-            if (!exactMatch) {
-                const partialMatch = window._tableNodePaths?.find(p => p.toLowerCase().includes(keyword));
-                if (partialMatch) {
-                    e.target.value = partialMatch;
-                    // Trigger render manually since we changed the value
-                    const out = document.getElementById('response-output');
-                    if (out && window.currentJsonResponse && document.querySelector('.view-mode-btn.active')?.getAttribute('data-mode') === 'table') {
-                        renderJsonTable(window.currentJsonResponse, out, partialMatch);
-                    }
-                }
-            }
-        }
-    });
-}
-
-
-
-window._tableNodePaths = [];
-function updateTableNodeSuggestions(jsonObj) {
-    const datalist = document.getElementById('table-node-path-list');
-    if (!datalist) return;
-    datalist.innerHTML = '';
-    
-    if (!jsonObj || typeof jsonObj !== 'object') return;
-    
-    const paths = new Set();
-    
-    function traverse(obj, currentPath, depth) {
-        if (depth > 4) return;
-        if (!obj || typeof obj !== 'object') return;
-        
-        for (const [key, value] of Object.entries(obj)) {
-            if (!value || typeof value !== 'object') continue;
-            
-            const newPath = currentPath ? currentPath + '.' + key : key;
-            paths.add(newPath);
-            
-            if (!Array.isArray(value)) {
-                traverse(value, newPath, depth + 1);
-            }
-        }
-    }
-    
-    traverse(jsonObj, '', 1);
-    window._tableNodePaths = Array.from(paths).sort();
-    
-    window._tableNodePaths.forEach(path => {
-        const option = document.createElement('option');
-        option.value = path;
-        datalist.appendChild(option);
-    });
-}
 
 
 function renderCustomJsonTree(data, container) {
@@ -2908,23 +2830,9 @@ function renderCustomJsonTree(data, container) {
 
         tableBtn.onclick = (e) => {
             e.stopPropagation();
-            // Switch mode to table
-            const toggleBtns = document.querySelectorAll('.view-mode-btn');
-            toggleBtns.forEach(btn => btn.classList.remove('active'));
-            const tableModeBtn = document.querySelector('.view-mode-btn[data-mode="table"]');
-            if (tableModeBtn) tableModeBtn.classList.add('active');
-            
-            const pathContainer = document.getElementById('table-node-path-container');
-            if (pathContainer) {
-                pathContainer.style.display = 'flex';
-                updateTableNodeSuggestions(window.currentJsonResponse);
+            if (window.updateViewMode) {
+                window.updateViewMode('table', path);
             }
-            
-            const input = document.getElementById('table-node-path-input');
-            if (input) input.value = path;
-            
-            const out = document.getElementById('response-output');
-            renderJsonTable(window.currentJsonResponse, out, path);
         };
 
         const content = document.createElement('div');
