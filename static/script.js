@@ -2626,6 +2626,12 @@ function renderJsonTable(data, container, nodePath = '') {
         table.appendChild(thead);
         
         const tbody = document.createElement('tbody');
+        if (Array.isArray(targetData) && targetData.length === 0) {
+            container.innerHTML = `<div style="padding: 16px; color: var(--text-secondary);">
+                <span>&#9432; The array at <b>${nodePath || 'root'}</b> is empty.</span>
+            </div>`;
+            return;
+        }
         const entries = Object.entries(targetData || {});
         if (entries.length === 0) {
             container.innerHTML = `<div style="padding: 16px; color: var(--text-secondary);">No data found at node path '${nodePath}'. Please check the path or select from the dropdown.</div>`;
