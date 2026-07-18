@@ -2675,6 +2675,9 @@ window.updateViewMode = function(mode) {
     const pathContainer = document.getElementById('table-node-path-container');
     if (pathContainer) {
         pathContainer.style.display = mode === 'table' ? 'flex' : 'none';
+        if (mode === 'table') {
+            updateTableNodeSuggestions(window.currentJsonResponse);
+        }
     }
 
     if (mode === 'tree') {
@@ -2754,4 +2757,42 @@ document.getElementById('table-node-path-input')?.addEventListener('input', (e) 
         renderJsonTable(window.currentJsonResponse, out, e.target.value.trim());
     }
 });
+
+
+
+function updateTableNodeSuggestions(jsonObj) {
+    const datalist = document.getElementById('table-node-path-list');
+    if (!datalist) return;
+    datalist.innerHTML = '';
+    
+    if (!jsonObj || typeof jsonObj !== 'object') return;
+    
+    const paths = new Set();
+    
+    function traverse(obj, currentPath, depth) {
+        if (depth > 4) return;
+        if (!obj || typeof obj !== 'object') return;
+        
+        for (const [key, value] of Object.entries(obj)) {
+            if (!value || typeof value !== 'object') continue;
+            
+            // Construct the path
+            const newPath = currentPath ? currentPath + '.' + key : key;
+            paths.add(newPath);
+            
+            // Stop recursing if it's an array to avoid iterating over all indices
+            if (!Array.isArray(value)) {
+                traverse(value, newPath, depth + 1);
+            }
+        }
+    }
+    
+    traverse(jsonObj, '', 1);
+    
+    Array.from(paths).sort().forEach(path => {
+        const option = document.createElement('option');
+        option.value = path;
+        datalist.appendChild(option);
+    });
+}
 
