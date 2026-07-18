@@ -1137,24 +1137,20 @@ select.settings-input option {
     --jse-line-height: 1.15 !important;
 }
 
-/* SAFE AND CLEAN JSONEDITOR OVERRIDE */
-#response-output .jse-menu .jse-copy {
-    order: 99 !important;
-    margin-left: auto !important;
-    display: flex !important;
-}
-
-#response-output {
-    --jse-font-size-mono: 13px !important;
-    --jse-line-height: 1.15 !important;
-    --jse-padding: 0px !important;
-}
-
-#response-output .jse-tree-mode .jse-header-outer,
-#response-output .jse-tree-mode .jse-contents-outer,
-#response-output .jse-tree-mode .jse-json-node {
-    padding-top: 0px !important;
-    padding-bottom: 0px !important;
-    margin-top: 0px !important;
-    margin-bottom: 0px !important;
+/* JSON-VIEWER (Web Component) COMPACT STYLE */
+json-viewer {
+    --background-color: transparent;
+    --color: var(--text-primary);
+    --string-color: #ce9178;
+    --number-color: #b5cea8;
+    --boolean-color: #569cd6;
+    --null-color: #569cd6;
+    --property-color: #9cdcfe;
+    --font-family: Consolas, 'Courier New', monospace;
+    --font-size: 13px;
+    --line-height: 1.15;
+    --indent-size: 1.5em;
+    --indent-guide-color: rgba(255, 255, 255, 0.1);
+    --indent-guide-width: 1px;
+    padding: 0;
 }
