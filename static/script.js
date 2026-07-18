@@ -1534,6 +1534,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 responseOutput.className = 'json-viewer';
                 responseOutput.style.color = '#a78bfa';
                 window.currentJsonResponse = data.data;
+                window.currentTablePath = "";
                 const toggleGroup = document.getElementById('view-mode-toggles');
                 if (toggleGroup) toggleGroup.style.display = 'flex';
                 
@@ -1599,6 +1600,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 responseStatus.className = 'response-status status-error';
                 responseOutput.textContent = JSON.stringify(data.error || data, null, 2);
                 window.currentJsonResponse = data.error || data;
+                window.currentTablePath = "";
                 const toggleGroup = document.getElementById('view-mode-toggles');
                 if (toggleGroup) toggleGroup.style.display = 'flex';
                 
@@ -2758,8 +2760,13 @@ function renderJsonTable(data, container, nodePath = '') {
 
 let responseEditor = null;
 
-window.updateViewMode = function(mode, tablePath = '') {
+window.currentTablePath = window.currentTablePath || "";
+window.updateViewMode = function(mode, tablePath) {
     if (!window.currentJsonResponse) return;
+
+    if (mode === 'table' && tablePath !== undefined) {
+        window.currentTablePath = tablePath;
+    }
     const out = document.getElementById('response-output');
     const btns = document.querySelectorAll('.view-mode-btn');
     
@@ -2797,7 +2804,7 @@ window.updateViewMode = function(mode, tablePath = '') {
             out.className = 'json-viewer';
         } else if (mode === 'table') {
             out.className = 'response-body';
-            renderJsonTable(window.currentJsonResponse, out, tablePath);
+            renderJsonTable(window.currentJsonResponse, out, window.currentTablePath);
         }
     }
 };
