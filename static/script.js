@@ -2484,11 +2484,22 @@ const loadReqHistory = (searchTerm = "") => {
         }
         
         if (isVerticalResizing) {
-            const maxClientY = window.innerHeight - 280; // Leave enough space for response container + paddings/gaps to prevent overflow
-            const clampedY = Math.min(e.clientY, maxClientY);
-            const delta = clampedY - startY;
-            const baseHeight = startHeight + delta;
+            const maxClientY = window.innerHeight - 250; // Leave enough space for response container + paddings/gaps
+            let delta = e.clientY - startY;
             
+            if (startY > maxClientY) {
+                // We are already in the overflow/forbidden zone when drag started.
+                // Prevent snapping. Just block downward movement.
+                if (delta > 0) {
+                    delta = 0;
+                }
+            } else {
+                // Normal case. Clamp the mouse position to maxClientY.
+                const clampedY = Math.min(e.clientY, maxClientY);
+                delta = clampedY - startY;
+            }
+            
+            const baseHeight = startHeight + delta;
             const finalHeight = Math.max(minAllowedHeight, baseHeight);
             bodyEditorContainer.style.height = finalHeight + 'px';
             bodyEditorContainer.style.flex = 'none';
