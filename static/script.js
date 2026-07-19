@@ -210,6 +210,16 @@ window.toggleCustomSelect = function(type) {
     }
 };
 
+window.closeWithAnimation = function(element, callback = null) {
+    if (!element || element.style.display === 'none' || element.classList.contains('is-closing')) return;
+    element.classList.add('is-closing');
+    setTimeout(() => {
+        element.style.display = 'none';
+        element.classList.remove('is-closing');
+        if (callback) callback();
+    }, 200);
+};
+
 window.addEventListener('click', (e) => {
     // 1. Close Custom Selects (Context Toolbar dropdowns)
     if (!e.target.closest('.custom-select-wrapper')) {
@@ -220,9 +230,9 @@ window.addEventListener('click', (e) => {
     // 2. Close History Dropdown
     const historyReqBtn = document.getElementById('history-request-btn');
     const historyReqDropdown = document.getElementById('request-history-dropdown');
-    if (historyReqBtn && historyReqDropdown && historyReqDropdown.style.display !== 'none') {
+    if (historyReqBtn && historyReqDropdown && historyReqDropdown.style.display !== 'none' && !historyReqDropdown.classList.contains('is-closing')) {
         if (!historyReqBtn.contains(e.target) && !historyReqDropdown.contains(e.target)) {
-            historyReqDropdown.style.display = 'none';
+            window.closeWithAnimation(historyReqDropdown);
         }
     }
 
@@ -233,14 +243,15 @@ window.addEventListener('click', (e) => {
     // Don't close if they click the info-header-row itself (it has its own toggle logic)
     const infoHeaderRow = document.getElementById('info-header-row');
     
-    if (selectedApiInfo && selectedApiContent && selectedApiContent.style.display === 'block') {
+    if (selectedApiInfo && selectedApiContent && selectedApiContent.style.display === 'block' && !selectedApiContent.classList.contains('is-closing')) {
         // If click is outside the panel entirely AND not on a tree node (which updates the selection)
         if (!selectedApiInfo.contains(e.target) && !e.target.closest('.api-node') && (!infoHeaderRow || !infoHeaderRow.contains(e.target))) {
-            selectedApiContent.style.display = 'none';
-            if (toggleInfoBtn) {
-                toggleInfoBtn.innerHTML = '&#9633;';
-                toggleInfoBtn.title = '还原';
-            }
+            window.closeWithAnimation(selectedApiContent, () => {
+                if (toggleInfoBtn) {
+                    toggleInfoBtn.innerHTML = '&#9633;';
+                    toggleInfoBtn.title = '还原';
+                }
+            });
             localStorage.setItem('pbi-details-collapsed', 'true');
         }
     }
@@ -1047,15 +1058,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const infoHeaderRow = document.getElementById('info-header-row');
     
     infoHeaderRow.addEventListener('click', (e) => {
-        if (selectedApiContent.style.display === 'none') {
+        if (selectedApiContent.style.display === 'none' || selectedApiContent.classList.contains('is-closing')) {
+            selectedApiContent.classList.remove('is-closing');
             selectedApiContent.style.display = 'block';
             toggleInfoBtn.innerHTML = '&minus;';
             toggleInfoBtn.title = '最小化';
             isDetailsCollapsed = false;
         } else {
-            selectedApiContent.style.display = 'none';
-            toggleInfoBtn.innerHTML = '&#9633;'; // 正方形符号代表最大化/还原
-            toggleInfoBtn.title = '还原';
+            window.closeWithAnimation(selectedApiContent, () => {
+                toggleInfoBtn.innerHTML = '&#9633;'; // 正方形符号代表最大化/还原
+                toggleInfoBtn.title = '还原';
+            });
             isDetailsCollapsed = true;
         }
         localStorage.setItem('pbi-details-collapsed', isDetailsCollapsed);
@@ -1963,7 +1976,7 @@ const loadReqHistory = (searchTerm = "") => {
                     updateParamHints(h.url);
                     bodyInput.value = h.body || '';
                                         methodSelect.disabled = true;
-                    historyReqDropdown.style.display = 'none';
+                    window.closeWithAnimation(historyReqDropdown);
                     if (historySearchInput) historySearchInput.value = '';
                     
                     updateRequestMode('history', '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:middle;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Historical Request');
@@ -1997,13 +2010,14 @@ const loadReqHistory = (searchTerm = "") => {
     
     if (historyReqBtn && historyReqDropdown) {
         historyReqBtn.addEventListener('click', () => {
-            if (historyReqDropdown.style.display === 'none') {
+            if (historyReqDropdown.style.display === 'none' || historyReqDropdown.classList.contains('is-closing')) {
                 if (historySearchInput) historySearchInput.value = '';
                 loadReqHistory();
+                historyReqDropdown.classList.remove('is-closing');
                 historyReqDropdown.style.display = 'flex';
                 if (historySearchInput) setTimeout(() => historySearchInput.focus(), 50);
             } else {
-                historyReqDropdown.style.display = 'none';
+                window.closeWithAnimation(historyReqDropdown);
             }
         });
     }
@@ -2974,6 +2988,16 @@ function renderCustomJsonTree(data, container) {
         toggle.style.left = depth === 0 ? '-12px' : '4px';
         toggle.style.top = '4px';
         toggle.style.userSelect = 'none';
+        toggle.style.transition = 'color 0.2s, transform 0.2s';
+        
+        toggle.onmouseover = () => {
+            toggle.style.color = 'var(--accent)';
+            toggle.style.transform = 'scale(1.2)';
+        };
+        toggle.onmouseout = () => {
+            toggle.style.color = '#888';
+            toggle.style.transform = 'scale(1)';
+        };
 
         const headContainer = document.createElement('div');
         headContainer.style.display = 'inline-flex';

@@ -767,8 +767,8 @@ textarea:focus {
 }
 
 @keyframes pulse-awake {
-    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-    70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    50% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.2); }
     100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 .awake-active {
@@ -1162,4 +1162,37 @@ json-viewer {
     --indent-guide-color: rgba(255, 255, 255, 0.1);
     --indent-guide-width: 1px;
     padding: 0;
+}
+
+
+/* --- Animations for Dropdowns and Panels --- */
+.animated-dropdown {
+    animation: fade-in-down 0.2s ease-out forwards;
+}
+.animated-dropdown.is-closing {
+    animation: fade-out-up 0.2s ease-in forwards;
+}
+
+@keyframes fade-in-down {
+    0% { opacity: 0; transform: translateY(-10px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-out-up {
+    0% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-10px); }
+}
+
+.animated-collapse {
+    animation: fade-in 0.2s ease-out forwards;
+}
+.animated-collapse.is-closing {
+    animation: fade-out 0.2s ease-in forwards;
+}
+@keyframes fade-in {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+@keyframes fade-out {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
 }
