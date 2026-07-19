@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Power BI API Explorer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent: #8b5cf6;
+            --accent-hover: #a78bfa;
+            --text-main: #f8fafc;
+            --text-secondary: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Animated Background Elements */
+        .blob {
+            position: absolute;
+            filter: blur(80px);
+            z-index: 0;
+            opacity: 0.5;
+            animation: float 10s infinite alternate ease-in-out;
+        }
+        .blob-1 {
+            top: -10%; left: -10%;
+            width: 500px; height: 500px;
+            background: #4c1d95;
+            border-radius: 50%;
+        }
+        .blob-2 {
+            bottom: -20%; right: -10%;
+            width: 600px; height: 600px;
+            background: #1e3a8a;
+            border-radius: 50%;
+            animation-delay: -5s;
+        }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(30px, 50px) scale(1.1); }
+        }
+
+        /* Glass Login Container */
+        .login-container {
+            position: relative;
+            z-index: 10;
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 40px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transform: translateY(20px);
+            opacity: 0;
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes slideUp {
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            margin-bottom: 16px;
+            box-shadow: inset 0 0 0 1px var(--glass-border);
+        }
+
+        .logo svg {
+            width: 32px;
+            height: 32px;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            background: linear-gradient(to right, #fff, #a5b4fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .input-group {
+            margin-bottom: 24px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        input[type="password"] {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 14px 16px;
+            color: #fff;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        input[type="password"]:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        button {
+            width: 100%;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 14px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        button:hover {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px -4px rgba(139, 92, 246, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .error-message {
+            color: #ef4444;
+            font-size: 0.85rem;
+            margin-top: 12px;
+            text-align: center;
+            min-height: 20px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .error-message.visible {
+            opacity: 1;
+        }
+        
+        /* Spinner */
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+
+    <div class="login-container">
+        <div class="header">
+            <div class="logo">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="3" y="12" width="5" height="9" fill="#F2C811"/>
+                    <rect x="9" y="7" width="5" height="14" fill="#F2C811"/>
+                    <rect x="15" y="2" width="5" height="19" fill="#F2C811"/>
+                </svg>
+            </div>
+            <h1>Power BI API Explorer</h1>
+            <p>Private Environment • Enter Password</p>
+        </div>
+
+        <form id="login-form">
+            <div class="input-group">
+                <label for="password">Access Password</label>
+                <input type="password" id="password" name="password" placeholder="••••••••" required autofocus autocomplete="current-password">
+            </div>
+            <button type="submit" id="submit-btn">
+                <span class="btn-text">Unlock Application</span>
+                <div class="spinner"></div>
+            </button>
+            <div class="error-message" id="error-msg">Incorrect password. Please try again.</div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('submit-btn');
+            const btnText = btn.querySelector('.btn-text');
+            const spinner = btn.querySelector('.spinner');
+            const errorMsg = document.getElementById('error-msg');
+            
+            errorMsg.classList.remove('visible');
+            btn.disabled = true;
+            btnText.style.display = 'none';
+            spinner.style.display = 'block';
+
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    btn.style.background = '#10b981'; // success green
+                    spinner.style.display = 'none';
+                    btnText.style.display = 'block';
+                    btnText.textContent = 'Success!';
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 600);
+                } else {
+                    throw new Error(data.message || 'Authentication failed');
+                }
+            } catch (err) {
+                errorMsg.textContent = err.message || 'Network error. Please try again.';
+                errorMsg.classList.add('visible');
+                btn.disabled = false;
+                spinner.style.display = 'none';
+                btnText.style.display = 'block';
+                document.getElementById('password').focus();
+                
+                // Shake animation for error
+                const container = document.querySelector('.login-container');
+                container.style.animation = 'none';
+                container.offsetHeight; // trigger reflow
+                container.style.animation = 'shake 0.4s cubic-bezier(.36,.07,.19,.97) both';
+            }
+        });
+        
+        // Add shake keyframes dynamically
+        const style = document.createElement('style');
+        style.innerHTML = `
+            @keyframes shake {
+                10%, 90% { transform: translate3d(-1px, 0, 0); }
+                20%, 80% { transform: translate3d(2px, 0, 0); }
+                30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+                40%, 60% { transform: translate3d(4px, 0, 0); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

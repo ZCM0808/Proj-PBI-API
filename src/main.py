@@ -6,20 +6,51 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import uvicorn
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi import FastAPI, Request, Response
+from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+import hashlib
 from src.config import Config
 from src.pbi_client import PBIClient
 from src.pipeline import PBIPipeline
 
 app = FastAPI(title="Power BI API Explorer")
 
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    if Config.APP_ACCESS_PASSWORD:
+        whitelist = ["/login", "/api/login", "/static/login.html"]
+        if request.url.path not in whitelist and not request.url.path.startswith("/static/"):
+            token = request.cookies.get("pbi_auth_token")
+            expected_token = hashlib.sha256(Config.APP_ACCESS_PASSWORD.encode()).hexdigest()
+            if token != expected_token:
+                if request.url.path.startswith("/api/"):
+                    return JSONResponse(status_code=401, content={"success": False, "message": "Unauthorized. Please login."})
+                else:
+                    return RedirectResponse(url="/login", status_code=302)
+    return await call_next(request)
+
 # 挂载静态文件
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 client = PBIClient(Config())
 
+class LoginRequest(BaseModel):
+    password: str
+
+@app.post("/api/login")
+def login(req: LoginRequest, response: Response):
+    if req.password == Config.APP_ACCESS_PASSWORD:
+        token = hashlib.sha256(Config.APP_ACCESS_PASSWORD.encode()).hexdigest()
+        response.set_cookie(key="pbi_auth_token", value=token, httponly=True, max_age=86400*30)
+        return {"success": True}
+    return JSONResponse(status_code=401, content={"success": False, "message": "Invalid password"})
+
+@app.get("/login", response_class=HTMLResponse)
+def get_login_ui():
+    with open("static/login.html", "r", encoding="utf-8") as f:
+        return f.read()
 
 @app.get("/", response_class=HTMLResponse)
 def get_ui():

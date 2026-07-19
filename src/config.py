@@ -22,6 +22,11 @@ class Config:
     BASE_URL: str = "https://api.powerbi.com/v1.0/myorg"
 
     # ==========================================
+    # Security Configuration
+    # ==========================================
+    APP_ACCESS_PASSWORD: str = os.getenv("APP_ACCESS_PASSWORD", "")
+
+    # ==========================================
     # Smart DataOps Pipeline 共享配置
     # ==========================================
     SQL_CONN_STR: str = os.getenv("SQL_CONN_STR", "")
