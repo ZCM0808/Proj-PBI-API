@@ -62,9 +62,21 @@ lockouts = load_lockouts()
 async def async_git_push():
     def _push():
         try:
+            # Configure git user for Render environment
+            subprocess.run(["git", "config", "user.email", "bot@render.com"], check=False)
+            subprocess.run(["git", "config", "user.name", "Render Bot"], check=False)
+            
             subprocess.run(["git", "add", LOCKOUT_FILE], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(["git", "commit", "-m", "security: update device lockouts"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            subprocess.run(["git", "push"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
+            # Push using GitHub PAT from environment variable
+            github_pat = os.environ.get("GITHUB_PAT")
+            if github_pat:
+                pat_url = f"https://ZCM0808:{github_pat}@github.com/ZCM0808/Proj-PBI-API.git"
+                subprocess.run(["git", "push", pat_url, "HEAD:main"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            else:
+                # Fallback to default push (will fail on Render without PAT)
+                subprocess.run(["git", "push"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception:
             pass
     await asyncio.to_thread(_push)
