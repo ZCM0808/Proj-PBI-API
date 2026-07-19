@@ -3150,8 +3150,8 @@ if (btnKeepAwake) {
             clearInterval(keepAwakeInterval);
             keepAwakeInterval = null;
             btnKeepAwake.classList.remove('awake-active');
-            btnKeepAwake.style.background = 'transparent';
-            btnKeepAwake.style.borderColor = 'var(--panel-border)';
+            btnKeepAwake.style.background = '';
+            btnKeepAwake.style.borderColor = '';
             btnKeepAwake.title = 'Toggle Anti-Sleep (Keep Render Awake)';
             console.log('Anti-Sleep disabled');
         } else {
@@ -3162,8 +3162,8 @@ if (btnKeepAwake) {
                 console.log('Anti-Sleep ping sent.');
             }, 600000);
             btnKeepAwake.classList.add('awake-active');
-            btnKeepAwake.style.background = '#10b981';
-            btnKeepAwake.style.borderColor = '#10b981';
+            btnKeepAwake.style.background = '';
+            btnKeepAwake.style.borderColor = '';
             btnKeepAwake.title = 'Anti-Sleep is ON (Pinging every 10m)';
             console.log('Anti-Sleep enabled');
         }

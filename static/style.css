@@ -771,6 +771,9 @@ textarea:focus {
     50% { box-shadow: 0 0 14px 2px rgba(16, 185, 129, 0.8); }
 }
 .awake-active {
+    background: #10b981 !important;
+    border-color: #10b981 !important;
+    color: #fff !important;
     animation: pulse-awake 2s ease-in-out infinite !important;
 }
 .modal-content {
@@ -1194,4 +1197,52 @@ json-viewer {
 @keyframes fade-out {
     0% { opacity: 1; }
     100% { opacity: 0; }
+}
+
+
+/* --- Left Panel Header Buttons --- */
+.btn-action-icon {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--panel-border);
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-action-icon:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+}
+.btn-action-icon:active {
+    transform: translateY(1px);
+}
+
+.btn-action-primary {
+    background: var(--accent);
+    color: var(--accent-text);
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-action-primary:hover {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(139, 92, 246, 0.3);
+}
+.btn-action-primary:active {
+    transform: translateY(1px);
+    box-shadow: none;
 }
