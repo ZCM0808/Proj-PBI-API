@@ -237,7 +237,7 @@
     </div>
 
     <!-- Cinematic Fade Overlay -->
-    <div id="fade-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0d1117; opacity: 0; pointer-events: none; z-index: 9999; transition: opacity 0.5s ease;"></div>
+    <div id="fade-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0d1117; opacity: 0; pointer-events: none; z-index: 9999; transition: opacity 0.7s ease;"></div>
 
     <script>
         document.getElementById('login-form').addEventListener('submit', async (e) => {
@@ -270,14 +270,19 @@
                     
                     // Exit animation for container
                     const container = document.querySelector('.login-container');
-                    container.style.animation = 'zoomOutFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards';
+                    container.style.animation = 'zoomOutFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards';
+                    
+                    // Also apply zoomOutFade to the background blobs for a full-screen effect
+                    document.querySelectorAll('.blob').forEach(blob => {
+                        blob.style.animation = 'zoomOutFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards';
+                    });
                     
                     // Cinematic fade to app's dark background
                     document.getElementById('fade-overlay').style.opacity = '1';
                     
                     setTimeout(() => {
                         window.location.href = '/';
-                    }, 500);
+                    }, 750);
                 } else {
                     throw new Error(data.message || 'Authentication failed');
                 }
