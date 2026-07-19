@@ -2428,6 +2428,56 @@ const loadReqHistory = (searchTerm = "") => {
         });
     }
 
+    // Export/Import Local Data Logic
+    const exportLocalBtn = document.getElementById('export-local-btn');
+    const importLocalBtn = document.getElementById('import-local-btn');
+    const importLocalFile = document.getElementById('import-local-file');
+    
+    if (exportLocalBtn) {
+        exportLocalBtn.addEventListener('click', () => {
+            const data = {
+                bookmarks: localStorage.getItem('pbi-bookmarks'),
+                history: localStorage.getItem('apiReqHistory')
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pbi_local_backup_${new Date().getTime()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+    }
+
+    if (importLocalBtn && importLocalFile) {
+        importLocalBtn.addEventListener('click', () => {
+            importLocalFile.click();
+        });
+
+        importLocalFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const data = JSON.parse(event.target.result);
+                    if (data.bookmarks) localStorage.setItem('pbi-bookmarks', data.bookmarks);
+                    if (data.history) localStorage.setItem('apiReqHistory', data.history);
+                    
+                    alert('导入成功！页面即将刷新以应用本地数据。');
+                    window.location.reload();
+                } catch (err) {
+                    alert('导入失败：文件格式错误或已损坏。');
+                    console.error('Import error:', err);
+                }
+            };
+            reader.readAsText(file);
+            // Reset input value to allow importing the same file again
+            importLocalFile.value = '';
+        });
+    }
+
     // 拖拽改变侧边栏宽度
     const resizer = document.getElementById('dragMe');
     const sidebar = document.querySelector('.sidebar');
