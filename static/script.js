@@ -2443,7 +2443,13 @@ const loadReqHistory = (searchTerm = "") => {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `pbi_local_backup_${new Date().getTime()}.json`;
+            
+            // 动态获取当前域名，如果是本地则包含 localhost，如果是线上则包含 onrender 等
+            let envName = window.location.hostname;
+            if (envName === '127.0.0.1') envName = 'localhost';
+            envName = envName.replace(/[^a-zA-Z0-9-]/g, '_'); // 过滤掉域名中的点号等特殊字符
+            
+            a.download = `pbi_backup_${envName}_${new Date().getTime()}.json`;
             a.click();
             URL.revokeObjectURL(url);
         });
