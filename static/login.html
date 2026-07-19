@@ -236,6 +236,9 @@
         </form>
     </div>
 
+    <!-- Cinematic Fade Overlay -->
+    <div id="fade-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0d1117; opacity: 0; pointer-events: none; z-index: 9999; transition: opacity 0.5s ease;"></div>
+
     <script>
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -265,12 +268,12 @@
                     btnText.style.display = 'block';
                     btnText.textContent = 'Success!';
                     
-                    // Exit animation
+                    // Exit animation for container
                     const container = document.querySelector('.login-container');
                     container.style.animation = 'zoomOutFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards';
                     
-                    // Fade out the entire background
-                    document.body.style.animation = 'fadeOutBg 0.5s forwards';
+                    // Cinematic fade to app's dark background
+                    document.getElementById('fade-overlay').style.opacity = '1';
                     
                     setTimeout(() => {
                         window.location.href = '/';
