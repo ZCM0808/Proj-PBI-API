@@ -264,9 +264,14 @@
                     spinner.style.display = 'none';
                     btnText.style.display = 'block';
                     btnText.textContent = 'Success!';
+                    
+                    // Exit animation
+                    const container = document.querySelector('.login-container');
+                    container.style.animation = 'zoomOutFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards';
+                    
                     setTimeout(() => {
                         window.location.href = '/';
-                    }, 600);
+                    }, 500);
                 } else {
                     throw new Error(data.message || 'Authentication failed');
                 }
@@ -286,7 +291,7 @@
             }
         });
         
-        // Add shake keyframes dynamically
+        // Add dynamic keyframes
         const style = document.createElement('style');
         style.innerHTML = `
             @keyframes shake {
@@ -294,6 +299,10 @@
                 20%, 80% { transform: translate3d(2px, 0, 0); }
                 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
                 40%, 60% { transform: translate3d(4px, 0, 0); }
+            }
+            @keyframes zoomOutFade {
+                from { transform: translateY(0) scale(1); opacity: 1; filter: blur(0); }
+                to { transform: translateY(-40px) scale(0.95); opacity: 0; filter: blur(8px); }
             }
         `;
         document.head.appendChild(style);
