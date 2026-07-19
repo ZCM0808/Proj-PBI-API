@@ -196,24 +196,55 @@ window.getListData = function(containerId) {
 
 window.toggleCustomSelect = function(type) {
     const optionsDiv = document.getElementById(`options-${type}`);
+    if (!optionsDiv) return;
     const isVisible = optionsDiv.style.display === 'block';
     
-    // Close all
+    // Close all custom selects
     document.querySelectorAll('.custom-select-options').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.custom-select-trigger').forEach(el => el.style.borderColor = 'var(--panel-border)');
     
     if (!isVisible) {
         optionsDiv.style.display = 'block';
-        document.getElementById(`trigger-${type}`).style.borderColor = 'var(--accent)';
+        const trigger = document.getElementById(`trigger-${type}`);
+        if (trigger) trigger.style.borderColor = 'var(--accent)';
     }
 };
 
-document.addEventListener('click', (e) => {
+window.addEventListener('click', (e) => {
+    // 1. Close Custom Selects (Context Toolbar dropdowns)
     if (!e.target.closest('.custom-select-wrapper')) {
         document.querySelectorAll('.custom-select-options').forEach(el => el.style.display = 'none');
         document.querySelectorAll('.custom-select-trigger').forEach(el => el.style.borderColor = 'var(--panel-border)');
     }
-});
+
+    // 2. Close History Dropdown
+    const historyReqBtn = document.getElementById('history-request-btn');
+    const historyReqDropdown = document.getElementById('request-history-dropdown');
+    if (historyReqBtn && historyReqDropdown && historyReqDropdown.style.display !== 'none') {
+        if (!historyReqBtn.contains(e.target) && !historyReqDropdown.contains(e.target)) {
+            historyReqDropdown.style.display = 'none';
+        }
+    }
+
+    // 3. Auto-Minimize Current Selection Window
+    const selectedApiInfo = document.getElementById('selected-api-info');
+    const selectedApiContent = document.getElementById('selected-api-content');
+    const toggleInfoBtn = document.getElementById('toggle-info-btn');
+    // Don't close if they click the info-header-row itself (it has its own toggle logic)
+    const infoHeaderRow = document.getElementById('info-header-row');
+    
+    if (selectedApiInfo && selectedApiContent && selectedApiContent.style.display === 'block') {
+        // If click is outside the panel entirely AND not on a tree node (which updates the selection)
+        if (!selectedApiInfo.contains(e.target) && !e.target.closest('.api-node') && (!infoHeaderRow || !infoHeaderRow.contains(e.target))) {
+            selectedApiContent.style.display = 'none';
+            if (toggleInfoBtn) {
+                toggleInfoBtn.innerHTML = '&#9633;';
+                toggleInfoBtn.title = '还原';
+            }
+            localStorage.setItem('pbi-details-collapsed', 'true');
+        }
+    }
+}, true); // Use capture phase to prevent stopPropagation from hiding the click
 
 window.selectCustomOption = function(type, id, alias) {
     const input = document.getElementById(`active-${type}`);
@@ -1975,11 +2006,6 @@ const loadReqHistory = (searchTerm = "") => {
                 historyReqDropdown.style.display = 'none';
             }
         });
-        document.addEventListener('click', (e) => {
-            if (!historyReqBtn.contains(e.target) && !historyReqDropdown.contains(e.target)) {
-                historyReqDropdown.style.display = 'none';
-            }
-        });
     }
 
     // --- Modal FLIP & Drag Helper ---
@@ -3091,6 +3117,7 @@ if (btnKeepAwake) {
         if (keepAwakeInterval) {
             clearInterval(keepAwakeInterval);
             keepAwakeInterval = null;
+            btnKeepAwake.classList.remove('awake-active');
             btnKeepAwake.style.background = 'transparent';
             btnKeepAwake.style.borderColor = 'var(--panel-border)';
             btnKeepAwake.title = 'Toggle Anti-Sleep (Keep Render Awake)';
@@ -3102,6 +3129,7 @@ if (btnKeepAwake) {
                 fetch('/?_ping=' + Date.now(), { cache: 'no-store' }).catch(() => {});
                 console.log('Anti-Sleep ping sent.');
             }, 600000);
+            btnKeepAwake.classList.add('awake-active');
             btnKeepAwake.style.background = '#10b981';
             btnKeepAwake.style.borderColor = '#10b981';
             btnKeepAwake.title = 'Anti-Sleep is ON (Pinging every 10m)';
