@@ -767,12 +767,11 @@ textarea:focus {
 }
 
 @keyframes pulse-awake {
-    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-    50% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.2); }
-    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
+    100% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0); }
 }
 .awake-active {
-    animation: pulse-awake 2s infinite !important;
+    animation: pulse-awake 2s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
 }
 .modal-content {
     width: 600px; max-width: 90%;
