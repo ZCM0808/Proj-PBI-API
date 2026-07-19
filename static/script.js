@@ -2073,7 +2073,9 @@ const loadReqHistory = (searchTerm = "") => {
             isAnimating = true;
             
             if (onLoadCallback) {
-                await onLoadCallback();
+                // Do not await here so the FLIP animation triggers instantly.
+                // The network fetch will populate the modal in the background.
+                onLoadCallback();
             }
 
             modalContent.style.left = '0px';
