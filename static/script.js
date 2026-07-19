@@ -2657,12 +2657,20 @@ function renderJsonTable(data, container, nodePath = '') {
         const wrapper = document.createElement('div');
         wrapper.style.cssText = "width: 100%; overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.8rem;";
         
-        if (nodePath) {
-            const title = document.createElement('div');
-            title.textContent = "Table Path: " + nodePath;
-            title.style.cssText = "margin-bottom: 8px; font-weight: 600; color: var(--accent); font-size: 0.9rem;";
-            wrapper.appendChild(title);
-        }
+        const infoHeader = document.createElement('div');
+        infoHeader.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-weight: 600; font-size: 0.85rem;";
+        
+        const titleSpan = document.createElement('span');
+        titleSpan.textContent = nodePath ? "Table Path: " + nodePath : "JSON Table View";
+        titleSpan.style.color = "var(--accent)";
+        
+        const statsSpan = document.createElement('span');
+        statsSpan.textContent = `${arr.length} rows × ${columns.length} columns`;
+        statsSpan.style.cssText = "color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--panel-border);";
+        
+        infoHeader.appendChild(titleSpan);
+        infoHeader.appendChild(statsSpan);
+        wrapper.appendChild(infoHeader);
         
         const table = document.createElement('table');
         table.style.cssText = "width: 100%; border-collapse: collapse; text-align: left;";
