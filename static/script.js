@@ -3098,7 +3098,8 @@ if (btnKeepAwake) {
         } else {
             // Ping every 10 minutes (600,000 ms) to prevent 15-minute Render sleep
             keepAwakeInterval = setInterval(() => {
-                fetch('/').catch(() => {});
+                // Use a timestamp to completely bypass browser disk cache
+                fetch('/?_ping=' + Date.now(), { cache: 'no-store' }).catch(() => {});
                 console.log('Anti-Sleep ping sent.');
             }, 600000);
             btnKeepAwake.style.background = '#10b981';
