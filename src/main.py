@@ -36,21 +36,91 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 client = PBIClient(Config())
 
+import time
+import json
+import uuid
+import asyncio
+import subprocess
+import os
+
+LOCKOUT_FILE = "data/lockouts.json"
+
+def load_lockouts():
+    try:
+        with open(LOCKOUT_FILE, "r") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def save_lockouts(data):
+    os.makedirs("data", exist_ok=True)
+    with open(LOCKOUT_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+lockouts = load_lockouts()
+
+async def async_git_push():
+    def _push():
+        try:
+            subprocess.run(["git", "add", LOCKOUT_FILE], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["git", "commit", "-m", "security: update device lockouts"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["git", "push"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
+    await asyncio.to_thread(_push)
+
 class LoginRequest(BaseModel):
     password: str
 
 @app.post("/api/login")
-def login(req: LoginRequest, response: Response):
+async def login(req: LoginRequest, request: Request, response: Response):
+    device_id = request.cookies.get("pbi_device_id")
+    if not device_id:
+        device_id = str(uuid.uuid4())
+        response.set_cookie(key="pbi_device_id", value=device_id, max_age=86400*365)
+    
+    now = time.time()
+    device_record = lockouts.get(device_id, {"attempts": 0, "locked_until": 0})
+    
+    if device_record["locked_until"] > now:
+        remaining = int(device_record["locked_until"] - now)
+        return JSONResponse(status_code=429, content={"success": False, "message": f"Device locked. Please try again in {remaining // 60}m {remaining % 60}s."})
+    
+    if device_record["locked_until"] != 0 and device_record["locked_until"] < now:
+        device_record["attempts"] = 0
+        device_record["locked_until"] = 0
+    
     if req.password == Config.APP_ACCESS_PASSWORD:
         token = hashlib.sha256(Config.APP_ACCESS_PASSWORD.encode()).hexdigest()
         response.set_cookie(key="pbi_auth_token", value=token, httponly=True, max_age=86400*30)
+        if device_id in lockouts:
+            del lockouts[device_id]
+            save_lockouts(lockouts)
+            asyncio.create_task(async_git_push())
         return {"success": True}
-    return JSONResponse(status_code=401, content={"success": False, "message": "Invalid password"})
+    
+    device_record["attempts"] += 1
+    if device_record["attempts"] >= 3:
+        device_record["locked_until"] = now + 1800
+        msg = "Device locked for 30 minutes due to 3 failed attempts."
+    else:
+        msg = f"Invalid password. Attempt {device_record['attempts']}/3."
+        
+    lockouts[device_id] = device_record
+    save_lockouts(lockouts)
+    asyncio.create_task(async_git_push())
+    
+    return JSONResponse(status_code=401, content={"success": False, "message": msg})
 
 @app.get("/login", response_class=HTMLResponse)
-def get_login_ui():
+def get_login_ui(request: Request):
+    device_id = request.cookies.get("pbi_device_id")
     with open("static/login.html", "r", encoding="utf-8") as f:
-        return f.read()
+        html = f.read()
+    resp = HTMLResponse(content=html)
+    if not device_id:
+        resp.set_cookie(key="pbi_device_id", value=str(uuid.uuid4()), max_age=86400*365)
+    return resp
 
 @app.get("/", response_class=HTMLResponse)
 def get_ui():
