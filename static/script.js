@@ -3081,3 +3081,30 @@ if (toggleBtn) {
             '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>';  // 折叠时的向下展开箭头
     });
 }
+
+
+// --- Keep Awake (Anti-Sleep) Logic ---
+let keepAwakeInterval = null;
+const btnKeepAwake = document.getElementById('btn-keep-awake');
+if (btnKeepAwake) {
+    btnKeepAwake.addEventListener('click', () => {
+        if (keepAwakeInterval) {
+            clearInterval(keepAwakeInterval);
+            keepAwakeInterval = null;
+            btnKeepAwake.style.background = 'transparent';
+            btnKeepAwake.style.borderColor = 'var(--panel-border)';
+            btnKeepAwake.title = 'Toggle Anti-Sleep (Keep Render Awake)';
+            console.log('Anti-Sleep disabled');
+        } else {
+            // Ping every 10 minutes (600,000 ms) to prevent 15-minute Render sleep
+            keepAwakeInterval = setInterval(() => {
+                fetch('/').catch(() => {});
+                console.log('Anti-Sleep ping sent.');
+            }, 600000);
+            btnKeepAwake.style.background = '#10b981';
+            btnKeepAwake.style.borderColor = '#10b981';
+            btnKeepAwake.title = 'Anti-Sleep is ON (Pinging every 10m)';
+            console.log('Anti-Sleep enabled');
+        }
+    });
+}
