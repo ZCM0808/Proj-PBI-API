@@ -698,7 +698,8 @@ textarea:focus {
 
     .sidebar {
         width: 100% !important;
-        height: 40vh; /* 移动端顶部占 40% 屏幕高度 */
+        height: 45vh; /* 移动端顶部占 45% 屏幕高度 */
+        min-height: 350px;
         min-width: 100% !important;
     }
 
