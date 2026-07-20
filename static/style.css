@@ -701,6 +701,8 @@ textarea:focus {
         height: 45vh; /* 移动端顶部占 45% 屏幕高度 */
         min-height: 350px;
         min-width: 100% !important;
+        overflow-y: auto;
+        z-index: 101;
     }
 
     /* 移动端改为上下布局，取消原有的鼠标拖拽条 */
