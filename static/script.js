@@ -2476,15 +2476,28 @@ const loadReqHistory = (searchTerm = "") => {
     const importLocalFile = document.getElementById('import-local-file');
     
     if (exportLocalBtn) {
-        exportLocalBtn.addEventListener('click', () => {
+        exportLocalBtn.addEventListener('click', async () => {
+            let backendSettings = {};
+            try {
+                const res = await fetch('/api/settings');
+                backendSettings = await res.json();
+            } catch (e) {
+                console.error('Failed to fetch backend settings for export', e);
+            }
             const data = {
                 bookmarks: localStorage.getItem('pbi-bookmarks'),
                 history: localStorage.getItem('apiReqHistory'),
-                workspaces: localStorage.getItem('pbi_workspaces'),
-                datasets: localStorage.getItem('pbi_datasets'),
-                reports: localStorage.getItem('pbi_reports'),
-                tenantId: localStorage.getItem('pbi_tenant_id'),
-                appName: localStorage.getItem('pbi_app_name')
+                workspaces: localStorage.getItem('pbi_workspaces') || JSON.stringify(backendSettings.PBI_WORKSPACES || []),
+                datasets: localStorage.getItem('pbi_datasets') || JSON.stringify(backendSettings.PBI_DATASETS || []),
+                reports: localStorage.getItem('pbi_reports') || JSON.stringify(backendSettings.PBI_REPORTS || []),
+                tenantId: backendSettings.TENANT_ID || localStorage.getItem('pbi_tenant_id'),
+                appName: localStorage.getItem('pbi_app_name'),
+                clientId: backendSettings.CLIENT_ID,
+                clientSecret: backendSettings.CLIENT_SECRET,
+                authMode: backendSettings.AUTH_MODE,
+                username: backendSettings.USERNAME,
+                password: backendSettings.PASSWORD,
+                sqlConnStr: backendSettings.SQL_CONN_STR
             };
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -2512,7 +2525,7 @@ const loadReqHistory = (searchTerm = "") => {
             if (!file) return;
 
             const reader = new FileReader();
-            reader.onload = (event) => {
+            reader.onload = async (event) => {
                 try {
                     const data = JSON.parse(event.target.result);
                     if (data.bookmarks) localStorage.setItem('pbi-bookmarks', data.bookmarks);
@@ -2522,8 +2535,31 @@ const loadReqHistory = (searchTerm = "") => {
                     if (data.reports) localStorage.setItem('pbi_reports', data.reports);
                     if (data.tenantId) localStorage.setItem('pbi_tenant_id', data.tenantId);
                     if (data.appName) localStorage.setItem('pbi_app_name', data.appName);
+
+                    // Fetch existing settings so we don't overwrite with empty
+                    const res = await fetch('/api/settings');
+                    const existing = await res.json();
                     
-                    alert('导入成功！页面即将刷新以应用本地数据。');
+                    const payload = {
+                        CLIENT_ID: data.clientId !== undefined ? data.clientId : existing.CLIENT_ID,
+                        CLIENT_SECRET: data.clientSecret !== undefined ? data.clientSecret : existing.CLIENT_SECRET,
+                        USERNAME: data.username !== undefined ? data.username : existing.USERNAME,
+                        PASSWORD: data.password !== undefined ? data.password : existing.PASSWORD,
+                        TENANT_ID: data.tenantId !== undefined ? data.tenantId : existing.TENANT_ID,
+                        SQL_CONN_STR: data.sqlConnStr !== undefined ? data.sqlConnStr : existing.SQL_CONN_STR,
+                        AUTH_MODE: data.authMode !== undefined ? data.authMode : existing.AUTH_MODE,
+                        PBI_WORKSPACES: data.workspaces ? JSON.parse(data.workspaces) : existing.PBI_WORKSPACES,
+                        PBI_DATASETS: data.datasets ? JSON.parse(data.datasets) : existing.PBI_DATASETS,
+                        PBI_REPORTS: data.reports ? JSON.parse(data.reports) : existing.PBI_REPORTS
+                    };
+
+                    await fetch('/api/settings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    alert('导入成功！页面即将刷新以应用本地及全局配置。');
                     window.location.reload();
                 } catch (err) {
                     alert('导入失败：文件格式错误或已损坏。');
