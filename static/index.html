@@ -466,12 +466,10 @@
                         <div id="report-list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
                     </div>
                 </div>
-                <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
-                    <div style="display: flex; gap: 8px;">
-                        <button type="button" id="export-local-btn" class="btn-cancel" style="background: var(--input-bg); color: var(--text-secondary); border: 1px solid var(--panel-border); border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; cursor: pointer;" title="导出书签和历史记录 (Export Bookmarks & History)">📤 导出 (Export)</button>
-                        <button type="button" id="import-local-btn" class="btn-cancel" style="background: var(--input-bg); color: var(--text-secondary); border: 1px solid var(--panel-border); border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; cursor: pointer;" title="导入书签和历史记录 (Import Bookmarks & History)">📥 导入 (Import)</button>
-                        <input type="file" id="import-local-file" style="display: none;" accept=".json">
-                    </div>
+                <div class="modal-footer" style="display: flex; justify-content: flex-end; align-items: center; gap: 8px;">
+                    <button type="button" id="export-local-btn" class="btn-cancel" style="background: var(--input-bg); color: var(--text-secondary); border: 1px solid var(--panel-border); border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; cursor: pointer;" title="导出所有设置、书签和历史记录 (Export All Settings, Bookmarks & History)">📤 导出 (Export)</button>
+                    <button type="button" id="import-local-btn" class="btn-cancel" style="background: var(--input-bg); color: var(--text-secondary); border: 1px solid var(--panel-border); border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; cursor: pointer;" title="导入所有设置、书签和历史记录 (Import All Settings, Bookmarks & History)">📥 导入 (Import)</button>
+                    <input type="file" id="import-local-file" style="display: none;" accept=".json">
                     <button type="submit" id="save-settings-btn" class="btn-settings-save">💾 保存配置 (Save & Apply)</button>
                 </div>
             </form>

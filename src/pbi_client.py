@@ -1,7 +1,7 @@
 """Power BI REST API 客户端"""
 
 import os
-import requests
+import requests  # type: ignore[import-untyped]
 from msal import ConfidentialClientApplication, PublicClientApplication, SerializableTokenCache  # type: ignore[import-untyped]
 from src.config import Config
 

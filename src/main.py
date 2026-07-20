@@ -11,6 +11,11 @@ from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse,
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import hashlib
+import time
+import json
+import uuid
+import asyncio
+import subprocess
 from src.config import Config
 from src.pbi_client import PBIClient
 from src.pipeline import PBIPipeline
@@ -36,12 +41,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 client = PBIClient(Config())
 
-import time
-import json
-import uuid
-import asyncio
-import subprocess
-import os
+
 
 LOCKOUT_FILE = "data/lockouts.json"
 
@@ -311,7 +311,7 @@ def main():
 async def test_guid(request: Request):
     """Test a specific GUID via Power BI API"""
     import asyncio
-    import requests
+    import requests  # type: ignore[import-untyped]
     from msal import ConfidentialClientApplication  # type: ignore[import-untyped]
 
     try:
@@ -408,7 +408,7 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
         else:
             return {"success": False, "error": "Invalid item type"}
 
-        import requests
+        import requests  # type: ignore[import-untyped]
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Accept": "application/json"

@@ -2479,7 +2479,12 @@ const loadReqHistory = (searchTerm = "") => {
         exportLocalBtn.addEventListener('click', () => {
             const data = {
                 bookmarks: localStorage.getItem('pbi-bookmarks'),
-                history: localStorage.getItem('apiReqHistory')
+                history: localStorage.getItem('apiReqHistory'),
+                workspaces: localStorage.getItem('pbi_workspaces'),
+                datasets: localStorage.getItem('pbi_datasets'),
+                reports: localStorage.getItem('pbi_reports'),
+                tenantId: localStorage.getItem('pbi_tenant_id'),
+                appName: localStorage.getItem('pbi_app_name')
             };
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -2512,6 +2517,11 @@ const loadReqHistory = (searchTerm = "") => {
                     const data = JSON.parse(event.target.result);
                     if (data.bookmarks) localStorage.setItem('pbi-bookmarks', data.bookmarks);
                     if (data.history) localStorage.setItem('apiReqHistory', data.history);
+                    if (data.workspaces) localStorage.setItem('pbi_workspaces', data.workspaces);
+                    if (data.datasets) localStorage.setItem('pbi_datasets', data.datasets);
+                    if (data.reports) localStorage.setItem('pbi_reports', data.reports);
+                    if (data.tenantId) localStorage.setItem('pbi_tenant_id', data.tenantId);
+                    if (data.appName) localStorage.setItem('pbi_app_name', data.appName);
                     
                     alert('导入成功！页面即将刷新以应用本地数据。');
                     window.location.reload();
