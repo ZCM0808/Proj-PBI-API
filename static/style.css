@@ -462,6 +462,8 @@ body {
     gap: 1rem;
     position: relative;
     z-index: 100;
+    min-width: 0;
+    width: 100%;
 }
 
 .row {
@@ -610,6 +612,7 @@ textarea:focus {
     display: flex;
     flex-direction: column;
     min-width: 0;
+    width: 100%;
     min-height: 200px;
 }
 
@@ -659,6 +662,8 @@ textarea:focus {
     padding: 1.5rem;
     overflow: auto;
     background: var(--input-bg-light);
+    min-width: 0;
+    width: 100%;
 }
 
 .response-body pre {
