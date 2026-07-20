@@ -2451,6 +2451,7 @@ const loadReqHistory = (searchTerm = "") => {
                 });
                 const result = await res.json();
                 if (result.success) {
+                    backendSettingsCache = { ...backendSettingsCache, ...payload };
                     saveSettingsBtn.textContent = '✅ 已保存';
                     setTimeout(() => {
                         settingsModal.style.display = 'none';
@@ -2470,20 +2471,18 @@ const loadReqHistory = (searchTerm = "") => {
         });
     }
 
+    // Pre-fetch settings asynchronously so export button click is fully synchronous to avoid browser popup blockers
+    let backendSettingsCache = {};
+    fetch('/api/settings').then(res => res.json()).then(data => { backendSettingsCache = data; }).catch(console.error);
+
     // Export/Import Local Data Logic
     const exportLocalBtn = document.getElementById('export-local-btn');
     const importLocalBtn = document.getElementById('import-local-btn');
     const importLocalFile = document.getElementById('import-local-file');
     
     if (exportLocalBtn) {
-        exportLocalBtn.addEventListener('click', async () => {
-            let backendSettings = {};
-            try {
-                const res = await fetch('/api/settings');
-                backendSettings = await res.json();
-            } catch (e) {
-                console.error('Failed to fetch backend settings for export', e);
-            }
+        exportLocalBtn.addEventListener('click', () => {
+            const backendSettings = backendSettingsCache;
             const data = {
                 bookmarks: localStorage.getItem('pbi-bookmarks'),
                 history: localStorage.getItem('apiReqHistory'),

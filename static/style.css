@@ -648,8 +648,8 @@ textarea:focus {
     font-family: 'Fira Code', 'Courier New', Courier, monospace;
     font-size: 0.85rem;
     line-height: 1.5;
-    background: transparent;
     color: var(--syntax-bracket); /* VSCode Dark+ 基础色 */
+    white-space: nowrap; /* 强制树状图不换行，保持缩进结构 */
 }
 .json-viewer .key { color: var(--syntax-key); } /* 键名 - 浅蓝 */
 .json-viewer .string { color: var(--syntax-string); } /* 字符串 - 橙色 */
@@ -672,7 +672,8 @@ textarea:focus {
     color: var(--badge-custom-text);
     line-height: 1.5;
     white-space: pre-wrap;
-    word-break: break-all;
+    word-break: break-word;
+    overflow-wrap: anywhere;
 }
 
 /* Loading animation */
