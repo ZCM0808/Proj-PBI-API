@@ -450,6 +450,12 @@ function syntaxHighlight(json) {
 // 简单的翻译字典，用于启发式翻译 API 名称
 function translateApiName(name) {
     if (!name) return "";
+    
+    // 如果存在全局翻译字典，优先精确匹配整个句子
+    if (window.API_TRANSLATIONS && window.API_TRANSLATIONS[name] && window.API_TRANSLATIONS[name] !== name) {
+        return window.API_TRANSLATIONS[name];
+    }
+    
     let res = name;
     
     // 先处理 CamelCase (如 GetGroups -> Get Groups)
@@ -1233,8 +1239,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 badge.className = `method-badge method-${ep.method}`;
                 badge.textContent = ep.method;
                 
-                const nameEl = document.createElement('span');
+                const nameEl = document.createElement('div');
                 nameEl.className = 'api-item-name';
+                nameEl.style.flex = '1';
                 
                 // 渲染微缩 Flag 标志
                 const flagEl = document.createElement('span');
@@ -1288,8 +1295,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 
                 const primaryName = ep.operationId ? ep.operationId : ep.name;
-                const secondaryName = (ep.name && ep.name !== primaryName) ? ' / ' + ep.name : '';
-                nameEl.innerHTML = `<div style="display:flex; align-items:center;"><strong style="color:var(--text-primary); font-weight: 600;">${primaryName}</strong><span style="font-size:0.85em; color:var(--text-secondary); margin-left: 4px;">${secondaryName}</span>${categoryBadgeHtml}</div><div style="font-size:0.7rem; color:var(--text-secondary); margin-top:2px;">${zhTranslated}</div>`;
+                const englishDesc = ep.name || "No description";
+                let chineseDesc = zhTranslated || "暂无描述";
+                // If the translation still contains english words, it means it's a long sentence or unmapped phrase
+                if (/[a-zA-Z]{2,}/.test(chineseDesc)) {
+                    chineseDesc = "暂无对应翻译";
+                }
+                
+                nameEl.innerHTML = `
+                    <div style="display:flex; align-items:center; margin-bottom: 4px;">
+                        <strong style="color:var(--text-primary); font-weight: 600; font-size: 0.85rem;">${primaryName}</strong>
+                        ${categoryBadgeHtml}
+                    </div>
+                    <div style="font-size:0.7rem; color:var(--text-secondary); margin-bottom: 2px; line-height: 1.3;">
+                        <span style="opacity: 0.6; margin-right: 4px; font-weight: bold;">EN:</span>${englishDesc}
+                    </div>
+                    <div style="font-size:0.7rem; color:var(--text-secondary); line-height: 1.3;">
+                        <span style="opacity: 0.6; margin-right: 4px; font-weight: bold;">ZH:</span>${chineseDesc}
+                    </div>
+                `;
                 nameEl.querySelector('div').appendChild(flagEl);
                 nameEl.title = ep.path;
 

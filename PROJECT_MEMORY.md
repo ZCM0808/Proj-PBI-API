@@ -89,6 +89,7 @@ python src/main.py
 5. **Visual Regression Testing (视觉回归测试)**：
    - 通过 Playwright 的 `toHaveScreenshot()` 进行全页面像素级对比，精准拦截微小的 CSS 错误、层级覆盖 Bug、或是任何因编码错误导致的乱码。
    - **自测铁律 (TDD Loop)**：在任何涉及 UI/CSS/DOM 的修改后，**交付前必须强制在后台运行 `npx playwright test` 并等待执行结果**，绝不能依赖肉眼查错！
+   - **前端缓存清理防御 (Cache Busting)**：修改了纯静态原生前端项目文件（`.js` 或 `.css`）后，**必须同步在引用的 `.html` 文件中修改该静态资源的硬编码版本号后缀 (如 `?v=xxx`)**，强制浏览器刷新缓存。
 
 ### 当前核心测试覆盖地图 (12 Core Test Cases)
 **🟢 后端防线：Pytest (4 个用例)**
