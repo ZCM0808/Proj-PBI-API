@@ -1869,6 +1869,56 @@ json-viewer {
     margin-left: 20px !important;
     margin-right: 0 !important;
 }
+.editor-statusbar > *:empty {
+    display: none !important;
+}
+
+/* Note Modal Buttons styling and hover animations */
+.btn-action-secondary {
+    padding: 0.75rem 1.25rem !important;
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+    font-size: 0.95rem !important;
+    border: 1px solid var(--panel-border) !important;
+    background: var(--panel-bg) !important;
+    color: var(--text-primary) !important;
+    cursor: pointer !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.btn-action-secondary:hover {
+    background: var(--overlay-10) !important;
+    border-color: var(--accent) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px var(--shadow-dark);
+}
+.btn-action-secondary:active {
+    transform: translateY(1px);
+    box-shadow: none;
+}
+
+#btn-save-note {
+    padding: 0.75rem 1.25rem !important;
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+    font-size: 0.95rem !important;
+    border: none !important;
+    background: var(--accent) !important;
+    color: var(--accent-text) !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+#btn-save-note:hover {
+    background: var(--accent-hover) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+}
+#btn-save-note:active {
+    transform: translateY(1px);
+    box-shadow: none;
+}
 
 /* Smooth Transition on Theme Change */
 
