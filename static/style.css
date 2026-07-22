@@ -1863,10 +1863,10 @@ json-viewer {
     color: var(--text-primary) !important;
     opacity: 0.9;
 }
-.editor-statusbar span {
+.editor-statusbar > * {
     display: inline-block !important;
     float: none !important;
-    margin-left: 16px !important;
+    margin-left: 20px !important;
     margin-right: 0 !important;
 }
 
