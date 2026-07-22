@@ -1042,7 +1042,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderTree();
     } catch (e) {
         console.error("Failed to load swagger", e);
-        apiTree.innerHTML = `<div style="padding: 1rem; color: #ef4444;">无法加载完整的 API 列表，请刷新重试。<br><br><small style="color:var(--text-secondary);">${e.stack || e.message || e}</small></div>`;
+        apiTree.innerHTML = `<div style="padding: 1rem; color: var(--error);">无法加载完整的 API 列表，请刷新重试。<br><br><small style="color:var(--text-secondary);">${e.stack || e.message || e}</small></div>`;
     }
 
     // 绑定最小化/最大化面板事件
@@ -1484,18 +1484,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                     let finalDescHtml = ep.description ? ep.description.replace(/\n/g, '<br>') : '<span style="color:var(--text-secondary)">暂无描述</span>';
                     
                     if (originalPath.toLowerCase().includes('{scanid}')) {
-                        finalDescHtml = '<div style="margin-bottom: 12px; padding: 10px; background: rgba(56, 189, 248, 0.1); border-left: 3px solid #38bdf8; border-radius: 4px; color: #e1e4e8; font-size: 0.85rem;"><strong style="color:#38bdf8;">💡 提示 (Tip):</strong> 你需要先调用 <strong>WorkspaceInfo GetInfo</strong> 接口获得 <code>scanId</code>，然后将其替换到上方 URL 路径中的 <code>{scanId}</code> 位置。</div>' + finalDescHtml;
+                        finalDescHtml = '<div style="margin-bottom: 12px; padding: 10px; background: var(--badge-get-bg); border-left: 3px solid var(--badge-get-text); border-radius: 4px; color: var(--text-primary); font-size: 0.85rem;"><strong style="color: var(--badge-get-text);">💡 提示 (Tip):</strong> 你需要先调用 <strong>WorkspaceInfo GetInfo</strong> 接口获得 <code>scanId</code>，然后将其替换到上方 URL 路径中的 <code>{scanId}</code> 位置。</div>' + finalDescHtml;
                     }
 
                     if (ep.prerequisites && ep.prerequisites.length > 0) {
                         const prereqItems = ep.prerequisites.map(p => `<li style="margin-bottom: 6px;">${p.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</li>`).join('');
                         const alertBox = `
                             <div style="margin-top: 16px; padding: 12px 16px; background: rgba(210, 153, 34, 0.1); border-left: 4px solid #d29922; border-radius: 4px;">
-                                <div style="color: #d29922; font-weight: bold; margin-bottom: 8px; font-size: 0.9rem; display: flex; align-items: center; gap: 6px;">
+                                <div style="color: var(--accent-hover); font-weight: bold; margin-bottom: 8px; font-size: 0.9rem; display: flex; align-items: center; gap: 6px;">
                                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8.22 1.754a.25.25 0 00-.44 0L1.698 13.132a.25.25 0 00.22.368h12.164a.25.25 0 00.22-.368L8.22 1.754zm-1.763-.707c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0114.082 15H1.918a1.75 1.75 0 01-1.543-2.575L6.457 1.047zM9 11a1 1 0 11-2 0 1 1 0 012 0zm-.25-5.25a.75.75 0 00-1.5 0v2.5a.75.75 0 001.5 0v-2.5z"></path></svg>
                                     运行前置条件 (Prerequisites)
                                 </div>
-                                <ul style="margin: 0; padding-left: 24px; color: #c9d1d9; font-size: 0.85rem; line-height: 1.5;">
+                                <ul style="margin: 0; padding-left: 24px; color: var(--text-primary); font-size: 0.85rem; line-height: 1.5;">
                                     ${prereqItems}
                                 </ul>
                             </div>
@@ -2011,7 +2011,7 @@ const loadReqHistory = (searchTerm = "") => {
                     ${modeHtml}
                     <span style="color: ${methodColor}; font-weight: bold; font-size: 0.8rem;">${h.method}</span>
                     <span style="font-size: 0.75rem; color: #8b949e; font-family: 'Fira Code', monospace; word-break: break-all; line-height: 1.4;">
-                        <span style="color: #6e7681; opacity: 0.7;">${prefix}</span>${h.url}
+                        <span style="color: var(--text-secondary); opacity: 0.7;">${prefix}</span>${h.url}
                     </span>
                 </div>`;
                 
@@ -2021,7 +2021,7 @@ const loadReqHistory = (searchTerm = "") => {
                 const insertNoteHistoryBtn = document.createElement('span');
                 insertNoteHistoryBtn.innerHTML = '📝';
                 insertNoteHistoryBtn.title = 'Insert API Link to Note';
-                insertNoteHistoryBtn.style.cssText = 'font-size: 1rem; color: #6e7681; cursor: pointer; padding: 0 4px; border-radius: 4px; line-height: 1; margin-top: -1px; margin-right: 4px;';
+                insertNoteHistoryBtn.style.cssText = 'font-size: 1rem; color: var(--text-secondary); cursor: pointer; padding: 0 4px; border-radius: 4px; line-height: 1; margin-top: -1px; margin-right: 4px;';
                 insertNoteHistoryBtn.onmouseover = () => { insertNoteHistoryBtn.style.color = 'var(--accent)'; insertNoteHistoryBtn.style.background = 'rgba(167, 139, 250, 0.1)'; };
                 insertNoteHistoryBtn.onmouseout = () => { insertNoteHistoryBtn.style.color = '#6e7681'; insertNoteHistoryBtn.style.background = 'transparent'; };
                 insertNoteHistoryBtn.onclick = (e) => {
@@ -2033,7 +2033,7 @@ const loadReqHistory = (searchTerm = "") => {
                 const delBtn = document.createElement('span');
                 delBtn.innerHTML = '&times;';
                 delBtn.title = '删除此条记录';
-                delBtn.style.cssText = 'font-size: 1.1rem; color: #6e7681; cursor: pointer; padding: 0 4px; border-radius: 4px; line-height: 1; margin-top: -2px;';
+                delBtn.style.cssText = 'font-size: 1.1rem; color: var(--text-secondary); cursor: pointer; padding: 0 4px; border-radius: 4px; line-height: 1; margin-top: -2px;';
                 delBtn.onmouseover = () => { delBtn.style.color = '#ff6b6b'; delBtn.style.background = 'rgba(255,107,107,0.1)'; };
                 delBtn.onmouseout = () => { delBtn.style.color = '#6e7681'; delBtn.style.background = 'transparent'; };
                 delBtn.onclick = async (e) => {
@@ -2067,7 +2067,7 @@ const loadReqHistory = (searchTerm = "") => {
                 
                 if (h.body) {
                     const bodyPreview = document.createElement('div');
-                    bodyPreview.style.cssText = 'font-size: 0.75rem; color: #8b949e; font-family: "Fira Code", monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: rgba(0,0,0,0.2); padding: 4px 6px; border-radius: 4px;';
+                    bodyPreview.style.cssText = 'font-size: 0.75rem; color: var(--text-secondary); font-family: "Fira Code", monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--input-bg); padding: 4px 6px; border-radius: 4px;';
                     bodyPreview.textContent = h.body;
                     item.appendChild(bodyPreview);
                 }
@@ -2099,7 +2099,7 @@ const loadReqHistory = (searchTerm = "") => {
                 historyListContainer.appendChild(item);
             });
         } else {
-            historyListContainer.innerHTML = '<div style="padding: 16px; color: #6e7681; font-size: 0.85rem; text-align: center;">📜 暂无记录 (No Records Found)</div>';
+            historyListContainer.innerHTML = '<div style="padding: 16px; color: var(--text-secondary); font-size: 0.85rem; text-align: center;">📜 暂无记录 (No Records Found)</div>';
         }
     };
 
@@ -2254,7 +2254,7 @@ const loadReqHistory = (searchTerm = "") => {
                 else if (data.status === 'error') cls = 'error';
                 
                 const timeStr = new Date().toLocaleTimeString('en-US', {hour12: false});
-                line.innerHTML = `<span style="color:#8b949e">[${timeStr}]</span> <span class="${cls}">${data.message}</span>`;
+                line.innerHTML = `<span style="color: var(--text-secondary)">[${timeStr}]</span> <span class="${cls}">${data.message}</span>`;
                 terminal.appendChild(line);
                 terminal.scrollTop = terminal.scrollHeight; // Auto-scroll
                 
@@ -3108,7 +3108,7 @@ function renderCustomJsonTree(data, container) {
         const tableBtn = document.createElement('button');
         tableBtn.innerHTML = '📊 View as Table';
         tableBtn.title = 'View this node as a Table';
-        tableBtn.style.cssText = 'margin-left: 8px; padding: 2px 6px; font-size: 0.65rem; background: rgba(167, 139, 250, 0.15); border: 1px solid rgba(167, 139, 250, 0.4); color: #c4b5fd; border-radius: 4px; cursor: pointer; display: none; transition: all 0.2s; white-space: nowrap;';
+        tableBtn.style.cssText = 'margin-left: 8px; padding: 2px 6px; font-size: 0.65rem; background: var(--badge-custom-bg); border: 1px solid rgba(167, 139, 250, 0.4); color: var(--badge-custom-text); border-radius: 4px; cursor: pointer; display: none; transition: all 0.2s; white-space: nowrap;';
         tableBtn.onmouseover = () => tableBtn.style.background = 'rgba(167, 139, 250, 0.3)';
         tableBtn.onmouseout = () => tableBtn.style.background = 'rgba(167, 139, 250, 0.15)';
         
@@ -3437,7 +3437,7 @@ window.searchNotes = async function() {
             listEl.appendChild(item);
         });
     } catch (e) {
-        listEl.innerHTML = `<div style="text-align: center; color: #ef4444; font-size: 0.8rem; margin-top: 20px;">Error loading history</div>`;
+        listEl.innerHTML = `<div style="text-align: center; color: var(--error); font-size: 0.8rem; margin-top: 20px;">Error loading history</div>`;
     }
 };
 

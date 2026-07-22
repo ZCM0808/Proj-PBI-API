@@ -7,7 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
     <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260722_v94">
+    <link rel="stylesheet" href="/static/style.css?v=20260722_v95">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -369,7 +369,7 @@
                     <div style="background: var(--input-bg-light); padding: 8px; border-radius: 6px; border: 1px solid var(--panel-border);">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                             <h4 style="margin: 0; font-size: 0.75rem; color: #a78bfa;">Azure App Authentication</h4>
-                            <button type="button" id="verify-settings-btn" title="Verify Auth" style="background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; cursor: pointer; font-size: 0.7rem; border-radius: 4px; padding: 2px 6px;">⚡</button>
+                            <button type="button" id="verify-settings-btn" title="Verify Auth" class="btn-verify">⚡</button>
                         </div>
                         <div class="form-group" style="margin-bottom: 12px; padding: 8px; background: rgba(0,0,0,0.15); border-radius: 4px;">
                             <label style="margin-bottom: 6px; display: block; font-weight: bold;">Active Auth Mode (认证模式选择)</label>
@@ -429,7 +429,7 @@
                     <div style="background: var(--input-bg-light); padding: 8px; border-radius: 6px; border: 1px solid var(--panel-border); margin-bottom: 12px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                             <h4 style="margin: 0; font-size: 0.75rem; color: #a78bfa;">SQL Database</h4>
-                            <button type="button" id="verify-sql-btn" title="Verify SQL Connection" style="background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; cursor: pointer; font-size: 0.7rem; border-radius: 4px; padding: 2px 6px;">⚡</button>
+                            <button type="button" id="verify-sql-btn" title="Verify SQL Connection" class="btn-verify">⚡</button>
                         </div>
                         <div class="form-group" style="margin-bottom: 0;">
                             <label>SQL_CONN_STR (数据库连接字符串)</label>
@@ -441,9 +441,9 @@
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="const list = document.getElementById('workspace-list'); const icon = this.querySelector('.collapse-icon'); if (list.style.display === 'none') { list.style.display = 'flex'; icon.textContent = '▼'; } else { list.style.display = 'none'; icon.textContent = '▶'; }" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_WORKSPACES (工作区字典 / groupId)</label>
                             <div style="display: flex; gap: 6px;">
-                                <button type="button" onclick="verifySelectedGuid('groups', 'workspace-list', event)" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; border-radius: 4px; cursor: pointer;" title="Verify Selected">⚡</button>
-                                <button type="button" onclick="scanItems('workspaces', event)" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.3); color: #a78bfa; border-radius: 4px; cursor: pointer;">🔍 Scan</button>
-                                <button type="button" onclick="addListRow('workspace-list')" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; border-radius: 4px; cursor: pointer;">+ Add</button>
+                                <button type="button" onclick="verifySelectedGuid('groups', 'workspace-list', event)" class="btn-verify" title="Verify Selected">⚡</button>
+                                <button type="button" onclick="scanItems('workspaces', event)" class="btn-scan">🔍 Scan</button>
+                                <button type="button" onclick="addListRow('workspace-list')" class="btn-add-row">+ Add</button>
                             </div>
                         </div>
                         <div id="workspace-list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
@@ -452,9 +452,9 @@
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="const list = document.getElementById('dataset-list'); const icon = this.querySelector('.collapse-icon'); if (list.style.display === 'none') { list.style.display = 'flex'; icon.textContent = '▼'; } else { list.style.display = 'none'; icon.textContent = '▶'; }" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_DATASETS (数据集字典 / datasetId)</label>
                             <div style="display: flex; gap: 6px;">
-                                <button type="button" onclick="verifySelectedGuid('datasets', 'dataset-list', event)" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; border-radius: 4px; cursor: pointer;" title="Verify Selected">⚡</button>
-                                <button type="button" onclick="scanItems('datasets', event)" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.3); color: #a78bfa; border-radius: 4px; cursor: pointer;">🔍 Scan</button>
-                                <button type="button" onclick="addListRow('dataset-list')" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; border-radius: 4px; cursor: pointer;">+ Add</button>
+                                <button type="button" onclick="verifySelectedGuid('datasets', 'dataset-list', event)" class="btn-verify" title="Verify Selected">⚡</button>
+                                <button type="button" onclick="scanItems('datasets', event)" class="btn-scan">🔍 Scan</button>
+                                <button type="button" onclick="addListRow('dataset-list')" class="btn-add-row">+ Add</button>
                             </div>
                         </div>
                         <div id="dataset-list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
@@ -463,9 +463,9 @@
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="const list = document.getElementById('report-list'); const icon = this.querySelector('.collapse-icon'); if (list.style.display === 'none') { list.style.display = 'flex'; icon.textContent = '▼'; } else { list.style.display = 'none'; icon.textContent = '▶'; }" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_REPORTS (报表字典 / reportId)</label>
                             <div style="display: flex; gap: 6px;">
-                                <button type="button" onclick="verifySelectedGuid('reports', 'report-list', event)" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; border-radius: 4px; cursor: pointer;" title="Verify Selected">⚡</button>
-                                <button type="button" onclick="scanItems('reports', event)" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.3); color: #a78bfa; border-radius: 4px; cursor: pointer;">🔍 Scan</button>
-                                <button type="button" onclick="addListRow('report-list')" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; border-radius: 4px; cursor: pointer;">+ Add</button>
+                                <button type="button" onclick="verifySelectedGuid('reports', 'report-list', event)" class="btn-verify" title="Verify Selected">⚡</button>
+                                <button type="button" onclick="scanItems('reports', event)" class="btn-scan">🔍 Scan</button>
+                                <button type="button" onclick="addListRow('report-list')" class="btn-add-row">+ Add</button>
                             </div>
                         </div>
                         <div id="report-list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
@@ -514,8 +514,8 @@
             <div id="scan-results-container" style="max-height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; background: rgba(0,0,0,0.2); border-radius: 6px; border: 1px solid var(--panel-border); padding: 8px;">
             </div>
             <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                <button type="button" class="btn-pipeline" style="background: rgba(255,255,255,0.1); color: #fff; width: auto; padding: 6px 12px;" onclick="document.getElementById('scan-modal').style.display='none'">取消 (Cancel)</button>
-                <button type="button" class="btn-pipeline" style="width: auto; padding: 6px 12px; background: rgba(167, 139, 250, 0.2); color: #a78bfa; border: 1px solid rgba(167, 139, 250, 0.3);" id="scan-modal-add-btn">✅ 添加选中项 (Add Selected)</button>
+                <button type="button" class="btn-pipeline btn-scan-cancel" onclick="document.getElementById('scan-modal').style.display='none'">取消 (Cancel)</button>
+                <button type="button" class="btn-pipeline btn-scan-add" id="scan-modal-add-btn">✅ 添加选中项 (Add Selected)</button>
             </div>
         </div>
     </div>
@@ -550,12 +550,12 @@
                             <label style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 4px; display: block;">Filename (optional, defaults to timestamp)</label>
                             <input type="text" id="note-filename" placeholder="e.g. feature-idea.md" class="modern-input" style="width: 100%;">
                         </div>
-                        <button type="button" class="btn-action" style="padding: 0.75rem 1rem; font-size: 0.95rem; display: flex; align-items: center; gap: 6px; background: rgba(56, 189, 248, 0.1); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); transition: all 0.2s; border-radius: 8px; " onclick="insertLinkedApiIntoNote()">
+                        <button type="button" class="btn-insert-api" onclick="insertLinkedApiIntoNote()">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"></path></svg>
                             Insert Current API Link
                         </button>
                     </div>
-                    <div style="flex: 1; background: white; border-radius: 4px; overflow: hidden; color: #333; min-height: 380px;">
+                    <div style="flex: 1; border-radius: 4px; overflow: hidden; min-height: 380px;">
                         <textarea id="note-editor"></textarea>
                     </div>
                     <div style="display: flex; justify-content: flex-end; gap: 10px;">
@@ -574,7 +574,7 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260721_v58"></script>
-    <script src="/static/script.js?v=20260722_v94"></script>
+    <script src="/static/script.js?v=20260722_v95"></script>
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: none; z-index: 100000;">
