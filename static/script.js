@@ -2036,7 +2036,7 @@ const loadReqHistory = (searchTerm = "") => {
                 delBtn.style.cssText = 'font-size: 1.1rem; color: #6e7681; cursor: pointer; padding: 0 4px; border-radius: 4px; line-height: 1; margin-top: -2px;';
                 delBtn.onmouseover = () => { delBtn.style.color = '#ff6b6b'; delBtn.style.background = 'rgba(255,107,107,0.1)'; };
                 delBtn.onmouseout = () => { delBtn.style.color = '#6e7681'; delBtn.style.background = 'transparent'; };
-                delBtn.onclick = (e) => {
+                delBtn.onclick = async (e) => {
                     e.stopPropagation();
                     try {
                         let currHistory = JSON.parse(localStorage.getItem('apiReqHistory') || '[]');
@@ -2111,8 +2111,8 @@ const loadReqHistory = (searchTerm = "") => {
     if (historyClearAll) {
         historyClearAll.onmouseover = () => historyClearAll.style.background = 'rgba(255,107,107,0.1)';
         historyClearAll.onmouseout = () => historyClearAll.style.background = '#1f2428';
-        historyClearAll.onclick = () => {
-            if(confirm('确定要清空所有请求历史记录吗？(Are you sure to clear all request history?)')) {
+        historyClearAll.onclick = async () => {
+            if(await showCustomConfirm('确定要清空所有请求历史记录吗？(Are you sure to clear all request history?)')) {
                 localStorage.removeItem('apiReqHistory');
                 if (historySearchInput) historySearchInput.value = '';
                 loadReqHistory();
@@ -2563,7 +2563,7 @@ const loadReqHistory = (searchTerm = "") => {
             importLocalFile.click();
         });
 
-        importLocalFile.addEventListener('change', (e) => {
+        importLocalFile.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
 
@@ -2602,7 +2602,7 @@ const loadReqHistory = (searchTerm = "") => {
                         body: JSON.stringify(payload)
                     });
                     
-                    alert('导入成功！页面即将刷新以应用本地及全局配置。');
+                    await showCustomAlert('导入成功！页面即将刷新以应用本地及全局配置。');
                     window.location.reload();
                 } catch (err) {
                     alert('导入失败：文件格式错误或已损坏。');
@@ -3420,9 +3420,9 @@ window.searchNotes = async function() {
             const delBtn = item.querySelector('.btn-delete-note');
             delBtn.onmouseover = (e) => { e.stopPropagation(); delBtn.style.opacity = '1'; delBtn.style.background = 'rgba(239, 68, 68, 0.15)'; };
             delBtn.onmouseout = (e) => { e.stopPropagation(); delBtn.style.opacity = '0.6'; delBtn.style.background = 'none'; };
-            delBtn.onclick = (e) => {
+            delBtn.onclick = async (e) => {
                 e.stopPropagation();
-                if (confirm(`Are you sure you want to delete notes/${note.filename}? This will delete the file locally and push the deletion to GitHub.`)) {
+                if (await showCustomConfirm(`Are you sure you want to delete notes/${note.filename}? This will delete the file locally and push the deletion to GitHub.`)) {
                     window.deleteMarkdownNote(note.filename);
                 }
             };
@@ -3530,3 +3530,88 @@ document.addEventListener('mousedown', (e) => {
         }
     }
 });
+
+
+    // Custom Dialog Modal System (Alert/Confirm) replacing native popups
+    window.showCustomAlert = function(message, title = "🔔 System Message") {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('custom-dialog-modal');
+            const titleEl = document.getElementById('custom-dialog-title');
+            const msgEl = document.getElementById('custom-dialog-message');
+            const buttonsEl = document.getElementById('custom-dialog-buttons');
+            const content = document.getElementById('custom-dialog-content');
+            
+            titleEl.innerHTML = title;
+            msgEl.textContent = message;
+            
+            // Reset position to center
+            content.style.left = '0px';
+            content.style.top = '0px';
+            
+            buttonsEl.innerHTML = `
+                <button class="btn-action-secondary" id="custom-alert-ok-btn" style="padding: 0.5rem 1.25rem;">
+                    OK
+                </button>
+            `;
+            
+            const close = () => {
+                modal.style.display = 'none';
+                resolve();
+            };
+            
+            document.getElementById('custom-alert-ok-btn').onclick = close;
+            modal.querySelector('.close-btn').onclick = close;
+            
+            modal.style.display = 'flex';
+            
+            if (window.makeDraggable) {
+                window.makeDraggable(content, modal.querySelector('.modal-header'));
+            }
+        });
+    };
+
+    window.showCustomConfirm = function(message, title = "❓ Confirm Action") {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('custom-dialog-modal');
+            const titleEl = document.getElementById('custom-dialog-title');
+            const msgEl = document.getElementById('custom-dialog-message');
+            const buttonsEl = document.getElementById('custom-dialog-buttons');
+            const content = document.getElementById('custom-dialog-content');
+            
+            titleEl.innerHTML = title;
+            msgEl.textContent = message;
+            
+            // Reset position to center
+            content.style.left = '0px';
+            content.style.top = '0px';
+            
+            buttonsEl.innerHTML = `
+                <button class="btn-action-secondary" id="custom-confirm-cancel-btn" style="padding: 0.5rem 1.25rem;">
+                    Cancel
+                </button>
+                <button class="btn-action-primary" id="custom-confirm-ok-btn" style="padding: 0.5rem 1.25rem; border: none; background: var(--accent); color: var(--accent-text);">
+                    Confirm
+                </button>
+            `;
+            
+            const close = (result) => {
+                modal.style.display = 'none';
+                resolve(result);
+            };
+            
+            document.getElementById('custom-confirm-cancel-btn').onclick = () => close(false);
+            document.getElementById('custom-confirm-ok-btn').onclick = () => close(true);
+            modal.querySelector('.close-btn').onclick = () => close(false);
+            
+            modal.style.display = 'flex';
+            
+            if (window.makeDraggable) {
+                window.makeDraggable(content, modal.querySelector('.modal-header'));
+            }
+        });
+    };
+
+    // Global override of standard window.alert
+    window.alert = function(message) {
+        window.showCustomAlert(message);
+    };

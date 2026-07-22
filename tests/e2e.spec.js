@@ -146,12 +146,13 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     await searchInput.fill('/test/fake');
     await expect(fakeEndpointElement).toBeVisible();
 
-    // 监听并同意清空确认弹窗
-    page.on('dialog', dialog => dialog.accept());
-    
-    // 测试清空所有
+    // 测试清空所有（使用自定义 Confirm 弹窗）
     const clearBtn = page.locator('#history-clear-all');
     await clearBtn.click();
+    
+    // 等待自定义弹窗显示并点击确认
+    await page.waitForSelector('#custom-dialog-modal', { state: 'visible' });
+    await page.click('#custom-confirm-ok-btn');
     
     // 弹窗会因为清空而自动关闭
     await expect(dropdown).toBeHidden();
