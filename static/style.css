@@ -1863,13 +1863,22 @@ json-viewer {
     color: var(--text-primary) !important;
     opacity: 0.9;
 }
-.editor-statusbar > * {
+.editor-statusbar span,
+.editor-statusbar .autosave,
+.editor-statusbar .lines,
+.editor-statusbar .words,
+.editor-statusbar .cursor {
     display: inline-block !important;
     float: none !important;
-    margin-left: 20px !important;
+    margin-left: 24px !important;
     margin-right: 0 !important;
+    padding: 0 !important;
 }
-.editor-statusbar > *:empty {
+.editor-statusbar span:empty,
+.editor-statusbar .autosave:empty,
+.editor-statusbar .lines:empty,
+.editor-statusbar .words:empty,
+.editor-statusbar .cursor:empty {
     display: none !important;
 }
 
