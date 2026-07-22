@@ -10,6 +10,8 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from typing import Optional, Any, List, Dict
+from datetime import datetime
 import hashlib
 import time
 import json
@@ -421,6 +423,85 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
         items = response_data.get("value", [])
         result_items = [{"id": item.get("id"), "name": item.get("name")} for item in items]
         return {"success": True, "data": result_items}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+class NotePayload(BaseModel):
+    filename: Optional[str] = None
+    content: str
+
+@app.post("/api/save-note")
+async def save_note(payload: NotePayload):
+    try:
+        root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        notes_dir = os.path.join(root_dir, "notes")
+        os.makedirs(notes_dir, exist_ok=True)
+        
+        raw_filename = payload.filename.strip() if payload.filename and payload.filename.strip() else f"{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+        # Security: Prevent Path Traversal by extracting only the basename
+        filename = os.path.basename(raw_filename)
+        if not filename.endswith(".md"):
+            filename += ".md"
+            
+        file_path = os.path.join(notes_dir, filename)
+        
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(payload.content)
+            
+        def _git_push_note():
+            try:
+                subprocess.run(["git", "add", f"notes/{filename}"], cwd=root_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(["git", "commit", "-m", f"docs(notes): add {filename}"], cwd=root_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(["git", "push", "origin", "main"], cwd=root_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception as e:
+                print(f"Git push note failed: {e}")
+                
+        asyncio.create_task(asyncio.to_thread(_git_push_note))
+        
+        return {"success": True, "message": f"Saved {filename} and pushing to GitHub in background."}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/search-notes")
+async def search_notes(q: str = ""):
+    try:
+        root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        notes_dir = os.path.join(root_dir, "notes")
+        if not os.path.exists(notes_dir):
+            return {"success": True, "results": []}
+        
+        results: List[Dict[str, Any]] = []
+        for filename in os.listdir(notes_dir):
+            if filename.endswith(".md"):
+                file_path = os.path.join(notes_dir, filename)
+                with open(file_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                    
+                if not q or q.lower() in filename.lower() or q.lower() in content.lower():
+                    # extract a snippet if q is present in content
+                    snippet = ""
+                    if q and q.lower() in content.lower():
+                        idx = content.lower().find(q.lower())
+                        start = max(0, idx - 40)
+                        end = min(len(content), idx + len(q) + 40)
+                        snippet = content[start:end].replace('\n', ' ')
+                        if start > 0:
+                            snippet = "..." + snippet
+                        if end < len(content):
+                            snippet = snippet + "..."
+                    else:
+                        snippet = content[:80].replace('\n', ' ') + ("..." if len(content) > 80 else "")
+                        
+                    results.append({
+                        "filename": filename,
+                        "snippet": snippet,
+                        "mtime": os.path.getmtime(file_path),
+                        "content": content
+                    })
+                    
+        # Sort by mtime descending
+        results.sort(key=lambda x: x["mtime"], reverse=True)
+        return {"success": True, "results": results}
     except Exception as e:
         return {"success": False, "error": str(e)}
 

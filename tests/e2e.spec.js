@@ -28,7 +28,7 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     const toggleBtn = page.locator('#toggle-all-categories-btn');
     
     // 获取第一个 API 列表（默认为折叠状态）
-    const firstList = page.locator('.api-list').first();
+    const firstList = page.locator('.api-list:has(.api-item)').first();
     await expect(firstList).toBeHidden();
 
     // 点击全部展开按钮

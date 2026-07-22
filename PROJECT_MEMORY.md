@@ -90,6 +90,7 @@ python src/main.py
    - 通过 Playwright 的 `toHaveScreenshot()` 进行全页面像素级对比，精准拦截微小的 CSS 错误、层级覆盖 Bug、或是任何因编码错误导致的乱码。
    - **自测铁律 (TDD Loop)**：在任何涉及 UI/CSS/DOM 的修改后，**交付前必须强制在后台运行 `npx playwright test` 并等待执行结果**，绝不能依赖肉眼查错！
    - **前端缓存清理防御 (Cache Busting)**：修改了纯静态原生前端项目文件（`.js` 或 `.css`）后，**必须同步在引用的 `.html` 文件中修改该静态资源的硬编码版本号后缀 (如 `?v=xxx`)**，强制浏览器刷新缓存。
+   - **微动效与交互动画 (Micro-animations)**：对于任何涉及新 UI 弹窗、组件出现/消失、悬浮 (Hover) 或状态变更的交互功能，**必须强制添加 CSS 过渡动画 (Animations/Transitions)**（如渐隐渐显、缩放弹出等），绝对禁止生硬的瞬间切换。
 
 ### 当前核心测试覆盖地图 (12 Core Test Cases)
 **🟢 后端防线：Pytest (4 个用例)**
@@ -113,3 +114,8 @@ python src/main.py
 
 ---
 > **最后更新状态**：已完成全局最佳测试实践 (Playwright + Pytest) 的整合，引入 GitHub Actions 流水线，并更新了 PAT。系统处于高度健壮状态。
+
+- **全局弹窗拖拽体验 (Draggable Popups)**：所有的浮层弹窗 (Modal/Popup) 必须支持通过头部自由拖拽移动位置，避免遮挡底部重要内容，并且在关闭后再次打开时必须自动重置回居中位置。
+
+- **同质功能外观一致性 (Consistent Button Appearance)**：如果不同按钮具有相同 or 类似的功能（例如“关闭”弹窗、“保存”等），它们必须在整个项目中保持完全相同的外观设计（如相同的 HTML/SVG 结构、统一 of CSS 类名、悬停反馈及过渡动画等），绝对禁止在不同组件中出现多种不同的样式变体。
+

@@ -1,3 +1,14 @@
+
+window.closeModalWithAnimation = function(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('closing');
+        setTimeout(() => {
+            modal.style.display = 'none';
+            modal.classList.remove('closing');
+        }, 200);
+    }
+};
 // Global Context Management Functions
 window.addListRow = function(containerId, alias = "", id = "") {
     const container = document.getElementById(containerId);
@@ -949,8 +960,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const paramSearchInput = document.createElement('input');
             paramSearchInput.type = 'search';
             paramSearchInput.placeholder = 'Search parameters...';
-            paramSearchInput.style.cssText = "width: 100%; box-sizing: border-box; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); font-size: 0.75rem; outline: none;";
-            searchBox.appendChild(paramSearchInput);
+            paramSearchInput.className = "modern-input";
+            paramSearchInput.addEventListener("click", e => e.stopPropagation()); paramSearchInput.addEventListener("mousedown", e => e.stopPropagation()); searchBox.appendChild(paramSearchInput);
             paramOptionsContainer.appendChild(searchBox);
             
             paramSearchInput.addEventListener('input', (e) => {
@@ -1214,19 +1225,42 @@ document.addEventListener('DOMContentLoaded', async () => {
             listEl.className = 'api-list';
             if (searchTerm || expandedCategories.has(category.category)) {
                 listEl.style.display = 'flex';
-                titleEl.classList.add('active'); // 添加三角旋转状态（如果 CSS 里有写的话）
+                listEl.classList.add('expanded');
+                titleEl.classList.add('active'); 
             } else {
-                listEl.style.display = 'none'; // 默认折叠以应对大量 API
+                listEl.style.display = 'none';
             }
             
             titleEl.addEventListener('click', () => {
-                const isHidden = listEl.style.display === 'none';
-                listEl.style.display = isHidden ? 'flex' : 'none';
-                titleEl.classList.toggle('active', isHidden);
+                const isHidden = !listEl.classList.contains('expanded');
                 if (isHidden) {
+                    listEl.style.display = 'flex';
+                    listEl.style.maxHeight = '0px';
+                    void listEl.offsetWidth;
+                    listEl.style.maxHeight = listEl.scrollHeight + 'px';
+                    
+                    listEl.classList.add('expanded');
+                    titleEl.classList.add('active');
                     expandedCategories.add(category.category);
+                    
+                    setTimeout(() => {
+                        if (listEl.classList.contains('expanded')) {
+                            listEl.style.maxHeight = 'none';
+                        }
+                    }, 400);
                 } else {
+                    listEl.style.maxHeight = listEl.scrollHeight + 'px';
+                    void listEl.offsetWidth;
+                    listEl.style.maxHeight = '0px';
+                    
+                    listEl.classList.remove('expanded');
+                    titleEl.classList.remove('active');
                     expandedCategories.delete(category.category);
+                    setTimeout(() => {
+                        if (!listEl.classList.contains('expanded')) {
+                            listEl.style.display = 'none';
+                        }
+                    }, 400);
                 }
             });
             
@@ -1325,8 +1359,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 starBtn.title = isBookmarked ? "取消收藏" : "加入收藏";
                 starBtn.onclick = (e) => toggleBookmark(ep, e);
 
+                const insertNoteBtn = document.createElement('button');
+                insertNoteBtn.className = 'bookmark-btn';
+                insertNoteBtn.innerHTML = '📝';
+                insertNoteBtn.title = "Insert API Link to Note";
+                insertNoteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    insertSpecificApiIntoNote(ep.method, ep.path);
+                };
+
                 itemEl.appendChild(badge);
                 itemEl.appendChild(nameEl);
+                itemEl.appendChild(insertNoteBtn);
                 itemEl.appendChild(starBtn);
 
                 const uniqueId = ep.method + '_' + ep.path;
@@ -1473,7 +1517,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (e.target.value.trim() !== '') {
                 allExpanded = true;
                 if (toggleAllBtn) {
-                    toggleAllBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"></path></svg>';
+                    toggleAllBtn.classList.add('expanded');
                 }
             }
         });
@@ -1487,9 +1531,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             allExpanded = !allExpanded;
             const categoryLists = document.querySelectorAll('.api-list');
             const categoryTitles = document.querySelectorAll('.api-category-title');
-            
             categoryLists.forEach(list => {
-                list.style.display = allExpanded ? 'flex' : 'none';
+                if (allExpanded) {
+                    list.style.display = 'flex';
+                    list.style.maxHeight = '0px';
+                    void list.offsetWidth;
+                    list.style.maxHeight = list.scrollHeight + 'px';
+                    list.classList.add('expanded');
+                    setTimeout(() => {
+                        if (list.classList.contains('expanded')) {
+                            list.style.maxHeight = 'none';
+                        }
+                    }, 400);
+                } else {
+                    list.style.maxHeight = list.scrollHeight + 'px';
+                    void list.offsetWidth;
+                    list.style.maxHeight = '0px';
+                    list.classList.remove('expanded');
+                    setTimeout(() => {
+                        if (!list.classList.contains('expanded')) {
+                            list.style.display = 'none';
+                        }
+                    }, 400);
+                }
             });
             
             categoryTitles.forEach(title => {
@@ -1505,9 +1569,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
             
-            toggleAllBtn.innerHTML = allExpanded ? 
-                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"></path></svg>' : // 展开时的向上收起箭头
-                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg>';  // 折叠时的向下展开箭头
+            toggleAllBtn.classList.toggle('expanded', allExpanded);
         });
     }
 
@@ -1949,6 +2011,18 @@ const loadReqHistory = (searchTerm = "") => {
                 const rightCol = document.createElement('div');
                 rightCol.style.cssText = 'display: flex; flex-direction: column; align-items: flex-end; gap: 4px;';
                 
+                const insertNoteHistoryBtn = document.createElement('span');
+                insertNoteHistoryBtn.innerHTML = '📝';
+                insertNoteHistoryBtn.title = 'Insert API Link to Note';
+                insertNoteHistoryBtn.style.cssText = 'font-size: 1rem; color: #6e7681; cursor: pointer; padding: 0 4px; border-radius: 4px; line-height: 1; margin-top: -1px; margin-right: 4px;';
+                insertNoteHistoryBtn.onmouseover = () => { insertNoteHistoryBtn.style.color = 'var(--accent)'; insertNoteHistoryBtn.style.background = 'rgba(167, 139, 250, 0.1)'; };
+                insertNoteHistoryBtn.onmouseout = () => { insertNoteHistoryBtn.style.color = '#6e7681'; insertNoteHistoryBtn.style.background = 'transparent'; };
+                insertNoteHistoryBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    insertSpecificApiIntoNote(h.method, h.url);
+                };
+                rightCol.appendChild(insertNoteHistoryBtn);
+
                 const delBtn = document.createElement('span');
                 delBtn.innerHTML = '&times;';
                 delBtn.title = '删除此条记录';
@@ -1972,6 +2046,14 @@ const loadReqHistory = (searchTerm = "") => {
                 };
                 
                 rightCol.appendChild(delBtn);
+                
+                const topRowRight = document.createElement('div');
+                topRowRight.style.cssText = 'display: flex; align-items: center; gap: 4px;';
+                topRowRight.appendChild(insertNoteHistoryBtn);
+                topRowRight.appendChild(delBtn);
+                rightCol.innerHTML = ''; // clear previous append
+                rightCol.appendChild(topRowRight);
+                
                 topRow.appendChild(methodUrl);
                 topRow.appendChild(rightCol);
                 item.appendChild(topRow);
@@ -2047,6 +2129,7 @@ const loadReqHistory = (searchTerm = "") => {
     }
 
     // --- Modal FLIP & Drag Helper ---
+    window.makeDraggable = makeDraggable;
     function makeDraggable(modalContent, dragHandle) {
         let isDragging = false;
         let startX, startY, initialLeft, initialTop;
@@ -2088,96 +2171,26 @@ const loadReqHistory = (searchTerm = "") => {
         if (!btnOpen || !btnClose || !modalOverlay) return;
         const modalContent = modalOverlay.querySelector('.modal-content');
         const modalHeader = modalOverlay.querySelector('.modal-header');
-        let isAnimating = false;
 
-        makeDraggable(modalContent, modalHeader);
+        if (modalContent && modalHeader) {
+            makeDraggable(modalContent, modalHeader);
+        }
 
         btnOpen.addEventListener('click', async () => {
-            if (isAnimating) return;
-            isAnimating = true;
-            
             if (onLoadCallback) {
-                // Do not await here so the FLIP animation triggers instantly.
-                // The network fetch will populate the modal in the background.
                 onLoadCallback();
             }
-
-            modalContent.style.left = '0px';
-            modalContent.style.top = '0px';
-            
-            const btnRect = btnOpen.getBoundingClientRect();
-            
+            // Reset drag position on open
+            if (modalContent) {
+                modalContent.style.left = '0px';
+                modalContent.style.top = '0px';
+            }
+            // CSS handles the animation via @keyframes modalPopUp on .modal-content
             modalOverlay.style.display = 'flex';
-            requestAnimationFrame(() => {
-                const finalRect = modalContent.getBoundingClientRect();
-                
-                const scaleX = btnRect.width / finalRect.width;
-                const scaleY = btnRect.height / finalRect.height;
-                const translateX = btnRect.left - finalRect.left;
-                const translateY = btnRect.top - finalRect.top;
-                
-                modalOverlay.animate([
-                    { opacity: 0 },
-                    { opacity: 1 }
-                ], { duration: 300, fill: 'forwards' });
-                
-                const contentAnim = modalContent.animate([
-                    { 
-                        transform: `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})`,
-                        transformOrigin: 'top left',
-                        opacity: 0
-                    },
-                    { 
-                        transform: 'translate(0, 0) scale(1, 1)',
-                        transformOrigin: 'top left',
-                        opacity: 1
-                    }
-                ], {
-                    duration: 400,
-                    easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)'
-                });
-                
-                contentAnim.onfinish = () => { isAnimating = false; };
-            });
         });
 
         btnClose.addEventListener('click', () => {
-            if (isAnimating) return;
-            isAnimating = true;
-            
-            const btnRect = btnOpen.getBoundingClientRect();
-            const finalRect = modalContent.getBoundingClientRect();
-            
-            const scaleX = btnRect.width / finalRect.width;
-            const scaleY = btnRect.height / finalRect.height;
-            const translateX = btnRect.left - finalRect.left;
-            const translateY = btnRect.top - finalRect.top;
-            
-            modalOverlay.animate([
-                { opacity: 1 },
-                { opacity: 0 }
-            ], { duration: 350, fill: 'forwards' });
-            
-            const contentAnim = modalContent.animate([
-                { 
-                    transform: 'translate(0, 0) scale(1, 1)',
-                    transformOrigin: 'top left',
-                    opacity: 1
-                },
-                { 
-                    transform: `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})`,
-                    transformOrigin: 'top left',
-                    opacity: 0
-                }
-            ], {
-                duration: 350,
-                easing: 'cubic-bezier(0.4, 0, 0.2, 1)'
-            });
-            
-            contentAnim.onfinish = () => {
-                modalOverlay.style.display = 'none';
-                isAnimating = false;
-            };
+            window.closeModalWithAnimation(modalOverlay.id);
         });
     }
 
@@ -2947,7 +2960,7 @@ window.updateViewMode = function(mode, tablePath) {
         window.treeAllExpanded = false;
         const toggleBtn = document.getElementById('tree-toggle-all-btn');
         if (toggleBtn) {
-            toggleBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>';
+            toggleBtn.classList.remove('expanded');
         }
         
         out.innerHTML = '';
@@ -3240,3 +3253,227 @@ if (btnKeepAwake) {
         }
     });
 }
+
+
+let easyMDE = null;
+
+window.openNoteModal = function() {
+    const noteModal = document.getElementById('modal-note');
+    // Reset drag position
+    const noteContent = noteModal.querySelector('.modal-content');
+    if (noteContent) {
+        noteContent.style.left = '0px';
+        noteContent.style.top = '0px';
+    }
+    noteModal.style.display = 'flex';
+
+    // Explicitly bind click-outside mousedown listener to guarantee closing when overlay is clicked
+    if (!noteModal.dataset.clickBound) {
+        // Handle both mousedown and click for maximum responsiveness on the backdrop
+        const handleBackdropClose = (e) => {
+            if (e.target === noteModal) {
+                window.closeNoteModal();
+            }
+        };
+        noteModal.addEventListener('mousedown', handleBackdropClose);
+        noteModal.addEventListener('click', handleBackdropClose);
+        noteModal.dataset.clickBound = "true";
+    }
+
+    // Initialize EasyMDE if not already done (using note-editor ID)
+    if (!easyMDE) {
+        const textarea = document.getElementById('note-editor');
+        if (textarea) {
+            easyMDE = new EasyMDE({
+                element: textarea,
+                spellChecker: false,
+                autosave: {
+                    enabled: true,
+                    uniqueId: "quick-note-autosave",
+                    delay: 1000,
+                },
+                status: ["autosave", "lines", "words", "cursor"],
+                maxHeight: "350px",
+                placeholder: "Start typing your note here... (Markdown is supported)",
+                toolbar: ['bold', 'italic', 'heading', '|', 'quote', 'unordered-list', 'ordered-list', '|', 'link', 'image', '|', 'preview', 'side-by-side', 'fullscreen']
+            });
+        }
+
+        // Initialize drag helper
+        const noteHeader = noteModal.querySelector('.modal-header');
+        if (noteContent && noteHeader && window.makeDraggable) {
+            window.makeDraggable(noteContent, noteHeader);
+        }
+    } else {
+        // Just refresh to avoid layout issues in display:none modals
+        setTimeout(() => easyMDE.codemirror.refresh(), 100);
+    }
+
+    // Load history
+    window.searchNotes();
+};
+
+window.closeNoteModal = function() {
+    window.closeModalWithAnimation('modal-note');
+};
+
+window.insertLinkedApiIntoNote = function() {
+    const endpointInput = document.getElementById('endpoint-input');
+    const methodSelect = document.getElementById('method-select');
+    
+    if (!endpointInput || !endpointInput.value.trim()) {
+        alert("No API is currently selected in the main workspace!");
+        return;
+    }
+    
+    const endpoint = endpointInput.value.trim();
+    const method = methodSelect ? methodSelect.value : 'GET';
+    const linkText = `\n> **Linked API:** \`[${method}] ${endpoint}\`\n`;
+    
+    if (typeof easyMDE !== 'undefined' && easyMDE) {
+        const cm = easyMDE.codemirror;
+        const cursor = cm.getCursor();
+        cm.replaceRange(linkText, cursor);
+        cm.focus();
+    }
+};
+
+window.insertSpecificApiIntoNote = function(method, endpoint) {
+    const modal = document.getElementById('modal-note');
+    if (modal && (modal.style.display === 'none' || modal.style.display === '')) {
+        // Open scratchpad if closed
+        window.openNoteModal();
+    }
+    
+    const linkText = `\n> **Linked API:** \`[${method}] ${endpoint}\`\n`;
+    
+    if (typeof easyMDE !== 'undefined' && easyMDE) {
+        const cm = easyMDE.codemirror;
+        const cursor = cm.getCursor();
+        cm.replaceRange(linkText, cursor);
+        cm.focus();
+    }
+};
+
+let searchNoteTimeout = null;
+window.debounceSearchNotes = function() {
+    if (searchNoteTimeout) clearTimeout(searchNoteTimeout);
+    searchNoteTimeout = setTimeout(window.searchNotes, 300);
+};
+
+window.searchNotes = async function() {
+    const q = document.getElementById('note-search').value.trim();
+    const listEl = document.getElementById('note-history-list');
+    if (!listEl) return;
+    
+    listEl.innerHTML = '<div style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 20px;">Searching...</div>';
+    
+    try {
+        const response = await fetch('/api/search-notes?q=' + encodeURIComponent(q));
+        const data = await response.json();
+        
+        if (!data.success) throw new Error(data.error);
+        
+        if (!data.results || data.results.length === 0) {
+            listEl.innerHTML = '<div style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 20px;">No notes found.</div>';
+            return;
+        }
+        
+        listEl.innerHTML = '';
+        data.results.forEach(note => {
+            const item = document.createElement('div');
+            item.style.padding = '10px';
+            item.style.background = 'rgba(0,0,0,0.15)';
+            item.style.borderRadius = '6px';
+            item.style.border = '1px solid rgba(255,255,255,0.05)';
+            item.style.cursor = 'pointer';
+            item.style.transition = 'all 0.2s';
+            
+            const dateStr = new Date(note.mtime * 1000).toLocaleString();
+            
+            // Highlight search term in snippet if any
+            let snippetHtml = note.snippet.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            if (q) {
+                const regex = new RegExp(q, 'gi');
+                snippetHtml = snippetHtml.replace(regex, match => `<span style="background: rgba(167, 139, 250, 0.4); color: white; padding: 0 2px; border-radius: 2px;">${match}</span>`);
+            }
+            
+            item.innerHTML = `
+                <div style="font-weight: 500; font-size: 0.9rem; margin-bottom: 4px; color: var(--text-primary); word-break: break-all;">📄 ${note.filename}</div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 6px;">🕒 ${dateStr}</div>
+                <div style="font-size: 0.8rem; color: #a1a1aa; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;">${snippetHtml}</div>
+            `;
+            
+            item.onmouseover = () => { item.style.background = 'rgba(167, 139, 250, 0.1)'; item.style.borderColor = 'rgba(167, 139, 250, 0.3)'; };
+            item.onmouseout = () => { item.style.background = 'rgba(0,0,0,0.15)'; item.style.borderColor = 'rgba(255,255,255,0.05)'; };
+            
+            item.onclick = () => {
+                document.getElementById('note-filename').value = note.filename;
+                if (easyMDE) {
+                    easyMDE.value(note.content);
+                }
+            };
+            
+            listEl.appendChild(item);
+        });
+    } catch (e) {
+        listEl.innerHTML = `<div style="text-align: center; color: #ef4444; font-size: 0.8rem; margin-top: 20px;">Error loading history</div>`;
+    }
+};
+
+window.saveMarkdownNote = async function() {
+    if (!easyMDE) return;
+    const content = easyMDE.value().trim();
+    if (!content) {
+        alert("Note content cannot be empty!");
+        return;
+    }
+    const filename = document.getElementById('note-filename').value.trim();
+    
+    const btn = document.getElementById('btn-save-note');
+    const oldText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = 'Saving...';
+    
+    try {
+        const response = await fetch('/api/save-note', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename, content })
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert(data.message || "Note saved successfully!");
+            // Refresh note history
+            window.searchNotes();
+        } else {
+            alert("Error saving note: " + data.error);
+        }
+    } catch (e) {
+        alert("Error saving note: " + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = oldText;
+    }
+};
+
+
+// Global document listener to close Note window when clicking any blank area outside of it
+document.addEventListener('mousedown', (e) => {
+    const noteModal = document.getElementById('modal-note');
+    if (noteModal && noteModal.style.display === 'flex') {
+        const noteContent = noteModal.querySelector('.modal-content');
+        if (noteContent && !noteContent.contains(e.target)) {
+            // Do not close if clicking the button that opens it
+            const btnNote = document.getElementById('btn-note');
+            if (btnNote && btnNote.contains(e.target)) {
+                return;
+            }
+            // Do not close if clicking any "Insert API" button in the tree or history
+            if (e.target.closest('.bookmark-btn') || e.target.title === 'Insert API Link to Note') {
+                return;
+            }
+            window.closeNoteModal();
+        }
+    }
+});

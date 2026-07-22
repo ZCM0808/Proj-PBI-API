@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Power BI API Explorer</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20260718_v34">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
+    <link rel="stylesheet" href="/static/style.css?v=20260722_v80">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -72,7 +74,7 @@
                     </div>
                 </div>
                 <div style="display: flex; gap: 8px; margin-bottom: 0.5rem;">
-                    <input type="search" id="api-search-input" placeholder="搜索 API... (支持拼音/英文)" class="url-input" style="flex: 1; border-radius: 6px; min-width: 0;">
+                    <input type="search" id="api-search-input" placeholder="搜索 API... (支持拼音/英文)" class="modern-input" style="flex: 1; border-radius: 6px; min-width: 0;">
                     <button id="toggle-all-categories-btn" class="icon-btn" title="全部折叠 / 展开 (Expand / Collapse All)" type="button" style="padding: 0 8px;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg>
                     </button>
@@ -90,7 +92,7 @@
                 </div>
                 
                 <!-- URL Parameter Filter -->
-                <div style="margin-bottom: 0.8rem; position: relative;" id="param-filter-container">
+                <div style="margin-bottom: 0.8rem; position: relative;" id="param-filter-container" class="custom-select-wrapper">
                     <div id="param-filter-trigger" class="custom-select-trigger" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); cursor: pointer; font-size: 0.8rem; color: var(--text-secondary);">
                         <span id="param-filter-label" style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">🔍 过滤必需的参数 (Filter by Parameters)...</span>
                         <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
@@ -157,9 +159,12 @@
             <div class="request-builder glass-panel">
                 <div class="request-builder-top" style="display: flex; flex-direction: column; gap: 8px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h2 style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500; margin: 0; display: flex; align-items: center;">
-                        Request Configuration
-                    </h2>
+                        <h2 style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500; margin: 0; display: flex; align-items: center;">
+                            Request Configuration
+                        </h2>
+                        <button id="btn-note" class="btn-action-icon" title="Quick Markdown Note" onclick="openNoteModal()" style="padding: 4px 8px; font-size: 0.75rem;">
+                            <span>📝 Quick Note</span>
+                        </button>
                     </div>
 <!-- Env Identity -->
                 <div id="env-identity" style="display: flex; gap: 16px; font-size: 0.75rem; color: var(--text-secondary); min-height: 18px; align-items: center;">
@@ -241,7 +246,7 @@
                                 </button>
                                 <div id="request-history-dropdown" class="animated-dropdown" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: var(--dropdown-bg); border: 1px solid var(--panel-border); border-radius: 6px; z-index: 1000; width: 450px; max-height: 400px; overflow-y: auto; box-shadow: 0 4px 12px var(--shadow-dark); flex-direction: column;">
                                     <div style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); position: sticky; top: 0; background: var(--dropdown-bg); z-index: 2;">
-                                        <input type="search" id="history-search-input" placeholder="Fuzzy search URL, Method, or Body..." style="width: 100%; padding: 6px 8px; border-radius: 4px; border: 1px solid var(--panel-border); background: var(--input-bg-light); color: var(--text-primary); font-size: 0.8rem; outline: none;">
+                                        <input type="search" id="history-search-input" placeholder="Fuzzy search URL, Method, or Body..." class="modern-input">
                                     </div>
                                     <div id="history-list-container" style="display: flex; flex-direction: column;"></div>
                                     <div id="history-clear-all" style="padding: 10px 12px; color: var(--error); cursor: pointer; font-size: 0.8rem; text-align: center; transition: background 0.2s; border-top: 1px solid var(--panel-border); position: sticky; bottom: 0; background: var(--dropdown-bg);">❌ 清空所有请求历史 (Clear All)</div>
@@ -336,7 +341,7 @@
         <div class="modal-content glass-panel">
             <div class="modal-header">
                 <h3>🚀 智能数据流水线 (Smart DataOps)</h3>
-                <button id="close-modal-btn" class="close-btn" title="最小化到后台运行 (Minimize to background)">&#8211;</button>
+                <button id="close-modal-btn" class="close-btn" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
             </div>
             <div class="modal-body">
                 <div class="terminal-view" id="pipeline-terminal">
@@ -354,7 +359,7 @@
         <div class="modal-content glass-panel" style="width: 550px;">
             <div class="modal-header">
                 <h3>⚙️ 全局环境配置 (Global Settings)</h3>
-                <button id="close-settings-btn" class="close-btn">&times;</button>
+                <button id="close-settings-btn" class="close-btn" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
             </div>
             <form id="settings-form" autocomplete="on">
                 <div class="modal-body" style="display: flex; flex-direction: column; gap: 8px; max-height: 65vh; overflow-y: auto;">
@@ -499,9 +504,9 @@
     <!-- Scan Results Modal -->
     <div id="scan-modal" class="modal-overlay" style="display: none; z-index: 2000;">
         <div class="modal-content glass-panel" style="width: 500px; padding: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div class="modal-header" style="margin-bottom: 12px;">
                 <h3 id="scan-modal-title" style="margin: 0; font-size: 1rem;">🔍 扫描结果 (Scan Results)</h3>
-                <button type="button" onclick="document.getElementById('scan-modal').style.display='none'" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.2rem;">&times;</button>
+                <button type="button" onclick="closeModalWithAnimation('scan-modal')" class="close-btn" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
             </div>
             <div style="margin-bottom: 8px; font-size: 0.8rem; color: var(--text-secondary);">
                 勾选需要添加到配置面板的项目 (Select items to add to config):
@@ -514,9 +519,58 @@
             </div>
         </div>
     </div>
+    
+    <!-- Quick Note Modal -->
+    <div id="modal-note" class="modal-overlay" style="display: none; z-index: 9999;">
+        <div class="modal-content glass-panel" style="max-width: 1000px; width: 85vw; padding: 20px;">
+            <div class="modal-header" style="margin-bottom: 12px; border-bottom: 1px solid var(--panel-border); padding-bottom: 12px;">
+                <h3 style="margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">📝 Markdown Note & History</h3>
+                <button type="button" onclick="closeModalWithAnimation('modal-note')" class="close-btn" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
+            </div>
+            
+            <div style="display: flex; gap: 20px; align-items: stretch; min-height: 480px;">
+                <!-- Left: History & Search -->
+                <div style="width: 260px; display: flex; flex-direction: column; gap: 12px; border-right: 1px solid var(--panel-border); padding-right: 20px;">
+                    <div>
+                          <label style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 4px; display: block;">Search Notes</label>
+                          <div style="position: relative;">
+                              <input type="text" id="note-search" placeholder="Search notes..." class="modern-input" style="width: 100%; padding-left: 32px;" onkeyup="debounceSearchNotes()">
+                              <svg style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                          </div>
+                      </div>
+                    <div id="note-history-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
+                        <div style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 20px;">Loading history...</div>
+                    </div>
+                </div>
+                
+                <!-- Right: Editor -->
+                <div style="flex: 1; display: flex; flex-direction: column; gap: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                        <div style="flex: 1; margin-right: 12px;">
+                            <label style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 4px; display: block;">Filename (optional, defaults to timestamp)</label>
+                            <input type="text" id="note-filename" placeholder="e.g. feature-idea.md" class="modern-input" style="width: 100%;">
+                        </div>
+                        <button type="button" class="btn-action" style="padding: 0.75rem 1rem; font-size: 0.95rem; display: flex; align-items: center; gap: 6px; background: rgba(56, 189, 248, 0.1); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); transition: all 0.2s; border-radius: 8px; " onclick="insertLinkedApiIntoNote()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"></path></svg>
+                            Insert Current API Link
+                        </button>
+                    </div>
+                    <div style="flex: 1; background: white; border-radius: 4px; overflow: hidden; color: #333; min-height: 380px;">
+                        <textarea id="note-editor"></textarea>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end;">
+                        <button class="btn-action-primary" onclick="saveMarkdownNote()" id="btn-save-note">
+                            <span id="save-note-icon">💾</span> Save & Push to GitHub
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260721_v58"></script>
-    <script src="/static/script.js?v=20260721_v58"></script>
+    <script src="/static/script.js?v=20260722_v80"></script>
 </body>
 </html>
