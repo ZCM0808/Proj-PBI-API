@@ -579,6 +579,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (themeBtn) {
         themeBtn.addEventListener('click', () => {
+            document.documentElement.classList.add('theme-transitioning');
+            // Force a reflow to ensure the browser registers the transition class before theme vars change
+            document.documentElement.offsetHeight;
+            
             const currentTheme = document.documentElement.getAttribute('data-theme');
             const newTheme = currentTheme === 'light' ? 'dark' : 'light';
             if (newTheme === 'light') {
@@ -588,6 +592,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             localStorage.setItem('pbi-theme', newTheme);
             updateThemeIcons();
+            setTimeout(() => {
+                document.documentElement.classList.remove('theme-transitioning');
+            }, 500);
         });
     }
 
@@ -3383,9 +3390,9 @@ window.searchNotes = async function() {
         data.results.forEach(note => {
             const item = document.createElement('div');
             item.style.padding = '10px';
-            item.style.background = 'rgba(0,0,0,0.15)';
+            item.style.background = 'var(--input-bg)';
             item.style.borderRadius = '6px';
-            item.style.border = '1px solid rgba(255,255,255,0.05)';
+            item.style.border = '1px solid var(--panel-border)';
             item.style.cursor = 'pointer';
             item.style.transition = 'all 0.2s';
             
@@ -3401,11 +3408,11 @@ window.searchNotes = async function() {
             item.innerHTML = `
                 <div style="font-weight: 500; font-size: 0.9rem; margin-bottom: 4px; color: var(--text-primary); word-break: break-all;">📄 ${note.filename}</div>
                 <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 6px;">🕒 ${dateStr}</div>
-                <div style="font-size: 0.8rem; color: #a1a1aa; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;">${snippetHtml}</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;">${snippetHtml}</div>
             `;
             
-            item.onmouseover = () => { item.style.background = 'rgba(167, 139, 250, 0.1)'; item.style.borderColor = 'rgba(167, 139, 250, 0.3)'; };
-            item.onmouseout = () => { item.style.background = 'rgba(0,0,0,0.15)'; item.style.borderColor = 'rgba(255,255,255,0.05)'; };
+            item.onmouseover = () => { item.style.background = 'var(--overlay-10)'; item.style.borderColor = 'var(--badge-custom-text)'; };
+            item.onmouseout = () => { item.style.background = 'var(--input-bg)'; item.style.borderColor = 'var(--panel-border)'; };
             
             item.onclick = () => {
                 document.getElementById('note-filename').value = note.filename;
