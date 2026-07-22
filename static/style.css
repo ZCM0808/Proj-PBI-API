@@ -1847,8 +1847,10 @@ json-viewer {
 /* EasyMDE status bar */
 
 .editor-statusbar {
-    display: block !important;
-    text-align: right !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    gap: 24px !important;
     padding: 8px 14px !important;
     font-size: 0.85rem !important;
     font-weight: 500 !important;
@@ -1870,8 +1872,7 @@ json-viewer {
 .editor-statusbar .cursor {
     display: inline-block !important;
     float: none !important;
-    margin-left: 24px !important;
-    margin-right: 0 !important;
+    margin: 0 !important;
     padding: 0 !important;
 }
 .editor-statusbar span:empty,
