@@ -1870,10 +1870,13 @@ json-viewer {
 .editor-statusbar .lines,
 .editor-statusbar .words,
 .editor-statusbar .cursor {
-    display: inline-block !important;
+    display: inline-flex !important;
+    align-items: center !important;
     float: none !important;
     margin: 0 !important;
     padding: 0 !important;
+    min-width: 0 !important;
+    width: auto !important;
 }
 .editor-statusbar span:empty,
 .editor-statusbar .autosave:empty,
