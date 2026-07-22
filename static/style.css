@@ -1239,6 +1239,13 @@ select.settings-input option {
 /* 物理触压回弹的取消按钮 */
 
 .btn-cancel {
+    background: var(--overlay-5) !important;
+    border: 1px solid var(--panel-border) !important;
+    color: var(--text-primary) !important;
+    padding: 6px 14px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    font-size: 0.8rem !important;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
@@ -1250,6 +1257,27 @@ select.settings-input option {
 
 .btn-cancel:active {
     transform: scale(0.92) !important;
+}
+
+/* Official doc link button - theme-aware */
+.btn-doc-link {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    font-size: 0.75rem !important;
+    color: var(--accent) !important;
+    text-decoration: none !important;
+    border: 1px solid var(--accent-glow) !important;
+    padding: 2px 8px !important;
+    border-radius: 4px !important;
+    background: var(--accent-glow) !important;
+    transition: all 0.2s !important;
+}
+
+.btn-doc-link:hover {
+    background: rgba(242, 200, 17, 0.15) !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 2px 8px var(--accent-glow) !important;
 }
 
 /* =========================================
