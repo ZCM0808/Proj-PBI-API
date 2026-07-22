@@ -3517,6 +3517,10 @@ document.addEventListener('mousedown', (e) => {
     if (noteModal && noteModal.style.display === 'flex') {
         const noteContent = noteModal.querySelector('.modal-content');
         if (noteContent && !noteContent.contains(e.target)) {
+            // Do not close if clicking the custom alert/confirm dialog
+            if (e.target.closest('#custom-dialog-modal')) {
+                return;
+            }
             // Do not close if clicking the button that opens it
             const btnNote = document.getElementById('btn-note');
             if (btnNote && btnNote.contains(e.target)) {
