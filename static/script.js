@@ -3406,13 +3406,26 @@ window.searchNotes = async function() {
             }
             
             item.innerHTML = `
-                <div style="font-weight: 500; font-size: 0.9rem; margin-bottom: 4px; color: var(--text-primary); word-break: break-all;">📄 ${note.filename}</div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                    <div style="font-weight: 500; font-size: 0.9rem; margin-bottom: 4px; color: var(--text-primary); word-break: break-all; flex: 1;">📄 ${note.filename}</div>
+                    <button class="btn-delete-note" style="background: none; border: none; padding: 2px 6px; cursor: pointer; color: var(--error); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; opacity: 0.6; transition: all 0.2s;" title="Delete Note">❌</button>
+                </div>
                 <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 6px;">🕒 ${dateStr}</div>
                 <div style="font-size: 0.8rem; color: var(--text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;">${snippetHtml}</div>
             `;
             
             item.onmouseover = () => { item.style.background = 'var(--overlay-10)'; item.style.borderColor = 'var(--badge-custom-text)'; };
             item.onmouseout = () => { item.style.background = 'var(--input-bg)'; item.style.borderColor = 'var(--panel-border)'; };
+            
+            const delBtn = item.querySelector('.btn-delete-note');
+            delBtn.onmouseover = (e) => { e.stopPropagation(); delBtn.style.opacity = '1'; delBtn.style.background = 'rgba(239, 68, 68, 0.15)'; };
+            delBtn.onmouseout = (e) => { e.stopPropagation(); delBtn.style.opacity = '0.6'; delBtn.style.background = 'none'; };
+            delBtn.onclick = (e) => {
+                e.stopPropagation();
+                if (confirm(`Are you sure you want to delete notes/${note.filename}? This will delete the file locally and push the deletion to GitHub.`)) {
+                    window.deleteMarkdownNote(note.filename);
+                }
+            };
             
             item.onclick = () => {
                 document.getElementById('note-filename').value = note.filename;
@@ -3425,6 +3438,29 @@ window.searchNotes = async function() {
         });
     } catch (e) {
         listEl.innerHTML = `<div style="text-align: center; color: #ef4444; font-size: 0.8rem; margin-top: 20px;">Error loading history</div>`;
+    }
+};
+
+window.deleteMarkdownNote = async function(filename) {
+    try {
+        const response = await fetch('/api/delete-note', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename })
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert(data.message || "Note deleted successfully!");
+            if (document.getElementById('note-filename').value.trim() === filename) {
+                document.getElementById('note-filename').value = '';
+                if (easyMDE) easyMDE.value('');
+            }
+            window.searchNotes();
+        } else {
+            alert("Error deleting note: " + data.error);
+        }
+    } catch (e) {
+        alert("Error deleting note: " + e.message);
     }
 };
 
@@ -3450,6 +3486,9 @@ window.saveMarkdownNote = async function() {
         });
         const data = await response.json();
         if (data.success) {
+            if (data.filename) {
+                document.getElementById('note-filename').value = data.filename;
+            }
             alert(data.message || "Note saved successfully!");
             // Refresh note history
             window.searchNotes();

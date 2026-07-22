@@ -426,6 +426,9 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+class DeleteNotePayload(BaseModel):
+    filename: str
+
 class NotePayload(BaseModel):
     filename: Optional[str] = None
     content: str
@@ -458,7 +461,35 @@ async def save_note(payload: NotePayload):
                 
         asyncio.create_task(asyncio.to_thread(_git_push_note))
         
-        return {"success": True, "message": f"Saved {filename} and pushing to GitHub in background."}
+        return {"success": True, "message": f"Saved {filename} and pushing to GitHub in background.", "filename": filename}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/delete-note")
+async def delete_note(payload: DeleteNotePayload):
+    try:
+        root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        notes_dir = os.path.join(root_dir, "notes")
+        filename = os.path.basename(payload.filename.strip())
+        if not filename:
+            raise HTTPException(status_code=400, detail="Invalid filename")
+        
+        file_path = os.path.join(notes_dir, filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            
+            def _git_push_note_delete():
+                try:
+                    subprocess.run(["git", "rm", f"notes/{filename}"], cwd=root_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    subprocess.run(["git", "commit", "-m", f"docs(notes): delete {filename}"], cwd=root_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    subprocess.run(["git", "push", "origin", "main"], cwd=root_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                except Exception as e:
+                    print(f"Git push note delete failed: {e}")
+                    
+            asyncio.create_task(asyncio.to_thread(_git_push_note_delete))
+            return {"success": True, "message": f"Deleted {filename} and pushing deletion to GitHub."}
+        else:
+            return {"success": False, "error": "File not found"}
     except Exception as e:
         return {"success": False, "error": str(e)}
 

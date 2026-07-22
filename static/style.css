@@ -1809,13 +1809,17 @@ json-viewer {
     border-bottom-left-radius: 8px;
     border-bottom-right-radius: 8px;
     border: none !important;
-    cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='18' viewBox='0 0 10 18'><path d='M2 1h6M5 1v16M2 17h6' stroke='%23ffffff' stroke-width='1.5' fill='none'/></svg>") 5 9, text !important;
 }
-.CodeMirror-scroll {
+.CodeMirror,
+.CodeMirror *,
+.CodeMirror-scroll,
+.CodeMirror-scroll * {
     cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='18' viewBox='0 0 10 18'><path d='M2 1h6M5 1v16M2 17h6' stroke='%23ffffff' stroke-width='1.5' fill='none'/></svg>") 5 9, text !important;
 }
 [data-theme="light"] .CodeMirror,
-[data-theme="light"] .CodeMirror-scroll {
+[data-theme="light"] .CodeMirror *,
+[data-theme="light"] .CodeMirror-scroll,
+[data-theme="light"] .CodeMirror-scroll * {
     cursor: text !important;
 }
 
