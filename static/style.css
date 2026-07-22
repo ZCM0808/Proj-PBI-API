@@ -1847,6 +1847,8 @@ json-viewer {
 /* EasyMDE status bar */
 
 .editor-statusbar {
+    display: block !important;
+    text-align: right !important;
     padding: 8px 14px !important;
     font-size: 0.85rem !important;
     font-weight: 500 !important;
@@ -1861,8 +1863,11 @@ json-viewer {
     color: var(--text-primary) !important;
     opacity: 0.9;
 }
-.editor-statusbar .autosave {
-    margin-right: 20px !important;
+.editor-statusbar span {
+    display: inline-block !important;
+    float: none !important;
+    margin-left: 16px !important;
+    margin-right: 0 !important;
 }
 
 /* Smooth Transition on Theme Change */
