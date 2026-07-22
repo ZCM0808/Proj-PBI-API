@@ -3464,6 +3464,13 @@ window.deleteMarkdownNote = async function(filename) {
     }
 };
 
+window.createNewNote = function() {
+    document.getElementById('note-filename').value = '';
+    if (easyMDE) {
+        easyMDE.value('');
+    }
+};
+
 window.saveMarkdownNote = async function() {
     if (!easyMDE) return;
     const content = easyMDE.value().trim();

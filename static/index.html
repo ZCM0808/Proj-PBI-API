@@ -558,7 +558,10 @@
                     <div style="flex: 1; background: white; border-radius: 4px; overflow: hidden; color: #333; min-height: 380px;">
                         <textarea id="note-editor"></textarea>
                     </div>
-                    <div style="display: flex; justify-content: flex-end;">
+                    <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                        <button class="btn-action" style="padding: 0.75rem 1rem; border-radius: 8px; font-weight: 500; font-size: 0.95rem; border: 1px solid var(--panel-border); background: var(--panel-bg); color: var(--text-primary); cursor: pointer; transition: all 0.2s;" onclick="createNewNote()" id="btn-new-note">
+                            📝 New Note
+                        </button>
                         <button class="btn-action-primary" onclick="saveMarkdownNote()" id="btn-save-note">
                             <span id="save-note-icon">💾</span> Save & Push to GitHub
                         </button>

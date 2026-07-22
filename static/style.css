@@ -1838,8 +1838,10 @@ json-viewer {
 
 /* EasyMDE status bar */
 
-.editor-statusbar {
-    color: var(--text-secondary) !important;
+.editor-statusbar,
+.editor-statusbar * {
+    color: var(--text-primary) !important;
+    opacity: 0.85;
 }
 
 /* Smooth Transition on Theme Change */
