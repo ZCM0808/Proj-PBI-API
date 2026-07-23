@@ -3538,6 +3538,10 @@ let easyMDE = null;
 
 window.openNoteModal = function() {
     const noteModal = document.getElementById('modal-note');
+    if (noteModal.style.display === 'flex') {
+        window.closeNoteModal();
+        return;
+    }
     // Reset drag position
     const noteContent = noteModal.querySelector('.modal-content');
     if (noteContent) {
