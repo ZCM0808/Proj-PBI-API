@@ -2298,7 +2298,7 @@ const loadReqHistory = (searchTerm = "") => {
                 methodUrl.innerHTML = `<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;">
                     ${modeHtml}
                     <span style="color: ${methodColor}; font-weight: bold; font-size: 0.8rem;">${h.method}</span>
-                    <span style="font-size: 0.75rem; color: #8b949e; font-family: 'Fira Code', monospace; word-break: break-all; line-height: 1.4;">
+                    <span style="font-size: 0.75rem; color: var(--text-primary); font-family: 'Fira Code', monospace; word-break: break-all; line-height: 1.4;">
                         <span style="color: var(--text-secondary); opacity: 0.7;">${prefix}</span>${h.url}
                     </span>
                 </div>`;
@@ -2309,9 +2309,9 @@ const loadReqHistory = (searchTerm = "") => {
                 const insertNoteHistoryBtn = document.createElement('span');
                 insertNoteHistoryBtn.innerHTML = '📝';
                 insertNoteHistoryBtn.title = 'Insert API Link to Note';
-                insertNoteHistoryBtn.style.cssText = 'font-size: 1rem; color: var(--text-secondary); cursor: pointer; padding: 0 4px; border-radius: 4px; line-height: 1; margin-top: -1px; margin-right: 4px;';
-                insertNoteHistoryBtn.onmouseover = () => { insertNoteHistoryBtn.style.color = 'var(--accent)'; insertNoteHistoryBtn.style.background = 'rgba(167, 139, 250, 0.1)'; };
-                insertNoteHistoryBtn.onmouseout = () => { insertNoteHistoryBtn.style.color = '#6e7681'; insertNoteHistoryBtn.style.background = 'transparent'; };
+                insertNoteHistoryBtn.style.cssText = 'font-size: 1rem; color: var(--text-secondary); cursor: pointer; padding: 0 4px; border-radius: 4px; line-height: 1; margin-top: -1px; margin-right: 4px; transition: all 0.2s;';
+                insertNoteHistoryBtn.onmouseover = () => { insertNoteHistoryBtn.style.color = 'var(--accent)'; insertNoteHistoryBtn.style.background = 'rgba(167, 139, 250, 0.15)'; };
+                insertNoteHistoryBtn.onmouseout = () => { insertNoteHistoryBtn.style.color = 'var(--text-secondary)'; insertNoteHistoryBtn.style.background = 'transparent'; };
                 insertNoteHistoryBtn.onclick = (e) => {
                     e.stopPropagation();
                     insertSpecificApiIntoNote(h.method, h.url);
@@ -2321,9 +2321,9 @@ const loadReqHistory = (searchTerm = "") => {
                 const delBtn = document.createElement('span');
                 delBtn.innerHTML = '&times;';
                 delBtn.title = '删除此条记录';
-                delBtn.style.cssText = 'font-size: 1.1rem; color: var(--text-secondary); cursor: pointer; padding: 0 4px; border-radius: 4px; line-height: 1; margin-top: -2px;';
-                delBtn.onmouseover = () => { delBtn.style.color = '#ff6b6b'; delBtn.style.background = 'rgba(255,107,107,0.1)'; };
-                delBtn.onmouseout = () => { delBtn.style.color = '#6e7681'; delBtn.style.background = 'transparent'; };
+                delBtn.style.cssText = 'font-size: 1.1rem; color: var(--text-secondary); cursor: pointer; padding: 0 4px; border-radius: 4px; line-height: 1; margin-top: -2px; transition: all 0.2s;';
+                delBtn.onmouseover = () => { delBtn.style.color = '#ff4d4f'; delBtn.style.background = 'rgba(255, 77, 79, 0.15)'; };
+                delBtn.onmouseout = () => { delBtn.style.color = 'var(--text-secondary)'; delBtn.style.background = 'transparent'; };
                 delBtn.onclick = async (e) => {
                     e.stopPropagation();
                     try {
