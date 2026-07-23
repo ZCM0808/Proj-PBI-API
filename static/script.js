@@ -1184,6 +1184,146 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderTree(searchInput ? searchInput.value : "");
     }
 
+
+    function getBookmarkMeta(path, method) {
+        const cleanPath = (path || '').replace("/v1.0/myorg", "");
+        return getBookmarks().find(b => 
+            (b.path || '').replace("/v1.0/myorg", "") === cleanPath && 
+            (b.method || '').toUpperCase() === (method || '').toUpperCase()
+        );
+    }
+
+    function updateBookmarkMeta(path, method, alias, userTags) {
+        const bookmarks = getBookmarks();
+        const cleanPath = (path || '').replace("/v1.0/myorg", "");
+        const index = bookmarks.findIndex(b => 
+            (b.path || '').replace("/v1.0/myorg", "") === cleanPath && 
+            (b.method || '').toUpperCase() === (method || '').toUpperCase()
+        );
+        if (index >= 0) {
+            bookmarks[index].alias = alias;
+            bookmarks[index].userTags = userTags;
+            localStorage.setItem('pbi-bookmarks', JSON.stringify(bookmarks));
+            
+            // Re-render to reflect changes
+            const searchInput = document.getElementById('api-search-input');
+            renderTree(searchInput ? searchInput.value : "");
+            
+            // If it is the currently active API, update the right panel too
+            const uniqueId = (method || '').toUpperCase() + '_' + path;
+            if (currentSelectedId === uniqueId) {
+                renderRightPanelBookmarkState(bookmarks[index]);
+            }
+        }
+    }
+
+    // Right panel state management
+    function renderRightPanelBookmarkState(ep) {
+        const bmSection = document.getElementById('right-panel-bm-section');
+        const starBtn = document.getElementById('right-panel-bm-star');
+        const metaContainer = document.getElementById('right-panel-bm-meta');
+        
+        if (!bmSection) return;
+        
+        const bmData = getBookmarkMeta(ep.path, ep.method);
+        const isBookmarked = !!bmData;
+        
+        bmSection.style.display = 'flex';
+        
+        starBtn.className = isBookmarked ? 'bookmark-btn active' : 'bookmark-btn';
+        starBtn.innerHTML = isBookmarked ? '★' : '☆';
+        starBtn.title = isBookmarked ? "取消收藏" : "加入收藏";
+        
+        starBtn.onclick = (e) => {
+            e.stopPropagation();
+            toggleBookmark(ep, e);
+            renderRightPanelBookmarkState(ep); // Refresh right panel
+        };
+        
+        if (isBookmarked) {
+            let metaHtml = '';
+            const alias = bmData.alias || '';
+            const tags = bmData.userTags || [];
+            
+            if (alias) {
+                metaHtml += `<span class="bm-alias" title="Alias">${alias}</span>`;
+            }
+            tags.forEach(t => {
+                metaHtml += `<span class="bm-tag">${t}</span>`;
+            });
+            
+            metaHtml += `<button id="right-panel-bm-edit-btn" title="Edit alias & tags">✏️ Edit</button>`;
+            metaContainer.innerHTML = metaHtml;
+            
+            document.getElementById('right-panel-bm-edit-btn').onclick = () => {
+                openRightPanelEditor(bmData);
+            };
+        } else {
+            metaContainer.innerHTML = `<span style="font-size:0.7rem; color:var(--text-secondary); margin-left: 4px;">Not bookmarked</span>`;
+            document.getElementById('right-panel-bm-editor').classList.remove('open');
+        }
+    }
+    
+    function openRightPanelEditor(bmData) {
+        const editor = document.getElementById('right-panel-bm-editor');
+        const aliasInput = document.getElementById('right-panel-bm-alias-input');
+        const tagsContainer = document.getElementById('right-panel-bm-tags-container');
+        const tagInput = document.getElementById('right-panel-bm-tag-input');
+        
+        editor.classList.add('open');
+        aliasInput.value = bmData.alias || '';
+        
+        let tags = [...(bmData.userTags || [])];
+        
+        function renderTags() {
+            tagsContainer.innerHTML = '';
+            tags.forEach((t, i) => {
+                const chip = document.createElement('div');
+                chip.className = 'bm-tag-chip';
+                chip.innerHTML = `<span>${t}</span><button class="chip-remove" type="button" data-index="${i}">&times;</button>`;
+                tagsContainer.appendChild(chip);
+            });
+            tagsContainer.appendChild(tagInput);
+            
+            tagsContainer.querySelectorAll('.chip-remove').forEach(btn => {
+                btn.onclick = (e) => {
+                    const idx = parseInt(e.currentTarget.getAttribute('data-index'));
+                    tags.splice(idx, 1);
+                    renderTags();
+                };
+            });
+        }
+        
+        renderTags();
+        
+        tagInput.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const val = tagInput.value.trim();
+                if (val && !tags.includes(val)) {
+                    tags.push(val);
+                    tagInput.value = '';
+                    renderTags();
+                }
+            } else if (e.key === 'Backspace' && tagInput.value === '' && tags.length > 0) {
+                tags.pop();
+                renderTags();
+            }
+        };
+        
+        document.getElementById('right-panel-bm-cancel').onclick = () => {
+            editor.classList.remove('open');
+        };
+        
+        document.getElementById('right-panel-bm-save').onclick = () => {
+            if (tagInput.value.trim()) {
+                if (!tags.includes(tagInput.value.trim())) tags.push(tagInput.value.trim());
+            }
+            updateBookmarkMeta(bmData.path, bmData.method, aliasInput.value.trim(), tags);
+            editor.classList.remove('open');
+        };
+    }
+
     // 渲染 API 树
     function renderTree(searchTerm = "") {
         apiTree.innerHTML = '';
@@ -1422,6 +1562,94 @@ document.addEventListener('DOMContentLoaded', async () => {
                 itemEl.appendChild(nameEl);
                 itemEl.appendChild(insertNoteBtn);
                 itemEl.appendChild(starBtn);
+                
+                // Bind edit button
+                const editBtn = nameEl.querySelector('.bm-edit-btn');
+                if (editBtn) {
+                    editBtn.onclick = (e) => {
+                        e.stopPropagation(); // prevent selecting the item
+                        const editorPanel = nameEl.querySelector('.bm-editor-panel');
+                        if (editorPanel.style.display === 'flex') {
+                            editorPanel.style.display = 'none';
+                            return;
+                        }
+                        
+                        document.querySelectorAll('.bm-editor-panel').forEach(p => p.style.display = 'none');
+                        editorPanel.style.display = 'flex';
+                        
+                        let currentTags = [...(bmData.userTags || [])];
+                        editorPanel.innerHTML = `
+                            <div class="bm-field-label">Alias</div>
+                            <input type="text" class="bm-alias-input" value="${bmData.alias || ''}" placeholder="Give this API a short name...">
+                            <div class="bm-field-label">Tags</div>
+                            <div class="bm-tags-chips">
+                                <input type="text" class="bm-tag-input-field" placeholder="Add tag + Enter">
+                            </div>
+                            <div class="bm-editor-footer">
+                                <button class="btn-bm-cancel">Cancel</button>
+                                <button class="btn-bm-save">Save</button>
+                            </div>
+                        `;
+                        
+                        const tagsChipsContainer = editorPanel.querySelector('.bm-tags-chips');
+                        const tagInput = editorPanel.querySelector('.bm-tag-input-field');
+                        
+                        function renderLocalTags() {
+                            tagsChipsContainer.innerHTML = '';
+                            currentTags.forEach((t, i) => {
+                                const chip = document.createElement('div');
+                                chip.className = 'bm-tag-chip';
+                                chip.innerHTML = `<span>${t}</span><button class="chip-remove" type="button" data-index="${i}">&times;</button>`;
+                                tagsChipsContainer.appendChild(chip);
+                            });
+                            tagsChipsContainer.appendChild(tagInput);
+                            
+                            tagsChipsContainer.querySelectorAll('.chip-remove').forEach(btn => {
+                                btn.onclick = (ev) => {
+                                    ev.stopPropagation();
+                                    const idx = parseInt(ev.currentTarget.getAttribute('data-index'));
+                                    currentTags.splice(idx, 1);
+                                    renderLocalTags();
+                                };
+                            });
+                        }
+                        renderLocalTags();
+                        
+                        tagInput.onkeydown = (ev) => {
+                            if (ev.key === 'Enter') {
+                                ev.preventDefault();
+                                ev.stopPropagation();
+                                const val = tagInput.value.trim();
+                                if (val && !currentTags.includes(val)) {
+                                    currentTags.push(val);
+                                    tagInput.value = '';
+                                    renderLocalTags();
+                                }
+                            } else if (ev.key === 'Backspace' && tagInput.value === '' && currentTags.length > 0) {
+                                currentTags.pop();
+                                renderLocalTags();
+                            }
+                        };
+                        tagInput.onclick = (ev) => ev.stopPropagation();
+                        
+                        const aliasInput = editorPanel.querySelector('.bm-alias-input');
+                        aliasInput.onclick = (ev) => ev.stopPropagation();
+                        aliasInput.onkeydown = (ev) => ev.stopPropagation(); // prevent tree selection interference
+                        
+                        editorPanel.querySelector('.btn-bm-cancel').onclick = (ev) => {
+                            ev.stopPropagation();
+                            editorPanel.style.display = 'none';
+                        };
+                        
+                        editorPanel.querySelector('.btn-bm-save').onclick = (ev) => {
+                            ev.stopPropagation();
+                            if (tagInput.value.trim()) {
+                                if (!currentTags.includes(tagInput.value.trim())) currentTags.push(tagInput.value.trim());
+                            }
+                            updateBookmarkMeta(bmData.path, bmData.method, aliasInput.value.trim(), currentTags);
+                        };
+                    };
+                }
 
                 const uniqueId = ep.method + '_' + ep.path;
                 
