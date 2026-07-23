@@ -2312,7 +2312,6 @@ json-viewer {
     background: var(--overlay-5);
     border: 1px solid var(--panel-border);
     border-radius: 8px;
-    margin-bottom: 10px;
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     animation: fadeInUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
