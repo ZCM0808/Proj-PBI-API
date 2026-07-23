@@ -1241,11 +1241,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!locateBtn) {
             locateBtn = document.createElement('button');
             locateBtn.id = 'right-panel-locate-btn';
+            locateBtn.className = 'btn-action-icon';
             locateBtn.title = 'Locate in API Tree';
             locateBtn.innerHTML = '🎯 Locate in Tree';
-            locateBtn.style.cssText = 'font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: var(--overlay-10); border: 1px solid var(--panel-border); color: var(--text-secondary); cursor: pointer; margin-left: auto; transition: all 0.2s; white-space: nowrap;';
-            locateBtn.onmouseover = () => { locateBtn.style.color = 'var(--accent)'; locateBtn.style.borderColor = 'var(--accent)'; };
-            locateBtn.onmouseout = () => { locateBtn.style.color = 'var(--text-secondary)'; locateBtn.style.borderColor = 'var(--panel-border)'; };
+            locateBtn.style.fontSize = '0.75rem';
+            locateBtn.style.whiteSpace = 'nowrap';
             document.getElementById('right-panel-bm-body').appendChild(locateBtn);
         }
         locateBtn.onclick = () => {
