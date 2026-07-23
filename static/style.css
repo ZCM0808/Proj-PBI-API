@@ -2306,12 +2306,8 @@ json-viewer {
 /* ── Right panel bookmark info section ── */
 #right-panel-bm-section {
     display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 10px 12px;
-    background: var(--overlay-5);
-    border: 1px solid var(--panel-border);
-    border-radius: 8px;
+    align-items: center;
+    gap: 6px;
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     animation: fadeInUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
