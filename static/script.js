@@ -1109,6 +1109,40 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
     
+    // ── Default bookmarks (seeded once; user can remove freely afterward) ────
+    const DEFAULT_BOOKMARKS_VERSION = 'v1';
+    const DEFAULT_BOOKMARKS = [
+        { operationId: 'Datasets_UpdateDataset',        method: 'PATCH', path: '/v1.0/myorg/datasets/{datasetId}',                                                   summary: 'Updates the properties for the specified dataset from My workspace.',     tags: ['Datasets'], category: 'official' },
+        { operationId: 'Datasets_RefreshDataset',       method: 'POST',  path: '/v1.0/myorg/datasets/{datasetId}/refreshes',                                          summary: 'Triggers a refresh for the specified dataset from My workspace.',         tags: ['Datasets'], category: 'official' },
+        { operationId: 'Datasets_UpdateParameters',     method: 'POST',  path: '/v1.0/myorg/datasets/{datasetId}/Default.UpdateParameters',                           summary: 'Updates the parameters values for the specified dataset from My workspace.', tags: ['Datasets'], category: 'official' },
+        { operationId: 'Datasets_UpdateDatasetInGroup', method: 'PATCH', path: '/v1.0/myorg/groups/{groupId}/datasets/{datasetId}',                                    summary: 'Updates the properties for the specified dataset from the specified workspace.', tags: ['Datasets'], category: 'official' },
+        { operationId: 'Datasets_RefreshDatasetInGroup',method: 'POST',  path: '/v1.0/myorg/groups/{groupId}/datasets/{datasetId}/refreshes',                         summary: 'Triggers a refresh for the specified dataset from the specified workspace.', tags: ['Datasets'], category: 'official' },
+        { operationId: 'Datasets_UpdateParametersInGroup', method: 'POST', path: '/v1.0/myorg/groups/{groupId}/datasets/{datasetId}/Default.UpdateParameters',       summary: 'Updates the parameters values for the specified dataset from the specified workspace.', tags: ['Datasets'], category: 'official' },
+        { operationId: 'Datasets_UpdateDatasourcesInGroup', method: 'POST', path: '/v1.0/myorg/groups/{groupId}/datasets/{datasetId}/Default.UpdateDatasources',     summary: 'Updates the data sources of the specified dataset from the specified workspace.', tags: ['Datasets'], category: 'official' },
+        { operationId: 'Admin_GetActivityEvents',       method: 'GET',   path: '/v1.0/myorg/admin/activityevents',                                                    summary: 'Returns a list of audit activity events for a tenant (ViewReport usage).', tags: ['Admin'], category: 'official' },
+    ];
+
+    function seedDefaultBookmarks() {
+        const seeded = localStorage.getItem('pbi-bookmarks-seeded');
+        if (seeded === DEFAULT_BOOKMARKS_VERSION) return; // already seeded this version
+        const existing = [];
+        try {
+            const raw = localStorage.getItem('pbi-bookmarks');
+            if (raw) existing.push(...JSON.parse(raw));
+        } catch (e) { /* ignore */ }
+        DEFAULT_BOOKMARKS.forEach(nb => {
+            const cleanNew = nb.path.replace('/v1.0/myorg', '');
+            const already = existing.some(b => {
+                const cleanB = (b.path || '').replace('/v1.0/myorg', '');
+                return cleanB === cleanNew && (b.method || '').toUpperCase() === nb.method.toUpperCase();
+            });
+            if (!already) existing.push(nb);
+        });
+        localStorage.setItem('pbi-bookmarks', JSON.stringify(existing));
+        localStorage.setItem('pbi-bookmarks-seeded', DEFAULT_BOOKMARKS_VERSION);
+    }
+    seedDefaultBookmarks();
+
     function getBookmarks() {
         try {
             const data = localStorage.getItem('pbi-bookmarks');
@@ -1118,6 +1152,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return [];
         }
     }
+
 
     function toggleBookmark(ep, e) {
         if (e) e.stopPropagation();
