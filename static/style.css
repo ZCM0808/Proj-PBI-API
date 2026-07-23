@@ -2381,9 +2381,7 @@ json-viewer {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 4px;
-    margin-bottom: 6px;
-    min-height: 20px;
+    gap: 6px;
 }
 
 #right-panel-bm-edit-btn {
