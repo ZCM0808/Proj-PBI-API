@@ -1180,6 +1180,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             bookmarks.push(ep);
         }
         localStorage.setItem('pbi-bookmarks', JSON.stringify(bookmarks));
+        window.lastToggledBookmarkId = ep.method + '_' + ep.path;
         const searchInput = document.getElementById('api-search-input');
         renderTree(searchInput ? searchInput.value : "");
     }
@@ -1274,6 +1275,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         aliasInput.value = bmData.alias || '';
         
         let tags = [...(bmData.userTags || [])];
+        
+        // Setup datalist for tag suggestions
+        let datalist = document.getElementById('all-tags-datalist');
+        if (!datalist) {
+            datalist = document.createElement('datalist');
+            datalist.id = 'all-tags-datalist';
+            document.body.appendChild(datalist);
+        }
+        const allTags = new Set();
+        getBookmarks().forEach(b => (b.userTags || []).forEach(t => allTags.add(t)));
+        datalist.innerHTML = '';
+        allTags.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t;
+            datalist.appendChild(opt);
+        });
+        tagInput.setAttribute('list', 'all-tags-datalist');
         
         function renderTags() {
             tagsContainer.innerHTML = '';
@@ -1562,6 +1580,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // 收藏按钮
                 const starBtn = document.createElement('button');
                 starBtn.className = isBookmarked ? 'bookmark-btn active' : 'bookmark-btn';
+                if (window.lastToggledBookmarkId === (ep.method + '_' + ep.path)) {
+                    starBtn.classList.add('pop-anim');
+                }
                 starBtn.innerHTML = isBookmarked ? '★' : '☆';
                 starBtn.title = isBookmarked ? "取消收藏" : "加入收藏";
                 starBtn.onclick = (e) => toggleBookmark(ep, e);
@@ -1594,13 +1615,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                         document.querySelectorAll('.bm-editor-panel').forEach(p => p.style.display = 'none');
                         editorPanel.style.display = 'flex';
                         
+                        // Setup datalist for tag suggestions
+                        let datalist = document.getElementById('all-tags-datalist');
+                        if (!datalist) {
+                            datalist = document.createElement('datalist');
+                            datalist.id = 'all-tags-datalist';
+                            document.body.appendChild(datalist);
+                        }
+                        const allTags = new Set();
+                        getBookmarks().forEach(b => (b.userTags || []).forEach(t => allTags.add(t)));
+                        datalist.innerHTML = '';
+                        allTags.forEach(t => {
+                            const opt = document.createElement('option');
+                            opt.value = t;
+                            datalist.appendChild(opt);
+                        });
+
                         let currentTags = [...(bmData.userTags || [])];
                         editorPanel.innerHTML = `
                             <div class="bm-field-label">Alias</div>
                             <input type="text" class="bm-alias-input" value="${bmData.alias || ''}" placeholder="Give this API a short name...">
                             <div class="bm-field-label">Tags</div>
                             <div class="bm-tags-chips">
-                                <input type="text" class="bm-tag-input-field" placeholder="Add tag + Enter">
+                                <input type="text" class="bm-tag-input-field" list="all-tags-datalist" placeholder="Add tag + Enter">
                             </div>
                             <div class="bm-editor-footer">
                                 <button class="btn-bm-cancel">Cancel</button>
@@ -1732,6 +1769,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     // 展示详细信息面板
                     selectedApiInfo.style.display = 'block';
+                    renderRightPanelBookmarkState(ep);
                     if (isDetailsCollapsed) {
                         selectedApiContent.style.display = 'none';
                         toggleInfoBtn.innerHTML = '&#9633;';
@@ -1801,6 +1839,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             categoryEl.appendChild(listEl);
             apiTree.appendChild(categoryEl);
         });
+        window.lastToggledBookmarkId = null;
     }
 
     // 搜索过滤逻辑 (Global Smart Search)
