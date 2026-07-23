@@ -1526,10 +1526,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                     chineseDesc = "暂无对应翻译";
                 }
                 
+                const bmData = getBookmarkMeta(ep.path, ep.method);
+                const isBookmarked = !!bmData;
+                let metaHtml = '';
+                let editBtnHtml = '';
+                
+                if (isBookmarked) {
+                    const alias = bmData.alias || '';
+                    const tags = bmData.userTags || [];
+                    if (alias) metaHtml += `<span class="bm-alias">${alias}</span>`;
+                    tags.forEach(t => metaHtml += `<span class="bm-tag">${t}</span>`);
+                    editBtnHtml = `<button class="bm-edit-btn" title="Edit alias & tags">✏️</button>`;
+                }
+                
+                const metaRowClass = metaHtml ? 'bm-meta-row has-content' : 'bm-meta-row empty';
+
                 nameEl.innerHTML = `
-                    <div style="display:flex; align-items:center; margin-bottom: 4px;">
+                    <div style="display:flex; align-items:center; margin-bottom: 4px; flex-wrap: wrap; gap: 4px;">
                         <strong style="color:var(--text-primary); font-weight: 600; font-size: 0.85rem;">${primaryName}</strong>
                         ${categoryBadgeHtml}
+                        ${editBtnHtml}
                     </div>
                     <div style="font-size:0.7rem; color:var(--text-secondary); margin-bottom: 2px; line-height: 1.3;">
                         <span style="opacity: 0.6; margin-right: 4px; font-weight: bold;">EN:</span>${englishDesc}
@@ -1537,13 +1553,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div style="font-size:0.7rem; color:var(--text-secondary); line-height: 1.3;">
                         <span style="opacity: 0.6; margin-right: 4px; font-weight: bold;">ZH:</span>${chineseDesc}
                     </div>
+                    <div class="${metaRowClass}">${metaHtml}</div>
+                    <div class="bm-editor-panel" style="display:none;"></div>
                 `;
                 nameEl.querySelector('div').appendChild(flagEl);
                 nameEl.title = ep.path;
 
                 // 收藏按钮
                 const starBtn = document.createElement('button');
-                const isBookmarked = getBookmarks().some(b => b.path === ep.path && b.method === ep.method);
                 starBtn.className = isBookmarked ? 'bookmark-btn active' : 'bookmark-btn';
                 starBtn.innerHTML = isBookmarked ? '★' : '☆';
                 starBtn.title = isBookmarked ? "取消收藏" : "加入收藏";
