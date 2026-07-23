@@ -1110,7 +1110,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     
     // ── Default bookmarks (seeded once; user can remove freely afterward) ────
-    const DEFAULT_BOOKMARKS_VERSION = 'v1';
+    const DEFAULT_BOOKMARKS_VERSION = 'v2';
     const DEFAULT_BOOKMARKS = [
         { operationId: 'Datasets_UpdateDataset',        method: 'PATCH', path: '/v1.0/myorg/datasets/{datasetId}',                                                   summary: 'Updates the properties for the specified dataset from My workspace.',     tags: ['Datasets'], category: 'official' },
         { operationId: 'Datasets_RefreshDataset',       method: 'POST',  path: '/v1.0/myorg/datasets/{datasetId}/refreshes',                                          summary: 'Triggers a refresh for the specified dataset from My workspace.',         tags: ['Datasets'], category: 'official' },
@@ -1120,6 +1120,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         { operationId: 'Datasets_UpdateParametersInGroup', method: 'POST', path: '/v1.0/myorg/groups/{groupId}/datasets/{datasetId}/Default.UpdateParameters',       summary: 'Updates the parameters values for the specified dataset from the specified workspace.', tags: ['Datasets'], category: 'official' },
         { operationId: 'Datasets_UpdateDatasourcesInGroup', method: 'POST', path: '/v1.0/myorg/groups/{groupId}/datasets/{datasetId}/Default.UpdateDatasources',     summary: 'Updates the data sources of the specified dataset from the specified workspace.', tags: ['Datasets'], category: 'official' },
         { operationId: 'Admin_GetActivityEvents',       method: 'GET',   path: '/v1.0/myorg/admin/activityevents',                                                    summary: 'Returns a list of audit activity events for a tenant (ViewReport usage).', tags: ['Admin'], category: 'official' },
+        { operationId: 'Datasets_GetTables', method: 'GET', path: '/v1.0/myorg/datasets/{datasetId}/tables', summary: 'Returns a list of tables within the specified dataset from **My workspace**.', tags: ['PushDatasets'], category: 'official' },
+        { operationId: 'Datasets_PutTable', method: 'PUT', path: '/v1.0/myorg/datasets/{datasetId}/tables/{tableName}', summary: 'Updates the metadata and schema for the specified table within the specified dataset from **My workspace**.', tags: ['PushDatasets'], category: 'official' },
+        { operationId: 'Datasets_PostRows', method: 'POST', path: '/v1.0/myorg/datasets/{datasetId}/tables/{tableName}/rows', summary: 'Adds new data rows to the specified table within the specified dataset from **My workspace**.', tags: ['PushDatasets'], category: 'official' },
+        { operationId: 'Datasets_DeleteRows', method: 'DELETE', path: '/v1.0/myorg/datasets/{datasetId}/tables/{tableName}/rows', summary: 'Deletes all rows from the specified table within the specified dataset from **My workspace**.', tags: ['PushDatasets'], category: 'official' },
+        { operationId: 'Datasets_GetTablesInGroup', method: 'GET', path: '/v1.0/myorg/groups/{groupId}/datasets/{datasetId}/tables', summary: 'Returns a list of tables within the specified dataset from the specified workspace.', tags: ['PushDatasets'], category: 'official' },
+        { operationId: 'Datasets_PutTableInGroup', method: 'PUT', path: '/v1.0/myorg/groups/{groupId}/datasets/{datasetId}/tables/{tableName}', summary: 'Updates the metadata and schema for the specified table within the specified dataset from the specified workspace.', tags: ['PushDatasets'], category: 'official' },
+        { operationId: 'Datasets_PostRowsInGroup', method: 'POST', path: '/v1.0/myorg/groups/{groupId}/datasets/{datasetId}/tables/{tableName}/rows', summary: 'Adds new data rows to the specified table within the specified dataset from the specified workspace.', tags: ['PushDatasets'], category: 'official' },
+        { operationId: 'Datasets_DeleteRowsInGroup', method: 'DELETE', path: '/v1.0/myorg/groups/{groupId}/datasets/{datasetId}/tables/{tableName}/rows', summary: 'Deletes all rows from the specified table within the specified dataset from the specified workspace.', tags: ['PushDatasets'], category: 'official' },
     ];
 
     function seedDefaultBookmarks() {
