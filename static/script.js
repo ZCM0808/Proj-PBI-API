@@ -256,7 +256,7 @@ window.addEventListener('click', (e) => {
     
     if (selectedApiInfo && selectedApiContent && selectedApiContent.style.display === 'block' && !selectedApiContent.classList.contains('is-closing')) {
         // If click is outside the panel entirely AND not on a tree node (which updates the selection)
-        if (!selectedApiInfo.contains(e.target) && !e.target.closest('.api-node') && (!infoHeaderRow || !infoHeaderRow.contains(e.target))) {
+        if (!selectedApiInfo.contains(e.target) && !e.target.closest('.sidebar') && (!infoHeaderRow || !infoHeaderRow.contains(e.target))) {
             window.closeWithAnimation(selectedApiContent, () => {
                 if (toggleInfoBtn) {
                     toggleInfoBtn.innerHTML = '&#9633;';
