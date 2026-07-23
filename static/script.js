@@ -1194,30 +1194,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         );
     }
 
-    function updateBookmarkMeta(path, method, alias, userTags) {
-        const bookmarks = getBookmarks();
-        const cleanPath = (path || '').replace("/v1.0/myorg", "");
-        const index = bookmarks.findIndex(b => 
-            (b.path || '').replace("/v1.0/myorg", "") === cleanPath && 
-            (b.method || '').toUpperCase() === (method || '').toUpperCase()
-        );
-        if (index >= 0) {
-            bookmarks[index].alias = alias;
-            bookmarks[index].userTags = userTags;
-            localStorage.setItem('pbi-bookmarks', JSON.stringify(bookmarks));
-            
-            // Re-render to reflect changes
-            const searchInput = document.getElementById('api-search-input');
-            renderTree(searchInput ? searchInput.value : "");
-            
-            // If it is the currently active API, update the right panel too
-            const uniqueId = (method || '').toUpperCase() + '_' + path;
-            if (currentSelectedId === uniqueId) {
-                renderRightPanelBookmarkState(bookmarks[index]);
-            }
-        }
-    }
-
     // Right panel state management
     function renderRightPanelBookmarkState(ep) {
         const bmSection = document.getElementById('right-panel-bm-section');
@@ -1232,6 +1208,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         bmSection.style.display = 'flex';
         
         starBtn.className = isBookmarked ? 'bookmark-btn active' : 'bookmark-btn';
+        if (window.lastToggledBookmarkId === (ep.method + '_' + ep.path)) {
+            starBtn.classList.add('pop-anim');
+        }
         starBtn.innerHTML = isBookmarked ? '★' : '☆';
         starBtn.title = isBookmarked ? "取消收藏" : "加入收藏";
         
@@ -1253,92 +1232,56 @@ document.addEventListener('DOMContentLoaded', async () => {
                 metaHtml += `<span class="bm-tag">${t}</span>`;
             });
             
-            metaHtml += `<button id="right-panel-bm-edit-btn" title="Edit alias & tags">✏️ Edit</button>`;
             metaContainer.innerHTML = metaHtml;
-            
-            document.getElementById('right-panel-bm-edit-btn').onclick = () => {
-                openRightPanelEditor(bmData);
-            };
         } else {
             metaContainer.innerHTML = `<span style="font-size:0.7rem; color:var(--text-secondary); margin-left: 4px;">Not bookmarked</span>`;
-            document.getElementById('right-panel-bm-editor').classList.remove('open');
         }
-    }
-    
-    function openRightPanelEditor(bmData) {
-        const editor = document.getElementById('right-panel-bm-editor');
-        const aliasInput = document.getElementById('right-panel-bm-alias-input');
-        const tagsContainer = document.getElementById('right-panel-bm-tags-container');
-        const tagInput = document.getElementById('right-panel-bm-tag-input');
-        
-        editor.classList.add('open');
-        aliasInput.value = bmData.alias || '';
-        
-        let tags = [...(bmData.userTags || [])];
-        
-        // Setup datalist for tag suggestions
-        let datalist = document.getElementById('all-tags-datalist');
-        if (!datalist) {
-            datalist = document.createElement('datalist');
-            datalist.id = 'all-tags-datalist';
-            document.body.appendChild(datalist);
+
+        let locateBtn = document.getElementById('right-panel-locate-btn');
+        if (!locateBtn) {
+            locateBtn = document.createElement('button');
+            locateBtn.id = 'right-panel-locate-btn';
+            locateBtn.title = 'Locate in API Tree';
+            locateBtn.innerHTML = '🎯 Locate in Tree';
+            locateBtn.style.cssText = 'font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: var(--overlay-10); border: 1px solid var(--panel-border); color: var(--text-secondary); cursor: pointer; margin-left: auto; transition: all 0.2s; white-space: nowrap;';
+            locateBtn.onmouseover = () => { locateBtn.style.color = 'var(--accent)'; locateBtn.style.borderColor = 'var(--accent)'; };
+            locateBtn.onmouseout = () => { locateBtn.style.color = 'var(--text-secondary)'; locateBtn.style.borderColor = 'var(--panel-border)'; };
+            document.getElementById('right-panel-bm-body').appendChild(locateBtn);
         }
-        const allTags = new Set();
-        getBookmarks().forEach(b => (b.userTags || []).forEach(t => allTags.add(t)));
-        datalist.innerHTML = '';
-        allTags.forEach(t => {
-            const opt = document.createElement('option');
-            opt.value = t;
-            datalist.appendChild(opt);
-        });
-        tagInput.setAttribute('list', 'all-tags-datalist');
-        
-        function renderTags() {
-            tagsContainer.innerHTML = '';
-            tags.forEach((t, i) => {
-                const chip = document.createElement('div');
-                chip.className = 'bm-tag-chip';
-                chip.innerHTML = `<span>${t}</span><button class="chip-remove" type="button" data-index="${i}">&times;</button>`;
-                tagsContainer.appendChild(chip);
-            });
-            tagsContainer.appendChild(tagInput);
-            
-            tagsContainer.querySelectorAll('.chip-remove').forEach(btn => {
-                btn.onclick = (e) => {
-                    const idx = parseInt(e.currentTarget.getAttribute('data-index'));
-                    tags.splice(idx, 1);
-                    renderTags();
-                };
-            });
-        }
-        
-        renderTags();
-        
-        tagInput.onkeydown = (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const val = tagInput.value.trim();
-                if (val && !tags.includes(val)) {
-                    tags.push(val);
-                    tagInput.value = '';
-                    renderTags();
+        locateBtn.onclick = () => {
+            const searchInput = document.getElementById('api-search-input');
+            if (searchInput && searchInput.value) {
+                searchInput.value = ''; // clear search so tree is fully visible
+                renderTree('');
+            }
+            // Locate element by tracking the unique string
+            const items = document.querySelectorAll('.api-item');
+            let targetItem = null;
+            // The active item is what is currently opened
+            for (let item of items) {
+                if (item.classList.contains('active')) {
+                    targetItem = item;
+                    break;
                 }
-            } else if (e.key === 'Backspace' && tagInput.value === '' && tags.length > 0) {
-                tags.pop();
-                renderTags();
             }
-        };
-        
-        document.getElementById('right-panel-bm-cancel').onclick = () => {
-            editor.classList.remove('open');
-        };
-        
-        document.getElementById('right-panel-bm-save').onclick = () => {
-            if (tagInput.value.trim()) {
-                if (!tags.includes(tagInput.value.trim())) tags.push(tagInput.value.trim());
+            
+            if (targetItem) {
+                let parent = targetItem.parentElement;
+                while (parent && !parent.classList.contains('api-category')) {
+                    parent = parent.parentElement;
+                }
+                if (parent) {
+                    const list = parent.querySelector('.api-list');
+                    if (list && list.style.display === 'none') {
+                        list.style.display = 'block';
+                        parent.querySelector('.api-category-title').classList.remove('collapsed');
+                    }
+                }
+                targetItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                targetItem.style.transition = 'background 0.5s';
+                targetItem.style.background = 'var(--accent-glow)';
+                setTimeout(() => targetItem.style.background = '', 1000);
             }
-            updateBookmarkMeta(bmData.path, bmData.method, aliasInput.value.trim(), tags);
-            editor.classList.remove('open');
         };
     }
 
