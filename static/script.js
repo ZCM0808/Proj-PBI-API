@@ -1233,8 +1233,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             
             metaContainer.innerHTML = metaHtml;
+            metaContainer.style.display = 'flex';
         } else {
-            metaContainer.innerHTML = `<span style="font-size: 0.75rem; color: var(--text-tertiary);">Not bookmarked</span>`;
+            metaContainer.innerHTML = '';
+            metaContainer.style.display = 'none';
         }
 
         let locateBtn = document.getElementById('right-panel-locate-btn');
