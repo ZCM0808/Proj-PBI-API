@@ -1234,7 +1234,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             metaContainer.innerHTML = metaHtml;
         } else {
-            metaContainer.innerHTML = `<span style="font-size:0.7rem; color:var(--text-secondary); margin-left: 4px;">Not bookmarked</span>`;
+            metaContainer.innerHTML = `<span style="font-size: 0.75rem; color: var(--text-tertiary);">Not bookmarked</span>`;
         }
 
         let locateBtn = document.getElementById('right-panel-locate-btn');
