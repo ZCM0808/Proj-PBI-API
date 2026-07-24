@@ -3891,3 +3891,80 @@ document.addEventListener('mousedown', (e) => {
     window.alert = function(message) {
         window.showCustomAlert(message);
     };
+
+    // --- AI Chat Logic ---
+    window.toggleAIChat = function() {
+        const win = document.getElementById('ai-chat-window');
+        if (win.style.opacity === '0' || !win.style.opacity) {
+            win.style.opacity = '1';
+            win.style.transform = 'scale(1) translateY(0)';
+            win.style.visibility = 'visible';
+            win.style.pointerEvents = 'auto';
+            setTimeout(() => document.getElementById('ai-chat-input').focus(), 250);
+        } else {
+            win.style.opacity = '0';
+            win.style.transform = 'scale(0.9) translateY(10px)';
+            win.style.visibility = 'hidden';
+            win.style.pointerEvents = 'none';
+        }
+    };
+
+    // Close AI window when clicking outside
+    document.addEventListener('mousedown', function(e) {
+        const win = document.getElementById('ai-chat-window');
+        const fab = document.getElementById('ai-chat-fab');
+        if (win && win.style.opacity === '1') {
+            if (!win.contains(e.target) && !fab.contains(e.target)) {
+                window.toggleAIChat();
+            }
+        }
+    });
+
+    window.sendAiMessage = async function() {
+        const input = document.getElementById('ai-chat-input');
+        const text = input.value.trim();
+        if (!text) return;
+
+        const msgs = document.getElementById('ai-chat-messages');
+
+        // Append User Message
+        const userDiv = document.createElement('div');
+        userDiv.style.cssText = 'align-self: flex-end; background: #3b82f6; color: white; padding: 10px 14px; border-radius: 12px; border-bottom-right-radius: 2px; max-width: 85%;';
+        userDiv.textContent = text;
+        msgs.appendChild(userDiv);
+
+        input.value = '';
+        msgs.scrollTop = msgs.scrollHeight;
+
+        // Append Loading Message
+        const loadingDiv = document.createElement('div');
+        loadingDiv.style.cssText = 'align-self: flex-start; background: var(--overlay-10); padding: 10px 14px; border-radius: 12px; border-bottom-left-radius: 2px; max-width: 85%; color: var(--text-secondary);';
+        loadingDiv.textContent = '思考中...';
+        msgs.appendChild(loadingDiv);
+        msgs.scrollTop = msgs.scrollHeight;
+
+        try {
+            const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text })
+            });
+            const data = await res.json();
+            
+            loadingDiv.style.color = 'var(--text-primary)';
+            if (data.success) {
+                if (typeof marked !== 'undefined') {
+                    loadingDiv.innerHTML = marked.parse(data.reply);
+                } else {
+                    loadingDiv.textContent = data.reply;
+                }
+            } else {
+                loadingDiv.textContent = "抱歉，无法连接到 AI：" + (data.message || "未知错误");
+                loadingDiv.style.color = "#ef4444";
+            }
+        } catch (e) {
+            loadingDiv.textContent = "网络请求失败，无法连接到 AI。";
+            loadingDiv.style.color = "#ef4444";
+        }
+        msgs.scrollTop = msgs.scrollHeight;
+    };

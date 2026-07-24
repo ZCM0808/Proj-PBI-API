@@ -126,6 +126,27 @@ async def login(req: LoginRequest, request: Request, response: Response):
     
     return JSONResponse(status_code=401, content={"success": False, "message": msg})
 
+class ChatRequest(BaseModel):
+    message: str
+
+@app.post("/api/chat")
+async def ai_chat(req: ChatRequest):
+    api_key = os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        return {"success": False, "message": "Backend missing GOOGLE_API_KEY in .env"}
+    
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        response = await asyncio.to_thread(
+            model.generate_content,
+            f"You are a helpful assistant for Power BI and data engineering. User says: {req.message}"
+        )
+        return {"success": True, "reply": response.text}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
 @app.get("/login", response_class=HTMLResponse)
 def get_login_ui(request: Request):
     device_id = request.cookies.get("pbi_device_id")
