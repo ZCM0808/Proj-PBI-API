@@ -1484,10 +1484,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const primaryName = ep.operationId ? ep.operationId : ep.name;
                 const englishDesc = ep.name || "No description";
                 let chineseDesc = zhTranslated || "暂无描述";
-                // If the translation still contains english words, it means it's a long sentence or unmapped phrase
-                if (/[a-zA-Z]{2,}/.test(chineseDesc)) {
-                    chineseDesc = "暂无对应翻译";
-                }
                 
                 const bmData = getBookmarkMeta(ep.path, ep.method);
                 const isBookmarked = !!bmData;
