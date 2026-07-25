@@ -3920,6 +3920,34 @@ document.addEventListener('mousedown', (e) => {
         }
     });
 
+    window.aiSessionId = window.aiSessionId || null;
+
+    window.isAutoApprove = false;
+    window.toggleAutoApprove = function() {
+        window.isAutoApprove = !window.isAutoApprove;
+        const btn = document.getElementById('ai-auto-approve-btn');
+        const icon = document.getElementById('auto-approve-icon');
+        const text = document.getElementById('auto-approve-text');
+        if (window.isAutoApprove) {
+            btn.style.borderColor = '#22c55e';
+            btn.style.color = '#22c55e';
+            btn.title = '免审模式已开启 (点击关闭)';
+            icon.textContent = '🔓';
+            text.textContent = '免审模式';
+            btn.style.transform = 'scale(1.05)';
+            setTimeout(() => btn.style.transform = 'scale(1)', 150);
+        } else {
+            btn.style.borderColor = 'var(--panel-border)';
+            btn.style.color = 'var(--text-secondary)';
+            btn.title = '审批模式已开启 (点击开启免审)';
+            icon.textContent = '🔒';
+            text.textContent = '审批模式';
+            btn.style.transform = 'scale(0.95)';
+            setTimeout(() => btn.style.transform = 'scale(1)', 150);
+        }
+    };
+
+
     window.sendAiMessage = async function() {
         const input = document.getElementById('ai-chat-input');
         const text = input.value.trim();
@@ -3927,40 +3955,152 @@ document.addEventListener('mousedown', (e) => {
 
         const msgs = document.getElementById('ai-chat-messages');
 
-        // Append User Message
+        // Append User Message with smooth entry animation
         const userDiv = document.createElement('div');
-        userDiv.style.cssText = 'align-self: flex-end; background: #3b82f6; color: white; padding: 10px 14px; border-radius: 12px; border-bottom-right-radius: 2px; max-width: 85%;';
+        userDiv.style.cssText = 'align-self: flex-end; background: #3b82f6; color: white; padding: 10px 14px; border-radius: 12px; border-bottom-right-radius: 2px; max-width: 85%; opacity: 0; transform: translateY(10px); transition: all 0.3s ease-out;';
         userDiv.textContent = text;
         msgs.appendChild(userDiv);
+        
+        // Trigger reflow to ensure CSS transition works
+        void userDiv.offsetWidth;
+        userDiv.style.opacity = '1';
+        userDiv.style.transform = 'translateY(0)';
 
         input.value = '';
         msgs.scrollTop = msgs.scrollHeight;
 
-        // Append Loading Message
+        await window.handleAiStream('/api/chat', { message: text, session_id: window.aiSessionId });
+    };
+
+    window.handleAiStream = async function(url, payload) {
+        const msgs = document.getElementById('ai-chat-messages');
         const loadingDiv = document.createElement('div');
-        loadingDiv.style.cssText = 'align-self: flex-start; background: var(--overlay-10); padding: 10px 14px; border-radius: 12px; border-bottom-left-radius: 2px; max-width: 85%; color: var(--text-secondary);';
+        loadingDiv.style.cssText = 'align-self: flex-start; background: var(--overlay-10); padding: 10px 14px; border-radius: 12px; border-bottom-left-radius: 2px; max-width: 85%; color: var(--text-secondary); opacity: 0; transform: translateY(10px); transition: all 0.3s ease-out;';
         loadingDiv.textContent = '思考中...';
         msgs.appendChild(loadingDiv);
+        
+        void loadingDiv.offsetWidth;
+        loadingDiv.style.opacity = '1';
+        loadingDiv.style.transform = 'translateY(0)';
         msgs.scrollTop = msgs.scrollHeight;
 
         try {
-            const res = await fetch('/api/chat', {
+            const res = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: text })
+                body: JSON.stringify(payload)
             });
-            const data = await res.json();
-            
-            loadingDiv.style.color = 'var(--text-primary)';
-            if (data.success) {
-                if (typeof marked !== 'undefined') {
-                    loadingDiv.innerHTML = marked.parse(data.reply);
-                } else {
-                    loadingDiv.textContent = data.reply;
-                }
-            } else {
+
+            if (!res.ok) {
+                const data = await res.json();
                 loadingDiv.textContent = "抱歉，无法连接到 AI：" + (data.message || "未知错误");
                 loadingDiv.style.color = "#ef4444";
+                return;
+            }
+
+            loadingDiv.textContent = '';
+            loadingDiv.style.color = 'var(--text-primary)';
+            let fullText = '';
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let buffer = '';
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) {
+                    if (buffer.trim()) processStreamLine(buffer);
+                    break;
+                }
+                
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop();
+                
+                for (const line of lines) {
+                    processStreamLine(line);
+                }
+            }
+
+            function processStreamLine(line) {
+                if (line.trim().startsWith('data: ')) {
+                    const dataStr = line.replace('data: ', '').trim();
+                    if (dataStr === '[DONE]') return;
+                    if (!dataStr) return;
+                    
+                    try {
+                        const data = JSON.parse(dataStr);
+                        if (data.success) {
+                            if (data.type === 'session_info') {
+                                window.aiSessionId = data.session_id;
+                            } else if (data.type === 'tool_request') {
+                                // Hide the empty text bubble when a tool is requested
+                                if (!fullText.trim()) {
+                                    loadingDiv.style.display = 'none';
+                                }
+                                
+                                const toolCard = document.createElement('div');
+                                toolCard.style.cssText = 'align-self: flex-start; background: rgba(255,165,0,0.1); border: 1px solid rgba(255,165,0,0.4); padding: 12px; border-radius: 12px; max-width: 85%; color: var(--text-primary); margin-top: 8px; opacity: 0; transform: scale(0.95); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);';
+                                toolCard.innerHTML = `
+                                    <div style="font-weight: bold; margin-bottom: 8px; color: #ff9800; display: flex; align-items: center; gap: 6px;">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                                        AI 请求执行高危操作
+                                    </div>
+                                    <div style="font-size: 0.85rem; margin-bottom: 4px;">工具名称: <code style="background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px;">${data.name}</code></div>
+                                    <pre style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; font-size: 0.8rem; overflow-x: auto; margin-bottom: 12px; white-space: pre-wrap; color: #a5d6ff;">${JSON.stringify(data.args, null, 2)}</pre>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button class="approve-btn" style="flex: 1; background: #22c55e; color: white; border: none; padding: 6px 0; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(34,197,94,0.3)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'">✅ 批准执行</button>
+                                        <button class="reject-btn" style="flex: 1; background: #ef4444; color: white; border: none; padding: 6px 0; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(239,68,68,0.3)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'">❌ 拒绝</button>
+                                    </div>
+                                `;
+                                msgs.appendChild(toolCard);
+                                
+                                void toolCard.offsetWidth;
+                                toolCard.style.opacity = '1';
+                                toolCard.style.transform = 'scale(1)';
+                                msgs.scrollTop = msgs.scrollHeight;
+
+                                const btnApprove = toolCard.querySelector('.approve-btn');
+                                const btnReject = toolCard.querySelector('.reject-btn');
+                                
+                                const handleAction = (approved) => {
+                                    btnApprove.disabled = true;
+                                    btnReject.disabled = true;
+                                    btnApprove.style.opacity = '0.4';
+                                    btnReject.style.opacity = '0.4';
+                                    btnApprove.style.cursor = 'not-allowed';
+                                    btnReject.style.cursor = 'not-allowed';
+                                    btnApprove.innerHTML = approved ? '执行中...' : '已拒绝';
+                                    
+                                    const actionPayload = {
+                                        session_id: window.aiSessionId,
+                                        tool_name: data.name,
+                                        tool_args: data.args,
+                                        approved: approved
+                                    };
+                                    // Make the call to approve endpoint and resume chat
+                                    window.handleAiStream('/api/tool/approve', actionPayload);
+                                };
+
+                                btnApprove.onclick = () => handleAction(true);
+                                btnReject.onclick = () => handleAction(false);
+                            } else if (data.type === 'text') {
+                                fullText += data.text;
+                                if (typeof marked !== 'undefined') {
+                                    loadingDiv.innerHTML = marked.parse(fullText);
+                                } else {
+                                    loadingDiv.textContent = fullText;
+                                }
+                                msgs.scrollTop = msgs.scrollHeight;
+                            }
+                        } else {
+                            loadingDiv.textContent = "抱歉，发生错误：" + (data.message || "未知错误");
+                            loadingDiv.style.color = "#ef4444";
+                        }
+                    } catch (e) {
+                        // ignore incomplete json parses gracefully
+                    }
+                }
             }
         } catch (e) {
             loadingDiv.textContent = "网络请求失败，无法连接到 AI。";

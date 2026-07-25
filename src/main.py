@@ -126,24 +126,243 @@ async def login(req: LoginRequest, request: Request, response: Response):
     
     return JSONResponse(status_code=401, content={"success": False, "message": msg})
 
+_current_api_key = None
+_model_instance = None
+_project_memory = ""
+
+def get_project_memory():
+    global _project_memory
+    if not _project_memory:
+        try:
+            # Read PROJECT_MEMORY.md from the root directory
+            memory_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "PROJECT_MEMORY.md")
+            if os.path.exists(memory_path):
+                with open(memory_path, "r", encoding="utf-8") as f:
+                    _project_memory = f.read()
+            else:
+                _project_memory = "You are a helpful assistant for Power BI and data engineering."
+        except Exception as e:
+            _project_memory = f"You are a helpful assistant. (Failed to load knowledge base: {e})"
+    return _project_memory
+
+@app.on_event("startup")
+async def warmup_ai_connection():
+    # 异步在后台静默预热长连接，避免阻塞服务器启动
+    async def _warmup():
+        import google.generativeai as genai
+        global _current_api_key, _model_instance
+        os.environ["GRPC_DNS_RESOLVER"] = "native"
+        keys = [os.getenv("GEMINI_API_KEY_GG3"), os.getenv("GEMINI_API_KEY_GGCM"), os.getenv("GOOGLE_API_KEY")]
+        valid_keys = [k for k in keys if k]
+        if not valid_keys:
+            return
+        
+        print("Warming up AI connection in background...")
+        for api_key in valid_keys:
+            try:
+                genai.configure(api_key=api_key)
+                _model_instance = genai.GenerativeModel("gemini-3.5-flash")
+                # 尝试一个请求，禁用 retry 以便快速失败
+                await _model_instance.generate_content_async(
+                    "ping", 
+                    request_options={"timeout": 5.0}
+                )
+                _current_api_key = api_key
+                print(f"AI connection warmed up successfully with key: {api_key[:5]}***")
+                return
+            except Exception as e:
+                print(f"Key {api_key[:5]}*** failed during warmup: {e}. Trying next...")
+                
+        print("All keys failed during warmup. Will retry on user request.")
+            
+    asyncio.create_task(_warmup())
+
 class ChatRequest(BaseModel):
     message: str
+    session_id: Optional[str] = None
+
+class ToolApproveRequest(BaseModel):
+    session_id: str
+    tool_name: str
+    tool_args: dict
+    approved: bool
+
+# 全局状态，用于保存用户的持续会话上下文 (因为工具调用需要多轮记忆)
+_chat_sessions = {}
+
+def run_powershell(command: str) -> str:
+    """Executes a PowerShell command on the host machine and returns the output. USE CAREFULLY."""
+    print(f"Executing Powershell via AI Tool: {command}")
+    try:
+        # 使用 timeout 防止后台阻塞
+        result = subprocess.run(["powershell", "-Command", command], capture_output=True, text=True, timeout=15)
+        out = result.stdout[:2000] + ("\n...[truncated]" if len(result.stdout) > 2000 else "")
+        err = result.stderr[:2000] + ("\n...[truncated]" if len(result.stderr) > 2000 else "")
+        res = ""
+        if out: res += f"STDOUT:\n{out}\n"
+        if err: res += f"STDERR:\n{err}\n"
+        if not res: res = "Command executed successfully (no output)."
+        return res
+    except Exception as e:
+        return f"Error executing command: {str(e)}"
+
+def _get_valid_api_keys():
+    keys = [
+        os.getenv("GEMINI_API_KEY_GG3"),
+        os.getenv("GEMINI_API_KEY_GGCM"),
+        os.getenv("GOOGLE_API_KEY")
+    ]
+    return [k for k in keys if k]
 
 @app.post("/api/chat")
 async def ai_chat(req: ChatRequest):
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if not api_key:
-        return {"success": False, "message": "Backend missing GOOGLE_API_KEY in .env"}
+    import google.generativeai as genai
+    import json
+    import uuid
+    global _current_api_key
     
+    os.environ["GRPC_DNS_RESOLVER"] = "native"
+    valid_keys = _get_valid_api_keys()
+    
+    if not valid_keys:
+        return {"success": False, "message": "Backend missing GEMINI_API_KEY in .env"}
+    
+    # 优先使用已证明可用的 Key，防止掉入 429 陷阱
+    if _current_api_key and _current_api_key in valid_keys:
+        valid_keys.remove(_current_api_key)
+        valid_keys.insert(0, _current_api_key)
+        
+    session_id = req.session_id or str(uuid.uuid4())
+    chat = _chat_sessions.get(session_id)
+    
+    last_error = None
+    if not chat:
+        for api_key in valid_keys:
+            try:
+                genai.configure(api_key=api_key)
+                # 向模型注入工具！(赋能执行系统命令)
+                model = genai.GenerativeModel("gemini-3.5-flash", tools=[run_powershell])
+                chat = model.start_chat(history=[])
+                _chat_sessions[session_id] = chat
+                _current_api_key = api_key
+                break
+            except Exception as e:
+                last_error = str(e)
+                continue
+                
+    if not chat:
+        return {"success": False, "message": f"All API keys failed to init session. Error: {last_error}"}
+
+    # 如果是第一次聊天，主动把项目知识库喂进去
+    full_message = req.message
+    if len(chat.history) == 0:
+        project_kb = get_project_memory()
+        full_message = f"=== 专属项目知识库 ===\n{project_kb}\n\n=== 用户请求 ===\n{req.message}"
+        
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        response = await asyncio.to_thread(
-            model.generate_content,
-            f"You are a helpful assistant for Power BI and data engineering. User says: {req.message}"
+        response = await chat.send_message_async(full_message, stream=True)
+        
+        async def event_generator():
+            try:
+                # 告诉前端当前的 Session ID
+                yield f"data: {json.dumps({'success': True, 'type': 'session_info', 'session_id': session_id})}\n\n"
+                
+                async for chunk in response:
+                    # 拦截特殊的 Tool Call（函数调用申请）
+                    if getattr(chunk, 'parts', None):
+                        for part in chunk.parts:
+                            if getattr(part, 'function_call', None):
+                                fc = part.function_call
+                                args_dict = {}
+                                try:
+                                    args_dict = dict(fc.args) if hasattr(fc, 'args') else {}
+                                except:
+                                    # Fallback for protobuf mapping
+                                    args_dict = {k: v for k, v in fc.args.items()} if hasattr(fc.args, 'items') else {}
+                                
+                                payload = {
+                                    'success': True,
+                                    'type': 'tool_request',
+                                    'name': fc.name,
+                                    'args': args_dict
+                                }
+                                # 向前端抛出拦截卡片，并中断本次回复流！等待前端人工审批
+                                yield f"data: {json.dumps(payload)}\n\n"
+                                yield "data: [DONE]\n\n"
+                                return
+                                
+                    # 普通聊天文本，正常输出
+                    try:
+                        if chunk.text:
+                            yield f"data: {json.dumps({'success': True, 'type': 'text', 'text': chunk.text})}\n\n"
+                    except ValueError:
+                        # 兼容有些 SDK 版本在存在 function_call 时访问 text 会报错
+                        pass
+                yield "data: [DONE]\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'success': False, 'message': str(e)})}\n\n"
+                
+        return StreamingResponse(event_generator(), media_type="text/event-stream")
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+@app.post("/api/tool/approve")
+async def ai_tool_approve(req: ToolApproveRequest):
+    """前端点击批准/拒绝后，回调此接口执行工具，并继续聊天"""
+    import google.generativeai as genai
+    from google.generativeai.types import content_types
+    import json
+    
+    chat = _chat_sessions.get(req.session_id)
+    if not chat:
+        return {"success": False, "message": "Session expired or not found. Please start a new chat."}
+        
+    if not req.approved:
+        tool_result = "User REJECTED the execution of this command for security reasons. Apologize and propose a different solution."
+    else:
+        if req.tool_name == "run_powershell":
+            import asyncio
+            tool_result = await asyncio.to_thread(run_powershell, req.tool_args.get("command", ""))
+        else:
+            tool_result = f"Unknown tool: {req.tool_name}"
+            
+    try:
+        # 将工具执行结果送回给 AI 大脑，触发它继续输出结果
+        response = await chat.send_message_async(
+            content_types.Part.from_function_response(
+                name=req.tool_name,
+                response={"result": tool_result}
+            ),
+            stream=True
         )
-        return {"success": True, "reply": response.text}
+        
+        # 原封不动复用上面的流式下发器逻辑
+        async def event_generator():
+            try:
+                async for chunk in response:
+                    # 再次检查是否产生了连续的工具调用
+                    if getattr(chunk, 'parts', None):
+                        for part in chunk.parts:
+                            if getattr(part, 'function_call', None):
+                                fc = part.function_call
+                                args_dict = {}
+                                try:
+                                    args_dict = dict(fc.args) if hasattr(fc, 'args') else {}
+                                except:
+                                    args_dict = {k: v for k, v in fc.args.items()} if hasattr(fc.args, 'items') else {}
+                                yield f"data: {json.dumps({'success': True, 'type': 'tool_request', 'name': fc.name, 'args': args_dict})}\n\n"
+                                yield "data: [DONE]\n\n"
+                                return
+                    try:
+                        if chunk.text:
+                            yield f"data: {json.dumps({'success': True, 'type': 'text', 'text': chunk.text})}\n\n"
+                    except ValueError:
+                        pass
+                yield "data: [DONE]\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'success': False, 'message': str(e)})}\n\n"
+                
+        return StreamingResponse(event_generator(), media_type="text/event-stream")
     except Exception as e:
         return {"success": False, "message": str(e)}
 
