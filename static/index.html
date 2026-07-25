@@ -515,7 +515,7 @@
 
     <!-- Scan Results Modal -->
     <div id="scan-modal" class="modal-overlay" style="display: none; z-index: 2000;">
-        <div class="modal-content glass-panel" style="width: 500px; padding: 16px;">
+        <div class="modal-content glass-panel" style="width: 90%; max-width: 500px; padding: 16px;">
             <div class="modal-header" style="margin-bottom: 12px;">
                 <h3 id="scan-modal-title" style="margin: 0; font-size: 1rem;">🔍 扫描结果 (Scan Results)</h3>
                 <button type="button" onclick="closeModalWithAnimation('scan-modal')" class="close-btn" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
@@ -586,11 +586,11 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
-    <script src="/static/script.js?v=20260725_v8_agent_agent"></script>
+    <script src="/static/script.js?v=20260725_v9_mobile"></script>
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: none; z-index: 100000;">
-        <div class="modal-content glass-panel" style="width: 400px; padding: 20px; position: relative;" id="custom-dialog-content">
+        <div class="modal-content glass-panel" style="width: 90%; max-width: 400px; padding: 20px; position: relative;" id="custom-dialog-content">
             <div class="modal-header" style="margin-bottom: 12px; cursor: move;">
                 <h3 id="custom-dialog-title" style="margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">🔔 System Message</h3>
                 <button type="button" class="close-btn" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
@@ -603,12 +603,12 @@
     </div>
 
     <!-- AI Chat FAB -->
-    <div id="ai-chat-fab" onclick="toggleAIChat()" style="position: fixed; bottom: 30px; right: 30px; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4); cursor: pointer; z-index: 9999; transition: transform 0.2s ease;">
+    <div id="ai-chat-fab" onclick="toggleAIChat()" style="position: fixed; bottom: 30px; right: 15px; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4); cursor: pointer; z-index: 9999; transition: transform 0.2s ease;">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
     </div>
 
     <!-- AI Chat Window -->
-    <div id="ai-chat-window" class="glass-panel" style="position: fixed; bottom: 100px; right: 30px; width: 350px; height: 500px; flex-direction: column; z-index: 10000; box-shadow: 0 10px 30px var(--shadow-dark); border-radius: 12px; overflow: hidden; transform-origin: bottom right; background: var(--panel-bg); border: 1px solid var(--panel-border); opacity: 0; transform: scale(0.9) translateY(10px); visibility: hidden; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), visibility 0.25s; display: flex;">
+    <div id="ai-chat-window" class="glass-panel" style="position: fixed; bottom: 100px; right: 10px; width: calc(100vw - 20px); max-width: 380px; height: 500px; flex-direction: column; z-index: 10000; box-shadow: 0 10px 30px var(--shadow-dark); border-radius: 12px; overflow: hidden; transform-origin: bottom right; background: var(--panel-bg); border: 1px solid var(--panel-border); opacity: 0; transform: scale(0.9) translateY(10px); visibility: hidden; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), visibility 0.25s; display: flex;">
         <div class="modal-header" style="padding: 15px; background: var(--overlay-5); border-bottom: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center; cursor: move;" id="ai-chat-header">
             <h3 style="margin: 0; font-size: 1rem; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">✨ AI 智能助手</h3>
             <div style="display: flex; align-items: center; gap: 12px;">
