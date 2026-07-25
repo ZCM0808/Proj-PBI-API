@@ -2112,8 +2112,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 pathText.textContent = endpoint;
                 
                 modal.style.display = 'flex';
-                modal.offsetHeight; // 强制触发 DOM 重绘以触发 CSS 过渡动画
+                modal.offsetHeight; // force reflow
                 modal.classList.add('show');
+                proceedBtn.disabled = false; // re-enable button
+                proceedBtn.style.opacity = '1';
             } else {
                 executeRequest();
             }
@@ -2141,6 +2143,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             hideModalWithAnimation();
         });
         proceedBtn.addEventListener('click', () => {
+            proceedBtn.disabled = true; // Extreme Boundary Defense: prevent double submit
+            proceedBtn.style.opacity = '0.5';
             hideModalWithAnimation();
             executeRequest();
         });
@@ -2427,10 +2431,29 @@ const loadReqHistory = (searchTerm = "") => {
 
         document.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
-            const dx = e.clientX - startX;
-            const dy = e.clientY - startY;
-            modalContent.style.left = `${initialLeft + dx}px`;
-            modalContent.style.top = `${initialTop + dy}px`;
+            let dx = e.clientX - startX;
+            let dy = e.clientY - startY;
+            
+            // Extreme Boundary Defense: Prevent dragging out of viewport
+            const rect = modalContent.getBoundingClientRect();
+            const winWidth = window.innerWidth;
+            const winHeight = window.innerHeight;
+            
+            // Calculate natural center offsets
+            const maxLeft = (winWidth - rect.width) / 2;
+            const maxTop = (winHeight - rect.height) / 2;
+            
+            let newLeft = initialLeft + dx;
+            let newTop = initialTop + dy;
+            
+            // Clamp values
+            if (newLeft < -maxLeft) newLeft = -maxLeft;
+            if (newLeft > maxLeft) newLeft = maxLeft;
+            if (newTop < -maxTop) newTop = -maxTop;
+            if (newTop > maxTop) newTop = maxTop;
+            
+            modalContent.style.left = `${newLeft}px`;
+            modalContent.style.top = `${newTop}px`;
         });
 
         document.addEventListener('mouseup', () => {
@@ -3865,17 +3888,27 @@ document.addEventListener('mousedown', (e) => {
                     Confirm
                 </button>
             `;
-            
             const close = (result) => {
-                modal.style.display = 'none';
+                modal.style.opacity = '0';
+                content.style.transform = 'scale(0.95)';
+                setTimeout(() => { modal.style.visibility = 'hidden'; }, 250);
                 resolve(result);
             };
+
             
             document.getElementById('custom-confirm-cancel-btn').onclick = () => close(false);
-            document.getElementById('custom-confirm-ok-btn').onclick = () => close(true);
+            document.getElementById('custom-confirm-ok-btn').onclick = function() {
+                this.disabled = true;
+                this.style.opacity = '0.5';
+                close(true);
+            };
             modal.querySelector('.close-btn').onclick = () => close(false);
             
+            // Animation logic
             modal.style.display = 'flex';
+            modal.style.visibility = 'visible';
+            modal.style.opacity = '1';
+            content.style.transform = 'scale(1)';
         });
     };
 
