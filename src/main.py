@@ -6,7 +6,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import uvicorn
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -188,7 +188,7 @@ class ToolApproveRequest(BaseModel):
     approved: bool
 
 # 全局状态，用于保存用户的持续会话上下文 (因为工具调用需要多轮记忆)
-_chat_sessions = {}
+_chat_sessions: Dict[str, Any] = {}
 
 def run_powershell(command: str) -> str:
     """Executes a PowerShell command on the host machine and returns the output. USE CAREFULLY."""
@@ -202,9 +202,12 @@ def run_powershell(command: str) -> str:
         out = result.stdout[:2000] + ("\n...[truncated]" if len(result.stdout) > 2000 else "")
         err = result.stderr[:2000] + ("\n...[truncated]" if len(result.stderr) > 2000 else "")
         res = ""
-        if out: res += f"STDOUT:\n{out}\n"
-        if err: res += f"STDERR:\n{err}\n"
-        if not res: res = "Command executed successfully (no output)."
+        if out:
+            res += f"STDOUT:\n{out}\n"
+        if err:
+            res += f"STDERR:\n{err}\n"
+        if not res:
+            res = "Command executed successfully (no output)."
         return res
     except Exception as e:
         return f"Error executing command: {str(e)}"
@@ -279,7 +282,7 @@ async def ai_chat(req: ChatRequest):
                                 args_dict = {}
                                 try:
                                     args_dict = dict(fc.args) if hasattr(fc, 'args') else {}
-                                except:
+                                except Exception:
                                     # Fallback for protobuf mapping
                                     args_dict = {k: v for k, v in fc.args.items()} if hasattr(fc.args, 'items') else {}
                                 
@@ -312,7 +315,6 @@ async def ai_chat(req: ChatRequest):
 @app.post("/api/tool/approve")
 async def ai_tool_approve(req: ToolApproveRequest):
     """前端点击批准/拒绝后，回调此接口执行工具，并继续聊天"""
-    import google.generativeai as genai
     from google.generativeai.types import content_types
     import json
     
@@ -332,7 +334,7 @@ async def ai_tool_approve(req: ToolApproveRequest):
     try:
         # 将工具执行结果送回给 AI 大脑，触发它继续输出结果
         response = await chat.send_message_async(
-            content_types.Part.from_function_response(
+            content_types.Part.from_function_response(  # type: ignore
                 name=req.tool_name,
                 response={"result": tool_result}
             ),
@@ -351,7 +353,7 @@ async def ai_tool_approve(req: ToolApproveRequest):
                                 args_dict = {}
                                 try:
                                     args_dict = dict(fc.args) if hasattr(fc, 'args') else {}
-                                except:
+                                except Exception:
                                     args_dict = {k: v for k, v in fc.args.items()} if hasattr(fc.args, 'items') else {}
                                 yield f"data: {json.dumps({'success': True, 'type': 'tool_request', 'name': fc.name, 'args': args_dict})}\n\n"
                                 yield "data: [DONE]\n\n"
