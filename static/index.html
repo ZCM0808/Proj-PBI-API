@@ -487,7 +487,7 @@
                     <button type="button" id="export-local-btn" class="btn-cancel" style="background: var(--input-bg); color: var(--text-secondary); border: 1px solid var(--panel-border); border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; cursor: pointer;" title="导出所有设置、书签和历史记录 (Export All Settings, Bookmarks & History)">📤 导出 (Export)</button>
                     <button type="button" id="import-local-btn" class="btn-cancel" style="background: var(--input-bg); color: var(--text-secondary); border: 1px solid var(--panel-border); border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; cursor: pointer;" title="导入所有设置、书签和历史记录 (Import All Settings, Bookmarks & History)">📥 导入 (Import)</button>
                     <input type="file" id="import-local-file" style="display: none;" accept=".json">
-                    <button type="submit" id="save-settings-btn" class="btn-settings-save">💾 保存配置 (Save & Apply)</button>
+                    <button type="submit" id="save-settings-btn" class="btn-action-primary">💾 保存配置 (Save & Apply)</button>
                 </div>
             </form>
         </div>
@@ -586,11 +586,11 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
-    <script src="/static/script.js?v=20260725_v9_mobile"></script>
+    <script src="/static/script.js?v=20260725_v13_animated"></script>
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
-    <div id="custom-dialog-modal" class="modal-overlay" style="display: none; z-index: 100000;">
-        <div class="modal-content glass-panel" style="width: 90%; max-width: 400px; padding: 20px; position: relative;" id="custom-dialog-content">
+    <div id="custom-dialog-modal" class="modal-overlay" style="display: flex; z-index: 100000; opacity: 0; visibility: hidden; transition: opacity 0.25s ease;">
+        <div class="modal-content glass-panel" style="width: 90%; max-width: 400px; padding: 20px; position: relative; transform: scale(0.95); transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);" id="custom-dialog-content">
             <div class="modal-header" style="margin-bottom: 12px; cursor: move;">
                 <h3 id="custom-dialog-title" style="margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">🔔 System Message</h3>
                 <button type="button" class="close-btn" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
@@ -616,7 +616,7 @@
                     <span id="auto-approve-icon">🔒</span>
                     <span id="auto-approve-text">审批模式</span>
                 </button>
-                <button type="button" class="close-btn" onclick="toggleAIChat()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
+                <button type="button" class="close-btn" title="Close" onclick="toggleAIChat()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
             </div>
         </div>
         <div id="ai-chat-messages" style="flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; font-size: 0.9rem; color: var(--text-primary);">

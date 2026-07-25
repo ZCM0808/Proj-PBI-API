@@ -3839,10 +3839,6 @@ document.addEventListener('mousedown', (e) => {
             modal.querySelector('.close-btn').onclick = close;
             
             modal.style.display = 'flex';
-            
-            if (window.makeDraggable) {
-                window.makeDraggable(content, modal.querySelector('.modal-header'));
-            }
         });
     };
 
@@ -3880,12 +3876,19 @@ document.addEventListener('mousedown', (e) => {
             modal.querySelector('.close-btn').onclick = () => close(false);
             
             modal.style.display = 'flex';
-            
-            if (window.makeDraggable) {
-                window.makeDraggable(content, modal.querySelector('.modal-header'));
-            }
         });
     };
+
+    
+    // Initialize custom dialog draggable ONCE
+    const customModal = document.getElementById('custom-dialog-modal');
+    if (customModal && window.makeDraggable) {
+        const customContent = customModal.querySelector('.modal-content');
+        const customHeader = customModal.querySelector('.modal-header');
+        if (customContent && customHeader) {
+            window.makeDraggable(customContent, customHeader);
+        }
+    }
 
     // Global override of standard window.alert
     window.alert = function(message) {
@@ -3893,9 +3896,23 @@ document.addEventListener('mousedown', (e) => {
     };
 
     // --- AI Chat Logic ---
+    
+    // Initialize AI chat draggable
+    const aiWin = document.getElementById('ai-chat-window');
+    const aiHeader = document.getElementById('ai-chat-header');
+    if (aiWin && aiHeader && window.makeDraggable) {
+        window.makeDraggable(aiWin, aiHeader);
+    }
+
     window.toggleAIChat = function() {
         const win = document.getElementById('ai-chat-window');
+        
         if (win.style.opacity === '0' || !win.style.opacity) {
+            win.style.left = '';
+            win.style.top = '';
+            win.style.right = '20px';
+            win.style.bottom = '80px';
+
             win.style.opacity = '1';
             win.style.transform = 'scale(1) translateY(0)';
             win.style.visibility = 'visible';
