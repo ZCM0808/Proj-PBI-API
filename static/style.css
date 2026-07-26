@@ -2437,3 +2437,43 @@ json-viewer {
     -webkit-backdrop-filter: blur(24px);
     box-shadow: 0 10px 50px var(--shadow-dark);
 }
+
+/* Workflow UI Styles */
+.wf-input { background: var(--input-bg); border: 1px solid var(--panel-border); color: var(--text-primary); padding: 8px; border-radius: 6px; width: 100%; outline: none; font-family: inherit; transition: border-color 0.2s; box-sizing: border-box; }
+.wf-input:focus { border-color: var(--accent); }
+.wf-step { background: rgba(0, 0, 0, 0.2); border: 1px solid var(--panel-border); border-radius: 8px; padding: 6px 10px; transition: border-color 0.3s; }
+.wf-step.active { border-color: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
+.wf-step-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px !important; }
+.wf-step-title { font-weight: 600; color: var(--accent); font-size: 0.8rem !important; margin: 0 !important; line-height: 1 !important; }
+.wf-console { background: #0b0c10; color: #a5d6ff; padding: 4px; border-radius: 4px; font-size: 0.7rem; font-family: 'Fira Code', monospace; min-height: 70px; max-height: 180px; overflow-y: auto; margin: 0; white-space: pre-wrap; border: 1px solid rgba(255,255,255,0.05); }
+.wf-step-btn { padding: 4px 10px !important; font-size: 0.75rem !important; height: auto !important; border-radius: 6px !important; line-height: 1 !important; }
+.wf-step-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.wf-copy-btn { position: absolute; top: 6px; right: 6px; background: rgba(255, 255, 255, 0.1); border: none; color: var(--text-secondary); border-radius: 4px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
+.wf-copy-btn:hover { background: rgba(255, 255, 255, 0.2); color: var(--text-primary); }
+
+/* =========================================
+   Global Select (Dropdown) Dark Mode Optimizations
+   ========================================= */
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23a78bfa%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 10px auto;
+    padding-right: 32px !important;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+select:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 8px rgba(167, 139, 250, 0.1);
+}
+
+select option {
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    padding: 8px;
+}

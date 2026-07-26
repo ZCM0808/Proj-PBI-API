@@ -4158,3 +4158,494 @@ document.addEventListener('mousedown', (e) => {
         }
         msgs.scrollTop = msgs.scrollHeight;
     };
+
+    // --- Workflow Modal Logic ---
+    const btnWorkflows = document.getElementById('btn-workflows');
+    const workflowModal = document.getElementById('workflow-modal');
+    const closeWorkflowBtn = document.getElementById('close-workflow-btn');
+    const wfContent = document.getElementById('workflow-modal-content');
+    
+    let currentExportId = null;
+    let isWorkflowRunning = false;
+
+    if (btnWorkflows && workflowModal) {
+
+
+        btnWorkflows.addEventListener('click', () => {
+            if (window.makeDraggable && !wfContent.hasAttribute('data-drag-init')) {
+                window.makeDraggable(wfContent, wfContent.querySelector('.modal-header'));
+                wfContent.setAttribute('data-drag-init', 'true');
+            }
+            
+            wfContent.style.left = '0px';
+            wfContent.style.top = '0px';
+            workflowModal.style.visibility = 'visible';
+            workflowModal.style.opacity = '1';
+            workflowModal.style.display = 'flex';
+
+            
+            // Auto-fill active workspace/report if available
+            const fillSelect = (selectId, storageKey) => {
+                const select = document.getElementById(selectId);
+                if(!select) return;
+                select.innerHTML = '<option value="">-- Select --</option>';
+                const items = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                items.forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item.id;
+                    opt.textContent = `${item.alias || item.name || "Unnamed"} (${item.id})`;
+                    select.appendChild(opt);
+                });
+            };
+            fillSelect('wf-exp-workspace', 'pbi_workspaces');
+            fillSelect('wf-exp-report', 'pbi_reports');
+            fillSelect('wf-vis-workspace', 'pbi_workspaces');
+            fillSelect('wf-vis-report', 'pbi_reports');
+            
+            // Auto trigger loadPages if there's a selection
+            setTimeout(loadPages, 500);
+
+
+            const activeW = document.getElementById('active-workspace')?.value;
+            const activeR = document.getElementById('active-report')?.value;
+            if (activeW) document.getElementById('wf-exp-workspace').value = activeW;
+            if (activeR) document.getElementById('wf-exp-report').value = activeR;
+
+        });
+
+        closeWorkflowBtn.addEventListener('click', () => {
+            if(window.closeModalWithAnimation) {
+                window.closeModalWithAnimation('workflow-modal');
+            } else {
+                workflowModal.style.display = 'none';
+            }
+        });
+
+
+
+
+        const logToConsole = (step, msg) => {
+            const out = document.getElementById(`wf-out-step${step}`);
+            out.textContent += `\n[${new Date().toLocaleTimeString()}] ${msg}`;
+            out.scrollTop = out.scrollHeight;
+        };
+        const resetConsole = (step, initialMsg) => {
+            const out = document.getElementById(`wf-out-step${step}`);
+            out.textContent = initialMsg;
+        };
+        const setStepActive = (step) => {
+            [1, 2, 3].forEach(s => document.getElementById(`wf-step-${s}`).classList.remove('active'));
+            if (step) document.getElementById(`wf-step-${step}`).classList.add('active');
+        };
+
+        const executeStep1 = async () => {
+            resetConsole(1, "Input: Sending POST request...");
+            setStepActive(1);
+            const wId = document.getElementById('wf-exp-workspace').value.trim();
+            const rId = document.getElementById('wf-exp-report').value.trim();
+            const format = document.getElementById('wf-exp-format').value;
+            
+            if (!wId || !rId) {
+                logToConsole(1, "Error: Workspace ID and Report ID are required.");
+                return false;
+            }
+
+            try {
+                logToConsole(1, `Endpoint: /groups/${wId}/reports/${rId}/ExportTo\nFormat: ${format}`);
+                const res = await fetch('/api/proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        endpoint: `/groups/${wId}/reports/${rId}/ExportTo`,
+                        method: 'POST',
+                        body: { format: format }
+                    })
+                });
+                const data = await res.json();
+                
+                if (data.error || (data.status && data.status >= 400)) {
+                    logToConsole(1, `API Error: ${JSON.stringify(data, null, 2)}`);
+                    return false;
+                }
+                
+                logToConsole(1, `Success! Response: \n${JSON.stringify(data, null, 2)}`);
+                const exportId = (data.data && data.data.id) ? data.data.id : data.id;
+                if (exportId) {
+                    currentExportId = exportId;
+                    logToConsole(1, `\nExtracted exportId: ${currentExportId}\nReady for Step 2.`);
+                    document.getElementById('wf-btn-step2').disabled = false;
+                    return true;
+                } else {
+                    logToConsole(1, `Could not find 'id' in response.`);
+                    return false;
+                }
+            } catch (err) {
+                logToConsole(1, `Exception: ${err.message}`);
+                return false;
+            }
+        };
+
+        const executeStep2 = async (isAuto = false) => {
+            if (!currentExportId) {
+                logToConsole(2, "Error: No exportId found. Please run Step 1 first.");
+                return false;
+            }
+            if (!isAuto) resetConsole(2, `Polling status for exportId: ${currentExportId}...`);
+            setStepActive(2);
+            const wId = document.getElementById('wf-exp-workspace').value.trim();
+            const rId = document.getElementById('wf-exp-report').value.trim();
+            
+            try {
+                logToConsole(2, `GET /groups/${wId}/reports/${rId}/exports/${currentExportId}`);
+                const res = await fetch('/api/proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        endpoint: `/groups/${wId}/reports/${rId}/exports/${currentExportId}`,
+                        method: 'GET'
+                    })
+                });
+                const data = await res.json();
+                logToConsole(2, `Status response: ${JSON.stringify(data)}`);
+                
+                const status = (data.data && data.data.status) ? data.data.status : data.status;
+                if (status === 'Succeeded') {
+                    logToConsole(2, `\nExport Succeeded! Ready for Step 3.`);
+                    document.getElementById('wf-btn-step3').disabled = false;
+                    return true;
+                } else if (status === 'Failed') {
+                    logToConsole(2, `\nExport Failed! Check Power BI service.`);
+                    return false;
+                } else {
+                    // Running or NotStarted
+                    if (isAuto) {
+                        logToConsole(2, `Wait 3s and retry...`);
+                        await new Promise(r => setTimeout(r, 3000));
+                        return await executeStep2(true);
+                    }
+                    return false;
+                }
+            } catch (err) {
+                logToConsole(2, `Exception: ${err.message}`);
+                return false;
+            }
+        };
+
+        const executeStep3 = async () => {
+            resetConsole(3, `Downloading file for exportId: ${currentExportId}...`);
+            setStepActive(3);
+            const wId = document.getElementById('wf-exp-workspace').value.trim();
+            const rId = document.getElementById('wf-exp-report').value.trim();
+            
+            try {
+                logToConsole(3, `GET /groups/${wId}/reports/${rId}/exports/${currentExportId}/file`);
+                // Use proxy to get raw response stream
+                // Note: since our proxy returns JSON by default if we don't stream, we should tell proxy to fetch raw data.
+                // Wait, our proxy doesn't handle binary download easily. 
+                // We will send a fetch and then process it.
+                logToConsole(3, `Calling /api/download endpoint for raw binary stream...`);
+                const res = await fetch('/api/download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        endpoint: `/groups/${wId}/reports/${rId}/exports/${currentExportId}/file`,
+                        method: 'GET'
+                    })
+                });
+                // If it returns a binary stream, the proxy might fail because it tries to return JSON.
+                // Since this is a demonstration of the workflow UI, we'll log whatever we get.
+                if (res.headers.get('content-type')?.includes('json')) {
+                    const data = await res.json();
+                    if (data.error) {
+                        logToConsole(3, `Download API Error: ${data.error}`);
+                        return false;
+                    }
+                    logToConsole(3, `Proxy JSON Output (Unexpected): ${JSON.stringify(data).substring(0, 500)}`);
+                    return false;
+                } else {
+                    const blob = await res.blob();
+                    logToConsole(3, `Received Blob: size=${blob.size}, type=${blob.type}`);
+                    // trigger download
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `ExportedReport_${rId}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    logToConsole(3, `File download triggered! Workflow Complete! 🎉`);
+                }
+                setStepActive(null);
+                return true;
+            } catch (err) {
+                logToConsole(3, `Exception: ${err.message}`);
+                return false;
+            }
+        };
+
+        
+        const wfSelector = document.getElementById('wf-selector');
+        wfSelector.addEventListener('change', (e) => {
+            const val = e.target.value;
+            // Hide all first
+            document.getElementById('wf-config-export_report').style.display = 'none';
+            document.getElementById('wf-export-wrapper').style.display = 'none';
+            document.getElementById('wf-config-smart_pipeline').style.display = 'none';
+            document.getElementById('wf-config-export_visual').style.display = 'none';
+            
+            if (val === 'smart_pipeline') {
+                document.getElementById('wf-config-smart_pipeline').style.display = 'block';
+            } else if (val === 'export_visual') {
+                document.getElementById('wf-config-export_visual').style.display = 'block';
+            } else {
+                document.getElementById('wf-config-export_report').style.display = 'block';
+                document.getElementById('wf-export-wrapper').style.display = 'block';
+            }
+        });
+
+        document.getElementById('wf-btn-step1').onclick = executeStep1;
+        document.getElementById('wf-btn-step2').onclick = () => executeStep2(false);
+        document.getElementById('wf-btn-step3').onclick = executeStep3;
+
+        
+        // --- Export Visual Data Logic ---
+        let currentEmbeddedReport = null;
+
+        const loadPages = async () => {
+            const wId = document.getElementById('wf-vis-workspace').value;
+            const rId = document.getElementById('wf-vis-report').value;
+            const pageSelect = document.getElementById('wf-vis-page');
+            const visSelect = document.getElementById('wf-vis-visual');
+            const embedContainer = document.getElementById('pbi-embed-container');
+            const out = document.getElementById('wf-out-vis');
+            
+            pageSelect.innerHTML = '<option value="">Loading pages...</option>';
+            visSelect.innerHTML = '<option value="">-- Select Page First --</option>';
+            
+            if (!wId || !rId) return;
+            
+            try {
+                // 1. Fetch Embed Token & URL
+                out.textContent = `[${new Date().toLocaleTimeString()}] Requesting Embed Token...\n`;
+                const res = await fetch('/api/embed_info', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ workspace_id: wId, report_id: rId })
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    out.textContent += `Error getting embed info: ${data.error}\n`;
+                    pageSelect.innerHTML = '<option value="">Error</option>';
+                    return;
+                }
+                
+                out.textContent += `Token received. Initializing Power BI Embedded iframe...\n`;
+                embedContainer.style.display = 'block';
+                
+                // 2. Embed the report
+                const models = window['powerbi-client'].models;
+                const config = {
+                    type: 'report',
+                    tokenType: models.TokenType.Embed,
+                    accessToken: data.embedToken,
+                    embedUrl: data.embedUrl,
+                    id: rId,
+                    permissions: models.Permissions.Read,
+                    settings: {
+                        panes: { filters: { visible: false }, pageNavigation: { visible: false } }
+                    }
+                };
+                
+                // Reset container
+                powerbi.reset(embedContainer);
+                currentEmbeddedReport = powerbi.embed(embedContainer, config);
+                
+                currentEmbeddedReport.off("loaded");
+                currentEmbeddedReport.on("loaded", async function () {
+                    out.textContent += `Report rendered in UI! Fetching Pages via JS SDK...\n`;
+                    const pages = await currentEmbeddedReport.getPages();
+                    pageSelect.innerHTML = '<option value="">-- Select a Page --</option>';
+                    pageSelect.innerHTML += '<option value="ALL">🌟 ALL PAGES (全部页面) 🌟</option>';
+                    pages.forEach(p => {
+                        const opt = document.createElement('option');
+                        opt.value = p.name; // This is the internal name
+                        opt.textContent = p.displayName + ' (' + p.name + ')';
+                        pageSelect.appendChild(opt);
+                    });
+                });
+                
+                currentEmbeddedReport.off("error");
+                currentEmbeddedReport.on("error", function (event) {
+                    out.textContent += `Embed Error: ${event.detail.message}\n`;
+                });
+
+            } catch (err) {
+                out.textContent += `Exception: ${err.message}\n`;
+                pageSelect.innerHTML = '<option value="">Error loading pages</option>';
+            }
+        };
+
+        const loadVisuals = async () => {
+            const pId = document.getElementById('wf-vis-page').value;
+            const visSelect = document.getElementById('wf-vis-visual');
+            visSelect.innerHTML = '<option value="">Loading visuals...</option>';
+            
+            if (!pId || !currentEmbeddedReport) return;
+            
+            if (pId === 'ALL') {
+                visSelect.innerHTML = '<option value="ALL">🌟 ALL VISUALS IN ALL PAGES 🌟</option>';
+                return;
+            }
+            
+            try {
+                const pages = await currentEmbeddedReport.getPages();
+                const activePage = pages.find(p => p.name === pId);
+                if (!activePage) throw new Error("Page not found in embedded report");
+                
+                // 自动让下方的报表跳转到用户选定的页面
+                try {
+                    await activePage.setActive();
+                } catch (e) {
+                    console.log("Failed to set active page", e);
+                }
+                
+                const visuals = await activePage.getVisuals();
+                visSelect.innerHTML = '<option value="">-- Select a Visual --</option>';
+                visSelect.innerHTML += '<option value="ALL">🌟 ALL VISUALS ON THIS PAGE 🌟</option>';
+                visuals.forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = v.name;
+                    const vTitle = v.title ? v.title : (v.type ? `[${v.type}]` : 'Unnamed Visual');
+                    opt.textContent = vTitle + ' (' + v.name + ')';
+                    visSelect.appendChild(opt);
+                });
+            } catch (err) {
+                visSelect.innerHTML = '<option value="">Error loading visuals</option>';
+            }
+        };
+
+        document.getElementById('wf-vis-workspace').addEventListener('change', loadPages);
+        document.getElementById('wf-vis-report').addEventListener('change', loadPages);
+        document.getElementById('wf-vis-page').addEventListener('change', loadVisuals);
+
+        const executeExportVisual = async () => {
+            const out = document.getElementById('wf-out-vis');
+            out.textContent = `[${new Date().toLocaleTimeString()}] Triggering JS SDK exportData() -> Excel...\n`;
+            
+            const pId = document.getElementById('wf-vis-page').value;
+            const visId = document.getElementById('wf-vis-visual').value;
+            const expTypeStr = document.getElementById('wf-vis-type').value;
+            const rows = parseInt(document.getElementById('wf-vis-rows').value) || 100000;
+            
+            if (!pId || !visId || !currentEmbeddedReport) {
+                out.textContent += `Error: Please select page and visual.\n`;
+                return;
+            }
+            
+            try {
+                const models = window['powerbi-client'].models;
+                const exportType = (expTypeStr === 'Summarized') ? models.ExportDataType.Summarized : models.ExportDataType.Underlying;
+                
+                const wb = XLSX.utils.book_new();
+                let fileCount = 0;
+                
+                const pages = await currentEmbeddedReport.getPages();
+                const targetPages = (pId === 'ALL') ? pages : pages.filter(p => p.name === pId);
+                
+                for (let page of targetPages) {
+                    out.textContent += `\n> Navigating to Page: [${page.displayName}]...\n`;
+                    await page.setActive();
+                    await new Promise(r => setTimeout(r, 1500)); // wait for visuals to load
+                    
+                    const visuals = await page.getVisuals();
+                    const targetVisuals = (visId === 'ALL') ? visuals : visuals.filter(v => v.name === visId);
+                    
+                    for (let visual of targetVisuals) {
+                        const vName = visual.title || visual.type || visual.name;
+                        out.textContent += `  - Visual [${vName}]: Extracting...`;
+                        try {
+                            const result = await visual.exportData(exportType, rows);
+                            
+                            // Parse CSV to Excel Worksheet
+                            const tempWb = XLSX.read(result.data, {type: 'string'});
+                            const ws = tempWb.Sheets[tempWb.SheetNames[0]];
+                            
+                            // Generate safe Sheet Name (Max 31 chars, no invalid chars)
+                            let rawSheetName = (pId === 'ALL') ? `${page.displayName}_${vName}` : vName;
+                            let sheetName = rawSheetName.replace(/[\\\/\*\?\:\[\]]/g, '').trim();
+                            if (sheetName.length > 31) sheetName = sheetName.substring(0, 31).trim();
+                            if (!sheetName) sheetName = "Sheet";
+                            
+                            // Ensure uniqueness
+                            if (wb.SheetNames.includes(sheetName)) {
+                                let suffix = 1;
+                                while(wb.SheetNames.includes(sheetName.substring(0, 27) + "_" + suffix)) suffix++;
+                                sheetName = sheetName.substring(0, 27) + "_" + suffix;
+                            }
+                            
+                            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                            fileCount++;
+                            out.textContent += ` OK (Appended to Sheet: ${sheetName})\n`;
+                        } catch (e) {
+                            out.textContent += ` SKIPPED (No data or unsupported)\n`;
+                        }
+                    }
+                }
+                
+                if (fileCount > 0) {
+                    out.textContent += `\nData successfully extracted (${fileCount} sheets)! Generating Excel file...\n`;
+                    XLSX.writeFile(wb, `PowerBI_Export_${expTypeStr}.xlsx`);
+                    out.textContent += `\nExcel file downloaded: PowerBI_Export_${expTypeStr}.xlsx 🎉\n`;
+                } else {
+                    out.textContent += `\nWARNING: No exportable data found in the selected targets.\n`;
+                }
+                
+            } catch (err) {
+                out.textContent += `Exception during export: ${err.message || JSON.stringify(err)}\n`;
+            }
+        };
+
+        // --- End Export Visual Data Logic ---
+
+        document.getElementById('wf-btn-runall').onclick = async function() {
+            if (isWorkflowRunning) return;
+            isWorkflowRunning = true;
+            this.disabled = true;
+            this.innerHTML = '<span class="loader" style="width: 12px; height: 12px; border-width: 2px;"></span> Running...';
+            
+            try {
+                const wfType = document.getElementById('wf-selector').value;
+                if (wfType === 'export_report') {
+                    const s1 = await executeStep1();
+                    if (s1) {
+                        const s2 = await executeStep2(true); // pass true for auto-polling
+                        if (s2) {
+                            await executeStep3();
+                        }
+                    }
+                } else if (wfType === 'export_visual') {
+                    await executeExportVisual();
+                } else if (wfType === 'smart_pipeline') {
+                    // Smart Pipeline trigger
+                }
+            } finally {
+                isWorkflowRunning = false;
+                this.disabled = false;
+                this.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Run Full Workflow';
+            }
+        };
+    }
+    // --- End Workflow Modal Logic ---
+
+
+window.copyWfConsole = function(step, btn) {
+    const text = document.getElementById(`wf-out-step${step}`).textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        const origHTML = btn.innerHTML;
+        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+        setTimeout(() => { btn.innerHTML = origHTML; }, 2000);
+    }).catch(err => {
+        alert('Failed to copy: ' + err);
+    });
+};

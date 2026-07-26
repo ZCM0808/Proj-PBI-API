@@ -80,7 +80,7 @@ class PBIClient:
             "Content-Type": "application/json",
         }
 
-    def request(self, method: str, endpoint: str, api_type: str = "powerbi", **kwargs) -> dict:
+    def request(self, method: str, endpoint: str, api_type: str = "powerbi", raw_response: bool = False, **kwargs):
         """
         通用 API 请求方法，避免硬编码逻辑。
 
@@ -129,6 +129,9 @@ class PBIClient:
                 except ValueError:
                     error_msg = f"{error_msg}\n{e.response.text}"
             raise Exception(error_msg)
+
+        if raw_response:
+            return response
 
         # 尝试解析 JSON 返回，对于没有主体的响应（如 202, 204）返回空字典
         if response.content:

@@ -7,7 +7,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
     <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260723_v108">
+    <script src="https://cdn.jsdelivr.net/npm/powerbi-client/dist/powerbi.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="/static/style.css?v=20260726_v37_select_ui">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -55,8 +58,8 @@
                         <button id="btn-settings" class="btn-action-icon" title="Global Settings">
                             <span>⚙️</span>
                         </button>
-                        <button id="btn-smart-ops" class="btn-action-primary" title="Run Smart DataOps Pipeline">
-                            <span>🚀 Pipeline</span>
+                                                <button id="btn-workflows" class="btn-action-icon" title="Automated Workflows (includes Smart DataOps Pipeline)">
+                            <span>⚡</span>
                         </button>
                     </div>
                 </div>
@@ -366,6 +369,167 @@
         </div>
     </div>
 
+    
+    <!-- Workflow Modal -->
+    <div id="workflow-modal" class="modal-overlay" style="display: none; z-index: 10000;">
+        <div class="modal-content glass-panel" style="width: 90%; max-width: 800px; display: flex; flex-direction: column; max-height: 85vh; position: relative;" id="workflow-modal-content">
+            <div class="modal-header">
+                <h3 style="font-size: 1.05rem; margin: 0;">⚡ Workflows</h3>
+                <button type="button" class="close-btn" id="close-workflow-btn" title="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg></button>
+            </div>
+            
+            <div class="modal-body" style="overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 12px;">
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <label style="color: var(--text-secondary); font-weight: bold;">Select Workflow:</label>
+                    <select id="wf-selector" class="wf-input" style="flex: 1;">
+                        <option value="export_report">Export Report to File (PDF/Excel/etc.)</option>
+                        <option value="export_visual">Export Visual Data (CSV) - Underlying/Summarized</option>
+                        <option value="smart_pipeline">Smart DataOps Pipeline (Auto Bind/Scan/Check)</option>
+                    </select>
+                </div>
+                
+                <div id="wf-config-export_report" class="wf-config-pane">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
+                        <div>
+                            <label style="font-size: 0.85rem; color: var(--text-secondary);">Workspace ID</label>
+                            <select id="wf-exp-workspace" class="wf-input"></select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.85rem; color: var(--text-secondary);">Report ID</label>
+                            <select id="wf-exp-report" class="wf-input"></select>
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <label style="font-size: 0.85rem; color: var(--text-secondary);">Export Format</label>
+                            <select id="wf-exp-format" class="wf-input">
+                                <option value="PDF">PDF</option>
+                                <option value="XLSX">Excel (XLSX) - *Paginated only</option>
+                                <option value="CSV">CSV - *Paginated only</option>
+                                <option value="PPTX">PowerPoint (PPTX)</option>
+                                <option value="PNG">Image (PNG)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                
+                <!-- Smart Pipeline Container -->
+                <div id="wf-config-smart_pipeline" class="wf-config-pane" style="display: none;">
+                    <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--panel-border); border-radius: 8px; padding: 12px;">
+                        <div class="terminal-view" id="pipeline-terminal" style="max-height: 200px; margin-bottom: 12px;">
+                            <div class="terminal-line"><span class="info">系统已就绪。点击下方按钮开始智能扫描并自动绑定工作区、数据集和报表...</span></div>
+                        </div>
+                        <div style="display: flex; justify-content: flex-end;">
+                            <button id="start-pipeline-btn" class="btn-pipeline" style="padding: 8px 16px;">🚀 开始全自动链路 (Start DataOps)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="wf-config-export_visual" class="wf-config-pane" style="display: none;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
+                        <div>
+                            <label style="font-size: 0.85rem; color: var(--text-secondary);">Workspace ID</label>
+                            <select id="wf-vis-workspace" class="wf-input"></select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.85rem; color: var(--text-secondary);">Report ID</label>
+                            <select id="wf-vis-report" class="wf-input"></select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.85rem; color: var(--text-secondary);">Page Name</label>
+                            <select id="wf-vis-page" class="wf-input">
+                                <option value="">-- Select Report First --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.85rem; color: var(--text-secondary);">Visual Name</label>
+                            <select id="wf-vis-visual" class="wf-input">
+                                <option value="">-- Select Page First --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.85rem; color: var(--text-secondary);">Export Type</label>
+                            <select id="wf-vis-type" class="wf-input">
+                                <option value="Summarized">Summarized (聚合)</option>
+                                <option value="Underlying">Underlying (底层)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.85rem; color: var(--text-secondary);">Max Rows</label>
+                            <input type="number" id="wf-vis-rows" class="wf-input" value="100000">
+                        </div>
+                    </div>
+                    
+                    <div id="pbi-embed-container" style="visibility: hidden; position: absolute; left: -9999px; top: -9999px; width: 1200px; height: 800px;"></div>
+
+                    
+                    <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+                        <div class="wf-step active" id="wf-vis-step-1">
+                            <div class="wf-step-header">
+                                <span class="wf-step-title">Execute exportData API (Sync)</span>
+                            </div>
+                            <div style="position: relative;">
+                                <pre id="wf-out-vis" class="wf-console">Ready to export visual data...</pre>
+                                <button type="button" class="wf-copy-btn" onclick="copyWfConsole('vis', this)" title="Copy Output">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="wf-export-wrapper">
+                <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+                    <!-- Step 1 -->
+                    <div class="wf-step" id="wf-step-1">
+                        <div class="wf-step-header">
+                            <span class="wf-step-title">Step 1: Trigger Export (POST)</span>
+                            <button id="wf-btn-step1" class="btn-action-secondary wf-step-btn">Run Step 1</button>
+                        </div>
+                        <div style="position: relative;">
+                            <pre id="wf-out-step1" class="wf-console">Input: Ready to start...</pre>
+                            <button type="button" class="wf-copy-btn" onclick="copyWfConsole(1, this)" title="Copy Output">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Step 2 -->
+                    <div class="wf-step" id="wf-step-2">
+                        <div class="wf-step-header">
+                            <span class="wf-step-title">Step 2: Poll Status (GET)</span>
+                            <button id="wf-btn-step2" class="btn-action-secondary wf-step-btn" disabled>Run Step 2</button>
+                        </div>
+                        <div style="position: relative;">
+                            <pre id="wf-out-step2" class="wf-console">Waiting for exportId from Step 1...</pre>
+                            <button type="button" class="wf-copy-btn" onclick="copyWfConsole(2, this)" title="Copy Output">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Step 3 -->
+                    <div class="wf-step" id="wf-step-3">
+                        <div class="wf-step-header">
+                            <span class="wf-step-title">Step 3: Download File (GET)</span>
+                            <button id="wf-btn-step3" class="btn-action-secondary wf-step-btn" disabled>Run Step 3</button>
+                        </div>
+                        <div style="position: relative;">
+                            <pre id="wf-out-step3" class="wf-console">Waiting for Succeeded status from Step 2...</pre>
+                            <button type="button" class="wf-copy-btn" onclick="copyWfConsole(3, this)" title="Copy Output">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                </div>
+            </div> <!-- Close modal body here! -->
+            <div class="modal-footer" style="padding: 12px 1.5rem 10px 1.5rem; border-top: 1px solid var(--overlay-10); display: flex; justify-content: flex-end; align-items: center;">
+                <button id="wf-btn-runall" class="btn-action-primary" style="padding: 8px 16px; font-weight: bold; display: flex; align-items: center; gap: 6px; line-height: 1; margin: 0;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    Run Full Workflow
+                </button>
+            </div>
+        </div>
+    </div>
     <!-- Settings Modal -->
     <div id="settings-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content glass-panel" style="max-width: 550px; width: 90%;">
@@ -586,11 +750,11 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
-    <script src="/static/script.js?v=20260725_v17_truncateSubmitBoundsConfirm"></script>
+    <script src="/static/script.js?v=20260726_v36_excel_hidden"></script>
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: flex; z-index: 100000; opacity: 0; visibility: hidden; transition: opacity 0.25s ease;">
-        <div class="modal-content glass-panel" style="width: 90%; max-width: 400px; padding: 20px; position: relative; transform: scale(0.95); transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);" id="custom-dialog-content">
+        <div class="modal-content glass-panel" style="width: 90%; max-width: 400px; padding: 20px; position: relative; " id="custom-dialog-content">
             <div class="modal-header" style="margin-bottom: 12px; cursor: move;">
                 <h3 id="custom-dialog-title" style="margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">🔔 System Message</h3>
                 <button type="button" class="close-btn" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>

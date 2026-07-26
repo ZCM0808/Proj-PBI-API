@@ -509,6 +509,67 @@ async def run_pipeline(workspace_id: str = "", dataset_id: str = "", report_id: 
     return StreamingResponse(pipeline.run(), media_type="text/event-stream")
 
 
+
+
+@app.post("/api/embed_info")
+async def get_embed_info(request: Request):
+    try:
+        data = await request.json()
+        w_id = data.get("workspace_id")
+        r_id = data.get("report_id")
+        if not w_id or not r_id:
+            return {"success": False, "error": "Missing workspace_id or report_id"}
+        
+        import asyncio
+        # Get report details
+        report_info = await asyncio.to_thread(
+            client.request, "GET", f"/groups/{w_id}/reports/{r_id}"
+        )
+        if "error" in report_info:
+            return {"success": False, "error": report_info["error"]}
+            
+        embed_url = report_info.get("embedUrl")
+        
+        # Get embed token
+        token_res = await asyncio.to_thread(
+            client.request, "POST", f"/groups/{w_id}/reports/{r_id}/GenerateToken", json={"accessLevel": "View"}
+        )
+        if "error" in token_res:
+            return {"success": False, "error": token_res["error"]}
+            
+        embed_token = token_res.get("token")
+        
+        return {"success": True, "embedUrl": embed_url, "embedToken": embed_token}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/download")
+async def download_proxy(request: Request):
+    try:
+        data = await request.json()
+    except Exception:
+        return {"success": False, "error": "Invalid JSON format"}
+        
+    method = data.get("method", "GET").upper()
+    endpoint = data.get("endpoint", "").strip()
+    api_type = data.get("api_type", "powerbi").strip().lower()
+    
+    if endpoint.startswith("http://") or endpoint.startswith("https://"):
+        return {"success": False, "error": "Security Error"}
+    if not endpoint.startswith("/"):
+        endpoint = "/" + endpoint
+        
+    try:
+        import asyncio
+        from fastapi.responses import Response
+        resp = await asyncio.to_thread(
+            client.request, method, endpoint, api_type=api_type, raw_response=True
+        )
+        content_type = resp.headers.get("Content-Type", "application/octet-stream")
+        return Response(content=resp.content, media_type=content_type)
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 @app.post("/api/proxy")
 async def proxy_request(request: Request):
     """
