@@ -4747,7 +4747,7 @@ window.executeExportDataset = async function() {
     const ws = document.getElementById('wf-ds-workspace').value;
     const ds = document.getElementById('wf-ds-dataset').value;
     const tb = document.getElementById('wf-ds-table').value;
-    const btn = document.getElementById('run-workflow-btn');
+    const btn = document.getElementById('wf-btn-runall');
     const origHtml = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Run Full Workflow';
     
     if(!ws || !ds || !tb) {
