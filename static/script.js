@@ -4850,18 +4850,36 @@ window.loadDatasetTablesStep1 = async function(btn) {
             consoleOut.innerText = requestStr.replace('⏳ Request sent, waiting for response...', '') + 
                 `\n✅ Success! Status: 200 OK\nRetrieved ${tables.length} valid tables.\n\nResponse Preview:\n` + JSON.stringify(tables, null, 2);
             
-            select.innerHTML = '';
+            const optionsUl = document.getElementById('wf-ds-table-options');
+            const displaySpan = document.getElementById('wf-ds-table-display');
+            const triggerDiv = document.getElementById('wf-ds-table-trigger');
+            const container = document.getElementById('wf-ds-table-container');
+            
+            optionsUl.innerHTML = '';
             if(tables.length === 0) {
-                select.innerHTML = '<option value="">-- No Tables Found --</option>';
+                optionsUl.innerHTML = '<li style="padding: 8px 12px; font-size: 0.85rem; cursor: not-allowed; color: var(--text-secondary);">-- No Tables Found --</li>';
+                displaySpan.innerText = '-- No Tables Found --';
+                displaySpan.style.color = 'var(--text-secondary)';
+                triggerDiv.style.cursor = 'not-allowed';
             } else {
                 tables.forEach(t => {
-                    const opt = document.createElement('option');
-                    opt.value = t;
-                    opt.innerText = t;
-                    select.appendChild(opt);
+                    const li = document.createElement('li');
+                    li.style.cssText = 'padding: 8px 12px; font-size: 0.85rem; cursor: pointer; color: var(--text-primary); transition: background 0.15s ease; border-radius: 4px; margin: 0 4px;';
+                    li.innerText = t;
+                    li.onmouseover = () => li.style.background = 'var(--bg-hover)';
+                    li.onmouseout = () => li.style.background = 'transparent';
+                    li.onclick = (e) => { e.stopPropagation(); window.selectDsTable(t, t); };
+                    optionsUl.appendChild(li);
                 });
+                
+                // Highlight step 2 UI
                 document.getElementById('wf-ds-step-2').classList.add('active');
                 document.getElementById('wf-out-ds-step2').innerText = "✅ Step 1 complete. Ready to execute Step 2.";
+                container.style.opacity = '1';
+                triggerDiv.style.cursor = 'pointer';
+                displaySpan.innerText = '-- Click to Select Table --';
+                displaySpan.style.color = 'var(--text-primary)';
+                document.getElementById('wf-ds-table').value = ''; // clear hidden value
             }
             if (btn) btn.disabled = false;
             return true;
@@ -4974,14 +4992,66 @@ window.executeExportDataset = async function() {
         const step1Ok = await window.loadDatasetTablesStep1(step1Btn);
         if (!step1Ok) return;
         
-        if (select.options.length > 0 && select.options[0].value) {
-            select.selectedIndex = 0;
-        } else if (select.options.length > 1) {
-            select.selectedIndex = 1;
+        const optionsUl = document.getElementById('wf-ds-table-options');
+        const firstLi = optionsUl.querySelector('li[style*="cursor: pointer"]');
+        if (firstLi) {
+            firstLi.click();
         }
     }
     
     if (select.value) {
         await window.executeDatasetStep2(step2Btn);
     }
+};
+
+
+document.addEventListener('click', function(e) {
+    const wrapper = document.getElementById('wf-ds-table-wrapper');
+    if (wrapper && !wrapper.contains(e.target)) {
+        const options = document.getElementById('wf-ds-table-options');
+        const svg = wrapper.querySelector('svg');
+        if (options && options.classList.contains('open')) {
+            options.classList.remove('open');
+            options.style.opacity = '0';
+            options.style.visibility = 'hidden';
+            options.style.transform = 'translateY(-8px)';
+            if (svg) svg.style.transform = '';
+        }
+    }
+});
+
+window.toggleDsTableDropdown = function(e) {
+    const trigger = document.getElementById('wf-ds-table-trigger');
+    if (trigger.style.cursor === 'not-allowed') return;
+    const options = document.getElementById('wf-ds-table-options');
+    const svg = trigger.querySelector('svg');
+    if (options.classList.contains('open')) {
+        options.classList.remove('open');
+        options.style.opacity = '0';
+        options.style.visibility = 'hidden';
+        options.style.transform = 'translateY(-8px)';
+        if (svg) svg.style.transform = '';
+    } else {
+        options.classList.add('open');
+        options.style.opacity = '1';
+        options.style.visibility = 'visible';
+        options.style.transform = 'translateY(0)';
+        if (svg) svg.style.transform = 'rotate(180deg)';
+    }
+};
+
+window.selectDsTable = function(val, text) {
+    document.getElementById('wf-ds-table').value = val;
+    const display = document.getElementById('wf-ds-table-display');
+    display.innerText = text;
+    display.style.color = 'var(--text-primary)';
+    
+    // Auto close
+    const options = document.getElementById('wf-ds-table-options');
+    const svg = document.querySelector('#wf-ds-table-trigger svg');
+    options.classList.remove('open');
+    options.style.opacity = '0';
+    options.style.visibility = 'hidden';
+    options.style.transform = 'translateY(-8px)';
+    if (svg) svg.style.transform = '';
 };

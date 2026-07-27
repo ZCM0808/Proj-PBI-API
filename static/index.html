@@ -457,14 +457,26 @@
                             <div class="wf-step-header">
                                 <span class="wf-step-title">Step 2: Execute Query & Download (CSV)</span>
                                 <div style="display: flex; gap: 8px; align-items: center;">
-                                    <select id="wf-ds-table" class="wf-input" style="height: 28px; width: 160px; font-size: 0.75rem; padding: 0 4px;">
-                                        <option value="">-- Run Step 1 First --</option>
-                                    </select>
                                     <button id="wf-ds-btn-step2" class="btn-action-secondary wf-step-btn" onclick="window.executeDatasetStep2(this)">Run Step 2</button>
                                 </div>
                             </div>
+                            
+                            <div id="wf-ds-table-container" style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: rgba(0,0,0,0.15); border-bottom: 1px solid var(--border-color); opacity: 0.4; transition: opacity 0.3s ease;">
+                                <label style="font-size: 0.85rem; color: var(--text-secondary); white-space: nowrap;">Target Table:</label>
+                                <div class="custom-select-wrapper" style="position: relative; flex: 1; max-width: 400px;" id="wf-ds-table-wrapper" onclick="window.toggleDsTableDropdown(event)">
+                                    <div class="wf-input" id="wf-ds-table-trigger" style="height: 32px; display: flex; align-items: center; justify-content: space-between; cursor: not-allowed; padding: 0 12px; font-size: 0.85rem; border-radius: 4px; user-select: none;">
+                                        <span id="wf-ds-table-display" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary);">-- Run Step 1 First --</span>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.2s ease;"><path d="M6 9l6 6 6-6"></path></svg>
+                                    </div>
+                                    <ul id="wf-ds-table-options" class="wf-input custom-select-dropdown" style="position: absolute; top: calc(100% + 4px); left: 0; width: 100%; max-height: 250px; overflow-y: auto; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 4px; padding: 4px 0; margin: 0; list-style: none; z-index: 100; opacity: 0; visibility: hidden; transform: translateY(-8px); transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+                                        <li style="padding: 8px 12px; font-size: 0.85rem; cursor: not-allowed; color: var(--text-secondary);">-- Run Step 1 First --</li>
+                                    </ul>
+                                    <input type="hidden" id="wf-ds-table" value="">
+                                </div>
+                            </div>
+                            
                             <div style="position: relative;">
-                                <pre id="wf-out-ds-step2" class="wf-console">Waiting for Step 1...</pre>
+                                <pre id="wf-out-ds-step2" class="wf-console" style="border-top-left-radius: 0; border-top-right-radius: 0; border-top: none;">Waiting for Step 1...</pre>
                                 <button type="button" class="wf-copy-btn" onclick="copyWfConsole('ds-step2', this)" title="Copy Output">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                                 </button>
@@ -523,26 +535,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
-                        <div class="wf-step active" id="wf-ds-step-1">
-                            <div class="wf-step-header">
-                                <span class="wf-step-title">Step 1: Execute DAX Query (executeQueries)</span>
-                            </div>
-                            <div style="position: relative;">
-                                <pre id="wf-out-ds-step1" class="wf-console">Ready to query...</pre>
-                            </div>
-                        </div>
-                        <div class="wf-step" id="wf-ds-step-2">
-                            <div class="wf-step-header">
-                                <span class="wf-step-title">Step 2: Parse & Download CSV</span>
-                            </div>
-                            <div style="position: relative;">
-                                <pre id="wf-out-ds-step2" class="wf-console">Waiting for query results...</pre>
-                            </div>
-                        </div>
-                    </div>
                 </div>
-
                 <div id="wf-export-wrapper">
                 <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
                     <!-- Step 1 -->
@@ -837,7 +830,7 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
-    <script src="/static/script.js?v=20260727_v63_ds_steps_v3"></script>
+    <script src="/static/script.js?v=20260727_v66_ds_steps_v6"></script>
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: flex; z-index: 100000; opacity: 0; visibility: hidden; transition: opacity 0.25s ease;">
