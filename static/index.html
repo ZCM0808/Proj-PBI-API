@@ -447,6 +447,24 @@
                             </div>
                         </div>
                     </div>
+                    <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+                        <div class="wf-step active" id="wf-ds-step-1">
+                            <div class="wf-step-header">
+                                <span class="wf-step-title">Step 1: Execute DAX Query (executeQueries)</span>
+                            </div>
+                            <div style="position: relative;">
+                                <pre id="wf-out-ds-step1" class="wf-console">Ready to query...</pre>
+                            </div>
+                        </div>
+                        <div class="wf-step" id="wf-ds-step-2">
+                            <div class="wf-step-header">
+                                <span class="wf-step-title">Step 2: Parse & Download CSV</span>
+                            </div>
+                            <div style="position: relative;">
+                                <pre id="wf-out-ds-step2" class="wf-console">Waiting for query results...</pre>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="wf-config-export_visual" class="wf-config-pane" style="display: none;">
@@ -497,6 +515,24 @@
                                 <button type="button" class="wf-copy-btn" onclick="copyWfConsole('vis', this)" title="Copy Output">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+                        <div class="wf-step active" id="wf-ds-step-1">
+                            <div class="wf-step-header">
+                                <span class="wf-step-title">Step 1: Execute DAX Query (executeQueries)</span>
+                            </div>
+                            <div style="position: relative;">
+                                <pre id="wf-out-ds-step1" class="wf-console">Ready to query...</pre>
+                            </div>
+                        </div>
+                        <div class="wf-step" id="wf-ds-step-2">
+                            <div class="wf-step-header">
+                                <span class="wf-step-title">Step 2: Parse & Download CSV</span>
+                            </div>
+                            <div style="position: relative;">
+                                <pre id="wf-out-ds-step2" class="wf-console">Waiting for query results...</pre>
                             </div>
                         </div>
                     </div>

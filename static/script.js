@@ -4747,13 +4747,14 @@ window.executeExportDataset = async function() {
     const ws = document.getElementById('wf-ds-workspace').value;
     const ds = document.getElementById('wf-ds-dataset').value;
     const tb = document.getElementById('wf-ds-table').value;
-    const btn = document.getElementById('wf-btn-runall');
-    const origHtml = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Run Full Workflow';
+    
+    const step1Console = document.getElementById('wf-out-ds-step1');
+    const step2Console = document.getElementById('wf-out-ds-step2');
+    const step1Div = document.getElementById('wf-ds-step-1');
+    const step2Div = document.getElementById('wf-ds-step-2');
     
     if(!ws || !ds || !tb) {
-        window.skipWfBtnReset = true;
-        btn.innerHTML = '❌ Please Select Table';
-        setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 2000);
+        step1Console.innerText = '❌ Please Select Workspace, Dataset, and Table Name.';
         return;
     }
     
@@ -4761,9 +4762,10 @@ window.executeExportDataset = async function() {
     const clientSecret = document.getElementById('set-secret').value.trim();
     const tenantId = document.getElementById('set-tenant').value.trim();
     
-    window.skipWfBtnReset = true;
-    btn.innerHTML = '⏳ Exporting...';
-    btn.disabled = true;
+    step1Div.classList.add('active');
+    step2Div.classList.remove('active');
+    step1Console.innerText = '⏳ Executing DAX query... (This may take a few seconds)';
+    step2Console.innerText = 'Waiting for Step 1...';
     
     try {
         const payload = {
@@ -4780,11 +4782,16 @@ window.executeExportDataset = async function() {
         });
         
         const data = await res.json();
+        
         if(data.success) {
             const rows = data.results;
+            step1Console.innerText = `✅ Query successful. Retrieved ${rows.length} rows.`;
+            
+            step2Div.classList.add('active');
+            step2Console.innerText = '⏳ Formatting data to CSV and initiating download...';
+            
             if(!rows || rows.length === 0) {
-                btn.innerHTML = '⚠️ Table Empty';
-                setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 2000);
+                step2Console.innerText = '⚠️ Dataset table is empty. No CSV downloaded.';
                 return;
             }
             
@@ -4798,31 +4805,25 @@ window.executeExportDataset = async function() {
                 csv += rawKeys.map(k => {
                     let val = r[k];
                     if (val === null || val === undefined) val = '';
-                    return `"${val.toString().replace(/"/g, '""')}"`;
+                    return `"${String(val).replace(/"/g, '""')}"`;
                 }).join(",") + "\n";
             });
             
-            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${tb}_export.csv`;
-            document.body.appendChild(a);
+            a.download = `Export_${tb}.csv`;
             a.click();
-            document.body.removeChild(a);
             URL.revokeObjectURL(url);
             
-            btn.innerHTML = `✅ Exported ${rows.length} rows!`;
-            setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 3000);
+            step2Console.innerText = `✅ Success! Downloaded: Export_${tb}.csv`;
+            
         } else {
-            btn.innerHTML = '❌ ' + (data.message.substring(0, 20) + '...');
-            console.error("Export Failed:", data.message);
-            setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 4000);
+            step1Console.innerText = '❌ Query Failed:\n' + data.message;
         }
     } catch(err) {
-        btn.innerHTML = '❌ Network Error';
-        console.error("Export Network Error:", err);
-        setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 2000);
+        step1Console.innerText = '❌ Network Error:\n' + err.message;
     }
 };
 
