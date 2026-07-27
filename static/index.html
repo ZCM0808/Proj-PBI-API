@@ -435,38 +435,43 @@
                             <label style="font-size: 0.85rem; color: var(--text-secondary);">Dataset ID</label>
                             <select id="wf-ds-dataset" class="wf-input"></select>
                         </div>
-                        <div style="grid-column: span 2; display: flex; gap: 8px;">
-                            <div style="flex: 1;">
-                                <label style="font-size: 0.85rem; color: var(--text-secondary);">Table Name</label>
-                                <select id="wf-ds-table" class="wf-input">
-                                    <option value="">-- Click Load Tables --</option>
-                                </select>
-                            </div>
-                            <div style="display: flex; align-items: flex-end;">
-                                <button type="button" class="btn-verify" onclick="window.loadDatasetTables(this)" style="height: 38px; width: auto; padding: 0 16px;">Load Tables</button>
-                            </div>
-                        </div>
                     </div>
+                    
                     <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
-                        <div class="wf-step active" id="wf-ds-step-1">
+                        <!-- Step 1 -->
+                        <div class="wf-step" id="wf-ds-step-1">
                             <div class="wf-step-header">
-                                <span class="wf-step-title">Step 1: Execute DAX Query (executeQueries)</span>
+                                <span class="wf-step-title">Step 1: Fetch Available Tables</span>
+                                <button id="wf-ds-btn-step1" class="btn-action-secondary wf-step-btn" onclick="window.loadDatasetTablesStep1(this)">Run Step 1</button>
                             </div>
                             <div style="position: relative;">
-                                <pre id="wf-out-ds-step1" class="wf-console">Ready to query...</pre>
+                                <pre id="wf-out-ds-step1" class="wf-console">Input: Ready to fetch tables...</pre>
+                                <button type="button" class="wf-copy-btn" onclick="copyWfConsole('ds-step1', this)" title="Copy Output">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                </button>
                             </div>
                         </div>
+                        
+                        <!-- Step 2 -->
                         <div class="wf-step" id="wf-ds-step-2">
                             <div class="wf-step-header">
-                                <span class="wf-step-title">Step 2: Parse & Download CSV</span>
+                                <span class="wf-step-title">Step 2: Execute Query & Download (CSV)</span>
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    <select id="wf-ds-table" class="wf-input" style="height: 28px; width: 160px; font-size: 0.75rem; padding: 0 4px;">
+                                        <option value="">-- Run Step 1 First --</option>
+                                    </select>
+                                    <button id="wf-ds-btn-step2" class="btn-action-secondary wf-step-btn" onclick="window.executeDatasetStep2(this)">Run Step 2</button>
+                                </div>
                             </div>
                             <div style="position: relative;">
-                                <pre id="wf-out-ds-step2" class="wf-console">Waiting for query results...</pre>
+                                <pre id="wf-out-ds-step2" class="wf-console">Waiting for Step 1...</pre>
+                                <button type="button" class="wf-copy-btn" onclick="copyWfConsole('ds-step2', this)" title="Copy Output">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
-
                 <div id="wf-config-export_visual" class="wf-config-pane" style="display: none;">
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
                         <div>
@@ -832,7 +837,7 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
-    <script src="/static/script.js?v=20260727_v60_fix_btn_id"></script>
+    <script src="/static/script.js?v=20260727_v63_ds_steps_v3"></script>
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: flex; z-index: 100000; opacity: 0; visibility: hidden; transition: opacity 0.25s ease;">
