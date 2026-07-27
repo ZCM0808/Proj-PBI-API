@@ -4878,22 +4878,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 window.loadDatasetTables = async function(btn) {
-    const ws = document.getElementById('wf-ds-workspace').value;
-    const ds = document.getElementById('wf-ds-dataset').value;
-    if(!ws || !ds) {
-        alert("请先选择 Workspace 和 Dataset！(Select Workspace & Dataset first)");
-        return;
-    }
+    const origHtml = btn.innerHTML;
+    btn.innerHTML = '⏳...';
+    btn.disabled = true;
     
-    const clientId = document.getElementById('set-client').value.trim();
-    const clientSecret = document.getElementById('set-secret').value.trim();
-    const tenantId = document.getElementById('set-tenant').value.trim();
-    if (!clientId || !clientSecret || !tenantId) {
-        alert("请在 Global Settings 中填写 Auth Credentials！");
-        return;
-    }
-    
-    await window.animateVerifyBtn(btn, async () => {
+    try {
+        const ws = document.getElementById('wf-ds-workspace').value;
+        const ds = document.getElementById('wf-ds-dataset').value;
+        if(!ws || !ds) {
+            btn.innerHTML = '❌ Select WS/DS';
+            setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 2000);
+            return;
+        }
+        
+        const clientId = document.getElementById('set-client').value.trim();
+        const clientSecret = document.getElementById('set-secret').value.trim();
+        const tenantId = document.getElementById('set-tenant').value.trim();
+        if (!clientId || !clientSecret || !tenantId) {
+            btn.innerHTML = '❌ Missing Auth';
+            setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 2000);
+            return;
+        }
+        
         const payload = {
             pbi_client_id: clientId,
             pbi_client_secret: clientSecret,
@@ -4918,11 +4924,15 @@ window.loadDatasetTables = async function(btn) {
                 opt.textContent = t[NameKey];
                 sel.appendChild(opt);
             });
-            return { success: true, message: `加载了 ${data.results.length} 张表` };
+            btn.innerHTML = '✅ Loaded!';
+            setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 2000);
         } else {
-            return { success: false, message: data.message };
+            btn.innerHTML = '❌ Error';
+            alert(data.message);
+            setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 2000);
         }
-    }, (res) => {
-        // Success callback
-    });
+    } catch (e) {
+        btn.innerHTML = '❌ Net Err';
+        setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 2000);
+    }
 };
