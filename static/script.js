@@ -2674,8 +2674,20 @@ const loadReqHistory = (searchTerm = "") => {
                 }
 
                 const originalText = verifySettingsBtn.textContent;
+                const originalWidth = verifySettingsBtn.style.width;
                 verifySettingsBtn.disabled = true;
-                verifySettingsBtn.textContent = '⏳ 验证中...';
+                verifySettingsBtn.textContent = '⏳';
+                verifySettingsBtn.style.transition = 'all 0.3s ease';
+                verifySettingsBtn.style.width = 'auto';
+
+                const resetBtn = () => {
+                    verifySettingsBtn.textContent = originalText;
+                    verifySettingsBtn.style.width = originalWidth;
+                    verifySettingsBtn.style.background = '';
+                    verifySettingsBtn.style.color = '';
+                    verifySettingsBtn.style.borderColor = '';
+                    verifySettingsBtn.disabled = false;
+                };
 
                 try {
                     const res = await fetch('/api/settings/verify', {
@@ -2691,7 +2703,19 @@ const loadReqHistory = (searchTerm = "") => {
                         })
                     });
                     const result = await res.json();
+                    
                     if (result.success) {
+                        verifySettingsBtn.innerHTML = '✅ Success';
+                        verifySettingsBtn.style.background = 'var(--status-success-bg, rgba(16, 185, 129, 0.2))';
+                        verifySettingsBtn.style.color = 'var(--success, #10b981)';
+                        verifySettingsBtn.style.borderColor = 'var(--success, #10b981)';
+                        
+                        // Add pop animation
+                        verifySettingsBtn.style.transform = 'scale(1.1)';
+                        setTimeout(() => verifySettingsBtn.style.transform = 'scale(1)', 200);
+                        
+                        setTimeout(resetBtn, 2500);
+
                         if (window.saveAuthSnapshot) {
                             window.saveAuthSnapshot(result.app_name || "Auto-Saved Profile");
                         }
@@ -2700,15 +2724,33 @@ const loadReqHistory = (searchTerm = "") => {
                         }
                         localStorage.setItem('pbi_tenant_id', tenantId);
                         window.renderEnvIdentity();
-                        alert(result.message + (result.app_name ? ("\n应用名称: " + result.app_name) : ""));
                     } else {
-                        alert(result.message);
+                        verifySettingsBtn.innerHTML = '❌ Failed';
+                        verifySettingsBtn.style.background = 'var(--status-error-bg, rgba(239, 68, 68, 0.2))';
+                        verifySettingsBtn.style.color = 'var(--error, #ef4444)';
+                        verifySettingsBtn.style.borderColor = 'var(--error, #ef4444)';
+                        
+                        // Add shake animation manually
+                        verifySettingsBtn.style.transform = 'translateX(-4px)';
+                        setTimeout(() => verifySettingsBtn.style.transform = 'translateX(4px)', 100);
+                        setTimeout(() => verifySettingsBtn.style.transform = 'translateX(-4px)', 200);
+                        setTimeout(() => verifySettingsBtn.style.transform = 'translateX(4px)', 300);
+                        setTimeout(() => verifySettingsBtn.style.transform = 'translateX(0)', 400);
+
+                        setTimeout(() => {
+                            resetBtn();
+                            alert(result.message); // Still show error detail after animation
+                        }, 2500);
                     }
                 } catch (err) {
-                    alert('网络错误: ' + err);
-                } finally {
-                    verifySettingsBtn.disabled = false;
-                    verifySettingsBtn.textContent = originalText;
+                    verifySettingsBtn.innerHTML = '❌ Error';
+                    verifySettingsBtn.style.background = 'var(--status-error-bg, rgba(239, 68, 68, 0.2))';
+                    verifySettingsBtn.style.color = 'var(--error, #ef4444)';
+                    verifySettingsBtn.style.borderColor = 'var(--error, #ef4444)';
+                    setTimeout(() => {
+                        resetBtn();
+                        alert('网络错误: ' + err);
+                    }, 2500);
                 }
             });
         }
