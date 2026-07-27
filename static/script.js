@@ -4277,6 +4277,8 @@ document.addEventListener('mousedown', (e) => {
             fillSelect('wf-exp-report', 'pbi_reports');
             fillSelect('wf-vis-workspace', 'pbi_workspaces');
             fillSelect('wf-vis-report', 'pbi_reports');
+            fillSelect('wf-ds-workspace', 'pbi_workspaces');
+            fillSelect('wf-ds-dataset', 'pbi_datasets');
             
             // Auto trigger loadPages if there's a selection
             setTimeout(loadPages, 500);
@@ -4286,6 +4288,11 @@ document.addEventListener('mousedown', (e) => {
             const activeR = document.getElementById('active-report')?.value;
             if (activeW) document.getElementById('wf-exp-workspace').value = activeW;
             if (activeR) document.getElementById('wf-exp-report').value = activeR;
+            if (activeW) document.getElementById('wf-vis-workspace').value = activeW;
+            if (activeR) document.getElementById('wf-vis-report').value = activeR;
+            if (activeW) document.getElementById('wf-ds-workspace').value = activeW;
+            const activeD = document.getElementById('active-dataset')?.value;
+            if (activeD) document.getElementById('wf-ds-dataset').value = activeD;
 
         });
 
@@ -4475,7 +4482,7 @@ document.addEventListener('mousedown', (e) => {
                 document.getElementById('wf-config-smart_pipeline').style.display = 'block';
             } else if (val === 'export_dataset_tables') {
                 document.getElementById('wf-config-export_dataset_tables').style.display = 'block';
-                window.populateWfDropdowns('wf-ds-workspace', 'wf-ds-dataset');
+                
             } else if (val === 'export_visual') {
                 document.getElementById('wf-config-export_visual').style.display = 'block';
             } else {
