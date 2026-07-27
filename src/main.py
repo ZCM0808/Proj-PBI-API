@@ -849,3 +849,64 @@ async def search_notes(q: str = ""):
 
 if __name__ == "__main__":
     main()
+
+
+@app.post("/api/export_dataset/{workspace_id}/{dataset_id}")
+async def export_dataset_queries(workspace_id: str, dataset_id: str, request: Request):
+    import asyncio
+    import requests
+    from msal import ConfidentialClientApplication
+
+    try:
+        data = await request.json()
+        client_id = data.get("pbi_client_id", "").strip()
+        client_secret = data.get("pbi_client_secret", "").strip()
+        tenant_id = data.get("pbi_tenant_id", "").strip()
+        query = data.get("query", "").strip()
+
+        if not all([client_id, client_secret, tenant_id, query]):
+            return {"success": False, "message": "Missing credentials or query"}
+
+        authority_url = f"https://login.microsoftonline.com/{tenant_id}"
+        app_msal = ConfidentialClientApplication(
+            client_id=client_id,
+            client_credential=client_secret,
+            authority=authority_url,
+        )
+        
+        scope = ["https://analysis.windows.net/powerbi/api/.default"]
+        result = await asyncio.to_thread(app_msal.acquire_token_for_client, scopes=scope)
+        
+        if "access_token" not in result:
+            return {"success": False, "message": f"Auth failed: {result.get('error_description', 'Unknown Error')}"}
+        
+        access_token = result["access_token"]
+        
+        endpoint = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/executeQueries"
+        
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "queries": [{"query": query}],
+            "serializerSettings": {"includeNulls": True}
+        }
+        
+        response = await asyncio.to_thread(requests.post, endpoint, headers=headers, json=payload)
+        
+        if response.status_code == 200:
+            resp_data = response.json()
+            results = resp_data.get("results", [])
+            if results and len(results) > 0:
+                tables = results[0].get("tables", [])
+                if tables and len(tables) > 0:
+                    rows = tables[0].get("rows", [])
+                    return {"success": True, "results": rows}
+            return {"success": True, "results": []}
+        else:
+            return {"success": False, "message": f"API Error: {response.status_code} - {response.text}"}
+
+    except Exception as e:
+        return {"success": False, "message": f"Server Error: {str(e)}"}

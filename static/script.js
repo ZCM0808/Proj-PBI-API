@@ -4469,9 +4469,13 @@ document.addEventListener('mousedown', (e) => {
             document.getElementById('wf-export-wrapper').style.display = 'none';
             document.getElementById('wf-config-smart_pipeline').style.display = 'none';
             document.getElementById('wf-config-export_visual').style.display = 'none';
+            document.getElementById('wf-config-export_dataset_tables').style.display = 'none';
             
             if (val === 'smart_pipeline') {
                 document.getElementById('wf-config-smart_pipeline').style.display = 'block';
+            } else if (val === 'export_dataset_tables') {
+                document.getElementById('wf-config-export_dataset_tables').style.display = 'block';
+                window.populateWfDropdowns('wf-ds-workspace', 'wf-ds-dataset');
             } else if (val === 'export_visual') {
                 document.getElementById('wf-config-export_visual').style.display = 'block';
             } else {
@@ -4700,6 +4704,8 @@ document.addEventListener('mousedown', (e) => {
                             await executeStep3();
                         }
                     }
+                } else if (wfType === 'export_dataset_tables') {
+                    await window.executeExportDataset();
                 } else if (wfType === 'export_visual') {
                     await executeExportVisual();
                 } else if (wfType === 'smart_pipeline') {
@@ -4725,3 +4731,140 @@ window.copyWfConsole = function(step, btn) {
         alert('Failed to copy: ' + err);
     });
 };
+
+
+window.executeExportDataset = async function() {
+    const ws = document.getElementById('wf-ds-workspace').value;
+    const ds = document.getElementById('wf-ds-dataset').value;
+    const tb = document.getElementById('wf-ds-table').value;
+    
+    if(!ws || !ds || !tb) {
+        alert("请先选择 Workspace, Dataset 和 Table！(Please select Workspace, Dataset, and Table.)");
+        return;
+    }
+    
+    const clientId = document.getElementById('set-client').value.trim();
+    const clientSecret = document.getElementById('set-secret').value.trim();
+    const tenantId = document.getElementById('set-tenant').value.trim();
+    if (!clientId || !clientSecret || !tenantId) {
+        alert("请在 Global Settings 中填写 Auth Credentials！");
+        return;
+    }
+    
+    const btn = document.getElementById('run-workflow-btn');
+    const origHtml = btn.innerHTML;
+    btn.innerHTML = '⏳ Exporting...';
+    btn.disabled = true;
+    
+    try {
+        const payload = {
+            pbi_client_id: clientId,
+            pbi_client_secret: clientSecret,
+            pbi_tenant_id: tenantId,
+            query: `EVALUATE '${tb}'`
+        };
+        
+        const res = await fetch(`/api/export_dataset/${ws}/${ds}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await res.json();
+        if(data.success) {
+            const rows = data.results;
+            if(!rows || rows.length === 0) {
+                alert("表中没有数据 (Table is empty).");
+                return;
+            }
+            // Strip brackets like TableName[ColumnName] to just ColumnName
+            const cleanKey = (k) => {
+                const match = k.match(/\[(.*?)\]/);
+                return match ? match[1] : k;
+            };
+            const rawKeys = Object.keys(rows[0]);
+            let csv = rawKeys.map(k => `"${cleanKey(k).replace(/"/g, '""')}"`).join(",") + "\n";
+            rows.forEach(r => {
+                csv += rawKeys.map(k => {
+                    let val = r[k];
+                    if (val === null || val === undefined) val = '';
+                    return `"${val.toString().replace(/"/g, '""')}"`;
+                }).join(",") + "\n";
+            });
+            
+            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${tb}_export.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            alert(`✅ 成功导出 (Exported) ${rows.length} 行数据！`);
+        } else {
+            alert("❌ 导出失败 (Export failed): " + data.message);
+        }
+    } catch(err) {
+        alert("❌ 网络异常 (Network error): " + err);
+    } finally {
+        btn.innerHTML = origHtml;
+        btn.disabled = false;
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    const loadBtn = document.getElementById('load-tables-btn');
+    if(loadBtn) {
+        loadBtn.addEventListener('click', async () => {
+            const ws = document.getElementById('wf-ds-workspace').value;
+            const ds = document.getElementById('wf-ds-dataset').value;
+            if(!ws || !ds) {
+                alert("请先选择 Workspace 和 Dataset！(Select Workspace & Dataset first)");
+                return;
+            }
+            
+            const clientId = document.getElementById('set-client').value.trim();
+            const clientSecret = document.getElementById('set-secret').value.trim();
+            const tenantId = document.getElementById('set-tenant').value.trim();
+            if (!clientId || !clientSecret || !tenantId) {
+                alert("请在 Global Settings 中填写 Auth Credentials！");
+                return;
+            }
+            
+            await window.animateVerifyBtn(loadBtn, async () => {
+                const payload = {
+                    pbi_client_id: clientId,
+                    pbi_client_secret: clientSecret,
+                    pbi_tenant_id: tenantId,
+                    query: "EVALUATE FILTER(INFO.TABLES(), [IsHidden] = FALSE)"
+                };
+                
+                const res = await fetch(`/api/export_dataset/${ws}/${ds}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await res.json();
+                if(data.success) {
+                    const sel = document.getElementById('wf-ds-table');
+                    sel.innerHTML = '';
+                    data.results.forEach(t => {
+                        const NameKey = Object.keys(t).find(k => k.endsWith('Name]') || k === 'Name');
+                        const opt = document.createElement('option');
+                        opt.value = t[NameKey];
+                        opt.textContent = t[NameKey];
+                        sel.appendChild(opt);
+                    });
+                    return { success: true, message: `加载了 ${data.results.length} 张表` };
+                } else {
+                    return { success: false, message: data.message };
+                }
+            }, (res) => {
+                // Success callback, do nothing special except the animation
+            });
+        });
+    }
+});
