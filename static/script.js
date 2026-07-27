@@ -111,7 +111,7 @@ window.addListRow = function(containerId, alias = "", id = "") {
     }
 };
 
-window.verifySelectedGuid = async function(type, containerId, event) {
+window.verifySelectedGuid = async function(type, containerId, btn) {
     const container = document.getElementById(containerId);
     if (!container) return;
     
@@ -138,7 +138,7 @@ window.verifySelectedGuid = async function(type, containerId, event) {
         return;
     }
 
-    const btn = event.currentTarget;
+    
     const originalText = btn.innerHTML;
     btn.innerHTML = '⏳';
     btn.disabled = true;
@@ -170,8 +170,8 @@ window.verifySelectedGuid = async function(type, containerId, event) {
     }
 };
 
-window.scanItems = async function(type, event) {
-    const btn = event.currentTarget;
+window.scanItems = async function(type, btn) {
+    
     const originalText = btn.innerHTML;
     btn.innerHTML = '⏳ Scanning...';
     btn.disabled = true;

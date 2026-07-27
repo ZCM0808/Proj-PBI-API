@@ -638,8 +638,8 @@
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="const list = document.getElementById('workspace-list'); const icon = this.querySelector('.collapse-icon'); if (list.style.display === 'none') { list.style.display = 'flex'; icon.textContent = '▼'; } else { list.style.display = 'none'; icon.textContent = '▶'; }" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_WORKSPACES (工作区字典 / groupId)</label>
                             <div style="display: flex; gap: 6px;">
-                                <button type="button" onclick="verifySelectedGuid('groups', 'workspace-list', event)" class="btn-verify" title="Verify Selected">⚡</button>
-                                <button type="button" onclick="scanItems('workspaces', event)" class="btn-scan">🔍 Scan</button>
+                                <button type="button" onclick="verifySelectedGuid('groups', 'workspace-list', this)" class="btn-verify" title="Verify Selected">⚡</button>
+                                <button type="button" onclick="scanItems('workspaces', this)" class="btn-scan">🔍 Scan</button>
                                 <button type="button" onclick="addListRow('workspace-list')" class="btn-add-row">+ Add</button>
                             </div>
                         </div>
@@ -649,8 +649,8 @@
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="const list = document.getElementById('dataset-list'); const icon = this.querySelector('.collapse-icon'); if (list.style.display === 'none') { list.style.display = 'flex'; icon.textContent = '▼'; } else { list.style.display = 'none'; icon.textContent = '▶'; }" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_DATASETS (数据集字典 / datasetId)</label>
                             <div style="display: flex; gap: 6px;">
-                                <button type="button" onclick="verifySelectedGuid('datasets', 'dataset-list', event)" class="btn-verify" title="Verify Selected">⚡</button>
-                                <button type="button" onclick="scanItems('datasets', event)" class="btn-scan">🔍 Scan</button>
+                                <button type="button" onclick="verifySelectedGuid('datasets', 'dataset-list', this)" class="btn-verify" title="Verify Selected">⚡</button>
+                                <button type="button" onclick="scanItems('datasets', this)" class="btn-scan">🔍 Scan</button>
                                 <button type="button" onclick="addListRow('dataset-list')" class="btn-add-row">+ Add</button>
                             </div>
                         </div>
@@ -660,8 +660,8 @@
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="const list = document.getElementById('report-list'); const icon = this.querySelector('.collapse-icon'); if (list.style.display === 'none') { list.style.display = 'flex'; icon.textContent = '▼'; } else { list.style.display = 'none'; icon.textContent = '▶'; }" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_REPORTS (报表字典 / reportId)</label>
                             <div style="display: flex; gap: 6px;">
-                                <button type="button" onclick="verifySelectedGuid('reports', 'report-list', event)" class="btn-verify" title="Verify Selected">⚡</button>
-                                <button type="button" onclick="scanItems('reports', event)" class="btn-scan">🔍 Scan</button>
+                                <button type="button" onclick="verifySelectedGuid('reports', 'report-list', this)" class="btn-verify" title="Verify Selected">⚡</button>
+                                <button type="button" onclick="scanItems('reports', this)" class="btn-scan">🔍 Scan</button>
                                 <button type="button" onclick="addListRow('report-list')" class="btn-add-row">+ Add</button>
                             </div>
                         </div>
@@ -771,7 +771,7 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
-    <script src="/static/script.js?v=20260727_v44_verify_all"></script>
+    <script src="/static/script.js?v=20260727_v45_fix_event"></script>
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: flex; z-index: 100000; opacity: 0; visibility: hidden; transition: opacity 0.25s ease;">
