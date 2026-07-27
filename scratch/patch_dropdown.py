@@ -1,4 +1,82 @@
-// Auth Snapshots Logic
+import os
+
+STYLE_FILE = 'static/style.css'
+JS_FILE = 'static/snapshots.js'
+
+# 1. Append CSS
+css_block = """
+/* Snapshot Dropdown */
+.snapshot-dropdown-trigger {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--input-bg);
+    border: 1px solid var(--panel-border);
+    padding: 6px 10px; border-radius: 6px;
+    font-size: 0.8rem; color: var(--text-primary);
+    cursor: pointer; transition: all 0.2s;
+}
+.snapshot-dropdown-trigger:hover {
+    border-color: var(--accent);
+}
+.snapshot-dropdown-menu {
+    position: absolute; top: 100%; left: 0; right: 0;
+    margin-top: 4px;
+    background: var(--bg-primary);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 100;
+    max-height: 220px;
+    overflow-y: auto;
+    opacity: 0; transform: translateY(-5px);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+    display: flex; flex-direction: column;
+}
+.snapshot-dropdown-menu.show {
+    opacity: 1; transform: translateY(0); pointer-events: auto;
+}
+.snapshot-dropdown-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 10px; border-bottom: 1px solid var(--panel-border);
+    font-size: 0.75rem; color: var(--text-secondary);
+    cursor: pointer; transition: background 0.2s;
+}
+.snapshot-dropdown-item:last-child { border-bottom: none; }
+.snapshot-dropdown-item:hover {
+    background: var(--overlay-10); color: var(--text-primary);
+}
+.snapshot-dropdown-item.active {
+    background: rgba(167, 139, 250, 0.1); color: #a78bfa; border-left: 3px solid #a78bfa;
+}
+.dropdown-item-name {
+    flex-grow: 1; outline: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 8px;
+}
+.dropdown-item-name[contenteditable="true"] {
+    background: var(--input-bg); padding: 2px 4px; border-radius: 4px; border: 1px solid var(--accent); color: var(--text-primary);
+}
+.dropdown-item-actions {
+    display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s; flex-shrink: 0;
+}
+.snapshot-dropdown-item:hover .dropdown-item-actions,
+.snapshot-dropdown-item.active .dropdown-item-actions {
+    opacity: 1;
+}
+.dropdown-chevron {
+    width: 16px; height: 16px; fill: currentColor; transition: transform 0.2s;
+}
+.dropdown-chevron.open { transform: rotate(180deg); }
+"""
+
+with open(STYLE_FILE, 'r', encoding='utf-8') as f:
+    content = f.read()
+
+if '.snapshot-dropdown-trigger' not in content:
+    with open(STYLE_FILE, 'a', encoding='utf-8') as f:
+        f.write("\n" + css_block)
+    print("Patched style.css")
+
+# 2. Rewrite snapshots.js
+js_content = """// Auth Snapshots Logic
 (function() {
     let snapshots = JSON.parse(localStorage.getItem('pbi_auth_snapshots') || '[]');
     let activeSnapshotId = localStorage.getItem('pbi_active_snapshot_id');
@@ -281,3 +359,8 @@
         renderSnapshots();
     }, 500);
 })();
+"""
+
+with open(JS_FILE, 'w', encoding='utf-8') as f:
+    f.write(js_content)
+print("Patched snapshots.js")
