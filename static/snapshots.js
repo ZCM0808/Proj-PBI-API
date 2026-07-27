@@ -203,37 +203,30 @@
         };
     }
 
-    window.saveAuthSnapshot = function(customName = null) {
+    window.saveAuthSnapshot = function(customName = null, isManual = false) {
         const config = getCurrentConfig();
         if (!config.clientId || !config.tenantId) {
             console.warn('Cannot save snapshot: Missing Client ID or Tenant ID.');
             return;
         }
         
-        // Check if identical config exists
-        const existing = snapshots.find(s => 
-            s.clientId === config.clientId && 
-            s.clientSecret === config.clientSecret &&
-            s.username === config.username &&
-            s.password === config.password &&
-            s.tenantId === config.tenantId &&
-            s.authMode === config.authMode
-        );
+        // Auto-save logic: if identical config exists, do NOT overwrite its name, just activate it.
+        if (!isManual) {
+            const existing = snapshots.find(s => 
+                s.clientId === config.clientId && 
+                s.clientSecret === config.clientSecret &&
+                s.username === config.username &&
+                s.password === config.password &&
+                s.tenantId === config.tenantId &&
+                s.authMode === config.authMode
+            );
 
-        if (existing) {
-            activeSnapshotId = existing.id;
-            if (customName && customName !== existing.name) {
-                let finalName = customName;
-                let counter = 1;
-                while (snapshots.some(s => s.id !== existing.id && s.name.toLowerCase() === finalName.toLowerCase())) {
-                    finalName = `${customName} (${counter})`;
-                    counter++;
-                }
-                existing.name = finalName;
+            if (existing) {
+                activeSnapshotId = existing.id;
+                saveSnapshots();
+                renderSnapshots();
+                return;
             }
-            saveSnapshots();
-            renderSnapshots();
-            return;
         }
 
         let finalName = customName || `Profile ${snapshots.length + 1}`;
@@ -261,7 +254,7 @@
         if (btnSave) {
             btnSave.onclick = () => {
                 const name = prompt('为当前配置起一个名字:', `Profile ${snapshots.length + 1}`);
-                if (name !== null) window.saveAuthSnapshot(name.trim() || undefined);
+                if (name !== null) window.saveAuthSnapshot(name.trim() || undefined, true);
             };
         }
         
