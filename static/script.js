@@ -5014,7 +5014,7 @@ document.addEventListener('click', function(e) {
             options.classList.remove('open');
             options.style.opacity = '0';
             options.style.visibility = 'hidden';
-            options.style.transform = 'translateY(-8px)';
+            options.style.transform = 'translateY(8px)';
             if (svg) svg.style.transform = '';
         }
     }
@@ -5029,7 +5029,7 @@ window.toggleDsTableDropdown = function(e) {
         options.classList.remove('open');
         options.style.opacity = '0';
         options.style.visibility = 'hidden';
-        options.style.transform = 'translateY(-8px)';
+        options.style.transform = 'translateY(8px)';
         if (svg) svg.style.transform = '';
     } else {
         options.classList.add('open');
@@ -5052,6 +5052,6 @@ window.selectDsTable = function(val, text) {
     options.classList.remove('open');
     options.style.opacity = '0';
     options.style.visibility = 'hidden';
-    options.style.transform = 'translateY(-8px)';
+    options.style.transform = 'translateY(8px)';
     if (svg) svg.style.transform = '';
 };
