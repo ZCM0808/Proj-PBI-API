@@ -4866,7 +4866,7 @@ window.loadDatasetTablesStep1 = async function(btn) {
                     const li = document.createElement('li');
                     li.style.cssText = 'padding: 8px 12px; font-size: 0.85rem; cursor: pointer; color: var(--text-primary); transition: background 0.15s ease; border-radius: 4px; margin: 0 4px;';
                     li.innerText = t;
-                    li.onmouseover = () => li.style.background = 'var(--bg-hover)';
+                    li.onmouseover = () => li.style.background = 'var(--overlay-10)';
                     li.onmouseout = () => li.style.background = 'transparent';
                     li.onclick = (e) => { e.stopPropagation(); window.selectDsTable(t, t); };
                     optionsUl.appendChild(li);
