@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/powerbi-client/dist/powerbi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260727_v38_workflow_theme">
+    <link rel="stylesheet" href="/static/style.css?v=20260727_v39_snapshots">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -547,6 +547,21 @@
                             <h4 style="margin: 0; font-size: 0.75rem; color: #a78bfa;">Azure App Authentication</h4>
                             <button type="button" id="verify-settings-btn" title="Verify Auth" class="btn-verify">⚡</button>
                         </div>
+                        
+                    <!-- Auth Snapshots UI -->
+                    <div class="auth-snapshots-container" style="margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed var(--panel-border);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <h4 style="font-weight: bold; font-size: 0.75rem; color: var(--text-primary); margin: 0;">Auth Profiles (配置快照)</h4>
+                            <button type="button" id="btn-save-snapshot" class="icon-btn" title="Save current config as new snapshot" style="padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; border: 1px solid var(--accent); color: var(--accent); display: flex; align-items: center; gap: 4px; font-weight: 500;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                                存为快照
+                            </button>
+                        </div>
+                        <div id="snapshot-chips-container" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;" class="hide-scrollbar">
+                            <!-- Chips dynamically populated here -->
+                        </div>
+                    </div>
+
                         <div class="form-group" style="margin-bottom: 12px; padding: 8px; background: rgba(0,0,0,0.15); border-radius: 4px;">
                             <label style="margin-bottom: 6px; display: block; font-weight: bold;">Active Auth Mode (认证模式选择)</label>
                             <div style="display: flex; flex-direction: column; gap: 6px;">
@@ -796,5 +811,6 @@
         </div>
     </div>
 
+    <script src="/static/snapshots.js?v=20260727_v39_snapshots"></script>
 </body>
 </html>

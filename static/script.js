@@ -2692,6 +2692,9 @@ const loadReqHistory = (searchTerm = "") => {
                     });
                     const result = await res.json();
                     if (result.success) {
+                        if (window.saveAuthSnapshot) {
+                            window.saveAuthSnapshot(result.app_name || "Auto-Saved Profile");
+                        }
                         if (result.app_name) {
                             localStorage.setItem('pbi_app_name', result.app_name);
                         }
