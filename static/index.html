@@ -443,7 +443,7 @@
                                 </select>
                             </div>
                             <div style="display: flex; align-items: flex-end;">
-                                <button type="button" class="btn-verify" id="load-tables-btn" style="height: 38px; width: auto; padding: 0 16px;">Load Tables</button>
+                                <button type="button" class="btn-verify" onclick="window.loadDatasetTables(this)" style="height: 38px; width: auto; padding: 0 16px;">Load Tables</button>
                             </div>
                         </div>
                     </div>
@@ -796,7 +796,7 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
-    <script src="/static/script.js?v=20260727_v50_fix_dropdowns"></script>
+    <script src="/static/script.js?v=20260727_v51_fix_load"></script>
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: flex; z-index: 100000; opacity: 0; visibility: hidden; transition: opacity 0.25s ease;">
