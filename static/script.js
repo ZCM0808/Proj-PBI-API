@@ -4761,7 +4761,7 @@ window.executeExportDataset = async function() {
     const clientSecret = document.getElementById('set-secret').value.trim();
     const tenantId = document.getElementById('set-tenant').value.trim();
     
-    // Removed duplicate btn and origHtml declaration
+    window.skipWfBtnReset = true;
     btn.innerHTML = '⏳ Exporting...';
     btn.disabled = true;
     
@@ -4783,10 +4783,11 @@ window.executeExportDataset = async function() {
         if(data.success) {
             const rows = data.results;
             if(!rows || rows.length === 0) {
-                alert("表中没有数据 (Table is empty).");
+                btn.innerHTML = '⚠️ Table Empty';
+                setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 2000);
                 return;
             }
-            // Strip brackets like TableName[ColumnName] to just ColumnName
+            
             const cleanKey = (k) => {
                 const match = k.match(/\[(.*?)\]/);
                 return match ? match[1] : k;
@@ -4811,15 +4812,17 @@ window.executeExportDataset = async function() {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             
-            alert(`✅ 成功导出 (Exported) ${rows.length} 行数据！`);
+            btn.innerHTML = `✅ Exported ${rows.length} rows!`;
+            setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 3000);
         } else {
-            alert("❌ 导出失败 (Export failed): " + data.message);
+            btn.innerHTML = '❌ ' + (data.message.substring(0, 20) + '...');
+            console.error("Export Failed:", data.message);
+            setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 4000);
         }
     } catch(err) {
-        alert("❌ 网络异常 (Network error): " + err);
-    } finally {
-        btn.innerHTML = origHtml;
-        btn.disabled = false;
+        btn.innerHTML = '❌ Network Error';
+        console.error("Export Network Error:", err);
+        setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 2000);
     }
 };
 
