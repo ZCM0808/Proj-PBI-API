@@ -223,17 +223,18 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
 
   test('局部组件视觉回归测试 (Component Visual Regression): Pipeline 弹窗内执行按钮的 Hover 闪光态', async ({ page }) => {
     // 1. 打开 Pipeline 弹窗
-    const pipelineBtn = page.locator('#btn-smart-ops');
+    const pipelineBtn = page.locator('#btn-workflows');
     await pipelineBtn.click();
     
     // 2. 等待动画结束 (FLIP 350ms)
     await page.waitForTimeout(400);
 
-    const pipelineModal = page.locator('#pipeline-modal .modal-content');
+    const pipelineModal = page.locator('#workflow-modal .modal-content');
     await expect(pipelineModal).toBeVisible();
 
     // 3. 将鼠标悬停在执行按钮上，触发 css hover 动画
-    const runBtn = page.locator('#start-pipeline-btn');
+    await page.locator('#wf-selector').selectOption('smart_pipeline');
+    const runBtn = page.locator('#workflow-modal #start-pipeline-btn');
     await runBtn.hover();
 
     // 4. 等待 0.3 秒，让闪光动画正好跑向中间态（用于捕获发光色块飞出边界的 Bug）

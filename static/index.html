@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/powerbi-client/dist/powerbi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260726_v37_select_ui">
+    <link rel="stylesheet" href="/static/style.css?v=20260727_v38_workflow_theme">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -414,7 +414,7 @@
                 
                 <!-- Smart Pipeline Container -->
                 <div id="wf-config-smart_pipeline" class="wf-config-pane" style="display: none;">
-                    <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--panel-border); border-radius: 8px; padding: 12px;">
+                    <div style="background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 8px; padding: 12px;">
                         <div class="terminal-view" id="pipeline-terminal" style="max-height: 200px; margin-bottom: 12px;">
                             <div class="terminal-line"><span class="info">系统已就绪。点击下方按钮开始智能扫描并自动绑定工作区、数据集和报表...</span></div>
                         </div>

@@ -13,7 +13,7 @@ module.exports = defineConfig({
   webServer: {
     command: process.platform === 'win32' ? 'set PORT=8081 && python src/main.py' : 'PORT=8081 python src/main.py',
     url: 'http://127.0.0.1:8081',
-    reuseExistingServer: false,
+    reuseExistingServer: true,
     stdout: 'ignore',
     stderr: 'pipe',
   },

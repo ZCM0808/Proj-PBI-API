@@ -2441,16 +2441,16 @@ json-viewer {
 /* Workflow UI Styles */
 .wf-input { background: var(--input-bg); border: 1px solid var(--panel-border); color: var(--text-primary); padding: 8px; border-radius: 6px; width: 100%; outline: none; font-family: inherit; transition: border-color 0.2s; box-sizing: border-box; }
 .wf-input:focus { border-color: var(--accent); }
-.wf-step { background: rgba(0, 0, 0, 0.2); border: 1px solid var(--panel-border); border-radius: 8px; padding: 6px 10px; transition: border-color 0.3s; }
+.wf-step { background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 8px; padding: 6px 10px; transition: border-color 0.3s; }
 .wf-step.active { border-color: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
 .wf-step-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px !important; }
 .wf-step-title { font-weight: 600; color: var(--accent); font-size: 0.8rem !important; margin: 0 !important; line-height: 1 !important; }
-.wf-console { background: #0b0c10; color: #a5d6ff; padding: 4px; border-radius: 4px; font-size: 0.7rem; font-family: 'Fira Code', monospace; min-height: 70px; max-height: 180px; overflow-y: auto; margin: 0; white-space: pre-wrap; border: 1px solid rgba(255,255,255,0.05); }
+.wf-console { background: var(--input-bg); color: var(--text-primary); padding: 4px; border-radius: 4px; font-size: 0.7rem; font-family: 'Fira Code', monospace; min-height: 70px; max-height: 180px; overflow-y: auto; margin: 0; white-space: pre-wrap; border: 1px solid var(--panel-border); }
 .wf-step-btn { padding: 4px 10px !important; font-size: 0.75rem !important; height: auto !important; border-radius: 6px !important; line-height: 1 !important; }
 .wf-step-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.wf-copy-btn { position: absolute; top: 6px; right: 6px; background: rgba(255, 255, 255, 0.1); border: none; color: var(--text-secondary); border-radius: 4px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
-.wf-copy-btn:hover { background: rgba(255, 255, 255, 0.2); color: var(--text-primary); }
+.wf-copy-btn { position: absolute; top: 6px; right: 6px; background: var(--overlay-10); border: none; color: var(--text-secondary); border-radius: 4px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
+.wf-copy-btn:hover { background: var(--overlay-15); color: var(--text-primary); }
 
 /* =========================================
    Global Select (Dropdown) Dark Mode Optimizations
