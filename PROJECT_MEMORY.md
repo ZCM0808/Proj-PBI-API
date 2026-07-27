@@ -99,21 +99,35 @@ python src/main.py
 3. `test_frontend_delivery_contract`: 根路由 `/` 契约，确保正确交付前端 `index.html`。
 4. `test_api_settings_contract`: 校验 `/api/settings` GET/POST 接口读写连通性。
 
-**🔵 前端防线：Playwright E2E (9 个用例)**
+**🔵 前端防线：Playwright E2E (16 个用例)**
 1. `下拉框防污染`: 刷新后历史下拉框必须默认隐藏。
 2. `侧边栏交互`: 一键“展开/折叠”按钮正确控制树状图层级。
 3. `模式切换引擎`: 点击 New Request 正确切换 Badge 为 Free Mode。
 4. `官方绑定模式`: 点击 API 树节点实现表单参数绑定，Reset 按钮完美一键复原。
 5. `配置项清洗防御`: **(重中之重)** 验证设置弹窗成功拦截并抹除恶意的多行 SQL_CONN_STR 回车换行符，防止污染后端。
 6. `历史记录搜索`: 验证全局 Fuzzy Search 模糊搜索与清空机制的可用性。
-7. `全页视觉回归`: 主页像素级快照对比，严防乱码与全局 CSS 崩塌。
-8. `组件视觉回归`: 侧边栏专门快照对比，严防长字符串文本溢出撑破布局。
-9. `弹窗动效视觉回归`: Pipeline 弹窗按钮 Hover 闪光态快照对比，严格监控 absolute 动画元素是否因缺少 overflow 而溢出污染背景。
+7. `环境隔离与去重`: 全局环境配置 (Global Settings)：Scan Workspace 能够严格过滤重复添加的 GUID。
+8. `全页视觉回归`: 主页 UI 必须与基准快照保持像素级一致。
+9. `组件视觉回归`: 侧边栏 API 树状图滚动条截断、文字溢出排版验证。
+10. `组件微动效回归`: Pipeline 弹窗内执行按钮的 Hover 闪光态。
+11. `结构防御 (DOM Hierarchy)`: context-toolbar 必须严格被 request-builder-top 包裹，防止掉落外层导致间距异常。
+12. `结构防御 (DOM Hierarchy)`: Response 面板必须严格被 main-content 包裹，防止意外的闭合标签导致布局崩塌。
+13. `溢出防御 (Overflow Defense)`: 动作按钮组绝对不能跑到右侧面板之外。
+14. `弹性布局抗挤压测试 (Flex bounds)`: 请求体 textarea 不能被上方的错误空白完全挤压。
+15. `垂直调整器防御 (Vertical Resizer)`: 向上极限拖拽时，请求面板不能被压到不可用状态。
+16. `组件视觉回归`: Request 面板防间距空洞及布局偏移检查。
 6. **CI/CD Pipeline (持续集成流水线)**：
    - GitHub Actions (`.github/workflows/ci.yml`) 将上述所有流程自动化，在 Push 时跑通所有测试。
 
 ---
-> **最后更新状态**：已完成全局最佳测试实践 (Playwright + Pytest) 的整合，引入 GitHub Actions 流水线，并更新了 PAT。系统处于高度健壮状态。
+
+## 7. 近期重大架构迭代 (Recent Major Updates)
+- **数据导出工作流 (Export Dataset Tables Workflow)**：
+  - **后端实现**：使用 DAX 的 `executeQueries` 绕过了 `INFO.TABLES` 的兼容性问题（通过 `EVALUATE SUMMARIZE(COLUMNSTATISTICS(), [Table Name])` 拉取表列表，然后再针对单表执行 `EVALUATE 'TableName'` 导出最高 10w 行数据）。
+  - **前端体验**：实现了与 `Export Report to File` 完全一致的 **Step 1 / Step 2 UI 分步日志流**（极客风 Console 输出），完美支持了独立步骤触发和 `Run Full Workflow` 自动串联执行逻辑。
+  - **稳定性修复**：排除了因按钮 ID 查找失败导致的隐藏 TypeError 从而引发的“死锁（永久 Loading）”问题，重写了纯净的 JS 代码规避了多行字符串插值的换行符注入错误。
+
+> **最后更新状态**：已完成全局最佳测试实践 (Playwright + Pytest) 的整合与扩充（共 16 项 E2E 铁人项），引入 GitHub Actions 流水线。Export Dataset 工作流现已极其稳健。
 
 - **全局弹窗拖拽体验 (Draggable Popups)**：所有的浮层弹窗 (Modal/Popup) 必须支持通过头部自由拖拽移动位置，避免遮挡底部重要内容，并且在关闭后再次打开时必须自动重置回居中位置。
 
