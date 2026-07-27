@@ -59,9 +59,17 @@
             const finishEdit = () => {
                 nameSpan.contentEditable = 'false';
                 const newName = nameSpan.textContent.trim();
+                
                 if (newName && newName !== snap.name) {
-                    snap.name = newName;
-                    saveSnapshots();
+                    // 检查是否重名
+                    const isDuplicate = snapshots.some(s => s.id !== snap.id && s.name.toLowerCase() === newName.toLowerCase());
+                    if (isDuplicate) {
+                        alert(`别名 "${newName}" 已存在，请换一个名称！`);
+                        nameSpan.textContent = snap.name; // 恢复原名
+                    } else {
+                        snap.name = newName;
+                        saveSnapshots();
+                    }
                 } else {
                     nameSpan.textContent = snap.name; // revert
                 }
@@ -159,19 +167,30 @@
 
         if (existing) {
             activeSnapshotId = existing.id;
-            if (customName && customName !== existing.name && !existing.name.includes("Auto-Saved")) {
-                existing.name = customName;
-            } else if (customName && existing.name.includes("Auto-Saved")) {
-                existing.name = customName;
+            if (customName && customName !== existing.name) {
+                let finalName = customName;
+                let counter = 1;
+                while (snapshots.some(s => s.id !== existing.id && s.name.toLowerCase() === finalName.toLowerCase())) {
+                    finalName = `${customName} (${counter})`;
+                    counter++;
+                }
+                existing.name = finalName;
             }
             saveSnapshots();
             renderSnapshots();
             return;
         }
+        let finalName = customName || `Profile ${snapshots.length + 1}`;
+        let counter = 1;
+        let baseName = finalName;
+        while (snapshots.some(s => s.name.toLowerCase() === finalName.toLowerCase())) {
+            finalName = `${baseName} (${counter})`;
+            counter++;
+        }
 
         const newSnap = {
             id: 'snap_' + Date.now() + '_' + Math.floor(Math.random()*1000),
-            name: customName || `Profile ${snapshots.length + 1}`,
+            name: finalName,
             ...config
         };
         snapshots.push(newSnap);
