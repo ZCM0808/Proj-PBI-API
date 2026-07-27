@@ -112,38 +112,30 @@ window.addListRow = function(containerId, alias = "", id = "") {
 };
 
 window.verifySelectedGuid = async function(type, containerId, btn) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    
-    const selectedRadio = container.querySelector(`input[type="radio"]:checked`);
-    if (!selectedRadio) {
-        alert('请先选中一条要测试的记录 (Please select a record to verify)');
-        return;
-    }
-    
-    const row = selectedRadio.parentElement;
-    const input = row.querySelector('.id-input');
-    const guid = input.value.trim();
-    if (!guid) {
-        alert('请先填写该记录的 GUID！(Please enter a GUID to verify)');
-        return;
-    }
-    
-    const clientId = document.getElementById('set-client').value.trim();
-    const clientSecret = document.getElementById('set-secret').value.trim();
-    const tenantId = document.getElementById('set-tenant').value.trim();
+    await window.animateVerifyBtn(btn, async () => {
+        const container = document.getElementById(containerId);
+        if (!container) return { success: false, message: '内部错误: 容器不存在 (Container not found)' };
+        
+        const selectedRadio = container.querySelector(`input[type="radio"]:checked`);
+        if (!selectedRadio) {
+            return { success: false, message: '请先选中一行记录 (Please select a record to verify)' };
+        }
+        
+        const row = selectedRadio.parentElement;
+        const input = row.querySelector('.id-input');
+        const guid = input.value.trim();
+        if (!guid) {
+            return { success: false, message: '请先输入有效的 GUID！(Please enter a GUID to verify)' };
+        }
+        
+        const clientId = document.getElementById('set-client').value.trim();
+        const clientSecret = document.getElementById('set-secret').value.trim();
+        const tenantId = document.getElementById('set-tenant').value.trim();
 
-    if (!clientId || !clientSecret || !tenantId) {
-        alert("请先填写 TENANT_ID, CLIENT_ID, 和 CLIENT_SECRET！(Missing credentials)");
-        return;
-    }
+        if (!clientId || !clientSecret || !tenantId) {
+            return { success: false, message: '请先填写 TENANT_ID, CLIENT_ID, 和 CLIENT_SECRET！(Missing credentials)' };
+        }
 
-    
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '⏳';
-    btn.disabled = true;
-
-    try {
         const res = await fetch('/api/test/guid', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -155,19 +147,10 @@ window.verifySelectedGuid = async function(type, containerId, btn) {
                 guid: guid
             })
         });
-        const result = await res.json();
-        
-        if (result.success) {
-            alert(`✅ 验证通过！(Valid)\n名称: ${result.name}`);
-        } else {
-            alert(`❌ 验证失败 (Failed):\n${result.message}`);
-        }
-    } catch (e) {
-        alert('❌ 请求异常: ' + e);
-    } finally {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-    }
+        return await res.json();
+    }, (result) => {
+        alert(`✅ 验证成功 (Valid)\n名称: ${result.name}`);
+    });
 };
 
 window.scanItems = async function(type, btn) {
