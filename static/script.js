@@ -4720,8 +4720,11 @@ document.addEventListener('mousedown', (e) => {
                 }
             } finally {
                 isWorkflowRunning = false;
-                this.disabled = false;
-                this.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Run Full Workflow';
+                if (!window.skipWfBtnReset) {
+                    this.disabled = false;
+                    this.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Run Full Workflow';
+                }
+                window.skipWfBtnReset = false;
             }
         };
     }
@@ -4744,9 +4747,13 @@ window.executeExportDataset = async function() {
     const ws = document.getElementById('wf-ds-workspace').value;
     const ds = document.getElementById('wf-ds-dataset').value;
     const tb = document.getElementById('wf-ds-table').value;
+    const btn = document.getElementById('run-workflow-btn');
+    const origHtml = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Run Full Workflow';
     
     if(!ws || !ds || !tb) {
-        alert("请先选择 Workspace, Dataset 和 Table！(Please select Workspace, Dataset, and Table.)");
+        window.skipWfBtnReset = true;
+        btn.innerHTML = '❌ Please Select Table';
+        setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 2000);
         return;
     }
     
@@ -4754,8 +4761,7 @@ window.executeExportDataset = async function() {
     const clientSecret = document.getElementById('set-secret').value.trim();
     const tenantId = document.getElementById('set-tenant').value.trim();
     
-    const btn = document.getElementById('run-workflow-btn');
-    const origHtml = btn.innerHTML;
+    // Removed duplicate btn and origHtml declaration
     btn.innerHTML = '⏳ Exporting...';
     btn.disabled = true;
     
