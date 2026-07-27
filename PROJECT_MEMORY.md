@@ -127,9 +127,15 @@ python src/main.py
   - **前端体验**：实现了与 `Export Report to File` 完全一致的 **Step 1 / Step 2 UI 分步日志流**（极客风 Console 输出），完美支持了独立步骤触发和 `Run Full Workflow` 自动串联执行逻辑。
   - **稳定性修复**：排除了因按钮 ID 查找失败导致的隐藏 TypeError 从而引发的“死锁（永久 Loading）”问题，重写了纯净的 JS 代码规避了多行字符串插值的换行符注入错误。
 
-> **最后更新状态**：已完成全局最佳测试实践 (Playwright + Pytest) 的整合与扩充（共 16 项 E2E 铁人项），引入 GitHub Actions 流水线。Export Dataset 工作流现已极其稳健。
-
 - **全局弹窗拖拽体验 (Draggable Popups)**：所有的浮层弹窗 (Modal/Popup) 必须支持通过头部自由拖拽移动位置，避免遮挡底部重要内容，并且在关闭后再次打开时必须自动重置回居中位置。
 
-- **同质功能外观一致性 (Consistent Button Appearance)**：如果不同按钮具有相同 or 类似的功能（例如“关闭”弹窗、“保存”等），它们必须在整个项目中保持完全相同的外观设计（如相同的 HTML/SVG 结构、统一 of CSS 类名、悬停反馈及过渡动画等），绝对禁止在不同组件中出现多种不同的样式变体。
+- **同质功能外观一致性 (Consistent Button Appearance)**：如果不同按钮具有相同或类似的功能（例如“关闭”弹窗、“保存”等），它们必须在整个项目中保持完全相同的外观设计（如相同的 HTML/SVG 结构、统一 of CSS 类名、悬停反馈及过渡动画等），绝对禁止在不同组件中出现多种不同的样式变体。
+
+- **自动化工作流扩展与 UI 防御 (Automated Workflows & UI Defense)**：
+  - **组件边界截断修复 (Modal Boundary Clipping)**：自定义下拉列表在弹窗底部展开时会被 `overflow-y: auto` 截断。解决方案为动态物理反转：依靠 `bottom: calc(100% + 4px)` 实现完美向上弹出。同时统一了所有自定义下拉框的悬浮层级，采用 `var(--overlay-10)` Alpha 透明色完美适配深浅双色主题。
+  - **Power BI 渲染挂起防御 (PBI SDK Suspension Fix)**：曾因将 `iframe` 移出屏幕 (`left: -9999px`) 导致 PBI Embedded SDK 强制挂起并阻塞 `loaded` 事件触发，进而造成获取页面时永远 Loading 的死锁。现已将 `pbi-embed-container` 重构为真实的内联可视化容器（高 400px），既解决了卡死问题，又赋予了用户直观的实时加载体验。
+  - **新增 API 审计流 (Admin Report View Count)**：由于标准用户无法直接获取报表访问量，我们上线了全新的自动化审计流，基于 Fabric Admin Activity Events 接口进行游标分页拉取，精准过滤 `ViewReport` 事件以生成当日的“总访问量”及“独立访客数”。
+  - **便捷性优化**：工作流下拉选项旁集成了原生 📋 Copy Icon，支持无缝复制当前名称并提供原生的绿色 Success 反馈色，消除操作不确定感。
+
+> **最后更新状态**：已完成全局下拉组件防截断升级与 PBI 挂起死锁防御，新增了基于底层审计日志的报表访问量抓取系统，所有改动均已通过 Playwright CI 自动化断言。
 
