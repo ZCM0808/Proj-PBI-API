@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/powerbi-client/dist/powerbi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260727_v39_snapshots">
+    <link rel="stylesheet" href="/static/style.css?v=20260727_v40_dropdown">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -560,7 +560,7 @@
                         <div id="snapshot-dropdown-wrapper" style="position: relative; width: 100%;">
                             <div id="snapshot-dropdown-trigger" class="snapshot-dropdown-trigger">
                                 <span id="active-snapshot-text" style="color: var(--text-secondary); font-style: italic;">Select or save a profile...</span>
-                                <svg class="dropdown-chevron" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+                                <svg class="dropdown-chevron" width="16" height="16" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
                             </div>
                             <div id="snapshot-dropdown-menu" class="snapshot-dropdown-menu" style="display: none;">
                                 <!-- Dropdown items dynamically populated here -->
