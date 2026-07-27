@@ -4753,10 +4753,6 @@ window.executeExportDataset = async function() {
     const clientId = document.getElementById('set-client').value.trim();
     const clientSecret = document.getElementById('set-secret').value.trim();
     const tenantId = document.getElementById('set-tenant').value.trim();
-    if (!clientId || !clientSecret || !tenantId) {
-        alert("请在 Global Settings 中填写 Auth Credentials！");
-        return;
-    }
     
     const btn = document.getElementById('run-workflow-btn');
     const origHtml = btn.innerHTML;
@@ -4894,11 +4890,6 @@ window.loadDatasetTables = async function(btn) {
         const clientId = document.getElementById('set-client').value.trim();
         const clientSecret = document.getElementById('set-secret').value.trim();
         const tenantId = document.getElementById('set-tenant').value.trim();
-        if (!clientId || !clientSecret || !tenantId) {
-            btn.innerHTML = '❌ Missing Auth';
-            setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 2000);
-            return;
-        }
         
         const payload = {
             pbi_client_id: clientId,

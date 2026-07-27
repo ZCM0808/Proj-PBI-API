@@ -859,13 +859,14 @@ async def export_dataset_queries(workspace_id: str, dataset_id: str, request: Re
 
     try:
         data = await request.json()
-        client_id = data.get("pbi_client_id", "").strip()
-        client_secret = data.get("pbi_client_secret", "").strip()
-        tenant_id = data.get("pbi_tenant_id", "").strip()
         query = data.get("query", "").strip()
+        
+        client_id = data.get("pbi_client_id", "").strip() or Config.CLIENT_ID
+        client_secret = data.get("pbi_client_secret", "").strip() or Config.CLIENT_SECRET
+        tenant_id = data.get("pbi_tenant_id", "").strip() or Config.TENANT_ID
 
         if not all([client_id, client_secret, tenant_id, query]):
-            return {"success": False, "message": "Missing credentials or query"}
+            return {"success": False, "message": "Missing credentials or query. Please check your Global Settings or .env file."}
 
         authority_url = f"https://login.microsoftonline.com/{tenant_id}"
         app_msal = ConfidentialClientApplication(
