@@ -131,6 +131,7 @@ window.verifySelectedGuid = async function(type, containerId, btn) {
         const clientId = document.getElementById('set-client').value.trim();
         const clientSecret = document.getElementById('set-secret').value.trim();
         const tenantId = document.getElementById('set-tenant').value.trim();
+        const workspaceId = document.getElementById('active-workspace')?.value || '';
 
         if (!clientId || !clientSecret || !tenantId) {
             return { success: false, message: '请先填写 TENANT_ID, CLIENT_ID, 和 CLIENT_SECRET！(Missing credentials)' };
@@ -144,7 +145,8 @@ window.verifySelectedGuid = async function(type, containerId, btn) {
                 pbi_client_secret: clientSecret,
                 pbi_tenant_id: tenantId,
                 type: type,
-                guid: guid
+                guid: guid,
+                workspace_id: workspaceId
             })
         });
         return await res.json();

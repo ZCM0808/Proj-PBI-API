@@ -629,6 +629,7 @@ async def test_guid(request: Request):
         tenant_id = data.get("pbi_tenant_id", "").strip()
         item_type = data.get("type", "").strip()
         guid = data.get("guid", "").strip()
+        workspace_id = data.get("workspace_id", "").strip()
 
         if not all([client_id, client_secret, tenant_id, item_type, guid]):
             return {"success": False, "message": "Missing credentials or GUID"}
@@ -647,7 +648,11 @@ async def test_guid(request: Request):
             return {"success": False, "message": f"Auth failed: {result.get('error_description', 'Unknown Error')}"}
         
         access_token = result["access_token"]
-        endpoint = f"https://api.powerbi.com/v1.0/myorg/{item_type}/{guid}"
+        
+        if item_type in ["datasets", "reports"] and workspace_id:
+            endpoint = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/{item_type}/{guid}"
+        else:
+            endpoint = f"https://api.powerbi.com/v1.0/myorg/{item_type}/{guid}"
             
         headers = {
             "Authorization": f"Bearer {access_token}",
