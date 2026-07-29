@@ -5190,7 +5190,7 @@ window.runRvcWorkflow = async function() {
         
         let tableHtml = `
             <table style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
-                <thead style="background: var(--overlay-10); position: sticky; top: 0; z-index: 5;">
+                <thead style="background: var(--bg-color); position: sticky; top: 0; z-index: 5;">
                     <tr>
                         <th style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600;">Time Window</th>
                         <th style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600;">User Info</th>
@@ -5234,7 +5234,8 @@ window.handleCopyAction = function(btn, text) {
 
 
 window.runCheckPermsWorkflow = async function() {
-    const outDiv = document.getElementById('wf-out-perms');
+    const jsonDiv = document.getElementById('wf-out-perms-json');
+    const tableDiv = document.getElementById('wf-out-perms-table');
     const statusDiv = document.getElementById('wf-perms-status');
     const btn = document.getElementById('btn-run-check-perms');
     
@@ -5243,7 +5244,8 @@ window.runCheckPermsWorkflow = async function() {
     
     statusDiv.textContent = `Fetching /availableFeatures...`;
     statusDiv.style.color = 'var(--text-secondary)';
-    outDiv.innerHTML = 'Loading permissions...\n';
+    jsonDiv.textContent = 'Loading JSON...';
+    tableDiv.innerHTML = 'Loading Table...';
     
     try {
         const res = await fetch('/api/proxy', {
@@ -5255,13 +5257,20 @@ window.runCheckPermsWorkflow = async function() {
         if(!res.ok) {
             statusDiv.textContent = `Error: ${res.status} ${res.statusText}`;
             statusDiv.style.color = 'var(--error)';
-            outDiv.innerHTML = `Failed to fetch: ${res.status} ${res.statusText}\n`;
+            const errMsg = `Failed to fetch: ${res.status} ${res.statusText}`;
+            jsonDiv.textContent = errMsg;
+            tableDiv.innerHTML = errMsg;
             btn.disabled = false;
             btn.innerHTML = 'Run Check';
             return;
         }
         
         const data = await res.json();
+        
+        // 1. Output RAW JSON
+        jsonDiv.textContent = JSON.stringify(data, null, 2);
+        
+        // 2. Output Table
         const payload = data.data || data;
         const featuresArray = payload.features;
         
@@ -5272,7 +5281,6 @@ window.runCheckPermsWorkflow = async function() {
                 const state = f.state || 'N/A';
                 const extState = f.extendedState || 'N/A';
                 
-                // Color coding for state
                 let stateHtml = state;
                 if(state === 'Enabled') {
                     stateHtml = `<span style="color: var(--success); font-weight: 500;">${state}</span>`;
@@ -5291,7 +5299,7 @@ window.runCheckPermsWorkflow = async function() {
             
             let tableHtml = `
             <table style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
-                <thead style="background: var(--overlay-10); position: sticky; top: 0; z-index: 5;">
+                <thead style="background: var(--bg-color); position: sticky; top: 0; z-index: 5;">
                     <tr>
                         <th style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600;">Feature Name</th>
                         <th style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600;">State</th>
@@ -5301,20 +5309,26 @@ window.runCheckPermsWorkflow = async function() {
                 <tbody>${rowsHtml}</tbody>
             </table>`;
             
-            outDiv.innerHTML = tableHtml;
+            tableDiv.innerHTML = tableHtml;
             statusDiv.textContent = `Successfully loaded ${featuresArray.length} features.`;
             statusDiv.style.color = 'var(--success)';
         } else {
-            outDiv.innerHTML = `<pre style="margin:0; font-size: 0.7rem; color: var(--text-primary);">${JSON.stringify(data, null, 2)}</pre>`;
+            tableDiv.innerHTML = `No features array found.`;
             statusDiv.textContent = `Loaded JSON format (No features array found).`;
             statusDiv.style.color = 'var(--warning)';
         }
         
-        setTimeout(() => { outDiv.scrollTop = outDiv.scrollHeight; }, 50);
+        setTimeout(() => { 
+            jsonDiv.scrollTop = jsonDiv.scrollHeight; 
+            tableDiv.scrollTop = tableDiv.scrollHeight;
+        }, 50);
     } catch (e) {
         statusDiv.textContent = `Exception: ${e.message}`;
         statusDiv.style.color = 'var(--error)';
-        setTimeout(() => { outDiv.scrollTop = outDiv.scrollHeight; }, 50);
+        setTimeout(() => { 
+            if(jsonDiv) jsonDiv.scrollTop = jsonDiv.scrollHeight; 
+            if(tableDiv) tableDiv.scrollTop = tableDiv.scrollHeight;
+        }, 50);
     } finally {
         btn.disabled = false;
         btn.innerHTML = 'Run Check';
