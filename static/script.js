@@ -5262,10 +5262,12 @@ window.runCheckPermsWorkflow = async function() {
         }
         
         const data = await res.json();
+        const payload = data.data || data;
+        const featuresArray = payload.features;
         
-        if (data.features && Array.isArray(data.features)) {
+        if (featuresArray && Array.isArray(featuresArray)) {
             let rowsHtml = '';
-            data.features.forEach(f => {
+            featuresArray.forEach(f => {
                 const name = f.name || 'Unknown';
                 const state = f.state || 'N/A';
                 const extState = f.extendedState || 'N/A';
@@ -5300,7 +5302,7 @@ window.runCheckPermsWorkflow = async function() {
             </table>`;
             
             outDiv.innerHTML = tableHtml;
-            statusDiv.textContent = `Successfully loaded ${data.features.length} features.`;
+            statusDiv.textContent = `Successfully loaded ${featuresArray.length} features.`;
             statusDiv.style.color = 'var(--success)';
         } else {
             outDiv.innerHTML = `<pre style="margin:0; font-size: 0.7rem; color: var(--text-primary);">${JSON.stringify(data, null, 2)}</pre>`;
