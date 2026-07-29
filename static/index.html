@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/powerbi-client/dist/powerbi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260727_v41_dropdown">
+    <link rel="stylesheet" href="/static/style.css?v=20260728_v47_colors">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -100,7 +100,7 @@
                         <span id="param-filter-label" style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">🔍 过滤必需的参数 (Filter by Parameters)...</span>
                         <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
                             <span id="param-filter-clear" style="display: none; align-items: center; justify-content: center; color: var(--text-secondary); cursor: pointer; padding: 2px; border-radius: 4px;" title="Clear Filters" onclick="event.stopPropagation(); document.querySelectorAll('#param-filter-options input[type=checkbox]').forEach(cb => { if(cb.checked) { cb.checked = false; cb.dispatchEvent(new Event('change')); } });">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--info-darker)" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                             </span>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
                         </div>
@@ -191,12 +191,12 @@
 
 <!-- Env Identity -->
                 <div id="env-identity" style="display: flex; gap: 16px; font-size: 0.75rem; color: var(--text-secondary); min-height: 18px; align-items: center;">
-                    <span id="display-tenant" style="display: none;">🏢 Tenant: <strong style="color: var(--accent); font-weight: 500;">Unknown</strong></span>
-                    <span id="display-client" style="display: none;">🔑 Client App: <strong style="color: var(--accent); font-weight: 500;">Unknown</strong></span>
+                    <span id="display-tenant" style="display: none; background: var(--overlay-10); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--panel-border);">🏢 Tenant: <strong style="color: var(--text-primary); font-weight: 600;">Unknown</strong></span>
+                    <span id="display-client" style="display: none; background: var(--overlay-10); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--panel-border);">🔑 Client App: <strong style="color: var(--text-primary); font-weight: 600;">Unknown</strong></span>
                 </div>
 
                 <!-- Context Toolbar -->
-                <div id="context-toolbar" style="display: flex; flex-wrap: wrap; gap: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <div id="context-toolbar" style="display: flex; flex-wrap: wrap; gap: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--panel-border);">
                     <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
                         <div style="display: flex; flex-direction: column; justify-content: center; align-items: flex-start;">
                             <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0; line-height: 1.2;">Workspace</label>
@@ -256,8 +256,8 @@
                                 </select>
                             </div>
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <span id="right-panel-category-badge"><span style="font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; background: rgba(62, 166, 255, 0.15); color: #3eb6ff; border: 1px solid rgba(62, 166, 255, 0.25); display: inline-flex; align-items: center; gap: 4px; font-weight: 500;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4l2-9 5 18 3-9h6"></path></svg>Custom</span></span>
-                                <span id="request-mode-badge" style="font-size: 0.65rem; font-weight: normal; color: var(--accent); border: 1px solid rgba(62, 166, 255, 0.5); background: rgba(62, 166, 255, 0.1); padding: 2px 6px; border-radius: 12px;">Free Mode</span>
+                                <span id="right-panel-category-badge"><span style="font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; background: var(--info-bg); color: var(--info); border: 1px solid var(--info-border); display: inline-flex; align-items: center; gap: 4px; font-weight: 500;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4l2-9 5 18 3-9h6"></path></svg>Custom</span></span>
+                                <span id="request-mode-badge" style="font-size: 0.65rem; font-weight: normal; color: var(--info); border: 1px solid var(--info-border); background: var(--info-bg); padding: 2px 6px; border-radius: 12px;">Free Mode</span>
                             </div>
                         </div>
 
@@ -276,12 +276,12 @@
                                 </div>
                             </div>
                             
-                            <button id="new-request-btn" class="icon-btn" title="新建空白请求 (New Blank Request)" type="button" style="color: var(--accent); border-color: rgba(62, 166, 255, 0.3); height: 40px; padding: 0 12px;">
+                            <button id="new-request-btn" class="icon-btn" title="新建空白请求 (New Blank Request)" type="button" style="color: var(--info); border-color: var(--info-border); height: 40px; padding: 0 12px;">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                                 <span>New</span>
                             </button>
 
-                            <div style="border-left: 1px solid rgba(255,255,255,0.1); height: 16px; margin: 0 4px;"></div>
+                            <div style="border-left: 1px solid var(--overlay-10); height: 16px; margin: 0 4px;"></div>
 
                             <button id="toggle-method-btn" class="icon-btn" title="Unlock/Lock Method Dropdown" type="button" style="height: 40px; padding: 0 12px;">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
@@ -310,7 +310,7 @@
                             </button>
                         </div>
                     </div>
-                    <div id="param-hint-container" style="display: none; font-size: 0.85rem; padding: 6px 10px; border-radius: 6px; background: rgba(59, 130, 246, 0.1); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.2); align-items: center; gap: 6px;"></div>
+                    <div id="param-hint-container" style="display: none; font-size: 0.85rem; padding: 6px 10px; border-radius: 6px; background: var(--info-bg); color: var(--info-dark); border: 1px solid var(--info-border); align-items: center; gap: 6px;"></div>
                 </div>
 
                 <div class="body-editor-container">
@@ -318,10 +318,10 @@
                         <span>Request Body (JSON)</span>
                         <div style="margin-left:auto; display:flex; gap:12px; align-items:center;">
                             <span class="hint">仅适用于 POST/PUT/PATCH 等包含请求体的方法</span>
-                            <button id="format-req-body-btn" class="icon-btn" title="Format JSON" type="button" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: rgba(255,255,255,0.1); border-radius: 4px; background: transparent; cursor: pointer; margin-right: 6px;">
+                            <button id="format-req-body-btn" class="icon-btn" title="Format JSON" type="button" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer; margin-right: 6px;">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
                             </button>
-                            <button id="copy-req-body-btn" class="icon-btn" title="Copy Request Body" type="button" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: rgba(255,255,255,0.1); border-radius: 4px; background: transparent; cursor: pointer;">
+                            <button id="copy-req-body-btn" class="icon-btn" title="Copy Request Body" type="button" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer;">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                             </button>
                         </div>
@@ -341,13 +341,13 @@
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
                             </button>
                         </div>
-                        <div id="view-mode-toggles" style="display: none; gap: 4px; border: 1px solid var(--panel-border); border-radius: 4px; overflow: hidden; background: rgba(0,0,0,0.2); align-items: center;">
+                        <div id="view-mode-toggles" style="display: none; gap: 4px; border: 1px solid var(--panel-border); border-radius: 4px; overflow: hidden; background: var(--shadow-light); align-items: center;">
                             <button class="view-mode-btn" data-mode="table" style="border:none; background:transparent; color:var(--text-secondary); padding: 2px 8px; font-size:0.7rem; cursor:pointer;" title="Table View">Table</button>
                             <button class="view-mode-btn active" data-mode="tree" style="border:none; background:var(--accent); color:var(--accent-text); padding: 2px 8px; font-size:0.7rem; cursor:pointer;" title="Tree View">Tree</button>
                             <button class="view-mode-btn" data-mode="raw" style="border:none; background:transparent; color:var(--text-secondary); padding: 2px 8px; font-size:0.7rem; cursor:pointer;" title="Raw JSON">Raw</button>
                         </div>
                         <div class="response-status" id="response-status">Waiting for request...</div>
-                        <button id="copy-res-body-btn" class="icon-btn" title="Copy Response JSON" type="button" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: rgba(255,255,255,0.1); border-radius: 4px; background: transparent; cursor: pointer;">
+                        <button id="copy-res-body-btn" class="icon-btn" title="Copy Response JSON" type="button" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer;">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                         </button>
                     </div>
@@ -388,11 +388,17 @@
             
             <div class="modal-body" style="overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 12px;">
                 <div style="display: flex; gap: 12px; align-items: center;">
-                    <label style="color: var(--text-secondary); font-weight: bold;">Select Workflow:</label>
+                    <label style="color: var(--text-secondary); font-weight: bold; display: flex; align-items: center; gap: 6px;">
+                        Select Workflow:
+                        <button type="button" class="icon-btn" style="padding: 2px; width: 20px; height: 20px; border: none; background: transparent; color: var(--text-secondary); cursor: pointer;" onclick="navigator.clipboard.writeText(document.getElementById('wf-selector').options[document.getElementById('wf-selector').selectedIndex].text); this.style.color='var(--success)'; setTimeout(()=>this.style.color='var(--text-secondary)', 1500);" title="Copy Workflow Name">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        </button>
+                    </label>
                     <select id="wf-selector" class="wf-input" style="flex: 1;">
                         <option value="export_report">Export Report to File (PDF/Excel/etc.)</option>
                         <option value="export_visual">Export Visual Data (CSV) - Underlying/Summarized</option>
                         <option value="export_dataset_tables">Export Dataset Tables (CSV)</option>
+                        <option value="report_view_count">Admin Report View Count (Activity Events)</option>
                         <option value="smart_pipeline">Smart DataOps Pipeline (Auto Bind/Scan/Check)</option>
                     </select>
                 </div>
@@ -422,7 +428,35 @@
 
                 
                 <!-- Smart Pipeline Container -->
-                <div id="wf-config-smart_pipeline" class="wf-config-pane" style="display: none;">
+                
+                <div id="wf-config-report_view_count" class="wf-config-pane" style="display: none;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
+                        <div>
+                            <label style="font-size: 0.85rem; color: var(--text-secondary);">Workspace ID</label>
+                            <select id="wf-rvc-workspace" class="wf-input"></select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.85rem; color: var(--text-secondary);">Report ID</label>
+                            <select id="wf-rvc-report" class="wf-input"></select>
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <label style="font-size: 0.85rem; color: var(--text-secondary);">Target Date (YYYY-MM-DD)</label>
+                            <input type="date" id="wf-rvc-date" class="wf-input" value="">
+                        </div>
+                    </div>
+                    <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+                        <div class="wf-step active" id="wf-rvc-step-1">
+                            <div class="wf-step-header">
+                                <span class="wf-step-title">Get Daily View Count (Activity Events)</span>
+                                <button class="btn-action-primary" id="btn-run-rvc" style="margin-left: auto; padding: 4px 12px; font-size: 0.8rem;" onclick="window.runRvcWorkflow()">Run</button>
+                            </div>
+                            <div class="wf-step-content" style="display: block; margin-top: 8px;">
+                                <textarea id="wf-out-rvc" class="wf-input" style="height: 150px; font-family: monospace; font-size: 0.75rem; resize: vertical;" readonly placeholder="Waiting for execution..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+<div id="wf-config-smart_pipeline" class="wf-config-pane" style="display: none;">
                     <div style="background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 8px; padding: 12px;">
                         <div class="terminal-view" id="pipeline-terminal" style="max-height: 200px; margin-bottom: 12px;">
                             <div class="terminal-line"><span class="info">系统已就绪。点击下方按钮开始智能扫描并自动绑定工作区、数据集和报表...</span></div>
@@ -467,11 +501,11 @@
                                 
                                 <div id="wf-ds-table-container" style="display: flex; align-items: center; justify-content: flex-end; flex: 1; opacity: 0.4; transition: opacity 0.3s ease; min-width: 150px;">
                                     <div class="custom-select-wrapper" style="position: relative; flex: 1; max-width: 350px;" id="wf-ds-table-wrapper" onclick="window.toggleDsTableDropdown(event)">
-                                        <div class="wf-input" id="wf-ds-table-trigger" style="height: 26px; display: flex; align-items: center; justify-content: space-between; cursor: not-allowed; padding: 0 8px; font-size: 0.75rem; border-radius: 4px; user-select: none; background: rgba(0,0,0,0.2);">
+                                        <div class="wf-input" id="wf-ds-table-trigger" style="height: 26px; display: flex; align-items: center; justify-content: space-between; cursor: not-allowed; padding: 0 8px; font-size: 0.75rem; border-radius: 4px; user-select: none; background: var(--shadow-light);">
                                             <span id="wf-ds-table-display" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary);">-- Run Step 1 First --</span>
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.2s ease; margin-left: 6px;"><path d="M6 9l6 6 6-6"></path></svg>
                                         </div>
-                                        <ul id="wf-ds-table-options" class="wf-input custom-select-dropdown" style="position: absolute; bottom: calc(100% + 4px); top: auto; left: 0; width: 100%; max-height: 200px; overflow-y: auto; background: var(--dropdown-bg); border: 1px solid var(--panel-border); border-radius: 4px; padding: 4px 0; margin: 0; list-style: none; z-index: 1000; opacity: 0; visibility: hidden; transform: translateY(8px); transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 4px 16px rgba(0,0,0,0.4);">
+                                        <ul id="wf-ds-table-options" class="wf-input custom-select-dropdown" style="position: absolute; bottom: calc(100% + 4px); top: auto; left: 0; width: 100%; max-height: 200px; overflow-y: auto; background: var(--dropdown-bg); border: 1px solid var(--panel-border); border-radius: 4px; padding: 4px 0; margin: 0; list-style: none; z-index: 1000; opacity: 0; visibility: hidden; transform: translateY(8px); transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 4px 16px var(--shadow-dark);">
                                             <li style="padding: 6px 10px; font-size: 0.75rem; cursor: not-allowed; color: var(--text-secondary);">-- Run Step 1 First --</li>
                                         </ul>
                                         <input type="hidden" id="wf-ds-table" value="">
@@ -525,10 +559,12 @@
                         </div>
                     </div>
                     
-                    <div id="pbi-embed-container" style="visibility: hidden; position: absolute; left: -9999px; top: -9999px; width: 1200px; height: 800px;"></div>
+                    
 
                     
-                    <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+                    
+                    <div id="pbi-embed-container" style="display: none; width: 100%; height: 400px; border: 1px solid var(--panel-border); border-radius: 6px; margin: 12px 0; background: var(--input-bg);"></div>
+<div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
                         <div class="wf-step active" id="wf-vis-step-1">
                             <div class="wf-step-header">
                                 <span class="wf-step-title">Execute exportData API (Sync)</span>
@@ -609,7 +645,7 @@
                     <!-- Authentication Configs -->
                     <div style="background: var(--input-bg-light); padding: 8px; border-radius: 6px; border: 1px solid var(--panel-border);">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <h4 style="margin: 0; font-size: 0.75rem; color: #a78bfa;">Azure App Authentication</h4>
+                            <h4 style="margin: 0; font-size: 0.75rem; color: var(--badge-custom-text);">Azure App Authentication</h4>
                             <button type="button" id="verify-settings-btn" title="Verify Auth" class="btn-verify">⚡</button>
                         </div>
                         
@@ -633,15 +669,15 @@
                         </div>
                     </div>
 
-                        <div class="form-group" style="margin-bottom: 12px; padding: 8px; background: rgba(0,0,0,0.15); border-radius: 4px;">
+                        <div class="form-group" style="margin-bottom: 12px; padding: 8px; background: var(--input-bg); border-radius: 4px;">
                             <label style="margin-bottom: 6px; display: block; font-weight: bold;">Active Auth Mode (认证模式选择)</label>
                             <div style="display: flex; flex-direction: column; gap: 6px;">
                                 <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.8rem; color: var(--text-primary);">
-                                    <input type="radio" name="pbi_auth_mode" value="service_principal" checked style="margin: 0; accent-color: #a78bfa;">
+                                    <input type="radio" name="pbi_auth_mode" value="service_principal" checked style="margin: 0; accent-color: var(--badge-custom-text);">
                                     <span><strong>Service Principal</strong> (Azure App: Client ID + Secret)</span>
                                 </label>
                                 <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.8rem; color: var(--text-primary);">
-                                    <input type="radio" name="pbi_auth_mode" value="personal" style="margin: 0; accent-color: #a78bfa;">
+                                    <input type="radio" name="pbi_auth_mode" value="personal" style="margin: 0; accent-color: var(--badge-custom-text);">
                                     <span><strong>Personal Auth</strong> (Delegated: Username + Password/Popup)</span>
                                 </label>
                             </div>
@@ -690,7 +726,7 @@
                     <!-- SQL Config -->
                     <div style="background: var(--input-bg-light); padding: 8px; border-radius: 6px; border: 1px solid var(--panel-border); margin-bottom: 12px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <h4 style="margin: 0; font-size: 0.75rem; color: #a78bfa;">SQL Database</h4>
+                            <h4 style="margin: 0; font-size: 0.75rem; color: var(--badge-custom-text);">SQL Database</h4>
                             <button type="button" id="verify-sql-btn" title="Verify SQL Connection" class="btn-verify">⚡</button>
                         </div>
                         <div class="form-group" style="margin-bottom: 0;">
@@ -773,7 +809,7 @@
             <div style="margin-bottom: 8px; font-size: 0.8rem; color: var(--text-secondary);">
                 勾选需要添加到配置面板的项目 (Select items to add to config):
             </div>
-            <div id="scan-results-container" style="max-height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; background: rgba(0,0,0,0.2); border-radius: 6px; border: 1px solid var(--panel-border); padding: 8px;">
+            <div id="scan-results-container" style="max-height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; background: var(--shadow-light); border-radius: 6px; border: 1px solid var(--panel-border); padding: 8px;">
             </div>
             <div style="display: flex; justify-content: flex-end; gap: 8px;">
                 <button type="button" class="btn-pipeline btn-scan-cancel" onclick="document.getElementById('scan-modal').style.display='none'">取消 (Cancel)</button>
@@ -836,7 +872,7 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
-    <script src="/static/script.js?v=20260727_v71_ds_steps_v11"></script>
+    <script src="/static/script.js?v=20260729_v92_audit"></script>
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: flex; z-index: 100000; opacity: 0; visibility: hidden; transition: opacity 0.25s ease;">
@@ -853,7 +889,7 @@
     </div>
 
     <!-- AI Chat FAB -->
-    <div id="ai-chat-fab" onclick="toggleAIChat()" style="position: fixed; bottom: 30px; right: 15px; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4); cursor: pointer; z-index: 9999; transition: transform 0.2s ease;">
+    <div id="ai-chat-fab" onclick="toggleAIChat()" style="position: fixed; bottom: 30px; right: 15px; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--info-dark) 0%, var(--info-darker) 100%); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px var(--info-bg); cursor: pointer; z-index: 9999; transition: transform 0.2s ease;">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
     </div>
 

@@ -21,8 +21,42 @@ import subprocess
 from src.config import Config
 from src.pbi_client import PBIClient
 from src.pipeline import PBIPipeline
+from contextlib import asynccontextmanager
 
-app = FastAPI(title="Power BI API Explorer")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 异步在后台静默预热长连接，避免阻塞服务器启动
+    async def _warmup():
+        import google.generativeai as genai
+        global _current_api_key, _model_instance
+        os.environ["GRPC_DNS_RESOLVER"] = "native"
+        keys = [os.getenv("GEMINI_API_KEY_GG3"), os.getenv("GEMINI_API_KEY_GGCM"), os.getenv("GOOGLE_API_KEY")]
+        valid_keys = [k for k in keys if k]
+        if not valid_keys:
+            return
+        
+        print("Warming up AI connection in background...")
+        for api_key in valid_keys:
+            try:
+                genai.configure(api_key=api_key)
+                _model_instance = genai.GenerativeModel("gemini-3.5-flash")
+                # 尝试一个请求，禁用 retry 以便快速失败
+                await _model_instance.generate_content_async(
+                    "ping", 
+                    request_options={"timeout": 5.0}
+                )
+                _current_api_key = api_key
+                print(f"AI connection warmed up successfully with key: {api_key[:5]}***")
+                return
+            except Exception as e:
+                print(f"Key {api_key[:5]}*** failed during warmup: {e}. Trying next...")
+                
+        print("All keys failed during warmup. Will retry on user request.")
+            
+    asyncio.create_task(_warmup())
+    yield
+
+app = FastAPI(title="Power BI API Explorer", lifespan=lifespan)
 
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
@@ -145,38 +179,6 @@ def get_project_memory():
             _project_memory = f"You are a helpful assistant. (Failed to load knowledge base: {e})"
     return _project_memory
 
-@app.on_event("startup")
-async def warmup_ai_connection():
-    # 异步在后台静默预热长连接，避免阻塞服务器启动
-    async def _warmup():
-        import google.generativeai as genai
-        global _current_api_key, _model_instance
-        os.environ["GRPC_DNS_RESOLVER"] = "native"
-        keys = [os.getenv("GEMINI_API_KEY_GG3"), os.getenv("GEMINI_API_KEY_GGCM"), os.getenv("GOOGLE_API_KEY")]
-        valid_keys = [k for k in keys if k]
-        if not valid_keys:
-            return
-        
-        print("Warming up AI connection in background...")
-        for api_key in valid_keys:
-            try:
-                genai.configure(api_key=api_key)
-                _model_instance = genai.GenerativeModel("gemini-3.5-flash")
-                # 尝试一个请求，禁用 retry 以便快速失败
-                await _model_instance.generate_content_async(
-                    "ping", 
-                    request_options={"timeout": 5.0}
-                )
-                _current_api_key = api_key
-                print(f"AI connection warmed up successfully with key: {api_key[:5]}***")
-                return
-            except Exception as e:
-                print(f"Key {api_key[:5]}*** failed during warmup: {e}. Trying next...")
-                
-        print("All keys failed during warmup. Will retry on user request.")
-            
-    asyncio.create_task(_warmup())
-
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
@@ -194,7 +196,7 @@ def run_powershell(command: str) -> str:
     """Executes a PowerShell command on the host machine and returns the output. USE CAREFULLY."""
     import sys
     if sys.platform != 'win32':
-        return "ERROR: You are running on a Linux cloud server (like Render), not the user's local Windows machine. You CANNOT access their local C:\ drive or local files. Apologize to the user and explain that you are currently deployed in the cloud and do not have local access."
+        return "ERROR: You are running on a Linux cloud server (like Render), not the user's local Windows machine. You CANNOT access their local C:\\ drive or local files. Apologize to the user and explain that you are currently deployed in the cloud and do not have local access."
     print(f"Executing Powershell via AI Tool: {command}")
     try:
         # 使用 timeout 防止后台阻塞
@@ -603,6 +605,21 @@ async def proxy_request(request: Request):
             client.request, method, endpoint, api_type=api_type, **kwargs
         )
         return {"success": True, "data": response_data}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+@app.post("/api/clear-cache")
+async def clear_cache(request: Request):
+    """Clear MSAL Token Cache"""
+    try:
+        cache_file = ".msal_token_cache.json"
+        if os.path.exists(cache_file):
+            os.remove(cache_file)
+        
+        # Reset the in-memory cache of the global client
+        from msal import SerializableTokenCache  # type: ignore[import-untyped]
+        client.cache = SerializableTokenCache()
+        
+        return {"success": True, "message": "Token cache cleared successfully. You will be prompted to re-authenticate on your next request."}
     except Exception as e:
         return {"success": False, "error": str(e)}
 

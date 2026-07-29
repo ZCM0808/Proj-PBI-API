@@ -21,8 +21,8 @@ window.animateVerifyBtn = async function(btn, promiseFunc, successCallback) {
         if (result.success) {
             btn.innerHTML = '✅ Success';
             btn.style.background = 'var(--status-success-bg, rgba(16, 185, 129, 0.2))';
-            btn.style.color = 'var(--success, #10b981)';
-            btn.style.borderColor = 'var(--success, #10b981)';
+            btn.style.color = 'var(--success, var(--success))';
+            btn.style.borderColor = 'var(--success, var(--success))';
             
             btn.style.transform = 'scale(1.1)';
             setTimeout(() => btn.style.transform = 'scale(1)', 200);
@@ -31,9 +31,9 @@ window.animateVerifyBtn = async function(btn, promiseFunc, successCallback) {
             if (successCallback) successCallback(result);
         } else {
             btn.innerHTML = '❌ Failed';
-            btn.style.background = 'var(--status-error-bg, rgba(239, 68, 68, 0.2))';
-            btn.style.color = 'var(--error, #ef4444)';
-            btn.style.borderColor = 'var(--error, #ef4444)';
+            btn.style.background = 'var(--status-error-bg, var(--status-error-bg))';
+            btn.style.color = 'var(--error, var(--error))';
+            btn.style.borderColor = 'var(--error, var(--error))';
             
             btn.style.transform = 'translateX(-4px)';
             setTimeout(() => btn.style.transform = 'translateX(4px)', 100);
@@ -48,9 +48,9 @@ window.animateVerifyBtn = async function(btn, promiseFunc, successCallback) {
         }
     } catch (err) {
         btn.innerHTML = '❌ Error';
-        btn.style.background = 'var(--status-error-bg, rgba(239, 68, 68, 0.2))';
-        btn.style.color = 'var(--error, #ef4444)';
-        btn.style.borderColor = 'var(--error, #ef4444)';
+        btn.style.background = 'var(--status-error-bg, var(--status-error-bg))';
+        btn.style.color = 'var(--error, var(--error))';
+        btn.style.borderColor = 'var(--error, var(--error))';
         setTimeout(() => {
             resetBtn();
             alert('网络错误: ' + err);
@@ -82,7 +82,7 @@ window.addListRow = function(containerId, alias = "", id = "") {
         <input type="radio" name="${containerId}-radio" style="cursor: pointer; margin-right: 4px;" title="选中为默认/活动 (Set as Default/Active)">
         <input type="text" class="settings-input alias-input" placeholder="Alias (e.g. DEV)" value="${alias}" style="flex: 1; min-width: 0; padding: 4px 8px; font-size: 0.75rem;">
         <input type="text" class="settings-input id-input" placeholder="GUID" value="${id}" style="flex: 2; min-width: 0; padding: 4px 8px; font-size: 0.75rem;">
-        <button type="button" onclick="if(this.parentElement.parentElement.children.length > 1) { this.parentElement.remove(); } else { alert('必须保留至少一个输入框！(At least one row must be kept)'); }" style="color: #ff6b6b; background: transparent; border: none; cursor: pointer; font-size: 1.2rem; line-height: 1; padding: 0 4px; opacity: 0.3; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'">&times;</button>
+        <button type="button" onclick="if(this.parentElement.parentElement.children.length > 1) { this.parentElement.remove(); } else { alert('必须保留至少一个输入框！(At least one row must be kept)'); }" style="color: var(--error-light); background: transparent; border: none; cursor: pointer; font-size: 1.2rem; line-height: 1; padding: 0 4px; opacity: 0.3; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'">&times;</button>
     `;
     container.appendChild(row);
     
@@ -192,7 +192,7 @@ window.scanItems = async function(type, btn) {
             data.data.forEach(item => {
                 const row = document.createElement('label');
                 row.style.cssText = 'display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background 0.2s;';
-                row.onmouseover = () => row.style.background = 'rgba(255,255,255,0.05)';
+                row.onmouseover = () => row.style.background = 'var(--overlay-5)';
                 row.onmouseout = () => row.style.background = 'transparent';
                 
                 row.innerHTML = `
@@ -1102,22 +1102,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (mode === 'free') {
             badge.style.pointerEvents = 'auto';
             badge.style.color = 'var(--accent)';
-            badge.style.borderColor = 'rgba(62, 166, 255, 0.5)';
-            badge.style.background = 'rgba(62, 166, 255, 0.1)';
+            badge.style.borderColor = 'var(--info-border)';
+            badge.style.background = 'var(--info-bg)';
             
             // Set category to Custom
             const catBadge = document.getElementById('right-panel-category-badge');
             if (catBadge) {
-                catBadge.innerHTML = `<span style="font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; background: rgba(62, 166, 255, 0.15); color: #3eb6ff; border: 1px solid rgba(62, 166, 255, 0.25); display: inline-flex; align-items: center; gap: 4px; font-weight: 500;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4l2-9 5 18 3-9h6"></path></svg>Custom</span>`;
+                catBadge.innerHTML = `<span style="font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; background: var(--info-bg); color: var(--info); border: 1px solid var(--info-border); display: inline-flex; align-items: center; gap: 4px; font-weight: 500;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4l2-9 5 18 3-9h6"></path></svg>Custom</span>`;
             }
         } else if (mode === 'history') {
-            badge.style.color = '#a78bfa';
+            badge.style.color = 'var(--badge-custom-text)';
             badge.style.borderColor = 'rgba(167, 139, 250, 0.5)';
-            badge.style.background = 'rgba(167, 139, 250, 0.1)';
+            badge.style.background = 'var(--badge-custom-bg)';
             badge.style.pointerEvents = 'none';
         } else {
             badge.style.pointerEvents = 'auto';
-            badge.style.color = '#10b981';
+            badge.style.color = 'var(--success)';
             badge.style.borderColor = 'rgba(16, 185, 129, 0.5)';
             badge.style.background = 'rgba(16, 185, 129, 0.1)';
         }
@@ -1483,7 +1483,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 flagEl.style.marginLeft = '6px';
                 flagEl.style.background = 'rgba(255,255,255,0.08)';
                 flagEl.style.color = 'var(--text-secondary)';
-                flagEl.style.border = '1px solid rgba(255,255,255,0.1)';
+                flagEl.style.border = '1px solid var(--overlay-10)';
                 flagEl.style.display = 'inline-block';
                 flagEl.style.verticalAlign = 'middle';
                 flagEl.textContent = ep.flag === 'DataFactory' ? 'DF' : (ep.flag === 'Lakehouse' ? 'LH' : (ep.flag === 'Warehouse' ? 'WH' : (ep.flag === 'Notebook' ? 'NB' : ep.flag)));
@@ -1493,29 +1493,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                     flagEl.style.borderColor = 'rgba(242, 200, 17, 0.3)';
                     flagEl.style.background = 'rgba(242, 200, 17, 0.05)';
                 } else if (ep.flag === 'Lakehouse') {
-                    flagEl.style.color = '#38bdf8';
+                    flagEl.style.color = 'var(--info)';
                     flagEl.style.borderColor = 'rgba(56, 189, 248, 0.3)';
                     flagEl.style.background = 'rgba(56, 189, 248, 0.05)';
                 } else if (ep.flag === 'Warehouse') {
-                    flagEl.style.color = '#a78bfa';
-                    flagEl.style.borderColor = 'rgba(167, 139, 250, 0.3)';
+                    flagEl.style.color = 'var(--badge-custom-text)';
+                    flagEl.style.borderColor = 'var(--badge-custom-bg)';
                     flagEl.style.background = 'rgba(167, 139, 250, 0.05)';
                 } else if (ep.flag === 'KQL') {
-                    flagEl.style.color = '#f43f5e';
-                    flagEl.style.borderColor = 'rgba(244, 63, 94, 0.3)';
-                    flagEl.style.background = 'rgba(244, 63, 94, 0.05)';
+                    flagEl.style.color = 'var(--error)';
+                    flagEl.style.borderColor = 'var(--status-error-bg)';
+                    flagEl.style.background = 'var(--status-error-bg)';
                 } else if (ep.flag === 'Notebook') {
-                    flagEl.style.color = '#34d399';
-                    flagEl.style.borderColor = 'rgba(52, 211, 153, 0.3)';
-                    flagEl.style.background = 'rgba(52, 211, 153, 0.05)';
+                    flagEl.style.color = 'var(--success-light)';
+                    flagEl.style.borderColor = 'var(--success-light)';
+                    flagEl.style.background = 'var(--status-success-bg)';
                 } else if (ep.flag === 'Core') {
-                    flagEl.style.color = '#fb923c';
-                    flagEl.style.borderColor = 'rgba(251, 146, 60, 0.3)';
-                    flagEl.style.background = 'rgba(251, 146, 60, 0.05)';
+                    flagEl.style.color = 'var(--warning)';
+                    flagEl.style.borderColor = 'var(--warning-light)';
+                    flagEl.style.background = 'var(--overlay-10)';
                 } else if (ep.flag === 'DataFactory') {
-                    flagEl.style.color = '#ec4899';
-                    flagEl.style.borderColor = 'rgba(236, 72, 153, 0.3)';
-                    flagEl.style.background = 'rgba(236, 72, 153, 0.05)';
+                    flagEl.style.color = 'var(--badge-custom-text)';
+                    flagEl.style.borderColor = 'var(--badge-custom-bg)';
+                    flagEl.style.background = 'var(--badge-custom-bg)';
                 }
 
                 // 显示中文翻译在列表上（也可以只显示英文，这里展示双语）
@@ -1523,7 +1523,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 let categoryBadgeHtml = '';
                 if (category.category === "⭐ 收藏夹 (Bookmarks)" && ep.category) {
-                    categoryBadgeHtml = `<span style="font-size:0.6rem; padding:2px 6px; border-radius:10px; background:rgba(167, 139, 250, 0.15); color:#a78bfa; margin-left:8px; border:1px solid rgba(167, 139, 250, 0.25); font-weight:600;">${ep.category}</span>`;
+                    categoryBadgeHtml = `<span style="font-size:0.6rem; padding:2px 6px; border-radius:10px; background:var(--badge-custom-bg); color:var(--badge-custom-text); margin-left:8px; border:1px solid rgba(167, 139, 250, 0.25); font-weight:600;">${ep.category}</span>`;
                 }
                 
                 const primaryName = ep.operationId ? ep.operationId : ep.name;
@@ -1781,9 +1781,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (rightPanelCatContainer && rightPanelCatBadge) {
                         const trueCategory = ep.category || category.category;
                         if (trueCategory && trueCategory !== "⭐ 收藏夹 (Bookmarks)") {
-                            rightPanelCatBadge.innerHTML = `<span style="font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; background: rgba(167, 139, 250, 0.15); color: #a78bfa; border: 1px solid rgba(167, 139, 250, 0.25); display: inline-flex; align-items: center; gap: 4px; font-weight: 500;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>${trueCategory}</span>`;
+                            rightPanelCatBadge.innerHTML = `<span style="font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; background: var(--badge-custom-bg); color: var(--badge-custom-text); border: 1px solid rgba(167, 139, 250, 0.25); display: inline-flex; align-items: center; gap: 4px; font-weight: 500;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>${trueCategory}</span>`;
                         } else {
-                            rightPanelCatBadge.innerHTML = `<span style="font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; background: rgba(62, 166, 255, 0.15); color: #3eb6ff; border: 1px solid rgba(62, 166, 255, 0.25); display: inline-flex; align-items: center; gap: 4px; font-weight: 500;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4l2-9 5 18 3-9h6"></path></svg>Custom</span>`;
+                            rightPanelCatBadge.innerHTML = `<span style="font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; background: var(--info-bg); color: var(--info); border: 1px solid var(--info-border); display: inline-flex; align-items: center; gap: 4px; font-weight: 500;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4l2-9 5 18 3-9h6"></path></svg>Custom</span>`;
                         }
                         originalCategoryHtml = rightPanelCatBadge.innerHTML;
                     }
@@ -1803,7 +1803,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const prereqItems = ep.prerequisites.map(p => `<li style="margin-bottom: 6px;">${p.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</li>`).join('');
                         const alertBox = `
                             <div style="margin-top: 16px; padding: 12px 16px; background: rgba(210, 153, 34, 0.1); border-left: 4px solid #d29922; border-radius: 4px;">
-                                <div style="color: var(--accent-hover); font-weight: bold; margin-bottom: 8px; font-size: 0.9rem; display: flex; align-items: center; gap: 6px;">
+                                <div style="color: var(--error); font-weight: bold; margin-bottom: 8px; font-size: 0.9rem; display: flex; align-items: center; gap: 6px;">
                                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8.22 1.754a.25.25 0 00-.44 0L1.698 13.132a.25.25 0 00.22.368h12.164a.25.25 0 00.22-.368L8.22 1.754zm-1.763-.707c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0114.082 15H1.918a1.75 1.75 0 01-1.543-2.575L6.457 1.047zM9 11a1 1 0 11-2 0 1 1 0 012 0zm-.25-5.25a.75.75 0 00-1.5 0v2.5a.75.75 0 001.5 0v-2.5z"></path></svg>
                                     运行前置条件 (Prerequisites)
                                 </div>
@@ -1962,7 +1962,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // 注入高亮的 JSON 树状视图
                 responseOutput.innerHTML = syntaxHighlight(data.data);
                 responseOutput.className = 'json-viewer';
-                responseOutput.style.color = '#a78bfa';
+                responseOutput.style.color = 'var(--badge-custom-text)';
                 window.currentJsonResponse = data.data;
                 window.currentTablePath = "";
                 const toggleGroup = document.getElementById('view-mode-toggles');
@@ -2041,7 +2041,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             responseStatus.textContent = `Network Error`;
             responseStatus.className = 'response-status status-error';
             responseOutput.textContent = err.message;
-            responseOutput.style.color = '#ef4444';
+            responseOutput.style.color = 'var(--error)';
             window.currentJsonResponse = null;
             const toggleGroup = document.getElementById('view-mode-toggles');
             if (toggleGroup) toggleGroup.style.display = 'none';
@@ -2220,8 +2220,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             navigator.clipboard.writeText(curlCmd).then(() => {
                 copyBtn.innerHTML = '<span style="font-size: 12px; font-weight: bold;">Copied!</span>';
-                copyBtn.style.borderColor = '#10b981';
-                copyBtn.style.color = '#10b981';
+                copyBtn.style.borderColor = 'var(--success)';
+                copyBtn.style.color = 'var(--success)';
                 setTimeout(() => {
                     copyBtn.innerHTML = origMainCopyBtnHTML;
                     copyBtn.style.borderColor = '';
@@ -2315,12 +2315,12 @@ const loadReqHistory = (searchTerm = "") => {
                 
                 const methodUrl = document.createElement('div');
                 methodUrl.style.cssText = 'flex: 1;';
-                const methodColor = h.method === 'GET' ? '#3b82f6' : (h.method === 'POST' ? '#10b981' : (h.method === 'DELETE' ? '#ef4444' : '#f59e0b'));
+                const methodColor = h.method === 'GET' ? 'var(--info-dark)' : (h.method === 'POST' ? 'var(--success)' : (h.method === 'DELETE' ? 'var(--error)' : 'var(--warning)'));
                 
                 // 识别并展示前缀，不再显示 API 描述名称
                 const prefix = h.api_type === 'fabric' ? 'https://api.fabric.microsoft.com/v1.0' : 'https://api.powerbi.com/v1.0/myorg';
                 const prefixText = h.api_type === 'fabric' ? 'Fabric' : 'Power BI';
-                const badgeColor = h.api_type === 'fabric' ? '#38bdf8' : '#F2C811';
+                const badgeColor = h.api_type === 'fabric' ? 'var(--info)' : '#F2C811';
                 
                 const modeHtml = `<span style="display: inline-block; padding: 1px 6px; border-radius: 4px; border: 1px solid ${badgeColor}33; color: ${badgeColor}; background: ${badgeColor}0d; font-size: 0.65rem; font-weight: 500;">${prefixText}</span>`;
                 
@@ -2339,7 +2339,7 @@ const loadReqHistory = (searchTerm = "") => {
                 insertNoteHistoryBtn.innerHTML = '📝';
                 insertNoteHistoryBtn.title = 'Insert API Link to Note';
                 insertNoteHistoryBtn.style.cssText = 'font-size: 1rem; color: var(--text-secondary); cursor: pointer; padding: 0 4px; border-radius: 4px; line-height: 1; margin-top: -1px; margin-right: 4px; transition: all 0.2s;';
-                insertNoteHistoryBtn.onmouseover = () => { insertNoteHistoryBtn.style.color = 'var(--accent)'; insertNoteHistoryBtn.style.background = 'rgba(167, 139, 250, 0.15)'; };
+                insertNoteHistoryBtn.onmouseover = () => { insertNoteHistoryBtn.style.color = 'var(--accent)'; insertNoteHistoryBtn.style.background = 'var(--badge-custom-bg)'; };
                 insertNoteHistoryBtn.onmouseout = () => { insertNoteHistoryBtn.style.color = 'var(--text-secondary)'; insertNoteHistoryBtn.style.background = 'transparent'; };
                 insertNoteHistoryBtn.onclick = (e) => {
                     e.stopPropagation();
@@ -2351,7 +2351,7 @@ const loadReqHistory = (searchTerm = "") => {
                 delBtn.innerHTML = '&times;';
                 delBtn.title = '删除此条记录';
                 delBtn.style.cssText = 'font-size: 1.1rem; color: var(--text-secondary); cursor: pointer; padding: 0 4px; border-radius: 4px; line-height: 1; margin-top: -2px; transition: all 0.2s;';
-                delBtn.onmouseover = () => { delBtn.style.color = '#ff4d4f'; delBtn.style.background = 'rgba(255, 77, 79, 0.15)'; };
+                delBtn.onmouseover = () => { delBtn.style.color = 'var(--error)'; delBtn.style.background = 'var(--status-error-bg)'; };
                 delBtn.onmouseout = () => { delBtn.style.color = 'var(--text-secondary)'; delBtn.style.background = 'transparent'; };
                 delBtn.onclick = async (e) => {
                     e.stopPropagation();
@@ -2426,8 +2426,8 @@ const loadReqHistory = (searchTerm = "") => {
     }
 
     if (historyClearAll) {
-        historyClearAll.onmouseover = () => historyClearAll.style.background = 'rgba(255,107,107,0.1)';
-        historyClearAll.onmouseout = () => historyClearAll.style.background = '#1f2428';
+        historyClearAll.onmouseover = () => historyClearAll.style.background = 'var(--status-error-bg)';
+        historyClearAll.onmouseout = () => historyClearAll.style.background = 'var(--panel-bg)';
         historyClearAll.onclick = async () => {
             if(await showCustomConfirm('确定要清空所有请求历史记录吗？(Are you sure to clear all request history?)')) {
                 localStorage.removeItem('apiReqHistory');
@@ -2752,8 +2752,8 @@ const loadReqHistory = (searchTerm = "") => {
                     if (result.success) {
                         verifySettingsBtn.innerHTML = '✅ Success';
                         verifySettingsBtn.style.background = 'var(--status-success-bg, rgba(16, 185, 129, 0.2))';
-                        verifySettingsBtn.style.color = 'var(--success, #10b981)';
-                        verifySettingsBtn.style.borderColor = 'var(--success, #10b981)';
+                        verifySettingsBtn.style.color = 'var(--success, var(--success))';
+                        verifySettingsBtn.style.borderColor = 'var(--success, var(--success))';
                         
                         // Add pop animation
                         verifySettingsBtn.style.transform = 'scale(1.1)';
@@ -2771,9 +2771,9 @@ const loadReqHistory = (searchTerm = "") => {
                         window.renderEnvIdentity();
                     } else {
                         verifySettingsBtn.innerHTML = '❌ Failed';
-                        verifySettingsBtn.style.background = 'var(--status-error-bg, rgba(239, 68, 68, 0.2))';
-                        verifySettingsBtn.style.color = 'var(--error, #ef4444)';
-                        verifySettingsBtn.style.borderColor = 'var(--error, #ef4444)';
+                        verifySettingsBtn.style.background = 'var(--status-error-bg, var(--status-error-bg))';
+                        verifySettingsBtn.style.color = 'var(--error, var(--error))';
+                        verifySettingsBtn.style.borderColor = 'var(--error, var(--error))';
                         
                         // Add shake animation manually
                         verifySettingsBtn.style.transform = 'translateX(-4px)';
@@ -2789,9 +2789,9 @@ const loadReqHistory = (searchTerm = "") => {
                     }
                 } catch (err) {
                     verifySettingsBtn.innerHTML = '❌ Error';
-                    verifySettingsBtn.style.background = 'var(--status-error-bg, rgba(239, 68, 68, 0.2))';
-                    verifySettingsBtn.style.color = 'var(--error, #ef4444)';
-                    verifySettingsBtn.style.borderColor = 'var(--error, #ef4444)';
+                    verifySettingsBtn.style.background = 'var(--status-error-bg, var(--status-error-bg))';
+                    verifySettingsBtn.style.color = 'var(--error, var(--error))';
+                    verifySettingsBtn.style.borderColor = 'var(--error, var(--error))';
                     setTimeout(() => {
                         resetBtn();
                         alert('网络错误: ' + err);
@@ -3124,7 +3124,7 @@ function renderJsonTable(data, container, nodePath = '') {
         
         const statsSpan = document.createElement('span');
         statsSpan.textContent = `${arr.length} rows × ${columns.length} columns`;
-        statsSpan.style.cssText = "color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--panel-border);";
+        statsSpan.style.cssText = "color: var(--text-secondary); background: var(--overlay-5); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--panel-border);";
         
         infoHeader.appendChild(titleSpan);
         infoHeader.appendChild(statsSpan);
@@ -3138,7 +3138,7 @@ function renderJsonTable(data, container, nodePath = '') {
         columns.forEach(col => {
             const th = document.createElement('th');
             th.textContent = col;
-            th.style.cssText = "border: 1px solid var(--panel-border); padding: 8px; background: rgba(0,0,0,0.2); color: var(--text-secondary); white-space: nowrap; position: relative;";
+            th.style.cssText = "border: 1px solid var(--panel-border); padding: 8px; background: var(--shadow-light); color: var(--text-secondary); white-space: nowrap; position: relative;";
             
             const resizer = document.createElement('div');
             resizer.style.cssText = "position: absolute; right: 0; top: 0; bottom: 0; width: 4px; cursor: col-resize; z-index: 1; transition: background 0.2s;";
@@ -3221,7 +3221,7 @@ function renderJsonTable(data, container, nodePath = '') {
         ['Key', 'Value'].forEach((col, i) => {
             const th = document.createElement('th');
             th.textContent = col;
-            th.style.cssText = `border: 1px solid var(--panel-border); padding: 8px; background: rgba(0,0,0,0.2); color: var(--text-secondary); position: relative; ${i === 0 ? 'width: 30%;' : ''}`;
+            th.style.cssText = `border: 1px solid var(--panel-border); padding: 8px; background: var(--shadow-light); color: var(--text-secondary); position: relative; ${i === 0 ? 'width: 30%;' : ''}`;
             
             const resizer = document.createElement('div');
             resizer.style.cssText = "position: absolute; right: 0; top: 0; bottom: 0; width: 4px; cursor: col-resize; z-index: 1; transition: background 0.2s;";
@@ -3475,9 +3475,9 @@ function renderCustomJsonTree(data, container) {
         const tableBtn = document.createElement('button');
         tableBtn.innerHTML = '📊 View as Table';
         tableBtn.title = 'View this node as a Table';
-        tableBtn.style.cssText = 'margin-left: 8px; padding: 2px 6px; font-size: 0.65rem; background: var(--badge-custom-bg); border: 1px solid rgba(167, 139, 250, 0.4); color: var(--badge-custom-text); border-radius: 4px; cursor: pointer; display: none; transition: all 0.2s; white-space: nowrap;';
-        tableBtn.onmouseover = () => tableBtn.style.background = 'rgba(167, 139, 250, 0.3)';
-        tableBtn.onmouseout = () => tableBtn.style.background = 'rgba(167, 139, 250, 0.15)';
+        tableBtn.style.cssText = 'margin-left: 8px; padding: 2px 6px; font-size: 0.65rem; background: var(--badge-custom-bg); border: 1px solid var(--badge-custom-bg); color: var(--badge-custom-text); border-radius: 4px; cursor: pointer; display: none; transition: all 0.2s; white-space: nowrap;';
+        tableBtn.onmouseover = () => tableBtn.style.background = 'var(--badge-custom-bg)';
+        tableBtn.onmouseout = () => tableBtn.style.background = 'var(--badge-custom-bg)';
         
         headContainer.appendChild(keySpan);
         headContainer.appendChild(bracketOpen);
@@ -3773,7 +3773,7 @@ window.searchNotes = async function() {
             let snippetHtml = note.snippet.replace(/</g, '&lt;').replace(/>/g, '&gt;');
             if (q) {
                 const regex = new RegExp(q, 'gi');
-                snippetHtml = snippetHtml.replace(regex, match => `<span style="background: rgba(167, 139, 250, 0.4); color: white; padding: 0 2px; border-radius: 2px;">${match}</span>`);
+                snippetHtml = snippetHtml.replace(regex, match => `<span style="background: var(--badge-custom-bg); color: white; padding: 0 2px; border-radius: 2px;">${match}</span>`);
             }
             
             item.innerHTML = `
@@ -4055,8 +4055,8 @@ document.addEventListener('mousedown', (e) => {
         const icon = document.getElementById('auto-approve-icon');
         const text = document.getElementById('auto-approve-text');
         if (window.isAutoApprove) {
-            btn.style.borderColor = '#22c55e';
-            btn.style.color = '#22c55e';
+            btn.style.borderColor = 'var(--success)';
+            btn.style.color = 'var(--success)';
             btn.title = '免审模式已开启 (点击关闭)';
             icon.textContent = '🔓';
             text.textContent = '免审模式';
@@ -4083,7 +4083,7 @@ document.addEventListener('mousedown', (e) => {
 
         // Append User Message with smooth entry animation
         const userDiv = document.createElement('div');
-        userDiv.style.cssText = 'align-self: flex-end; background: #3b82f6; color: white; padding: 10px 14px; border-radius: 12px; border-bottom-right-radius: 2px; max-width: 85%; opacity: 0; transform: translateY(10px); transition: all 0.3s ease-out;';
+        userDiv.style.cssText = 'align-self: flex-end; background: var(--info-dark); color: white; padding: 10px 14px; border-radius: 12px; border-bottom-right-radius: 2px; max-width: 85%; opacity: 0; transform: translateY(10px); transition: all 0.3s ease-out;';
         userDiv.textContent = text;
         msgs.appendChild(userDiv);
         
@@ -4120,7 +4120,7 @@ document.addEventListener('mousedown', (e) => {
             if (!res.ok) {
                 const data = await res.json();
                 loadingDiv.textContent = "抱歉，无法连接到 AI：" + (data.message || "未知错误");
-                loadingDiv.style.color = "#ef4444";
+                loadingDiv.style.color = "var(--error)";
                 return;
             }
 
@@ -4166,17 +4166,17 @@ document.addEventListener('mousedown', (e) => {
                                 }
                                 
                                 const toolCard = document.createElement('div');
-                                toolCard.style.cssText = 'align-self: flex-start; background: rgba(255,165,0,0.1); border: 1px solid rgba(255,165,0,0.4); padding: 12px; border-radius: 12px; max-width: 85%; color: var(--text-primary); margin-top: 8px; opacity: 0; transform: scale(0.95); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);';
+                                toolCard.style.cssText = 'align-self: flex-start; background: var(--overlay-10); border: 1px solid var(--warning); padding: 12px; border-radius: 12px; max-width: 85%; color: var(--text-primary); margin-top: 8px; opacity: 0; transform: scale(0.95); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);';
                                 toolCard.innerHTML = `
-                                    <div style="font-weight: bold; margin-bottom: 8px; color: #ff9800; display: flex; align-items: center; gap: 6px;">
+                                    <div style="font-weight: bold; margin-bottom: 8px; color: var(--warning); display: flex; align-items: center; gap: 6px;">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                                         AI 请求执行高危操作
                                     </div>
-                                    <div style="font-size: 0.85rem; margin-bottom: 4px;">工具名称: <code style="background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px;">${data.name}</code></div>
-                                    <pre style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; font-size: 0.8rem; overflow-x: auto; margin-bottom: 12px; white-space: pre-wrap; color: #a5d6ff;">${JSON.stringify(data.args, null, 2)}</pre>
+                                    <div style="font-size: 0.85rem; margin-bottom: 4px;">工具名称: <code style="background: var(--shadow-light); padding: 2px 6px; border-radius: 4px;">${data.name}</code></div>
+                                    <pre style="background: var(--input-bg); padding: 8px; border-radius: 6px; font-size: 0.8rem; overflow-x: auto; margin-bottom: 12px; white-space: pre-wrap; color: var(--info-light, #a5d6ff);">${JSON.stringify(data.args, null, 2)}</pre>
                                     <div style="display: flex; gap: 8px;">
-                                        <button class="approve-btn" style="flex: 1; background: #22c55e; color: white; border: none; padding: 6px 0; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(34,197,94,0.3)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'">✅ 批准执行</button>
-                                        <button class="reject-btn" style="flex: 1; background: #ef4444; color: white; border: none; padding: 6px 0; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(239,68,68,0.3)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'">❌ 拒绝</button>
+                                        <button class="approve-btn" style="flex: 1; background: var(--success); color: white; border: none; padding: 6px 0; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px var(--status-success-bg)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'">✅ 批准执行</button>
+                                        <button class="reject-btn" style="flex: 1; background: var(--error); color: white; border: none; padding: 6px 0; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px var(--status-error-bg)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'">❌ 拒绝</button>
                                     </div>
                                 `;
                                 msgs.appendChild(toolCard);
@@ -4221,7 +4221,7 @@ document.addEventListener('mousedown', (e) => {
                             }
                         } else {
                             loadingDiv.textContent = "抱歉，发生错误：" + (data.message || "未知错误");
-                            loadingDiv.style.color = "#ef4444";
+                            loadingDiv.style.color = "var(--error)";
                         }
                     } catch (e) {
                         // ignore incomplete json parses gracefully
@@ -4230,7 +4230,7 @@ document.addEventListener('mousedown', (e) => {
             }
         } catch (e) {
             loadingDiv.textContent = "网络请求失败，无法连接到 AI。";
-            loadingDiv.style.color = "#ef4444";
+            loadingDiv.style.color = "var(--error)";
         }
         msgs.scrollTop = msgs.scrollHeight;
     };
@@ -5054,4 +5054,66 @@ window.selectDsTable = function(val, text) {
     options.style.visibility = 'hidden';
     options.style.transform = 'translateY(8px)';
     if (svg) svg.style.transform = '';
+};
+
+window.runRvcWorkflow = async function() {
+    const reportId = document.getElementById('wf-rvc-report').value;
+    const dateStr = document.getElementById('wf-rvc-date').value;
+    const out = document.getElementById('wf-out-rvc');
+    if(!reportId || !dateStr) {
+        out.textContent = 'Error: Please select a report and date.\n';
+        return;
+    }
+    out.textContent = `Fetching Activity Events for ${dateStr}...\n(Note: Requires Power BI Admin privileges)\n\n`;
+    
+    const startDateTime = `'${dateStr}T00:00:00Z'`;
+    const endDateTime = `'${dateStr}T23:59:59Z'`;
+    let url = `/v1.0/myorg/admin/activityevents?startDateTime=${startDateTime}&endDateTime=${endDateTime}`;
+    
+    let totalViews = 0;
+    let uniqueUsers = new Set();
+    let continuationUri = url;
+    
+    try {
+        while(continuationUri) {
+            let endpoint = continuationUri;
+            if(endpoint.startsWith('https://api.powerbi.com')) {
+                endpoint = endpoint.substring('https://api.powerbi.com'.length);
+            }
+            const res = await fetch('/api/proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint: endpoint, method: 'GET' })
+            });
+            if(!res.ok) {
+                out.textContent += `Error fetching events: ${res.status} ${res.statusText}\n`;
+                if(res.status === 401 || res.status === 403) {
+                    out.textContent += `\nYou must be a Power BI Admin to use this API.\n`;
+                }
+                return;
+            }
+            const data = await res.json();
+            const events = data.activityEventEntities || [];
+            
+            for(const e of events) {
+                if(e.Activity === "ViewReport" && e.ReportId === reportId) {
+                    totalViews++;
+                    if(e.UserId) uniqueUsers.add(e.UserId);
+                }
+            }
+            
+            continuationUri = data.continuationUri || null;
+            if(continuationUri) {
+                out.textContent += `Fetching next page of events...\n`;
+            }
+        }
+        
+        out.textContent += `\n--- Results for ${dateStr} ---\n`;
+        out.textContent += `Total Views: ${totalViews}\n`;
+        out.textContent += `Unique Viewers: ${uniqueUsers.size}\n`;
+        out.textContent += `\nSuccess.\n`;
+        
+    } catch (e) {
+        out.textContent += `Exception: ${e.message}\n`;
+    }
 };

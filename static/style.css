@@ -47,6 +47,22 @@
     --badge-custom-bg: rgba(167, 139, 250, 0.2);
     --badge-custom-text: #a78bfa;
     --markdown-border: #30363d;
+    /* Semantic Colors added safely */
+    --error-hover: #dc2626;
+    --error-light: #f87171;
+    --success-hover: #059669;
+    --success-light: #34d399;
+    --warning: #f59e0b;
+    --warning-hover: #d97706;
+    --warning-light: #fbbf24;
+    --info: #3eb6ff;
+    --info-dark: #3b82f6;
+    --info-darker: #2563eb;
+    --info-bg: rgba(62, 166, 255, 0.15);
+    --info-border: rgba(62, 166, 255, 0.25);
+    --teal: #2dd4bf;
+    --shadow-light: rgba(0, 0, 0, 0.2);
+    --bg-dark: #101216;
 }
 
 [data-theme="light"] {
@@ -280,8 +296,8 @@ body {
 
 .api-count-badge {
     font-size: 0.75rem;
-    background: var(--accent-glow);
-    color: var(--accent);
+    background: var(--overlay-10);
+    color: var(--text-primary);
     padding: 0.2rem 0.6rem;
     border-radius: 12px;
     font-weight: 600;
@@ -402,12 +418,12 @@ body {
     text-decoration: none;
     font-size: 0.9rem;
     border-radius: 8px;
-    background: var(--accent-glow);
+    background: var(--overlay-10);
     transition: all 0.2s;
 }
 
 .doc-link a:hover {
-    background: var(--accent-glow);
+    background: var(--overlay-10);
 }
 
 /* Main Content */
@@ -548,7 +564,7 @@ body {
 
 .btn-primary {
     background: var(--accent);
-    color: #000;
+    color: var(--accent-text);
     border: none;
     padding: 0 1.5rem;
     border-radius: 8px;
@@ -701,7 +717,7 @@ textarea:focus {
     display: inline-block;
     width: 16px;
     height: 16px;
-    border: 2px solid rgba(0,0,0,0.2);
+    border: 2px solid var(--shadow-light);
     border-radius: 50%;
     border-top-color: #000;
     animation: spin 1s ease-in-out infinite;
@@ -854,6 +870,21 @@ textarea:focus {
         transform: scale(1) translateY(0);
     }
 
+    /* Semantic Colors added safely */
+    --error-hover: #b91c1c;
+    --error-light: #fca5a5;
+    --success-hover: #047857;
+    --success-light: #6ee7b7;
+    --warning: #d97706;
+    --warning-hover: #b45309;
+    --warning-light: #fcd34d;
+    --info: #0284c7;
+    --info-dark: #0369a1;
+    --info-darker: #075985;
+    --info-bg: rgba(2, 132, 199, 0.1);
+    --info-border: rgba(2, 132, 199, 0.2);
+    --teal: #0f766e;
+    --shadow-light: rgba(0, 0, 0, 0.1);
 }
 
 .modal-overlay {
@@ -904,8 +935,8 @@ textarea:focus {
     display: flex; 
     align-items: center; 
     justify-content: center; 
-    background: rgba(255,255,255,0.05); 
-    border: 1px solid rgba(255,255,255,0.1); 
+    background: var(--overlay-5); 
+    border: 1px solid var(--overlay-10); 
     color: var(--text-secondary); 
     cursor: pointer; 
     transition: all 0.2s; 
@@ -956,13 +987,13 @@ textarea:focus {
 
 .terminal-line { margin-bottom: 6px; line-height: 1.4; }
 
-.terminal-line .info { color: #58a6ff; }
+.terminal-line .info { color: var(--info); }
 
-.terminal-line .success { color: #3fb950; }
+.terminal-line .success { color: var(--success); }
 
-.terminal-line .warning { color: #d29922; }
+.terminal-line .warning { color: var(--warning); }
 
-.terminal-line .error { color: #f85149; font-weight: bold; }
+.terminal-line .error { color: var(--error); font-weight: bold; }
 
 .modal-footer {
     padding: 1rem 1.5rem;
@@ -1239,7 +1270,7 @@ select.settings-input option {
 /* 官方文档链接按钮 hover 效果 */
 
 .btn-doc-link:hover {
-    background: var(--accent-glow) !important;
+    background: var(--overlay-10) !important;
     border-color: var(--accent) !important;
     color: var(--text-primary) !important;
     box-shadow: 0 0 8px rgba(242, 200, 17, 0.15);
@@ -1279,7 +1310,7 @@ select.settings-input option {
     border: 1px solid var(--accent-glow) !important;
     padding: 2px 8px !important;
     border-radius: 4px !important;
-    background: var(--accent-glow) !important;
+    background: var(--overlay-10) !important;
     transition: all 0.2s !important;
 }
 
@@ -2110,7 +2141,7 @@ json-viewer {
     font-size: 0.75rem;
     font-weight: 700;
     color: var(--accent);
-    background: var(--accent-glow);
+    background: var(--overlay-10);
     border: 1px solid rgba(242, 200, 17, 0.25);
     border-radius: 4px;
     padding: 0 8px;
@@ -2400,7 +2431,7 @@ json-viewer {
 #right-panel-bm-edit-btn:hover {
     border-color: var(--accent);
     color: var(--accent);
-    background: var(--accent-glow);
+    background: var(--overlay-10);
 }
 
 #right-panel-bm-editor {
@@ -2521,7 +2552,7 @@ select option {
     border: 1px solid var(--accent);
     color: var(--text-primary);
     min-width: 50px;
-    box-shadow: inset 0 0 4px rgba(0,0,0,0.5);
+    box-shadow: inset 0 0 4px var(--shadow-dark);
 }
 .snapshot-chip-actions {
     display: flex;
@@ -2580,7 +2611,7 @@ select option {
     background: var(--dropdown-bg);
     border: 1px solid var(--panel-border);
     border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 12px var(--shadow-base);
     z-index: 100;
     max-height: 220px;
     overflow-y: auto;
