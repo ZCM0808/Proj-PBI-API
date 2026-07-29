@@ -5092,7 +5092,7 @@ window.runRvcWorkflow = async function() {
 
     statusDiv.textContent = `Fetching Activity Events from ${startStr} to ${endStr}... (Requires Power BI Admin)`;
     outDiv.style.display = 'block';
-    tbody.innerHTML = '<tr><td colspan="3" style="padding: 12px; text-align: center; color: var(--text-secondary);">Loading data... please wait.</td></tr>';
+    outDiv.innerHTML = 'Loading data... please wait.\n';
     
     let totalViews = 0;
     let userStats = {}; // uid -> { count, first, last, ip: Set }
@@ -5188,7 +5188,18 @@ window.runRvcWorkflow = async function() {
             rowsHtml = `<tr><td colspan="3" style="padding: 12px; text-align: center; color: var(--text-secondary);">No view events found in this date range.</td></tr>`;
         }
         
-        tbody.innerHTML = rowsHtml;
+        let tableHtml = `
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
+                <thead style="background: var(--overlay-10); position: sticky; top: 0; z-index: 5;">
+                    <tr>
+                        <th style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600;">Time Window</th>
+                        <th style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600;">User Info</th>
+                        <th style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600;">Client IPs</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>`;
+        outDiv.innerHTML = tableHtml;
         outDiv.style.display = 'block';
         statusDiv.textContent = `Analysis Complete: ${totalViews} total views by ${sortedUsers.length} unique viewers.`;
         statusDiv.style.color = 'var(--success)';
@@ -5224,7 +5235,6 @@ window.handleCopyAction = function(btn, text) {
 
 window.runCheckPermsWorkflow = async function() {
     const outDiv = document.getElementById('wf-out-perms');
-    const tbody = document.getElementById('wf-perms-tbody');
     const statusDiv = document.getElementById('wf-perms-status');
     const btn = document.getElementById('btn-run-check-perms');
     
@@ -5233,7 +5243,7 @@ window.runCheckPermsWorkflow = async function() {
     
     statusDiv.textContent = `Fetching /availableFeatures...`;
     statusDiv.style.color = 'var(--text-secondary)';
-    tbody.innerHTML = '<tr><td colspan="3" style="padding: 12px; text-align: center; color: var(--text-secondary);">Loading permissions...</td></tr>';
+    outDiv.innerHTML = 'Loading permissions...\n';
     
     try {
         const res = await fetch('/api/proxy', {
@@ -5245,7 +5255,7 @@ window.runCheckPermsWorkflow = async function() {
         if(!res.ok) {
             statusDiv.textContent = `Error: ${res.status} ${res.statusText}`;
             statusDiv.style.color = 'var(--error)';
-            tbody.innerHTML = '<tr><td colspan="3" style="padding: 12px; text-align: center; color: var(--error);">Failed to fetch.</td></tr>';
+            outDiv.innerHTML = `Failed to fetch: ${res.status} ${res.statusText}\n`;
             btn.disabled = false;
             btn.innerHTML = 'Run Check';
             return;
@@ -5276,11 +5286,24 @@ window.runCheckPermsWorkflow = async function() {
                     </tr>
                 `;
             });
-            tbody.innerHTML = rowsHtml;
+            
+            let tableHtml = `
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
+                <thead style="background: var(--overlay-10); position: sticky; top: 0; z-index: 5;">
+                    <tr>
+                        <th style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600;">Feature Name</th>
+                        <th style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600;">State</th>
+                        <th style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600;">Extended State</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>`;
+            
+            outDiv.innerHTML = tableHtml;
             statusDiv.textContent = `Successfully loaded ${data.features.length} features.`;
             statusDiv.style.color = 'var(--success)';
         } else {
-            tbody.innerHTML = `<tr><td colspan="3" style="padding: 12px;"><pre style="margin:0; font-size: 0.7rem; color: var(--text-primary);">${JSON.stringify(data, null, 2)}</pre></td></tr>`;
+            outDiv.innerHTML = `<pre style="margin:0; font-size: 0.7rem; color: var(--text-primary);">${JSON.stringify(data, null, 2)}</pre>`;
             statusDiv.textContent = `Loaded JSON format (No features array found).`;
             statusDiv.style.color = 'var(--warning)';
         }
