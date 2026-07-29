@@ -5105,7 +5105,7 @@ window.runRvcWorkflow = async function() {
     
     // Setup dynamic table skeleton (2 Columns)
     tableDiv.innerHTML = `
-    <table data-table-id="rvc" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
+    <table data-table-id="rvc" style="width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.75rem; text-align: left;">
         <thead>
             <tr>
                 <th onclick="window.sortTable(this, event, 0)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Date</th>
@@ -5126,13 +5126,9 @@ window.runRvcWorkflow = async function() {
         for(const d of sortedDates) {
             const count = dateStats[d];
             rowsHtml += `
-                <tr style="border-bottom: 1px solid var(--panel-border); transition: background 0.2s;" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'">
-                    <td style="padding: 6px 12px; color: var(--text-primary); font-family: monospace;">${d}</td>
-                    <td style="padding: 6px 12px;">
-                        <span style="display: inline-block; padding: 2px 6px; border-radius: 12px; background: var(--status-success-bg); color: var(--success); font-size: 0.65rem; border: 1px solid var(--success);">
-                            ${count} views
-                        </span>
-                    </td>
+                <tr style="transition: background 0.2s;" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'">
+                    <td style="padding: 6px 12px; color: var(--text-primary); font-family: monospace; border-bottom: 1px solid var(--panel-border);">${d}</td>
+                    <td style="padding: 6px 12px; color: var(--info); font-weight: 500; border-bottom: 1px solid var(--panel-border);">${count}</td>
                 </tr>
             `;
         }
@@ -5283,7 +5279,7 @@ window.runCheckPermsWorkflow = async function() {
             
             // Render table skeleton
             tableDiv.innerHTML = `
-            <table data-table-id="perms" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
+            <table data-table-id="perms" style="width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.75rem; text-align: left;">
                 <thead>
                     <tr>
                         <th onclick="window.sortTable(this, event, 0)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Feature Name</th>
@@ -5310,13 +5306,13 @@ window.runCheckPermsWorkflow = async function() {
                 }
                 
                 const tr = document.createElement('tr');
-                tr.style.cssText = "border-bottom: 1px solid var(--panel-border); transition: background 0.2s;";
+                tr.style.cssText = "transition: background 0.2s;";
                 tr.onmouseover = () => tr.style.background='var(--overlay-10)';
                 tr.onmouseout = () => tr.style.background='transparent';
                 tr.innerHTML = `
-                    <td style="padding: 8px 12px; color: var(--text-primary); font-family: monospace;">${name}</td>
-                    <td style="padding: 8px 12px;">${stateHtml}</td>
-                    <td style="padding: 8px 12px; color: var(--text-secondary);">${extState}</td>
+                    <td style="padding: 8px 12px; color: var(--text-primary); font-family: monospace; border-bottom: 1px solid var(--panel-border);">${name}</td>
+                    <td style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border);">${stateHtml}</td>
+                    <td style="padding: 8px 12px; color: var(--text-secondary); border-bottom: 1px solid var(--panel-border);">${extState}</td>
                 `;
                 tbody.appendChild(tr);
             }
