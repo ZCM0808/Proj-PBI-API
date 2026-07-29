@@ -5106,14 +5106,13 @@ window.runRvcWorkflow = async function() {
     appendLog(`[INIT] Fetching Activity Events from ${startStr} to ${endStr}...`);
     statusDiv.textContent = `Running analysis...`;
     
-    // Setup dynamic table skeleton
+    // Setup dynamic table skeleton (2 Columns)
     tableContainer.innerHTML = `
     <table data-table-id="rvc" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left; display: none;">
         <thead>
             <tr>
-                <th onclick="window.sortTable(this, event, 0)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Time Window</th>
-                <th onclick="window.sortTable(this, event, 1)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">User Info</th>
-                <th onclick="window.sortTable(this, event, 2)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Client IPs</th>
+                <th onclick="window.sortTable(this, event, 0)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Date</th>
+                <th onclick="window.sortTable(this, event, 1)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">View Count</th>
             </tr>
         </thead>
         <tbody id="rvc-dynamic-tbody"></tbody>
@@ -5122,29 +5121,23 @@ window.runRvcWorkflow = async function() {
     const tbody = document.getElementById('rvc-dynamic-tbody');
     
     let totalViews = 0;
-    let userStats = {}; // uid -> { count, first, last, ip: Set }
+    let dateStats = {}; // dateIso -> count
     
     const renderTableRows = () => {
-        tableEl.style.display = 'table'; // Show table once we have data or try to render
+        tableEl.style.display = 'table'; // Show table once we have data
         let rowsHtml = '';
-        const sortedUsers = Object.keys(userStats).sort((a,b) => userStats[b].count - userStats[a].count);
+        const sortedDates = Object.keys(dateStats).sort(); // Chronological
         
-        for(const uid of sortedUsers) {
-            const st = userStats[uid];
-            const ipsStr = Array.from(st.ips).join(', ');
+        for(const d of sortedDates) {
+            const count = dateStats[d];
             rowsHtml += `
                 <tr style="border-bottom: 1px solid var(--panel-border); transition: background 0.2s;" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'">
-                    <td style="padding: 6px 12px; color: var(--text-primary); font-size: 0.7rem;">
-                        <div style="font-weight: 500;">First: ${st.first.toLocaleString()}</div>
-                        <div style="color: var(--text-secondary); margin-top: 2px;">Last: ${st.last.toLocaleString()}</div>
-                    </td>
+                    <td style="padding: 6px 12px; color: var(--text-primary); font-family: monospace;">${d}</td>
                     <td style="padding: 6px 12px;">
-                        <div style="color: var(--info); font-weight: 500; margin-bottom: 2px;">${uid}</div>
                         <span style="display: inline-block; padding: 2px 6px; border-radius: 12px; background: var(--status-success-bg); color: var(--success); font-size: 0.65rem; border: 1px solid var(--success);">
-                            ${st.count} views
+                            ${count} views
                         </span>
                     </td>
-                    <td style="padding: 6px 12px; color: var(--text-secondary); font-size: 0.7rem;">${ipsStr}</td>
                 </tr>
             `;
         }
@@ -5198,27 +5191,16 @@ window.runRvcWorkflow = async function() {
                     if(e.Activity === "ViewReport" && e.ReportId === reportId) {
                         foundToday++;
                         totalViews++;
-                        const uid = e.UserId || 'Unknown';
-                        const timeStr = e.CreationTime;
-                        const t = new Date(timeStr);
-                        const ip = e.ClientIP || 'N/A';
-                        
-                        if(!userStats[uid]) {
-                            userStats[uid] = { count: 1, first: t, last: t, ips: new Set([ip]) };
-                        } else {
-                            userStats[uid].count++;
-                            userStats[uid].ips.add(ip);
-                            if(t < userStats[uid].first) userStats[uid].first = t;
-                            if(t > userStats[uid].last) userStats[uid].last = t;
-                        }
+                        if(!dateStats[dateIso]) dateStats[dateIso] = 0;
+                        dateStats[dateIso]++;
                     }
                 }
                 appendLog(`  -> Page ${pageCount}: Scanned ${events.length} events, found ${foundToday} target report views.`);
                 continuationUri = payload.continuationUri || null;
                 pageCount++;
                 
-                // Dynamically update the table as data flows in!
-                if (foundToday > 0) {
+                // Dynamically append/update row for the current date
+                if (foundToday > 0 || dateStats[dateIso] !== undefined) {
                     renderTableRows();
                     setTimeout(() => { outDiv.scrollTop = outDiv.scrollHeight; }, 20);
                 }
@@ -5245,7 +5227,7 @@ window.handleCopyAction = function(btn, text) {
     if(!text) return;
     navigator.clipboard.writeText(text).then(() => {
         const origHTML = btn.innerHTML;
-        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+        btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Copied!';
         btn.style.color = 'var(--success)';
         btn.style.borderColor = 'var(--success)';
         setTimeout(() => { 

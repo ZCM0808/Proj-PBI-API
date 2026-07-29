@@ -454,7 +454,14 @@
                             <div class="wf-step-content" style="display: block; margin-top: 8px;">
                                 <div id="wf-rvc-status" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px;">Ready. Select date range (max 30 days recommended).</div>
                                 <div style="position: relative;">
-                                    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-rvc').innerText)" title="Copy Output" style="top: 8px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                    <div class="wf-copy-toolbar" style="position: absolute; top: 8px; right: 8px; z-index: 10; display: flex; gap: 6px;">
+                                        <button type="button" class="wf-copy-btn" style="position: static; width: auto; padding: 4px 8px; font-size: 0.7rem; border-radius: 4px; display: flex; align-items: center; gap: 4px; border: 1px solid var(--panel-border); background: var(--dropdown-bg); cursor: pointer;" onclick="window.handleCopyAction(this, document.querySelector('#wf-out-rvc .wf-logs')?.innerText || '')">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg> Copy Logs
+                                        </button>
+                                        <button type="button" class="wf-copy-btn" style="position: static; width: auto; padding: 4px 8px; font-size: 0.7rem; border-radius: 4px; display: flex; align-items: center; gap: 4px; border: 1px solid var(--panel-border); background: var(--dropdown-bg); cursor: pointer;" onclick="window.handleCopyAction(this, document.querySelector('#wf-out-rvc .wf-table-container')?.innerText || '')">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg> Copy Table
+                                        </button>
+                                    </div>
                                     <div id="wf-out-rvc" class="wf-console" style="display: none; min-height: 150px; padding-bottom: 60px;"></div>
                                 </div>
                             </div>
@@ -473,7 +480,14 @@
                             <div class="wf-step-content" style="display: block; margin-top: 8px;">
                                 <div id="wf-perms-status" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px;">Ready. Click "Run Check" to fetch /availableFeatures.</div>
                                 <div style="position: relative;">
-                                    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-perms').innerText)" title="Copy Output" style="top: 8px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                    <div class="wf-copy-toolbar" style="position: absolute; top: 8px; right: 8px; z-index: 10; display: flex; gap: 6px;">
+                                        <button type="button" class="wf-copy-btn" style="position: static; width: auto; padding: 4px 8px; font-size: 0.7rem; border-radius: 4px; display: flex; align-items: center; gap: 4px; border: 1px solid var(--panel-border); background: var(--dropdown-bg); cursor: pointer;" onclick="window.handleCopyAction(this, document.querySelector('#wf-out-perms .wf-logs')?.innerText || '')">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg> Copy Logs
+                                        </button>
+                                        <button type="button" class="wf-copy-btn" style="position: static; width: auto; padding: 4px 8px; font-size: 0.7rem; border-radius: 4px; display: flex; align-items: center; gap: 4px; border: 1px solid var(--panel-border); background: var(--dropdown-bg); cursor: pointer;" onclick="window.handleCopyAction(this, document.querySelector('#wf-out-perms .wf-table-container')?.innerText || '')">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg> Copy Table
+                                        </button>
+                                    </div>
                                     <div id="wf-out-perms" class="wf-console" style="min-height: 150px; padding-bottom: 60px;">Ready to check permissions...
 
 Click "Run Check" to fetch /availableFeatures.</div>
@@ -898,7 +912,7 @@ Click "Run Check" to fetch /availableFeatures.</div>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
-    <script src="/static/script.js?v=20260729_v106_unified_dynamic"></script>
+    <script src="/static/script.js?v=20260729_v107_rvc_daily_splitcopy"></script>
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: flex; z-index: 100000; opacity: 0; visibility: hidden; transition: opacity 0.25s ease;">
