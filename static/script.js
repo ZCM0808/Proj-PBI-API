@@ -1008,7 +1008,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             // Add search input inside the dropdown
             const searchBox = document.createElement('div');
-            searchBox.style.cssText = "padding: 6px; border-bottom: 1px solid var(--panel-border); position: sticky; top: -12px; background: var(--dropdown-bg); z-index: 10;";
+            searchBox.style.cssText = "padding: 6px; border-bottom: 1px solid var(--panel-border); position: sticky; top: 0; background: var(--dropdown-bg); z-index: 10;";
             const paramSearchInput = document.createElement('input');
             paramSearchInput.type = 'search';
             paramSearchInput.placeholder = 'Search parameters...';
@@ -3141,7 +3141,7 @@ function renderJsonTable(data, container, nodePath = '') {
             th.style.cssText = "border: 1px solid var(--panel-border); padding: 8px; background: var(--shadow-light); color: var(--text-secondary); white-space: nowrap; position: relative;";
             
             const resizer = document.createElement('div');
-            resizer.style.cssText = "position: absolute; right: 0; top: -12px; bottom: 0; width: 4px; cursor: col-resize; z-index: 1; transition: background 0.2s;";
+            resizer.style.cssText = "position: absolute; right: 0; top: 0; bottom: 0; width: 4px; cursor: col-resize; z-index: 1; transition: background 0.2s;";
             resizer.onmouseover = () => resizer.style.background = 'var(--accent)';
             resizer.onmouseout = () => resizer.style.background = 'transparent';
             
@@ -3224,7 +3224,7 @@ function renderJsonTable(data, container, nodePath = '') {
             th.style.cssText = `border: 1px solid var(--panel-border); padding: 8px; background: var(--shadow-light); color: var(--text-secondary); position: relative; ${i === 0 ? 'width: 30%;' : ''}`;
             
             const resizer = document.createElement('div');
-            resizer.style.cssText = "position: absolute; right: 0; top: -12px; bottom: 0; width: 4px; cursor: col-resize; z-index: 1; transition: background 0.2s;";
+            resizer.style.cssText = "position: absolute; right: 0; top: 0; bottom: 0; width: 4px; cursor: col-resize; z-index: 1; transition: background 0.2s;";
             resizer.onmouseover = () => resizer.style.background = 'var(--accent)';
             resizer.onmouseout = () => resizer.style.background = 'transparent';
             
@@ -5108,8 +5108,8 @@ window.runRvcWorkflow = async function() {
     <table data-table-id="rvc" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
         <thead>
             <tr>
-                <th onclick="window.sortTable(this, event, 0)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Date</th>
-                <th onclick="window.sortTable(this, event, 1)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">View Count</th>
+                <th onclick="window.sortTable(this, event, 0)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Date</th>
+                <th onclick="window.sortTable(this, event, 1)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">View Count</th>
             </tr>
         </thead>
         <tbody id="rvc-dynamic-tbody"></tbody>
@@ -5286,9 +5286,9 @@ window.runCheckPermsWorkflow = async function() {
             <table data-table-id="perms" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
                 <thead>
                     <tr>
-                        <th onclick="window.sortTable(this, event, 0)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Feature Name</th>
-                        <th onclick="window.sortTable(this, event, 1)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">State</th>
-                        <th onclick="window.sortTable(this, event, 2)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Extended State</th>
+                        <th onclick="window.sortTable(this, event, 0)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Feature Name</th>
+                        <th onclick="window.sortTable(this, event, 1)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">State</th>
+                        <th onclick="window.sortTable(this, event, 2)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Extended State</th>
                     </tr>
                 </thead>
                 <tbody id="perms-dynamic-tbody"></tbody>
