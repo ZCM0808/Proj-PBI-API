@@ -4314,7 +4314,7 @@ document.addEventListener('mousedown', (e) => {
         const logToConsole = (step, msg) => {
             const out = document.getElementById(`wf-out-step${step}`);
             out.textContent += `\n[${new Date().toLocaleTimeString()}] ${msg}`;
-            out.scrollTop = out.scrollHeight;
+            setTimeout(() => { out.scrollTop = out.scrollHeight; }, 50);
         };
         const resetConsole = (step, initialMsg) => {
             const out = document.getElementById(`wf-out-step${step}`);
@@ -5091,8 +5091,8 @@ window.runRvcWorkflow = async function() {
     }
 
     statusDiv.textContent = `Fetching Activity Events from ${startStr} to ${endStr}... (Requires Power BI Admin)`;
-    outDiv.style.display = 'none';
-    tbody.innerHTML = '';
+    outDiv.style.display = 'block';
+    tbody.innerHTML = '<tr><td colspan="3" style="padding: 12px; text-align: center; color: var(--text-secondary);">Loading data... please wait.</td></tr>';
     
     let totalViews = 0;
     let userStats = {}; // uid -> { count, first, last, ip: Set }
@@ -5192,7 +5192,7 @@ window.runRvcWorkflow = async function() {
         outDiv.style.display = 'block';
         statusDiv.textContent = `Analysis Complete: ${totalViews} total views by ${sortedUsers.length} unique viewers.`;
         statusDiv.style.color = 'var(--success)';
-        outDiv.scrollTop = outDiv.scrollHeight;
+        setTimeout(() => { outDiv.scrollTop = outDiv.scrollHeight; }, 50);
         
     } catch (e) {
         statusDiv.textContent = `Exception: ${e.message}`;
@@ -5262,10 +5262,10 @@ window.runCheckPermsWorkflow = async function() {
         }
         
         out.textContent += `[Success] Permission check complete.\n`;
-        out.scrollTop = out.scrollHeight;
+        setTimeout(() => { out.scrollTop = out.scrollHeight; }, 50);
     } catch (e) {
         out.textContent += `Exception: ${e.message}\n`;
-        out.scrollTop = out.scrollHeight;
+        setTimeout(() => { out.scrollTop = out.scrollHeight; }, 50);
     } finally {
         btn.disabled = false;
         btn.innerHTML = 'Run Check';
