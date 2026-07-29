@@ -5223,12 +5223,17 @@ window.handleCopyAction = function(btn, text) {
 
 
 window.runCheckPermsWorkflow = async function() {
-    const out = document.getElementById('wf-out-perms');
+    const outDiv = document.getElementById('wf-out-perms');
+    const tbody = document.getElementById('wf-perms-tbody');
+    const statusDiv = document.getElementById('wf-perms-status');
     const btn = document.getElementById('btn-run-check-perms');
+    
     btn.disabled = true;
     btn.innerHTML = 'Running...';
     
-    out.textContent = `[${new Date().toLocaleTimeString()}] Fetching /availableFeatures ...\n\n`;
+    statusDiv.textContent = `Fetching /availableFeatures...`;
+    statusDiv.style.color = 'var(--text-secondary)';
+    tbody.innerHTML = '<tr><td colspan="3" style="padding: 12px; text-align: center; color: var(--text-secondary);">Loading permissions...</td></tr>';
     
     try {
         const res = await fetch('/api/proxy', {
@@ -5238,7 +5243,9 @@ window.runCheckPermsWorkflow = async function() {
         });
         
         if(!res.ok) {
-            out.textContent += `Error: ${res.status} ${res.statusText}\n`;
+            statusDiv.textContent = `Error: ${res.status} ${res.statusText}`;
+            statusDiv.style.color = 'var(--error)';
+            tbody.innerHTML = '<tr><td colspan="3" style="padding: 12px; text-align: center; color: var(--error);">Failed to fetch.</td></tr>';
             btn.disabled = false;
             btn.innerHTML = 'Run Check';
             return;
@@ -5247,25 +5254,42 @@ window.runCheckPermsWorkflow = async function() {
         const data = await res.json();
         
         if (data.features && Array.isArray(data.features)) {
-            let listOutput = "Available Permissions & Features:\n";
-            listOutput += "=================================================\n";
-            listOutput += "Feature Name".padEnd(55) + "State\n";
-            listOutput += "-------------------------------------------------------\n";
+            let rowsHtml = '';
             data.features.forEach(f => {
-                const fName = (f.name || 'Unknown').padEnd(55);
-                const fState = f.state || 'N/A';
-                listOutput += `${fName} [${fState}]\n`;
+                const name = f.name || 'Unknown';
+                const state = f.state || 'N/A';
+                const extState = f.extendedState || 'N/A';
+                
+                // Color coding for state
+                let stateHtml = state;
+                if(state === 'Enabled') {
+                    stateHtml = `<span style="color: var(--success); font-weight: 500;">${state}</span>`;
+                } else if(state === 'Disabled') {
+                    stateHtml = `<span style="color: var(--error); font-weight: 500;">${state}</span>`;
+                }
+                
+                rowsHtml += `
+                    <tr style="border-bottom: 1px solid var(--panel-border); transition: background 0.2s;" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'">
+                        <td style="padding: 8px 12px; color: var(--text-primary); font-family: monospace;">${name}</td>
+                        <td style="padding: 8px 12px;">${stateHtml}</td>
+                        <td style="padding: 8px 12px; color: var(--text-secondary);">${extState}</td>
+                    </tr>
+                `;
             });
-            out.textContent += listOutput + '\n';
+            tbody.innerHTML = rowsHtml;
+            statusDiv.textContent = `Successfully loaded ${data.features.length} features.`;
+            statusDiv.style.color = 'var(--success)';
         } else {
-            out.textContent += JSON.stringify(data, null, 2) + '\n\n';
+            tbody.innerHTML = `<tr><td colspan="3" style="padding: 12px;"><pre style="margin:0; font-size: 0.7rem; color: var(--text-primary);">${JSON.stringify(data, null, 2)}</pre></td></tr>`;
+            statusDiv.textContent = `Loaded JSON format (No features array found).`;
+            statusDiv.style.color = 'var(--warning)';
         }
         
-        out.textContent += `[Success] Permission check complete.\n`;
-        setTimeout(() => { out.scrollTop = out.scrollHeight; }, 50);
+        setTimeout(() => { outDiv.scrollTop = outDiv.scrollHeight; }, 50);
     } catch (e) {
-        out.textContent += `Exception: ${e.message}\n`;
-        setTimeout(() => { out.scrollTop = out.scrollHeight; }, 50);
+        statusDiv.textContent = `Exception: ${e.message}`;
+        statusDiv.style.color = 'var(--error)';
+        setTimeout(() => { outDiv.scrollTop = outDiv.scrollHeight; }, 50);
     } finally {
         btn.disabled = false;
         btn.innerHTML = 'Run Check';

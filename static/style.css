@@ -2476,7 +2476,7 @@ json-viewer {
 .wf-step.active { border-color: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
 .wf-step-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px !important; }
 .wf-step-title { font-weight: 600; color: var(--accent); font-size: 0.8rem !important; margin: 0 !important; line-height: 1 !important; }
-.wf-console { background: var(--input-bg); color: var(--text-primary); padding: 12px 32px 12px 12px; border-radius: 4px; font-size: 0.85rem; font-family: 'Fira Code', monospace; min-height: 100px; max-height: 250px; overflow-y: auto; margin: 0; white-space: pre-wrap; border: 1px solid var(--panel-border); }
+.wf-console { background: var(--input-bg); color: var(--text-primary); padding: 12px 32px 60px 12px; border-radius: 4px; font-size: 0.85rem; font-family: 'Fira Code', monospace; min-height: 100px; max-height: 250px; overflow-y: auto; margin: 0; white-space: pre-wrap; border: 1px solid var(--panel-border); }
 .wf-step-btn { padding: 4px 10px !important; font-size: 0.75rem !important; height: auto !important; border-radius: 6px !important; line-height: 1 !important; }
 .wf-step-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
