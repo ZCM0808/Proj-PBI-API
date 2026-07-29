@@ -5117,22 +5117,63 @@ window.runRvcWorkflow = async function() {
     const tbody = document.getElementById('rvc-dynamic-tbody');
     
     let totalViews = 0;
-    let dateStats = {}; // dateIso -> count
+    window._rvcDateStats = {}; // dateIso -> [events...]
     
     const renderTableRows = () => {
         let rowsHtml = '';
-        const sortedDates = Object.keys(dateStats).sort(); // Chronological
+        const sortedDates = Object.keys(window._rvcDateStats).sort(); // Chronological
         
         for(const d of sortedDates) {
-            const count = dateStats[d];
+            const eventsArr = window._rvcDateStats[d];
+            const count = eventsArr.length;
             rowsHtml += `
                 <tr style="transition: background 0.2s;" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'">
                     <td style="padding: 6px 12px; color: var(--text-primary); font-family: monospace; border-bottom: 1px solid var(--panel-border);">${d}</td>
-                    <td style="padding: 6px 12px; color: var(--info); font-weight: 500; border-bottom: 1px solid var(--panel-border);">${count}</td>
+                    <td style="padding: 6px 12px; color: var(--info); font-weight: 500; border-bottom: 1px solid var(--panel-border);">
+                        ${count > 0 ? `<span style="cursor: pointer; text-decoration: underline; text-underline-offset: 2px;" onclick="window.showViewDetails('${d}')">${count}</span>` : count}
+                    </td>
                 </tr>
             `;
         }
         tbody.innerHTML = rowsHtml;
+    };
+
+    window.showViewDetails = function(dateIso) {
+        const events = window._rvcDateStats[dateIso] || [];
+        const tbody = document.getElementById('view-details-tbody');
+        let html = '';
+        if (events.length === 0) {
+            html = '<tr><td colspan="4" style="text-align: center; padding: 10px;">No details found</td></tr>';
+        } else {
+            // Sort events by CreationTime descending
+            events.sort((a, b) => new Date(b.CreationTime) - new Date(a.CreationTime));
+            for(const e of events) {
+                const time = (e.CreationTime || '').replace('T', ' ').replace('Z', '');
+                const user = e.UserId || e.UserKey || 'Unknown';
+                const reportName = e.ItemName || 'Unknown Report';
+                const ip = e.ClientIP || 'Unknown IP';
+                html += `
+                <tr style="border-bottom: 1px solid var(--panel-border);">
+                    <td style="padding: 6px 12px; color: var(--text-secondary);">${time}</td>
+                    <td style="padding: 6px 12px; color: var(--text-primary);">${user}</td>
+                    <td style="padding: 6px 12px; color: var(--text-primary);">${reportName}</td>
+                    <td style="padding: 6px 12px; color: var(--text-secondary);">${ip}</td>
+                </tr>
+                `;
+            }
+        }
+        tbody.innerHTML = html;
+        document.getElementById('view-details-title').textContent = `View Details - ${dateIso} (${events.length})`;
+        
+        // Ensure draggable is initialized
+        const modalContent = document.getElementById('view-details-modal-content');
+        const modalHeader = document.getElementById('view-details-modal-header');
+        if (window.makeDraggable && !modalContent.hasAttribute('data-drag-init')) {
+            window.makeDraggable(modalContent, modalHeader);
+            modalContent.setAttribute('data-drag-init', 'true');
+        }
+        
+        window.openModalWithAnimation('view-details-modal');
     };
 
     const btn = document.getElementById('btn-run-rvc');
@@ -5200,8 +5241,8 @@ window.runRvcWorkflow = async function() {
                     if(activity === "viewreport" && rId === targetId) {
                         foundToday++;
                         totalViews++;
-                        if(!dateStats[dateIso]) dateStats[dateIso] = 0;
-                        dateStats[dateIso]++;
+                        if(!window._rvcDateStats[dateIso]) window._rvcDateStats[dateIso] = [];
+                        window._rvcDateStats[dateIso].push(e);
                     }
                 }
                 appendLog(`  -> Page ${pageCount}: Scanned ${events.length} events, found ${foundToday} target report views.`);
@@ -5209,7 +5250,7 @@ window.runRvcWorkflow = async function() {
                 pageCount++;
                 
                 // Dynamically update the table as data flows in!
-                if (foundToday > 0 || dateStats[dateIso] !== undefined) {
+                if (foundToday > 0 || window._rvcDateStats[dateIso] !== undefined) {
                     renderTableRows();
                     setTimeout(() => { tableDiv.scrollTop = tableDiv.scrollHeight; }, 20);
                 }
