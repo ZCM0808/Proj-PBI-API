@@ -4279,6 +4279,8 @@ document.addEventListener('mousedown', (e) => {
             fillSelect('wf-vis-report', 'pbi_reports');
             fillSelect('wf-ds-workspace', 'pbi_workspaces');
             fillSelect('wf-ds-dataset', 'pbi_datasets');
+            fillSelect('wf-rvc-workspace', 'pbi_workspaces');
+            fillSelect('wf-rvc-report', 'pbi_reports');
             
             // Auto trigger loadPages if there's a selection
             setTimeout(loadPages, 500);
@@ -4293,6 +4295,8 @@ document.addEventListener('mousedown', (e) => {
             if (activeW) document.getElementById('wf-ds-workspace').value = activeW;
             const activeD = document.getElementById('active-dataset')?.value;
             if (activeD) document.getElementById('wf-ds-dataset').value = activeD;
+            if (activeW) document.getElementById('wf-rvc-workspace').value = activeW;
+            if (activeR) document.getElementById('wf-rvc-report').value = activeR;
 
         });
 
@@ -4477,6 +4481,7 @@ document.addEventListener('mousedown', (e) => {
             document.getElementById('wf-config-smart_pipeline').style.display = 'none';
             document.getElementById('wf-config-export_visual').style.display = 'none';
             document.getElementById('wf-config-export_dataset_tables').style.display = 'none';
+            document.getElementById('wf-config-report_view_count').style.display = 'none';
             
             if (val === 'smart_pipeline') {
                 document.getElementById('wf-config-smart_pipeline').style.display = 'block';
@@ -4485,6 +4490,13 @@ document.addEventListener('mousedown', (e) => {
                 
             } else if (val === 'export_visual') {
                 document.getElementById('wf-config-export_visual').style.display = 'block';
+            } else if (val === 'report_view_count') {
+                document.getElementById('wf-config-report_view_count').style.display = 'block';
+                const endD = new Date();
+                const startD = new Date();
+                startD.setDate(startD.getDate() - 7);
+                document.getElementById('wf-rvc-start').value = startD.toISOString().split('T')[0];
+                document.getElementById('wf-rvc-end').value = endD.toISOString().split('T')[0];
             } else {
                 document.getElementById('wf-config-export_report').style.display = 'block';
                 document.getElementById('wf-export-wrapper').style.display = 'block';
@@ -5058,62 +5070,138 @@ window.selectDsTable = function(val, text) {
 
 window.runRvcWorkflow = async function() {
     const reportId = document.getElementById('wf-rvc-report').value;
-    const dateStr = document.getElementById('wf-rvc-date').value;
-    const out = document.getElementById('wf-out-rvc');
-    if(!reportId || !dateStr) {
-        out.textContent = 'Error: Please select a report and date.\n';
+    const startStr = document.getElementById('wf-rvc-start').value;
+    const endStr = document.getElementById('wf-rvc-end').value;
+    const statusDiv = document.getElementById('wf-rvc-status');
+    const outDiv = document.getElementById('wf-out-rvc');
+    const tbody = document.getElementById('wf-rvc-tbody');
+    
+    if(!reportId || !startStr || !endStr) {
+        statusDiv.textContent = 'Error: Please select a report and date range.';
+        statusDiv.style.color = 'var(--error)';
         return;
     }
-    out.textContent = `Fetching Activity Events for ${dateStr}...\n(Note: Requires Power BI Admin privileges)\n\n`;
+    statusDiv.style.color = 'var(--text-secondary)';
     
-    const startDateTime = `'${dateStr}T00:00:00Z'`;
-    const endDateTime = `'${dateStr}T23:59:59Z'`;
-    let url = `/v1.0/myorg/admin/activityevents?startDateTime=${startDateTime}&endDateTime=${endDateTime}`;
+    // Validate range
+    let dStart = new Date(startStr);
+    let dEnd = new Date(endStr);
+    if(dStart > dEnd) {
+        statusDiv.textContent = 'Error: Start Date must be before End Date.';
+        statusDiv.style.color = 'var(--error)';
+        return;
+    }
+    
+    const diffDays = Math.ceil((dEnd - dStart) / (1000 * 60 * 60 * 24));
+    if(diffDays > 30) {
+        if(!confirm('Date range is larger than 30 days. This will make many API calls. Continue?')) return;
+    }
+
+    statusDiv.textContent = `Fetching Activity Events from ${startStr} to ${endStr}... (Requires Power BI Admin)`;
+    outDiv.style.display = 'none';
+    tbody.innerHTML = '';
     
     let totalViews = 0;
-    let uniqueUsers = new Set();
-    let continuationUri = url;
+    let userStats = {}; // uid -> { count, first, last, ip: Set }
+    
+    const btn = document.getElementById('btn-run-rvc');
+    btn.disabled = true;
+    btn.innerHTML = 'Running...';
     
     try {
-        while(continuationUri) {
-            let endpoint = continuationUri;
-            if(endpoint.startsWith('https://api.powerbi.com')) {
-                endpoint = endpoint.substring('https://api.powerbi.com'.length);
-            }
-            const res = await fetch('/api/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ endpoint: endpoint, method: 'GET' })
-            });
-            if(!res.ok) {
-                out.textContent += `Error fetching events: ${res.status} ${res.statusText}\n`;
-                if(res.status === 401 || res.status === 403) {
-                    out.textContent += `\nYou must be a Power BI Admin to use this API.\n`;
-                }
-                return;
-            }
-            const data = await res.json();
-            const events = data.activityEventEntities || [];
+        let currentDate = new Date(dStart);
+        while(currentDate <= dEnd) {
+            const dateIso = currentDate.toISOString().split('T')[0];
+            statusDiv.textContent = `Fetching events for ${dateIso}...`;
             
-            for(const e of events) {
-                if(e.Activity === "ViewReport" && e.ReportId === reportId) {
-                    totalViews++;
-                    if(e.UserId) uniqueUsers.add(e.UserId);
-                }
-            }
+            const startDateTime = `'${dateIso}T00:00:00Z'`;
+            const endDateTime = `'${dateIso}T23:59:59Z'`;
+            let url = `/v1.0/myorg/admin/activityevents?startDateTime=${startDateTime}&endDateTime=${endDateTime}`;
             
-            continuationUri = data.continuationUri || null;
-            if(continuationUri) {
-                out.textContent += `Fetching next page of events...\n`;
+            let continuationUri = url;
+            while(continuationUri) {
+                let endpoint = continuationUri;
+                if(endpoint.startsWith('https://api.powerbi.com')) {
+                    endpoint = endpoint.substring('https://api.powerbi.com'.length);
+                }
+                const res = await fetch('/api/proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint: endpoint, method: 'GET' })
+                });
+                
+                if(!res.ok) {
+                    statusDiv.textContent = `Error: ${res.status} ${res.statusText}`;
+                    if(res.status === 401 || res.status === 403) statusDiv.textContent += ` (Must be PBI Admin)`;
+                    statusDiv.style.color = 'var(--error)';
+                    btn.disabled = false;
+                    btn.innerHTML = 'Run Analysis';
+                    return;
+                }
+                
+                const data = await res.json();
+                const events = data.activityEventEntities || [];
+                
+                for(const e of events) {
+                    if(e.Activity === "ViewReport" && e.ReportId === reportId) {
+                        totalViews++;
+                        const uid = e.UserId || 'Unknown';
+                        const timeStr = e.CreationTime;
+                        const t = new Date(timeStr);
+                        const ip = e.ClientIP || 'N/A';
+                        
+                        if(!userStats[uid]) {
+                            userStats[uid] = { count: 1, first: t, last: t, ips: new Set([ip]) };
+                        } else {
+                            userStats[uid].count++;
+                            userStats[uid].ips.add(ip);
+                            if(t < userStats[uid].first) userStats[uid].first = t;
+                            if(t > userStats[uid].last) userStats[uid].last = t;
+                        }
+                    }
+                }
+                continuationUri = data.continuationUri || null;
             }
+            currentDate.setDate(currentDate.getDate() + 1);
         }
         
-        out.textContent += `\n--- Results for ${dateStr} ---\n`;
-        out.textContent += `Total Views: ${totalViews}\n`;
-        out.textContent += `Unique Viewers: ${uniqueUsers.size}\n`;
-        out.textContent += `\nSuccess.\n`;
+        let rowsHtml = '';
+        const sortedUsers = Object.keys(userStats).sort((a,b) => userStats[b].count - userStats[a].count);
+        
+        for(const uid of sortedUsers) {
+            const st = userStats[uid];
+            const ipsStr = Array.from(st.ips).join(', ');
+            rowsHtml += `
+                <tr style="border-bottom: 1px solid var(--panel-border); transition: background 0.2s;" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'">
+                    <td style="padding: 6px 12px; color: var(--text-primary); font-size: 0.7rem;">
+                        <div style="font-weight: 500;">First: ${st.first.toLocaleString()}</div>
+                        <div style="color: var(--text-secondary); margin-top: 2px;">Last: ${st.last.toLocaleString()}</div>
+                    </td>
+                    <td style="padding: 6px 12px;">
+                        <div style="color: var(--info); font-weight: 500; margin-bottom: 2px;">${uid}</div>
+                        <span style="display: inline-block; padding: 2px 6px; border-radius: 12px; background: var(--status-success-bg); color: var(--success); font-size: 0.65rem; border: 1px solid var(--success);">
+                            ${st.count} views
+                        </span>
+                    </td>
+                    <td style="padding: 6px 12px; color: var(--text-secondary); font-family: monospace;">${ipsStr}</td>
+                </tr>
+            `;
+        }
+        
+        if(sortedUsers.length === 0) {
+            rowsHtml = `<tr><td colspan="3" style="padding: 12px; text-align: center; color: var(--text-secondary);">No view events found in this date range.</td></tr>`;
+        }
+        
+        tbody.innerHTML = rowsHtml;
+        outDiv.style.display = 'block';
+        statusDiv.textContent = `Analysis Complete: ${totalViews} total views by ${sortedUsers.length} unique viewers.`;
+        statusDiv.style.color = 'var(--success)';
         
     } catch (e) {
-        out.textContent += `Exception: ${e.message}\n`;
+        statusDiv.textContent = `Exception: ${e.message}`;
+        statusDiv.style.color = 'var(--error)';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Run Analysis';
     }
 };
