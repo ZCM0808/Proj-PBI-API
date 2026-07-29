@@ -386,9 +386,6 @@
                 <div style="display: flex; gap: 12px; align-items: center;">
                     <label style="color: var(--text-secondary); font-weight: bold; display: flex; align-items: center; gap: 6px;">
                         Select Workflow:
-                        <button type="button" class="icon-btn" style="padding: 2px; width: 20px; height: 20px; border: none; background: transparent; color: var(--text-secondary); cursor: pointer;" onclick="navigator.clipboard.writeText(document.getElementById('wf-selector').options[document.getElementById('wf-selector').selectedIndex].text); this.style.color='var(--success)'; setTimeout(()=>this.style.color='var(--text-secondary)', 1500);" title="Copy Workflow Name">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                        </button>
                     </label>
                     <select id="wf-selector" class="wf-input" style="flex: 1;">
                         <option value="export_report">Export Report to File (PDF/Excel/etc.)</option>
@@ -398,6 +395,9 @@
                         <option value="check_permissions">Check Current Permissions (Token/Features)</option>
                         <option value="smart_pipeline">Smart DataOps Pipeline (Auto Bind/Scan/Check)</option>
                     </select>
+                    <button type="button" class="icon-btn" title="Copy Workflow Name" onclick="window.handleCopyAction(this, document.getElementById('wf-selector').options[document.getElementById('wf-selector').selectedIndex].text)" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    </button>
                 </div>
                 
                 <div id="wf-config-export_report" class="wf-config-pane">
@@ -909,7 +909,7 @@ Click "Run Check" to fetch /availableFeatures.</pre>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
-    <script src="/static/script.js?v=20260729_v95_endpoint_fix"></script>
+    <script src="/static/script.js?v=20260729_v96_list_scroll"></script>
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: flex; z-index: 100000; opacity: 0; visibility: hidden; transition: opacity 0.25s ease;">

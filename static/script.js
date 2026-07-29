@@ -5192,6 +5192,7 @@ window.runRvcWorkflow = async function() {
         outDiv.style.display = 'block';
         statusDiv.textContent = `Analysis Complete: ${totalViews} total views by ${sortedUsers.length} unique viewers.`;
         statusDiv.style.color = 'var(--success)';
+        outDiv.scrollTop = outDiv.scrollHeight;
         
     } catch (e) {
         statusDiv.textContent = `Exception: ${e.message}`;
@@ -5244,10 +5245,27 @@ window.runCheckPermsWorkflow = async function() {
         }
         
         const data = await res.json();
-        out.textContent += JSON.stringify(data, null, 2) + '\n\n';
-        out.textContent += `[Success] Permission check complete.`;
+        
+        if (data.features && Array.isArray(data.features)) {
+            let listOutput = "Available Permissions & Features:\n";
+            listOutput += "=================================================\n";
+            listOutput += "Feature Name".padEnd(55) + "State\n";
+            listOutput += "-------------------------------------------------------\n";
+            data.features.forEach(f => {
+                const fName = (f.name || 'Unknown').padEnd(55);
+                const fState = f.state || 'N/A';
+                listOutput += `${fName} [${fState}]\n`;
+            });
+            out.textContent += listOutput + '\n';
+        } else {
+            out.textContent += JSON.stringify(data, null, 2) + '\n\n';
+        }
+        
+        out.textContent += `[Success] Permission check complete.\n`;
+        out.scrollTop = out.scrollHeight;
     } catch (e) {
         out.textContent += `Exception: ${e.message}\n`;
+        out.scrollTop = out.scrollHeight;
     } finally {
         btn.disabled = false;
         btn.innerHTML = 'Run Check';
