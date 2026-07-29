@@ -5066,10 +5066,7 @@ window.runRvcWorkflow = async function() {
     const startStr = document.getElementById('wf-rvc-start').value;
     const endStr = document.getElementById('wf-rvc-end').value;
     const statusDiv = document.getElementById('wf-rvc-status');
-    const jsonContainer = document.getElementById('wf-rvc-json-container');
-    const tableContainer = document.getElementById('wf-rvc-table-container');
-    const jsonDiv = document.getElementById('wf-out-rvc-json');
-    const tableDiv = document.getElementById('wf-out-rvc-table');
+    const outDiv = document.getElementById('wf-out-rvc');
     
     if(!reportId || !startStr || !endStr) {
         statusDiv.textContent = 'Error: Please select a report and date range.';
@@ -5078,7 +5075,6 @@ window.runRvcWorkflow = async function() {
     }
     statusDiv.style.color = 'var(--text-secondary)';
     
-    // Validate range
     let dStart = new Date(startStr);
     let dEnd = new Date(endStr);
     if(dStart > dEnd) {
@@ -5092,88 +5088,44 @@ window.runRvcWorkflow = async function() {
         if(!confirm('Date range is larger than 30 days. This will make many API calls. Continue?')) return;
     }
 
-    statusDiv.textContent = `Fetching Activity Events from ${startStr} to ${endStr}... (Requires Power BI Admin)`;
-    jsonContainer.style.display = 'block';
-    tableContainer.style.display = 'block';
-    jsonDiv.textContent = 'Loading JSON...';
-    tableDiv.innerHTML = 'Loading Table...';
+    outDiv.style.display = 'block';
+    outDiv.innerHTML = `
+        <div class="wf-logs" style="margin-bottom: 12px; color: var(--text-secondary); font-family: monospace;"></div>
+        <div class="wf-table-container"></div>
+    `;
+    const logsDiv = outDiv.querySelector('.wf-logs');
+    const tableContainer = outDiv.querySelector('.wf-table-container');
+    
+    const appendLog = (msg) => {
+        const div = document.createElement('div');
+        div.textContent = msg;
+        logsDiv.appendChild(div);
+        setTimeout(() => { outDiv.scrollTop = outDiv.scrollHeight; }, 10);
+    };
+
+    appendLog(`[INIT] Fetching Activity Events from ${startStr} to ${endStr}...`);
+    statusDiv.textContent = `Running analysis...`;
+    
+    // Setup dynamic table skeleton
+    tableContainer.innerHTML = `
+    <table data-table-id="rvc" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left; display: none;">
+        <thead>
+            <tr>
+                <th onclick="window.sortTable(this, event, 0)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Time Window</th>
+                <th onclick="window.sortTable(this, event, 1)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">User Info</th>
+                <th onclick="window.sortTable(this, event, 2)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Client IPs</th>
+            </tr>
+        </thead>
+        <tbody id="rvc-dynamic-tbody"></tbody>
+    </table>`;
+    const tableEl = tableContainer.querySelector('table');
+    const tbody = document.getElementById('rvc-dynamic-tbody');
     
     let totalViews = 0;
     let userStats = {}; // uid -> { count, first, last, ip: Set }
-    let allRawData = []; // Store all responses for JSON output
     
-    const btn = document.getElementById('btn-run-rvc');
-    btn.disabled = true;
-    btn.innerHTML = 'Running...';
-    
-    try {
-        let currentDate = new Date(dStart);
-        while(currentDate <= dEnd) {
-            const dateIso = currentDate.toISOString().split('T')[0];
-            statusDiv.textContent = `Fetching events for ${dateIso}...`;
-            
-            const startDateTime = `'${dateIso}T00:00:00Z'`;
-            const endDateTime = `'${dateIso}T23:59:59Z'`;
-            let url = `/admin/activityevents?startDateTime=${startDateTime}&endDateTime=${endDateTime}`;
-            
-            let continuationUri = url;
-            while(continuationUri) {
-                let endpoint = continuationUri;
-                if(endpoint.startsWith('https://api.powerbi.com/v1.0/myorg')) {
-                    endpoint = endpoint.substring('https://api.powerbi.com/v1.0/myorg'.length);
-                } else if (endpoint.startsWith('https://api.powerbi.com')) {
-                    endpoint = endpoint.substring('https://api.powerbi.com'.length);
-                }
-                const res = await fetch('/api/proxy', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ endpoint: endpoint, method: 'GET' })
-                });
-                
-                if(!res.ok) {
-                    statusDiv.textContent = `Error: ${res.status} ${res.statusText}`;
-                    if(res.status === 401 || res.status === 403) statusDiv.textContent += ` (Must be PBI Admin)`;
-                    statusDiv.style.color = 'var(--error)';
-                    jsonDiv.textContent = `Failed to fetch: ${res.status} ${res.statusText}`;
-                    btn.disabled = false;
-                    btn.innerHTML = 'Run Analysis';
-                    return;
-                }
-                
-                const resData = await res.json();
-                allRawData.push(resData);
-                
-                // Fix proxy nesting issue
-                const payload = resData.data || resData;
-                const events = payload.activityEventEntities || [];
-                
-                for(const e of events) {
-                    if(e.Activity === "ViewReport" && e.ReportId === reportId) {
-                        totalViews++;
-                        const uid = e.UserId || 'Unknown';
-                        const timeStr = e.CreationTime;
-                        const t = new Date(timeStr);
-                        const ip = e.ClientIP || 'N/A';
-                        
-                        if(!userStats[uid]) {
-                            userStats[uid] = { count: 1, first: t, last: t, ips: new Set([ip]) };
-                        } else {
-                            userStats[uid].count++;
-                            userStats[uid].ips.add(ip);
-                            if(t < userStats[uid].first) userStats[uid].first = t;
-                            if(t > userStats[uid].last) userStats[uid].last = t;
-                        }
-                    }
-                }
-                continuationUri = payload.continuationUri || null;
-            }
-            currentDate.setDate(currentDate.getDate() + 1);
-        }
-        
-        // 1. Output RAW JSON
-        jsonDiv.textContent = JSON.stringify(allRawData, null, 2);
-        
-        // 2. Build Table
+    const renderTableRows = () => {
+        tableEl.style.display = 'table'; // Show table once we have data or try to render
         let rowsHtml = '';
         const sortedUsers = Object.keys(userStats).sort((a,b) => userStats[b].count - userStats[a].count);
         
@@ -5196,28 +5148,90 @@ window.runRvcWorkflow = async function() {
                 </tr>
             `;
         }
+        tbody.innerHTML = rowsHtml;
+    };
+
+    const btn = document.getElementById('btn-run-rvc');
+    btn.disabled = true;
+    btn.innerHTML = 'Running...';
+    
+    try {
+        let currentDate = new Date(dStart);
+        while(currentDate <= dEnd) {
+            const dateIso = currentDate.toISOString().split('T')[0];
+            appendLog(`[FETCH] Requesting events for ${dateIso}...`);
+            
+            const startDateTime = `'${dateIso}T00:00:00Z'`;
+            const endDateTime = `'${dateIso}T23:59:59Z'`;
+            let url = `/admin/activityevents?startDateTime=${startDateTime}&endDateTime=${endDateTime}`;
+            
+            let continuationUri = url;
+            let pageCount = 1;
+            while(continuationUri) {
+                let endpoint = continuationUri;
+                if(endpoint.startsWith('https://api.powerbi.com/v1.0/myorg')) {
+                    endpoint = endpoint.substring('https://api.powerbi.com/v1.0/myorg'.length);
+                } else if (endpoint.startsWith('https://api.powerbi.com')) {
+                    endpoint = endpoint.substring('https://api.powerbi.com'.length);
+                }
+                const res = await fetch('/api/proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint: endpoint, method: 'GET' })
+                });
+                
+                if(!res.ok) {
+                    appendLog(`[ERROR] ${res.status} ${res.statusText}`);
+                    statusDiv.textContent = `Error: ${res.status} ${res.statusText}`;
+                    statusDiv.style.color = 'var(--error)';
+                    btn.disabled = false;
+                    btn.innerHTML = 'Run Analysis';
+                    return;
+                }
+                
+                const resData = await res.json();
+                const payload = resData.data || resData;
+                const events = payload.activityEventEntities || [];
+                
+                let foundToday = 0;
+                for(const e of events) {
+                    if(e.Activity === "ViewReport" && e.ReportId === reportId) {
+                        foundToday++;
+                        totalViews++;
+                        const uid = e.UserId || 'Unknown';
+                        const timeStr = e.CreationTime;
+                        const t = new Date(timeStr);
+                        const ip = e.ClientIP || 'N/A';
+                        
+                        if(!userStats[uid]) {
+                            userStats[uid] = { count: 1, first: t, last: t, ips: new Set([ip]) };
+                        } else {
+                            userStats[uid].count++;
+                            userStats[uid].ips.add(ip);
+                            if(t < userStats[uid].first) userStats[uid].first = t;
+                            if(t > userStats[uid].last) userStats[uid].last = t;
+                        }
+                    }
+                }
+                appendLog(`  -> Page ${pageCount}: Scanned ${events.length} events, found ${foundToday} target report views.`);
+                continuationUri = payload.continuationUri || null;
+                pageCount++;
+                
+                // Dynamically update the table as data flows in!
+                if (foundToday > 0) {
+                    renderTableRows();
+                    setTimeout(() => { outDiv.scrollTop = outDiv.scrollHeight; }, 20);
+                }
+            }
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
         
-        let tableHtml = `
-        <table data-table-id="rvc" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
-            <thead>
-                <tr>
-                    <th onclick="window.sortTable(this, event, 0)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Time Window</th>
-                    <th onclick="window.sortTable(this, event, 1)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">User Info</th>
-                    <th onclick="window.sortTable(this, event, 2)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Client IPs</th>
-                </tr>
-            </thead>
-            <tbody>${rowsHtml}</tbody>
-        </table>`;
-        
-        tableDiv.innerHTML = tableHtml;
-        statusDiv.textContent = `Analysis Complete: ${totalViews} total views by ${sortedUsers.length} unique viewers.`;
+        appendLog(`[DONE] Analysis Complete. Total Views: ${totalViews}`);
+        statusDiv.textContent = `Analysis Complete: ${totalViews} total views.`;
         statusDiv.style.color = 'var(--success)';
-        setTimeout(() => { 
-            jsonDiv.scrollTop = jsonDiv.scrollHeight; 
-            tableDiv.scrollTop = tableDiv.scrollHeight; 
-        }, 50);
         
     } catch (e) {
+        appendLog(`[EXCEPTION] ${e.message}`);
         statusDiv.textContent = `Exception: ${e.message}`;
         statusDiv.style.color = 'var(--error)';
     } finally {
@@ -5246,18 +5260,30 @@ window.handleCopyAction = function(btn, text) {
 
 
 window.runCheckPermsWorkflow = async function() {
-    const jsonDiv = document.getElementById('wf-out-perms-json');
-    const tableDiv = document.getElementById('wf-out-perms-table');
+    const outDiv = document.getElementById('wf-out-perms');
     const statusDiv = document.getElementById('wf-perms-status');
     const btn = document.getElementById('btn-run-check-perms');
     
     btn.disabled = true;
     btn.innerHTML = 'Running...';
     
+    outDiv.innerHTML = `
+        <div class="wf-logs" style="margin-bottom: 12px; color: var(--text-secondary); font-family: monospace;"></div>
+        <div class="wf-table-container"></div>
+    `;
+    const logsDiv = outDiv.querySelector('.wf-logs');
+    const tableContainer = outDiv.querySelector('.wf-table-container');
+    
+    const appendLog = (msg) => {
+        const div = document.createElement('div');
+        div.textContent = msg;
+        logsDiv.appendChild(div);
+        setTimeout(() => { outDiv.scrollTop = outDiv.scrollHeight; }, 10);
+    };
+
     statusDiv.textContent = `Fetching /availableFeatures...`;
     statusDiv.style.color = 'var(--text-secondary)';
-    jsonDiv.textContent = 'Loading JSON...';
-    tableDiv.innerHTML = 'Loading Table...';
+    appendLog(`[INIT] Calling GET /v1.0/myorg/availableFeatures ...`);
     
     try {
         const res = await fetch('/api/proxy', {
@@ -5269,26 +5295,36 @@ window.runCheckPermsWorkflow = async function() {
         if(!res.ok) {
             statusDiv.textContent = `Error: ${res.status} ${res.statusText}`;
             statusDiv.style.color = 'var(--error)';
-            const errMsg = `Failed to fetch: ${res.status} ${res.statusText}`;
-            jsonDiv.textContent = errMsg;
-            tableDiv.innerHTML = errMsg;
+            appendLog(`[ERROR] Failed to fetch: ${res.status} ${res.statusText}`);
             btn.disabled = false;
             btn.innerHTML = 'Run Check';
             return;
         }
         
         const data = await res.json();
-        
-        // 1. Output RAW JSON
-        jsonDiv.textContent = JSON.stringify(data, null, 2);
-        
-        // 2. Output Table
         const payload = data.data || data;
         const featuresArray = payload.features;
         
         if (featuresArray && Array.isArray(featuresArray)) {
-            let rowsHtml = '';
-            featuresArray.forEach(f => {
+            appendLog(`[SUCCESS] Loaded ${featuresArray.length} features. Rendering table row by row...`);
+            
+            // Render table skeleton
+            tableContainer.innerHTML = `
+            <table data-table-id="perms" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
+                <thead>
+                    <tr>
+                        <th onclick="window.sortTable(this, event, 0)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Feature Name</th>
+                        <th onclick="window.sortTable(this, event, 1)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">State</th>
+                        <th onclick="window.sortTable(this, event, 2)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Extended State</th>
+                    </tr>
+                </thead>
+                <tbody id="perms-dynamic-tbody"></tbody>
+            </table>`;
+            const tbody = document.getElementById('perms-dynamic-tbody');
+            
+            // Dynamically append rows to simulate streaming UI and satisfy "拿到一个信息就在表格中新增一行"
+            for(let i=0; i<featuresArray.length; i++) {
+                const f = featuresArray[i];
                 const name = f.name || 'Unknown';
                 const state = f.state || 'N/A';
                 const extState = f.extendedState || 'N/A';
@@ -5300,47 +5336,31 @@ window.runCheckPermsWorkflow = async function() {
                     stateHtml = `<span style="color: var(--error); font-weight: 500;">${state}</span>`;
                 }
                 
-                rowsHtml += `
-                    <tr style="border-bottom: 1px solid var(--panel-border); transition: background 0.2s;" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'">
-                        <td style="padding: 8px 12px; color: var(--text-primary); font-family: monospace;">${name}</td>
-                        <td style="padding: 8px 12px;">${stateHtml}</td>
-                        <td style="padding: 8px 12px; color: var(--text-secondary);">${extState}</td>
-                    </tr>
+                const tr = document.createElement('tr');
+                tr.style.cssText = "border-bottom: 1px solid var(--panel-border); transition: background 0.2s;";
+                tr.onmouseover = () => tr.style.background='var(--overlay-10)';
+                tr.onmouseout = () => tr.style.background='transparent';
+                tr.innerHTML = `
+                    <td style="padding: 8px 12px; color: var(--text-primary); font-family: monospace;">${name}</td>
+                    <td style="padding: 8px 12px;">${stateHtml}</td>
+                    <td style="padding: 8px 12px; color: var(--text-secondary);">${extState}</td>
                 `;
-            });
-            
-            let tableHtml = `
-            <table data-table-id="perms" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
-                <thead>
-                    <tr>
-                        <th onclick="window.sortTable(this, event, 0)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Feature Name</th>
-                        <th onclick="window.sortTable(this, event, 1)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">State</th>
-                        <th onclick="window.sortTable(this, event, 2)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Extended State</th>
-                    </tr>
-                </thead>
-                <tbody>${rowsHtml}</tbody>
-            </table>`;
-            
-            tableDiv.innerHTML = tableHtml;
+                tbody.appendChild(tr);
+            }
+            appendLog(`[DONE] Table rendering complete.`);
             statusDiv.textContent = `Successfully loaded ${featuresArray.length} features.`;
             statusDiv.style.color = 'var(--success)';
         } else {
-            tableDiv.innerHTML = `No features array found.`;
+            appendLog(`[WARN] No features array found. Raw response below:
+` + JSON.stringify(data, null, 2));
             statusDiv.textContent = `Loaded JSON format (No features array found).`;
             statusDiv.style.color = 'var(--warning)';
         }
-        
-        setTimeout(() => { 
-            jsonDiv.scrollTop = jsonDiv.scrollHeight; 
-            tableDiv.scrollTop = tableDiv.scrollHeight;
-        }, 50);
+        setTimeout(() => { outDiv.scrollTop = outDiv.scrollHeight; }, 50);
     } catch (e) {
+        appendLog(`[EXCEPTION] ${e.message}`);
         statusDiv.textContent = `Exception: ${e.message}`;
         statusDiv.style.color = 'var(--error)';
-        setTimeout(() => { 
-            if(jsonDiv) jsonDiv.scrollTop = jsonDiv.scrollHeight; 
-            if(tableDiv) tableDiv.scrollTop = tableDiv.scrollHeight;
-        }, 50);
     } finally {
         btn.disabled = false;
         btn.innerHTML = 'Run Check';
