@@ -5179,7 +5179,11 @@ window.runRvcWorkflow = async function() {
                 
                 let foundToday = 0;
                 for(const e of events) {
-                    if(e.Activity === "ViewReport" && e.ReportId === reportId) {
+                    const activity = (e.Activity || '').toLowerCase();
+                    const rId = (e.ReportId || e.ItemIdentifier || '').toLowerCase();
+                    const targetId = reportId.toLowerCase();
+                    
+                    if(activity === "viewreport" && rId === targetId) {
                         foundToday++;
                         totalViews++;
                         if(!dateStats[dateIso]) dateStats[dateIso] = 0;
