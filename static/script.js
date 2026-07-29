@@ -5066,7 +5066,9 @@ window.runRvcWorkflow = async function() {
     const startStr = document.getElementById('wf-rvc-start').value;
     const endStr = document.getElementById('wf-rvc-end').value;
     const statusDiv = document.getElementById('wf-rvc-status');
-    const outDiv = document.getElementById('wf-out-rvc');
+    const containersDiv = document.getElementById('wf-rvc-containers');
+    const logsDiv = document.getElementById('wf-out-rvc-logs');
+    const tableDiv = document.getElementById('wf-out-rvc-table');
     
     if(!reportId || !startStr || !endStr) {
         statusDiv.textContent = 'Error: Please select a report and date range.';
@@ -5088,27 +5090,22 @@ window.runRvcWorkflow = async function() {
         if(!confirm('Date range is larger than 30 days. This will make many API calls. Continue?')) return;
     }
 
-    outDiv.style.display = 'block';
-    outDiv.innerHTML = `
-        <div class="wf-logs" style="margin-bottom: 12px; color: var(--text-secondary); font-family: monospace;"></div>
-        <div class="wf-table-container"></div>
-    `;
-    const logsDiv = outDiv.querySelector('.wf-logs');
-    const tableContainer = outDiv.querySelector('.wf-table-container');
+    containersDiv.style.display = 'flex';
+    logsDiv.innerHTML = '';
     
     const appendLog = (msg) => {
         const div = document.createElement('div');
         div.textContent = msg;
         logsDiv.appendChild(div);
-        setTimeout(() => { outDiv.scrollTop = outDiv.scrollHeight; }, 10);
+        setTimeout(() => { logsDiv.scrollTop = logsDiv.scrollHeight; }, 10);
     };
 
     appendLog(`[INIT] Fetching Activity Events from ${startStr} to ${endStr}...`);
     statusDiv.textContent = `Running analysis...`;
     
     // Setup dynamic table skeleton (2 Columns)
-    tableContainer.innerHTML = `
-    <table data-table-id="rvc" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left; display: none;">
+    tableDiv.innerHTML = `
+    <table data-table-id="rvc" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
         <thead>
             <tr>
                 <th onclick="window.sortTable(this, event, 0)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Date</th>
@@ -5117,14 +5114,12 @@ window.runRvcWorkflow = async function() {
         </thead>
         <tbody id="rvc-dynamic-tbody"></tbody>
     </table>`;
-    const tableEl = tableContainer.querySelector('table');
     const tbody = document.getElementById('rvc-dynamic-tbody');
     
     let totalViews = 0;
     let dateStats = {}; // dateIso -> count
     
     const renderTableRows = () => {
-        tableEl.style.display = 'table'; // Show table once we have data
         let rowsHtml = '';
         const sortedDates = Object.keys(dateStats).sort(); // Chronological
         
@@ -5199,10 +5194,10 @@ window.runRvcWorkflow = async function() {
                 continuationUri = payload.continuationUri || null;
                 pageCount++;
                 
-                // Dynamically append/update row for the current date
+                // Dynamically update the table as data flows in!
                 if (foundToday > 0 || dateStats[dateIso] !== undefined) {
                     renderTableRows();
-                    setTimeout(() => { outDiv.scrollTop = outDiv.scrollHeight; }, 20);
+                    setTimeout(() => { tableDiv.scrollTop = tableDiv.scrollHeight; }, 20);
                 }
             }
             currentDate.setDate(currentDate.getDate() + 1);
@@ -5227,7 +5222,7 @@ window.handleCopyAction = function(btn, text) {
     if(!text) return;
     navigator.clipboard.writeText(text).then(() => {
         const origHTML = btn.innerHTML;
-        btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Copied!';
+        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
         btn.style.color = 'var(--success)';
         btn.style.borderColor = 'var(--success)';
         setTimeout(() => { 
@@ -5242,25 +5237,21 @@ window.handleCopyAction = function(btn, text) {
 
 
 window.runCheckPermsWorkflow = async function() {
-    const outDiv = document.getElementById('wf-out-perms');
+    const logsDiv = document.getElementById('wf-out-perms-logs');
+    const tableDiv = document.getElementById('wf-out-perms-table');
     const statusDiv = document.getElementById('wf-perms-status');
     const btn = document.getElementById('btn-run-check-perms');
     
     btn.disabled = true;
     btn.innerHTML = 'Running...';
     
-    outDiv.innerHTML = `
-        <div class="wf-logs" style="margin-bottom: 12px; color: var(--text-secondary); font-family: monospace;"></div>
-        <div class="wf-table-container"></div>
-    `;
-    const logsDiv = outDiv.querySelector('.wf-logs');
-    const tableContainer = outDiv.querySelector('.wf-table-container');
+    logsDiv.innerHTML = '';
     
     const appendLog = (msg) => {
         const div = document.createElement('div');
         div.textContent = msg;
         logsDiv.appendChild(div);
-        setTimeout(() => { outDiv.scrollTop = outDiv.scrollHeight; }, 10);
+        setTimeout(() => { logsDiv.scrollTop = logsDiv.scrollHeight; }, 10);
     };
 
     statusDiv.textContent = `Fetching /availableFeatures...`;
@@ -5291,7 +5282,7 @@ window.runCheckPermsWorkflow = async function() {
             appendLog(`[SUCCESS] Loaded ${featuresArray.length} features. Rendering table row by row...`);
             
             // Render table skeleton
-            tableContainer.innerHTML = `
+            tableDiv.innerHTML = `
             <table data-table-id="perms" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
                 <thead>
                     <tr>
@@ -5304,7 +5295,7 @@ window.runCheckPermsWorkflow = async function() {
             </table>`;
             const tbody = document.getElementById('perms-dynamic-tbody');
             
-            // Dynamically append rows to simulate streaming UI and satisfy "拿到一个信息就在表格中新增一行"
+            // Dynamically append rows
             for(let i=0; i<featuresArray.length; i++) {
                 const f = featuresArray[i];
                 const name = f.name || 'Unknown';
@@ -5338,7 +5329,7 @@ window.runCheckPermsWorkflow = async function() {
             statusDiv.textContent = `Loaded JSON format (No features array found).`;
             statusDiv.style.color = 'var(--warning)';
         }
-        setTimeout(() => { outDiv.scrollTop = outDiv.scrollHeight; }, 50);
+        setTimeout(() => { tableDiv.scrollTop = tableDiv.scrollHeight; }, 50);
     } catch (e) {
         appendLog(`[EXCEPTION] ${e.message}`);
         statusDiv.textContent = `Exception: ${e.message}`;
