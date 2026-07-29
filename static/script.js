@@ -4482,12 +4482,15 @@ document.addEventListener('mousedown', (e) => {
             document.getElementById('wf-config-export_visual').style.display = 'none';
             document.getElementById('wf-config-export_dataset_tables').style.display = 'none';
             document.getElementById('wf-config-report_view_count').style.display = 'none';
+            document.getElementById('wf-config-check_permissions').style.display = 'none';
             
             if (val === 'smart_pipeline') {
                 document.getElementById('wf-config-smart_pipeline').style.display = 'block';
             } else if (val === 'export_dataset_tables') {
                 document.getElementById('wf-config-export_dataset_tables').style.display = 'block';
                 
+            } else if (val === 'check_permissions') {
+                document.getElementById('wf-config-check_permissions').style.display = 'block';
             } else if (val === 'export_visual') {
                 document.getElementById('wf-config-export_visual').style.display = 'block';
             } else if (val === 'report_view_count') {
@@ -4743,16 +4746,6 @@ document.addEventListener('mousedown', (e) => {
     // --- End Workflow Modal Logic ---
 
 
-window.copyWfConsole = function(step, btn) {
-    const text = document.getElementById(`wf-out-step${step}`).textContent;
-    navigator.clipboard.writeText(text).then(() => {
-        const origHTML = btn.innerHTML;
-        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-        setTimeout(() => { btn.innerHTML = origHTML; }, 2000);
-    }).catch(err => {
-        alert('Failed to copy: ' + err);
-    });
-};
 
 
 
@@ -5203,5 +5196,57 @@ window.runRvcWorkflow = async function() {
     } finally {
         btn.disabled = false;
         btn.innerHTML = 'Run Analysis';
+    }
+};
+
+
+window.handleCopyAction = function(btn, text) {
+    if(!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+        const origHTML = btn.innerHTML;
+        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+        btn.style.color = 'var(--success)';
+        btn.style.borderColor = 'var(--success)';
+        setTimeout(() => { 
+            btn.innerHTML = origHTML; 
+            btn.style.color = '';
+            btn.style.borderColor = '';
+        }, 1500);
+    }).catch(err => {
+        alert('Failed to copy: ' + err);
+    });
+};
+
+
+window.runCheckPermsWorkflow = async function() {
+    const out = document.getElementById('wf-out-perms');
+    const btn = document.getElementById('btn-run-check-perms');
+    btn.disabled = true;
+    btn.innerHTML = 'Running...';
+    
+    out.textContent = `[${new Date().toLocaleTimeString()}] Fetching /v1.0/myorg/availableFeatures ...\n\n`;
+    
+    try {
+        const res = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint: '/v1.0/myorg/availableFeatures', method: 'GET' })
+        });
+        
+        if(!res.ok) {
+            out.textContent += `Error: ${res.status} ${res.statusText}\n`;
+            btn.disabled = false;
+            btn.innerHTML = 'Run Check';
+            return;
+        }
+        
+        const data = await res.json();
+        out.textContent += JSON.stringify(data, null, 2) + '\n\n';
+        out.textContent += `[Success] Permission check complete.`;
+    } catch (e) {
+        out.textContent += `Exception: ${e.message}\n`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Run Check';
     }
 };

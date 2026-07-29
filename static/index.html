@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/powerbi-client/dist/powerbi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260728_v47_colors">
+    <link rel="stylesheet" href="/static/style.css?v=20260729_v94_perms">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -321,9 +321,7 @@
                             <button id="format-req-body-btn" class="icon-btn" title="Format JSON" type="button" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer; margin-right: 6px;">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
                             </button>
-                            <button id="copy-req-body-btn" class="icon-btn" title="Copy Request Body" type="button" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer;">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                            </button>
+                            <button id="copy-req-body-btn" class="icon-btn" title="Copy Request Body" type="button" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer;" onclick="window.handleCopyAction(this, document.getElementById('req-body').value)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
                         </div>
                     </div>
                     <textarea id="request-body" placeholder="[当前 API 接口无需提供 Request Body 请求体]"></textarea>
@@ -347,9 +345,7 @@
                             <button class="view-mode-btn" data-mode="raw" style="border:none; background:transparent; color:var(--text-secondary); padding: 2px 8px; font-size:0.7rem; cursor:pointer;" title="Raw JSON">Raw</button>
                         </div>
                         <div class="response-status" id="response-status">Waiting for request...</div>
-                        <button id="copy-res-body-btn" class="icon-btn" title="Copy Response JSON" type="button" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer;">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                        </button>
+                        <button id="copy-res-body-btn" class="icon-btn" title="Copy Response JSON" type="button" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer;" onclick="window.handleCopyAction(this, window.currentJsonResponse ? JSON.stringify(window.currentJsonResponse, null, 2) : document.getElementById('response-output').textContent)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
                     </div>
                 </div>
                 <div class="response-body">
@@ -399,6 +395,7 @@
                         <option value="export_visual">Export Visual Data (CSV) - Underlying/Summarized</option>
                         <option value="export_dataset_tables">Export Dataset Tables (CSV)</option>
                         <option value="report_view_count">Admin Report View Count (Activity Events)</option>
+                        <option value="check_permissions">Check Current Permissions (Token/Features)</option>
                         <option value="smart_pipeline">Smart DataOps Pipeline (Auto Bind/Scan/Check)</option>
                     </select>
                 </div>
@@ -456,7 +453,9 @@
                             </div>
                             <div class="wf-step-content" style="display: block; margin-top: 8px;">
                                 <div id="wf-rvc-status" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px;">Ready. Select date range (max 30 days recommended).</div>
-                                <div id="wf-out-rvc" style="display: none; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; overflow-x: auto; max-height: 250px;">
+                                <div style="position: relative;">
+                                    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-rvc').innerText)" title="Copy Output" style="top: 8px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                    <div id="wf-out-rvc" style="display: none; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; overflow-x: auto; max-height: 250px;">
                                     <table style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
                                         <thead style="background: var(--overlay-10); position: sticky; top: 0;">
                                             <tr>
@@ -469,6 +468,26 @@
                                             <!-- Rows -->
                                         </tbody>
                                     </table>
+                                </div>
+</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="wf-config-check_permissions" class="wf-config-pane" style="display: none;">
+                    <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+                        <div class="wf-step active">
+                            <div class="wf-step-header">
+                                <span class="wf-step-title">Fetch Available Features & Token Info</span>
+                                <button class="btn-action-primary" id="btn-run-check-perms" style="margin-left: auto; padding: 4px 12px; font-size: 0.8rem;" onclick="window.runCheckPermsWorkflow()">Run Check</button>
+                            </div>
+                            <div class="wf-step-content" style="display: block; margin-top: 8px;">
+                                <div style="position: relative;">
+                                    <pre id="wf-out-perms" class="wf-console" style="min-height: 150px;">Ready to check permissions...
+
+Click "Run Check" to fetch /availableFeatures.</pre>
+                                    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-perms').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
                                 </div>
                             </div>
                         </div>
@@ -505,10 +524,10 @@
                                 <button id="wf-ds-btn-step1" class="btn-action-secondary wf-step-btn" onclick="window.loadDatasetTablesStep1(this)">Run Step 1</button>
                             </div>
                             <div style="position: relative;">
-                                <pre id="wf-out-ds-step1" class="wf-console">Input: Ready to fetch tables...</pre>
-                                <button type="button" class="wf-copy-btn" onclick="copyWfConsole('ds-step1', this)" title="Copy Output">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                                </button>
+                                <div style="position: relative;">
+    <pre id="wf-out-ds-step1" class="wf-console">Input: Ready to fetch tables...</pre>
+    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-ds-step1').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+</div>
                             </div>
                         </div>
                         
@@ -534,10 +553,10 @@
                             </div>
                             
                             <div style="position: relative;">
-                                <pre id="wf-out-ds-step2" class="wf-console" style="border-top-left-radius: 0; border-top-right-radius: 0; border-top: none;">Waiting for Step 1...</pre>
-                                <button type="button" class="wf-copy-btn" onclick="copyWfConsole('ds-step2', this)" title="Copy Output">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                                </button>
+                                <div style="position: relative;">
+    <pre id="wf-out-ds-step2" class="wf-console" style="border-top-left-radius: 0; border-top-right-radius: 0; border-top: none;">Waiting for Step 1...</pre>
+    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-ds-step2').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+</div>
                             </div>
                         </div>
                     </div>
@@ -588,10 +607,10 @@
                                 <span class="wf-step-title">Execute exportData API (Sync)</span>
                             </div>
                             <div style="position: relative;">
-                                <pre id="wf-out-vis" class="wf-console">Ready to export visual data...</pre>
-                                <button type="button" class="wf-copy-btn" onclick="copyWfConsole('vis', this)" title="Copy Output">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                                </button>
+                                <div style="position: relative;">
+    <pre id="wf-out-vis" class="wf-console">Ready to export visual data...</pre>
+    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-vis').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+</div>
                             </div>
                         </div>
                     </div>
@@ -605,10 +624,10 @@
                             <button id="wf-btn-step1" class="btn-action-secondary wf-step-btn">Run Step 1</button>
                         </div>
                         <div style="position: relative;">
-                            <pre id="wf-out-step1" class="wf-console">Input: Ready to start...</pre>
-                            <button type="button" class="wf-copy-btn" onclick="copyWfConsole(1, this)" title="Copy Output">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                            </button>
+                            <div style="position: relative;">
+    <pre id="wf-out-step1" class="wf-console">Input: Ready to start...</pre>
+    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-step1').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+</div>
                         </div>
                     </div>
                     <!-- Step 2 -->
@@ -618,10 +637,10 @@
                             <button id="wf-btn-step2" class="btn-action-secondary wf-step-btn" disabled>Run Step 2</button>
                         </div>
                         <div style="position: relative;">
-                            <pre id="wf-out-step2" class="wf-console">Waiting for exportId from Step 1...</pre>
-                            <button type="button" class="wf-copy-btn" onclick="copyWfConsole(2, this)" title="Copy Output">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                            </button>
+                            <div style="position: relative;">
+    <pre id="wf-out-step2" class="wf-console">Waiting for exportId from Step 1...</pre>
+    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-step2').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+</div>
                         </div>
                     </div>
                     <!-- Step 3 -->
@@ -631,10 +650,10 @@
                             <button id="wf-btn-step3" class="btn-action-secondary wf-step-btn" disabled>Run Step 3</button>
                         </div>
                         <div style="position: relative;">
-                            <pre id="wf-out-step3" class="wf-console">Waiting for Succeeded status from Step 2...</pre>
-                            <button type="button" class="wf-copy-btn" onclick="copyWfConsole(3, this)" title="Copy Output">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                            </button>
+                            <div style="position: relative;">
+    <pre id="wf-out-step3" class="wf-console">Waiting for Succeeded status from Step 2...</pre>
+    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-step3').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+</div>
                         </div>
                     </div>
                 </div>
@@ -890,7 +909,7 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
-    <script src="/static/script.js?v=20260729_v93_rvc_table"></script>
+    <script src="/static/script.js?v=20260729_v94_perms"></script>
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: flex; z-index: 100000; opacity: 0; visibility: hidden; transition: opacity 0.25s ease;">
