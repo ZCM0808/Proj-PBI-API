@@ -5096,8 +5096,7 @@ window.runRvcWorkflow = async function() {
     jsonContainer.style.display = 'block';
     tableContainer.style.display = 'block';
     jsonDiv.textContent = 'Loading JSON...';
-    tableDiv.innerHTML = 'Loading Table...
-';
+    tableDiv.innerHTML = 'Loading Table...';
     
     let totalViews = 0;
     let userStats = {}; // uid -> { count, first, last, ip: Set }
