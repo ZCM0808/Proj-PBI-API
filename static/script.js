@@ -5153,10 +5153,16 @@ window.runRvcWorkflow = async function() {
             let pageCount = 1;
             while(continuationUri) {
                 let endpoint = continuationUri;
-                if(endpoint.startsWith('https://api.powerbi.com/v1.0/myorg')) {
-                    endpoint = endpoint.substring('https://api.powerbi.com/v1.0/myorg'.length);
-                } else if (endpoint.startsWith('https://api.powerbi.com')) {
-                    endpoint = endpoint.substring('https://api.powerbi.com'.length);
+                if(endpoint.startsWith('http')) {
+                    try {
+                        const u = new URL(endpoint);
+                        endpoint = u.pathname + u.search;
+                        if(endpoint.startsWith('/v1.0/myorg')) {
+                            endpoint = endpoint.substring('/v1.0/myorg'.length);
+                        }
+                    } catch(e) {
+                        console.error('Invalid continuationUri:', endpoint);
+                    }
                 }
                 const res = await fetch('/api/proxy', {
                     method: 'POST',
@@ -5174,6 +5180,14 @@ window.runRvcWorkflow = async function() {
                 }
                 
                 const resData = await res.json();
+                if (resData.success === false) {
+                    appendLog(`[ERROR] Proxy Error: ${resData.error || resData.message}`);
+                    statusDiv.textContent = `Error: ${resData.error || resData.message}`;
+                    statusDiv.style.color = 'var(--error)';
+                    btn.disabled = false;
+                    btn.innerHTML = 'Run Analysis';
+                    return;
+                }
                 const payload = resData.data || resData;
                 const events = payload.activityEventEntities || [];
                 
