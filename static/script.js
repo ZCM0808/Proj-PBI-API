@@ -1008,7 +1008,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             // Add search input inside the dropdown
             const searchBox = document.createElement('div');
-            searchBox.style.cssText = "padding: 6px; border-bottom: 1px solid var(--panel-border); position: sticky; top: 0; background: var(--dropdown-bg); z-index: 10;";
+            searchBox.style.cssText = "padding: 6px; border-bottom: 1px solid var(--panel-border); position: sticky; top: -12px; background: var(--dropdown-bg); z-index: 10;";
             const paramSearchInput = document.createElement('input');
             paramSearchInput.type = 'search';
             paramSearchInput.placeholder = 'Search parameters...';
@@ -3141,7 +3141,7 @@ function renderJsonTable(data, container, nodePath = '') {
             th.style.cssText = "border: 1px solid var(--panel-border); padding: 8px; background: var(--shadow-light); color: var(--text-secondary); white-space: nowrap; position: relative;";
             
             const resizer = document.createElement('div');
-            resizer.style.cssText = "position: absolute; right: 0; top: 0; bottom: 0; width: 4px; cursor: col-resize; z-index: 1; transition: background 0.2s;";
+            resizer.style.cssText = "position: absolute; right: 0; top: -12px; bottom: 0; width: 4px; cursor: col-resize; z-index: 1; transition: background 0.2s;";
             resizer.onmouseover = () => resizer.style.background = 'var(--accent)';
             resizer.onmouseout = () => resizer.style.background = 'transparent';
             
@@ -3224,7 +3224,7 @@ function renderJsonTable(data, container, nodePath = '') {
             th.style.cssText = `border: 1px solid var(--panel-border); padding: 8px; background: var(--shadow-light); color: var(--text-secondary); position: relative; ${i === 0 ? 'width: 30%;' : ''}`;
             
             const resizer = document.createElement('div');
-            resizer.style.cssText = "position: absolute; right: 0; top: 0; bottom: 0; width: 4px; cursor: col-resize; z-index: 1; transition: background 0.2s;";
+            resizer.style.cssText = "position: absolute; right: 0; top: -12px; bottom: 0; width: 4px; cursor: col-resize; z-index: 1; transition: background 0.2s;";
             resizer.onmouseover = () => resizer.style.background = 'var(--accent)';
             resizer.onmouseout = () => resizer.style.background = 'transparent';
             
@@ -5066,8 +5066,10 @@ window.runRvcWorkflow = async function() {
     const startStr = document.getElementById('wf-rvc-start').value;
     const endStr = document.getElementById('wf-rvc-end').value;
     const statusDiv = document.getElementById('wf-rvc-status');
-    const outDiv = document.getElementById('wf-out-rvc');
-    const tbody = document.getElementById('wf-rvc-tbody');
+    const jsonContainer = document.getElementById('wf-rvc-json-container');
+    const tableContainer = document.getElementById('wf-rvc-table-container');
+    const jsonDiv = document.getElementById('wf-out-rvc-json');
+    const tableDiv = document.getElementById('wf-out-rvc-table');
     
     if(!reportId || !startStr || !endStr) {
         statusDiv.textContent = 'Error: Please select a report and date range.';
@@ -5091,11 +5093,15 @@ window.runRvcWorkflow = async function() {
     }
 
     statusDiv.textContent = `Fetching Activity Events from ${startStr} to ${endStr}... (Requires Power BI Admin)`;
-    outDiv.style.display = 'block';
-    outDiv.innerHTML = 'Loading data... please wait.\n';
+    jsonContainer.style.display = 'block';
+    tableContainer.style.display = 'block';
+    jsonDiv.textContent = 'Loading JSON...';
+    tableDiv.innerHTML = 'Loading Table...
+';
     
     let totalViews = 0;
     let userStats = {}; // uid -> { count, first, last, ip: Set }
+    let allRawData = []; // Store all responses for JSON output
     
     const btn = document.getElementById('btn-run-rvc');
     btn.disabled = true;
@@ -5114,7 +5120,6 @@ window.runRvcWorkflow = async function() {
             let continuationUri = url;
             while(continuationUri) {
                 let endpoint = continuationUri;
-                // Power BI returns full URL in continuationUri, we must strip the base URL that the backend prepends
                 if(endpoint.startsWith('https://api.powerbi.com/v1.0/myorg')) {
                     endpoint = endpoint.substring('https://api.powerbi.com/v1.0/myorg'.length);
                 } else if (endpoint.startsWith('https://api.powerbi.com')) {
@@ -5130,13 +5135,18 @@ window.runRvcWorkflow = async function() {
                     statusDiv.textContent = `Error: ${res.status} ${res.statusText}`;
                     if(res.status === 401 || res.status === 403) statusDiv.textContent += ` (Must be PBI Admin)`;
                     statusDiv.style.color = 'var(--error)';
+                    jsonDiv.textContent = `Failed to fetch: ${res.status} ${res.statusText}`;
                     btn.disabled = false;
                     btn.innerHTML = 'Run Analysis';
                     return;
                 }
                 
-                const data = await res.json();
-                const events = data.activityEventEntities || [];
+                const resData = await res.json();
+                allRawData.push(resData);
+                
+                // Fix proxy nesting issue
+                const payload = resData.data || resData;
+                const events = payload.activityEventEntities || [];
                 
                 for(const e of events) {
                     if(e.Activity === "ViewReport" && e.ReportId === reportId) {
@@ -5156,11 +5166,15 @@ window.runRvcWorkflow = async function() {
                         }
                     }
                 }
-                continuationUri = data.continuationUri || null;
+                continuationUri = payload.continuationUri || null;
             }
             currentDate.setDate(currentDate.getDate() + 1);
         }
         
+        // 1. Output RAW JSON
+        jsonDiv.textContent = JSON.stringify(allRawData, null, 2);
+        
+        // 2. Build Table
         let rowsHtml = '';
         const sortedUsers = Object.keys(userStats).sort((a,b) => userStats[b].count - userStats[a].count);
         
@@ -5179,31 +5193,30 @@ window.runRvcWorkflow = async function() {
                             ${st.count} views
                         </span>
                     </td>
-                    <td style="padding: 6px 12px; color: var(--text-secondary); font-family: monospace;">${ipsStr}</td>
+                    <td style="padding: 6px 12px; color: var(--text-secondary); font-size: 0.7rem;">${ipsStr}</td>
                 </tr>
             `;
         }
         
-        if(sortedUsers.length === 0) {
-            rowsHtml = `<tr><td colspan="3" style="padding: 12px; text-align: center; color: var(--text-secondary);">No view events found in this date range.</td></tr>`;
-        }
-        
         let tableHtml = `
-            <table data-table-id="rvc" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
-                <thead>
-                    <tr>
-                        <th onclick="window.sortTable(this, event, 0)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Time Window</th>
-                        <th onclick="window.sortTable(this, event, 1)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">User Info</th>
-                        <th onclick="window.sortTable(this, event, 2)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Client IPs</th>
-                    </tr>
-                </thead>
-                <tbody>${rowsHtml}</tbody>
-            </table>`;
-        outDiv.innerHTML = tableHtml;
-        outDiv.style.display = 'block';
+        <table data-table-id="rvc" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
+            <thead>
+                <tr>
+                    <th onclick="window.sortTable(this, event, 0)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Time Window</th>
+                    <th onclick="window.sortTable(this, event, 1)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">User Info</th>
+                    <th onclick="window.sortTable(this, event, 2)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Client IPs</th>
+                </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+        </table>`;
+        
+        tableDiv.innerHTML = tableHtml;
         statusDiv.textContent = `Analysis Complete: ${totalViews} total views by ${sortedUsers.length} unique viewers.`;
         statusDiv.style.color = 'var(--success)';
-        setTimeout(() => { outDiv.scrollTop = outDiv.scrollHeight; }, 50);
+        setTimeout(() => { 
+            jsonDiv.scrollTop = jsonDiv.scrollHeight; 
+            tableDiv.scrollTop = tableDiv.scrollHeight; 
+        }, 50);
         
     } catch (e) {
         statusDiv.textContent = `Exception: ${e.message}`;
@@ -5301,9 +5314,9 @@ window.runCheckPermsWorkflow = async function() {
             <table data-table-id="perms" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
                 <thead>
                     <tr>
-                        <th onclick="window.sortTable(this, event, 0)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Feature Name</th>
-                        <th onclick="window.sortTable(this, event, 1)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">State</th>
-                        <th onclick="window.sortTable(this, event, 2)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Extended State</th>
+                        <th onclick="window.sortTable(this, event, 0)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Feature Name</th>
+                        <th onclick="window.sortTable(this, event, 1)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">State</th>
+                        <th onclick="window.sortTable(this, event, 2)" style="background: #11141a; position: sticky; top: -12px; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Extended State</th>
                     </tr>
                 </thead>
                 <tbody>${rowsHtml}</tbody>
