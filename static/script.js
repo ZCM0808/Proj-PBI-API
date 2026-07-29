@@ -5109,12 +5109,15 @@ window.runRvcWorkflow = async function() {
             
             const startDateTime = `'${dateIso}T00:00:00Z'`;
             const endDateTime = `'${dateIso}T23:59:59Z'`;
-            let url = `/v1.0/myorg/admin/activityevents?startDateTime=${startDateTime}&endDateTime=${endDateTime}`;
+            let url = `/admin/activityevents?startDateTime=${startDateTime}&endDateTime=${endDateTime}`;
             
             let continuationUri = url;
             while(continuationUri) {
                 let endpoint = continuationUri;
-                if(endpoint.startsWith('https://api.powerbi.com')) {
+                // Power BI returns full URL in continuationUri, we must strip the base URL that the backend prepends
+                if(endpoint.startsWith('https://api.powerbi.com/v1.0/myorg')) {
+                    endpoint = endpoint.substring('https://api.powerbi.com/v1.0/myorg'.length);
+                } else if (endpoint.startsWith('https://api.powerbi.com')) {
                     endpoint = endpoint.substring('https://api.powerbi.com'.length);
                 }
                 const res = await fetch('/api/proxy', {
@@ -5224,13 +5227,13 @@ window.runCheckPermsWorkflow = async function() {
     btn.disabled = true;
     btn.innerHTML = 'Running...';
     
-    out.textContent = `[${new Date().toLocaleTimeString()}] Fetching /v1.0/myorg/availableFeatures ...\n\n`;
+    out.textContent = `[${new Date().toLocaleTimeString()}] Fetching /availableFeatures ...\n\n`;
     
     try {
         const res = await fetch('/api/proxy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ endpoint: '/v1.0/myorg/availableFeatures', method: 'GET' })
+            body: JSON.stringify({ endpoint: '/availableFeatures', method: 'GET' })
         });
         
         if(!res.ok) {
