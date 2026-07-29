@@ -5189,12 +5189,12 @@ window.runRvcWorkflow = async function() {
         }
         
         let tableHtml = `
-            <table style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
-                <thead style="background: var(--bg-color); position: sticky; top: 0; z-index: 5;">
+            <table data-table-id="rvc" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
+                <thead>
                     <tr>
-                        <th style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600;">Time Window</th>
-                        <th style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600;">User Info</th>
-                        <th style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600;">Client IPs</th>
+                        <th onclick="window.sortTable(this, event, 0)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Time Window</th>
+                        <th onclick="window.sortTable(this, event, 1)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">User Info</th>
+                        <th onclick="window.sortTable(this, event, 2)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Client IPs</th>
                     </tr>
                 </thead>
                 <tbody>${rowsHtml}</tbody>
@@ -5298,12 +5298,12 @@ window.runCheckPermsWorkflow = async function() {
             });
             
             let tableHtml = `
-            <table style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
-                <thead style="background: var(--bg-color); position: sticky; top: 0; z-index: 5;">
+            <table data-table-id="perms" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
+                <thead>
                     <tr>
-                        <th style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600;">Feature Name</th>
-                        <th style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600;">State</th>
-                        <th style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600;">Extended State</th>
+                        <th onclick="window.sortTable(this, event, 0)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Feature Name</th>
+                        <th onclick="window.sortTable(this, event, 1)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">State</th>
+                        <th onclick="window.sortTable(this, event, 2)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Extended State</th>
                     </tr>
                 </thead>
                 <tbody>${rowsHtml}</tbody>
@@ -5333,4 +5333,82 @@ window.runCheckPermsWorkflow = async function() {
         btn.disabled = false;
         btn.innerHTML = 'Run Check';
     }
+};
+
+// ==================== TABLE SORTING ====================
+window.tableSortStates = {};
+
+window.sortTable = function(thElement, event, colIndex) {
+    const table = thElement.closest('table');
+    const tableId = table.getAttribute('data-table-id') || 'default_table';
+    const tbody = table.querySelector('tbody');
+    const headers = Array.from(table.querySelectorAll('th'));
+    
+    if (!window.tableSortStates[tableId]) {
+        window.tableSortStates[tableId] = [];
+    }
+    let sorts = window.tableSortStates[tableId];
+    
+    let existingIdx = sorts.findIndex(s => s.colIndex === colIndex);
+    
+    if (!event.shiftKey) {
+        if (existingIdx >= 0) {
+            const currentDir = sorts[existingIdx].dir;
+            sorts = [{ colIndex: colIndex, dir: currentDir === 'asc' ? 'desc' : 'asc' }];
+        } else {
+            sorts = [{ colIndex: colIndex, dir: 'asc' }];
+        }
+    } else {
+        if (existingIdx >= 0) {
+            sorts[existingIdx].dir = sorts[existingIdx].dir === 'asc' ? 'desc' : 'asc';
+        } else {
+            sorts.push({ colIndex: colIndex, dir: 'asc' });
+        }
+    }
+    window.tableSortStates[tableId] = sorts;
+    
+    headers.forEach((th, idx) => {
+        let text = th.getAttribute('data-original-text');
+        if (!text) {
+            text = th.innerText.replace(/ [▲▼][\d]*$/, '');
+            th.setAttribute('data-original-text', text);
+        }
+        
+        let sortInfo = sorts.findIndex(s => s.colIndex === idx);
+        if (sortInfo >= 0) {
+            let s = sorts[sortInfo];
+            let arrow = s.dir === 'asc' ? '▲' : '▼';
+            let priority = sorts.length > 1 ? (sortInfo + 1) : '';
+            th.innerText = `${text} ${arrow}${priority}`;
+            th.style.color = 'var(--accent)';
+        } else {
+            th.innerText = text;
+            th.style.color = '';
+        }
+    });
+    
+    let rows = Array.from(tbody.querySelectorAll('tr'));
+    rows.sort((a, b) => {
+        for (let s of sorts) {
+            let cellA = a.children[s.colIndex].innerText.trim();
+            let cellB = b.children[s.colIndex].innerText.trim();
+            
+            let numA = parseFloat(cellA);
+            let numB = parseFloat(cellB);
+            
+            let cmp = 0;
+            if (!isNaN(numA) && !isNaN(numB) && cellA === numA.toString()) {
+                cmp = numA - numB;
+            } else {
+                cmp = cellA.localeCompare(cellB);
+            }
+            
+            if (cmp !== 0) {
+                return s.dir === 'asc' ? cmp : -cmp;
+            }
+        }
+        return 0;
+    });
+    
+    rows.forEach(r => tbody.appendChild(r));
 };
