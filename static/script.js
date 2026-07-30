@@ -5157,12 +5157,17 @@ window.runRvcWorkflow = async function() {
                 const user = e.UserId || e.UserKey || 'Unknown';
                 const reportName = e.ItemName || 'Unknown Report';
                 const ip = e.ClientIP || 'Unknown IP';
+                const accessRoute = e.ConsumptionMethod || 'Direct/Unknown';
+                const status = (e.IsSuccess === true || e.IsSuccess === 'true') ? '<span style="color: var(--success);">Success</span>' : '<span style="color: var(--error);">Failed</span>';
+                
                 html += `
                 <tr style="border-bottom: 1px solid var(--panel-border);">
                     <td style="padding: 6px 12px; color: var(--text-secondary);">${time}</td>
                     <td style="padding: 6px 12px; color: var(--text-primary);">${user}</td>
                     <td style="padding: 6px 12px; color: var(--text-primary);">${reportName}</td>
+                    <td style="padding: 6px 12px; color: var(--text-secondary);">${accessRoute}</td>
                     <td style="padding: 6px 12px; color: var(--text-secondary);">${ip}</td>
+                    <td style="padding: 6px 12px; font-weight: 500;">${status}</td>
                 </tr>
                 `;
             }
@@ -5206,7 +5211,7 @@ window.runRvcWorkflow = async function() {
         const rows = Array.from(tbody.querySelectorAll('tr'));
         
         // Format as TSV
-        const lines = ["Time (UTC)\tUser ID\tReport Name\tClient IP"];
+        const lines = ["Time (UTC)\tUser ID\tReport Name\tAccess Route\tClient IP\tStatus"];
         rows.forEach(tr => {
             const cells = Array.from(tr.querySelectorAll('td')).map(td => td.innerText.trim());
             if (cells.length > 1) {
@@ -5216,6 +5221,25 @@ window.runRvcWorkflow = async function() {
         const text = lines.join('\n');
         
         window.handleCopyAction(btn, text);
+    };
+
+    window.toggleRvcLogs = function() {
+        const logsDiv = document.getElementById('wf-out-rvc-logs');
+        const chevron = document.getElementById('wf-rvc-logs-chevron');
+        const copyBtn = document.getElementById('wf-rvc-logs-copybtn');
+        if(logsDiv.style.maxHeight === '0px') {
+            logsDiv.style.maxHeight = '250px';
+            logsDiv.style.paddingBottom = '20px';
+            logsDiv.style.margin = '0px';
+            chevron.style.transform = 'rotate(90deg)';
+            copyBtn.style.display = 'block';
+        } else {
+            logsDiv.style.maxHeight = '0px';
+            logsDiv.style.paddingBottom = '0px';
+            logsDiv.style.margin = '0px';
+            chevron.style.transform = 'rotate(0deg)';
+            copyBtn.style.display = 'none';
+        }
     };
 
     const btn = document.getElementById('btn-run-rvc');
