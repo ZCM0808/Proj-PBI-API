@@ -1,4 +1,31 @@
 
+window.expandConsole = function(id) {
+    const consoleEl = document.getElementById(id);
+    if (!consoleEl) return;
+    const chevron = document.getElementById(id + '-chevron');
+    if (consoleEl.classList.contains('collapsed-console')) {
+        consoleEl.classList.remove('collapsed-console');
+        if (chevron) chevron.style.transform = 'rotate(90deg)';
+    }
+};
+
+window.toggleConsole = function(id) {
+    const consoleEl = document.getElementById(id);
+    if (!consoleEl) return;
+    
+    const chevronId = id + '-chevron';
+    const chevron = document.getElementById(chevronId);
+    
+    if (consoleEl.classList.contains('collapsed-console')) {
+        consoleEl.classList.remove('collapsed-console');
+        if (chevron) chevron.style.transform = 'rotate(90deg)';
+    } else {
+        consoleEl.classList.add('collapsed-console');
+        if (chevron) chevron.style.transform = 'rotate(0deg)';
+    }
+};
+
+
 window.animateVerifyBtn = async function(btn, promiseFunc, successCallback) {
     const originalText = btn.innerHTML;
     const originalWidth = btn.style.width;
@@ -4339,7 +4366,7 @@ document.addEventListener('mousedown', (e) => {
             if (step) document.getElementById(`wf-step-${step}`).classList.add('active');
         };
 
-        const executeStep1 = async () => {
+        const executeStep1 = async () => {\n    if(window.expandConsole) window.expandConsole('wf-out-step1');
             resetConsole(1, "Input: Sending POST request...");
             setStepActive(1);
             const wId = document.getElementById('wf-exp-workspace').value.trim();
@@ -4432,7 +4459,7 @@ document.addEventListener('mousedown', (e) => {
             }
         };
 
-        const executeStep3 = async () => {
+        const executeStep3 = async () => {\n    if(window.expandConsole) window.expandConsole('wf-out-step3');
             resetConsole(3, `Downloading file for exportId: ${currentExportId}...`);
             setStepActive(3);
             const wId = document.getElementById('wf-exp-workspace').value.trim();
@@ -5374,32 +5401,6 @@ window.runRvcWorkflow = async function() {
     };
 
     
-
-window.expandConsole = function(id) {
-    const consoleEl = document.getElementById(id);
-    if (!consoleEl) return;
-    const chevron = document.getElementById(id + '-chevron');
-    if (consoleEl.classList.contains('collapsed-console')) {
-        consoleEl.classList.remove('collapsed-console');
-        if (chevron) chevron.style.transform = 'rotate(90deg)';
-    }
-};
-
-window.toggleConsole = function(id) {
-    const consoleEl = document.getElementById(id);
-    if (!consoleEl) return;
-    
-    const chevronId = id + '-chevron';
-    const chevron = document.getElementById(chevronId);
-    
-    if (consoleEl.classList.contains('collapsed-console')) {
-        consoleEl.classList.remove('collapsed-console');
-        if (chevron) chevron.style.transform = 'rotate(90deg)';
-    } else {
-        consoleEl.classList.add('collapsed-console');
-        if (chevron) chevron.style.transform = 'rotate(0deg)';
-    }
-};
 
 window.toggleRvcLogs = function() {
         const logsDiv = document.getElementById('wf-out-rvc-logs');
