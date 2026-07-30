@@ -4980,6 +4980,7 @@ window.executeDatasetStep2 = async function(btn) {
     for (let i = 0; i < selectedTables.length; i++) {
         const tb = selectedTables[i];
         consoleOut.innerText += `\n\n[${i+1}/${selectedTables.length}] ⏳ Fetching table: '${tb}'...`;
+        consoleOut.scrollTop = consoleOut.scrollHeight;
         
         const query = `EVALUATE '${tb}'`;
         const payload = { pbi_client_id: clientId, pbi_client_secret: clientSecret, pbi_tenant_id: tenantId, query: query };
@@ -4996,9 +4997,11 @@ window.executeDatasetStep2 = async function(btn) {
             if(data.success) {
                 const rows = data.results;
                 consoleOut.innerText += `\n✓ Status: 200 OK. Retrieved ${rows.length} rows.`;
+        consoleOut.scrollTop = consoleOut.scrollHeight;
                 
                 if(!rows || rows.length === 0) {
                     consoleOut.innerText += `\n⚠️ Table is empty. Skipping...`;
+        consoleOut.scrollTop = consoleOut.scrollHeight;
                     continue;
                 }
                 
@@ -5039,14 +5042,17 @@ window.executeDatasetStep2 = async function(btn) {
                 
             } else {
                 consoleOut.innerText += `\n❌ Query Failed: ${data.message}`;
+        consoleOut.scrollTop = consoleOut.scrollHeight;
             }
         } catch(err) {
             consoleOut.innerText += `\n❌ Network Error: ${err.message}`;
+        consoleOut.scrollTop = consoleOut.scrollHeight;
         }
     }
     
     if (successCount > 0) {
         consoleOut.innerText += `\n\n⏳ Generating final ${exportFormat} file...`;
+        consoleOut.scrollTop = consoleOut.scrollHeight;
         if (exportFormat === 'CSV') {
             zip.generateAsync({type:"blob"}).then(function(content) {
                 const url = URL.createObjectURL(content);
@@ -5056,15 +5062,18 @@ window.executeDatasetStep2 = async function(btn) {
                 a.click();
                 URL.revokeObjectURL(url);
                 consoleOut.innerText += `\n✓ Download initiated: ${a.download}`;
+        consoleOut.scrollTop = consoleOut.scrollHeight;
                 if (btn) btn.disabled = false;
             });
             return true; // async generation
         } else {
             XLSX.writeFile(wb, `Export_Tables_${ds}.xlsx`);
             consoleOut.innerText += `\n✓ Download initiated: Export_Tables_${ds}.xlsx`;
+        consoleOut.scrollTop = consoleOut.scrollHeight;
         }
     } else {
         consoleOut.innerText += `\n\n⚠️ No data was exported.`;
+        consoleOut.scrollTop = consoleOut.scrollHeight;
     }
     
     if (btn) btn.disabled = false;
