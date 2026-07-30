@@ -2530,8 +2530,8 @@ const loadReqHistory = (searchTerm = "") => {
             }
             // Reset drag position on open
             if (modalContent) {
-                modalContent.style.left = '0px';
-                modalContent.style.top = '0px';
+                modalContent.style.left = '';
+                modalContent.style.top = '';
             }
             // CSS handles the animation via @keyframes modalPopUp on .modal-content
             modalOverlay.style.display = 'flex';
@@ -3646,8 +3646,8 @@ window.openNoteModal = function() {
     // Reset drag position
     const noteContent = noteModal.querySelector('.modal-content');
     if (noteContent) {
-        noteContent.style.left = '0px';
-        noteContent.style.top = '0px';
+        noteContent.style.left = '';
+        noteContent.style.top = '';
     }
     noteModal.style.display = 'flex';
 
@@ -3926,8 +3926,8 @@ document.addEventListener('mousedown', (e) => {
             msgEl.textContent = message;
             
             // Reset position to center
-            content.style.left = '0px';
-            content.style.top = '0px';
+            content.style.left = '';
+            content.style.top = '';
             
             buttonsEl.innerHTML = `
                 <button class="btn-action-secondary" id="custom-alert-ok-btn" style="padding: 0.5rem 1.25rem;">
@@ -3959,8 +3959,8 @@ document.addEventListener('mousedown', (e) => {
             msgEl.textContent = message;
             
             // Reset position to center
-            content.style.left = '0px';
-            content.style.top = '0px';
+            content.style.left = '';
+            content.style.top = '';
             
             buttonsEl.innerHTML = `
                 <button class="btn-action-secondary" id="custom-confirm-cancel-btn" style="padding: 0.5rem 1.25rem;">
@@ -4259,8 +4259,8 @@ document.addEventListener('mousedown', (e) => {
                 wfContent.setAttribute('data-drag-init', 'true');
             }
             
-            wfContent.style.left = '0px';
-            wfContent.style.top = '0px';
+            wfContent.style.left = '';
+            wfContent.style.top = '';
             workflowModal.style.visibility = 'visible';
             workflowModal.style.opacity = '1';
             workflowModal.style.display = 'flex';

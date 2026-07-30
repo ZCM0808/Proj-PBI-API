@@ -1,5 +1,6 @@
 :root {
     --sidebar-width: 250px;
+    --modal-offset: calc(var(--sidebar-width) / 2);
     --bg-color: #0f1115;
     --panel-bg: rgba(25, 28, 36, 0.6);
     --panel-border: rgba(255, 255, 255, 0.08);
@@ -736,6 +737,7 @@ textarea:focus {
    ========================================= */
 
 @media (max-width: 768px) {
+    :root { --modal-offset: 0px; }
     /* Enforce fixed centered modals on mobile and prevent drag offsets */
     .modal-content {
         left: 0 !important;
@@ -949,6 +951,8 @@ textarea:focus {
 .modal-content {
     width: 600px; max-width: 90%;
     margin: 0 auto;
+    position: relative;
+    left: var(--modal-offset, 0px);
     background: var(--panel-bg);
     border: 1px solid var(--panel-border);
     border-radius: 12px;
