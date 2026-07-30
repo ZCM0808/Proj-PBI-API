@@ -2457,19 +2457,10 @@ const loadReqHistory = (searchTerm = "") => {
     }
 
     // --- Modal FLIP & Drag Helper ---
-    window.centerModal = function(modalContent) {
-        if (window.innerWidth <= 768) {
+        window.centerModal = function(modalContent) {
+        if (modalContent) {
             modalContent.style.left = '0px';
-            return;
-        }
-        const mainContent = document.querySelector('.main-content');
-        if (mainContent) {
-            const rect = mainContent.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const offset = centerX - (window.innerWidth / 2);
-            modalContent.style.left = offset + "px";
-        } else {
-            modalContent.style.left = '0px';
+            modalContent.style.top = '0px';
         }
     };
 
