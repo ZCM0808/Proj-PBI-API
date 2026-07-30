@@ -923,7 +923,7 @@ textarea:focus {
 }
 
 .modal-overlay {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
     background: var(--shadow-dark);
     display: flex; justify-content: center; align-items: center;
     overflow-y: auto;
@@ -1225,8 +1225,8 @@ select.settings-input option {
     position: fixed;
     top: 0;
     left: 0;
-    right: 0;
-    bottom: 0;
+    width: 100vw;
+    height: 100vh;
     background: var(--modal-overlay);
     backdrop-filter: blur(0px);
     opacity: 0;
