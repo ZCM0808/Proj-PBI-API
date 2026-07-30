@@ -4836,6 +4836,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 window.loadDatasetTablesStep1 = async function(btn) {
+    window.expandConsole('wf-out-ds-step1');
     if (btn) btn.disabled = true;
     const ws = document.getElementById('wf-ds-workspace').value;
     const ds = document.getElementById('wf-ds-dataset').value;
@@ -4965,6 +4966,7 @@ window.loadDatasetTablesStep1 = async function(btn) {
 };
 
 window.executeDatasetStep2 = async function(btn) {
+    window.expandConsole('wf-out-ds-step2');
     if (btn) btn.disabled = true;
     const ws = document.getElementById('wf-ds-workspace').value;
     const ds = document.getElementById('wf-ds-dataset').value;
@@ -5371,7 +5373,35 @@ window.runRvcWorkflow = async function() {
         window.handleCopyAction(btn, text);
     };
 
-    window.toggleRvcLogs = function() {
+    
+
+window.expandConsole = function(id) {
+    const consoleEl = document.getElementById(id);
+    if (!consoleEl) return;
+    const chevron = document.getElementById(id + '-chevron');
+    if (consoleEl.classList.contains('collapsed-console')) {
+        consoleEl.classList.remove('collapsed-console');
+        if (chevron) chevron.style.transform = 'rotate(90deg)';
+    }
+};
+
+window.toggleConsole = function(id) {
+    const consoleEl = document.getElementById(id);
+    if (!consoleEl) return;
+    
+    const chevronId = id + '-chevron';
+    const chevron = document.getElementById(chevronId);
+    
+    if (consoleEl.classList.contains('collapsed-console')) {
+        consoleEl.classList.remove('collapsed-console');
+        if (chevron) chevron.style.transform = 'rotate(90deg)';
+    } else {
+        consoleEl.classList.add('collapsed-console');
+        if (chevron) chevron.style.transform = 'rotate(0deg)';
+    }
+};
+
+window.toggleRvcLogs = function() {
         const logsDiv = document.getElementById('wf-out-rvc-logs');
         const chevron = document.getElementById('wf-rvc-logs-chevron');
         const copyBtn = document.getElementById('wf-rvc-logs-copybtn');
