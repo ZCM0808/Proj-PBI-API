@@ -4845,6 +4845,7 @@ window.loadDatasetTablesStep1 = async function(btn) {
     
     if(!ws || !ds) {
         consoleOut.innerText = '❌ Error: Please select Workspace and Dataset first.';
+        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
         if (btn) btn.disabled = false;
         return false;
     }
@@ -4860,6 +4861,7 @@ window.loadDatasetTablesStep1 = async function(btn) {
     const requestStr = `[POST] /api/export_dataset/${ws}/${ds}\nHeaders: { "Content-Type": "application/json" }\nBody:\n{\n  "pbi_client_id": "${clientId ? '***' : ''}",\n  "pbi_tenant_id": "${tenantId ? '***' : ''}",\n  "query": "${query}"\n}\n\n⏳ Request sent, waiting for response...`;
 
     consoleOut.innerText = requestStr;
+    setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
     
     try {
         const payload = { pbi_client_id: clientId, pbi_client_secret: clientSecret, pbi_tenant_id: tenantId, query: query };
@@ -4882,6 +4884,7 @@ window.loadDatasetTablesStep1 = async function(btn) {
             
             consoleOut.innerText = requestStr.replace('⏳ Request sent, waiting for response...', '') + 
                 `\n✅ Success! Status: 200 OK\nRetrieved ${tables.length} valid tables.\n\nResponse Preview:\n` + JSON.stringify(tables, null, 2);
+            setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
             
             const optionsUl = document.getElementById('wf-ds-table-options');
             const displaySpan = document.getElementById('wf-ds-table-display');
@@ -4950,10 +4953,12 @@ window.loadDatasetTablesStep1 = async function(btn) {
         } else {
             consoleOut.innerText = requestStr.replace('⏳ Request sent, waiting for response...', '') + 
                 `\n❌ Failed:\n` + data.message;
+            setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
         }
     } catch(err) {
         consoleOut.innerText = requestStr.replace('⏳ Request sent, waiting for response...', '') + 
             `\n❌ Network Error:\n` + err.message;
+            setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
     }
     if (btn) btn.disabled = false;
     return false;
@@ -4970,6 +4975,7 @@ window.executeDatasetStep2 = async function(btn) {
     
     if(!ws || !ds || selectedTables.length === 0) {
         consoleOut.innerText = '❌ Error: Please ensure Step 1 is complete and at least one Table is selected.';
+        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
         if (btn) btn.disabled = false;
         return false;
     }
@@ -4981,6 +4987,7 @@ window.executeDatasetStep2 = async function(btn) {
     const tenantId = document.getElementById('set-tenant').value.trim();
     
     consoleOut.innerText = `⏳ Starting export of ${selectedTables.length} table(s) as ${exportFormat}...`;
+    setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
     
     let zip = null;
     let wb = null;
