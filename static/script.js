@@ -2462,6 +2462,7 @@ const loadReqHistory = (searchTerm = "") => {
         dragHandle.style.cursor = 'grab';
 
         dragHandle.addEventListener('mousedown', (e) => {
+            if (window.innerWidth <= 768) return; // Prevent drag on mobile
             isDragging = true;
             dragHandle.style.cursor = 'grabbing';
             startX = e.clientX;
