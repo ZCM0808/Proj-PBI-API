@@ -594,7 +594,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const responseStatus = document.getElementById('response-status');
     
     const apiTree = document.getElementById('api-tree');
-    const searchInput = document.getElementById('api-search');
+    const searchInput = document.getElementById('api-search-input');
     
     // 新增 UI 元素
     const totalApiCountEl = document.getElementById('total-api-count');
@@ -4366,7 +4366,8 @@ document.addEventListener('mousedown', (e) => {
             if (step) document.getElementById(`wf-step-${step}`).classList.add('active');
         };
 
-        const executeStep1 = async () => {\n    if(window.expandConsole) window.expandConsole('wf-out-step1');
+        const executeStep1 = async () => {
+    if(window.expandConsole) window.expandConsole('wf-out-step1');
             resetConsole(1, "Input: Sending POST request...");
             setStepActive(1);
             const wId = document.getElementById('wf-exp-workspace').value.trim();
@@ -4459,7 +4460,8 @@ document.addEventListener('mousedown', (e) => {
             }
         };
 
-        const executeStep3 = async () => {\n    if(window.expandConsole) window.expandConsole('wf-out-step3');
+        const executeStep3 = async () => {
+    if(window.expandConsole) window.expandConsole('wf-out-step3');
             resetConsole(3, `Downloading file for exportId: ${currentExportId}...`);
             setStepActive(3);
             const wId = document.getElementById('wf-exp-workspace').value.trim();
