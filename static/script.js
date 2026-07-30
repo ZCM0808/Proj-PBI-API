@@ -4327,6 +4327,7 @@ document.addEventListener('mousedown', (e) => {
         const logToConsole = (step, msg) => {
             const out = document.getElementById(`wf-out-step${step}`);
             out.textContent += `\n[${new Date().toLocaleTimeString()}] ${msg}`;
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
             setTimeout(() => { out.scrollTop = out.scrollHeight; }, 50);
         };
         const resetConsole = (step, initialMsg) => {
@@ -4551,11 +4552,13 @@ document.addEventListener('mousedown', (e) => {
                 const data = await res.json();
                 if (!data.success) {
                     out.textContent += `Error getting embed info: ${data.error}\n`;
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                     pageSelect.innerHTML = '<option value="">Error</option>';
                     return;
                 }
                 
                 out.textContent += `Token received. Initializing Power BI Embedded iframe...\n`;
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                 embedContainer.style.display = 'block';
                 
                 // 2. Embed the report
@@ -4579,6 +4582,7 @@ document.addEventListener('mousedown', (e) => {
                 currentEmbeddedReport.off("loaded");
                 currentEmbeddedReport.on("loaded", async function () {
                     out.textContent += `Report rendered in UI! Fetching Pages via JS SDK...\n`;
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                     const pages = await currentEmbeddedReport.getPages();
                     pageSelect.innerHTML = '<option value="">-- Select a Page --</option>';
                     pageSelect.innerHTML += '<option value="ALL">🌟 ALL PAGES (全部页面) 🌟</option>';
@@ -4593,10 +4597,12 @@ document.addEventListener('mousedown', (e) => {
                 currentEmbeddedReport.off("error");
                 currentEmbeddedReport.on("error", function (event) {
                     out.textContent += `Embed Error: ${event.detail.message}\n`;
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                 });
 
             } catch (err) {
                 out.textContent += `Exception: ${err.message}\n`;
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                 pageSelect.innerHTML = '<option value="">Error loading pages</option>';
             }
         };
@@ -4655,6 +4661,7 @@ document.addEventListener('mousedown', (e) => {
             
             if (!pId || !visId || !currentEmbeddedReport) {
                 out.textContent += `Error: Please select page and visual.\n`;
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                 return;
             }
             
@@ -4670,6 +4677,7 @@ document.addEventListener('mousedown', (e) => {
                 
                 for (let page of targetPages) {
                     out.textContent += `\n> Navigating to Page: [${page.displayName}]...\n`;
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                     await page.setActive();
                     await new Promise(r => setTimeout(r, 1500)); // wait for visuals to load
                     
@@ -4679,6 +4687,7 @@ document.addEventListener('mousedown', (e) => {
                     for (let visual of targetVisuals) {
                         const vName = visual.title || visual.type || visual.name;
                         out.textContent += `  - Visual [${vName}]: Extracting...`;
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                         try {
                             const result = await visual.exportData(exportType, rows);
                             
@@ -4702,22 +4711,28 @@ document.addEventListener('mousedown', (e) => {
                             XLSX.utils.book_append_sheet(wb, ws, sheetName);
                             fileCount++;
                             out.textContent += ` OK (Appended to Sheet: ${sheetName})\n`;
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                         } catch (e) {
                             out.textContent += ` SKIPPED (No data or unsupported)\n`;
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                         }
                     }
                 }
                 
                 if (fileCount > 0) {
                     out.textContent += `\nData successfully extracted (${fileCount} sheets)! Generating Excel file...\n`;
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                     XLSX.writeFile(wb, `PowerBI_Export_${expTypeStr}.xlsx`);
                     out.textContent += `\nExcel file downloaded: PowerBI_Export_${expTypeStr}.xlsx 🎉\n`;
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                 } else {
                     out.textContent += `\nWARNING: No exportable data found in the selected targets.\n`;
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                 }
                 
             } catch (err) {
                 out.textContent += `Exception during export: ${err.message || JSON.stringify(err)}\n`;
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
             }
         };
 
@@ -4980,7 +4995,7 @@ window.executeDatasetStep2 = async function(btn) {
     for (let i = 0; i < selectedTables.length; i++) {
         const tb = selectedTables[i];
         consoleOut.innerText += `\n\n[${i+1}/${selectedTables.length}] ⏳ Fetching table: '${tb}'...`;
-        consoleOut.scrollTop = consoleOut.scrollHeight;
+        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
         
         const query = `EVALUATE '${tb}'`;
         const payload = { pbi_client_id: clientId, pbi_client_secret: clientSecret, pbi_tenant_id: tenantId, query: query };
@@ -4997,11 +5012,11 @@ window.executeDatasetStep2 = async function(btn) {
             if(data.success) {
                 const rows = data.results;
                 consoleOut.innerText += `\n✓ Status: 200 OK. Retrieved ${rows.length} rows.`;
-        consoleOut.scrollTop = consoleOut.scrollHeight;
+        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
                 
                 if(!rows || rows.length === 0) {
                     consoleOut.innerText += `\n⚠️ Table is empty. Skipping...`;
-        consoleOut.scrollTop = consoleOut.scrollHeight;
+        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
                     continue;
                 }
                 
@@ -5042,17 +5057,17 @@ window.executeDatasetStep2 = async function(btn) {
                 
             } else {
                 consoleOut.innerText += `\n❌ Query Failed: ${data.message}`;
-        consoleOut.scrollTop = consoleOut.scrollHeight;
+        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
             }
         } catch(err) {
             consoleOut.innerText += `\n❌ Network Error: ${err.message}`;
-        consoleOut.scrollTop = consoleOut.scrollHeight;
+        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
         }
     }
     
     if (successCount > 0) {
         consoleOut.innerText += `\n\n⏳ Generating final ${exportFormat} file...`;
-        consoleOut.scrollTop = consoleOut.scrollHeight;
+        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
         if (exportFormat === 'CSV') {
             zip.generateAsync({type:"blob"}).then(function(content) {
                 const url = URL.createObjectURL(content);
@@ -5062,18 +5077,18 @@ window.executeDatasetStep2 = async function(btn) {
                 a.click();
                 URL.revokeObjectURL(url);
                 consoleOut.innerText += `\n✓ Download initiated: ${a.download}`;
-        consoleOut.scrollTop = consoleOut.scrollHeight;
+        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
                 if (btn) btn.disabled = false;
             });
             return true; // async generation
         } else {
             XLSX.writeFile(wb, `Export_Tables_${ds}.xlsx`);
             consoleOut.innerText += `\n✓ Download initiated: Export_Tables_${ds}.xlsx`;
-        consoleOut.scrollTop = consoleOut.scrollHeight;
+        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
         }
     } else {
         consoleOut.innerText += `\n\n⚠️ No data was exported.`;
-        consoleOut.scrollTop = consoleOut.scrollHeight;
+        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
     }
     
     if (btn) btn.disabled = false;
