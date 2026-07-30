@@ -3920,7 +3920,7 @@ document.addEventListener('mousedown', (e) => {
             const titleEl = document.getElementById('custom-dialog-title');
             const msgEl = document.getElementById('custom-dialog-message');
             const buttonsEl = document.getElementById('custom-dialog-buttons');
-            const content = document.getElementById('custom-dialog-content');
+            const content = modal.querySelector('.modal-content');
             
             titleEl.innerHTML = title;
             msgEl.textContent = message;
@@ -3953,7 +3953,7 @@ document.addEventListener('mousedown', (e) => {
             const titleEl = document.getElementById('custom-dialog-title');
             const msgEl = document.getElementById('custom-dialog-message');
             const buttonsEl = document.getElementById('custom-dialog-buttons');
-            const content = document.getElementById('custom-dialog-content');
+            const content = modal.querySelector('.modal-content');
             
             titleEl.innerHTML = title;
             msgEl.textContent = message;
