@@ -5151,9 +5151,17 @@ window.runRvcWorkflow = async function() {
             html = '<tr><td colspan="4" style="text-align: center; padding: 10px;">No details found</td></tr>';
         } else {
             // Sort events by CreationTime descending by default
-            events.sort((a, b) => new Date(b.CreationTime) - new Date(a.CreationTime));
+            events.sort((a, b) => new Date(b.CreationTime + (b.CreationTime.endsWith('Z') ? '' : 'Z')) - new Date(a.CreationTime + (a.CreationTime.endsWith('Z') ? '' : 'Z')));
             for(const e of events) {
-                const time = (e.CreationTime || '').replace('T', ' ').replace('Z', '');
+                let timeStr = e.CreationTime || '';
+                if(timeStr) {
+                    if(!timeStr.endsWith('Z')) timeStr += 'Z';
+                    const d = new Date(timeStr);
+                    d.setUTCHours(d.getUTCHours() + 8); // Shift to UTC+8
+                    const pad = n => n.toString().padStart(2, '0');
+                    timeStr = `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
+                }
+                const time = timeStr;
                 const user = e.UserId || e.UserKey || 'Unknown';
                 const reportName = e.ItemName || 'Unknown Report';
                 const ip = e.ClientIP || 'Unknown IP';
@@ -5211,7 +5219,7 @@ window.runRvcWorkflow = async function() {
         const rows = Array.from(tbody.querySelectorAll('tr'));
         
         // Format as TSV
-        const lines = ["Time (UTC)\tUser ID\tReport Name\tAccess Route\tClient IP\tStatus"];
+        const lines = ["Time (UTC+8)\tUser ID\tReport Name\tAccess Route\tClient IP\tStatus"];
         rows.forEach(tr => {
             const cells = Array.from(tr.querySelectorAll('td')).map(td => td.innerText.trim());
             if (cells.length > 1) {
