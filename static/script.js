@@ -4979,9 +4979,7 @@ window.executeDatasetStep2 = async function(btn) {
     
     for (let i = 0; i < selectedTables.length; i++) {
         const tb = selectedTables[i];
-        consoleOut.innerText += `
-
-[${i+1}/${selectedTables.length}] ⏳ Fetching table: '${tb}'...`;
+        consoleOut.innerText += `\n\n[${i+1}/${selectedTables.length}] ⏳ Fetching table: '${tb}'...`;
         
         const query = `EVALUATE '${tb}'`;
         const payload = { pbi_client_id: clientId, pbi_client_secret: clientSecret, pbi_tenant_id: tenantId, query: query };
@@ -4997,12 +4995,10 @@ window.executeDatasetStep2 = async function(btn) {
             
             if(data.success) {
                 const rows = data.results;
-                consoleOut.innerText += `
-✓ Status: 200 OK. Retrieved ${rows.length} rows.`;
+                consoleOut.innerText += `\n✓ Status: 200 OK. Retrieved ${rows.length} rows.`;
                 
                 if(!rows || rows.length === 0) {
-                    consoleOut.innerText += '
-⚠️ Table is empty. Skipping...';
+                    consoleOut.innerText += `\n⚠️ Table is empty. Skipping...`;
                     continue;
                 }
                 
@@ -5013,15 +5009,13 @@ window.executeDatasetStep2 = async function(btn) {
                 
                 if (exportFormat === 'CSV') {
                     const rawKeys = Object.keys(rows[0]);
-                    let csv = rawKeys.map(k => `"${cleanKey(k).replace(/"/g, '""')}"`).join(",") + "
-";
+                    let csv = rawKeys.map(k => `"${cleanKey(k).replace(/"/g, '""')}"`).join(",") + "\n";
                     rows.forEach(r => {
                         csv += rawKeys.map(k => {
                             let val = r[k];
                             if (val === null || val === undefined) val = '';
                             return `"${String(val).replace(/"/g, '""')}"`;
-                        }).join(",") + "
-";
+                        }).join(",") + "\n";
                     });
                     const csvData = new Uint8Array([0xEF, 0xBB, 0xBF, ...new TextEncoder().encode(csv)]);
                     zip.file(`${tb.replace(/[^a-zA-Z0-9_-]/g, '_')}.csv`, csvData);
@@ -5044,19 +5038,15 @@ window.executeDatasetStep2 = async function(btn) {
                 }
                 
             } else {
-                consoleOut.innerText += `
-❌ Query Failed: ${data.message}`;
+                consoleOut.innerText += `\n❌ Query Failed: ${data.message}`;
             }
         } catch(err) {
-            consoleOut.innerText += `
-❌ Network Error: ${err.message}`;
+            consoleOut.innerText += `\n❌ Network Error: ${err.message}`;
         }
     }
     
     if (successCount > 0) {
-        consoleOut.innerText += `
-
-⏳ Generating final ${exportFormat} file...`;
+        consoleOut.innerText += `\n\n⏳ Generating final ${exportFormat} file...`;
         if (exportFormat === 'CSV') {
             zip.generateAsync({type:"blob"}).then(function(content) {
                 const url = URL.createObjectURL(content);
@@ -5065,20 +5055,16 @@ window.executeDatasetStep2 = async function(btn) {
                 a.download = `Export_Tables_${ds}.zip`;
                 a.click();
                 URL.revokeObjectURL(url);
-                consoleOut.innerText += `
-✓ Download initiated: ${a.download}`;
+                consoleOut.innerText += `\n✓ Download initiated: ${a.download}`;
                 if (btn) btn.disabled = false;
             });
             return true; // async generation
         } else {
             XLSX.writeFile(wb, `Export_Tables_${ds}.xlsx`);
-            consoleOut.innerText += `
-✓ Download initiated: Export_Tables_${ds}.xlsx`;
+            consoleOut.innerText += `\n✓ Download initiated: Export_Tables_${ds}.xlsx`;
         }
     } else {
-        consoleOut.innerText += '
-
-⚠️ No data was exported.';
+        consoleOut.innerText += `\n\n⚠️ No data was exported.`;
     }
     
     if (btn) btn.disabled = false;
