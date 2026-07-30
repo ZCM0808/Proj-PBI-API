@@ -2457,6 +2457,22 @@ const loadReqHistory = (searchTerm = "") => {
     }
 
     // --- Modal FLIP & Drag Helper ---
+    window.centerModal = function(modalContent) {
+        if (window.innerWidth <= 768) {
+            modalContent.style.left = '0px';
+            return;
+        }
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            const rect = mainContent.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const offset = centerX - (window.innerWidth / 2);
+            modalContent.style.left = offset + "px";
+        } else {
+            modalContent.style.left = '0px';
+        }
+    };
+
     window.makeDraggable = makeDraggable;
     function makeDraggable(modalContent, dragHandle) {
         let isDragging = false;
@@ -2530,8 +2546,8 @@ const loadReqHistory = (searchTerm = "") => {
             }
             // Reset drag position on open
             if (modalContent) {
-                modalContent.style.left = '';
-                modalContent.style.top = '';
+                window.centerModal(modalContent);
+                modalContent.style.top = '0px';
             }
             // CSS handles the animation via @keyframes modalPopUp on .modal-content
             modalOverlay.style.display = 'flex';
@@ -3646,8 +3662,8 @@ window.openNoteModal = function() {
     // Reset drag position
     const noteContent = noteModal.querySelector('.modal-content');
     if (noteContent) {
-        noteContent.style.left = '';
-        noteContent.style.top = '';
+        window.centerModal(noteContent);
+        noteContent.style.top = '0px';
     }
     noteModal.style.display = 'flex';
 
@@ -3926,8 +3942,8 @@ document.addEventListener('mousedown', (e) => {
             msgEl.textContent = message;
             
             // Reset position to center
-            content.style.left = '';
-            content.style.top = '';
+            window.centerModal(content);
+            content.style.top = '0px';
             
             buttonsEl.innerHTML = `
                 <button class="btn-action-secondary" id="custom-alert-ok-btn" style="padding: 0.5rem 1.25rem;">
@@ -3959,8 +3975,8 @@ document.addEventListener('mousedown', (e) => {
             msgEl.textContent = message;
             
             // Reset position to center
-            content.style.left = '';
-            content.style.top = '';
+            window.centerModal(content);
+            content.style.top = '0px';
             
             buttonsEl.innerHTML = `
                 <button class="btn-action-secondary" id="custom-confirm-cancel-btn" style="padding: 0.5rem 1.25rem;">
@@ -4259,8 +4275,8 @@ document.addEventListener('mousedown', (e) => {
                 wfContent.setAttribute('data-drag-init', 'true');
             }
             
-            wfContent.style.left = '';
-            wfContent.style.top = '';
+            window.centerModal(wfContent);
+            wfContent.style.top = '0px';
             workflowModal.style.visibility = 'visible';
             workflowModal.style.opacity = '1';
             workflowModal.style.display = 'flex';
@@ -5210,6 +5226,8 @@ window.runRvcWorkflow = async function() {
             window.makeDraggable(modalContent, modalHeader);
             modalContent.setAttribute('data-drag-init', 'true');
         }
+        window.centerModal(modalContent);
+        modalContent.style.top = '0px';
         
         const modal = document.getElementById('view-details-modal');
         modal.style.display = 'flex';
