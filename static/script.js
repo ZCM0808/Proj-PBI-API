@@ -5173,7 +5173,12 @@ window.runRvcWorkflow = async function() {
             modalContent.setAttribute('data-drag-init', 'true');
         }
         
-        window.openModalWithAnimation('view-details-modal');
+        const modal = document.getElementById('view-details-modal');
+        modal.style.display = 'flex';
+        // force reflow
+        void modal.offsetWidth;
+        modal.style.visibility = 'visible';
+        modal.style.opacity = '1';
     };
 
     const btn = document.getElementById('btn-run-rvc');
