@@ -397,11 +397,15 @@ window.renderEnvIdentity = function() {
         }
     }
     if (clientEl) {
+        clientEl.style.display = 'inline';
         if (appName) {
-            clientEl.style.display = 'inline';
             clientEl.querySelector('strong').textContent = appName;
+            clientEl.querySelector('strong').style.color = 'var(--text-primary)';
+            clientEl.title = "";
         } else {
-            clientEl.style.display = 'none';
+            clientEl.querySelector('strong').textContent = 'Unknown (Verify Required)';
+            clientEl.querySelector('strong').style.color = 'var(--text-secondary)';
+            clientEl.title = "Please go to Settings and click 'Verify Connection' to fetch the App Name";
         }
     }
 };
@@ -2999,7 +3003,7 @@ const loadReqHistory = (searchTerm = "") => {
     const savedSidebarWidth = localStorage.getItem('pbi-sidebar-width');
     if (savedSidebarWidth) {
         sidebar.style.width = savedSidebarWidth;
-        sidebar.style.minWidth = savedSidebarWidth;
+        sidebar.style.minWidth = savedSidebarWidth; document.documentElement.style.setProperty('--sidebar-width', savedSidebarWidth);
     }
     const bodyEditorContainer = document.querySelector('.body-editor-container');
     const savedRequestHeight = localStorage.getItem('pbi-request-height');
@@ -3036,6 +3040,7 @@ const loadReqHistory = (searchTerm = "") => {
             if (newWidth > 600) newWidth = 600;
             sidebar.style.width = `${newWidth}px`;
             sidebar.style.minWidth = `${newWidth}px`;
+            document.documentElement.style.setProperty('--sidebar-width', `${newWidth}px`);
         }
         
         if (isVerticalResizing) {
