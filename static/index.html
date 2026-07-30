@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/powerbi-client/dist/powerbi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260730_v118_mobile">
+    <link rel="stylesheet" href="/static/style.css?v=20260730_v119_center">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -925,7 +925,7 @@
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: flex; z-index: 100000; opacity: 0; visibility: hidden; transition: opacity 0.25s ease;">
-        <div class="modal-content glass-panel" style="width: 90%; max-width: 400px; padding: 20px; display: flex; flex-direction: column; position: relative;">
+        <div id="custom-dialog-content" class="modal-content glass-panel" style="width: 90%; max-width: 400px; padding: 20px; display: flex; flex-direction: column; position: relative;">
             <div class="modal-header" style="border-bottom: none; padding-bottom: 0; margin-bottom: 15px;">
                 <h3 id="custom-dialog-title" style="font-size: 1.1rem; margin: 0; color: var(--text-primary); font-weight: 600;">Alert</h3>
                 <button type="button" class="close-btn" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
