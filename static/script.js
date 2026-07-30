@@ -4873,6 +4873,7 @@ window.loadDatasetTablesStep1 = async function(btn) {
             const triggerDiv = document.getElementById('wf-ds-table-trigger');
             const container = document.getElementById('wf-ds-table-container');
             
+            window.selectedDsTables = [];
             optionsUl.innerHTML = '';
             if(tables.length === 0) {
                 optionsUl.innerHTML = '<li style="padding: 8px 12px; font-size: 0.85rem; cursor: not-allowed; color: var(--text-secondary);">-- No Tables Found --</li>';
@@ -4880,24 +4881,54 @@ window.loadDatasetTablesStep1 = async function(btn) {
                 displaySpan.style.color = 'var(--text-secondary)';
                 triggerDiv.style.cursor = 'not-allowed';
             } else {
+                const selectAllLi = document.createElement('li');
+                selectAllLi.style.cssText = 'padding: 8px 12px; font-size: 0.85rem; cursor: pointer; color: var(--text-primary); transition: background 0.15s ease; border-radius: 4px; margin: 0 4px; border-bottom: 1px solid var(--panel-border); font-weight: bold; position: sticky; top: 0; background: var(--dropdown-bg); z-index: 2;';
+                selectAllLi.innerHTML = `<label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0; width: 100%;"><input type="checkbox" id="wf-ds-table-select-all" style="cursor: pointer;"> Select All Tables</label>`;
+                
+                selectAllLi.querySelector('input').onclick = (e) => {
+                    const checked = e.target.checked;
+                    const checkboxes = optionsUl.querySelectorAll('.wf-ds-table-cb');
+                    checkboxes.forEach(cb => cb.checked = checked);
+                    window.updateDsTableDisplay();
+                };
+                selectAllLi.onclick = (e) => {
+                    if (e.target.tagName !== 'INPUT') {
+                        const cb = selectAllLi.querySelector('input');
+                        cb.checked = !cb.checked;
+                        cb.onclick({target: cb});
+                    }
+                };
+                optionsUl.appendChild(selectAllLi);
+                
                 tables.forEach(t => {
                     const li = document.createElement('li');
                     li.style.cssText = 'padding: 8px 12px; font-size: 0.85rem; cursor: pointer; color: var(--text-primary); transition: background 0.15s ease; border-radius: 4px; margin: 0 4px;';
-                    li.innerText = t;
+                    li.innerHTML = `<label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0; width: 100%;"><input type="checkbox" value="${t.replace(/"/g, '&quot;')}" class="wf-ds-table-cb" style="cursor: pointer;"> ${t}</label>`;
                     li.onmouseover = () => li.style.background = 'var(--overlay-10)';
                     li.onmouseout = () => li.style.background = 'transparent';
-                    li.onclick = (e) => { e.stopPropagation(); window.selectDsTable(t, t); };
+                    li.querySelector('input').onclick = (e) => {
+                        window.updateDsTableDisplay();
+                    };
+                    li.onclick = (e) => {
+                        if (e.target.tagName !== 'INPUT') {
+                            const cb = li.querySelector('input');
+                            cb.checked = !cb.checked;
+                            window.updateDsTableDisplay();
+                        }
+                    };
                     optionsUl.appendChild(li);
                 });
+                
+                document.getElementById('wf-ds-export-format').disabled = false;
+                document.getElementById('wf-ds-export-format').style.cursor = 'pointer';
                 
                 // Highlight step 2 UI
                 document.getElementById('wf-ds-step-2').classList.add('active');
                 document.getElementById('wf-out-ds-step2').innerText = "✅ Step 1 complete. Ready to execute Step 2.";
                 container.style.opacity = '1';
                 triggerDiv.style.cursor = 'pointer';
-                displaySpan.innerText = '-- Click to Select Table --';
-                displaySpan.style.color = 'var(--text-primary)';
-                document.getElementById('wf-ds-table').value = ''; // clear hidden value
+                displaySpan.innerText = '-- Select Tables --';
+                displaySpan.style.color = 'var(--text-secondary)';
             }
             if (btn) btn.disabled = false;
             return true;
@@ -4917,12 +4948,13 @@ window.executeDatasetStep2 = async function(btn) {
     if (btn) btn.disabled = true;
     const ws = document.getElementById('wf-ds-workspace').value;
     const ds = document.getElementById('wf-ds-dataset').value;
-    const tb = document.getElementById('wf-ds-table').value;
+    const selectedTables = window.selectedDsTables || [];
+    const exportFormat = document.getElementById('wf-ds-export-format').value;
     const consoleOut = document.getElementById('wf-out-ds-step2');
     const step2Div = document.getElementById('wf-ds-step-2');
     
-    if(!ws || !ds || !tb) {
-        consoleOut.innerText = '❌ Error: Please ensure Step 1 is complete and a Table is selected.';
+    if(!ws || !ds || selectedTables.length === 0) {
+        consoleOut.innerText = '❌ Error: Please ensure Step 1 is complete and at least one Table is selected.';
         if (btn) btn.disabled = false;
         return false;
     }
@@ -4933,91 +4965,142 @@ window.executeDatasetStep2 = async function(btn) {
     const clientSecret = document.getElementById('set-secret').value.trim();
     const tenantId = document.getElementById('set-tenant').value.trim();
     
-    const query = `EVALUATE '${tb}'`;
+    consoleOut.innerText = `⏳ Starting export of ${selectedTables.length} table(s) as ${exportFormat}...`;
     
-    const requestStr = `[POST] /api/export_dataset/${ws}/${ds}\nHeaders: { "Content-Type": "application/json" }\nBody:\n{\n  "pbi_client_id": "${clientId ? '***' : ''}",\n  "pbi_tenant_id": "${tenantId ? '***' : ''}",\n  "query": "${query}"\n}\n\n⏳ Request sent, querying data from Power BI (this may take up to 60s)...`;
+    let zip = null;
+    let wb = null;
+    if (exportFormat === 'CSV') {
+        zip = new JSZip();
+    } else {
+        wb = XLSX.utils.book_new();
+    }
+    
+    let successCount = 0;
+    
+    for (let i = 0; i < selectedTables.length; i++) {
+        const tb = selectedTables[i];
+        consoleOut.innerText += `
 
-    consoleOut.innerText = requestStr;
-    
-    try {
+[${i+1}/${selectedTables.length}] ⏳ Fetching table: '${tb}'...`;
+        
+        const query = `EVALUATE '${tb}'`;
         const payload = { pbi_client_id: clientId, pbi_client_secret: clientSecret, pbi_tenant_id: tenantId, query: query };
-        const res = await fetch(`/api/export_dataset/${ws}/${ds}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(payload)
-        });
         
-        const data = await res.json();
-        
-        if(data.success) {
-            const rows = data.results;
-            let successLog = `\n✅ Success! Status: 200 OK\nRetrieved ${rows.length} rows from table '${tb}'.`;
-            
-            if(!rows || rows.length === 0) {
-                consoleOut.innerText = requestStr.replace('⏳ Request sent, querying data from Power BI (this may take up to 60s)...', '') + 
-                    successLog + '\n⚠️ Dataset table is empty. No CSV generated.';
-                if (btn) btn.disabled = false;
-                return true;
-            }
-            
-            successLog += '\n\n⏳ Formatting CSV and generating download blob...';
-            consoleOut.innerText = requestStr.replace('⏳ Request sent, querying data from Power BI (this may take up to 60s)...', '') + successLog;
-            
-            const cleanKey = (k) => {
-                const match = k.match(/\[(.*?)\]/);
-                return match ? match[1] : k;
-            };
-            const rawKeys = Object.keys(rows[0]);
-            let csv = rawKeys.map(k => `"${cleanKey(k).replace(/"/g, '""')}"`).join(",") + "\n";
-            rows.forEach(r => {
-                csv += rawKeys.map(k => {
-                    let val = r[k];
-                    if (val === null || val === undefined) val = '';
-                    return `"${String(val).replace(/"/g, '""')}"`;
-                }).join(",") + "\n";
+        try {
+            const res = await fetch(`/api/export_dataset/${ws}/${ds}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
             });
             
-            const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Export_${tb.replace(/[^a-zA-Z0-9_-]/g, '_')}.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
+            const data = await res.json();
             
-            consoleOut.innerText += `\n✅ Download initiated: ${a.download}`;
-            if (btn) btn.disabled = false;
-            return true;
-            
-        } else {
-            consoleOut.innerText = requestStr.replace('⏳ Request sent, querying data from Power BI (this may take up to 60s)...', '') + 
-                `\n❌ Query Failed:\n` + data.message;
+            if(data.success) {
+                const rows = data.results;
+                consoleOut.innerText += `
+✓ Status: 200 OK. Retrieved ${rows.length} rows.`;
+                
+                if(!rows || rows.length === 0) {
+                    consoleOut.innerText += '
+⚠️ Table is empty. Skipping...';
+                    continue;
+                }
+                
+                const cleanKey = (k) => {
+                    const match = k.match(/\[(.*?)\]/);
+                    return match ? match[1] : k;
+                };
+                
+                if (exportFormat === 'CSV') {
+                    const rawKeys = Object.keys(rows[0]);
+                    let csv = rawKeys.map(k => `"${cleanKey(k).replace(/"/g, '""')}"`).join(",") + "
+";
+                    rows.forEach(r => {
+                        csv += rawKeys.map(k => {
+                            let val = r[k];
+                            if (val === null || val === undefined) val = '';
+                            return `"${String(val).replace(/"/g, '""')}"`;
+                        }).join(",") + "
+";
+                    });
+                    const csvData = new Uint8Array([0xEF, 0xBB, 0xBF, ...new TextEncoder().encode(csv)]);
+                    zip.file(`${tb.replace(/[^a-zA-Z0-9_-]/g, '_')}.csv`, csvData);
+                    successCount++;
+                } else {
+                    const cleanRows = rows.map(r => {
+                        let newObj = {};
+                        Object.keys(r).forEach(k => {
+                            newObj[cleanKey(k)] = r[k];
+                        });
+                        return newObj;
+                    });
+                    const wsSheet = XLSX.utils.json_to_sheet(cleanRows);
+                    let safeName = tb.replace(/[\\/\?\*\[\]\:]/g, '_').substring(0, 31);
+                    if (wb.SheetNames.includes(safeName)) {
+                        safeName = safeName.substring(0, 27) + '_' + i;
+                    }
+                    XLSX.utils.book_append_sheet(wb, wsSheet, safeName);
+                    successCount++;
+                }
+                
+            } else {
+                consoleOut.innerText += `
+❌ Query Failed: ${data.message}`;
+            }
+        } catch(err) {
+            consoleOut.innerText += `
+❌ Network Error: ${err.message}`;
         }
-    } catch(err) {
-        consoleOut.innerText = requestStr.replace('⏳ Request sent, querying data from Power BI (this may take up to 60s)...', '') + 
-            `\n❌ Network Error:\n` + err.message;
     }
+    
+    if (successCount > 0) {
+        consoleOut.innerText += `
+
+⏳ Generating final ${exportFormat} file...`;
+        if (exportFormat === 'CSV') {
+            zip.generateAsync({type:"blob"}).then(function(content) {
+                const url = URL.createObjectURL(content);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Export_Tables_${ds}.zip`;
+                a.click();
+                URL.revokeObjectURL(url);
+                consoleOut.innerText += `
+✓ Download initiated: ${a.download}`;
+                if (btn) btn.disabled = false;
+            });
+            return true; // async generation
+        } else {
+            XLSX.writeFile(wb, `Export_Tables_${ds}.xlsx`);
+            consoleOut.innerText += `
+✓ Download initiated: Export_Tables_${ds}.xlsx`;
+        }
+    } else {
+        consoleOut.innerText += '
+
+⚠️ No data was exported.';
+    }
+    
     if (btn) btn.disabled = false;
-    return false;
+    return (successCount > 0);
 };
 
 window.executeExportDataset = async function() {
     const step1Btn = document.getElementById('wf-ds-btn-step1');
     const step2Btn = document.getElementById('wf-ds-btn-step2');
-    const select = document.getElementById('wf-ds-table');
     
-    if (!select.value) {
+    if (!window.selectedDsTables || window.selectedDsTables.length === 0) {
         const step1Ok = await window.loadDatasetTablesStep1(step1Btn);
         if (!step1Ok) return;
         
-        const optionsUl = document.getElementById('wf-ds-table-options');
-        const firstLi = optionsUl.querySelector('li[style*="cursor: pointer"]');
-        if (firstLi) {
-            firstLi.click();
+        // Auto-select all tables
+        const selectAllCb = document.getElementById('wf-ds-table-select-all');
+        if (selectAllCb) {
+            selectAllCb.click();
         }
     }
     
-    if (select.value) {
+    if (window.selectedDsTables && window.selectedDsTables.length > 0) {
         await window.executeDatasetStep2(step2Btn);
     }
 };
@@ -5055,6 +5138,31 @@ window.toggleDsTableDropdown = function(e) {
         options.style.visibility = 'visible';
         options.style.transform = 'translateY(0)';
         if (svg) svg.style.transform = 'rotate(180deg)';
+    }
+};
+
+
+window.updateDsTableDisplay = function() {
+    const checkboxes = document.querySelectorAll('.wf-ds-table-cb:checked');
+    const displaySpan = document.getElementById('wf-ds-table-display');
+    const selectAllCb = document.getElementById('wf-ds-table-select-all');
+    const allCheckboxes = document.querySelectorAll('.wf-ds-table-cb');
+    
+    if (selectAllCb) {
+        selectAllCb.checked = checkboxes.length === allCheckboxes.length && allCheckboxes.length > 0;
+    }
+    
+    window.selectedDsTables = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (window.selectedDsTables.length === 0) {
+        displaySpan.innerText = '-- Select Tables --';
+        displaySpan.style.color = 'var(--text-secondary)';
+    } else if (window.selectedDsTables.length === 1) {
+        displaySpan.innerText = window.selectedDsTables[0];
+        displaySpan.style.color = 'var(--text-primary)';
+    } else {
+        displaySpan.innerText = `${window.selectedDsTables.length} table(s) selected`;
+        displaySpan.style.color = 'var(--text-primary)';
     }
 };
 
