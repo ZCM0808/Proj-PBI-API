@@ -2707,3 +2707,11 @@ select option {
     margin-bottom: 0px !important;
     overflow: hidden !important;
 }
+
+/* Hide copy button when console is collapsed */
+.collapsed-console + .wf-copy-btn,
+.collapsed-console ~ .wf-copy-btn {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
