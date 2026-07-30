@@ -5139,13 +5139,18 @@ window.runRvcWorkflow = async function() {
     };
 
     window.showViewDetails = function(dateIso) {
+        // Reset sorting state for this table
+        if (window.tableSortStates) {
+            window.tableSortStates['drilldown'] = [];
+        }
+        
         const events = window._rvcDateStats[dateIso] || [];
         const tbody = document.getElementById('view-details-tbody');
         let html = '';
         if (events.length === 0) {
             html = '<tr><td colspan="4" style="text-align: center; padding: 10px;">No details found</td></tr>';
         } else {
-            // Sort events by CreationTime descending
+            // Sort events by CreationTime descending by default
             events.sort((a, b) => new Date(b.CreationTime) - new Date(a.CreationTime));
             for(const e of events) {
                 const time = (e.CreationTime || '').replace('T', ' ').replace('Z', '');
@@ -5162,6 +5167,20 @@ window.runRvcWorkflow = async function() {
                 `;
             }
         }
+        
+        // Reset sort visual cues on headers
+        const table = document.querySelector('table[data-table-id="drilldown"]');
+        if (table) {
+            const headers = table.querySelectorAll('th');
+            headers.forEach(th => {
+                if(th.getAttribute('data-original-text')) {
+                    th.textContent = th.getAttribute('data-original-text');
+                } else {
+                    th.setAttribute('data-original-text', th.textContent);
+                }
+            });
+        }
+        
         tbody.innerHTML = html;
         document.getElementById('view-details-title').textContent = `View Details - ${dateIso} (${events.length})`;
         
@@ -5179,6 +5198,24 @@ window.runRvcWorkflow = async function() {
         void modal.offsetWidth;
         modal.style.visibility = 'visible';
         modal.style.opacity = '1';
+    };
+
+    window.copyViewDetails = function(btn) {
+        const tbody = document.getElementById('view-details-tbody');
+        if(!tbody) return;
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        
+        // Format as TSV
+        const lines = ["Time (UTC)\tUser ID\tReport Name\tClient IP"];
+        rows.forEach(tr => {
+            const cells = Array.from(tr.querySelectorAll('td')).map(td => td.innerText.trim());
+            if (cells.length > 1) {
+                lines.push(cells.join('\t'));
+            }
+        });
+        const text = lines.join('\n');
+        
+        window.handleCopyAction(btn, text);
     };
 
     const btn = document.getElementById('btn-run-rvc');
