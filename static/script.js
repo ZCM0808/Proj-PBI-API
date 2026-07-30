@@ -5237,14 +5237,16 @@ window.runRvcWorkflow = async function() {
         const copyBtn = document.getElementById('wf-rvc-logs-copybtn');
         if(logsDiv.style.maxHeight === '0px') {
             logsDiv.style.maxHeight = '250px';
-            logsDiv.style.paddingBottom = '20px';
-            logsDiv.style.margin = '0px';
+            logsDiv.style.padding = '12px 32px 20px 12px'; // Restoring padding (20px bottom as defined in inline style)
+            logsDiv.style.borderWidth = '1px';
+            logsDiv.style.opacity = '1';
             chevron.style.transform = 'rotate(90deg)';
             copyBtn.style.display = 'block';
         } else {
             logsDiv.style.maxHeight = '0px';
-            logsDiv.style.paddingBottom = '0px';
-            logsDiv.style.margin = '0px';
+            logsDiv.style.padding = '0px';
+            logsDiv.style.borderWidth = '0px';
+            logsDiv.style.opacity = '0';
             chevron.style.transform = 'rotate(0deg)';
             copyBtn.style.display = 'none';
         }
