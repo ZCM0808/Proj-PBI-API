@@ -144,4 +144,12 @@ python src/main.py
   - **品牌资产防御**：通过精准的脚本拦截机制，完美避开了对官方 Power BI 徽标 SVG 颜色（`#F2C811`）的误伤。
   - **视觉回归防御**：所有改动及长尾组件（如下拉菜单悬浮色、动态删除按钮反馈等）全部通过 Playwright 的端到端与像素级视觉快照测试断言，确保结构 0 崩塌，UI 100% 还原。
 
-> **最后更新状态**：全面清剿了前端项目中所有的硬编码色彩并构建了高扩展性的 CSS 变量主题引擎，通过了严格的 16 项 Playwright 自动化视觉回归断言，实现了深浅双色主题的完美切换。
+- **深度审计与 SSRF 分页防御 (Deep Drill-down & SSRF Pagination Defense)**：
+  - **SSRF 代理防御绕过 (SSRF Defense)**：修复了由于 `activityevents` 接口返回的 `continuationUri` 是完整 URL（携带域名），被底层安全代理判定为 SSRF 攻击而静默阻断的严重 Bug。前端现已重构，通过 URL Parser 剥离域名，仅保留 relative path 继续进行游标分页轮询，找回了由于中断丢失的数以百计的日志记录。
+  - **极致深钻交互 (Drill-down Table Interaction)**：
+    - 将汇总报表的静态数字升级为交互式连接，点击即可弹出“全局拖拽级别”的底层明细审查弹窗 (Draggable Drilldown Modal)。
+    - **Shift 多列联合排序 (Multi-Column Sort)**：完全打通了底层的 `window.sortTable` 函数，允许用户按住 Shift 键进行极高自由度的多维度聚合排序。
+    - **高级 PBI 字段解码**：动态注入东八区时间 (UTC+8) 换算，并提取出关键的底层事件字段（如 `ConsumptionMethod` / Access Route 访问途径 和 `IsSuccess` 渲染状态），大大增强了排障与审计能力。
+  - **空间释放与动态折叠 (Collapsible UI)**：引入了纯 CSS 原生的日志面板折叠机制，通过精确清零 `padding` 和 `border-width` 解决了折叠后的残留“空心框”问题，最大限度把屏幕高度还给数据表。
+
+> **最后更新状态**：完成了 SSRF 代理分页安全策略适配找回完整 PBI 审计数据，并成功上线高交互性的 Drill-down 数据透视表弹窗与多维度联合排序功能。同时完美闭环了所有 CSS 动画与空间折叠防御逻辑。
