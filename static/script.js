@@ -4787,6 +4787,10 @@ document.addEventListener('mousedown', (e) => {
                     await window.executeExportDataset();
                 } else if (wfType === 'export_visual') {
                     await executeExportVisual();
+                } else if (wfType === 'report_view_count') {
+                    if (window.runRvcWorkflow) await window.runRvcWorkflow();
+                } else if (wfType === 'check_permissions') {
+                    if (window.runCheckPermsWorkflow) await window.runCheckPermsWorkflow();
                 } else if (wfType === 'smart_pipeline') {
                     // Smart Pipeline trigger
                 }
