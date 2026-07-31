@@ -2709,6 +2709,7 @@ select option {
 }
 
 /* Hide copy button when console is collapsed */
+div:has(> .collapsed-console) > .wf-copy-btn,
 .collapsed-console + .wf-copy-btn,
 .collapsed-console ~ .wf-copy-btn {
     display: none !important;
