@@ -2631,7 +2631,7 @@ const loadReqHistory = (searchTerm = "") => {
                 const timeStr = new Date().toLocaleTimeString('en-US', {hour12: false});
                 line.innerHTML = `<span style="color: var(--text-secondary)">[${timeStr}]</span> <span class="${cls}">${data.message}</span>`;
                 terminal.appendChild(line);
-                terminal.scrollTop = terminal.scrollHeight; // Auto-scroll
+                terminal.scrollTop = Math.max(0, terminal.scrollHeight - terminal.clientHeight * 0.66); // Auto-scroll
                 
                 if (data.status === 'error' || data.status === 'success') {
                     evtSource.close();
@@ -4133,7 +4133,7 @@ document.addEventListener('mousedown', (e) => {
         userDiv.style.transform = 'translateY(0)';
 
         input.value = '';
-        msgs.scrollTop = msgs.scrollHeight;
+        msgs.scrollTop = Math.max(0, msgs.scrollHeight - msgs.clientHeight * 0.66);
 
         await window.handleAiStream('/api/chat', { message: text, session_id: window.aiSessionId });
     };
@@ -4148,7 +4148,7 @@ document.addEventListener('mousedown', (e) => {
         void loadingDiv.offsetWidth;
         loadingDiv.style.opacity = '1';
         loadingDiv.style.transform = 'translateY(0)';
-        msgs.scrollTop = msgs.scrollHeight;
+        msgs.scrollTop = Math.max(0, msgs.scrollHeight - msgs.clientHeight * 0.66);
 
         try {
             const res = await fetch(url, {
@@ -4224,7 +4224,7 @@ document.addEventListener('mousedown', (e) => {
                                 void toolCard.offsetWidth;
                                 toolCard.style.opacity = '1';
                                 toolCard.style.transform = 'scale(1)';
-                                msgs.scrollTop = msgs.scrollHeight;
+                                msgs.scrollTop = Math.max(0, msgs.scrollHeight - msgs.clientHeight * 0.66);
 
                                 const btnApprove = toolCard.querySelector('.approve-btn');
                                 const btnReject = toolCard.querySelector('.reject-btn');
@@ -4257,7 +4257,7 @@ document.addEventListener('mousedown', (e) => {
                                 } else {
                                     loadingDiv.textContent = fullText;
                                 }
-                                msgs.scrollTop = msgs.scrollHeight;
+                                msgs.scrollTop = Math.max(0, msgs.scrollHeight - msgs.clientHeight * 0.66);
                             }
                         } else {
                             loadingDiv.textContent = "抱歉，发生错误：" + (data.message || "未知错误");
@@ -4272,7 +4272,7 @@ document.addEventListener('mousedown', (e) => {
             loadingDiv.textContent = "网络请求失败，无法连接到 AI。";
             loadingDiv.style.color = "var(--error)";
         }
-        msgs.scrollTop = msgs.scrollHeight;
+        msgs.scrollTop = Math.max(0, msgs.scrollHeight - msgs.clientHeight * 0.66);
     };
 
     // --- Workflow Modal Logic ---
@@ -4354,8 +4354,8 @@ document.addEventListener('mousedown', (e) => {
         const logToConsole = (step, msg) => {
             const out = document.getElementById(`wf-out-step${step}`);
             out.textContent += `\n[${new Date().toLocaleTimeString()}] ${msg}`;
-                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
-            setTimeout(() => { out.scrollTop = out.scrollHeight; }, 50);
+                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+            setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 50);
         };
         const resetConsole = (step, initialMsg) => {
             const out = document.getElementById(`wf-out-step${step}`);
@@ -4581,13 +4581,13 @@ document.addEventListener('mousedown', (e) => {
                 const data = await res.json();
                 if (!data.success) {
                     out.textContent += `Error getting embed info: ${data.error}\n`;
-                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
+                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                     pageSelect.innerHTML = '<option value="">Error</option>';
                     return;
                 }
                 
                 out.textContent += `Token received. Initializing Power BI Embedded iframe...\n`;
-                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
+                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                 embedContainer.style.display = 'block';
                 
                 // 2. Embed the report
@@ -4611,7 +4611,7 @@ document.addEventListener('mousedown', (e) => {
                 currentEmbeddedReport.off("loaded");
                 currentEmbeddedReport.on("loaded", async function () {
                     out.textContent += `Report rendered in UI! Fetching Pages via JS SDK...\n`;
-                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
+                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                     const pages = await currentEmbeddedReport.getPages();
                     pageSelect.innerHTML = '<option value="">-- Select a Page --</option>';
                     pageSelect.innerHTML += '<option value="ALL">🌟 ALL PAGES (全部页面) 🌟</option>';
@@ -4626,12 +4626,12 @@ document.addEventListener('mousedown', (e) => {
                 currentEmbeddedReport.off("error");
                 currentEmbeddedReport.on("error", function (event) {
                     out.textContent += `Embed Error: ${event.detail.message}\n`;
-                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
+                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                 });
 
             } catch (err) {
                 out.textContent += `Exception: ${err.message}\n`;
-                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
+                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                 pageSelect.innerHTML = '<option value="">Error loading pages</option>';
             }
         };
@@ -4690,7 +4690,7 @@ document.addEventListener('mousedown', (e) => {
             
             if (!pId || !visId || !currentEmbeddedReport) {
                 out.textContent += `Error: Please select page and visual.\n`;
-                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
+                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                 return;
             }
             
@@ -4706,7 +4706,7 @@ document.addEventListener('mousedown', (e) => {
                 
                 for (let page of targetPages) {
                     out.textContent += `\n> Navigating to Page: [${page.displayName}]...\n`;
-                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
+                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                     await page.setActive();
                     await new Promise(r => setTimeout(r, 1500)); // wait for visuals to load
                     
@@ -4716,7 +4716,7 @@ document.addEventListener('mousedown', (e) => {
                     for (let visual of targetVisuals) {
                         const vName = visual.title || visual.type || visual.name;
                         out.textContent += `  - Visual [${vName}]: Extracting...`;
-                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
+                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                         try {
                             const result = await visual.exportData(exportType, rows);
                             
@@ -4740,28 +4740,28 @@ document.addEventListener('mousedown', (e) => {
                             XLSX.utils.book_append_sheet(wb, ws, sheetName);
                             fileCount++;
                             out.textContent += ` OK (Appended to Sheet: ${sheetName})\n`;
-                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
+                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                         } catch (e) {
                             out.textContent += ` SKIPPED (No data or unsupported)\n`;
-                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
+                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                         }
                     }
                 }
                 
                 if (fileCount > 0) {
                     out.textContent += `\nData successfully extracted (${fileCount} sheets)! Generating Excel file...\n`;
-                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
+                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                     XLSX.writeFile(wb, `PowerBI_Export_${expTypeStr}.xlsx`);
                     out.textContent += `\nExcel file downloaded: PowerBI_Export_${expTypeStr}.xlsx 🎉\n`;
-                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
+                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                 } else {
                     out.textContent += `\nWARNING: No exportable data found in the selected targets.\n`;
-                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
+                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                 }
                 
             } catch (err) {
                 out.textContent += `Exception during export: ${err.message || JSON.stringify(err)}\n`;
-                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
+                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
             }
         };
 
@@ -4875,7 +4875,7 @@ window.loadDatasetTablesStep1 = async function(btn) {
     
     if(!ws || !ds) {
         consoleOut.innerText = '❌ Error: Please select Workspace and Dataset first.';
-        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
+        setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
         if (btn) btn.disabled = false;
         return false;
     }
@@ -4891,7 +4891,7 @@ window.loadDatasetTablesStep1 = async function(btn) {
     const requestStr = `[POST] /api/export_dataset/${ws}/${ds}\nHeaders: { "Content-Type": "application/json" }\nBody:\n{\n  "pbi_client_id": "${clientId ? '***' : ''}",\n  "pbi_tenant_id": "${tenantId ? '***' : ''}",\n  "query": "${query}"\n}\n\n⏳ Request sent, waiting for response...`;
 
     consoleOut.innerText = requestStr;
-    setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
+    setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
     
     try {
         const payload = { pbi_client_id: clientId, pbi_client_secret: clientSecret, pbi_tenant_id: tenantId, query: query };
@@ -4914,7 +4914,7 @@ window.loadDatasetTablesStep1 = async function(btn) {
             
             consoleOut.innerText = requestStr.replace('⏳ Request sent, waiting for response...', '') + 
                 `\n✅ Success! Status: 200 OK\nRetrieved ${tables.length} valid tables.\n\nResponse Preview:\n` + JSON.stringify(tables, null, 2);
-            setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
+            setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
             
             const optionsUl = document.getElementById('wf-ds-table-options');
             const displaySpan = document.getElementById('wf-ds-table-display');
@@ -4983,12 +4983,12 @@ window.loadDatasetTablesStep1 = async function(btn) {
         } else {
             consoleOut.innerText = requestStr.replace('⏳ Request sent, waiting for response...', '') + 
                 `\n❌ Failed:\n` + data.message;
-            setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
+            setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
         }
     } catch(err) {
         consoleOut.innerText = requestStr.replace('⏳ Request sent, waiting for response...', '') + 
             `\n❌ Network Error:\n` + err.message;
-            setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
+            setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
     }
     if (btn) btn.disabled = false;
     return false;
@@ -5006,7 +5006,7 @@ window.executeDatasetStep2 = async function(btn) {
     
     if(!ws || !ds || selectedTables.length === 0) {
         consoleOut.innerText = '❌ Error: Please ensure Step 1 is complete and at least one Table is selected.';
-        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
+        setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
         if (btn) btn.disabled = false;
         return false;
     }
@@ -5018,7 +5018,7 @@ window.executeDatasetStep2 = async function(btn) {
     const tenantId = document.getElementById('set-tenant').value.trim();
     
     consoleOut.innerText = `⏳ Starting export of ${selectedTables.length} table(s) as ${exportFormat}...`;
-    setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
+    setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
     
     let zip = null;
     let wb = null;
@@ -5033,7 +5033,7 @@ window.executeDatasetStep2 = async function(btn) {
     for (let i = 0; i < selectedTables.length; i++) {
         const tb = selectedTables[i];
         consoleOut.innerText += `\n\n[${i+1}/${selectedTables.length}] ⏳ Fetching table: '${tb}'...`;
-        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
+        setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
         
         const query = `EVALUATE '${tb}'`;
         const payload = { pbi_client_id: clientId, pbi_client_secret: clientSecret, pbi_tenant_id: tenantId, query: query };
@@ -5050,11 +5050,11 @@ window.executeDatasetStep2 = async function(btn) {
             if(data.success) {
                 const rows = data.results;
                 consoleOut.innerText += `\n✓ Status: 200 OK. Retrieved ${rows.length} rows.`;
-        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
+        setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
                 
                 if(!rows || rows.length === 0) {
                     consoleOut.innerText += `\n⚠️ Table is empty. Skipping...`;
-        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
+        setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
                     continue;
                 }
                 
@@ -5095,17 +5095,17 @@ window.executeDatasetStep2 = async function(btn) {
                 
             } else {
                 consoleOut.innerText += `\n❌ Query Failed: ${data.message}`;
-        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
+        setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
             }
         } catch(err) {
             consoleOut.innerText += `\n❌ Network Error: ${err.message}`;
-        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
+        setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
         }
     }
     
     if (successCount > 0) {
         consoleOut.innerText += `\n\n⏳ Generating final ${exportFormat} file...`;
-        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
+        setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
         if (exportFormat === 'CSV') {
             zip.generateAsync({type:"blob"}).then(function(content) {
                 const url = URL.createObjectURL(content);
@@ -5115,18 +5115,18 @@ window.executeDatasetStep2 = async function(btn) {
                 a.click();
                 URL.revokeObjectURL(url);
                 consoleOut.innerText += `\n✓ Download initiated: ${a.download}`;
-        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
+        setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
                 if (btn) btn.disabled = false;
             });
             return true; // async generation
         } else {
             XLSX.writeFile(wb, `Export_Tables_${ds}.xlsx`);
             consoleOut.innerText += `\n✓ Download initiated: Export_Tables_${ds}.xlsx`;
-        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
+        setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
         }
     } else {
         consoleOut.innerText += `\n\n⚠️ No data was exported.`;
-        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
+        setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
     }
     
     if (btn) btn.disabled = false;
@@ -5266,7 +5266,7 @@ window.runRvcWorkflow = async function() {
         const div = document.createElement('div');
         div.textContent = msg;
         logsDiv.appendChild(div);
-        setTimeout(() => { logsDiv.scrollTop = logsDiv.scrollHeight; }, 10);
+        setTimeout(() => { logsDiv.scrollTop = Math.max(0, logsDiv.scrollHeight - logsDiv.clientHeight * 0.66); }, 10);
     };
 
     appendLog(`[INIT] Fetching Activity Events from ${startStr} to ${endStr}...`);
@@ -5501,7 +5501,7 @@ window.toggleRvcLogs = function() {
                 // Dynamically update the table as data flows in!
                 if (foundToday > 0 || window._rvcDateStats[dateIso] !== undefined) {
                     renderTableRows();
-                    setTimeout(() => { tableDiv.scrollTop = tableDiv.scrollHeight; }, 20);
+                    
                 }
             }
             currentDate.setDate(currentDate.getDate() + 1);
@@ -5555,7 +5555,7 @@ window.runCheckPermsWorkflow = async function() {
         const div = document.createElement('div');
         div.textContent = msg;
         logsDiv.appendChild(div);
-        setTimeout(() => { logsDiv.scrollTop = logsDiv.scrollHeight; }, 10);
+        setTimeout(() => { logsDiv.scrollTop = Math.max(0, logsDiv.scrollHeight - logsDiv.clientHeight * 0.66); }, 10);
     };
 
     statusDiv.textContent = `Fetching /availableFeatures...`;
@@ -5633,7 +5633,7 @@ window.runCheckPermsWorkflow = async function() {
             statusDiv.textContent = `Loaded JSON format (No features array found).`;
             statusDiv.style.color = 'var(--warning)';
         }
-        setTimeout(() => { tableDiv.scrollTop = tableDiv.scrollHeight; }, 50);
+        
     } catch (e) {
         appendLog(`[EXCEPTION] ${e.message}`);
         statusDiv.textContent = `Exception: ${e.message}`;
