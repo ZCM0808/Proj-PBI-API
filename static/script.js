@@ -2503,16 +2503,17 @@ const loadReqHistory = (searchTerm = "") => {
             modalContent.style.transform = 'none';
             modalContent.style.animation = 'none';
         } else {
+            // Un-dragged state: Freeze top-left origin firmly at 60px from viewport top
             if (parent) {
-                parent.style.alignItems = '';
-                parent.style.justifyContent = '';
+                parent.style.alignItems = 'flex-start';
+                parent.style.justifyContent = 'center';
             }
-            modalContent.style.position = '';
-            modalContent.style.top = '';
-            modalContent.style.left = '';
-            modalContent.style.margin = '';
-            modalContent.style.transform = '';
-            modalContent.style.animation = '';
+            modalContent.style.position = 'relative';
+            modalContent.style.top = '0px';
+            modalContent.style.left = '0px';
+            modalContent.style.margin = '0 auto';
+            modalContent.style.transform = 'none';
+            modalContent.style.animation = 'none';
         }
     };
 
