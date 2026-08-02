@@ -3968,8 +3968,51 @@ document.addEventListener('mousedown', (e) => {
         });
     };
 
-    
-    // Initialize custom dialog draggable ONCE
+    window.showCustomDialog = function(title = "Dialog", contentHtml = "") {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('custom-dialog-modal');
+            const titleEl = document.getElementById('custom-dialog-title');
+            const msgEl = document.getElementById('custom-dialog-message');
+            const buttonsEl = document.getElementById('custom-dialog-buttons');
+            const content = modal.querySelector('.modal-content');
+            
+            titleEl.innerHTML = title;
+            if (typeof contentHtml === 'string' && contentHtml.trim().startsWith('<')) {
+                msgEl.innerHTML = contentHtml;
+            } else {
+                msgEl.textContent = contentHtml;
+            }
+            
+            // Reset position to center
+            window.centerModal(content);
+            content.style.top = '0px';
+            
+            buttonsEl.innerHTML = `
+                <button class="btn-action-secondary" id="custom-dialog-ok-btn" style="padding: 0.5rem 1.25rem;">
+                    Close
+                </button>
+            `;
+            
+            const close = () => {
+                modal.style.opacity = '0';
+                content.style.transform = 'scale(0.95)';
+                setTimeout(() => { 
+                    modal.style.visibility = 'hidden'; 
+                    modal.style.display = 'none';
+                }, 250);
+                resolve();
+            };
+            
+            document.getElementById('custom-dialog-ok-btn').onclick = close;
+            modal.querySelector('.close-btn').onclick = close;
+            
+            modal.style.display = 'flex';
+            modal.style.visibility = 'visible';
+            modal.style.opacity = '1';
+            content.style.transform = 'scale(1)';
+        });
+    };
+
     const customModal = document.getElementById('custom-dialog-modal');
     if (customModal && window.makeDraggable) {
         const customContent = customModal.querySelector('.modal-content');
@@ -6284,7 +6327,8 @@ window.runLocalModelWorkflow = async function() {
             if (formatted.length > 5000) {
                 formatted = formatted.substring(0, 5000) + "\n... (truncated)";
             }
-            window.showCustomDialog("DAX Query Results", `<pre style="max-height: 400px; overflow: auto; background: var(--bg-color); padding: 10px; border-radius: 4px; font-size: 0.8rem;">\${formatted}</pre>`);
+            window.showCustomDialog("DAX Query Results", `<pre style="max-height: 400px; overflow: auto; background: var(--bg-color); padding: 10px; border-radius: 4px; font-size: 0.8rem;">${formatted}</pre>`);
+
             
         } else {
             out.textContent = "Error: " + (json.error || "Unknown error");
@@ -6294,7 +6338,9 @@ window.runLocalModelWorkflow = async function() {
         out.textContent = "Error: " + e.message;
         out.style.color = 'var(--error-color)';
     } finally {
-        btn.disabled = false;
-        btn.textContent = "Run Query";
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Run Full Workflow';
+        }
     }
 };
