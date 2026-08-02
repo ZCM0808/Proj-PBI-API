@@ -5765,7 +5765,8 @@ window.runGlobalUserManager = async function() {
         
         if (!wsRes.ok) throw new Error(`Failed to fetch workspaces: ${wsRes.statusText}`);
         const wsData = await wsRes.json();
-        const workspaces = wsData.value || [];
+        const wsPayload = wsData.data || wsData;
+        const workspaces = wsPayload.value || [];
         appendLog(`[OK] Found ${workspaces.length} workspaces. Starting user scan...`);
         
         let processed = 0;
@@ -5782,7 +5783,8 @@ window.runGlobalUserManager = async function() {
                 });
                 if (uRes.ok) {
                     const uData = await uRes.json();
-                    const users = uData.value || [];
+                    const uPayload = uData.data || uData;
+                    const users = uPayload.value || [];
                     for (const u of users) {
                         window.gumData.push({
                             wsId: ws.id,
