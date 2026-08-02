@@ -2493,6 +2493,7 @@ const loadReqHistory = (searchTerm = "") => {
         if (savedLeft !== null && savedTop !== null) {
             modalContent.style.left = savedLeft;
             modalContent.style.top = savedTop;
+            modalContent.style.margin = '0';
         } else {
             modalContent.style.left = '0px';
             modalContent.style.top = '0px';
@@ -2504,7 +2505,6 @@ const loadReqHistory = (searchTerm = "") => {
         let isDragging = false;
         let startX, startY, initialLeft, initialTop;
         
-        modalContent.style.position = 'relative';
         dragHandle.style.cursor = 'grab';
 
         dragHandle.addEventListener('mousedown', (e) => {
@@ -2514,10 +2514,14 @@ const loadReqHistory = (searchTerm = "") => {
             startX = e.clientX;
             startY = e.clientY;
             
+            // Get current absolute position bounding relative to normal flow
             const style = window.getComputedStyle(modalContent);
             initialLeft = parseInt(style.left, 10) || 0;
             initialTop = parseInt(style.top, 10) || 0;
             
+            // Lock position style and remove auto margins during drag
+            modalContent.style.position = 'relative';
+            modalContent.style.margin = '0';
             document.body.style.userSelect = 'none';
         });
 
@@ -2526,23 +2530,8 @@ const loadReqHistory = (searchTerm = "") => {
             let dx = e.clientX - startX;
             let dy = e.clientY - startY;
             
-            // Extreme Boundary Defense: Prevent dragging out of viewport
-            const rect = modalContent.getBoundingClientRect();
-            const winWidth = window.innerWidth;
-            const winHeight = window.innerHeight;
-            
-            // Calculate natural center offsets
-            const maxLeft = (winWidth - rect.width) / 2;
-            const maxTop = (winHeight - rect.height) / 2;
-            
             let newLeft = initialLeft + dx;
             let newTop = initialTop + dy;
-            
-            // Clamp values
-            if (newLeft < -maxLeft) newLeft = -maxLeft;
-            if (newLeft > maxLeft) newLeft = maxLeft;
-            if (newTop < -maxTop) newTop = -maxTop;
-            if (newTop > maxTop) newTop = maxTop;
             
             modalContent.style.left = `${newLeft}px`;
             modalContent.style.top = `${newTop}px`;
