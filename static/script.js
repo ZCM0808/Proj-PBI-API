@@ -2597,7 +2597,6 @@ const loadReqHistory = (searchTerm = "") => {
             // Reset drag position on open
             if (modalContent) {
                 window.centerModal(modalContent);
-                modalContent.style.top = '0px';
             }
             // CSS handles the animation via @keyframes modalPopUp on .modal-content
             modalOverlay.style.display = 'flex';
@@ -3931,7 +3930,6 @@ document.addEventListener('mousedown', (e) => {
             
             // Reset position to center
             window.centerModal(content);
-            content.style.top = '0px';
             
             buttonsEl.innerHTML = `
                 <button class="btn-action-secondary" id="custom-alert-ok-btn" style="padding: 0.5rem 1.25rem;">
@@ -3964,7 +3962,6 @@ document.addEventListener('mousedown', (e) => {
             
             // Reset position to center
             window.centerModal(content);
-            content.style.top = '0px';
             
             buttonsEl.innerHTML = `
                 <button class="btn-action-secondary" id="custom-confirm-cancel-btn" style="padding: 0.5rem 1.25rem;">
@@ -4015,7 +4012,6 @@ document.addEventListener('mousedown', (e) => {
             
             // Reset position to center
             window.centerModal(content);
-            content.style.top = '0px';
             
             buttonsEl.innerHTML = `
                 <button class="btn-action-secondary" id="custom-dialog-ok-btn" style="padding: 0.5rem 1.25rem;">
@@ -5412,7 +5408,6 @@ window.runRvcWorkflow = async function() {
             modalContent.setAttribute('data-drag-init', 'true');
         }
         window.centerModal(modalContent);
-        modalContent.style.top = '0px';
         
         const modal = document.getElementById('view-details-modal');
         modal.style.display = 'flex';
