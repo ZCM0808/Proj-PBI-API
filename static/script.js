@@ -5866,13 +5866,13 @@ window.filterGumTable = function() {
     }
     
     let html = `
-    <table class="data-table" style="width: 100%; border-collapse: collapse; margin-top: 8px;">
+    <table data-table-id="gum_table" class="data-table" style="width: 100%; border-collapse: collapse;">
         <thead style="position: sticky; top: 0; background: var(--panel-bg); z-index: 5;">
             <tr>
-                <th style="padding: 8px; text-align: left; border-bottom: 2px solid var(--overlay-10);">Workspace</th>
-                <th style="padding: 8px; text-align: left; border-bottom: 2px solid var(--overlay-10);">User / Principal</th>
-                <th style="padding: 8px; text-align: left; border-bottom: 2px solid var(--overlay-10);">Type</th>
-                <th style="padding: 8px; text-align: left; border-bottom: 2px solid var(--overlay-10);">Role</th>
+                <th style="padding: 8px; text-align: left; border-bottom: 2px solid var(--overlay-10); cursor: pointer; resize: horizontal; overflow: hidden; min-width: 50px;" onclick="window.sortTable(this, event, 0)" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Workspace</th>
+                <th style="padding: 8px; text-align: left; border-bottom: 2px solid var(--overlay-10); cursor: pointer; resize: horizontal; overflow: hidden; min-width: 50px;" onclick="window.sortTable(this, event, 1)" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">User / Principal</th>
+                <th style="padding: 8px; text-align: left; border-bottom: 2px solid var(--overlay-10); cursor: pointer; resize: horizontal; overflow: hidden; min-width: 50px;" onclick="window.sortTable(this, event, 2)" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Type</th>
+                <th style="padding: 8px; text-align: left; border-bottom: 2px solid var(--overlay-10); cursor: pointer; resize: horizontal; overflow: hidden; min-width: 50px;" onclick="window.sortTable(this, event, 3)" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Role</th>
                 <th style="padding: 8px; text-align: left; border-bottom: 2px solid var(--overlay-10); width: 100px;">Actions</th>
             </tr>
         </thead>
