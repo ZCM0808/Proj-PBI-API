@@ -5757,11 +5757,10 @@ window.runGlobalUserManager = async function() {
 
     try {
         appendLog(`[1] Fetching all workspaces...`);
-        const tokenStr = document.getElementById('token-input')?.value.trim() || '';
-        if (!tokenStr) { appendLog('Error: Token not found'); return; }
-
-        const wsRes = await fetch('https://api.powerbi.com/v1.0/myorg/groups?$top=100', {
-            headers: { 'Authorization': `Bearer ${tokenStr}` }
+        const wsRes = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint: '/groups?$top=100', method: 'GET' })
         });
         
         if (!wsRes.ok) throw new Error(`Failed to fetch workspaces: ${wsRes.statusText}`);
@@ -5776,8 +5775,10 @@ window.runGlobalUserManager = async function() {
             processed++;
             appendLog(`[${processed}/${workspaces.length}] Scanning users for: ${ws.name}`);
             try {
-                const uRes = await fetch(`https://api.powerbi.com/v1.0/myorg/groups/${ws.id}/users`, {
-                    headers: { 'Authorization': `Bearer ${tokenStr}` }
+                const uRes = await fetch('/api/proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint: `/groups/${ws.id}/users`, method: 'GET' })
                 });
                 if (uRes.ok) {
                     const uData = await uRes.json();
@@ -5879,8 +5880,6 @@ window.submitGumEdit = async function() {
     const identifier = document.getElementById('gum-edit-identifier').value;
     const principalType = document.getElementById('gum-edit-principal-type').value;
     const newRole = document.getElementById('gum-edit-role').value;
-    const tokenStr = document.getElementById('token-input')?.value.trim() || '';
-    
     const logsDiv = document.getElementById('wf-out-gum-logs');
     
     document.getElementById('gum-edit-modal').style.display = 'none';
@@ -5899,13 +5898,10 @@ window.submitGumEdit = async function() {
             principalType: principalType
         };
         
-        const res = await fetch(`https://api.powerbi.com/v1.0/myorg/groups/${wsId}/users`, {
-            method: 'PUT',
-            headers: {
-                'Authorization': `Bearer ${tokenStr}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(body)
+        const res = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint: `/groups/${wsId}/users`, method: 'PUT', body: body })
         });
         
         if (res.ok) {
@@ -5930,7 +5926,6 @@ window.submitGumEdit = async function() {
 window.deleteGumUser = async function(wsId, identifier, wsName) {
     if (!confirm(`Are you sure you want to completely REMOVE access for:\n${identifier}\nfrom workspace [${wsName}]?`)) return;
     
-    const tokenStr = document.getElementById('token-input')?.value.trim() || '';
     const logsDiv = document.getElementById('wf-out-gum-logs');
     
     const div = document.createElement('div');
@@ -5940,9 +5935,10 @@ window.deleteGumUser = async function(wsId, identifier, wsName) {
     logsDiv.appendChild(div);
     
     try {
-        const res = await fetch(`https://api.powerbi.com/v1.0/myorg/groups/${wsId}/users/${encodeURIComponent(identifier)}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${tokenStr}` }
+        const res = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint: `/groups/${wsId}/users/${encodeURIComponent(identifier)}`, method: 'DELETE' })
         });
         
         if (res.ok) {
