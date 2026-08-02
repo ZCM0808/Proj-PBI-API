@@ -2488,55 +2488,47 @@ const loadReqHistory = (searchTerm = "") => {
     // --- Modal FLIP & Drag Helper ---
     window.centerModal = function(modalContent) {
         if (!modalContent) return;
-        const savedLeft = modalContent.getAttribute('data-drag-left');
-        const savedTop = modalContent.getAttribute('data-drag-top');
-        if (savedLeft !== null && savedTop !== null) {
-            modalContent.style.left = savedLeft;
-            modalContent.style.top = savedTop;
-            modalContent.style.margin = '0';
+        const tx = modalContent.getAttribute('data-drag-tx');
+        const ty = modalContent.getAttribute('data-drag-ty');
+        if (tx !== null && ty !== null) {
+            modalContent.style.transform = `translate(${tx}px, ${ty}px)`;
         } else {
-            modalContent.style.left = '0px';
-            modalContent.style.top = '0px';
+            modalContent.style.transform = 'none';
         }
     };
 
     window.makeDraggable = makeDraggable;
     function makeDraggable(modalContent, dragHandle) {
         let isDragging = false;
-        let startX, startY, initialLeft, initialTop;
-        
+        let startMouseX, startMouseY;
+        let initialTx = 0, initialTy = 0;
+
         dragHandle.style.cursor = 'grab';
 
         dragHandle.addEventListener('mousedown', (e) => {
             if (window.innerWidth <= 768) return; // Prevent drag on mobile
             isDragging = true;
             dragHandle.style.cursor = 'grabbing';
-            startX = e.clientX;
-            startY = e.clientY;
-            
-            // Get current absolute position bounding relative to normal flow
-            const style = window.getComputedStyle(modalContent);
-            initialLeft = parseInt(style.left, 10) || 0;
-            initialTop = parseInt(style.top, 10) || 0;
-            
-            // Lock position style and remove auto margins during drag
-            modalContent.style.position = 'relative';
-            modalContent.style.margin = '0';
+            startMouseX = e.clientX;
+            startMouseY = e.clientY;
+
+            initialTx = parseFloat(modalContent.getAttribute('data-drag-tx')) || 0;
+            initialTy = parseFloat(modalContent.getAttribute('data-drag-ty')) || 0;
+
             document.body.style.userSelect = 'none';
         });
 
         document.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
-            let dx = e.clientX - startX;
-            let dy = e.clientY - startY;
-            
-            let newLeft = initialLeft + dx;
-            let newTop = initialTop + dy;
-            
-            modalContent.style.left = `${newLeft}px`;
-            modalContent.style.top = `${newTop}px`;
-            modalContent.setAttribute('data-drag-left', `${newLeft}px`);
-            modalContent.setAttribute('data-drag-top', `${newTop}px`);
+            const dx = e.clientX - startMouseX;
+            const dy = e.clientY - startMouseY;
+
+            const curTx = initialTx + dx;
+            const curTy = initialTy + dy;
+
+            modalContent.style.transform = `translate(${curTx}px, ${curTy}px)`;
+            modalContent.setAttribute('data-drag-tx', curTx);
+            modalContent.setAttribute('data-drag-ty', curTy);
         });
 
         document.addEventListener('mouseup', () => {
@@ -4274,7 +4266,6 @@ document.addEventListener('mousedown', (e) => {
             }
             
             window.centerModal(wfContent);
-            wfContent.style.top = '0px';
             workflowModal.style.visibility = 'visible';
             workflowModal.style.opacity = '1';
             workflowModal.style.display = 'flex';
