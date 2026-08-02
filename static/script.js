@@ -6291,12 +6291,14 @@ window.updateLocalDaxTemplate = function() {
 window.runLocalModelWorkflow = async function() {
     const btn = document.getElementById('wf-btn-runall');
     const out = document.getElementById('wf-local-status');
+    const resultWrap = document.getElementById('wf-local-result-wrap');
     const resultDiv = document.getElementById('wf-local-result');
+    const statsSpan = document.getElementById('wf-local-result-stats');
     const editor = document.getElementById('local-dax-editor');
     const instSel = document.getElementById('local-model-instance');
 
     if (!editor.value.trim()) {
-        window.showNotification("Please enter a DAX query", "error");
+        window.showNotification('Please enter a DAX query', 'error');
         return;
     }
 
@@ -6308,15 +6310,16 @@ window.runLocalModelWorkflow = async function() {
     btn.disabled = true;
     btn.innerHTML = '<span class="loader" style="width:12px;height:12px;border-width:2px;"></span> Running...';
     out.style.display = 'block';
-    out.textContent = "Executing DAX query against local model...";
+    out.textContent = 'Executing DAX query against local model...';
     out.style.color = 'var(--text-secondary)';
-    resultDiv.style.display = 'none';
+    resultWrap.style.display = 'none';
     resultDiv.innerHTML = '';
+    statsSpan.textContent = '';
 
     try {
         const res = await fetch('/api/local-model/dax', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ query: editor.value, port: port })
         });
         const json = await res.json();
@@ -6324,125 +6327,85 @@ window.runLocalModelWorkflow = async function() {
         if (json.success) {
             const data = json.data;
 
-            // Handle empty result
+            // Empty result
             if (!data || (Array.isArray(data) && data.length === 0)) {
-                out.textContent = "✅ Query executed successfully — no rows returned.";
-                out.style.color = 'var(--success-color)';
+                out.textContent = '✅ Query executed — no rows returned.';
+                out.style.color = 'var(--success)';
                 return;
             }
 
-            // Normalise to array of objects
+            // Normalise to array
             const rows = Array.isArray(data) ? data : [data];
 
-            // Collect all column names (preserve insertion order, deduplicate)
-            const colSet = new Set();
-            rows.forEach(r => { if (r && typeof r === 'object') Object.keys(r).forEach(k => colSet.add(k)); });
-            const columns = Array.from(colSet);
+            // Collect columns and clean bracket-prefixed names from DAX INFO.* functions
+            // e.g. "[Table Name]" → "Table Name", "[Expression]" → "Expression"
+            const colSetRaw = new Set();
+            rows.forEach(r => { if (r && typeof r === 'object') Object.keys(r).forEach(k => colSetRaw.add(k)); });
+            const rawCols = Array.from(colSetRaw);
+
+            // Filter out known redundant/internal columns (GUID-like, ID-only columns if others exist)
+            const SKIP_PATTERNS = [
+                /^\[?TableID\]?$/i,
+                /^\[?PartitionID\]?$/i,
+                /^\[?AttributeHierarchyID\]?$/i,
+                /^\[?DependsOnID\]?$/i,
+                /^\[?ObjectID\]?$/i,
+                /^\[?CalculationGroupID\]?$/i,
+            ];
+            const filteredCols = rawCols.filter(c => !SKIP_PATTERNS.some(p => p.test(c)));
+            const columns = filteredCols.length > 0 ? filteredCols : rawCols;
+
+            // Clean display names: strip surrounding brackets "[Table Name]" → "Table Name"
+            const displayNames = columns.map(c => c.replace(/^\[|\]$/g, ''));
 
             if (columns.length === 0) {
-                out.textContent = "✅ Query executed — result is not tabular.";
-                out.style.color = 'var(--success-color)';
+                out.textContent = '✅ Query executed — result is not tabular.';
+                out.style.color = 'var(--success)';
                 return;
             }
 
-            // --- Build table ---
+            // --- Build standard project table ---
             const tableId = 'local-dax-result-table';
             if (!window.tableSortStates) window.tableSortStates = {};
             window.tableSortStates[tableId] = [];
 
-            // Header bar: stats + copy button
-            const header = document.createElement('div');
-            header.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;";
-
-            const stats = document.createElement('span');
-            stats.textContent = `${rows.length} rows × ${columns.length} columns`;
-            stats.style.cssText = "font-size:0.78rem;color:var(--text-secondary);background:var(--overlay-5);padding:3px 8px;border-radius:4px;border:1px solid var(--panel-border);";
-
-            const copyBtn = document.createElement('button');
-            copyBtn.className = 'btn-action-secondary';
-            copyBtn.style.cssText = "padding:3px 10px;font-size:0.75rem;display:flex;align-items:center;gap:4px;";
-            copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy CSV`;
-            copyBtn.title = "Copy table as CSV to clipboard";
-            copyBtn.onclick = () => {
-                const table = document.getElementById(tableId);
-                if (!table) return;
-                const csvRows = [];
-                // Header
-                csvRows.push(columns.map(c => `"${String(c).replace(/"/g,'""')}"`).join(','));
-                // Body
-                rows.forEach(r => {
-                    csvRows.push(columns.map(c => {
-                        let v = r ? r[c] : '';
-                        if (v === null || v === undefined) v = '';
-                        if (typeof v === 'object') v = JSON.stringify(v);
-                        return `"${String(v).replace(/"/g,'""')}"`;
-                    }).join(','));
-                });
-                navigator.clipboard.writeText(csvRows.join('\n')).then(() => {
-                    const orig = copyBtn.innerHTML;
-                    copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--success-color)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
-                    copyBtn.style.color = 'var(--success-color)';
-                    setTimeout(() => { copyBtn.innerHTML = orig; copyBtn.style.color = ''; }, 2000);
-                });
-            };
-
-            header.appendChild(stats);
-            header.appendChild(copyBtn);
-            resultDiv.appendChild(header);
-
-            // Table
-            const table = document.createElement('table');
-            table.id = tableId;
-            table.setAttribute('data-table-id', tableId);
-            table.className = 'data-table';
-            table.style.cssText = "width:100%;border-collapse:collapse;text-align:left;font-size:0.82rem;";
-
-            const thead = document.createElement('thead');
-            thead.style.cssText = "position:sticky;top:0;background:var(--bg-color);z-index:5;";
-            const trHead = document.createElement('tr');
-            columns.forEach((col, idx) => {
-                const th = document.createElement('th');
-                th.textContent = col;
-                th.style.cssText = "padding:8px 12px;border-bottom:1px solid var(--panel-border);font-weight:600;cursor:pointer;user-select:none;resize:horizontal;overflow:hidden;min-width:50px;white-space:nowrap;";
-                th.title = "Click to sort · Shift+Click for multi-sort · Drag right edge to resize";
-                th.onclick = (e) => window.sortTable(th, e, idx);
-                trHead.appendChild(th);
+            let html = `<table data-table-id="${tableId}" class="data-table" style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+                <thead style="position:sticky;top:0;background:var(--bg-color);z-index:5;">
+                    <tr>`;
+            displayNames.forEach((name, idx) => {
+                html += `<th onclick="window.sortTable(this,event,${idx})"
+                    style="padding:8px 12px;border-bottom:1px solid var(--panel-border);font-weight:600;cursor:pointer;user-select:none;resize:horizontal;overflow:hidden;min-width:60px;white-space:nowrap;"
+                    title="Click to sort · Shift+Click multi-sort · Drag right edge to resize">${name}</th>`;
             });
-            thead.appendChild(trHead);
-            table.appendChild(thead);
+            html += `</tr></thead><tbody>`;
 
-            const tbody = document.createElement('tbody');
             rows.forEach(item => {
-                const tr = document.createElement('tr');
-                tr.style.cssText = "transition:background 0.15s;";
-                tr.onmouseover = () => tr.style.background = "var(--overlay-5)";
-                tr.onmouseout  = () => tr.style.background = "transparent";
+                html += `<tr style="border-bottom:1px solid var(--overlay-10);" onmouseover="this.style.background='var(--overlay-5)'" onmouseout="this.style.background='transparent'">`;
                 columns.forEach(col => {
-                    const td = document.createElement('td');
-                    td.style.cssText = "border:1px solid var(--panel-border);padding:6px 10px;color:var(--text-primary);max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
-                    let val = item ? item[col] : undefined;
+                    let val = item ? item[col] : '';
                     if (val === null || val === undefined) val = '';
                     if (typeof val === 'object') val = JSON.stringify(val);
-                    td.textContent = String(val);
-                    td.title = td.textContent;
-                    tr.appendChild(td);
+                    const escaped = String(val).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                    html += `<td style="padding:6px 12px;color:var(--text-primary);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escaped}">${escaped}</td>`;
                 });
-                tbody.appendChild(tr);
+                html += `</tr>`;
             });
-            table.appendChild(tbody);
-            resultDiv.appendChild(table);
-            resultDiv.style.display = 'block';
+            html += `</tbody></table>`;
 
-            out.textContent = `✅ Query executed successfully — ${rows.length} rows returned.`;
-            out.style.color = 'var(--success-color)';
+            resultDiv.innerHTML = html;
+            statsSpan.textContent = `${rows.length} rows × ${columns.length} cols`;
+            resultWrap.style.display = 'block';
+
+            out.textContent = `✅ ${rows.length} rows returned.`;
+            out.style.color = 'var(--success)';
 
         } else {
-            out.textContent = "Error: " + (json.error || "Unknown error");
-            out.style.color = 'var(--error-color)';
+            out.textContent = 'Error: ' + (json.error || 'Unknown error');
+            out.style.color = 'var(--error)';
         }
     } catch (e) {
-        out.textContent = "Error: " + e.message;
-        out.style.color = 'var(--error-color)';
+        out.textContent = 'Error: ' + e.message;
+        out.style.color = 'var(--error)';
     } finally {
         if (btn) {
             btn.disabled = false;
