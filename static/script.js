@@ -2488,12 +2488,22 @@ const loadReqHistory = (searchTerm = "") => {
     // --- Modal FLIP & Drag Helper ---
     window.centerModal = function(modalContent) {
         if (!modalContent) return;
-        const tx = modalContent.getAttribute('data-drag-tx');
-        const ty = modalContent.getAttribute('data-drag-ty');
-        if (tx !== null && ty !== null) {
-            modalContent.style.transform = `translate(${tx}px, ${ty}px)`;
-        } else {
+        const savedTop = modalContent.getAttribute('data-drag-top');
+        const savedLeft = modalContent.getAttribute('data-drag-left');
+        if (savedTop !== null && savedLeft !== null) {
+            modalContent.style.position = 'fixed';
+            modalContent.style.top = savedTop;
+            modalContent.style.left = savedLeft;
+            modalContent.style.margin = '0';
             modalContent.style.transform = 'none';
+            modalContent.style.animation = 'none';
+        } else {
+            modalContent.style.position = '';
+            modalContent.style.top = '';
+            modalContent.style.left = '';
+            modalContent.style.margin = '';
+            modalContent.style.transform = '';
+            modalContent.style.animation = '';
         }
     };
 
@@ -2501,7 +2511,7 @@ const loadReqHistory = (searchTerm = "") => {
     function makeDraggable(modalContent, dragHandle) {
         let isDragging = false;
         let startMouseX, startMouseY;
-        let initialTx = 0, initialTy = 0;
+        let initialPageTop = 0, initialPageLeft = 0;
 
         dragHandle.style.cursor = 'grab';
 
@@ -2512,8 +2522,22 @@ const loadReqHistory = (searchTerm = "") => {
             startMouseX = e.clientX;
             startMouseY = e.clientY;
 
-            initialTx = parseFloat(modalContent.getAttribute('data-drag-tx')) || 0;
-            initialTy = parseFloat(modalContent.getAttribute('data-drag-ty')) || 0;
+            // Kill CSS keyframes animation to prevent browser re-triggering modalPopUp on reflow
+            modalContent.style.animation = 'none';
+
+            // Get absolute physics coordinates in current viewport
+            const rect = modalContent.getBoundingClientRect();
+            initialPageTop = rect.top;
+            initialPageLeft = rect.left;
+
+            // Lock to viewport fixed positioning to decouple completely from parent Flex layout
+            modalContent.style.position = 'fixed';
+            modalContent.style.top = `${initialPageTop}px`;
+            modalContent.style.left = `${initialPageLeft}px`;
+            modalContent.style.margin = '0';
+            modalContent.style.transform = 'none';
+            modalContent.setAttribute('data-drag-top', `${initialPageTop}px`);
+            modalContent.setAttribute('data-drag-left', `${initialPageLeft}px`);
 
             document.body.style.userSelect = 'none';
         });
@@ -2523,12 +2547,13 @@ const loadReqHistory = (searchTerm = "") => {
             const dx = e.clientX - startMouseX;
             const dy = e.clientY - startMouseY;
 
-            const curTx = initialTx + dx;
-            const curTy = initialTy + dy;
+            let newTop = initialPageTop + dy;
+            let newLeft = initialPageLeft + dx;
 
-            modalContent.style.transform = `translate(${curTx}px, ${curTy}px)`;
-            modalContent.setAttribute('data-drag-tx', curTx);
-            modalContent.setAttribute('data-drag-ty', curTy);
+            modalContent.style.top = `${newTop}px`;
+            modalContent.style.left = `${newLeft}px`;
+            modalContent.setAttribute('data-drag-top', `${newTop}px`);
+            modalContent.setAttribute('data-drag-left', `${newLeft}px`);
         });
 
         document.addEventListener('mouseup', () => {
