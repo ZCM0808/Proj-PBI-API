@@ -5734,6 +5734,7 @@ window.sortTable = function(thElement, event, colIndex) {
 
 // --- Global User Manager Logic ---
 window.gumData = [];
+window.gumWorkspaces = [];
 
 window.runGlobalUserManager = async function() {
     const logsDiv = document.getElementById('wf-out-gum-logs');
@@ -5744,6 +5745,7 @@ window.runGlobalUserManager = async function() {
     tableDiv.innerHTML = 'Scanning workspaces...';
     statsSpan.textContent = '';
     window.gumData = [];
+window.gumWorkspaces = [];
     
     const appendLog = (msg) => {
         const div = document.createElement('div');
@@ -5767,6 +5769,7 @@ window.runGlobalUserManager = async function() {
         const wsData = await wsRes.json();
         const wsPayload = wsData.data || wsData;
         const workspaces = wsPayload.value || [];
+        window.gumWorkspaces = workspaces;
         appendLog(`[OK] Found ${workspaces.length} workspaces. Starting user scan...`);
         
         let processed = 0;
@@ -5955,4 +5958,107 @@ window.deleteGumUser = async function(wsId, identifier, wsName) {
         div.textContent += ` EXCEPTION: ${err.message}`;
     }
     logsDiv.scrollTop = Math.max(0, logsDiv.scrollHeight - logsDiv.clientHeight * 0.66);
+};
+
+window.openGumAddUserModal = function() {
+    const sel = document.getElementById('gum-add-ws-id');
+    sel.innerHTML = '<option value="">Select a Workspace...</option>';
+    
+    if (!window.gumWorkspaces || window.gumWorkspaces.length === 0) {
+        alert('Please run the "Scan" first to populate the workspaces list!');
+        return;
+    }
+    
+    // Populate workspaces sorted by name
+    const wses = [...window.gumWorkspaces].sort((a,b) => (a.name||'').localeCompare(b.name||''));
+    for(const ws of wses) {
+        const opt = document.createElement('option');
+        opt.value = ws.id;
+        opt.textContent = ws.name;
+        sel.appendChild(opt);
+    }
+    
+    document.getElementById('gum-add-identifier').value = '';
+    document.getElementById('gum-add-role').value = 'Viewer';
+    document.getElementById('gum-add-modal').style.display = 'flex';
+};
+
+window.submitGumAddUser = async function() {
+    const wsId = document.getElementById('gum-add-ws-id').value;
+    const identifier = document.getElementById('gum-add-identifier').value.trim();
+    const principalType = document.getElementById('gum-add-principal-type').value;
+    const newRole = document.getElementById('gum-add-role').value;
+    
+    if(!wsId) { alert('Please select a workspace!'); return; }
+    if(!identifier) { alert('Please enter an email/identifier!'); return; }
+    
+    document.getElementById('gum-add-modal').style.display = 'none';
+    
+    const logsDiv = document.getElementById('wf-out-gum-logs');
+    window.expandConsole('wf-out-gum-logs'); // ensure logs are visible
+    
+    const div = document.createElement('div');
+    div.style.paddingLeft = '10px';
+    div.style.borderLeft = '2px solid var(--accent)';
+    div.textContent = `[ADD] Adding ${identifier} to workspace [${wsId}] as ${newRole}...`;
+    logsDiv.appendChild(div);
+    
+    try {
+        const body = {
+            identifier: identifier,
+            groupUserAccessRight: newRole,
+            principalType: principalType
+        };
+        
+        // Use POST to add a user
+        const res = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint: `/groups/${wsId}/users`, method: 'POST', body: body })
+        });
+        
+        if (res.ok) {
+            div.textContent += " OK (Added)";
+            div.style.borderLeft = '2px solid var(--success)';
+            
+            // Re-fetch that specific workspace's users to update the table immediately!
+            try {
+                const uRes = await fetch('/api/proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint: `/groups/${wsId}/users`, method: 'GET' })
+                });
+                if(uRes.ok) {
+                    const uData = await uRes.json();
+                    const uPayload = uData.data || uData;
+                    const users = uPayload.value || [];
+                    
+                    // Remove old records for this workspace
+                    window.gumData = window.gumData.filter(d => d.wsId !== wsId);
+                    
+                    // Add fresh records
+                    const wsName = window.gumWorkspaces.find(w => w.id === wsId)?.name || 'Unknown';
+                    for(const u of users) {
+                        window.gumData.push({
+                            wsId: wsId,
+                            wsName: wsName,
+                            identifier: u.identifier,
+                            principalType: u.principalType,
+                            role: u.groupUserAccessRight
+                        });
+                    }
+                    window.filterGumTable();
+                }
+            } catch(e) {}
+            
+        } else {
+            const errJson = await res.json().catch(()=>({}));
+            div.textContent += ` FAILED: ${res.status} ${JSON.stringify(errJson)}`;
+            div.style.borderLeft = '2px solid var(--error)';
+        }
+    } catch(err) {
+        div.textContent += ` EXCEPTION: ${err.message}`;
+        div.style.borderLeft = '2px solid var(--error)';
+    }
+    setTimeout(() => { logsDiv.scrollTop = Math.max(0, logsDiv.scrollHeight - logsDiv.clientHeight * 0.66); }, 50);
 };
