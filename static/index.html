@@ -752,10 +752,15 @@
                         </div>
                         
                         <div class="wf-step active" id="wf-local-step-1">
-                            <div class="wf-step-header">
+                            <!-- DAX Editor header with collapse toggle + copy btn -->
+                            <div class="wf-step-header" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;" onclick="window.toggleLocalDaxEditor()" title="Click to collapse/expand">
                                 <span class="wf-step-title">Execute Predefined DAX Templates</span>
+                                <div style="display:flex;align-items:center;gap:6px;">
+                                    <button type="button" id="wf-local-dax-copy-btn" class="wf-copy-btn" style="position:static;opacity:1;pointer-events:auto;" onclick="event.stopPropagation(); window.handleCopyAction(this, document.getElementById('local-dax-editor').value)" title="Copy DAX Query"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                    <svg id="wf-local-dax-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition:transform 0.25s;flex-shrink:0;"><path d="M6 9l6 6 6-6"/></svg>
+                                </div>
                             </div>
-                            <div class="wf-step-content" style="display: block; margin-top: 12px;">
+                            <div id="wf-local-dax-body" class="wf-step-content" style="display: block; margin-top: 12px; overflow:hidden; transition: max-height 0.3s ease, opacity 0.3s ease;">
                                 <div style="display: flex; flex-direction: column; gap: 12px;">
                                     <div style="display: flex; align-items: center; gap: 12px;">
                                         <label style="color: var(--text-secondary); font-weight: bold; width: 120px; font-size: 0.85rem;">Template:</label>
@@ -772,18 +777,23 @@
                                         <textarea id="local-dax-editor" class="wf-input" style="width: 100%; height: 100px; font-family: monospace; font-size: 0.85rem; padding: 8px; resize: vertical;" placeholder="Enter DAX EVALUATE statement..."></textarea>
                                     </div>
                                 </div>
-                                <div id="wf-local-status" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 12px; display: none;"></div>
-                                <!-- DAX Result Table -->
-                                <div id="wf-local-result-wrap" style="display: none; margin-top: 14px; position: relative;">
-                                    <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
-                                        <span>DAX Query Results</span>
-                                        <span id="wf-local-result-stats" style="color: var(--accent); font-weight: normal;"></span>
-                                    </div>
-                                    <button type="button" class="wf-copy-btn" id="wf-local-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-local-result').innerText)" title="Copy Table" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
-                                    <div id="wf-local-result" class="wf-console" style="min-height: 80px; max-height: 420px; padding: 0 32px 0 0; white-space: normal; overflow-x: auto;"></div>
-                                </div>
-
                             </div>
+                        </div>
+
+                        <!-- Status + Result (outside the collapsible DAX step) -->
+                        <div id="wf-local-status" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 12px; display: none;"></div>
+
+                        <!-- Result header: click to open expand modal -->
+                        <div id="wf-local-result-wrap" style="display: none; margin-top: 14px; position: relative;">
+                            <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
+                                <button type="button" onclick="window.openDaxResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="Click to expand results in a large resizable panel">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                                    DAX Query Results
+                                </button>
+                                <span id="wf-local-result-stats" style="color: var(--accent); font-weight: normal;"></span>
+                            </div>
+                            <button type="button" class="wf-copy-btn" id="wf-local-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-local-result').innerText)" title="Copy Table" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                            <div id="wf-local-result" class="wf-console" style="min-height: 80px; max-height: 260px; padding: 0 32px 0 0; white-space: normal; overflow-x: auto;"></div>
                         </div>
                     </div>
             </div> <!-- Close modal body here! -->
@@ -1126,7 +1136,7 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
-    <script src="/static/script.js?v=20260802_v169"></script>
+    <script src="/static/script.js?v=20260802_v170"></script>
 
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
