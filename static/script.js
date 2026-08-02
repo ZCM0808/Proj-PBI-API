@@ -5833,10 +5833,9 @@ window.gumWorkspaces = [];
                 } catch (err) {
                     appendLog(`   -> Error: ${err.message}`);
                 }
+                // Add a slight delay to avoid rate limiting
+                await new Promise(r => setTimeout(r, 100));
             }
-        }
-            // Add a slight delay to avoid rate limiting
-            await new Promise(r => setTimeout(r, 100));
         }
         
         appendLog(`\n[DONE] Scan complete! Found ${totalUsers} user permission records across ${workspaces.length} workspaces.`);
