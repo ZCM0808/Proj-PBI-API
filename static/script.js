@@ -2486,8 +2486,14 @@ const loadReqHistory = (searchTerm = "") => {
     }
 
     // --- Modal FLIP & Drag Helper ---
-        window.centerModal = function(modalContent) {
-        if (modalContent) {
+    window.centerModal = function(modalContent) {
+        if (!modalContent) return;
+        const savedLeft = modalContent.getAttribute('data-drag-left');
+        const savedTop = modalContent.getAttribute('data-drag-top');
+        if (savedLeft !== null && savedTop !== null) {
+            modalContent.style.left = savedLeft;
+            modalContent.style.top = savedTop;
+        } else {
             modalContent.style.left = '0px';
             modalContent.style.top = '0px';
         }
@@ -2540,6 +2546,8 @@ const loadReqHistory = (searchTerm = "") => {
             
             modalContent.style.left = `${newLeft}px`;
             modalContent.style.top = `${newTop}px`;
+            modalContent.setAttribute('data-drag-left', `${newLeft}px`);
+            modalContent.setAttribute('data-drag-top', `${newTop}px`);
         });
 
         document.addEventListener('mouseup', () => {
@@ -6632,7 +6640,7 @@ window.openDaxResultModal = function() {
                 Select Columns (${window._daxSelectedCols.size}/${data.columns.length})
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
             </button>
-            <div id="dax-col-dropdown-list" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--panel-bg);border:1px solid var(--panel-border);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-height:220px;overflow-y:auto;width:240px;padding:6px;z-index:3000;">
+            <div id="dax-col-dropdown-list" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--dropdown-bg, #1a1a24);border:1px solid var(--panel-border);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,0.8);max-height:220px;overflow-y:auto;width:240px;padding:6px;z-index:3000;">
                 <div style="display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid var(--overlay-10);margin-bottom:4px;">
                     <span style="color:var(--accent);cursor:pointer;font-weight:bold;" onclick="window.toggleAllDaxCols(true)">Select All</span>
                     <span style="color:var(--text-secondary);cursor:pointer;" onclick="window.toggleAllDaxCols(false)">Deselect All</span>
