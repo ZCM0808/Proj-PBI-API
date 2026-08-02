@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/powerbi-client/dist/powerbi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260730_v146">
+    <link rel="stylesheet" href="/static/style.css?v=20260730_v147">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -992,9 +992,11 @@
                     </select>
                 </div>
                 
-                <div style="margin-bottom: 12px;">
+                <div style="margin-bottom: 12px; position: relative;">
                     <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">User / Principal Email</label>
-                    <input type="text" id="gum-add-identifier" class="wf-input" placeholder="e.g. zhangsan@company.com">
+                    <input type="text" id="gum-add-identifier" class="wf-input" placeholder="Type name or email to search..." oninput="if(window.handleGumAddIdentifierInput) window.handleGumAddIdentifierInput(event)">
+                    <div id="gum-add-autocomplete" style="display:none; position: absolute; top: 100%; left: 0; right: 0; background: var(--panel-bg); border: 1px solid var(--panel-border); border-top: none; z-index: 20001; max-height: 150px; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    </div>
                 </div>
                 
                 <div style="margin-bottom: 12px;">
@@ -1066,7 +1068,7 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
-    <script src="/static/script.js?v=20260730_v146"></script>
+    <script src="/static/script.js?v=20260730_v147"></script>
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: flex; z-index: 100000; opacity: 0; visibility: hidden; transition: opacity 0.25s ease;">

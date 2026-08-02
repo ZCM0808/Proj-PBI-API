@@ -572,7 +572,57 @@ async def download_proxy(request: Request):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+
+@app.get("/api/graph_users")
+async def get_graph_users(query: str = ""):
+    from msal import ConfidentialClientApplication
+    import httpx
+    import asyncio
+    
+    if not query:
+        return {"success": False, "error": "Query is empty"}
+        
+    try:
+        from src.config import Config
+        cfg = Config()
+        client_id = cfg.CLIENT_ID
+        client_secret = cfg.CLIENT_SECRET
+        tenant_id = cfg.TENANT_ID
+        
+        if not all([client_id, client_secret, tenant_id]):
+            return {"success": False, "error": "Missing credentials in Config."}
+            
+        authority_url = f"https://login.microsoftonline.com/{tenant_id}"
+        app_msal = ConfidentialClientApplication(
+            client_id=client_id,
+            client_credential=client_secret,
+            authority=authority_url,
+        )
+        result = await asyncio.to_thread(app_msal.acquire_token_for_client, scopes=["https://graph.microsoft.com/.default"])
+        
+        if "access_token" not in result:
+            return {"success": False, "error": "Failed to get Graph token. Ensure User.Read.All is granted."}
+            
+        token = result["access_token"]
+        
+        # Call Graph API
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        safe_q = query.replace("'", "''")
+        url = f"https://graph.microsoft.com/v1.0/users?$filter=startswith(displayName,'{safe_q}') or startswith(userPrincipalName,'{safe_q}')&$top=10&$select=id,displayName,userPrincipalName"
+        
+        async with httpx.AsyncClient() as http_client:
+            resp = await http_client.get(url, headers=headers)
+            if resp.status_code == 200:
+                data = resp.json()
+                return {"success": True, "users": data.get("value", [])}
+            else:
+                return {"success": False, "error": resp.text}
+                
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 @app.post("/api/proxy")
+
 async def proxy_request(request: Request):
     """
     通用代理接口，接收前端传来的参数并转发给 Power BI 或 Fabric REST API。

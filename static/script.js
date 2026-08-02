@@ -6062,3 +6062,60 @@ window.submitGumAddUser = async function() {
     }
     setTimeout(() => { logsDiv.scrollTop = Math.max(0, logsDiv.scrollHeight - logsDiv.clientHeight * 0.66); }, 50);
 };
+
+window.gumAutocompleteTimer = null;
+window.handleGumAddIdentifierInput = function(e) {
+    const val = e.target.value.trim();
+    const dropdown = document.getElementById('gum-add-autocomplete');
+    
+    if (val.length < 2) {
+        dropdown.style.display = 'none';
+        return;
+    }
+    
+    if (window.gumAutocompleteTimer) clearTimeout(window.gumAutocompleteTimer);
+    
+    window.gumAutocompleteTimer = setTimeout(async () => {
+        dropdown.innerHTML = '<div style="padding: 8px; font-size: 0.8rem; color: var(--text-secondary);">Searching...</div>';
+        dropdown.style.display = 'block';
+        
+        try {
+            const res = await fetch(`/api/graph_users?query=${encodeURIComponent(val)}`);
+            const data = await res.json();
+            
+            if (data.success && data.users && data.users.length > 0) {
+                dropdown.innerHTML = '';
+                for (const u of data.users) {
+                    const div = document.createElement('div');
+                    div.style.padding = '8px';
+                    div.style.borderBottom = '1px solid var(--overlay-10)';
+                    div.style.cursor = 'pointer';
+                    div.style.fontSize = '0.8rem';
+                    div.innerHTML = `<strong>${u.displayName}</strong> <span style="color: var(--text-secondary); font-size: 0.75rem;">(${u.userPrincipalName})</span>`;
+                    div.onmouseover = () => div.style.background = 'var(--overlay-10)';
+                    div.onmouseout = () => div.style.background = 'transparent';
+                    div.onclick = () => {
+                        document.getElementById('gum-add-identifier').value = u.userPrincipalName;
+                        dropdown.style.display = 'none';
+                    };
+                    dropdown.appendChild(div);
+                }
+            } else if (data.success) {
+                dropdown.innerHTML = '<div style="padding: 8px; font-size: 0.8rem; color: var(--text-secondary);">No matching users found</div>';
+            } else {
+                dropdown.innerHTML = `<div style="padding: 8px; font-size: 0.8rem; color: var(--error);">Error: ${data.error || 'Check Graph API permissions'}</div>`;
+            }
+        } catch(err) {
+            dropdown.innerHTML = `<div style="padding: 8px; font-size: 0.8rem; color: var(--error);">Network Error</div>`;
+        }
+    }, 500); // 500ms debounce
+};
+
+// Close autocomplete when clicking outside
+document.addEventListener('click', function(e) {
+    const ac = document.getElementById('gum-add-autocomplete');
+    const input = document.getElementById('gum-add-identifier');
+    if (ac && input && !ac.contains(e.target) && e.target !== input) {
+        ac.style.display = 'none';
+    }
+});
