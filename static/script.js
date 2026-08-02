@@ -5283,11 +5283,11 @@ window.runRvcWorkflow = async function() {
     
     // Setup dynamic table skeleton (2 Columns)
     tableDiv.innerHTML = `
-    <table data-table-id="rvc" style="width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.75rem; text-align: left;">
-        <thead>
+    <table data-table-id="rvc" class="data-table" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
+        <thead style="position: sticky; top: 0; background: var(--bg-color); z-index: 5;">
             <tr>
-                <th onclick="window.sortTable(this, event, 0)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Date</th>
-                <th onclick="window.sortTable(this, event, 1)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">View Count</th>
+                <th onclick="window.sortTable(this, event, 0)" style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px;" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Date</th>
+                <th onclick="window.sortTable(this, event, 1)" style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px;" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">View Count</th>
             </tr>
         </thead>
         <tbody id="rvc-dynamic-tbody"></tbody>
@@ -5596,12 +5596,12 @@ window.runCheckPermsWorkflow = async function() {
             
             // Render table skeleton
             tableDiv.innerHTML = `
-            <table data-table-id="perms" style="width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.75rem; text-align: left;">
-                <thead>
+            <table data-table-id="perms" class="data-table" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
+                <thead style="position: sticky; top: 0; background: var(--bg-color); z-index: 5;">
                     <tr>
-                        <th onclick="window.sortTable(this, event, 0)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Feature Name</th>
-                        <th onclick="window.sortTable(this, event, 1)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">State</th>
-                        <th onclick="window.sortTable(this, event, 2)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Extended State</th>
+                        <th onclick="window.sortTable(this, event, 0)" style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px;" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Feature Name</th>
+                        <th onclick="window.sortTable(this, event, 1)" style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px;" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">State</th>
+                        <th onclick="window.sortTable(this, event, 2)" style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px;" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Extended State</th>
                     </tr>
                 </thead>
                 <tbody id="perms-dynamic-tbody"></tbody>
