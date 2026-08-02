@@ -2488,9 +2488,14 @@ const loadReqHistory = (searchTerm = "") => {
     // --- Modal FLIP & Drag Helper ---
     window.centerModal = function(modalContent) {
         if (!modalContent) return;
+        const parent = modalContent.parentElement;
         const savedTop = modalContent.getAttribute('data-drag-top');
         const savedLeft = modalContent.getAttribute('data-drag-left');
         if (savedTop !== null && savedLeft !== null) {
+            if (parent) {
+                parent.style.alignItems = 'flex-start';
+                parent.style.justifyContent = 'flex-start';
+            }
             modalContent.style.position = 'fixed';
             modalContent.style.top = savedTop;
             modalContent.style.left = savedLeft;
@@ -2498,6 +2503,10 @@ const loadReqHistory = (searchTerm = "") => {
             modalContent.style.transform = 'none';
             modalContent.style.animation = 'none';
         } else {
+            if (parent) {
+                parent.style.alignItems = '';
+                parent.style.justifyContent = '';
+            }
             modalContent.style.position = '';
             modalContent.style.top = '';
             modalContent.style.left = '';
@@ -2522,15 +2531,22 @@ const loadReqHistory = (searchTerm = "") => {
             startMouseX = e.clientX;
             startMouseY = e.clientY;
 
-            // Kill CSS keyframes animation to prevent browser re-triggering modalPopUp on reflow
+            // 1. Disable parent overlay Flex centering so layout Reflow never recalculates center lines
+            const parent = modalContent.parentElement;
+            if (parent) {
+                parent.style.alignItems = 'flex-start';
+                parent.style.justifyContent = 'flex-start';
+            }
+
+            // 2. Kill CSS keyframe animation to prevent animation re-evaluation
             modalContent.style.animation = 'none';
 
-            // Get absolute physics coordinates in current viewport
+            // 3. Capture absolute physics viewport rect
             const rect = modalContent.getBoundingClientRect();
             initialPageTop = rect.top;
             initialPageLeft = rect.left;
 
-            // Lock to viewport fixed positioning to decouple completely from parent Flex layout
+            // 4. Lock coordinates
             modalContent.style.position = 'fixed';
             modalContent.style.top = `${initialPageTop}px`;
             modalContent.style.left = `${initialPageLeft}px`;
