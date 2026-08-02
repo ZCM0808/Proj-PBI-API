@@ -6,10 +6,16 @@ import asyncio
 def get_dynamic_port():
     cmd = ["powershell", "-Command", "(Get-NetTCPConnection -OwningProcess (Get-Process msmdsrv -ErrorAction SilentlyContinue).Id -State Listen -ErrorAction SilentlyContinue).LocalPort"]
     res = subprocess.run(cmd, capture_output=True, text=True, check=True)
-    ports = [p.strip() for p in res.stdout.splitlines() if p.strip()]
+    ports = list(dict.fromkeys([p.strip() for p in res.stdout.splitlines() if p.strip()]))
     if not ports:
         raise Exception("No active msmdsrv (Power BI Desktop) process found.")
     return ports[0]
+
+def get_all_instances():
+    cmd = ["powershell", "-Command", "(Get-NetTCPConnection -OwningProcess (Get-Process msmdsrv -ErrorAction SilentlyContinue).Id -State Listen -ErrorAction SilentlyContinue).LocalPort"]
+    res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    ports = list(dict.fromkeys([p.strip() for p in res.stdout.splitlines() if p.strip()]))
+    return [{"name": f"PBI Desktop (Port {p})", "port": p} for p in ports]
 
 async def execute_dax_via_ps(port, query):
     ps_script = f"""

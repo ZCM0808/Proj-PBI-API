@@ -6187,3 +6187,112 @@ window.runLocalDAX = async function(btn) {
     btn.disabled = false;
     btn.textContent = oldText;
 };
+
+// Local Model Logic
+window.fetchLocalModelInstances = async function() {
+    const sel = document.getElementById('local-model-instance');
+    const err = document.getElementById('local-model-instance-error');
+    if(!sel || !err) return;
+    
+    sel.innerHTML = '<option value="">Fetching instances...</option>';
+    err.style.display = 'none';
+    
+    try {
+        const res = await fetch('/api/local-model/instances');
+        const json = await res.json();
+        if(json.success && json.instances.length > 0) {
+            sel.innerHTML = '';
+            json.instances.forEach(inst => {
+                const opt = document.createElement('option');
+                opt.value = inst.port;
+                opt.textContent = inst.name;
+                sel.appendChild(opt);
+            });
+        } else {
+            sel.innerHTML = '<option value="">No local instances found</option>';
+            if(json.error) {
+                err.textContent = json.error;
+                err.style.display = 'block';
+            }
+        }
+    } catch (e) {
+        sel.innerHTML = '<option value="">Error fetching instances</option>';
+        err.textContent = e.message;
+        err.style.display = 'block';
+    }
+};
+
+window.updateLocalDaxTemplate = function() {
+    const sel = document.getElementById('local-dax-template');
+    const editor = document.getElementById('local-dax-editor');
+    if (!sel || !editor) return;
+    
+    const val = sel.value;
+    if (val === 'tables') {
+        editor.value = "EVALUATE INFO.TABLES()";
+    } else if (val === 'measures') {
+        editor.value = "EVALUATE INFO.MEASURES()";
+    } else if (val === 'columns') {
+        editor.value = "EVALUATE INFO.COLUMNS()";
+    } else if (val === 'partitions') {
+        editor.value = "EVALUATE INFO.PARTITIONS()";
+    } else if (val === 'custom') {
+        if (!editor.value || editor.value.includes("INFO.")) {
+            editor.value = "EVALUATE\n    TOPN(10, 'YourTableName')";
+        }
+    }
+};
+
+window.runLocalModelWorkflow = async function() {
+    const btn = document.getElementById('btn-run-local-query');
+    const out = document.getElementById('wf-local-status');
+    const editor = document.getElementById('local-dax-editor');
+    const instSel = document.getElementById('local-model-instance');
+    
+    if (!editor.value.trim()) {
+        window.showNotification("Please enter a DAX query", "error");
+        return;
+    }
+    
+    let port = null;
+    if (instSel && instSel.value) {
+        port = parseInt(instSel.value);
+    }
+    
+    btn.disabled = true;
+    btn.textContent = "Running...";
+    out.style.display = 'block';
+    out.textContent = "Executing query against local model...";
+    out.style.color = 'var(--text-secondary)';
+    
+    try {
+        const res = await fetch('/api/local-model/dax', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ query: editor.value, port: port })
+        });
+        const json = await res.json();
+        
+        if (json.success) {
+            out.textContent = "Query Executed Successfully!";
+            out.style.color = 'var(--success-color)';
+            
+            // Format and show result in a custom dialog
+            let formatted = JSON.stringify(json.data, null, 2);
+            if (formatted.length > 5000) {
+                formatted = formatted.substring(0, 5000) + "\n... (truncated)";
+            }
+            window.showCustomDialog("DAX Query Results", `<pre style="max-height: 400px; overflow: auto; background: var(--bg-color); padding: 10px; border-radius: 4px; font-size: 0.8rem;">\${formatted}</pre>`);
+            
+        } else {
+            out.textContent = "Error: " + (json.error || "Unknown error");
+            out.style.color = 'var(--error-color)';
+        }
+    } catch (e) {
+        out.textContent = "Error: " + e.message;
+        out.style.color = 'var(--error-color)';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "Run Query";
+    }
+};
