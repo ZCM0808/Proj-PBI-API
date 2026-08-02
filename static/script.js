@@ -5867,7 +5867,7 @@ window.filterGumTable = function() {
     
     let html = `
     <table data-table-id="gum_table" class="data-table" style="width: 100%; border-collapse: collapse;">
-        <thead style="position: sticky; top: 0; background: var(--panel-bg); z-index: 5;">
+        <thead style="position: sticky; top: 0; background: var(--bg-color); z-index: 5;">
             <tr>
                 <th style="padding: 8px; text-align: left; border-bottom: 2px solid var(--overlay-10); cursor: pointer; resize: horizontal; overflow: hidden; min-width: 50px;" onclick="window.sortTable(this, event, 0)" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Workspace</th>
                 <th style="padding: 8px; text-align: left; border-bottom: 2px solid var(--overlay-10); cursor: pointer; resize: horizontal; overflow: hidden; min-width: 50px;" onclick="window.sortTable(this, event, 1)" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">User / Principal</th>
