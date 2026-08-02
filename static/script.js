@@ -6439,6 +6439,79 @@ window.toggleLocalDaxEditor = function(e) {
     }
 };
 
+// === Modal Drag Position Preserver Helper ===
+window.makeDraggable = makeDraggable;
+function makeDraggable(modalContent, dragHandle) {
+    let isDragging = false;
+    let startX, startY, initialLeft, initialTop;
+    
+    modalContent.style.position = 'relative';
+    dragHandle.style.cursor = 'grab';
+
+    dragHandle.addEventListener('mousedown', (e) => {
+        if (window.innerWidth <= 768) return; // Prevent drag on mobile
+        isDragging = true;
+        dragHandle.style.cursor = 'grabbing';
+        startX = e.clientX;
+        startY = e.clientY;
+        
+        const style = window.getComputedStyle(modalContent);
+        initialLeft = parseInt(style.left, 10) || 0;
+        initialTop = parseInt(style.top, 10) || 0;
+        
+        document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        let dx = e.clientX - startX;
+        let dy = e.clientY - startY;
+        
+        const rect = modalContent.getBoundingClientRect();
+        const winWidth = window.innerWidth;
+        const winHeight = window.innerHeight;
+        
+        const maxLeft = (winWidth - rect.width) / 2;
+        const maxTop = (winHeight - rect.height) / 2;
+        
+        let newLeft = initialLeft + dx;
+        let newTop = initialTop + dy;
+        
+        if (newLeft < -maxLeft) newLeft = -maxLeft;
+        if (newLeft > maxLeft) newLeft = maxLeft;
+        if (newTop < -maxTop) newTop = -maxTop;
+        if (newTop > maxTop) newTop = maxTop;
+        
+        modalContent.style.left = `${newLeft}px`;
+        modalContent.style.top = `${newTop}px`;
+        // Store explicit drag offset to lock position during DOM mutations / collapse
+        modalContent.setAttribute('data-drag-left', `${newLeft}px`);
+        modalContent.setAttribute('data-drag-top', `${newTop}px`);
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (isDragging) {
+            isDragging = false;
+            dragHandle.style.cursor = 'grab';
+            document.body.style.userSelect = 'auto';
+        }
+    });
+}
+
+// Override centerModal to protect dragged positions
+window.centerModal = function(modalContent) {
+    if (!modalContent) return;
+    const savedLeft = modalContent.getAttribute('data-drag-left');
+    const savedTop = modalContent.getAttribute('data-drag-top');
+    if (savedLeft !== null && savedTop !== null) {
+        modalContent.style.left = savedLeft;
+        modalContent.style.top = savedTop;
+    } else {
+        modalContent.style.left = '0px';
+        modalContent.style.top = '0px';
+    }
+};
+
 // === Render Table with Column Visibility ===
 window.renderDaxModalTable = function() {
     const data = window._lastDaxResult;
@@ -6488,7 +6561,7 @@ window.renderDaxModalTable = function() {
     body.innerHTML = html;
 };
 
-// === DAX Query Results: Open resizable popup modal with Column Selector ===
+// === DAX Query Results: Open resizable popup modal with Dropdown Column Selector ===
 window.openDaxResultModal = function() {
     const data = window._lastDaxResult;
     if (!data || !data.rows || data.rows.length === 0) {
@@ -6548,40 +6621,86 @@ window.openDaxResultModal = function() {
             </button>
         </div>`;
 
-    // Column Filter Bar
+    // Column Filter Dropdown List
     const filterBar = document.createElement('div');
-    filterBar.style.cssText = 'padding:6px 16px;background:var(--overlay-5);border-bottom:1px solid var(--overlay-10);display:flex;align-items:center;gap:12px;overflow-x:auto;font-size:0.75rem;flex-shrink:0;';
+    filterBar.style.cssText = 'padding:6px 16px;background:var(--overlay-5);border-bottom:1px solid var(--overlay-10);display:flex;align-items:center;gap:10px;font-size:0.75rem;flex-shrink:0;position:relative;z-index:20;';
     
-    let filterHtml = `<span style="font-weight:bold;color:var(--text-secondary);white-space:nowrap;">Visible Fields:</span>`;
-    data.columns.forEach((col, idx) => {
-        const checked = window._daxSelectedCols.has(col) ? 'checked' : '';
-        filterHtml += `<label style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap;cursor:pointer;">
-            <input type="checkbox" data-col="${col}" ${checked} onchange="window.toggleDaxColumn('${col}', this.checked)" style="cursor:pointer;">
-            ${data.displayNames[idx]}
-        </label>`;
-    });
-    filterBar.innerHTML = filterHtml;
+    filterBar.innerHTML = `
+        <span style="font-weight:bold;color:var(--text-secondary);">Visible Fields:</span>
+        <div style="position:relative;display:inline-block;">
+            <button type="button" id="dax-col-dropdown-btn" class="wf-input" style="padding:4px 10px;font-size:0.75rem;cursor:pointer;display:flex;align-items:center;gap:6px;background:var(--bg-color);">
+                Select Columns (${window._daxSelectedCols.size}/${data.columns.length})
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div id="dax-col-dropdown-list" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--panel-bg);border:1px solid var(--panel-border);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-height:220px;overflow-y:auto;width:240px;padding:6px;z-index:3000;">
+                <div style="display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid var(--overlay-10);margin-bottom:4px;">
+                    <span style="color:var(--accent);cursor:pointer;font-weight:bold;" onclick="window.toggleAllDaxCols(true)">Select All</span>
+                    <span style="color:var(--text-secondary);cursor:pointer;" onclick="window.toggleAllDaxCols(false)">Deselect All</span>
+                </div>
+                <div id="dax-col-items"></div>
+            </div>
+        </div>
+    `;
 
-    window.toggleDaxColumn = function(colName, isChecked) {
-        if (isChecked) {
-            window._daxSelectedCols.add(colName);
-        } else {
-            window._daxSelectedCols.delete(colName);
-        }
-        window.renderDaxModalTable();
-    };
+    panel.appendChild(hdr);
+    panel.appendChild(filterBar);
 
     // Body
     const body = document.createElement('div');
     body.id = 'dax-result-expand-body';
     body.style.cssText = 'flex:1;overflow:auto;padding:12px;white-space:normal;';
-
-    panel.appendChild(hdr);
-    panel.appendChild(filterBar);
     panel.appendChild(body);
     overlay.appendChild(panel);
     document.body.appendChild(overlay);
 
+    // Render Dropdown List Items
+    const renderColItems = () => {
+        const container = document.getElementById('dax-col-items');
+        if (!container) return;
+        let html = '';
+        data.columns.forEach((col, idx) => {
+            const checked = window._daxSelectedCols.has(col) ? 'checked' : '';
+            html += `<label style="display:flex;align-items:center;gap:6px;padding:4px 6px;cursor:pointer;font-size:0.75rem;border-radius:4px;" onmouseover="this.style.background='var(--overlay-5)'" onmouseout="this.style.background='transparent'">
+                <input type="checkbox" ${checked} onchange="window.toggleDaxColumn('${col}', this.checked)" style="cursor:pointer;">
+                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${data.displayNames[idx]}">${data.displayNames[idx]}</span>
+            </label>`;
+        });
+        container.innerHTML = html;
+        document.getElementById('dax-col-dropdown-btn').innerHTML = `Select Columns (${window._daxSelectedCols.size}/${data.columns.length}) <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>`;
+    };
+
+    window.toggleDaxColumn = function(colName, isChecked) {
+        if (isChecked) window._daxSelectedCols.add(colName);
+        else window._daxSelectedCols.delete(colName);
+        renderColItems();
+        window.renderDaxModalTable();
+    };
+
+    window.toggleAllDaxCols = function(selectAll) {
+        if (selectAll) {
+            window._daxSelectedCols = new Set(data.columns);
+        } else {
+            window._daxSelectedCols.clear();
+        }
+        renderColItems();
+        window.renderDaxModalTable();
+    };
+
+    // Toggle Dropdown Menu
+    const dropdownBtn = document.getElementById('dax-col-dropdown-btn');
+    const dropdownList = document.getElementById('dax-col-dropdown-list');
+    dropdownBtn.onclick = (e) => {
+        e.stopPropagation();
+        const isOpen = dropdownList.style.display === 'block';
+        dropdownList.style.display = isOpen ? 'none' : 'block';
+    };
+    document.addEventListener('click', (e) => {
+        if (dropdownList && !filterBar.contains(e.target)) {
+            dropdownList.style.display = 'none';
+        }
+    });
+
+    renderColItems();
     window.renderDaxModalTable();
 
     // Animate in
@@ -6598,21 +6717,4 @@ window.openDaxResultModal = function() {
     };
     document.getElementById('dax-expand-close').onclick = closeModal;
     overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
-
-    // Drag
-    let sx, sy, sl, st;
-    const onMove = (e) => { panel.style.left = (sl + e.clientX - sx) + 'px'; panel.style.top = (st + e.clientY - sy) + 'px'; };
-    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
-    hdr.addEventListener('mousedown', (e) => {
-        if (panel.style.position !== 'absolute') {
-            const r = panel.getBoundingClientRect();
-            panel.style.position = 'absolute'; panel.style.margin = '0';
-            panel.style.left = r.left + 'px'; panel.style.top = r.top + 'px';
-        }
-        sx = e.clientX; sy = e.clientY;
-        sl = parseInt(panel.style.left) || 0; st = parseInt(panel.style.top) || 0;
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onUp);
-        e.preventDefault();
-    });
 };
