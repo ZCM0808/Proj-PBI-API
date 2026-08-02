@@ -927,7 +927,9 @@ textarea:focus {
 .modal-overlay {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
     background: var(--shadow-dark);
-    display: flex; justify-content: center; align-items: center;
+    display: flex; justify-content: center; align-items: flex-start;
+    padding-top: 60px;
+    box-sizing: border-box;
     overflow-y: auto;
     z-index: 1000;
     animation: modalFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
