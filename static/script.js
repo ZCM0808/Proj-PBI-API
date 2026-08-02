@@ -930,6 +930,35 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
         };
+
+        swagger.paths['/api/local-model/nlq'] = {
+            "post": {
+                "tags": ["Local Model (MCP)"],
+                "summary": "🤖 AI Natural Language Query (NLQ)",
+                "description": "Just type what you want in natural language, and the AI will auto-write DAX and query the local model for you!",
+                "parameters": [
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "query": {
+                                    "type": "string",
+                                    "example": "帮我查询排名前 5 的客户和他们的详细信息"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation"
+                    }
+                }
+            }
+        };
         const categories = {};
         const definitions = swagger.definitions || {};
 

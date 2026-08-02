@@ -3,6 +3,7 @@ import json
 import uuid
 import subprocess
 import os
+import sys
 
 class MCPClient:
     def __init__(self):
@@ -28,8 +29,9 @@ class MCPClient:
         env["PBI_CONNECTION_STRING"] = conn_string
 
         # Start the MCP server process
+        npx_cmd = "npx.cmd" if sys.platform == "win32" else "npx"
         self.process = await asyncio.create_subprocess_exec(
-            "npx", "-y", "@microsoft/powerbi-modeling-mcp",
+            npx_cmd, "-y", "@microsoft/powerbi-modeling-mcp",
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,

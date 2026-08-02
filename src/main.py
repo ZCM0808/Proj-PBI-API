@@ -637,6 +637,46 @@ async def proxy_request(request: Request):
     body = data.get("body", None)
     api_type = data.get("api_type", "powerbi").strip().lower()
     
+    # 拦截自然语言查询 NLQ
+    if endpoint == "/api/local-model/nlq":
+        from src.dax_executor import get_dynamic_port, execute_dax_via_ps
+        try:
+            nlq = ""
+            if body and "query" in body:
+                nlq = body["query"]
+            else:
+                return {"success": False, "error": "Missing 'query' field in body"}
+                
+            port = get_dynamic_port()
+            
+            # Use pre-warmed AI model to translate NLQ to DAX
+            global _model_instance
+            if not _model_instance:
+                return {"success": False, "error": "AI Model not initialized. Please configure API keys."}
+                
+            prompt = f"""
+            You are an expert Power BI DAX developer. The user wants to query the local model with this natural language request:
+            "{nlq}"
+            
+            Write a valid DAX EVALUATE statement to retrieve this data. 
+            Do not include any explanation or markdown formatting like ```dax. Just return the raw DAX query text.
+            For example, if they ask for top 10 products, return: EVALUATE TOPN(10, 'Dim_Products')
+            """
+            
+            ai_res = await _model_instance.generate_content_async(prompt)
+            dax_query = ai_res.text.strip().replace("```dax", "").replace("```", "").strip()
+            
+            # Execute the generated DAX
+            result = await execute_dax_via_ps(port, dax_query)
+            
+            return {
+                "success": True, 
+                "dax_generated": dax_query,
+                "data": result
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
     # 拦截 MCP 查询请求
     if endpoint == "/api/mcp/query":
         from src.mcp_client import MCPClient
