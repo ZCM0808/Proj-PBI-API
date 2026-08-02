@@ -6,9 +6,9 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response, HTTPException
 from pydantic import BaseModel
-from src.local_pbi import scan_local_instances, run_dax_query, Response, HTTPException
+from src.local_pbi import scan_local_instances, run_dax_query
 from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel

@@ -6198,7 +6198,7 @@ window.fetchLocalModelInstances = async function() {
     err.style.display = 'none';
     
     try {
-        const res = await fetch('/api/local-model/instances');
+        const res = await fetch('/api/local-model/instances', { method: 'POST' });
         const json = await res.json();
         if(json.success && json.instances.length > 0) {
             sel.innerHTML = '';
