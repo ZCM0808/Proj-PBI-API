@@ -5838,7 +5838,7 @@ window.filterGumTable = function() {
     
     let html = `
     <table class="data-table" style="width: 100%; border-collapse: collapse; margin-top: 8px;">
-        <thead style="position: sticky; top: 0; background: var(--panel-bg); z-index: 10;">
+        <thead style="position: sticky; top: 0; background: var(--panel-bg); z-index: 5;">
             <tr>
                 <th style="padding: 8px; text-align: left; border-bottom: 2px solid var(--overlay-10);">Workspace</th>
                 <th style="padding: 8px; text-align: left; border-bottom: 2px solid var(--overlay-10);">User / Principal</th>
