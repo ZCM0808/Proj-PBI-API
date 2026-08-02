@@ -752,11 +752,10 @@
                         </div>
                         
                         <div class="wf-step active" id="wf-local-step-1">
-                            <!-- DAX Editor header with collapse toggle + copy btn -->
-                            <div class="wf-step-header" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;" onclick="window.toggleLocalDaxEditor()" title="Click to collapse/expand">
+                            <!-- DAX Editor header with collapse toggle -->
+                            <div class="wf-step-header" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;" onclick="event.stopPropagation(); window.toggleLocalDaxEditor(event);" title="Click to collapse/expand">
                                 <span class="wf-step-title">Execute Predefined DAX Templates</span>
                                 <div style="display:flex;align-items:center;gap:6px;">
-                                    <button type="button" id="wf-local-dax-copy-btn" class="wf-copy-btn" style="position:static;opacity:1;pointer-events:auto;" onclick="event.stopPropagation(); window.handleCopyAction(this, document.getElementById('local-dax-editor').value)" title="Copy DAX Query"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
                                     <svg id="wf-local-dax-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition:transform 0.25s;flex-shrink:0;"><path d="M6 9l6 6 6-6"/></svg>
                                 </div>
                             </div>
@@ -772,8 +771,11 @@
                                             <option value="custom">5. Custom DAX Query</option>
                                         </select>
                                     </div>
-                                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                                        <label style="color: var(--text-secondary); font-weight: bold;">DAX Query:</label>
+                                    <div style="display: flex; flex-direction: column; gap: 8px; position: relative;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <label style="color: var(--text-secondary); font-weight: bold;">DAX Query:</label>
+                                            <button type="button" id="wf-local-dax-copy-btn" class="wf-copy-btn" style="position:static;opacity:1;pointer-events:auto;padding:2px 6px;" onclick="window.handleCopyAction(this, document.getElementById('local-dax-editor').value)" title="Copy DAX Query"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                        </div>
                                         <textarea id="local-dax-editor" class="wf-input" style="width: 100%; height: 100px; font-family: monospace; font-size: 0.85rem; padding: 8px; resize: vertical;" placeholder="Enter DAX EVALUATE statement..."></textarea>
                                     </div>
                                 </div>
@@ -1136,7 +1138,7 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
-    <script src="/static/script.js?v=20260802_v171"></script>
+    <script src="/static/script.js?v=20260802_v172"></script>
 
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->

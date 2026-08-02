@@ -6392,11 +6392,14 @@ window.runLocalModelWorkflow = async function() {
             });
             html += `</tbody></table>`;
 
-            resultDiv.innerHTML = html;
+            // Save raw tabular data for column selector and modal rendering
+            window._lastDaxResult = { rows, columns, displayNames };
+
+            resultDiv.innerHTML = ''; // Keep main panel clean, no direct table rendering
             statsSpan.textContent = `${rows.length} rows × ${columns.length} cols`;
             resultWrap.style.display = 'block';
 
-            out.textContent = `✅ ${rows.length} rows returned.`;
+            out.textContent = `✅ Query executed — ${rows.length} rows returned. Click "DAX Query Results" above to view table.`;
             out.style.color = 'var(--success)';
 
         } else {
@@ -6417,7 +6420,8 @@ window.runLocalModelWorkflow = async function() {
 
 // === Local Model DAX: Collapse/Expand the editor section ===
 window._localDaxEditorOpen = true;
-window.toggleLocalDaxEditor = function() {
+window.toggleLocalDaxEditor = function(e) {
+    if (e && e.stopPropagation) e.stopPropagation();
     const body = document.getElementById('wf-local-dax-body');
     const chevron = document.getElementById('wf-local-dax-chevron');
     const copyBtn = document.getElementById('wf-local-dax-copy-btn');
@@ -6435,17 +6439,70 @@ window.toggleLocalDaxEditor = function() {
     }
 };
 
-// === DAX Query Results: Open resizable popup modal ===
+// === Render Table with Column Visibility ===
+window.renderDaxModalTable = function() {
+    const data = window._lastDaxResult;
+    const body = document.getElementById('dax-result-expand-body');
+    if (!data || !body) return;
+
+    const selectedCols = window._daxSelectedCols || new Set(data.columns);
+    const visibleIndices = [];
+    data.columns.forEach((col, idx) => {
+        if (selectedCols.has(col)) visibleIndices.push(idx);
+    });
+
+    if (visibleIndices.length === 0) {
+        body.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-secondary);">No columns selected to display.</div>';
+        return;
+    }
+
+    const tableId = 'local-dax-result-table-modal';
+    if (!window.tableSortStates) window.tableSortStates = {};
+    window.tableSortStates[tableId] = [];
+
+    let html = `<table id="${tableId}" data-table-id="${tableId}" class="data-table" style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+        <thead style="position:sticky;top:0;background:var(--bg-color);z-index:5;">
+            <tr>`;
+    visibleIndices.forEach((colIdx, sortIdx) => {
+        const name = data.displayNames[colIdx];
+        html += `<th onclick="window.sortTable(this,event,${sortIdx})"
+            style="padding:8px 12px;border-bottom:1px solid var(--panel-border);font-weight:600;cursor:pointer;user-select:none;resize:horizontal;overflow:hidden;min-width:60px;white-space:nowrap;"
+            title="Click to sort · Shift+Click multi-sort · Drag right edge to resize">${name}</th>`;
+    });
+    html += `</tr></thead><tbody>`;
+
+    data.rows.forEach(item => {
+        html += `<tr style="border-bottom:1px solid var(--overlay-10);" onmouseover="this.style.background='var(--overlay-5)'" onmouseout="this.style.background='transparent'">`;
+        visibleIndices.forEach(colIdx => {
+            const col = data.columns[colIdx];
+            let val = item ? item[col] : '';
+            if (val === null || val === undefined) val = '';
+            if (typeof val === 'object') val = JSON.stringify(val);
+            const escaped = String(val).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            html += `<td style="padding:6px 12px;color:var(--text-primary);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escaped}">${escaped}</td>`;
+        });
+        html += `</tr>`;
+    });
+    html += `</tbody></table>`;
+
+    body.innerHTML = html;
+};
+
+// === DAX Query Results: Open resizable popup modal with Column Selector ===
 window.openDaxResultModal = function() {
-    const src = document.getElementById('wf-local-result');
-    if (!src || !src.innerHTML.trim()) {
+    const data = window._lastDaxResult;
+    if (!data || !data.rows || data.rows.length === 0) {
         window.showNotification('No results to expand yet.', 'info');
         return;
     }
-    // Reuse existing overlay
+
+    if (!window._daxSelectedCols) {
+        window._daxSelectedCols = new Set(data.columns);
+    }
+
     let overlay = document.getElementById('dax-result-expand-overlay');
     if (overlay) {
-        document.getElementById('dax-result-expand-body').innerHTML = src.innerHTML;
+        window.renderDaxModalTable();
         overlay.style.display = 'flex';
         requestAnimationFrame(() => {
             overlay.style.opacity = '1';
@@ -6453,22 +6510,25 @@ window.openDaxResultModal = function() {
         });
         return;
     }
+
     // Create overlay
     overlay = document.createElement('div');
     overlay.id = 'dax-result-expand-overlay';
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:20000;opacity:0;transition:opacity 0.25s;';
+    
     // Panel
     const panel = document.createElement('div');
     panel.className = 'dax-expand-panel';
     panel.style.cssText = [
         'position:relative','background:var(--bg-color)','border:1px solid var(--panel-border)',
         'border-radius:10px','box-shadow:0 24px 80px rgba(0,0,0,0.5)',
-        'width:88vw','height:80vh','min-width:400px','min-height:280px',
+        'width:88vw','height:80vh','min-width:450px','min-height:300px',
         'display:flex','flex-direction:column','overflow:hidden',
         'resize:both','transform:scale(0.94)','transition:transform 0.25s'
     ].join(';');
+
     // Header
-    const statsText = (document.getElementById('wf-local-result-stats') || {}).textContent || '';
+    const statsText = `${data.rows.length} rows × ${data.columns.length} cols`;
     const hdr = document.createElement('div');
     hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--overlay-10);cursor:move;user-select:none;flex-shrink:0;background:var(--bg-color);';
     hdr.innerHTML = `
@@ -6487,20 +6547,49 @@ window.openDaxResultModal = function() {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
         </div>`;
+
+    // Column Filter Bar
+    const filterBar = document.createElement('div');
+    filterBar.style.cssText = 'padding:6px 16px;background:var(--overlay-5);border-bottom:1px solid var(--overlay-10);display:flex;align-items:center;gap:12px;overflow-x:auto;font-size:0.75rem;flex-shrink:0;';
+    
+    let filterHtml = `<span style="font-weight:bold;color:var(--text-secondary);white-space:nowrap;">Visible Fields:</span>`;
+    data.columns.forEach((col, idx) => {
+        const checked = window._daxSelectedCols.has(col) ? 'checked' : '';
+        filterHtml += `<label style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap;cursor:pointer;">
+            <input type="checkbox" data-col="${col}" ${checked} onchange="window.toggleDaxColumn('${col}', this.checked)" style="cursor:pointer;">
+            ${data.displayNames[idx]}
+        </label>`;
+    });
+    filterBar.innerHTML = filterHtml;
+
+    window.toggleDaxColumn = function(colName, isChecked) {
+        if (isChecked) {
+            window._daxSelectedCols.add(colName);
+        } else {
+            window._daxSelectedCols.delete(colName);
+        }
+        window.renderDaxModalTable();
+    };
+
     // Body
     const body = document.createElement('div');
     body.id = 'dax-result-expand-body';
     body.style.cssText = 'flex:1;overflow:auto;padding:12px;white-space:normal;';
-    body.innerHTML = src.innerHTML;
+
     panel.appendChild(hdr);
+    panel.appendChild(filterBar);
     panel.appendChild(body);
     overlay.appendChild(panel);
     document.body.appendChild(overlay);
+
+    window.renderDaxModalTable();
+
     // Animate in
     requestAnimationFrame(() => {
         overlay.style.opacity = '1';
         panel.style.transform = 'scale(1)';
     });
+
     // Close
     const closeModal = () => {
         overlay.style.opacity = '0';
@@ -6509,6 +6598,7 @@ window.openDaxResultModal = function() {
     };
     document.getElementById('dax-expand-close').onclick = closeModal;
     overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+
     // Drag
     let sx, sy, sl, st;
     const onMove = (e) => { panel.style.left = (sl + e.clientX - sx) + 'px'; panel.style.top = (st + e.clientY - sy) + 'px'; };
