@@ -4483,7 +4483,7 @@ document.addEventListener('mousedown', (e) => {
                 document.getElementById('wf-btn-runall').style.display = 'flex';
             } else if (val === 'local_model_query') {
                 document.getElementById('wf-container-local_model_query').style.display = 'block';
-                document.getElementById('wf-btn-runall').style.display = 'none';
+                document.getElementById('wf-btn-runall').style.display = 'flex';
                 if (!window._fetchedLocalInstances) {
                     window.fetchLocalModelInstances();
                     window._fetchedLocalInstances = true;
@@ -4733,7 +4733,9 @@ document.addEventListener('mousedown', (e) => {
             
             try {
                 const wfType = document.getElementById('wf-selector').value;
-                if (wfType === 'export_report') {
+                if (wfType === 'local_model_query') {
+                    await window.runLocalModelWorkflow();
+                } else if (wfType === 'export_report') {
                     const s1 = await executeStep1();
                     if (s1) {
                         const s2 = await executeStep2(true); // pass true for auto-polling
@@ -6244,7 +6246,7 @@ window.updateLocalDaxTemplate = function() {
 };
 
 window.runLocalModelWorkflow = async function() {
-    const btn = document.getElementById('btn-run-local-query');
+    const btn = document.getElementById('wf-btn-runall');
     const out = document.getElementById('wf-local-status');
     const editor = document.getElementById('local-dax-editor');
     const instSel = document.getElementById('local-model-instance');
