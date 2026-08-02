@@ -6426,12 +6426,10 @@ window.toggleLocalDaxEditor = function() {
     const open = window._localDaxEditorOpen;
     if (open) {
         body.style.display = 'block';
-        requestAnimationFrame(() => { body.style.opacity = '1'; });
         if (chevron) chevron.style.transform = 'rotate(0deg)';
         if (copyBtn) { copyBtn.style.opacity = '1'; copyBtn.style.pointerEvents = 'auto'; }
     } else {
-        body.style.opacity = '0';
-        setTimeout(() => { body.style.display = 'none'; }, 250);
+        body.style.display = 'none';
         if (chevron) chevron.style.transform = 'rotate(-90deg)';
         if (copyBtn) { copyBtn.style.opacity = '0'; copyBtn.style.pointerEvents = 'none'; }
     }
@@ -6458,7 +6456,7 @@ window.openDaxResultModal = function() {
     // Create overlay
     overlay = document.createElement('div');
     overlay.id = 'dax-result-expand-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:9000;opacity:0;transition:opacity 0.25s;';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:20000;opacity:0;transition:opacity 0.25s;';
     // Panel
     const panel = document.createElement('div');
     panel.className = 'dax-expand-panel';
