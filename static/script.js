@@ -6427,78 +6427,7 @@ window.toggleLocalDaxEditor = function(e) {
     }
 };
 
-// === Modal Drag Position Preserver Helper ===
-window.makeDraggable = makeDraggable;
-function makeDraggable(modalContent, dragHandle) {
-    let isDragging = false;
-    let startX, startY, initialLeft, initialTop;
-    
-    modalContent.style.position = 'relative';
-    dragHandle.style.cursor = 'grab';
 
-    dragHandle.addEventListener('mousedown', (e) => {
-        if (window.innerWidth <= 768) return; // Prevent drag on mobile
-        isDragging = true;
-        dragHandle.style.cursor = 'grabbing';
-        startX = e.clientX;
-        startY = e.clientY;
-        
-        const style = window.getComputedStyle(modalContent);
-        initialLeft = parseInt(style.left, 10) || 0;
-        initialTop = parseInt(style.top, 10) || 0;
-        
-        document.body.style.userSelect = 'none';
-    });
-
-    document.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        let dx = e.clientX - startX;
-        let dy = e.clientY - startY;
-        
-        const rect = modalContent.getBoundingClientRect();
-        const winWidth = window.innerWidth;
-        const winHeight = window.innerHeight;
-        
-        const maxLeft = (winWidth - rect.width) / 2;
-        const maxTop = (winHeight - rect.height) / 2;
-        
-        let newLeft = initialLeft + dx;
-        let newTop = initialTop + dy;
-        
-        if (newLeft < -maxLeft) newLeft = -maxLeft;
-        if (newLeft > maxLeft) newLeft = maxLeft;
-        if (newTop < -maxTop) newTop = -maxTop;
-        if (newTop > maxTop) newTop = maxTop;
-        
-        modalContent.style.left = `${newLeft}px`;
-        modalContent.style.top = `${newTop}px`;
-        // Store explicit drag offset to lock position during DOM mutations / collapse
-        modalContent.setAttribute('data-drag-left', `${newLeft}px`);
-        modalContent.setAttribute('data-drag-top', `${newTop}px`);
-    });
-
-    document.addEventListener('mouseup', () => {
-        if (isDragging) {
-            isDragging = false;
-            dragHandle.style.cursor = 'grab';
-            document.body.style.userSelect = 'auto';
-        }
-    });
-}
-
-// Override centerModal to protect dragged positions
-window.centerModal = function(modalContent) {
-    if (!modalContent) return;
-    const savedLeft = modalContent.getAttribute('data-drag-left');
-    const savedTop = modalContent.getAttribute('data-drag-top');
-    if (savedLeft !== null && savedTop !== null) {
-        modalContent.style.left = savedLeft;
-        modalContent.style.top = savedTop;
-    } else {
-        modalContent.style.left = '0px';
-        modalContent.style.top = '0px';
-    }
-};
 
 // === Render Table with Column Visibility ===
 window.renderDaxModalTable = function() {
