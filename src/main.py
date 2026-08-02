@@ -677,6 +677,26 @@ async def proxy_request(request: Request):
         except Exception as e:
             return {"success": False, "error": str(e)}
 
+    # 拦截纯 DAX 执行请求
+    if endpoint == "/api/local-model/dax":
+        from src.dax_executor import get_dynamic_port, execute_dax_via_ps
+        try:
+            dax = ""
+            if body and "query" in body:
+                dax = body["query"]
+            else:
+                return {"success": False, "error": "Missing 'query' field in body"}
+                
+            port = get_dynamic_port()
+            result = await execute_dax_via_ps(port, dax)
+            
+            return {
+                "success": True,
+                "data": result
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
     # 拦截 MCP 查询请求
     if endpoint == "/api/mcp/query":
         from src.mcp_client import MCPClient

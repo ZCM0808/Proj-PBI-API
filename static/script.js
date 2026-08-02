@@ -891,74 +891,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.warn("Failed to load Fabric Swagger:", e);
         }
         
-        // Inject Local Model MCP endpoints
-        swagger.paths = swagger.paths || {};
-        swagger.paths['/api/mcp/query'] = {
-            "post": {
-                "tags": ["Local Model (MCP)"],
-                "summary": "Execute DAX or List Tables via MCP",
-                "description": "Send a tool_name (e.g. table_operations.List, execute_dax) and arguments (e.g. { \"query\": \"EVALUATE 'TableName'\" }) to the local Power BI model.",
-                "parameters": [
-                    {
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "tool_name": {
-                                    "type": "string",
-                                    "example": "execute_dax"
-                                },
-                                "arguments": {
-                                    "type": "object",
-                                    "properties": {
-                                        "query": {
-                                            "type": "string",
-                                            "example": "EVALUATE 'Dim_Products'"
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful operation"
-                    }
-                }
-            }
-        };
+        // Injections removed per user request
 
-        swagger.paths['/api/local-model/nlq'] = {
-            "post": {
-                "tags": ["Local Model (MCP)"],
-                "summary": "🤖 AI Natural Language Query (NLQ)",
-                "description": "Just type what you want in natural language, and the AI will auto-write DAX and query the local model for you!",
-                "parameters": [
-                    {
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "query": {
-                                    "type": "string",
-                                    "example": "帮我查询排名前 5 的客户和他们的详细信息"
-                                }
-                            }
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful operation"
-                    }
-                }
-            }
-        };
         const categories = {};
         const definitions = swagger.definitions || {};
 
@@ -4533,6 +4467,7 @@ document.addEventListener('mousedown', (e) => {
             document.getElementById('wf-config-report_view_count').style.display = 'none';
             document.getElementById('wf-config-check_permissions').style.display = 'none';
               const gumPane = document.getElementById('wf-config-global_user_manager'); if(gumPane) gumPane.style.display = 'none';
+            const localQPane = document.getElementById('wf-container-local_model_query'); if(localQPane) localQPane.style.display = 'none';
             
             if (val === 'smart_pipeline') {
                 document.getElementById('wf-config-smart_pipeline').style.display = 'block';
@@ -4543,6 +4478,9 @@ document.addEventListener('mousedown', (e) => {
                   document.getElementById('wf-config-global_user_manager').style.display = 'block';
               } else if (val === 'check_permissions') {
                 document.getElementById('wf-config-check_permissions').style.display = 'block';
+            } else if (val === 'local_model_query') {
+                document.getElementById('wf-container-local_model_query').style.display = 'block';
+                window.updateLocalDaxTemplate(); // Init template
             } else if (val === 'export_visual') {
                 document.getElementById('wf-config-export_visual').style.display = 'block';
             } else if (val === 'report_view_count') {
