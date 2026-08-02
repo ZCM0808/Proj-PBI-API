@@ -1,0 +1,15 @@
+5001: ✓ Status: 200 OK. Retrieved ${rows.length} rows.`;
+5002:                 
+5003:                 if(!rows || rows.length === 0) {
+5004:                     consoleOut.innerText += \n⚠️ Table is empty. Skipping...;
+5005:                     continue;
+5006:                 }
+5007:                 
+5008:                 const cleanKey = (k) => {
+5009:                     const match = k.match(/\[(.*?)\]/);
+5010:                     return match ? match[1] : k;
+5011:                 };
+5012:                 
+5013:                 if (exportFormat === 'CSV') {
+5014:                     const rawKeys = Object.keys(rows[0]);
+5015:                     let csv = rawKeys.map(k => `"${cleanKey(k).replace(/"/g, '""')}"`).join(",") + "

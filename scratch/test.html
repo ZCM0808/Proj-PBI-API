@@ -10,7 +10,2700 @@
     <script src="https://cdn.jsdelivr.net/npm/powerbi-client/dist/powerbi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260730_v152">
+    <style>:root {
+    --sidebar-width: 250px;
+    --bg-color: #0f1115;
+    --panel-bg: rgba(25, 28, 36, 0.6);
+    --panel-border: rgba(255, 255, 255, 0.08);
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --accent: #F2C811; /* Power BI Yellow */
+    --accent-text: #0f1115;
+    --accent-hover: #d4af37;
+    --accent-glow: rgba(242, 200, 17, 0.2);
+    --success: #10b981;
+    --error: #ef4444;
+    --overlay-5: rgba(255, 255, 255, 0.05);
+    --overlay-8: rgba(255, 255, 255, 0.08);
+    --overlay-10: rgba(255, 255, 255, 0.1);
+    --overlay-15: rgba(255, 255, 255, 0.15);
+    --overlay-20: rgba(255, 255, 255, 0.2);
+    --overlay-30: rgba(255, 255, 255, 0.3);
+    --shadow-base: rgba(0, 0, 0, 0.3);
+    --shadow-dark: rgba(0, 0, 0, 0.6);
+    --input-bg: rgba(0, 0, 0, 0.3);
+    --input-bg-light: rgba(0, 0, 0, 0.2);
+    /* Syntax Highlighting */
+    --syntax-key: #9cdcfe;
+    --syntax-string: #ce9178;
+    --syntax-number: #b5cea8;
+    --syntax-bool: #569cd6;
+    --syntax-bracket: #d4d4d4;
+    /* Components */
+    --modal-bg: rgba(20, 20, 25, 0.85);
+    --modal-overlay: rgba(0, 0, 0, 0.65);
+    --dropdown-bg: #1a1e23;
+    /* Method Badges */
+    --badge-get-bg: rgba(56, 189, 248, 0.15);
+    --badge-get-text: #38bdf8;
+    --badge-post-bg: rgba(16, 185, 129, 0.15);
+    --badge-post-text: #10b981;
+    --badge-put-bg: rgba(245, 158, 11, 0.15);
+    --badge-put-text: #f59e0b;
+    --badge-delete-bg: rgba(239, 68, 68, 0.15);
+    --badge-delete-text: #ef4444;
+    /* Global Status */
+    --status-success-bg: rgba(16, 185, 129, 0.1);
+    --status-error-bg: rgba(239, 68, 68, 0.2);
+    --status-error-text: #ef4444;
+    /* Misc Components */
+    --badge-custom-bg: rgba(167, 139, 250, 0.2);
+    --badge-custom-text: #a78bfa;
+    --markdown-border: #30363d;
+    /* Semantic Colors added safely */
+    --error-hover: #dc2626;
+    --error-light: #f87171;
+    --success-hover: #059669;
+    --success-light: #34d399;
+    --warning: #f59e0b;
+    --warning-hover: #d97706;
+    --warning-light: #fbbf24;
+    --info: #3eb6ff;
+    --info-dark: #3b82f6;
+    --info-darker: #2563eb;
+    --info-bg: rgba(62, 166, 255, 0.15);
+    --info-border: rgba(62, 166, 255, 0.25);
+    --teal: #2dd4bf;
+    --shadow-light: rgba(0, 0, 0, 0.2);
+    --bg-dark: #101216;
+}
+
+[data-theme="light"] {
+    --bg-color: #f1f5f9;
+    --panel-bg: rgba(255, 255, 255, 0.85);
+    --panel-border: rgba(0, 0, 0, 0.15);
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --accent: #F2C811;
+    --accent-text: #0f1115;
+    --accent-hover: #d4af37;
+    --accent-glow: rgba(212, 175, 55, 0.3);
+    --overlay-5: rgba(0, 0, 0, 0.05);
+    --overlay-8: rgba(0, 0, 0, 0.08);
+    --overlay-10: rgba(0, 0, 0, 0.08);
+    --overlay-15: rgba(0, 0, 0, 0.12);
+    --overlay-20: rgba(0, 0, 0, 0.15);
+    --overlay-30: rgba(0, 0, 0, 0.25);
+    --shadow-base: rgba(0, 0, 0, 0.08);
+    --shadow-dark: rgba(0, 0, 0, 0.15);
+    --input-bg: rgba(255, 255, 255, 0.7);
+    --input-bg-light: rgba(255, 255, 255, 0.5);
+    /* Syntax Highlighting (VS Code Light Theme inspired) */
+    --syntax-key: #0451a5;
+    --syntax-string: #a31515;
+    --syntax-number: #098658;
+    --syntax-bool: #0000ff;
+    --syntax-bracket: #333333;
+    /* Components */
+    --modal-bg: rgba(248, 250, 252, 0.95);
+    --modal-overlay: rgba(15, 23, 42, 0.4);
+    --dropdown-bg: #ffffff;
+    /* Method Badges (slightly darker for contrast on light) */
+    --badge-get-bg: rgba(2, 132, 199, 0.15);
+    --badge-get-text: #0284c7;
+    --badge-post-bg: rgba(5, 150, 105, 0.15);
+    --badge-post-text: #059669;
+    --badge-put-bg: rgba(217, 119, 6, 0.15);
+    --badge-put-text: #d97706;
+    --badge-delete-bg: rgba(220, 38, 38, 0.15);
+    --badge-delete-text: #dc2626;
+    /* Global Status */
+    --status-success-bg: rgba(5, 150, 105, 0.15);
+    --status-error-bg: rgba(220, 38, 38, 0.15);
+    --status-error-text: #dc2626;
+    /* Misc Components */
+    --badge-custom-bg: rgba(139, 92, 246, 0.15);
+    --badge-custom-text: #7c3aed;
+    --markdown-border: rgba(0,0,0,0.1);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    height: 100vh;
+    background-image: 
+        radial-gradient(circle at 15% 50%, rgba(242, 200, 17, 0.05), transparent 25%),
+        radial-gradient(circle at 85% 30%, rgba(56, 189, 248, 0.05), transparent 25%);
+}
+
+.app-container {
+    display: flex;
+    height: 100vh;
+    padding: 1rem;
+    box-sizing: border-box;
+    /* remove gap so resizer sits flush, or adjust padding */
+}
+
+/* Glassmorphism utility */
+
+.glass-panel {
+    background: var(--panel-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--panel-border);
+    border-radius: 16px;
+    box-shadow: 0 4px 24px -1px var(--shadow-base);
+}
+
+/* Sidebar */
+
+.sidebar {
+    width: 280px;
+    min-width: 200px;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    height: 100%;
+    position: relative;
+    z-index: 10;
+    flex-shrink: 0;
+}
+
+.resizer {
+    width: 16px;
+    cursor: col-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    z-index: 10;
+    background: transparent;
+}
+
+.resizer::after {
+    content: '';
+    width: 4px;
+    height: 60px;
+    background: var(--overlay-10);
+    border-radius: 4px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 0 rgba(0,0,0,0);
+}
+
+.resizer:hover::after, .resizer.active::after {
+    background: var(--accent);
+    width: 6px;
+    box-shadow: 0 0 12px var(--accent-glow);
+}
+
+/* Vertical Resizer */
+
+.vertical-resizer {
+    height: 16px;
+    margin: -16px 0;
+    background: transparent;
+    cursor: row-resize;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+}
+
+.vertical-resizer::after {
+    content: '';
+    width: 60px;
+    height: 4px;
+    background: var(--overlay-10);
+    border-radius: 4px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 0 rgba(0,0,0,0);
+}
+
+.vertical-resizer:hover::after, .vertical-resizer.active::after {
+    background: var(--accent);
+    height: 6px;
+    box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1rem;
+}
+
+/* Search Box */
+
+.search-container {
+    margin-bottom: 1rem;
+}
+
+#api-search-input {
+    width: 100%;
+    background: var(--shadow-base);
+    border: 1px solid var(--panel-border);
+    color: var(--text-primary);
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+#api-search-input:focus {
+    border-color: var(--accent);
+}
+
+.logo h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--text-primary);
+}
+
+.nav-menu {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.search-box {
+    margin-bottom: 1rem;
+}
+
+.search-box input {
+    width: 100%;
+    background: var(--shadow-base);
+    border: 1px solid var(--panel-border);
+    color: var(--text-primary);
+    padding: 0.6rem 1rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.search-box input:focus {
+    border-color: var(--accent);
+}
+
+.api-tree {
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+    min-height: 0;
+    padding-right: 0.5rem;
+}
+
+.api-count-badge {
+    font-size: 0.75rem;
+    background: var(--overlay-10);
+    color: var(--text-primary);
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-weight: 600;
+}
+
+.api-category {
+    margin-bottom: 0.5rem;
+}
+
+.api-category-title {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+    padding: 0.5rem 0;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.api-category-title:hover {
+    color: var(--text-primary);
+}
+
+.api-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding-left: 0.5rem;
+    border-left: 1px solid var(--overlay-5);
+}
+
+.api-item {
+    padding: 0.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    transition: all 0.2s;
+}
+
+.api-item:hover {
+    background: var(--overlay-5);
+}
+
+.api-item.active {
+    background: var(--badge-custom-bg);
+    border-left: 3px solid var(--accent);
+}
+
+.bookmark-btn {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 0 4px;
+    border-radius: 4px;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s;
+    line-height: 1;
+}
+
+.bookmark-btn:hover {
+    color: var(--accent);
+    transform: scale(1.25) rotate(-10deg);
+}
+
+.bookmark-btn:active {
+    transform: scale(0.7) rotate(10deg);
+}
+
+.bookmark-btn.active {
+    color: #F2C811;
+    text-shadow: 0 0 12px rgba(242, 200, 17, 0.6);
+}
+
+.bookmark-btn.pop-anim {
+    animation: starPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.method-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 0.15rem 0.3rem;
+    border-radius: 4px;
+    min-width: 38px;
+    text-align: center;
+}
+
+.method-GET { background: var(--badge-get-bg); color: var(--badge-get-text); }
+
+.method-POST { background: var(--badge-post-bg); color: var(--badge-post-text); }
+
+.method-PUT { background: var(--badge-put-bg); color: var(--badge-put-text); }
+
+.method-PATCH { background: var(--badge-put-bg); color: var(--badge-put-text); }
+
+.method-DELETE { background: var(--badge-delete-bg); color: var(--badge-delete-text); }
+
+.api-item-name {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+.doc-link a {
+    display: block;
+    padding: 1rem;
+    text-align: center;
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 0.9rem;
+    border-radius: 8px;
+    background: var(--overlay-10);
+    transition: all 0.2s;
+}
+
+.doc-link a:hover {
+    background: var(--overlay-10);
+}
+
+/* Main Content */
+
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+    padding-right: 0.5rem;
+    height: 100%;
+}
+
+.request-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.icon-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: var(--overlay-5);
+    border: 1px solid var(--overlay-10);
+    color: var(--text-secondary);
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: all 0.2s;
+}
+
+.icon-btn:hover {
+    background: var(--overlay-10);
+    color: var(--text-primary);
+}
+
+/* Scrollbar */
+
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--overlay-10);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--overlay-20);
+}
+
+/* Request Builder */
+
+.request-builder { 
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    position: relative;
+    z-index: 100;
+    min-width: 0;
+    width: 100%;
+}
+
+.row {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.input-group select, .input-group input {
+    background: var(--shadow-base);
+    border: 1px solid var(--panel-border);
+    color: var(--text-primary);
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.input-group select:focus, .input-group input:focus {
+    border-color: var(--accent);
+}
+
+.method-selector select {
+    font-weight: 600;
+    cursor: pointer;
+    width: 110px;
+}
+
+.method-selector select option {
+    background: var(--bg-color);
+}
+
+.endpoint-input {
+    flex: 1;
+    display: flex;
+    background: var(--shadow-base);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    align-items: center;
+    transition: border-color 0.2s;
+}
+
+.endpoint-input:focus-within {
+    border-color: var(--accent);
+}
+
+.base-url-hint {
+    padding: 0 1rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    border-right: 1px solid var(--panel-border);
+    background: var(--input-bg-light);
+    height: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.endpoint-input input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding-left: 0.5rem;
+}
+
+.endpoint-input input:focus {
+    border: none;
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: var(--accent-text);
+    border: none;
+    padding: 0 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+}
+
+.btn-primary:hover {
+    background: var(--accent-hover);
+    box-shadow: 0 0 15px var(--accent-glow);
+    transform: translateY(-1px);
+}
+
+.btn-primary:active {
+    transform: translateY(1px);
+}
+
+.btn-primary:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.body-editor-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.editor-header .hint {
+    font-size: 0.75rem;
+    color: var(--overlay-30);
+}
+
+textarea {
+    width: 100%;
+    flex: 1;
+    min-height: 80px;
+    background: var(--shadow-base);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    padding: 1rem;
+    font-family: 'Fira Code', 'Courier New', Courier, monospace;
+    font-size: 0.85rem;
+    resize: none; /* 禁用原生右下角拖拽，使用全局水平拖拽条 */
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+textarea:focus {
+    border-color: var(--accent);
+}
+
+/* Response Area */
+
+.response-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    width: 100%;
+    min-height: 200px;
+}
+
+.response-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--panel-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+}
+
+.response-status {
+    font-size: 0.85rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    background: var(--overlay-5);
+    color: var(--text-secondary);
+}
+
+.status-success {
+    background: var(--status-success-bg);
+    color: var(--success);
+}
+
+.response-status.error {
+    background: var(--status-error-bg);
+    color: var(--badge-delete-text);
+}
+
+/* JSON Viewer Highlight */
+
+.json-viewer {
+    font-family: 'Fira Code', 'Courier New', Courier, monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--syntax-bracket); /* VSCode Dark+ 基础色 */
+    white-space: nowrap; /* 强制树状图不换行，保持缩进结构 */
+}
+
+.json-viewer .key { color: var(--syntax-key); } /* 键名 - 浅蓝 */
+
+.json-viewer .string { color: var(--syntax-string); } /* 字符串 - 橙色 */
+
+.json-viewer .number { color: var(--syntax-number); } /* 数字 - 浅绿 */
+
+.json-viewer .boolean { color: var(--syntax-bool); } /* 布尔 - 蓝色 */
+
+.json-viewer .null { color: var(--syntax-bool); font-style: italic; }
+
+.response-body {
+    flex: 1;
+    padding: 1.5rem;
+    overflow: auto;
+    background: var(--input-bg-light);
+    min-width: 0;
+    width: 100%;
+}
+
+.response-body pre {
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 0.9rem;
+    color: var(--badge-custom-text);
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+/* Loading animation */
+
+.loader {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--shadow-light);
+    border-radius: 50%;
+    border-top-color: #000;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+
+}
+
+/* =========================================
+
+   响应式设计 (Responsive Design for Mobile & Tablet)
+
+   ========================================= */
+
+@media (max-width: 768px) {
+    :root { }
+    /* Enforce fixed centered modals on mobile and prevent drag offsets */
+    .modal-content {
+        left: 0 !important;
+        top: 0 !important;
+        width: 95vw !important;
+        max-width: 95vw !important;
+        max-height: 90vh !important;
+    }
+    
+    /* Ensure AI Chat Window resets drag offsets on mobile */
+    #ai-chat-window {
+        left: 0 !important;
+        top: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100vw !important;
+        max-width: 100vw !important;
+        height: 100vh !important;
+        border-radius: 0 !important;
+    }
+
+    /* Enlarge touch targets for buttons on mobile */
+    .close-btn {
+        width: 36px !important;
+        height: 36px !important;
+    }
+    .close-btn svg {
+        width: 18px !important;
+        height: 18px !important;
+    }
+    .icon-btn, .btn-primary, .btn-secondary, .wf-step-btn {
+        min-height: 40px !important;
+        padding: 8px 16px !important;
+    }
+
+    /* Responsive Note Modal */
+    #modal-note .modal-content {
+        width: 95vw !important;
+        max-width: 95vw !important;
+        padding: 12px !important;
+    }
+
+    .note-modal-body {
+        flex-direction: column !important;
+        min-height: auto !important;
+        gap: 12px !important;
+    }
+
+    .note-left-panel {
+        width: 100% !important;
+        border-right: none !important;
+        border-bottom: 1px solid var(--panel-border) !important;
+        padding-right: 0 !important;
+        padding-bottom: 12px !important;
+        height: 180px !important;
+    }
+
+    .note-right-panel {
+        width: 100% !important;
+        flex: none !important;
+    }
+
+    .note-filename-row {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+
+    .note-filename-container {
+        margin-right: 0 !important;
+    }
+
+    #modal-note .btn-action {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    .app-container {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .sidebar {
+        width: 100% !important;
+        height: 45vh; /* 移动端顶部占 45% 屏幕高度 */
+        min-height: 350px;
+        min-width: 100% !important;
+        overflow-y: auto;
+        z-index: 101;
+    }
+
+    /* 移动端改为上下布局，取消原有的鼠标拖拽条 */
+
+    .resizer, .vertical-resizer {
+        display: none !important;
+    }
+
+    .main-content {
+        padding: 1rem 0;
+        height: auto;
+        overflow: visible;
+    }
+
+    .input-group.row {
+        flex-direction: column;
+        gap: 0.8rem;
+    }
+
+    .method-selector select, .endpoint-input, #api-endpoint, .btn-primary {
+        width: 100%;
+    }
+
+    .request-builder { 
+        height: auto !important;
+        h2 {
+            margin: 0;
+        }
+
+    }
+
+    .search-container {
+        padding: 0.5rem 1.5rem;
+    }
+
+    .search-container input {
+        width: 100%;
+        padding: 0.5rem;
+        background: var(--shadow-base);
+        border: 1px solid var(--panel-border);
+        border-radius: 4px;
+        color: var(--text-primary);
+    }
+
+    .api-tree {
+    overflow-y: auto;
+    overflow-x: hidden;
+        padding: 1rem 1.5rem;
+    }
+
+    textarea {
+        min-height: 200px;
+    }
+
+    .response-container {
+        min-height: 400px;
+    }
+
+}
+
+/* Modal and Terminal Styles */
+
+@keyframes modalFadeIn {
+    from { opacity: 0; }
+
+    to { opacity: 1; }
+
+}
+
+@keyframes modalPopUp {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+
+    /* Semantic Colors added safely */
+    --error-hover: #b91c1c;
+    --error-light: #fca5a5;
+    --success-hover: #047857;
+    --success-light: #6ee7b7;
+    --warning: #d97706;
+    --warning-hover: #b45309;
+    --warning-light: #fcd34d;
+    --info: #0284c7;
+    --info-dark: #0369a1;
+    --info-darker: #075985;
+    --info-bg: rgba(2, 132, 199, 0.1);
+    --info-border: rgba(2, 132, 199, 0.2);
+    --teal: #0f766e;
+    --shadow-light: rgba(0, 0, 0, 0.1);
+}
+
+.modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: var(--shadow-dark);
+    display: flex; justify-content: center; align-items: center;
+    overflow-y: auto;
+    z-index: 1000;
+    animation: modalFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes pulse-awake {
+    0%, 100% { box-shadow: 0 0 4px rgba(16, 185, 129, 0.4); }
+
+    50% { box-shadow: 0 0 14px 2px rgba(16, 185, 129, 0.8); }
+
+}
+
+.awake-active {
+    background: #10b981 !important;
+    border-color: #10b981 !important;
+    color: #fff !important;
+    animation: pulse-awake 2s ease-in-out infinite !important;
+}
+
+.modal-content {
+    width: 600px; max-width: 90%;
+    margin: 0 auto;
+    position: relative;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    display: flex; flex-direction: column;
+    animation: modalPopUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--overlay-10);
+}
+
+.modal-header h3 { margin: 0; font-size: 1.1rem; }
+
+.close-btn { 
+    width: 28px; 
+    height: 28px; 
+    border-radius: 50%; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    background: var(--overlay-5); 
+    border: 1px solid var(--overlay-10); 
+    color: var(--text-secondary); 
+    cursor: pointer; 
+    transition: all 0.2s; 
+    padding: 0;
+}
+
+.close-btn:hover { 
+    background: rgba(239,68,68,0.2); 
+    color: #ef4444; 
+}
+
+.close-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+@keyframes modalFadeOut {
+    from { opacity: 1; }
+
+    to { opacity: 0; }
+
+}
+
+@keyframes modalPopDown {
+    from { transform: scale(1) translateY(0); opacity: 1; }
+
+    to { transform: scale(0.95) translateY(20px); opacity: 0; }
+
+}
+
+.modal-overlay.closing {
+    animation: modalFadeOut 0.2s ease-in forwards !important;
+}
+
+.modal-overlay.closing .modal-content {
+    animation: modalPopDown 0.2s ease-in forwards !important;
+}
+
+.modal-body { padding: 1.5rem; }
+
+.terminal-view {
+    background: var(--input-bg); color: var(--text-primary);
+    font-family: 'Fira Code', monospace; font-size: 0.85rem;
+    padding: 1rem; border-radius: 6px;
+    height: 300px; 
+    border: 1px solid #30363d;
+}
+
+.terminal-line { margin-bottom: 6px; line-height: 1.4; }
+
+.terminal-line .info { color: var(--info); }
+
+.terminal-line .success { color: var(--success); }
+
+.terminal-line .warning { color: var(--warning); }
+
+.terminal-line .error { color: var(--error); font-weight: bold; }
+
+.modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--overlay-10);
+}
+
+/* 究极炫酷的 Pipeline 执行按钮 */
+
+.btn-pipeline {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    background: linear-gradient(135deg, #a78bfa 0%, #f2c811 100%);
+    color: #1a1a24;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(242, 200, 17, 0.4);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-pipeline::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 50%; height: 100%;
+    background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0) 100%);
+    transform: skewX(-25deg);
+    transition: none;
+}
+
+.btn-pipeline:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(242, 200, 17, 0.6);
+}
+
+.btn-pipeline:hover::after {
+    left: 200%;
+    transition: all 0.6s ease;
+}
+
+.btn-pipeline:disabled {
+    background: var(--markdown-border);
+    color: var(--text-secondary);
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-pipeline:disabled::after {
+    display: none;
+}
+
+/* Settings Modal Styles */
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.form-group label {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.settings-input {
+    width: 100%;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+    font-family: 'Fira Code', monospace;
+    background: var(--input-bg-light);
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    color: var(--text-primary);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+textarea.settings-input {
+    font-size: 0.85rem;
+}
+
+.settings-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.2);
+}
+
+select.settings-input {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23a78bfa%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px top 50%;
+    background-size: 8px auto;
+    background-color: var(--dropdown-bg);
+    color: var(--text-primary);
+    cursor: pointer;
+    padding-right: 24px;
+}
+
+select.settings-input option {
+    background-color: var(--dropdown-bg);
+    color: var(--text-primary);
+}
+
+.btn-settings-save {
+    width: 100%;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    background: var(--accent);
+    color: var(--text-primary);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-settings-save:hover {
+    background: #9061f9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(167, 139, 250, 0.4);
+}
+
+.btn-settings-save:disabled {
+    background: var(--markdown-border);
+    color: var(--text-secondary);
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Flag Badges for Quick Filters */
+
+.flag-badge {
+    padding: 2px 7px;
+    font-size: 0.65rem;
+    font-weight: 500;
+    border-radius: 10px;
+    background: var(--overlay-5);
+    border: 1px solid var(--overlay-8);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+}
+
+.flag-badge:hover {
+    background: var(--overlay-10);
+    border-color: var(--overlay-20);
+    color: var(--text-primary);
+}
+
+.flag-badge.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-text);
+    font-weight: 600;
+    box-shadow: 0 0 10px rgba(242, 200, 17, 0.3);
+}
+
+/* =========================================
+
+   写操作确认模态窗 (Write Confirmation Modal)
+
+   ========================================= */
+
+.confirm-modal-content {
+    background: var(--modal-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--overlay-10);
+    box-shadow: 0 12px 40px 0 var(--shadow-dark);
+    border-radius: 12px;
+    padding: 1.5rem;
+    max-width: 440px;
+    width: 90%;
+    transform: scale(0.9);
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    margin: auto;
+}
+
+/* 基于 opacity 的平滑淡出与淡入 */
+
+.confirm-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: var(--modal-overlay);
+    backdrop-filter: blur(0px);
+    opacity: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    transition: opacity 0.22s ease, backdrop-filter 0.22s ease;
+}
+
+.confirm-modal-overlay.show {
+    opacity: 1;
+    backdrop-filter: blur(4px);
+}
+
+.confirm-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1rem;
+}
+
+.confirm-modal-header h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.warning-icon {
+    font-size: 1.3rem;
+    color: var(--badge-put-text);
+}
+
+.confirm-modal-body {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+}
+
+.confirm-modal-path-container {
+    background: var(--shadow-dark);
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-top: 10px;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.75rem;
+    color: var(--badge-custom-text);
+    word-break: break-all;
+    border: 1px solid var(--overlay-5);
+}
+
+.confirm-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.btn-warning-action {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+    border: none !important;
+    color: #fff !important;
+    transition: all 0.2s;
+}
+
+.btn-warning-action:hover {
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.4) !important;
+    background: linear-gradient(135deg, #f87171 0%, #ef4444 100%) !important;
+}
+
+.btn-warning-action:active {
+    transform: scale(0.95);
+}
+
+/* 官方文档链接按钮 hover 效果 */
+
+.btn-doc-link:hover {
+    background: var(--overlay-10) !important;
+    border-color: var(--accent) !important;
+    color: var(--text-primary) !important;
+    box-shadow: 0 0 8px rgba(242, 200, 17, 0.15);
+}
+
+/* 物理触压回弹的取消按钮 */
+
+.btn-cancel {
+    background: var(--overlay-5) !important;
+    border: 1px solid var(--panel-border) !important;
+    color: var(--text-primary) !important;
+    padding: 6px 14px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    font-size: 0.8rem !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.btn-cancel:hover {
+    background: var(--overlay-15) !important;
+    border-color: var(--overlay-30) !important;
+    color: var(--text-primary) !important;
+}
+
+.btn-cancel:active {
+    transform: scale(0.92) !important;
+}
+
+/* Official doc link button - theme-aware */
+.btn-doc-link {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    font-size: 0.75rem !important;
+    color: var(--accent) !important;
+    text-decoration: none !important;
+    border: 1px solid var(--accent-glow) !important;
+    padding: 2px 8px !important;
+    border-radius: 4px !important;
+    background: var(--overlay-10) !important;
+    transition: all 0.2s !important;
+}
+
+.btn-doc-link:hover {
+    background: rgba(242, 200, 17, 0.15) !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 2px 8px var(--accent-glow) !important;
+}
+
+/* =========================================
+
+   复制 cURL 请求按钮与书签激活样式
+
+   ========================================= */
+
+#copy-btn {
+    background: var(--overlay-5);
+    color: var(--text-primary);
+    border: 1px solid var(--overlay-10);
+    padding: 0 1.2rem;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 0.95rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#copy-btn:hover {
+    background: var(--overlay-15) !important;
+    border-color: var(--overlay-30) !important;
+    color: var(--text-primary) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+#copy-btn:active {
+    transform: scale(0.95) !important;
+}
+
+.flag-badge[data-flag="BOOKMARK"].active {
+    background: var(--accent) !important;
+    border-color: var(--accent) !important;
+    color: #0f1115 !important;
+    box-shadow: 0 0 12px rgba(242, 200, 17, 0.45) !important;
+}
+
+/* Vanilla JSONEditor Customizations */
+
+#response-output.jse-theme-dark, #response-output.jse-theme-light, #response-output {
+    --jse-theme-color: var(--accent);
+    --jse-theme-color-highlight: var(--accent-hover);
+    --jse-background-color: transparent;
+    --jse-panel-background: transparent;
+    --jse-font-size-mono: 13px;
+    --jse-line-height: 1.3;
+    --jse-padding: 4px;
+}
+
+#response-output .jse-header-outer {
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: 15px !important;
+}
+
+#response-output .jse-json-node {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+#response-output {
+    --jse-font-size-mono: 13px !important;
+    --jse-line-height: 1.15 !important;
+}
+
+/* JSON-VIEWER (Web Component) COMPACT STYLE */
+
+json-viewer {
+    --background-color: transparent;
+    --color: var(--text-primary);
+    --string-color: #ce9178;
+    --number-color: #b5cea8;
+    --boolean-color: #569cd6;
+    --null-color: #569cd6;
+    --property-color: #9cdcfe;
+    --font-family: Consolas, 'Courier New', monospace;
+    --font-size: 13px;
+    --line-height: 1.15;
+    --indent-size: 1.5em;
+    --indent-guide-color: rgba(255, 255, 255, 0.1);
+    --indent-guide-width: 1px;
+    padding: 0;
+}
+
+/* --- Animations for Dropdowns and Panels --- */
+
+@keyframes dropdownPopUp {
+    0% { opacity: 0; transform: scale(0.95) translateY(-10px); }
+
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+
+}
+
+@keyframes dropdownPopDown {
+    0% { opacity: 1; transform: scale(1) translateY(0); }
+
+    100% { opacity: 0; transform: scale(0.95) translateY(-10px); }
+
+}
+
+@keyframes dropdownPopUp {
+    0% { opacity: 0; transform: scale(0.95) translateY(-10px); }
+
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+
+}
+
+@keyframes dropdownPopDown {
+    0% { opacity: 1; transform: scale(1) translateY(0); }
+
+    100% { opacity: 0; transform: scale(0.95) translateY(-10px); }
+
+}
+
+@keyframes dropdownPopUp {
+    0% { opacity: 0; transform: scale(0.95) translateY(-10px); }
+
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+
+}
+
+@keyframes dropdownPopDown {
+    0% { opacity: 1; transform: scale(1) translateY(0); }
+
+    100% { opacity: 0; transform: scale(0.95) translateY(-10px); }
+
+}
+
+@keyframes dropdownPopUp {
+    0% { opacity: 0; transform: scale(0.95) translateY(-10px); }
+
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+
+}
+
+@keyframes dropdownPopDown {
+    0% { opacity: 1; transform: scale(1) translateY(0); }
+
+    100% { opacity: 0; transform: scale(0.95) translateY(-10px); }
+
+}
+
+@keyframes dropdownPopUp {
+    0% { opacity: 0; transform: scale(0.95) translateY(-10px); }
+
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+
+}
+
+@keyframes dropdownPopDown {
+    0% { opacity: 1; transform: scale(1) translateY(0); }
+
+    100% { opacity: 0; transform: scale(0.95) translateY(-10px); }
+
+}
+
+.animated-dropdown {
+    animation: dropdownPopUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.animated-dropdown.is-closing {
+    animation: dropdownPopDown 0.2s ease-in forwards;
+}
+
+@keyframes fade-in-down {
+    0% { opacity: 0; transform: translateY(-10px); }
+
+    100% { opacity: 1; transform: translateY(0); }
+
+}
+
+@keyframes fade-out-up {
+    0% { opacity: 1; transform: translateY(0); }
+
+    100% { opacity: 0; transform: translateY(-10px); }
+
+}
+
+.animated-collapse {
+    animation: fade-in 0.2s ease-out forwards;
+}
+
+.animated-collapse.is-closing {
+    animation: fade-out 0.2s ease-in forwards;
+}
+
+@keyframes fade-in {
+    0% { opacity: 0; }
+
+    100% { opacity: 1; }
+
+}
+
+@keyframes fade-out {
+    0% { opacity: 1; }
+
+    100% { opacity: 0; }
+
+}
+
+/* --- Left Panel Header Buttons --- */
+
+.btn-action-icon {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--panel-border);
+    padding: 0 8px;
+    height: 26px;
+    box-sizing: border-box;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-action-icon:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+}
+
+.btn-action-icon:active {
+    transform: translateY(1px);
+}
+
+.btn-action-primary {
+    background: var(--accent);
+    color: var(--accent-text);
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-action-primary:hover {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(139, 92, 246, 0.3);
+}
+
+.btn-action-primary:active {
+    transform: translateY(1px);
+    box-shadow: none;
+}
+
+/* Modern Input Styling */
+
+.modern-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: var(--input-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+}
+
+.modern-input:focus {
+    background: var(--input-bg);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* Expand/Collapse Animations */
+
+.collapse-icon {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.api-category-title.active .collapse-icon {
+    transform: rotate(90deg);
+}
+
+#toggle-all-categories-btn svg, #tree-toggle-all-btn svg {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#toggle-all-categories-btn.expanded svg, #tree-toggle-all-btn.expanded svg {
+    transform: rotate(180deg);
+}
+
+/* API List Animation using max-height */
+
+.api-list {
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+}
+
+.api-list.expanded {
+    opacity: 1;
+}
+
+/* Non-blocking Floating Note Window */
+
+#modal-note.modal-overlay {
+    pointer-events: none;
+    background: transparent;
+}
+
+#modal-note .modal-content {
+    pointer-events: auto;
+    background: var(--modal-bg);
+    border: 1px solid var(--panel-border);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 0 10px 50px var(--shadow-dark);
+}
+
+/* Modern Input Styling */
+
+.modern-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: var(--input-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+}
+
+.modern-input:focus {
+    background: var(--input-bg);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* Expand/Collapse Animations */
+
+.collapse-icon {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.api-category-title.active .collapse-icon {
+    transform: rotate(90deg);
+}
+
+#toggle-all-categories-btn svg, #tree-toggle-all-btn svg {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#toggle-all-categories-btn.expanded svg, #tree-toggle-all-btn.expanded svg {
+    transform: rotate(180deg);
+}
+
+/* API List Animation using max-height */
+
+.api-list {
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+}
+
+.api-list.expanded {
+    opacity: 1;
+}
+
+/* Modern Input Styling */
+
+.modern-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: var(--input-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+}
+
+.modern-input:focus {
+    background: var(--input-bg);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* Expand/Collapse Animations */
+
+.collapse-icon {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.api-category-title.active .collapse-icon {
+    transform: rotate(90deg);
+}
+
+#toggle-all-categories-btn svg, #tree-toggle-all-btn svg {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#toggle-all-categories-btn.expanded svg, #tree-toggle-all-btn.expanded svg {
+    transform: rotate(180deg);
+}
+
+/* API List Animation using max-height */
+
+.api-list {
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+}
+
+.api-list.expanded {
+    opacity: 1;
+}
+
+/* Modern Input Styling */
+
+.modern-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: var(--input-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+}
+
+.modern-input:focus {
+    background: var(--input-bg);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* Expand/Collapse Animations */
+
+.collapse-icon {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.api-category-title.active .collapse-icon {
+    transform: rotate(90deg);
+}
+
+#toggle-all-categories-btn svg, #tree-toggle-all-btn svg {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#toggle-all-categories-btn.expanded svg, #tree-toggle-all-btn.expanded svg {
+    transform: rotate(180deg);
+}
+
+/* API List Animation using max-height */
+
+.api-list {
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+}
+
+.api-list.expanded {
+    opacity: 1;
+}
+
+/* Modern Input Styling */
+
+.modern-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: var(--input-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+}
+
+.modern-input:focus {
+    background: var(--input-bg);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* Expand/Collapse Animations */
+
+.collapse-icon {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.api-category-title.active .collapse-icon {
+    transform: rotate(90deg);
+}
+
+#toggle-all-categories-btn svg, #tree-toggle-all-btn svg {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#toggle-all-categories-btn.expanded svg, #tree-toggle-all-btn.expanded svg {
+    transform: rotate(180deg);
+}
+
+/* API List Animation using max-height */
+
+.api-list {
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+}
+
+.api-list.expanded {
+    opacity: 1;
+}
+
+/* EasyMDE Theme Adaptation for Dark/Light Mode */
+
+.EasyMDEContainer {
+    border: 1px solid var(--panel-border) !important;
+    border-radius: 8px;
+    background: var(--input-bg) !important;
+}
+
+.editor-toolbar {
+    background: var(--panel-bg) !important;
+    border-bottom: 1px solid var(--panel-border) !important;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    opacity: 0.9;
+}
+
+.editor-toolbar button {
+    color: var(--text-primary) !important;
+}
+
+.editor-toolbar button.active,
+
+.editor-toolbar button:hover {
+    background: var(--overlay-10) !important;
+    border-color: var(--panel-border) !important;
+}
+
+.editor-toolbar i.separator {
+    border-right-color: var(--panel-border) !important;
+}
+
+.CodeMirror {
+    background: var(--input-bg) !important;
+    color: var(--text-primary) !important;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    border: none !important;
+}
+
+.CodeMirror,
+
+.CodeMirror *,
+
+.CodeMirror-scroll,
+
+.CodeMirror-scroll * {
+    cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='18' viewBox='0 0 10 18'><path d='M2 1h6M5 1v16M2 17h6' stroke='%23ffffff' stroke-width='1.5' fill='none'/></svg>") 5 9, text !important;
+}
+
+[data-theme="light"] .CodeMirror,
+
+[data-theme="light"] .CodeMirror *,
+
+[data-theme="light"] .CodeMirror-scroll,
+
+[data-theme="light"] .CodeMirror-scroll * {
+    cursor: text !important;
+}
+
+.CodeMirror-cursor {
+    border-left: 2px solid var(--text-primary) !important;
+}
+
+.CodeMirror textarea {
+    caret-color: var(--text-primary) !important;
+}
+
+.editor-preview {
+    background: var(--bg-color) !important;
+    color: var(--text-primary) !important;
+}
+
+/* EasyMDE status bar */
+
+.editor-statusbar {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    gap: 24px !important;
+    padding: 8px 14px !important;
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+    background: var(--panel-bg) !important;
+    border: 1px solid var(--panel-border) !important;
+    border-top: none !important;
+    border-bottom-left-radius: 8px !important;
+    border-bottom-right-radius: 8px !important;
+    color: var(--text-primary) !important;
+}
+.editor-statusbar * {
+    color: var(--text-primary) !important;
+    opacity: 0.9;
+}
+.editor-statusbar span,
+.editor-statusbar .autosave,
+.editor-statusbar .lines,
+.editor-statusbar .words,
+.editor-statusbar .cursor {
+    display: inline-flex !important;
+    align-items: center !important;
+    float: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-width: 0 !important;
+    width: auto !important;
+}
+.editor-statusbar span:empty,
+.editor-statusbar .autosave:empty,
+.editor-statusbar .lines:empty,
+.editor-statusbar .words:empty,
+.editor-statusbar .cursor:empty {
+    display: none !important;
+}
+
+/* Note Modal Buttons styling and hover animations */
+.btn-action-secondary {
+    padding: 0.75rem 1.25rem !important;
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+    font-size: 0.95rem !important;
+    border: 1px solid var(--panel-border) !important;
+    background: var(--panel-bg) !important;
+    color: var(--text-primary) !important;
+    cursor: pointer !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.btn-action-secondary:hover {
+    background: var(--overlay-10) !important;
+    border-color: var(--accent) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px var(--shadow-dark);
+}
+.btn-action-secondary:active {
+    transform: translateY(1px);
+    box-shadow: none;
+}
+
+#btn-save-note {
+    padding: 0.75rem 1.25rem !important;
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+    font-size: 0.95rem !important;
+    border: none !important;
+    background: var(--accent) !important;
+    color: var(--accent-text) !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+#btn-save-note:hover {
+    background: var(--accent-hover) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+}
+#btn-save-note:active {
+    transform: translateY(1px);
+    box-shadow: none;
+}
+
+/* Smooth Transition on Theme Change */
+
+.theme-transitioning,
+
+.theme-transitioning * {
+    transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                color 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                background 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* =====================================================================
+   Semantic button utility classes - theme-aware, no hardcoded colors
+   ===================================================================== */
+
+/* Verify / Confirm action (green tint) */
+.btn-verify {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    color: var(--success);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-verify:hover {
+    background: rgba(16, 185, 129, 0.22);
+    border-color: var(--success);
+}
+
+/* Scan action (purple tint) */
+.btn-scan {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    background: var(--badge-custom-bg);
+    border: 1px solid rgba(167, 139, 250, 0.35);
+    color: var(--badge-custom-text);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-scan:hover {
+    background: rgba(167, 139, 250, 0.25);
+    border-color: var(--badge-custom-text);
+}
+
+/* Add row action (green tint) */
+.btn-add-row {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    color: var(--success);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-add-row:hover {
+    background: rgba(16, 185, 129, 0.22);
+    border-color: var(--success);
+}
+
+/* Insert API link button (blue tint) */
+.btn-insert-api {
+    padding: 0.65rem 1rem;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--badge-get-bg);
+    color: var(--badge-get-text);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+}
+.btn-insert-api:hover {
+    background: rgba(56, 189, 248, 0.2);
+    border-color: var(--badge-get-text);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.2);
+}
+
+/* Scan modal cancel button */
+.btn-scan-cancel {
+    background: var(--overlay-10);
+    border: 1px solid var(--panel-border);
+    color: var(--text-primary);
+    width: auto;
+    padding: 6px 12px;
+}
+
+/* Scan modal add button */
+.btn-scan-add {
+    background: var(--badge-custom-bg);
+    color: var(--badge-custom-text);
+    border: 1px solid rgba(167, 139, 250, 0.3);
+    width: auto;
+    padding: 6px 12px;
+}
+
+/* =====================================================================
+   Bookmark Alias & Tags System
+   ===================================================================== */
+
+/* Meta row in bookmark list item */
+.bm-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-top: 5px;
+    min-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.3s ease,
+                margin-top 0.3s ease;
+}
+.bm-meta-row.has-content {
+    max-height: 100px;
+    opacity: 1;
+    margin-top: 5px;
+}
+.bm-meta-row.empty {
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+}
+
+/* Alias label */
+.bm-alias {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--overlay-10);
+    border: 1px solid rgba(242, 200, 17, 0.25);
+    border-radius: 4px;
+    padding: 0 8px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    animation: chipPop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-sizing: border-box;
+}
+
+/* User tag chips */
+.bm-tag {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #2dd4bf;
+    background: rgba(45, 212, 191, 0.12);
+    border: 1px solid rgba(45, 212, 191, 0.3);
+    border-radius: 13px;
+    padding: 0 10px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    cursor: default;
+    animation: chipPop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all 0.2s;
+    box-sizing: border-box;
+}
+.bm-tag:hover {
+    background: rgba(167, 139, 250, 0.28);
+    border-color: var(--badge-custom-text);
+}
+
+@keyframes chipPop {
+    from { transform: scale(0.6); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+}
+
+/* Edit bookmark meta button */
+.bm-edit-btn {
+    font-size: 0.7rem;
+    background: none;
+    border: 1px dashed var(--panel-border);
+    color: var(--text-secondary);
+    border-radius: 4px;
+    padding: 1px 5px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s, background 0.2s, border-color 0.2s, color 0.2s;
+    flex-shrink: 0;
+    line-height: 1.4;
+}
+.api-item:hover .bm-edit-btn,
+.bm-edit-btn:focus {
+    opacity: 1;
+}
+.bm-edit-btn:hover {
+    background: var(--overlay-8);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* Inline bookmark editor panel */
+.bm-editor-panel {
+    margin-top: 8px;
+    background: var(--input-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: hidden;
+    animation: editorSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes editorSlideIn {
+    from { opacity: 0; transform: translateY(-12px) scaleY(0.9); }
+    to   { opacity: 1; transform: translateY(0)    scaleY(1); }
+}
+
+.bm-editor-panel .bm-field-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 2px;
+}
+
+.bm-editor-panel input[type="text"] {
+    width: 100%;
+    background: var(--overlay-5);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    padding: 5px 9px;
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+.bm-editor-panel input[type="text"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+/* Tags chip editor */
+.bm-tags-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    padding: 4px 6px;
+    background: var(--overlay-5);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    min-height: 32px;
+    cursor: text;
+    transition: border-color 0.2s;
+}
+.bm-tags-chips:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+}
+.bm-tags-chips .bm-tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.68rem;
+    color: #2dd4bf;
+    background: rgba(45, 212, 191, 0.12);
+    border: 1px solid rgba(45, 212, 191, 0.3);
+    border-radius: 12px;
+    padding: 2px 7px 2px 9px;
+    animation: chipPop 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.bm-tag-chip .chip-remove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #2dd4bf;
+    font-size: 0.8rem;
+    line-height: 1;
+    padding: 0;
+    opacity: 0.7;
+    transition: opacity 0.15s, transform 0.15s;
+}
+.bm-tag-chip .chip-remove:hover {
+    opacity: 1;
+    transform: scale(1.3);
+}
+.bm-tag-input-field {
+    border: none !important;
+    outline: none !important;
+    background: transparent !important;
+    min-width: 80px;
+    flex: 1;
+    padding: 2px 4px !important;
+    font-size: 0.78rem !important;
+    color: var(--text-primary) !important;
+    box-shadow: none !important;
+}
+
+/* Editor footer buttons */
+.bm-editor-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 2px;
+}
+.bm-editor-footer .btn-bm-cancel {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--panel-border);
+    background: var(--overlay-5);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.bm-editor-footer .btn-bm-cancel:hover {
+    border-color: var(--overlay-30);
+    color: var(--text-primary);
+}
+.bm-editor-footer .btn-bm-save {
+    font-size: 0.75rem;
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: var(--accent-text);
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+.bm-editor-footer .btn-bm-save:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+    box-shadow: 0 2px 8px var(--accent-glow);
+}
+
+/* ── Right panel bookmark info section ── */
+#right-panel-bm-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: fadeInUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(12px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+#right-panel-bm-star {
+    font-size: 1.15rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s;
+    line-height: 1;
+    margin-top: 0;
+    user-select: none;
+    background: none;
+    border: none;
+    padding: 0;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+}
+#right-panel-bm-star:hover {
+    transform: scale(1.25) rotate(-10deg);
+}
+#right-panel-bm-star:active {
+    transform: scale(0.7) rotate(10deg);
+}
+#right-panel-bm-star.active {
+    color: #F2C811;
+    text-shadow: 0 0 12px rgba(242, 200, 17, 0.6);
+}
+#right-panel-bm-star.pop-anim {
+    animation: starPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes starPop {
+    0% { transform: scale(1) rotate(0); }
+    50% { transform: scale(1.4) rotate(-15deg); }
+    100% { transform: scale(1) rotate(0); }
+}
+
+#right-panel-bm-body {
+    flex: 1;
+    min-width: 0;
+}
+
+#right-panel-bm-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+}
+
+#right-panel-bm-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+#right-panel-bm-edit-btn {
+    font-size: 0.7rem;
+    background: none;
+    border: 1px dashed var(--panel-border);
+    color: var(--text-secondary);
+    border-radius: 4px;
+    padding: 2px 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+#right-panel-bm-edit-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--overlay-10);
+}
+
+#right-panel-bm-editor {
+    margin-top: 8px;
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    animation: editorSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+#right-panel-bm-editor.open {
+    display: flex;
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+    .bm-editor-panel {
+        padding: 8px;
+    }
+    .bm-editor-panel input[type="text"],
+    .bm-tags-chips {
+        font-size: 16px; /* prevent iOS zoom */
+    }
+    #right-panel-bm-section {
+        flex-direction: column;
+        gap: 6px;
+    }
+}
+
+/* Custom dialog modal (alert/confirm) */
+#custom-dialog-modal .modal-content {
+    background: var(--modal-bg);
+    border: 1px solid var(--panel-border);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 0 10px 50px var(--shadow-dark);
+}
+
+/* Workflow UI Styles */
+.wf-input { background: var(--input-bg); border: 1px solid var(--panel-border); color: var(--text-primary); padding: 8px; border-radius: 6px; width: 100%; outline: none; font-family: inherit; transition: border-color 0.2s; box-sizing: border-box; }
+.wf-input:focus { border-color: var(--accent); }
+.wf-step { background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 8px; padding: 6px 10px; transition: border-color 0.3s; }
+.wf-step.active { border-color: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
+.wf-step-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px !important; }
+.wf-step-title { font-weight: 600; color: var(--accent); font-size: 0.8rem !important; margin: 0 !important; line-height: 1 !important; }
+.wf-console { background: var(--input-bg); color: var(--text-primary); padding: 12px 32px 60px 12px; border-radius: 4px; font-size: 0.85rem; font-family: 'Fira Code', monospace; height: 150px; overflow-y: auto; margin: 0; white-space: pre-wrap; border: 1px solid var(--panel-border); }
+.wf-step-btn { padding: 4px 10px !important; font-size: 0.75rem !important; height: auto !important; border-radius: 6px !important; line-height: 1 !important; }
+.wf-step-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.wf-copy-btn { position: absolute; top: 6px; right: 6px; background: var(--overlay-10); border: none; color: var(--text-secondary); border-radius: 4px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
+.wf-copy-btn:hover { background: var(--overlay-15); color: var(--text-primary); }
+
+/* =========================================
+   Global Select (Dropdown) Dark Mode Optimizations
+   ========================================= */
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23a78bfa%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 10px auto;
+    padding-right: 32px !important;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+select:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 8px rgba(167, 139, 250, 0.1);
+}
+
+select option {
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    padding: 8px;
+}
+
+
+/* Auth Snapshots */
+.snapshot-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 16px;
+    background: var(--overlay-10);
+    border: 1px solid var(--panel-border);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+}
+.snapshot-chip:hover {
+    background: var(--overlay-15);
+    color: var(--text-primary);
+}
+.snapshot-chip.active {
+    background: rgba(167, 139, 250, 0.15);
+    border-color: #a78bfa;
+    color: #a78bfa;
+    box-shadow: 0 0 8px rgba(167, 139, 250, 0.3);
+}
+.snapshot-chip-name {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    outline: none;
+    transition: color 0.2s;
+}
+.snapshot-chip-name[contenteditable="true"] {
+    background: var(--input-bg);
+    padding: 0 4px;
+    border-radius: 4px;
+    border: 1px solid var(--accent);
+    color: var(--text-primary);
+    min-width: 50px;
+    box-shadow: inset 0 0 4px var(--shadow-dark);
+}
+.snapshot-chip-actions {
+    display: flex;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.snapshot-chip:hover .snapshot-chip-actions, .snapshot-chip.active .snapshot-chip-actions {
+    opacity: 1;
+}
+.chip-btn {
+    background: transparent;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+.chip-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+.chip-btn.delete:hover {
+    background: rgba(255, 0, 0, 0.2);
+    color: #ff4444;
+}
+
+/* Micro animation for inputs when switching snapshots */
+.snapshot-flash {
+    animation: snapshotFlash 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes snapshotFlash {
+    0% { background-color: rgba(167, 139, 250, 0.4); transform: scale(1.02); }
+    100% { background-color: transparent; transform: scale(1); }
+}
+
+
+/* Snapshot Dropdown */
+.snapshot-dropdown-trigger {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--input-bg);
+    border: 1px solid var(--panel-border);
+    padding: 6px 10px; border-radius: 6px;
+    font-size: 0.8rem; color: var(--text-primary);
+    cursor: pointer; transition: all 0.2s;
+}
+.snapshot-dropdown-trigger:hover {
+    border-color: var(--accent);
+}
+.snapshot-dropdown-menu {
+    position: absolute; top: 100%; left: 0; right: 0;
+    margin-top: 4px;
+    background: var(--dropdown-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px var(--shadow-base);
+    z-index: 100;
+    max-height: 220px;
+    overflow-y: auto;
+    opacity: 0; transform: translateY(-5px);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+    display: flex; flex-direction: column;
+}
+.snapshot-dropdown-menu.show {
+    opacity: 1; transform: translateY(0); pointer-events: auto;
+}
+.snapshot-dropdown-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 10px; border-bottom: 1px solid var(--panel-border);
+    font-size: 0.75rem; color: var(--text-secondary);
+    cursor: pointer; transition: background 0.2s;
+}
+.snapshot-dropdown-item:last-child { border-bottom: none; }
+.snapshot-dropdown-item:hover {
+    background: var(--overlay-10); color: var(--text-primary);
+}
+.snapshot-dropdown-item.active {
+    background: rgba(167, 139, 250, 0.1); color: #a78bfa; border-left: 3px solid #a78bfa;
+}
+.dropdown-item-name {
+    flex-grow: 1; outline: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 8px;
+}
+.dropdown-item-name[contenteditable="true"] {
+    background: var(--input-bg); padding: 2px 4px; border-radius: 4px; border: 1px solid var(--accent); color: var(--text-primary);
+}
+.dropdown-item-actions {
+    display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s; flex-shrink: 0;
+}
+.snapshot-dropdown-item:hover .dropdown-item-actions,
+.snapshot-dropdown-item.active .dropdown-item-actions {
+    opacity: 1;
+}
+.dropdown-chevron {
+    width: 16px; height: 16px; fill: currentColor; transition: transform 0.2s;
+}
+.dropdown-chevron.open { transform: rotate(180deg); }
+</style>
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -349,7 +3042,7 @@
                     </div>
                 </div>
                 <div class="response-body">
-                    <pre><code id="response-output">API 响应结果将在这里显示...</code></div>
+                    <pre><code id="response-output">API 响应结果将在这里显示...</code></pre>
                 </div>
             </div>
         </main>
@@ -394,7 +3087,6 @@
                         <option value="report_view_count">Admin Report View Count (Activity Events)</option>
                         <option value="check_permissions">Check Current Permissions (Token/Features)</option>
                         <option value="smart_pipeline">Smart DataOps Pipeline (Auto Bind/Scan/Check)</option>
-                        <option value="global_user_manager">Global Workspace Permissions Manager</option>
                     </select>
                     <button type="button" class="icon-btn" title="Copy Workflow Name" onclick="window.handleCopyAction(this, document.getElementById('wf-selector').options[document.getElementById('wf-selector').selectedIndex].text)" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
@@ -457,12 +3149,12 @@
                                 <div id="wf-rvc-containers" style="display: none; flex-direction: column; gap: 12px;">
                                     <!-- Logs Section -->
                                     <div style="position: relative;">
-                                        <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-rvc-logs')">
-                                            <svg id="wf-out-rvc-logs-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(90deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                        <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleRvcLogs()">
+                                            <svg id="wf-rvc-logs-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(90deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>
                                             Execution Logs
                                         </div>
                                         <button type="button" id="wf-rvc-logs-copybtn" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-rvc-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
-                                        <div id="wf-out-rvc-logs" class="wf-console collapsed-console" style="min-height: 0; padding-bottom: 20px; transition: max-height 0.3s ease, padding 0.3s ease, border-width 0.3s ease, opacity 0.3s ease; overflow-y: auto; max-height: 250px;"></div>
+                                        <div id="wf-out-rvc-logs" class="wf-console" style="min-height: 0; padding-bottom: 20px; transition: max-height 0.3s ease, padding 0.3s ease, border-width 0.3s ease, opacity 0.3s ease; overflow-y: auto; max-height: 250px;"></div>
                                     </div>
                                     
                                     <!-- Table Section -->
@@ -489,9 +3181,9 @@
                                 <div id="wf-perms-containers" style="display: flex; flex-direction: column; gap: 12px;">
                                     <!-- Logs Section -->
                                     <div style="position: relative;">
-                                        <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-perms-logs')"><svg id="wf-out-perms-logs-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs</div>
+                                        <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary);">Execution Logs</div>
                                         <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-perms-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
-                                        <div id="wf-out-perms-logs" class="wf-console collapsed-console" style="min-height: 100px; padding-bottom: 20px;">Ready...</div>
+                                        <div id="wf-out-perms-logs" class="wf-console" style="min-height: 100px; padding-bottom: 20px;">Ready...</div>
                                     </div>
                                     
                                     <!-- Table Section -->
@@ -505,61 +3197,7 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- Global User Manager Pane -->
-                <div id="wf-config-global_user_manager" class="wf-config-pane" style="display: none;">
-                    <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
-                        <div class="wf-step active">
-                            <div class="wf-step-header">
-                                <span class="wf-step-title">Scan Workspaces & Manage Permissions</span>
-                            </div>
-                            <div class="wf-step-content" style="display: block; margin-top: 8px;">
-                                <div style="display: flex; gap: 8px; margin-bottom: 12px; align-items: flex-end;">
-                                    <div style="flex: 1;">
-                                        <label style="font-size: 0.85rem; color: var(--text-secondary);">搜索 (Search) / Filter</label>
-                                        <input type="text" id="wf-gum-search" class="wf-input" placeholder="Search by user email, name or workspace..." onkeyup="if(window.filterGumTable) window.filterGumTable()">
-                                    </div>
-                                    <div style="padding-bottom: 2px;">
-                                        <button class="btn-action-primary" style="height: 34px; padding: 0 16px;" onclick="if(window.openGumAddUserModal) window.openGumAddUserModal()">+ Add User</button>
-                                    </div>
-                                </div>
-                                
-                                <div id="wf-gum-containers" style="display: flex; flex-direction: column; gap: 12px;">
-                                    <!-- Logs Section -->
-                                    <div style="position: relative;">
-                                        <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; user-select: none;">
-                                            <div style="display: flex; align-items: center; cursor: pointer; width: fit-content;" onclick="window.toggleConsole('wf-out-gum-logs')">
-                                                <svg id="wf-out-gum-logs-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs
-                                            </div>
-                                            <div style="display: flex; align-items: center; gap: 12px;">
-                                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; color: var(--text-secondary); font-size: 0.75rem; font-weight: normal;">
-                                                    <input type="checkbox" id="gum-admin-mode" class="wf-input" style="width: auto; margin: 0; cursor: pointer;">
-                                                    Admin Mode (All Workspaces)
-                                                </label>
-                                                <button class="btn-action-primary" id="btn-run-gum" style="padding: 4px 12px; font-size: 0.75rem; height: 24px;" onclick="if(window.runGlobalUserManager) window.runGlobalUserManager()">Run Scan</button>
-                                            </div>
-                                        </div>
-                                        <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-gum-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
-                                        <div id="wf-out-gum-logs" class="wf-console collapsed-console" style="min-height: 100px; padding-bottom: 20px;">Ready to scan all workspaces...</div>
-                                    </div>
-                                    
-                                    <!-- Table Section -->
-                                    <div style="position: relative;">
-                                        <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
-                                            <span>Global Permissions Table</span>
-                                            <span id="wf-gum-stats" style="color: var(--accent); font-weight: normal;"></span>
-                                        </div>
-                                        <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-gum-table').innerText)" title="Copy Table" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
-                                        <div id="wf-out-gum-table" class="wf-console" style="min-height: 250px; max-height: 400px; padding: 0 32px 0 12px; white-space: normal;">Waiting for scan...</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
 <div id="wf-config-smart_pipeline" class="wf-config-pane" style="display: none;">
-
                     <div style="background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 8px; padding: 12px;">
                         <div class="terminal-view" id="pipeline-terminal" style="max-height: 200px; margin-bottom: 12px;">
                             <div class="terminal-line"><span class="info">系统已就绪。点击下方按钮开始智能扫描并自动绑定工作区、数据集和报表...</span></div>
@@ -590,9 +3228,8 @@
                                 <button id="wf-ds-btn-step1" class="btn-action-secondary wf-step-btn" onclick="window.loadDatasetTablesStep1(this)">Run Step 1</button>
                             </div>
                             <div style="position: relative;">
-                                <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-ds-step1')"><svg id="wf-out-ds-step1-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs</div>
-<div style="position: relative;">
-    <div id="wf-out-ds-step1" class="wf-console collapsed-console">Input: Ready to fetch tables...</div>
+                                <div style="position: relative;">
+    <pre id="wf-out-ds-step1" class="wf-console">Input: Ready to fetch tables...</pre>
     <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-ds-step1').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 </div>
                             </div>
@@ -623,9 +3260,8 @@
                             </div>
                             
                             <div style="position: relative;">
-                                <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-ds-step2')"><svg id="wf-out-ds-step2-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs</div>
-<div style="position: relative;">
-    <div id="wf-out-ds-step2" class="wf-console collapsed-console" style="border-top-left-radius: 0; border-top-right-radius: 0; border-top: none;">Waiting for Step 1...</div>
+                                <div style="position: relative;">
+    <pre id="wf-out-ds-step2" class="wf-console" style="border-top-left-radius: 0; border-top-right-radius: 0; border-top: none;">Waiting for Step 1...</pre>
     <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-ds-step2').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 </div>
                             </div>
@@ -678,9 +3314,8 @@
                                 <span class="wf-step-title">Execute exportData API (Sync)</span>
                             </div>
                             <div style="position: relative;">
-                                <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-vis')"><svg id="wf-out-vis-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs</div>
-<div style="position: relative;">
-    <div id="wf-out-vis" class="wf-console collapsed-console">Ready to export visual data...</div>
+                                <div style="position: relative;">
+    <pre id="wf-out-vis" class="wf-console">Ready to export visual data...</pre>
     <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-vis').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 </div>
                             </div>
@@ -696,9 +3331,8 @@
                             <button id="wf-btn-step1" class="btn-action-secondary wf-step-btn">Run Step 1</button>
                         </div>
                         <div style="position: relative;">
-                            <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-step1')"><svg id="wf-out-step1-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs</div>
-<div style="position: relative;">
-    <div id="wf-out-step1" class="wf-console collapsed-console">Input: Ready to start...</div>
+                            <div style="position: relative;">
+    <pre id="wf-out-step1" class="wf-console">Input: Ready to start...</pre>
     <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-step1').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 </div>
                         </div>
@@ -710,9 +3344,8 @@
                             <button id="wf-btn-step2" class="btn-action-secondary wf-step-btn" disabled>Run Step 2</button>
                         </div>
                         <div style="position: relative;">
-                            <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-step2')"><svg id="wf-out-step2-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs</div>
-<div style="position: relative;">
-    <div id="wf-out-step2" class="wf-console collapsed-console">Waiting for exportId from Step 1...</div>
+                            <div style="position: relative;">
+    <pre id="wf-out-step2" class="wf-console">Waiting for exportId from Step 1...</pre>
     <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-step2').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 </div>
                         </div>
@@ -724,9 +3357,8 @@
                             <button id="wf-btn-step3" class="btn-action-secondary wf-step-btn" disabled>Run Step 3</button>
                         </div>
                         <div style="position: relative;">
-                            <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-step3')"><svg id="wf-out-step3-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs</div>
-<div style="position: relative;">
-    <div id="wf-out-step3" class="wf-console collapsed-console">Waiting for Succeeded status from Step 2...</div>
+                            <div style="position: relative;">
+    <pre id="wf-out-step3" class="wf-console">Waiting for Succeeded status from Step 2...</pre>
     <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-step3').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 </div>
                         </div>
@@ -981,100 +3613,10 @@
         </div>
     </div>
 
-
-
-    <!-- Add User Permission Modal -->
-    <div id="gum-add-modal" class="modal-overlay" style="display: none; z-index: 20000;">
-        <div class="modal-content glass-panel" style="max-width: 400px; width: 90%;">
-            <div class="modal-header">
-                <h3 style="font-size: 1.05rem;">Add User to Workspace</h3>
-                <button type="button" class="close-btn" onclick="document.getElementById('gum-add-modal').style.display='none'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
-            </div>
-            <div class="modal-body" style="padding: 16px;">
-                <div style="margin-bottom: 12px;">
-                    <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">Workspace</label>
-                    <select id="gum-add-ws-id" class="wf-input">
-                        <option value="">Select a Workspace...</option>
-                    </select>
-                </div>
-                
-                <div style="margin-bottom: 12px; position: relative;">
-                    <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">User / Principal Email</label>
-                    <input type="text" id="gum-add-identifier" class="wf-input" placeholder="Type name or email to search..." oninput="if(window.handleGumAddIdentifierInput) window.handleGumAddIdentifierInput(event)">
-                    <div id="gum-add-autocomplete" style="display:none; position: absolute; top: 100%; left: 0; right: 0; background: var(--panel-bg); border: 1px solid var(--panel-border); border-top: none; z-index: 20001; max-height: 150px; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                    </div>
-                </div>
-                
-                <div style="margin-bottom: 12px;">
-                    <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">Principal Type</label>
-                    <select id="gum-add-principal-type" class="wf-input">
-                        <option value="User">User</option>
-                        <option value="Group">Group</option>
-                        <option value="App">App (Service Principal)</option>
-                    </select>
-                </div>
-                
-                <div style="margin-bottom: 16px;">
-                    <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">Access Right (Role)</label>
-                    <select id="gum-add-role" class="wf-input">
-                        <option value="Admin">Admin</option>
-                        <option value="Member">Member</option>
-                        <option value="Contributor">Contributor</option>
-                        <option value="Viewer" selected>Viewer</option>
-                    </select>
-                </div>
-                
-                <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                    <button type="button" class="btn-cancel" onclick="document.getElementById('gum-add-modal').style.display='none'">Cancel</button>
-                    <button type="button" class="btn-action-primary" onclick="if(window.submitGumAddUser) window.submitGumAddUser()">Add User</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Edit User Permission Modal -->
-    <div id="gum-edit-modal" class="modal-overlay" style="display: none; z-index: 20000;">
-        <div class="modal-content glass-panel" style="max-width: 400px; width: 90%;">
-            <div class="modal-header">
-                <h3 style="font-size: 1.05rem;">Edit Workspace Access</h3>
-                <button type="button" class="close-btn" onclick="document.getElementById('gum-edit-modal').style.display='none'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
-            </div>
-            <div class="modal-body" style="padding: 16px;">
-                <input type="hidden" id="gum-edit-ws-id">
-                <input type="hidden" id="gum-edit-principal-type">
-                
-                <div style="margin-bottom: 12px;">
-                    <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">Workspace</label>
-                    <input type="text" id="gum-edit-ws-name" class="wf-input" disabled style="opacity: 0.7;">
-                </div>
-                
-                <div style="margin-bottom: 12px;">
-                    <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">User / Principal</label>
-                    <input type="text" id="gum-edit-identifier" class="wf-input" disabled style="opacity: 0.7;">
-                </div>
-                
-                <div style="margin-bottom: 16px;">
-                    <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">Access Right (Role)</label>
-                    <select id="gum-edit-role" class="wf-input">
-                        <option value="Admin">Admin</option>
-                        <option value="Member">Member</option>
-                        <option value="Contributor">Contributor</option>
-                        <option value="Viewer">Viewer</option>
-                    </select>
-                </div>
-                
-                <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                    <button type="button" class="btn-cancel" onclick="document.getElementById('gum-edit-modal').style.display='none'">Cancel</button>
-                    <button type="button" class="btn-action-primary" onclick="if(window.submitGumEdit) window.submitGumEdit()">Save Changes</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
-    <script src="/static/script.js?v=20260802_v153"></script>
+    <script src="/static/script.js?v=20260730_v122"></script>
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: flex; z-index: 100000; opacity: 0; visibility: hidden; transition: opacity 0.25s ease;">
@@ -1101,15 +3643,15 @@
                 <button type="button" class="close-btn" onclick="window.closeModalWithAnimation('view-details-modal')" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
             </div>
             <div class="modal-body" style="flex: 1; overflow-y: auto; padding: 0;" id="view-details-body">
-                <table data-table-id="drilldown" class="data-table" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
-                    <thead style="position: sticky; top: 0; background: var(--bg-color); z-index: 5;">
+                <table data-table-id="drilldown" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
+                    <thead>
                         <tr>
-                            <th onclick="window.sortTable(this, event, 0)" style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px;" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Time (UTC+8)</th>
-                            <th onclick="window.sortTable(this, event, 1)" style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px;" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">User ID</th>
-                            <th onclick="window.sortTable(this, event, 2)" style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px;" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Report Name</th>
-                            <th onclick="window.sortTable(this, event, 3)" style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px;" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Access Route</th>
-                            <th onclick="window.sortTable(this, event, 4)" style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px;" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Client IP</th>
-                            <th onclick="window.sortTable(this, event, 5)" style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px;" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Status</th>
+                            <th onclick="window.sortTable(this, event, 0)" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;">Time (UTC+8)</th>
+                            <th onclick="window.sortTable(this, event, 1)" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;">User ID</th>
+                            <th onclick="window.sortTable(this, event, 2)" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;">Report Name</th>
+                            <th onclick="window.sortTable(this, event, 3)" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;">Access Route</th>
+                            <th onclick="window.sortTable(this, event, 4)" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;">Client IP</th>
+                            <th onclick="window.sortTable(this, event, 5)" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;">Status</th>
                         </tr>
                     </thead>
                     <tbody id="view-details-tbody">

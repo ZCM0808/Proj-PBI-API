@@ -69,7 +69,7 @@ python src/main.py
 ## 5. 全局 AI 对话纪律 (Global AI Constraints)
 1. **强制中文**：任何与用户的非代码文字交流，必须使用中文。
 2. **术语扫盲**：如果在对话中使用了技术黑话（如 UX、FLIP、JSON 等），必须带上科普后缀，格式为：`词汇(解释或全拼)`。例如：`LocalStorage(浏览器本地存储)`。
-3. **Markdown 产出**：只有在用户明确许可时才能生成 `.md` 文件。如果不指定路径，默认全部写入 `C:\Users\ZCM\Desktop` 桌面目录。（注：本文档属项目内核记忆文件，经特许存放于项目根目录）。
+3. **绝对禁止擅建 MD 文件 (Markdown Generation Ban)**：**未经明确许可，绝对禁止生成新的 Markdown (.md) 文件！这是红线！** 如果用户特许生成 `.md` 文件且未指定路径，**必须将其默认存放到用户的桌面 (`C:\Users\ZCM\Desktop`)**，绝不允许擅自保存到缓存、隐藏目录或通过 Artifact 机制生成未授权文档。（注：本文档属项目内核记忆文件，经特许存放于项目根目录）。
 4. **工具优先级与文件操作**：优先使用 `grep_search` 等专用工具替代 bash 的 `cat/ls/grep`。**严禁使用 PowerShell (`Set-Content`, `echo`) 拼接或修改文件**，以防破坏全局 UTF-8 编码引发极其严重的中文/特殊字符乱码事故，强制使用内置的 `replace_file_content` 原子化工具。
 5. **代码洁癖**：保持“0 错误、0 高危漏洞”标准。前端的 `script.js` 经常用 `node -c` 自检。
 6. **提交流程铁律**：**绝对不要再随时、频繁地运行 Playwright 测试！** 取而代之的是，必须养成“随时高频提交代码”的习惯，一旦有功能修复或阶段性成果，立刻执行 `git add .` 与 `git commit`，将修改锁定在 Git 历史中以防丢失。
@@ -153,3 +153,15 @@ python src/main.py
   - **空间释放与动态折叠 (Collapsible UI)**：引入了纯 CSS 原生的日志面板折叠机制，通过精确清零 `padding` 和 `border-width` 解决了折叠后的残留“空心框”问题，最大限度把屏幕高度还给数据表。
 
 > **最后更新状态**：完成了 SSRF 代理分页安全策略适配找回完整 PBI 审计数据，并成功上线高交互性的 Drill-down 数据透视表弹窗与多维度联合排序功能。同时完美闭环了所有 CSS 动画与空间折叠防御逻辑。
+
+---
+
+## 8. 针对 Power BI 本地模型 (MCP Server) 的动态端口防偏离纪律 (Dynamic Port Defense)
+- **动态端口陷阱**：当我们使用官方 `Power BI Modeling MCP Server` 插件对当前运行的本地 Power BI Desktop 实例进行 DAX 验证或 TMDL 建模时，它的底层实际依赖于 `msmdsrv.exe` 进程。**该进程的监听端口会在每次 Power BI Desktop 重启时随机发生改变**。
+- **强制约束**：因此，AI Agent 绝对**禁止将硬编码的 localhost 端口号（如 59496）视为永久可靠的配置**。
+- **自动抓取与热更策略**：
+  在开始对本地模型进行任何交互前（或者当用户提示需要重新连接时），**必须主动在后台运行以下 PowerShell 命令来动态抓取存活的端口**：
+  ```powershell
+  (Get-NetTCPConnection -OwningProcess (Get-Process msmdsrv -ErrorAction SilentlyContinue).Id -State Listen -ErrorAction SilentlyContinue).LocalPort
+  ```
+  获取到最新端口后，必须主动将新的连接字符串 `Data Source=localhost:<新端口>;Application Name=MCP-PBIModeling` 覆写更新至全局配置文件 `C:\Users\ZCM\.gemini\antigravity-cli\mcp.json` 中，并在写入后提醒用户重启客户端或开启新会话以完成热重载。

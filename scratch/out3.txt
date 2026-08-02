@@ -1,0 +1,25 @@
+4991:                 method: 'POST',
+4992:                 headers: {'Content-Type': 'application/json'},
+4993:                 body: JSON.stringify(payload)
+4994:             });
+4995:             
+4996:             const data = await res.json();
+4997:             
+4998:             if(data.success) {
+4999:                 const rows = data.results;
+5000:                 consoleOut.innerText += `
+5001: ✓ Status: 200 OK. Retrieved ${rows.length} rows.`;
+5002:                 
+5003:                 if(!rows || rows.length === 0) {
+5004:                     consoleOut.innerText += '
+5005: ⚠️ Table is empty. Skipping...';
+5006:                     continue;
+5007:                 }
+5008:                 
+5009:                 const cleanKey = (k) => {
+5010:                     const match = k.match(/\[(.*?)\]/);
+5011:                     return match ? match[1] : k;
+5012:                 };
+5013:                 
+5014:                 if (exportFormat === 'CSV') {
+5015:                     const rawKeys = Object.keys(rows[0]);

@@ -1,4 +1,4 @@
-
+const window = global; window.addEventListener = ()=>{}; const document = {addEventListener: (e, cb)=>{ if(e==='DOMContentLoaded'){ try{cb()}catch(err){console.error('DOM ERror:', err)} } }, getElementById: (id)=>{ return {id, style:{}, classList:{contains:()=>false, add:()=>{}, remove:()=>{}, toggle:()=>{}}, addEventListener: ()=>{}, insertBefore: ()=>{}, getBoundingClientRect: ()=>({}), scrollIntoView: ()=>{}, contains: ()=>false, closest: ()=>null, remove: ()=>{}, parentNode: {removeChild: ()=>{}}, parentElement: null, querySelector: ()=>({style:{}}), querySelectorAll: ()=>[]} }, querySelectorAll: ()=>[], createElement: ()=>({style:{}, classList:{add:()=>{}}, dataset:{}, appendChild: ()=>{}}) };
 window.expandConsole = function(id) {
     const consoleEl = document.getElementById(id);
     if (!consoleEl) return;
@@ -891,45 +891,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.warn("Failed to load Fabric Swagger:", e);
         }
         
-        // Inject Local Model MCP endpoints
-        swagger.paths = swagger.paths || {};
-        swagger.paths['/api/mcp/query'] = {
-            "post": {
-                "tags": ["Local Model (MCP)"],
-                "summary": "Execute DAX or List Tables via MCP",
-                "description": "Send a tool_name (e.g. table_operations.List, execute_dax) and arguments (e.g. { \"query\": \"EVALUATE 'TableName'\" }) to the local Power BI model.",
-                "parameters": [
-                    {
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "tool_name": {
-                                    "type": "string",
-                                    "example": "execute_dax"
-                                },
-                                "arguments": {
-                                    "type": "object",
-                                    "properties": {
-                                        "query": {
-                                            "type": "string",
-                                            "example": "EVALUATE 'Dim_Products'"
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful operation"
-                    }
-                }
-            }
-        };
         const categories = {};
         const definitions = swagger.definitions || {};
 
@@ -2670,7 +2631,7 @@ const loadReqHistory = (searchTerm = "") => {
                 const timeStr = new Date().toLocaleTimeString('en-US', {hour12: false});
                 line.innerHTML = `<span style="color: var(--text-secondary)">[${timeStr}]</span> <span class="${cls}">${data.message}</span>`;
                 terminal.appendChild(line);
-                terminal.scrollTop = Math.max(0, terminal.scrollHeight - terminal.clientHeight * 0.66); // Auto-scroll
+                terminal.scrollTop = terminal.scrollHeight; // Auto-scroll
                 
                 if (data.status === 'error' || data.status === 'success') {
                     evtSource.close();
@@ -3210,18 +3171,49 @@ function renderJsonTable(data, container, nodePath = '') {
         wrapper.appendChild(infoHeader);
         
         const table = document.createElement('table');
-        table.className = 'data-table';
         table.style.cssText = "width: 100%; border-collapse: collapse; text-align: left;";
         
         const thead = document.createElement('thead');
-        thead.style.cssText = "position: sticky; top: 0; background: var(--bg-color); z-index: 5;";
         const trHead = document.createElement('tr');
-        columns.forEach((col, idx) => {
+        columns.forEach(col => {
             const th = document.createElement('th');
             th.textContent = col;
-            th.style.cssText = "padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px;";
-            th.title = "Click to sort, Shift+Click for multi-sort, Drag right edge to resize";
-            th.onclick = (e) => window.sortTable(th, e, idx);
+            th.style.cssText = "border: 1px solid var(--panel-border); padding: 8px; background: var(--shadow-light); color: var(--text-secondary); white-space: nowrap; position: relative;";
+            
+            const resizer = document.createElement('div');
+            resizer.style.cssText = "position: absolute; right: 0; top: 0; bottom: 0; width: 4px; cursor: col-resize; z-index: 1; transition: background 0.2s;";
+            resizer.onmouseover = () => resizer.style.background = 'var(--accent)';
+            resizer.onmouseout = () => resizer.style.background = 'transparent';
+            
+            resizer.addEventListener('mousedown', (e) => {
+                const startX = e.pageX;
+                const startWidth = th.offsetWidth;
+                
+                const onMouseMove = (moveEvent) => {
+                    const newWidth = Math.max(30, startWidth + (moveEvent.pageX - startX));
+                    th.style.width = newWidth + 'px';
+                    th.style.minWidth = newWidth + 'px';
+                    th.style.maxWidth = newWidth + 'px';
+                    if (table.style.tableLayout !== 'fixed') {
+                        Array.from(trHead.children).forEach(h => {
+                            h.style.width = h.offsetWidth + 'px';
+                        });
+                        table.style.tableLayout = 'fixed';
+                    }
+                };
+                
+                const onMouseUp = () => {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                };
+                
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+                e.stopPropagation();
+                e.preventDefault();
+            });
+            
+            th.appendChild(resizer);
             trHead.appendChild(th);
         });
         thead.appendChild(trHead);
@@ -3262,18 +3254,49 @@ function renderJsonTable(data, container, nodePath = '') {
         }
         
         const table = document.createElement('table');
-        table.className = 'data-table';
         table.style.cssText = "width: 100%; border-collapse: collapse; text-align: left;";
         
         const thead = document.createElement('thead');
-        thead.style.cssText = "position: sticky; top: 0; background: var(--bg-color); z-index: 5;";
         const trHead = document.createElement('tr');
-        ['Key', 'Value'].forEach((col, idx) => {
+        ['Key', 'Value'].forEach((col, i) => {
             const th = document.createElement('th');
             th.textContent = col;
-            th.style.cssText = `padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px; ${idx === 0 ? 'width: 30%;' : ''}`;
-            th.title = "Click to sort, Shift+Click for multi-sort, Drag right edge to resize";
-            th.onclick = (e) => window.sortTable(th, e, idx);
+            th.style.cssText = `border: 1px solid var(--panel-border); padding: 8px; background: var(--shadow-light); color: var(--text-secondary); position: relative; ${i === 0 ? 'width: 30%;' : ''}`;
+            
+            const resizer = document.createElement('div');
+            resizer.style.cssText = "position: absolute; right: 0; top: 0; bottom: 0; width: 4px; cursor: col-resize; z-index: 1; transition: background 0.2s;";
+            resizer.onmouseover = () => resizer.style.background = 'var(--accent)';
+            resizer.onmouseout = () => resizer.style.background = 'transparent';
+            
+            resizer.addEventListener('mousedown', (e) => {
+                const startX = e.pageX;
+                const startWidth = th.offsetWidth;
+                
+                const onMouseMove = (moveEvent) => {
+                    const newWidth = Math.max(30, startWidth + (moveEvent.pageX - startX));
+                    th.style.width = newWidth + 'px';
+                    th.style.minWidth = newWidth + 'px';
+                    th.style.maxWidth = newWidth + 'px';
+                    if (table.style.tableLayout !== 'fixed') {
+                        Array.from(trHead.children).forEach(h => {
+                            h.style.width = h.offsetWidth + 'px';
+                        });
+                        table.style.tableLayout = 'fixed';
+                    }
+                };
+                
+                const onMouseUp = () => {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                };
+                
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+                e.stopPropagation();
+                e.preventDefault();
+            });
+            
+            th.appendChild(resizer);
             trHead.appendChild(th);
         });
         thead.appendChild(trHead);
@@ -4110,7 +4133,7 @@ document.addEventListener('mousedown', (e) => {
         userDiv.style.transform = 'translateY(0)';
 
         input.value = '';
-        msgs.scrollTop = Math.max(0, msgs.scrollHeight - msgs.clientHeight * 0.66);
+        msgs.scrollTop = msgs.scrollHeight;
 
         await window.handleAiStream('/api/chat', { message: text, session_id: window.aiSessionId });
     };
@@ -4125,7 +4148,7 @@ document.addEventListener('mousedown', (e) => {
         void loadingDiv.offsetWidth;
         loadingDiv.style.opacity = '1';
         loadingDiv.style.transform = 'translateY(0)';
-        msgs.scrollTop = Math.max(0, msgs.scrollHeight - msgs.clientHeight * 0.66);
+        msgs.scrollTop = msgs.scrollHeight;
 
         try {
             const res = await fetch(url, {
@@ -4201,7 +4224,7 @@ document.addEventListener('mousedown', (e) => {
                                 void toolCard.offsetWidth;
                                 toolCard.style.opacity = '1';
                                 toolCard.style.transform = 'scale(1)';
-                                msgs.scrollTop = Math.max(0, msgs.scrollHeight - msgs.clientHeight * 0.66);
+                                msgs.scrollTop = msgs.scrollHeight;
 
                                 const btnApprove = toolCard.querySelector('.approve-btn');
                                 const btnReject = toolCard.querySelector('.reject-btn');
@@ -4234,7 +4257,7 @@ document.addEventListener('mousedown', (e) => {
                                 } else {
                                     loadingDiv.textContent = fullText;
                                 }
-                                msgs.scrollTop = Math.max(0, msgs.scrollHeight - msgs.clientHeight * 0.66);
+                                msgs.scrollTop = msgs.scrollHeight;
                             }
                         } else {
                             loadingDiv.textContent = "抱歉，发生错误：" + (data.message || "未知错误");
@@ -4249,7 +4272,7 @@ document.addEventListener('mousedown', (e) => {
             loadingDiv.textContent = "网络请求失败，无法连接到 AI。";
             loadingDiv.style.color = "var(--error)";
         }
-        msgs.scrollTop = Math.max(0, msgs.scrollHeight - msgs.clientHeight * 0.66);
+        msgs.scrollTop = msgs.scrollHeight;
     };
 
     // --- Workflow Modal Logic ---
@@ -4331,8 +4354,8 @@ document.addEventListener('mousedown', (e) => {
         const logToConsole = (step, msg) => {
             const out = document.getElementById(`wf-out-step${step}`);
             out.textContent += `\n[${new Date().toLocaleTimeString()}] ${msg}`;
-                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
-            setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 50);
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
+            setTimeout(() => { out.scrollTop = out.scrollHeight; }, 50);
         };
         const resetConsole = (step, initialMsg) => {
             const out = document.getElementById(`wf-out-step${step}`);
@@ -4503,16 +4526,13 @@ document.addEventListener('mousedown', (e) => {
             document.getElementById('wf-config-export_dataset_tables').style.display = 'none';
             document.getElementById('wf-config-report_view_count').style.display = 'none';
             document.getElementById('wf-config-check_permissions').style.display = 'none';
-              const gumPane = document.getElementById('wf-config-global_user_manager'); if(gumPane) gumPane.style.display = 'none';
             
             if (val === 'smart_pipeline') {
                 document.getElementById('wf-config-smart_pipeline').style.display = 'block';
             } else if (val === 'export_dataset_tables') {
                 document.getElementById('wf-config-export_dataset_tables').style.display = 'block';
                 
-            } else if (val === 'global_user_manager') {
-                  document.getElementById('wf-config-global_user_manager').style.display = 'block';
-              } else if (val === 'check_permissions') {
+            } else if (val === 'check_permissions') {
                 document.getElementById('wf-config-check_permissions').style.display = 'block';
             } else if (val === 'export_visual') {
                 document.getElementById('wf-config-export_visual').style.display = 'block';
@@ -4561,13 +4581,13 @@ document.addEventListener('mousedown', (e) => {
                 const data = await res.json();
                 if (!data.success) {
                     out.textContent += `Error getting embed info: ${data.error}\n`;
-                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                     pageSelect.innerHTML = '<option value="">Error</option>';
                     return;
                 }
                 
                 out.textContent += `Token received. Initializing Power BI Embedded iframe...\n`;
-                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                 embedContainer.style.display = 'block';
                 
                 // 2. Embed the report
@@ -4591,7 +4611,7 @@ document.addEventListener('mousedown', (e) => {
                 currentEmbeddedReport.off("loaded");
                 currentEmbeddedReport.on("loaded", async function () {
                     out.textContent += `Report rendered in UI! Fetching Pages via JS SDK...\n`;
-                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                     const pages = await currentEmbeddedReport.getPages();
                     pageSelect.innerHTML = '<option value="">-- Select a Page --</option>';
                     pageSelect.innerHTML += '<option value="ALL">🌟 ALL PAGES (全部页面) 🌟</option>';
@@ -4606,12 +4626,12 @@ document.addEventListener('mousedown', (e) => {
                 currentEmbeddedReport.off("error");
                 currentEmbeddedReport.on("error", function (event) {
                     out.textContent += `Embed Error: ${event.detail.message}\n`;
-                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                 });
 
             } catch (err) {
                 out.textContent += `Exception: ${err.message}\n`;
-                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                 pageSelect.innerHTML = '<option value="">Error loading pages</option>';
             }
         };
@@ -4670,7 +4690,7 @@ document.addEventListener('mousedown', (e) => {
             
             if (!pId || !visId || !currentEmbeddedReport) {
                 out.textContent += `Error: Please select page and visual.\n`;
-                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                 return;
             }
             
@@ -4686,7 +4706,7 @@ document.addEventListener('mousedown', (e) => {
                 
                 for (let page of targetPages) {
                     out.textContent += `\n> Navigating to Page: [${page.displayName}]...\n`;
-                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                     await page.setActive();
                     await new Promise(r => setTimeout(r, 1500)); // wait for visuals to load
                     
@@ -4696,7 +4716,7 @@ document.addEventListener('mousedown', (e) => {
                     for (let visual of targetVisuals) {
                         const vName = visual.title || visual.type || visual.name;
                         out.textContent += `  - Visual [${vName}]: Extracting...`;
-                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                         try {
                             const result = await visual.exportData(exportType, rows);
                             
@@ -4720,28 +4740,28 @@ document.addEventListener('mousedown', (e) => {
                             XLSX.utils.book_append_sheet(wb, ws, sheetName);
                             fileCount++;
                             out.textContent += ` OK (Appended to Sheet: ${sheetName})\n`;
-                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                         } catch (e) {
                             out.textContent += ` SKIPPED (No data or unsupported)\n`;
-                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                         }
                     }
                 }
                 
                 if (fileCount > 0) {
                     out.textContent += `\nData successfully extracted (${fileCount} sheets)! Generating Excel file...\n`;
-                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                     XLSX.writeFile(wb, `PowerBI_Export_${expTypeStr}.xlsx`);
                     out.textContent += `\nExcel file downloaded: PowerBI_Export_${expTypeStr}.xlsx 🎉\n`;
-                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                 } else {
                     out.textContent += `\nWARNING: No exportable data found in the selected targets.\n`;
-                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
                 }
                 
             } catch (err) {
                 out.textContent += `Exception during export: ${err.message || JSON.stringify(err)}\n`;
-                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                    setTimeout(() => { out.scrollTop = out.scrollHeight; }, 10);
             }
         };
 
@@ -4767,13 +4787,7 @@ document.addEventListener('mousedown', (e) => {
                     await window.executeExportDataset();
                 } else if (wfType === 'export_visual') {
                     await executeExportVisual();
-                } else if (wfType === 'report_view_count') {
-                    if (window.runRvcWorkflow) await window.runRvcWorkflow();
-                } else if (wfType === 'check_permissions') {
-                    if (window.runCheckPermsWorkflow) await window.runCheckPermsWorkflow();
-                } else if (wfType === 'global_user_manager') {
-                      if (window.runGlobalUserManager) await window.runGlobalUserManager();
-                  } else if (wfType === 'smart_pipeline') {
+                } else if (wfType === 'smart_pipeline') {
                     // Smart Pipeline trigger
                 }
             } finally {
@@ -4861,7 +4875,7 @@ window.loadDatasetTablesStep1 = async function(btn) {
     
     if(!ws || !ds) {
         consoleOut.innerText = '❌ Error: Please select Workspace and Dataset first.';
-        setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
+        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
         if (btn) btn.disabled = false;
         return false;
     }
@@ -4877,7 +4891,7 @@ window.loadDatasetTablesStep1 = async function(btn) {
     const requestStr = `[POST] /api/export_dataset/${ws}/${ds}\nHeaders: { "Content-Type": "application/json" }\nBody:\n{\n  "pbi_client_id": "${clientId ? '***' : ''}",\n  "pbi_tenant_id": "${tenantId ? '***' : ''}",\n  "query": "${query}"\n}\n\n⏳ Request sent, waiting for response...`;
 
     consoleOut.innerText = requestStr;
-    setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
+    setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
     
     try {
         const payload = { pbi_client_id: clientId, pbi_client_secret: clientSecret, pbi_tenant_id: tenantId, query: query };
@@ -4900,7 +4914,7 @@ window.loadDatasetTablesStep1 = async function(btn) {
             
             consoleOut.innerText = requestStr.replace('⏳ Request sent, waiting for response...', '') + 
                 `\n✅ Success! Status: 200 OK\nRetrieved ${tables.length} valid tables.\n\nResponse Preview:\n` + JSON.stringify(tables, null, 2);
-            setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
+            setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
             
             const optionsUl = document.getElementById('wf-ds-table-options');
             const displaySpan = document.getElementById('wf-ds-table-display');
@@ -4969,12 +4983,12 @@ window.loadDatasetTablesStep1 = async function(btn) {
         } else {
             consoleOut.innerText = requestStr.replace('⏳ Request sent, waiting for response...', '') + 
                 `\n❌ Failed:\n` + data.message;
-            setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
+            setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
         }
     } catch(err) {
         consoleOut.innerText = requestStr.replace('⏳ Request sent, waiting for response...', '') + 
             `\n❌ Network Error:\n` + err.message;
-            setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
+            setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
     }
     if (btn) btn.disabled = false;
     return false;
@@ -4992,7 +5006,7 @@ window.executeDatasetStep2 = async function(btn) {
     
     if(!ws || !ds || selectedTables.length === 0) {
         consoleOut.innerText = '❌ Error: Please ensure Step 1 is complete and at least one Table is selected.';
-        setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
+        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
         if (btn) btn.disabled = false;
         return false;
     }
@@ -5004,7 +5018,7 @@ window.executeDatasetStep2 = async function(btn) {
     const tenantId = document.getElementById('set-tenant').value.trim();
     
     consoleOut.innerText = `⏳ Starting export of ${selectedTables.length} table(s) as ${exportFormat}...`;
-    setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
+    setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
     
     let zip = null;
     let wb = null;
@@ -5019,7 +5033,7 @@ window.executeDatasetStep2 = async function(btn) {
     for (let i = 0; i < selectedTables.length; i++) {
         const tb = selectedTables[i];
         consoleOut.innerText += `\n\n[${i+1}/${selectedTables.length}] ⏳ Fetching table: '${tb}'...`;
-        setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
+        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
         
         const query = `EVALUATE '${tb}'`;
         const payload = { pbi_client_id: clientId, pbi_client_secret: clientSecret, pbi_tenant_id: tenantId, query: query };
@@ -5036,11 +5050,11 @@ window.executeDatasetStep2 = async function(btn) {
             if(data.success) {
                 const rows = data.results;
                 consoleOut.innerText += `\n✓ Status: 200 OK. Retrieved ${rows.length} rows.`;
-        setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
+        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
                 
                 if(!rows || rows.length === 0) {
                     consoleOut.innerText += `\n⚠️ Table is empty. Skipping...`;
-        setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
+        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
                     continue;
                 }
                 
@@ -5081,17 +5095,17 @@ window.executeDatasetStep2 = async function(btn) {
                 
             } else {
                 consoleOut.innerText += `\n❌ Query Failed: ${data.message}`;
-        setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
+        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
             }
         } catch(err) {
             consoleOut.innerText += `\n❌ Network Error: ${err.message}`;
-        setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
+        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
         }
     }
     
     if (successCount > 0) {
         consoleOut.innerText += `\n\n⏳ Generating final ${exportFormat} file...`;
-        setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
+        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
         if (exportFormat === 'CSV') {
             zip.generateAsync({type:"blob"}).then(function(content) {
                 const url = URL.createObjectURL(content);
@@ -5101,18 +5115,18 @@ window.executeDatasetStep2 = async function(btn) {
                 a.click();
                 URL.revokeObjectURL(url);
                 consoleOut.innerText += `\n✓ Download initiated: ${a.download}`;
-        setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
+        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
                 if (btn) btn.disabled = false;
             });
             return true; // async generation
         } else {
             XLSX.writeFile(wb, `Export_Tables_${ds}.xlsx`);
             consoleOut.innerText += `\n✓ Download initiated: Export_Tables_${ds}.xlsx`;
-        setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
+        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
         }
     } else {
         consoleOut.innerText += `\n\n⚠️ No data was exported.`;
-        setTimeout(() => { consoleOut.scrollTop = Math.max(0, consoleOut.scrollHeight - consoleOut.clientHeight * 0.66); }, 10);
+        setTimeout(() => { consoleOut.scrollTop = consoleOut.scrollHeight; }, 10);
     }
     
     if (btn) btn.disabled = false;
@@ -5252,7 +5266,7 @@ window.runRvcWorkflow = async function() {
         const div = document.createElement('div');
         div.textContent = msg;
         logsDiv.appendChild(div);
-        setTimeout(() => { logsDiv.scrollTop = Math.max(0, logsDiv.scrollHeight - logsDiv.clientHeight * 0.66); }, 10);
+        setTimeout(() => { logsDiv.scrollTop = logsDiv.scrollHeight; }, 10);
     };
 
     appendLog(`[INIT] Fetching Activity Events from ${startStr} to ${endStr}...`);
@@ -5260,11 +5274,11 @@ window.runRvcWorkflow = async function() {
     
     // Setup dynamic table skeleton (2 Columns)
     tableDiv.innerHTML = `
-    <table data-table-id="rvc" class="data-table" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
-        <thead style="position: sticky; top: 0; background: var(--bg-color); z-index: 5;">
+    <table data-table-id="rvc" style="width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.75rem; text-align: left;">
+        <thead>
             <tr>
-                <th onclick="window.sortTable(this, event, 0)" style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px;" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Date</th>
-                <th onclick="window.sortTable(this, event, 1)" style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px;" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">View Count</th>
+                <th onclick="window.sortTable(this, event, 0)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Date</th>
+                <th onclick="window.sortTable(this, event, 1)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">View Count</th>
             </tr>
         </thead>
         <tbody id="rvc-dynamic-tbody"></tbody>
@@ -5487,7 +5501,7 @@ window.toggleRvcLogs = function() {
                 // Dynamically update the table as data flows in!
                 if (foundToday > 0 || window._rvcDateStats[dateIso] !== undefined) {
                     renderTableRows();
-                    
+                    setTimeout(() => { tableDiv.scrollTop = tableDiv.scrollHeight; }, 20);
                 }
             }
             currentDate.setDate(currentDate.getDate() + 1);
@@ -5541,7 +5555,7 @@ window.runCheckPermsWorkflow = async function() {
         const div = document.createElement('div');
         div.textContent = msg;
         logsDiv.appendChild(div);
-        setTimeout(() => { logsDiv.scrollTop = Math.max(0, logsDiv.scrollHeight - logsDiv.clientHeight * 0.66); }, 10);
+        setTimeout(() => { logsDiv.scrollTop = logsDiv.scrollHeight; }, 10);
     };
 
     statusDiv.textContent = `Fetching /availableFeatures...`;
@@ -5573,12 +5587,12 @@ window.runCheckPermsWorkflow = async function() {
             
             // Render table skeleton
             tableDiv.innerHTML = `
-            <table data-table-id="perms" class="data-table" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
-                <thead style="position: sticky; top: 0; background: var(--bg-color); z-index: 5;">
+            <table data-table-id="perms" style="width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.75rem; text-align: left;">
+                <thead>
                     <tr>
-                        <th onclick="window.sortTable(this, event, 0)" style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px;" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Feature Name</th>
-                        <th onclick="window.sortTable(this, event, 1)" style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px;" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">State</th>
-                        <th onclick="window.sortTable(this, event, 2)" style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px;" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Extended State</th>
+                        <th onclick="window.sortTable(this, event, 0)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Feature Name</th>
+                        <th onclick="window.sortTable(this, event, 1)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">State</th>
+                        <th onclick="window.sortTable(this, event, 2)" style="background: #11141a; position: sticky; top: 0; z-index: 5; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#1e222d'" onmouseout="this.style.background='#11141a'">Extended State</th>
                     </tr>
                 </thead>
                 <tbody id="perms-dynamic-tbody"></tbody>
@@ -5619,7 +5633,7 @@ window.runCheckPermsWorkflow = async function() {
             statusDiv.textContent = `Loaded JSON format (No features array found).`;
             statusDiv.style.color = 'var(--warning)';
         }
-        
+        setTimeout(() => { tableDiv.scrollTop = tableDiv.scrollHeight; }, 50);
     } catch (e) {
         appendLog(`[EXCEPTION] ${e.message}`);
         statusDiv.textContent = `Exception: ${e.message}`;
@@ -5707,421 +5721,3 @@ window.sortTable = function(thElement, event, colIndex) {
     
     rows.forEach(r => tbody.appendChild(r));
 };
-
-
-// --- Global User Manager Logic ---
-window.gumData = [];
-window.gumWorkspaces = [];
-
-window.runGlobalUserManager = async function() {
-    const logsDiv = document.getElementById('wf-out-gum-logs');
-    const tableDiv = document.getElementById('wf-out-gum-table');
-    const statsSpan = document.getElementById('wf-gum-stats');
-    
-    logsDiv.innerHTML = '';
-    tableDiv.innerHTML = 'Scanning workspaces...';
-    statsSpan.textContent = '';
-    window.gumData = [];
-window.gumWorkspaces = [];
-    
-    const appendLog = (msg) => {
-        const div = document.createElement('div');
-        div.style.marginBottom = '2px';
-        div.style.paddingLeft = '10px';
-        div.style.borderLeft = '2px solid var(--accent)';
-        div.textContent = msg;
-        logsDiv.appendChild(div);
-        logsDiv.scrollTop = Math.max(0, logsDiv.scrollHeight - logsDiv.clientHeight * 0.66);
-    };
-
-    try {
-        const isAdminMode = document.getElementById('gum-admin-mode')?.checked;
-        
-        appendLog(`[1] Fetching workspaces (${isAdminMode ? 'Admin Mode: All Workspaces' : 'Standard Mode: Assigned Only'})...`);
-        
-        const wsEndpoint = isAdminMode ? '/admin/groups?$top=5000&$expand=users' : '/groups?$top=100';
-        
-        const wsRes = await fetch('/api/proxy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ endpoint: wsEndpoint, method: 'GET' })
-        });
-        
-        if (!wsRes.ok) {
-            if (isAdminMode) {
-                appendLog(`[ERROR] Admin Scan failed (${wsRes.status}). Ensure Service Principal has Tenant.Read.All and is enabled in Power BI Admin Portal.`);
-            }
-            throw new Error(`Failed to fetch workspaces: ${wsRes.statusText}`);
-        }
-        
-        const wsData = await wsRes.json();
-        const wsPayload = wsData.data || wsData;
-        const workspaces = wsPayload.value || [];
-        window.gumWorkspaces = workspaces;
-        appendLog(`[OK] Found ${workspaces.length} workspaces. Starting user processing...`);
-        
-        let processed = 0;
-        let totalUsers = 0;
-        
-        if (isAdminMode) {
-            // In Admin mode, $expand=users provides all users immediately! No need to loop requests.
-            appendLog(`[2] Extracting users from Admin API response (Instant Mode)...`);
-            for (const ws of workspaces) {
-                const users = ws.users || [];
-                for (const u of users) {
-                    window.gumData.push({
-                        wsId: ws.id,
-                        wsName: ws.name,
-                        identifier: u.identifier,
-                        principalType: u.principalType,
-                        role: u.groupUserAccessRight
-                    });
-                    totalUsers++;
-                }
-            }
-        } else {
-            // Standard mode requires looping over each workspace
-            for (const ws of workspaces) {
-                processed++;
-                appendLog(`[${processed}/${workspaces.length}] Scanning users for: ${ws.name}`);
-                try {
-                    const uRes = await fetch('/api/proxy', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ endpoint: `/groups/${ws.id}/users`, method: 'GET' })
-                    });
-                    if (uRes.ok) {
-                        const uData = await uRes.json();
-                        const uPayload = uData.data || uData;
-                        const users = uPayload.value || [];
-                        for (const u of users) {
-                            window.gumData.push({
-                                wsId: ws.id,
-                                wsName: ws.name,
-                                identifier: u.identifier,
-                                principalType: u.principalType,
-                                role: u.groupUserAccessRight
-                            });
-                            totalUsers++;
-                        }
-                    } else {
-                        appendLog(`   -> Failed: HTTP ${uRes.status}`);
-                    }
-                } catch (err) {
-                    appendLog(`   -> Error: ${err.message}`);
-                }
-                // Add a slight delay to avoid rate limiting
-                await new Promise(r => setTimeout(r, 100));
-            }
-        }
-        
-        appendLog(`\n[DONE] Scan complete! Found ${totalUsers} user permission records across ${workspaces.length} workspaces.`);
-        window.filterGumTable();
-        
-    } catch (e) {
-        appendLog(`[EXCEPTION] ${e.message}`);
-    }
-};
-
-window.filterGumTable = function() {
-    const term = (document.getElementById('wf-gum-search').value || '').toLowerCase();
-    const tableDiv = document.getElementById('wf-out-gum-table');
-    const statsSpan = document.getElementById('wf-gum-stats');
-    
-    const filtered = window.gumData.filter(d => 
-        (d.wsName || '').toLowerCase().includes(term) ||
-        (d.identifier || '').toLowerCase().includes(term) ||
-        (d.role || '').toLowerCase().includes(term) ||
-        (d.principalType || '').toLowerCase().includes(term)
-    );
-    
-    statsSpan.textContent = `${filtered.length} records`;
-    
-    if (filtered.length === 0) {
-        tableDiv.innerHTML = '<div style="padding: 20px; color: var(--text-secondary); text-align: center;">No matching records found.</div>';
-        return;
-    }
-    
-    let html = `
-    <table data-table-id="gum_table" class="data-table" style="width: 100%; border-collapse: collapse;">
-        <thead style="position: sticky; top: 0; background: var(--bg-color); z-index: 5;">
-            <tr>
-                <th style="padding: 8px; text-align: left; border-bottom: 2px solid var(--overlay-10); cursor: pointer; resize: horizontal; overflow: hidden; min-width: 50px;" onclick="window.sortTable(this, event, 0)" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Workspace</th>
-                <th style="padding: 8px; text-align: left; border-bottom: 2px solid var(--overlay-10); cursor: pointer; resize: horizontal; overflow: hidden; min-width: 50px;" onclick="window.sortTable(this, event, 1)" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">User / Principal</th>
-                <th style="padding: 8px; text-align: left; border-bottom: 2px solid var(--overlay-10); cursor: pointer; resize: horizontal; overflow: hidden; min-width: 50px;" onclick="window.sortTable(this, event, 2)" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Type</th>
-                <th style="padding: 8px; text-align: left; border-bottom: 2px solid var(--overlay-10); cursor: pointer; resize: horizontal; overflow: hidden; min-width: 50px;" onclick="window.sortTable(this, event, 3)" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Role</th>
-                <th style="padding: 8px; text-align: left; border-bottom: 2px solid var(--overlay-10); width: 100px;">Actions</th>
-            </tr>
-        </thead>
-        <tbody>`;
-        
-    for (const d of filtered) {
-        html += `
-            <tr style="border-bottom: 1px solid var(--overlay-10);">
-                <td style="padding: 8px; font-size: 0.85rem; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${d.wsName}">${d.wsName}</td>
-                <td style="padding: 8px; font-size: 0.85rem; word-break: break-all;" title="${d.identifier}">${d.identifier}</td>
-                <td style="padding: 8px; font-size: 0.85rem;"><span style="background: var(--overlay-10); padding: 2px 6px; border-radius: 12px; font-size: 0.75rem;">${d.principalType}</span></td>
-                <td style="padding: 8px; font-size: 0.85rem; font-weight: bold; color: ${d.role==='Admin'?'var(--accent)':(d.role==='Member'?'var(--success)':'var(--text-primary)')}">${d.role}</td>
-                <td style="padding: 8px; display: flex; gap: 4px;">
-                    <button class="icon-btn" title="Edit Role" style="padding: 4px;" onclick="window.editGumUser('${d.wsId}', '${d.wsName.replace(/'/g, "\'")}', '${d.identifier}', '${d.principalType}', '${d.role}')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                    </button>
-                    <button class="icon-btn" title="Remove User" style="padding: 4px; color: var(--error);" onclick="window.deleteGumUser('${d.wsId}', '${d.identifier}', '${d.wsName.replace(/'/g, "\'")}')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                    </button>
-                </td>
-            </tr>`;
-    }
-    
-    html += `</tbody></table>`;
-    tableDiv.innerHTML = html;
-};
-
-window.editGumUser = function(wsId, wsName, identifier, principalType, currentRole) {
-    document.getElementById('gum-edit-ws-id').value = wsId;
-    document.getElementById('gum-edit-ws-name').value = wsName;
-    document.getElementById('gum-edit-identifier').value = identifier;
-    document.getElementById('gum-edit-principal-type').value = principalType;
-    document.getElementById('gum-edit-role').value = currentRole;
-    document.getElementById('gum-edit-modal').style.display = 'flex';
-};
-
-window.submitGumEdit = async function() {
-    const wsId = document.getElementById('gum-edit-ws-id').value;
-    const identifier = document.getElementById('gum-edit-identifier').value;
-    const principalType = document.getElementById('gum-edit-principal-type').value;
-    const newRole = document.getElementById('gum-edit-role').value;
-    const logsDiv = document.getElementById('wf-out-gum-logs');
-    
-    document.getElementById('gum-edit-modal').style.display = 'none';
-    
-    // Log the action
-    const div = document.createElement('div');
-    div.style.paddingLeft = '10px';
-    div.style.borderLeft = '2px solid var(--warning)';
-    div.textContent = `[UPDATE] Changing role of ${identifier} to ${newRole} ...`;
-    logsDiv.appendChild(div);
-    
-    try {
-        const body = {
-            identifier: identifier,
-            groupUserAccessRight: newRole,
-            principalType: principalType
-        };
-        
-        const res = await fetch('/api/proxy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ endpoint: `/groups/${wsId}/users`, method: 'PUT', body: body })
-        });
-        
-        if (res.ok) {
-            div.textContent += " OK (Updated)";
-            div.style.borderLeft = '2px solid var(--success)';
-            // Update local state and re-render
-            const rec = window.gumData.find(d => d.wsId === wsId && d.identifier === identifier);
-            if(rec) rec.role = newRole;
-            window.filterGumTable();
-        } else {
-            const errJson = await res.json().catch(()=>({}));
-            div.textContent += ` FAILED: ${res.status} ${JSON.stringify(errJson)}`;
-            div.style.borderLeft = '2px solid var(--error)';
-        }
-    } catch(err) {
-        div.textContent += ` EXCEPTION: ${err.message}`;
-        div.style.borderLeft = '2px solid var(--error)';
-    }
-    logsDiv.scrollTop = Math.max(0, logsDiv.scrollHeight - logsDiv.clientHeight * 0.66);
-};
-
-window.deleteGumUser = async function(wsId, identifier, wsName) {
-    if (!confirm(`Are you sure you want to completely REMOVE access for:\n${identifier}\nfrom workspace [${wsName}]?`)) return;
-    
-    const logsDiv = document.getElementById('wf-out-gum-logs');
-    
-    const div = document.createElement('div');
-    div.style.paddingLeft = '10px';
-    div.style.borderLeft = '2px solid var(--error)';
-    div.textContent = `[DELETE] Removing ${identifier} from ${wsName} ...`;
-    logsDiv.appendChild(div);
-    
-    try {
-        const res = await fetch('/api/proxy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ endpoint: `/groups/${wsId}/users/${encodeURIComponent(identifier)}`, method: 'DELETE' })
-        });
-        
-        if (res.ok) {
-            div.textContent += " OK (Removed)";
-            // Remove from local state
-            window.gumData = window.gumData.filter(d => !(d.wsId === wsId && d.identifier === identifier));
-            window.filterGumTable();
-        } else {
-            div.textContent += ` FAILED: ${res.status}`;
-        }
-    } catch(err) {
-        div.textContent += ` EXCEPTION: ${err.message}`;
-    }
-    logsDiv.scrollTop = Math.max(0, logsDiv.scrollHeight - logsDiv.clientHeight * 0.66);
-};
-
-window.openGumAddUserModal = function() {
-    const sel = document.getElementById('gum-add-ws-id');
-    sel.innerHTML = '<option value="">Select a Workspace...</option>';
-    
-    if (!window.gumWorkspaces || window.gumWorkspaces.length === 0) {
-        alert('Please run the "Scan" first to populate the workspaces list!');
-        return;
-    }
-    
-    // Populate workspaces sorted by name
-    const wses = [...window.gumWorkspaces].sort((a,b) => (a.name||'').localeCompare(b.name||''));
-    for(const ws of wses) {
-        const opt = document.createElement('option');
-        opt.value = ws.id;
-        opt.textContent = ws.name;
-        sel.appendChild(opt);
-    }
-    
-    document.getElementById('gum-add-identifier').value = '';
-    document.getElementById('gum-add-role').value = 'Viewer';
-    document.getElementById('gum-add-modal').style.display = 'flex';
-};
-
-window.submitGumAddUser = async function() {
-    const wsId = document.getElementById('gum-add-ws-id').value;
-    const identifier = document.getElementById('gum-add-identifier').value.trim();
-    const principalType = document.getElementById('gum-add-principal-type').value;
-    const newRole = document.getElementById('gum-add-role').value;
-    
-    if(!wsId) { alert('Please select a workspace!'); return; }
-    if(!identifier) { alert('Please enter an email/identifier!'); return; }
-    
-    document.getElementById('gum-add-modal').style.display = 'none';
-    
-    const logsDiv = document.getElementById('wf-out-gum-logs');
-    window.expandConsole('wf-out-gum-logs'); // ensure logs are visible
-    
-    const div = document.createElement('div');
-    div.style.paddingLeft = '10px';
-    div.style.borderLeft = '2px solid var(--accent)';
-    div.textContent = `[ADD] Adding ${identifier} to workspace [${wsId}] as ${newRole}...`;
-    logsDiv.appendChild(div);
-    
-    try {
-        const body = {
-            identifier: identifier,
-            groupUserAccessRight: newRole,
-            principalType: principalType
-        };
-        
-        // Use POST to add a user
-        const res = await fetch('/api/proxy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ endpoint: `/groups/${wsId}/users`, method: 'POST', body: body })
-        });
-        
-        if (res.ok) {
-            div.textContent += " OK (Added)";
-            div.style.borderLeft = '2px solid var(--success)';
-            
-            // Re-fetch that specific workspace's users to update the table immediately!
-            try {
-                const uRes = await fetch('/api/proxy', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ endpoint: `/groups/${wsId}/users`, method: 'GET' })
-                });
-                if(uRes.ok) {
-                    const uData = await uRes.json();
-                    const uPayload = uData.data || uData;
-                    const users = uPayload.value || [];
-                    
-                    // Remove old records for this workspace
-                    window.gumData = window.gumData.filter(d => d.wsId !== wsId);
-                    
-                    // Add fresh records
-                    const wsName = window.gumWorkspaces.find(w => w.id === wsId)?.name || 'Unknown';
-                    for(const u of users) {
-                        window.gumData.push({
-                            wsId: wsId,
-                            wsName: wsName,
-                            identifier: u.identifier,
-                            principalType: u.principalType,
-                            role: u.groupUserAccessRight
-                        });
-                    }
-                    window.filterGumTable();
-                }
-            } catch(e) {}
-            
-        } else {
-            const errJson = await res.json().catch(()=>({}));
-            div.textContent += ` FAILED: ${res.status} ${JSON.stringify(errJson)}`;
-            div.style.borderLeft = '2px solid var(--error)';
-        }
-    } catch(err) {
-        div.textContent += ` EXCEPTION: ${err.message}`;
-        div.style.borderLeft = '2px solid var(--error)';
-    }
-    setTimeout(() => { logsDiv.scrollTop = Math.max(0, logsDiv.scrollHeight - logsDiv.clientHeight * 0.66); }, 50);
-};
-
-window.gumAutocompleteTimer = null;
-window.handleGumAddIdentifierInput = function(e) {
-    const val = e.target.value.trim();
-    const dropdown = document.getElementById('gum-add-autocomplete');
-    
-    if (val.length < 2) {
-        dropdown.style.display = 'none';
-        return;
-    }
-    
-    if (window.gumAutocompleteTimer) clearTimeout(window.gumAutocompleteTimer);
-    
-    window.gumAutocompleteTimer = setTimeout(async () => {
-        dropdown.innerHTML = '<div style="padding: 8px; font-size: 0.8rem; color: var(--text-secondary);">Searching...</div>';
-        dropdown.style.display = 'block';
-        
-        try {
-            const res = await fetch(`/api/graph_users?query=${encodeURIComponent(val)}`);
-            const data = await res.json();
-            
-            if (data.success && data.users && data.users.length > 0) {
-                dropdown.innerHTML = '';
-                for (const u of data.users) {
-                    const div = document.createElement('div');
-                    div.style.padding = '8px';
-                    div.style.borderBottom = '1px solid var(--overlay-10)';
-                    div.style.cursor = 'pointer';
-                    div.style.fontSize = '0.8rem';
-                    div.innerHTML = `<strong>${u.displayName}</strong> <span style="color: var(--text-secondary); font-size: 0.75rem;">(${u.userPrincipalName})</span>`;
-                    div.onmouseover = () => div.style.background = 'var(--overlay-10)';
-                    div.onmouseout = () => div.style.background = 'transparent';
-                    div.onclick = () => {
-                        document.getElementById('gum-add-identifier').value = u.userPrincipalName;
-                        dropdown.style.display = 'none';
-                    };
-                    dropdown.appendChild(div);
-                }
-            } else if (data.success) {
-                dropdown.innerHTML = '<div style="padding: 8px; font-size: 0.8rem; color: var(--text-secondary);">No matching users found</div>';
-            } else {
-                dropdown.innerHTML = `<div style="padding: 8px; font-size: 0.8rem; color: var(--error);">Error: ${data.error || 'Check Graph API permissions'}</div>`;
-            }
-        } catch(err) {
-            dropdown.innerHTML = `<div style="padding: 8px; font-size: 0.8rem; color: var(--error);">Network Error</div>`;
-        }
-    }, 500); // 500ms debounce
-};
-
-// Close autocomplete when clicking outside
-document.addEventListener('click', function(e) {
-    const ac = document.getElementById('gum-add-autocomplete');
-    const input = document.getElementById('gum-add-identifier');
-    if (ac && input && !ac.contains(e.target) && e.target !== input) {
-        ac.style.display = 'none';
-    }
-});

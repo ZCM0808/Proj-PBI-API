@@ -637,6 +637,25 @@ async def proxy_request(request: Request):
     body = data.get("body", None)
     api_type = data.get("api_type", "powerbi").strip().lower()
     
+    # 拦截 MCP 查询请求
+    if endpoint == "/api/mcp/query":
+        from src.mcp_client import MCPClient
+        try:
+            mcp = MCPClient()
+            await mcp.start()
+            arguments = {}
+            tool_name = "execute_dax"
+            if body:
+                arguments = body.get("arguments", {})
+                tool_name = body.get("tool_name", "execute_dax")
+            result = await mcp.call_tool(f"{tool_name}", arguments)
+            await mcp.close()
+            return {"success": True, "data": result}
+        except Exception as e:
+            if 'mcp' in locals() and hasattr(mcp, 'close'):
+                await mcp.close()
+            return {"success": False, "error": str(e)}
+
     # [安全验证] 防止 SSRF (服务器端请求伪造)
     if endpoint.startswith("http://") or endpoint.startswith("https://"):
         return {"success": False, "error": "Security Error: Absolute URLs are strictly prohibited to prevent SSRF and Token leakage. Please provide only the API path."}

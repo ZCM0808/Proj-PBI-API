@@ -1,0 +1,306 @@
+0: 1 | id="workflow-modal-content">
+1: 2 | <div class="modal-header">
+2: 2 | <h3 style="font-size: 1.05rem; margin: 0;">⚡ Workflows</h3>
+3: 2 | <button type="button" class="close-btn" id="close-workflow-btn" title="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg></button>
+4: 1 | </div>
+5: 1 | 
+6: 2 | <div class="modal-body" style="overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 12px;">
+7: 3 | <div style="display: flex; gap: 12px; align-items: center;">
+8: 3 | <label style="color: var(--text-secondary); font-weight: bold; display: flex; align-items: center; gap: 6px;">
+9: 3 | Select Workflow:
+10: 3 | </label>
+11: 3 | <select id="wf-selector" class="wf-input" style="flex: 1;">
+12: 3 | <option value="export_report">Export Report to File (PDF/Excel/etc.)</option>
+13: 3 | <option value="export_visual">Export Visual Data (CSV) - Underlying/Summarized</option>
+14: 3 | <option value="export_dataset_tables">Export Dataset Tables (CSV)</option>
+15: 3 | <option value="report_view_count">Admin Report View Count (Activity Events)</option>
+16: 3 | <option value="check_permissions">Check Current Permissions (Token/Features)</option>
+17: 3 | <option value="smart_pipeline">Smart DataOps Pipeline (Auto Bind/Scan/Check)</option>
+18: 3 | </select>
+19: 3 | <button type="button" class="icon-btn" title="Copy Workflow Name" onclick="window.handleCopyAction(this, document.getElementById('wf-selector').options[document.getElementById('wf-selector').selectedIndex].text)" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer;">
+20: 3 | <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+21: 3 | </button>
+22: 2 | </div>
+23: 2 | 
+24: 3 | <div id="wf-config-export_report" class="wf-config-pane">
+25: 4 | <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
+26: 5 | <div>
+27: 5 | <label style="font-size: 0.85rem; color: var(--text-secondary);">Workspace ID</label>
+28: 5 | <select id="wf-exp-workspace" class="wf-input"></select>
+29: 4 | </div>
+30: 5 | <div>
+31: 5 | <label style="font-size: 0.85rem; color: var(--text-secondary);">Report ID</label>
+32: 5 | <select id="wf-exp-report" class="wf-input"></select>
+33: 4 | </div>
+34: 5 | <div style="grid-column: span 2;">
+35: 5 | <label style="font-size: 0.85rem; color: var(--text-secondary);">Export Format</label>
+36: 5 | <select id="wf-exp-format" class="wf-input">
+37: 5 | <option value="PDF">PDF</option>
+38: 5 | <option value="XLSX">Excel (XLSX) - *Paginated only</option>
+39: 5 | <option value="CSV">CSV - *Paginated only</option>
+40: 5 | <option value="PPTX">PowerPoint (PPTX)</option>
+41: 5 | <option value="PNG">Image (PNG)</option>
+42: 5 | </select>
+43: 4 | </div>
+44: 3 | </div>
+45: 2 | </div>
+46: 2 | 
+47: 2 | 
+48: 2 | <!-- Smart Pipeline Container -->
+49: 2 | 
+50: 3 | <div id="wf-config-report_view_count" class="wf-config-pane" style="display: none;">
+51: 4 | <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
+52: 5 | <div>
+53: 5 | <label style="font-size: 0.85rem; color: var(--text-secondary);">Workspace ID</label>
+54: 5 | <select id="wf-rvc-workspace" class="wf-input"></select>
+55: 4 | </div>
+56: 5 | <div>
+57: 5 | <label style="font-size: 0.85rem; color: var(--text-secondary);">Report ID</label>
+58: 5 | <select id="wf-rvc-report" class="wf-input"></select>
+59: 4 | </div>
+60: 5 | <div>
+61: 5 | <label style="font-size: 0.85rem; color: var(--text-secondary);">Start Date</label>
+62: 5 | <input type="date" id="wf-rvc-start" class="wf-input" value="">
+63: 4 | </div>
+64: 5 | <div>
+65: 5 | <label style="font-size: 0.85rem; color: var(--text-secondary);">End Date</label>
+66: 5 | <input type="date" id="wf-rvc-end" class="wf-input" value="">
+67: 4 | </div>
+68: 3 | </div>
+69: 4 | <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+70: 5 | <div class="wf-step active" id="wf-rvc-step-1">
+71: 6 | <div class="wf-step-header">
+72: 6 | <span class="wf-step-title">Get View Count (Activity Events)</span>
+73: 6 | <button class="btn-action-primary" id="btn-run-rvc" style="margin-left: auto; padding: 4px 12px; font-size: 0.8rem;" onclick="window.runRvcWorkflow()">Run Analysis</button>
+74: 5 | </div>
+75: 6 | <div class="wf-step-content" style="display: block; margin-top: 8px;">
+76: 6 | <div id="wf-rvc-status" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px;">Ready. Select date range (max 30 days recommended).</div>
+77: 7 | <div id="wf-rvc-containers" style="display: none; flex-direction: column; gap: 12px;">
+78: 7 | <!-- Logs Section -->
+79: 8 | <div style="position: relative;">
+80: 9 | <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleRvcLogs()">
+81: 9 | <svg id="wf-rvc-logs-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(90deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>
+82: 9 | Execution Logs
+83: 8 | </div>
+84: 8 | <button type="button" id="wf-rvc-logs-copybtn" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-rvc-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+85: 8 | <div id="wf-out-rvc-logs" class="wf-console" style="min-height: 0; padding-bottom: 20px; transition: max-height 0.3s ease, padding 0.3s ease, border-width 0.3s ease, opacity 0.3s ease; overflow-y: auto; max-height: 250px;"></div>
+86: 7 | </div>
+87: 7 | 
+88: 7 | <!-- Table Section -->
+89: 8 | <div style="position: relative;">
+90: 8 | <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary);">Activity Events Table</div>
+91: 8 | <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-rvc-table').innerText)" title="Copy Table" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+92: 8 | <div id="wf-out-rvc-table" class="wf-console" style="min-height: 150px; padding: 0 32px 60px 12px; white-space: normal;"></div>
+93: 7 | </div>
+94: 6 | </div>
+95: 5 | </div>
+96: 4 | </div>
+97: 3 | </div>
+98: 2 | </div>
+99: 1 | </div>
+100: 1 | 
+101: 2 | <div id="wf-config-check_permissions" class="wf-config-pane" style="display: none;">
+102: 3 | <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+103: 4 | <div class="wf-step active">
+104: 5 | <div class="wf-step-header">
+105: 5 | <span class="wf-step-title">Fetch Available Features & Token Info</span>
+106: 5 | <button class="btn-action-primary" id="btn-run-check-perms" style="margin-left: auto; padding: 4px 12px; font-size: 0.8rem;" onclick="window.runCheckPermsWorkflow()">Run Check</button>
+107: 4 | </div>
+108: 5 | <div class="wf-step-content" style="display: block; margin-top: 8px;">
+109: 5 | <div id="wf-perms-status" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px;">Ready. Click "Run Check" to fetch /availableFeatures.</div>
+110: 6 | <div id="wf-perms-containers" style="display: flex; flex-direction: column; gap: 12px;">
+111: 6 | <!-- Logs Section -->
+112: 7 | <div style="position: relative;">
+113: 7 | <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary);">Execution Logs</div>
+114: 7 | <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-perms-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+115: 7 | <div id="wf-out-perms-logs" class="wf-console" style="min-height: 100px; padding-bottom: 20px;">Ready...</div>
+116: 6 | </div>
+117: 6 | 
+118: 6 | <!-- Table Section -->
+119: 7 | <div style="position: relative;">
+120: 7 | <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary);">Permissions Table</div>
+121: 7 | <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-perms-table').innerText)" title="Copy Table" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+122: 7 | <div id="wf-out-perms-table" class="wf-console" style="min-height: 150px; padding: 0 32px 60px 12px; white-space: normal;">Waiting for data...</div>
+123: 6 | </div>
+124: 5 | </div>
+125: 4 | </div>
+126: 3 | </div>
+127: 2 | </div>
+128: 1 | </div>
+129: 2 | <div id="wf-config-smart_pipeline" class="wf-config-pane" style="display: none;">
+130: 3 | <div style="background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 8px; padding: 12px;">
+131: 4 | <div class="terminal-view" id="pipeline-terminal" style="max-height: 200px; margin-bottom: 12px;">
+132: 4 | <div class="terminal-line"><span class="info">系统已就绪。点击下方按钮开始智能扫描并自动绑定工作区、数据集和报表...</span></div>
+133: 3 | </div>
+134: 4 | <div style="display: flex; justify-content: flex-end;">
+135: 4 | <button id="start-pipeline-btn" class="btn-pipeline" style="padding: 8px 16px;">🚀 开始全自动链路 (Start DataOps)</button>
+136: 3 | </div>
+137: 2 | </div>
+138: 1 | </div>
+139: 1 | 
+140: 2 | <div id="wf-config-export_dataset_tables" class="wf-config-pane" style="display: none;">
+141: 3 | <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
+142: 4 | <div>
+143: 4 | <label style="font-size: 0.85rem; color: var(--text-secondary);">Workspace ID</label>
+144: 4 | <select id="wf-ds-workspace" class="wf-input"></select>
+145: 3 | </div>
+146: 4 | <div>
+147: 4 | <label style="font-size: 0.85rem; color: var(--text-secondary);">Dataset ID</label>
+148: 4 | <select id="wf-ds-dataset" class="wf-input"></select>
+149: 3 | </div>
+150: 2 | </div>
+151: 2 | 
+152: 3 | <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+153: 3 | <!-- Step 1 -->
+154: 4 | <div class="wf-step" id="wf-ds-step-1">
+155: 5 | <div class="wf-step-header">
+156: 5 | <span class="wf-step-title">Step 1: Fetch Available Tables</span>
+157: 5 | <button id="wf-ds-btn-step1" class="btn-action-secondary wf-step-btn" onclick="window.loadDatasetTablesStep1(this)">Run Step 1</button>
+158: 4 | </div>
+159: 5 | <div style="position: relative;">
+160: 6 | <div style="position: relative;">
+161: 6 | <pre id="wf-out-ds-step1" class="wf-console">Input: Ready to fetch tables...</pre>
+162: 6 | <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-ds-step1').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+163: 5 | </div>
+164: 4 | </div>
+165: 3 | </div>
+166: 3 | 
+167: 3 | <!-- Step 2 -->
+168: 4 | <div class="wf-step" id="wf-ds-step-2">
+169: 5 | <div class="wf-step-header" style="flex-wrap: wrap; gap: 8px; position: relative; z-index: 10;">
+170: 5 | <span class="wf-step-title" style="white-space: nowrap;">Step 2: Execute Query & Download (CSV)</span>
+171: 5 | 
+172: 6 | <div id="wf-ds-table-container" style="display: flex; align-items: center; justify-content: flex-end; flex: 1; opacity: 0.4; transition: opacity 0.3s ease; min-width: 150px;">
+173: 7 | <div class="custom-select-wrapper" style="position: relative; flex: 1; max-width: 350px;" id="wf-ds-table-wrapper" onclick="window.toggleDsTableDropdown(event)">
+174: 8 | <div class="wf-input" id="wf-ds-table-trigger" style="height: 26px; display: flex; align-items: center; justify-content: space-between; cursor: not-allowed; padding: 0 8px; font-size: 0.75rem; border-radius: 4px; user-select: none; background: var(--shadow-light);">
+175: 8 | <span id="wf-ds-table-display" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary);">-- Run Step 1 First --</span>
+176: 8 | <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.2s ease; margin-left: 6px;"><path d="M6 9l6 6 6-6"></path></svg>
+177: 7 | </div>
+178: 7 | <ul id="wf-ds-table-options" class="wf-input custom-select-dropdown" style="position: absolute; bottom: calc(100% + 4px); top: auto; left: 0; width: 100%; max-height: 200px; overflow-y: auto; background: var(--dropdown-bg); border: 1px solid var(--panel-border); border-radius: 4px; padding: 4px 0; margin: 0; list-style: none; z-index: 1000; opacity: 0; visibility: hidden; transform: translateY(8px); transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 4px 16px var(--shadow-dark);">
+179: 7 | <li style="padding: 6px 10px; font-size: 0.75rem; cursor: not-allowed; color: var(--text-secondary);">-- Run Step 1 First --</li>
+180: 7 | </ul>
+181: 7 | <input type="hidden" id="wf-ds-table" value="">
+182: 6 | </div>
+183: 5 | </div>
+184: 5 | 
+185: 5 | <button id="wf-ds-btn-step2" class="btn-action-secondary wf-step-btn" style="white-space: nowrap;" onclick="window.executeDatasetStep2(this)">Run Step 2</button>
+186: 4 | </div>
+187: 4 | 
+188: 5 | <div style="position: relative;">
+189: 6 | <div style="position: relative;">
+190: 6 | <pre id="wf-out-ds-step2" class="wf-console" style="border-top-left-radius: 0; border-top-right-radius: 0; border-top: none;">Waiting for Step 1...</pre>
+191: 6 | <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-ds-step2').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+192: 5 | </div>
+193: 4 | </div>
+194: 3 | </div>
+195: 2 | </div>
+196: 1 | </div>
+197: 2 | <div id="wf-config-export_visual" class="wf-config-pane" style="display: none;">
+198: 3 | <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
+199: 4 | <div>
+200: 4 | <label style="font-size: 0.85rem; color: var(--text-secondary);">Workspace ID</label>
+201: 4 | <select id="wf-vis-workspace" class="wf-input"></select>
+202: 3 | </div>
+203: 4 | <div>
+204: 4 | <label style="font-size: 0.85rem; color: var(--text-secondary);">Report ID</label>
+205: 4 | <select id="wf-vis-report" class="wf-input"></select>
+206: 3 | </div>
+207: 4 | <div>
+208: 4 | <label style="font-size: 0.85rem; color: var(--text-secondary);">Page Name</label>
+209: 4 | <select id="wf-vis-page" class="wf-input">
+210: 4 | <option value="">-- Select Report First --</option>
+211: 4 | </select>
+212: 3 | </div>
+213: 4 | <div>
+214: 4 | <label style="font-size: 0.85rem; color: var(--text-secondary);">Visual Name</label>
+215: 4 | <select id="wf-vis-visual" class="wf-input">
+216: 4 | <option value="">-- Select Page First --</option>
+217: 4 | </select>
+218: 3 | </div>
+219: 4 | <div>
+220: 4 | <label style="font-size: 0.85rem; color: var(--text-secondary);">Export Type</label>
+221: 4 | <select id="wf-vis-type" class="wf-input">
+222: 4 | <option value="Summarized">Summarized (聚合)</option>
+223: 4 | <option value="Underlying">Underlying (底层)</option>
+224: 4 | </select>
+225: 3 | </div>
+226: 4 | <div>
+227: 4 | <label style="font-size: 0.85rem; color: var(--text-secondary);">Max Rows</label>
+228: 4 | <input type="number" id="wf-vis-rows" class="wf-input" value="100000">
+229: 3 | </div>
+230: 2 | </div>
+231: 2 | 
+232: 2 | 
+233: 2 | 
+234: 2 | 
+235: 2 | 
+236: 2 | <div id="pbi-embed-container" style="display: none; width: 100%; height: 400px; border: 1px solid var(--panel-border); border-radius: 6px; margin: 12px 0; background: var(--input-bg);"></div>
+237: 3 | <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+238: 4 | <div class="wf-step active" id="wf-vis-step-1">
+239: 5 | <div class="wf-step-header">
+240: 5 | <span class="wf-step-title">Execute exportData API (Sync)</span>
+241: 4 | </div>
+242: 5 | <div style="position: relative;">
+243: 6 | <div style="position: relative;">
+244: 6 | <pre id="wf-out-vis" class="wf-console">Ready to export visual data...</pre>
+245: 6 | <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-vis').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+246: 5 | </div>
+247: 4 | </div>
+248: 3 | </div>
+249: 2 | </div>
+250: 1 | </div>
+251: 2 | <div id="wf-export-wrapper">
+252: 3 | <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+253: 3 | <!-- Step 1 -->
+254: 4 | <div class="wf-step" id="wf-step-1">
+255: 5 | <div class="wf-step-header">
+256: 5 | <span class="wf-step-title">Step 1: Trigger Export (POST)</span>
+257: 5 | <button id="wf-btn-step1" class="btn-action-secondary wf-step-btn">Run Step 1</button>
+258: 4 | </div>
+259: 5 | <div style="position: relative;">
+260: 6 | <div style="position: relative;">
+261: 6 | <pre id="wf-out-step1" class="wf-console">Input: Ready to start...</pre>
+262: 6 | <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-step1').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+263: 5 | </div>
+264: 4 | </div>
+265: 3 | </div>
+266: 3 | <!-- Step 2 -->
+267: 4 | <div class="wf-step" id="wf-step-2">
+268: 5 | <div class="wf-step-header">
+269: 5 | <span class="wf-step-title">Step 2: Poll Status (GET)</span>
+270: 5 | <button id="wf-btn-step2" class="btn-action-secondary wf-step-btn" disabled>Run Step 2</button>
+271: 4 | </div>
+272: 5 | <div style="position: relative;">
+273: 6 | <div style="position: relative;">
+274: 6 | <pre id="wf-out-step2" class="wf-console">Waiting for exportId from Step 1...</pre>
+275: 6 | <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-step2').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+276: 5 | </div>
+277: 4 | </div>
+278: 3 | </div>
+279: 3 | <!-- Step 3 -->
+280: 4 | <div class="wf-step" id="wf-step-3">
+281: 5 | <div class="wf-step-header">
+282: 5 | <span class="wf-step-title">Step 3: Download File (GET)</span>
+283: 5 | <button id="wf-btn-step3" class="btn-action-secondary wf-step-btn" disabled>Run Step 3</button>
+284: 4 | </div>
+285: 5 | <div style="position: relative;">
+286: 6 | <div style="position: relative;">
+287: 6 | <pre id="wf-out-step3" class="wf-console">Waiting for Succeeded status from Step 2...</pre>
+288: 6 | <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-step3').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+289: 5 | </div>
+290: 4 | </div>
+291: 3 | </div>
+292: 2 | </div>
+293: 2 | 
+294: 1 | </div>
+295: 0 | </div> <!-- Close modal body here! -->
+296: 1 | <div class="modal-footer" style="padding: 12px 1.5rem 10px 1.5rem; border-top: 1px solid var(--overlay-10); display: flex; justify-content: flex-end; align-items: center;">
+297: 1 | <button id="wf-btn-runall" class="btn-action-primary" style="padding: 8px 16px; font-weight: bold; display: flex; align-items: center; gap: 6px; line-height: 1; margin: 0;">
+298: 1 | <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+299: 1 | Run Full Workflow
+300: 1 | </button>
+301: 0 | </div>
+302: -1 | </div>
+303: -2 | </div>
+304: -2 | <!-- Settings Modal -->
+305: -1 | <div

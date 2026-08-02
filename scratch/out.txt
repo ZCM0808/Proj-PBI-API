@@ -1,0 +1,20 @@
+590:     const bodyInput = document.getElementById('request-body');
+591:     const sendBtn = document.getElementById('send-btn');
+592:     const responseOutput = document.getElementById('response-output');
+593:     const responseStatus = document.getElementById('response-status');
+594:     
+595:     const apiTree = document.getElementById('api-tree');
+596:     const searchInput = document.getElementById('api-search');
+597:     
+598:     // 新增 UI 元素
+599:     const totalApiCountEl = document.getElementById('total-api-count');
+600:     const selectedApiInfo = document.getElementById('selected-api-info');
+601:     const selectedApiName = document.getElementById('selected-api-name');
+602:     const selectedApiZh = document.getElementById('selected-api-zh');
+603:     const selectedApiDesc = document.getElementById('selected-api-desc');
+604: 
+605:     let pbiApis = [];
+606:     let totalApisCalculated = 0;
+607:     
+608:     // 用于保存当前选中的项，以防搜索导致 DOM 重绘后丢失选中状态
+609:     let currentSelectedId = null;

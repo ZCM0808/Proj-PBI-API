@@ -1,0 +1,120 @@
+4901:                 optionsUl.appendChild(selectAllLi);
+4902:                 
+4903:                 tables.forEach(t => {
+4904:                     const li = document.createElement('li');
+4905:                     li.style.cssText = 'padding: 8px 12px; font-size: 0.85rem; cursor: pointer; color: var(--text-primary); transition: background 0.15s ease; border-radius: 4px; margin: 0 4px;';
+4906:                     li.innerHTML = `<label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0; width: 100%;"><input type="checkbox" value="${t.replace(/"/g, '&quot;')}" class="wf-ds-table-cb" style="cursor: pointer;"> ${t}</label>`;
+4907:                     li.onmouseover = () => li.style.background = 'var(--overlay-10)';
+4908:                     li.onmouseout = () => li.style.background = 'transparent';
+4909:                     li.querySelector('input').onclick = (e) => {
+4910:                         window.updateDsTableDisplay();
+4911:                     };
+4912:                     li.onclick = (e) => {
+4913:                         if (e.target.tagName !== 'INPUT') {
+4914:                             const cb = li.querySelector('input');
+4915:                             cb.checked = !cb.checked;
+4916:                             window.updateDsTableDisplay();
+4917:                         }
+4918:                     };
+4919:                     optionsUl.appendChild(li);
+4920:                 });
+4921:                 
+4922:                 document.getElementById('wf-ds-export-format').disabled = false;
+4923:                 document.getElementById('wf-ds-export-format').style.cursor = 'pointer';
+4924:                 
+4925:                 // Highlight step 2 UI
+4926:                 document.getElementById('wf-ds-step-2').classList.add('active');
+4927:                 document.getElementById('wf-out-ds-step2').innerText = "✅ Step 1 complete. Ready to execute Step 2.";
+4928:                 container.style.opacity = '1';
+4929:                 triggerDiv.style.cursor = 'pointer';
+4930:                 displaySpan.innerText = '-- Select Tables --';
+4931:                 displaySpan.style.color = 'var(--text-secondary)';
+4932:             }
+4933:             if (btn) btn.disabled = false;
+4934:             return true;
+4935:         } else {
+4936:             consoleOut.innerText = requestStr.replace('⏳ Request sent, waiting for response...', '') + 
+4937:                 `\n❌ Failed:\n` + data.message;
+4938:         }
+4939:     } catch(err) {
+4940:         consoleOut.innerText = requestStr.replace('⏳ Request sent, waiting for response...', '') + 
+4941:             `\n❌ Network Error:\n` + err.message;
+4942:     }
+4943:     if (btn) btn.disabled = false;
+4944:     return false;
+4945: };
+4946: 
+4947: window.executeDatasetStep2 = async function(btn) {
+4948:     if (btn) btn.disabled = true;
+4949:     const ws = document.getElementById('wf-ds-workspace').value;
+4950:     const ds = document.getElementById('wf-ds-dataset').value;
+4951:     const tb = document.getElementById('wf-ds-table').value;
+4952:     const consoleOut = document.getElementById('wf-out-ds-step2');
+4953:     const step2Div = document.getElementById('wf-ds-step-2');
+4954:     
+4955:     if(!ws || !ds || !tb) {
+4956:         consoleOut.innerText = '❌ Error: Please ensure Step 1 is complete and a Table is selected.';
+4957:         if (btn) btn.disabled = false;
+4958:         return false;
+4959:     }
+4960:     
+4961:     step2Div.classList.add('active');
+4962:     
+4963:     const clientId = document.getElementById('set-client').value.trim();
+4964:     const clientSecret = document.getElementById('set-secret').value.trim();
+4965:     const tenantId = document.getElementById('set-tenant').value.trim();
+4966:     
+4967:     const query = `EVALUATE '${tb}'`;
+4968:     
+4969:     const requestStr = `[POST] /api/export_dataset/${ws}/${ds}\nHeaders: { "Content-Type": "application/json" }\nBody:\n{\n  "pbi_client_id": "${clientId ? '***' : ''}",\n  "pbi_tenant_id": "${tenantId ? '***' : ''}",\n  "query": "${query}"\n}\n\n⏳ Request sent, querying data from Power BI (this may take up to 60s)...`;
+4970: 
+4971:     consoleOut.innerText = requestStr;
+4972:     
+4973:     try {
+4974:         const payload = { pbi_client_id: clientId, pbi_client_secret: clientSecret, pbi_tenant_id: tenantId, query: query };
+4975:         const res = await fetch(`/api/export_dataset/${ws}/${ds}`, {
+4976:             method: 'POST',
+4977:             headers: {'Content-Type': 'application/json'},
+4978:             body: JSON.stringify(payload)
+4979:         });
+4980:         
+4981:         const data = await res.json();
+4982:         
+4983:         if(data.success) {
+4984:             const rows = data.results;
+4985:             let successLog = `\n✅ Success! Status: 200 OK\nRetrieved ${rows.length} rows from table '${tb}'.`;
+4986:             
+4987:             if(!rows || rows.length === 0) {
+4988:                 consoleOut.innerText = requestStr.replace('⏳ Request sent, querying data from Power BI (this may take up to 60s)...', '') + 
+4989:                     successLog + '\n⚠️ Dataset table is empty. No CSV generated.';
+4990:                 if (btn) btn.disabled = false;
+4991:                 return true;
+4992:             }
+4993:             
+4994:             successLog += '\n\n⏳ Formatting CSV and generating download blob...';
+4995:             consoleOut.innerText = requestStr.replace('⏳ Request sent, querying data from Power BI (this may take up to 60s)...', '') + successLog;
+4996:             
+4997:             const cleanKey = (k) => {
+4998:                 const match = k.match(/\[(.*?)\]/);
+4999:                 return match ? match[1] : k;
+5000:             };
+5001:             const rawKeys = Object.keys(rows[0]);
+5002:             let csv = rawKeys.map(k => `"${cleanKey(k).replace(/"/g, '""')}"`).join(",") + "\n";
+5003:             rows.forEach(r => {
+5004:                 csv += rawKeys.map(k => {
+5005:                     let val = r[k];
+5006:                     if (val === null || val === undefined) val = '';
+5007:                     return `"${String(val).replace(/"/g, '""')}"`;
+5008:                 }).join(",") + "\n";
+5009:             });
+5010:             
+5011:             const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' });
+5012:             const url = URL.createObjectURL(blob);
+5013:             const a = document.createElement('a');
+5014:             a.href = url;
+5015:             a.download = `Export_${tb.replace(/[^a-zA-Z0-9_-]/g, '_')}.csv`;
+5016:             a.click();
+5017:             URL.revokeObjectURL(url);
+5018:             
+5019:             consoleOut.innerText += `\n✅ Download initiated: ${a.download}`;
+5020:             if (btn) btn.disabled = false;
