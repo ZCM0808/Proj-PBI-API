@@ -6291,25 +6291,28 @@ window.updateLocalDaxTemplate = function() {
 window.runLocalModelWorkflow = async function() {
     const btn = document.getElementById('wf-btn-runall');
     const out = document.getElementById('wf-local-status');
+    const resultDiv = document.getElementById('wf-local-result');
     const editor = document.getElementById('local-dax-editor');
     const instSel = document.getElementById('local-model-instance');
-    
+
     if (!editor.value.trim()) {
         window.showNotification("Please enter a DAX query", "error");
         return;
     }
-    
+
     let port = null;
     if (instSel && instSel.value) {
         port = parseInt(instSel.value);
     }
-    
+
     btn.disabled = true;
-    btn.textContent = "Running...";
+    btn.innerHTML = '<span class="loader" style="width:12px;height:12px;border-width:2px;"></span> Running...';
     out.style.display = 'block';
-    out.textContent = "Executing query against local model...";
+    out.textContent = "Executing DAX query against local model...";
     out.style.color = 'var(--text-secondary)';
-    
+    resultDiv.style.display = 'none';
+    resultDiv.innerHTML = '';
+
     try {
         const res = await fetch('/api/local-model/dax', {
             method: 'POST',
@@ -6317,19 +6320,122 @@ window.runLocalModelWorkflow = async function() {
             body: JSON.stringify({ query: editor.value, port: port })
         });
         const json = await res.json();
-        
-        if (json.success) {
-            out.textContent = "Query Executed Successfully!";
-            out.style.color = 'var(--success-color)';
-            
-            // Format and show result in a custom dialog
-            let formatted = JSON.stringify(json.data, null, 2);
-            if (formatted.length > 5000) {
-                formatted = formatted.substring(0, 5000) + "\n... (truncated)";
-            }
-            window.showCustomDialog("DAX Query Results", `<pre style="max-height: 400px; overflow: auto; background: var(--bg-color); padding: 10px; border-radius: 4px; font-size: 0.8rem;">${formatted}</pre>`);
 
-            
+        if (json.success) {
+            const data = json.data;
+
+            // Handle empty result
+            if (!data || (Array.isArray(data) && data.length === 0)) {
+                out.textContent = "✅ Query executed successfully — no rows returned.";
+                out.style.color = 'var(--success-color)';
+                return;
+            }
+
+            // Normalise to array of objects
+            const rows = Array.isArray(data) ? data : [data];
+
+            // Collect all column names (preserve insertion order, deduplicate)
+            const colSet = new Set();
+            rows.forEach(r => { if (r && typeof r === 'object') Object.keys(r).forEach(k => colSet.add(k)); });
+            const columns = Array.from(colSet);
+
+            if (columns.length === 0) {
+                out.textContent = "✅ Query executed — result is not tabular.";
+                out.style.color = 'var(--success-color)';
+                return;
+            }
+
+            // --- Build table ---
+            const tableId = 'local-dax-result-table';
+            if (!window.tableSortStates) window.tableSortStates = {};
+            window.tableSortStates[tableId] = [];
+
+            // Header bar: stats + copy button
+            const header = document.createElement('div');
+            header.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;";
+
+            const stats = document.createElement('span');
+            stats.textContent = `${rows.length} rows × ${columns.length} columns`;
+            stats.style.cssText = "font-size:0.78rem;color:var(--text-secondary);background:var(--overlay-5);padding:3px 8px;border-radius:4px;border:1px solid var(--panel-border);";
+
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'btn-action-secondary';
+            copyBtn.style.cssText = "padding:3px 10px;font-size:0.75rem;display:flex;align-items:center;gap:4px;";
+            copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy CSV`;
+            copyBtn.title = "Copy table as CSV to clipboard";
+            copyBtn.onclick = () => {
+                const table = document.getElementById(tableId);
+                if (!table) return;
+                const csvRows = [];
+                // Header
+                csvRows.push(columns.map(c => `"${String(c).replace(/"/g,'""')}"`).join(','));
+                // Body
+                rows.forEach(r => {
+                    csvRows.push(columns.map(c => {
+                        let v = r ? r[c] : '';
+                        if (v === null || v === undefined) v = '';
+                        if (typeof v === 'object') v = JSON.stringify(v);
+                        return `"${String(v).replace(/"/g,'""')}"`;
+                    }).join(','));
+                });
+                navigator.clipboard.writeText(csvRows.join('\n')).then(() => {
+                    const orig = copyBtn.innerHTML;
+                    copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--success-color)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
+                    copyBtn.style.color = 'var(--success-color)';
+                    setTimeout(() => { copyBtn.innerHTML = orig; copyBtn.style.color = ''; }, 2000);
+                });
+            };
+
+            header.appendChild(stats);
+            header.appendChild(copyBtn);
+            resultDiv.appendChild(header);
+
+            // Table
+            const table = document.createElement('table');
+            table.id = tableId;
+            table.setAttribute('data-table-id', tableId);
+            table.className = 'data-table';
+            table.style.cssText = "width:100%;border-collapse:collapse;text-align:left;font-size:0.82rem;";
+
+            const thead = document.createElement('thead');
+            thead.style.cssText = "position:sticky;top:0;background:var(--bg-color);z-index:5;";
+            const trHead = document.createElement('tr');
+            columns.forEach((col, idx) => {
+                const th = document.createElement('th');
+                th.textContent = col;
+                th.style.cssText = "padding:8px 12px;border-bottom:1px solid var(--panel-border);font-weight:600;cursor:pointer;user-select:none;resize:horizontal;overflow:hidden;min-width:50px;white-space:nowrap;";
+                th.title = "Click to sort · Shift+Click for multi-sort · Drag right edge to resize";
+                th.onclick = (e) => window.sortTable(th, e, idx);
+                trHead.appendChild(th);
+            });
+            thead.appendChild(trHead);
+            table.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
+            rows.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.style.cssText = "transition:background 0.15s;";
+                tr.onmouseover = () => tr.style.background = "var(--overlay-5)";
+                tr.onmouseout  = () => tr.style.background = "transparent";
+                columns.forEach(col => {
+                    const td = document.createElement('td');
+                    td.style.cssText = "border:1px solid var(--panel-border);padding:6px 10px;color:var(--text-primary);max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
+                    let val = item ? item[col] : undefined;
+                    if (val === null || val === undefined) val = '';
+                    if (typeof val === 'object') val = JSON.stringify(val);
+                    td.textContent = String(val);
+                    td.title = td.textContent;
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+            resultDiv.appendChild(table);
+            resultDiv.style.display = 'block';
+
+            out.textContent = `✅ Query executed successfully — ${rows.length} rows returned.`;
+            out.style.color = 'var(--success-color)';
+
         } else {
             out.textContent = "Error: " + (json.error || "Unknown error");
             out.style.color = 'var(--error-color)';
@@ -6344,3 +6450,4 @@ window.runLocalModelWorkflow = async function() {
         }
     }
 };
+
