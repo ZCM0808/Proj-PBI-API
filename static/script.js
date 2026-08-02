@@ -5757,7 +5757,7 @@ window.runGlobalUserManager = async function() {
 
     try {
         appendLog(`[1] Fetching all workspaces...`);
-        const tokenStr = localStorage.getItem('pbiToken') || '';
+        const tokenStr = document.getElementById('token-input')?.value.trim() || '';
         if (!tokenStr) { appendLog('Error: Token not found'); return; }
 
         const wsRes = await fetch('https://api.powerbi.com/v1.0/myorg/groups?$top=100', {
@@ -5879,7 +5879,7 @@ window.submitGumEdit = async function() {
     const identifier = document.getElementById('gum-edit-identifier').value;
     const principalType = document.getElementById('gum-edit-principal-type').value;
     const newRole = document.getElementById('gum-edit-role').value;
-    const tokenStr = localStorage.getItem('pbiToken') || '';
+    const tokenStr = document.getElementById('token-input')?.value.trim() || '';
     
     const logsDiv = document.getElementById('wf-out-gum-logs');
     
@@ -5930,7 +5930,7 @@ window.submitGumEdit = async function() {
 window.deleteGumUser = async function(wsId, identifier, wsName) {
     if (!confirm(`Are you sure you want to completely REMOVE access for:\n${identifier}\nfrom workspace [${wsName}]?`)) return;
     
-    const tokenStr = localStorage.getItem('pbiToken') || '';
+    const tokenStr = document.getElementById('token-input')?.value.trim() || '';
     const logsDiv = document.getElementById('wf-out-gum-logs');
     
     const div = document.createElement('div');
