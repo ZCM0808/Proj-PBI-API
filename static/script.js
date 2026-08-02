@@ -4471,20 +4471,30 @@ document.addEventListener('mousedown', (e) => {
             
             if (val === 'smart_pipeline') {
                 document.getElementById('wf-config-smart_pipeline').style.display = 'block';
+                document.getElementById('wf-btn-runall').style.display = 'flex';
             } else if (val === 'export_dataset_tables') {
                 document.getElementById('wf-config-export_dataset_tables').style.display = 'block';
-                
+                document.getElementById('wf-btn-runall').style.display = 'flex';
             } else if (val === 'global_user_manager') {
                   document.getElementById('wf-config-global_user_manager').style.display = 'block';
+                  document.getElementById('wf-btn-runall').style.display = 'flex';
               } else if (val === 'check_permissions') {
                 document.getElementById('wf-config-check_permissions').style.display = 'block';
+                document.getElementById('wf-btn-runall').style.display = 'flex';
             } else if (val === 'local_model_query') {
                 document.getElementById('wf-container-local_model_query').style.display = 'block';
+                document.getElementById('wf-btn-runall').style.display = 'none';
+                if (!window._fetchedLocalInstances) {
+                    window.fetchLocalModelInstances();
+                    window._fetchedLocalInstances = true;
+                }
                 window.updateLocalDaxTemplate(); // Init template
             } else if (val === 'export_visual') {
                 document.getElementById('wf-config-export_visual').style.display = 'block';
+                document.getElementById('wf-btn-runall').style.display = 'flex';
             } else if (val === 'report_view_count') {
                 document.getElementById('wf-config-report_view_count').style.display = 'block';
+                document.getElementById('wf-btn-runall').style.display = 'flex';
                 const endD = new Date();
                 const startD = new Date();
                 startD.setDate(startD.getDate() - 7);
@@ -4493,6 +4503,7 @@ document.addEventListener('mousedown', (e) => {
             } else {
                 document.getElementById('wf-config-export_report').style.display = 'block';
                 document.getElementById('wf-export-wrapper').style.display = 'block';
+                document.getElementById('wf-btn-runall').style.display = 'flex';
             }
         });
 
@@ -6092,3 +6103,87 @@ document.addEventListener('click', function(e) {
         ac.style.display = 'none';
     }
 });
+
+window.scanLocalPBI = async function(btn) {
+    if(btn.disabled) return;
+    btn.disabled = true;
+    const oldText = btn.textContent;
+    btn.textContent = 'Scanning...';
+    const select = document.getElementById('wf-local-instance');
+    
+    try {
+        const res = await fetch('/api/local_pbi/scan');
+        const data = await res.json();
+        
+        select.innerHTML = '';
+        if(data.instances && data.instances.length > 0) {
+            window.localPBIInstances = data.instances;
+            data.instances.forEach(inst => {
+                const opt = document.createElement('option');
+                opt.value = inst.port;
+                opt.textContent = `Port: ${inst.port} | DB: ${inst.database}`;
+                select.appendChild(opt);
+            });
+            document.getElementById('wf-local-btn-run').disabled = false;
+        } else {
+            select.innerHTML = '<option value="">No local PBI instances found</option>';
+            document.getElementById('wf-local-btn-run').disabled = true;
+        }
+    } catch(e) {
+        alert("Error scanning local instances: " + e);
+    }
+    btn.disabled = false;
+    btn.textContent = oldText;
+};
+
+window.runLocalDAX = async function(btn) {
+    if(btn.disabled) return;
+    const port = document.getElementById('wf-local-instance').value;
+    const query = document.getElementById('wf-local-dax-query').value.trim();
+    if(!port || !query) {
+        alert("Please scan for instances and enter a query.");
+        return;
+    }
+    
+    btn.disabled = true;
+    const oldText = btn.textContent;
+    btn.textContent = 'Executing...';
+    
+    const logsDiv = document.getElementById('wf-out-local');
+    const tableDiv = document.getElementById('wf-out-local-table');
+    window.expandConsole('wf-out-local');
+    
+    const appendLog = (msg) => {
+        logsDiv.innerHTML += `<div>${msg}</div>`;
+        logsDiv.scrollTop = logsDiv.scrollHeight;
+    };
+    
+    logsDiv.innerHTML = '';
+    tableDiv.innerHTML = '';
+    appendLog(`[INIT] Running DAX on localhost:${port}...`);
+    
+    try {
+        const res = await fetch('/api/local_pbi/query', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({port: port, query: query})
+        });
+        const data = await res.json();
+        
+        if(data.error) {
+            appendLog(`<span style="color:var(--error)">[ERROR] ${data.error}</span>`);
+        } else if(data.columns && data.rows) {
+            appendLog(`[SUCCESS] Returned ${data.rows.length} rows, ${data.columns.length} columns.`);
+            
+            // Render table
+            window.renderJsonViewer(data.rows, tableDiv, "DAX Result");
+        } else {
+            appendLog(`[INFO] Query executed successfully, but no standard resultset returned.`);
+        }
+    } catch(e) {
+        appendLog(`<span style="color:var(--error)">[ERROR] ${e.message}</span>`);
+    }
+    
+    btn.disabled = false;
+    btn.textContent = oldText;
+};

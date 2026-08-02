@@ -6,7 +6,9 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import uvicorn
-from fastapi import FastAPI, Request, Response, HTTPException
+from fastapi import FastAPI, Request
+from pydantic import BaseModel
+from src.local_pbi import scan_local_instances, run_dax_query, Response, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -678,6 +680,14 @@ async def proxy_request(request: Request):
             return {"success": False, "error": str(e)}
 
     # 拦截纯 DAX 执行请求
+    if endpoint == "/api/local-model/instances":
+        from src.dax_executor import get_all_instances
+        try:
+            instances = get_all_instances()
+            return {"success": True, "instances": instances}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
     if endpoint == "/api/local-model/dax":
         from src.dax_executor import get_dynamic_port, execute_dax_via_ps
         try:
@@ -687,7 +697,9 @@ async def proxy_request(request: Request):
             else:
                 return {"success": False, "error": "Missing 'query' field in body"}
                 
-            port = get_dynamic_port()
+            port = body.get("port")
+            if not port:
+                port = get_dynamic_port()
             result = await execute_dax_via_ps(port, dax)
             
             return {
@@ -992,6 +1004,30 @@ async def search_notes(q: str = ""):
         return {"success": True, "results": results}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+
+@app.get("/api/local_pbi/scan")
+def api_scan_local_pbi():
+    try:
+        instances = scan_local_instances()
+        return {"instances": instances}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+class DaxQueryReq(BaseModel):
+    port: str
+    query: str
+
+@app.post("/api/local_pbi/query")
+def api_query_local_pbi(req: DaxQueryReq):
+    try:
+        res = run_dax_query(req.port, req.query)
+        if "error" in res:
+            return JSONResponse(res, status_code=500)
+        return res
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 if __name__ == "__main__":
     main()
