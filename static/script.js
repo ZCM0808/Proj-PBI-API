@@ -5869,11 +5869,6 @@ window.gumWorkspaces = [];
         }
         
         appendLog(`\n[DONE] Scan complete! Found ${totalUsers} user permission records across ${workspaces.length} workspaces.`);
-        // Auto expand table if collapsed
-        const tableDiv = document.getElementById('wf-out-gum-table');
-        if (tableDiv && tableDiv.classList.contains('collapsed-console')) {
-            window.toggleConsole('wf-out-gum-table');
-        }
         window.filterGumTable();
         
     } catch (e) {
@@ -5881,59 +5876,146 @@ window.gumWorkspaces = [];
     }
 };
 
-
 window.filterGumTable = function() {
     const term = (document.getElementById('wf-gum-search').value || '').toLowerCase();
-    const tableDiv = document.getElementById('wf-out-gum-table');
     const statsSpan = document.getElementById('wf-gum-stats');
+    const resultWrap = document.getElementById('wf-gum-result-wrap');
     
-    const filtered = window.gumData.filter(d => 
+    const filtered = (window.gumData || []).filter(d => 
         (d.wsName || '').toLowerCase().includes(term) ||
         (d.identifier || '').toLowerCase().includes(term) ||
         (d.role || '').toLowerCase().includes(term) ||
         (d.principalType || '').toLowerCase().includes(term)
     );
     
-    statsSpan.textContent = `${filtered.length} records`;
+    window._lastGumFiltered = filtered;
+    if (statsSpan) statsSpan.textContent = `${filtered.length} records`;
+    if (resultWrap) resultWrap.style.display = 'block';
     
-    if (filtered.length === 0) {
-        tableDiv.innerHTML = '<div style="padding: 20px; color: var(--text-secondary); text-align: center;">No matching records found.</div>';
+    // If modal is currently open, refresh it live
+    if (document.getElementById('gum-result-expand-overlay')) {
+        window.renderGumModalTable();
+    }
+};
+
+window.openGumResultModal = function() {
+    const data = window._lastGumFiltered || window.gumData || [];
+    if (!data || data.length === 0) {
+        window.showNotification('No permissions records to display. Run scan first.', 'info');
         return;
     }
+
+    let overlay = document.getElementById('gum-result-expand-overlay');
+    if (overlay) {
+        window.renderGumModalTable();
+        overlay.style.display = 'flex';
+        requestAnimationFrame(() => {
+            overlay.style.opacity = '1';
+            overlay.querySelector('.dax-expand-panel').style.transform = 'scale(1)';
+        });
+        return;
+    }
+
+    overlay = document.createElement('div');
+    overlay.id = 'gum-result-expand-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:20000;opacity:0;transition:opacity 0.25s;';
     
+    const panel = document.createElement('div');
+    panel.className = 'dax-expand-panel';
+    panel.style.cssText = [
+        'position:relative','background:var(--bg-color)','border:1px solid var(--panel-border)',
+        'border-radius:10px','box-shadow:0 24px 80px rgba(0,0,0,0.5)',
+        'width:88vw','height:80vh','min-width:450px','min-height:300px',
+        'display:flex','flex-direction:column','overflow:hidden',
+        'resize:both','transform:scale(0.94)','transition:transform 0.25s'
+    ].join(';');
+
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'padding:10px 16px;border-bottom:1px solid var(--panel-border);display:flex;align-items:center;justify-content:space-between;background:var(--input-bg-light);flex-shrink:0;';
+    hdr.innerHTML = `
+        <div style="font-weight:bold;font-size:0.9rem;color:var(--accent);display:flex;align-items:center;gap:8px;">
+            <span>🌐 Global Workspace Permissions Table</span>
+            <span id="gum-modal-stats" style="font-size:0.75rem;font-weight:normal;color:var(--text-secondary);">(${data.length} records)</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+            <button type="button" class="btn-action-secondary" style="padding:3px 10px;font-size:0.75rem;height:26px;" onclick="window.handleCopyAction(this, document.getElementById('gum-result-expand-body').innerText)" title="Copy Table Text">
+                <span>📋</span> Copy
+            </button>
+            <button type="button" onclick="window.closeGumResultModal()" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:1.1rem;line-height:1;padding:2px 6px;">✕</button>
+        </div>
+    `;
+
+    const body = document.createElement('div');
+    body.id = 'gum-result-expand-body';
+    body.style.cssText = 'flex:1;overflow:auto;padding:12px;';
+
+    panel.appendChild(hdr);
+    panel.appendChild(body);
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+
+    window.renderGumModalTable();
+
+    requestAnimationFrame(() => {
+        overlay.style.opacity = '1';
+        panel.style.transform = 'scale(1)';
+    });
+};
+
+window.closeGumResultModal = function() {
+    const overlay = document.getElementById('gum-result-expand-overlay');
+    if (!overlay) return;
+    overlay.style.opacity = '0';
+    const panel = overlay.querySelector('.dax-expand-panel');
+    if (panel) panel.style.transform = 'scale(0.94)';
+    setTimeout(() => { overlay.style.display = 'none'; }, 250);
+};
+
+window.renderGumModalTable = function() {
+    const data = window._lastGumFiltered || window.gumData || [];
+    const body = document.getElementById('gum-result-expand-body');
+    const stats = document.getElementById('gum-modal-stats');
+    if (!body) return;
+
+    if (stats) stats.textContent = `(${data.length} records)`;
+
+    if (data.length === 0) {
+        body.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-secondary);">No matching workspace permission records found.</div>';
+        return;
+    }
+
+    const tableId = 'gum-result-table-modal';
+    if (!window.tableSortStates) window.tableSortStates = {};
+    window.tableSortStates[tableId] = [];
+
     let html = `
-    <table data-table-id="gum_table" class="data-table" style="width: 100%; border-collapse: collapse;">
+    <table id="${tableId}" data-table-id="${tableId}" class="data-table" style="width: 100%; border-collapse: collapse;">
         <thead style="position: sticky; top: 0; background: var(--bg-color); z-index: 5;">
             <tr>
-                <th style="padding: 8px; text-align: left; border-bottom: 2px solid var(--overlay-10); cursor: pointer; resize: horizontal; overflow: hidden; min-width: 50px;" onclick="window.sortTable(this, event, 0)" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Workspace</th>
-                <th style="padding: 8px; text-align: left; border-bottom: 2px solid var(--overlay-10); cursor: pointer; resize: horizontal; overflow: hidden; min-width: 50px;" onclick="window.sortTable(this, event, 1)" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">User / Principal</th>
-                <th style="padding: 8px; text-align: left; border-bottom: 2px solid var(--overlay-10); cursor: pointer; resize: horizontal; overflow: hidden; min-width: 50px;" onclick="window.sortTable(this, event, 2)" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Type</th>
-                <th style="padding: 8px; text-align: left; border-bottom: 2px solid var(--overlay-10); cursor: pointer; resize: horizontal; overflow: hidden; min-width: 50px;" onclick="window.sortTable(this, event, 3)" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Role</th>
-                <th style="padding: 8px; text-align: left; border-bottom: 2px solid var(--overlay-10); width: 100px;">Actions</th>
+                <th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid var(--overlay-10); cursor: pointer; resize: horizontal; overflow: hidden; min-width: 120px;" onclick="window.sortTable(this, event, 0)" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Workspace</th>
+                <th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid var(--overlay-10); cursor: pointer; resize: horizontal; overflow: hidden; min-width: 150px;" onclick="window.sortTable(this, event, 1)" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">User / Principal</th>
+                <th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid var(--overlay-10); cursor: pointer; resize: horizontal; overflow: hidden; min-width: 80px;" onclick="window.sortTable(this, event, 2)" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Type</th>
+                <th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid var(--overlay-10); cursor: pointer; resize: horizontal; overflow: hidden; min-width: 80px;" onclick="window.sortTable(this, event, 3)" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Role</th>
+                <th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid var(--overlay-10); width: 100px;">Actions</th>
             </tr>
         </thead>
         <tbody>`;
-        
-    for (const d of filtered) {
+
+    for (const d of data) {
         html += `
-            <tr style="border-bottom: 1px solid var(--overlay-10);">
-                <td style="padding: 8px; font-size: 0.85rem; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${d.wsName}">${d.wsName}</td>
-                <td style="padding: 8px; font-size: 0.85rem; word-break: break-all;" title="${d.identifier}">${d.identifier}</td>
-                <td style="padding: 8px; font-size: 0.85rem;"><span style="background: var(--overlay-10); padding: 2px 6px; border-radius: 12px; font-size: 0.75rem;">${d.principalType}</span></td>
-                <td style="padding: 8px; font-size: 0.85rem; font-weight: bold; color: ${d.role==='Admin'?'var(--accent)':(d.role==='Member'?'var(--success)':'var(--text-primary)')}">${d.role}</td>
-                <td style="padding: 8px; display: flex; gap: 4px;">
-                    <button class="icon-btn" title="Edit Role" style="padding: 4px;" onclick="window.editGumUser('${d.wsId}', '${d.wsName.replace(/'/g, "\'")}', '${d.identifier}', '${d.principalType}', '${d.role}')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                    </button>
-                    <button class="icon-btn" title="Remove User" style="padding: 4px; color: var(--error);" onclick="window.deleteGumUser('${d.wsId}', '${d.identifier}', '${d.wsName.replace(/'/g, "\'")}')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                    </button>
+            <tr style="border-bottom: 1px solid var(--overlay-10);" onmouseover="this.style.background='var(--overlay-5)'" onmouseout="this.style.background='transparent'">
+                <td style="padding: 8px 12px; font-size: 0.85rem; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${d.wsName}">${d.wsName}</td>
+                <td style="padding: 8px 12px; font-size: 0.85rem; word-break: break-all;" title="${d.identifier}">${d.identifier}</td>
+                <td style="padding: 8px 12px; font-size: 0.85rem;"><span style="padding:2px 6px;border-radius:4px;background:var(--overlay-10);font-size:0.75rem;">${d.principalType}</span></td>
+                <td style="padding: 8px 12px; font-size: 0.85rem; font-weight: bold; color: var(--accent);">${d.role}</td>
+                <td style="padding: 8px 12px; font-size: 0.85rem;">
+                    <button class="btn-action-danger" style="padding: 2px 6px; font-size: 0.7rem;" onclick="if(window.removeGumUser) window.removeGumUser('${d.wsId}', '${d.identifier}')">Remove</button>
                 </td>
             </tr>`;
     }
-    
+
     html += `</tbody></table>`;
-    tableDiv.innerHTML = html;
+    body.innerHTML = html;
 };
 
 window.editGumUser = function(wsId, wsName, identifier, principalType, currentRole) {
