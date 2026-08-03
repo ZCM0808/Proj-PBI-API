@@ -3379,18 +3379,19 @@ viewModeBtns.forEach(btn => {
 });
 
 function updateParamHints(endpointUrl) {
+    const hintWrapper = document.getElementById('param-hint-wrapper');
     const hintContainer = document.getElementById('param-hint-container');
-    if (!hintContainer) return;
+    if (!hintContainer || !hintWrapper) return;
     
     const matches = endpointUrl.match(/\{([a-zA-Z0-9_]+)\}/g);
     if (!matches || matches.length === 0) {
-        hintContainer.style.display = 'none';
+        hintWrapper.style.display = 'none';
         return;
     }
     
     const hints = window.PARAM_HINTS || {};
     
-    let html = '<strong>参数获取提示 (Parameter Hints):</strong> <ul style="margin: 0; padding-left: 20px; font-size: 0.8rem; margin-top: 4px;">';
+    let html = '<ul style="margin: 0; padding-left: 18px; font-size: 0.8rem;">';
     matches.forEach(m => {
         if (hints[m]) {
             html += `<li><b>${m}</b>: ${hints[m]}</li>`;
@@ -3400,10 +3401,10 @@ function updateParamHints(endpointUrl) {
     });
     html += '</ul>';
     hintContainer.innerHTML = html;
-    hintContainer.style.display = 'flex';
-    hintContainer.style.flexDirection = 'column';
-    hintContainer.style.alignItems = 'flex-start';
+    hintWrapper.open = false; // 默认闭合折叠！
+    hintWrapper.style.display = 'block';
 }
+
 
 
 

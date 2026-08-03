@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/powerbi-client/dist/powerbi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260803_v177">
+    <link rel="stylesheet" href="/static/style.css?v=20260803_v178">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -324,7 +324,14 @@
                             </button>
                         </div>
                     </div>
-                    <div id="param-hint-container" style="display: none; font-size: 0.85rem; padding: 6px 10px; border-radius: 6px; background: var(--info-bg); color: var(--info-dark); border: 1px solid var(--info-border); align-items: center; gap: 6px;"></div>
+                    <details id="param-hint-wrapper" style="display: none; width: 100%; border: 1px solid var(--info-border); border-radius: 6px; background: var(--info-bg); overflow: hidden;">
+                        <summary style="font-size: 0.78rem; font-weight: 600; padding: 6px 10px; color: var(--info-dark); cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between;">
+                            <span>💡 参数获取提示 (Parameter Hints)</span>
+                            <span style="font-size: 0.7rem; font-weight: normal; opacity: 0.8;">展开/折叠</span>
+                        </summary>
+                        <div id="param-hint-container" style="font-size: 0.8rem; padding: 8px 12px; border-top: 1px solid var(--info-border); color: var(--text-primary);"></div>
+                    </details>
+
                 </div>
 
                 <div class="body-editor-container">

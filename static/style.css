@@ -2534,13 +2534,37 @@ json-viewer {
 .wf-step-btn { padding: 4px 10px !important; font-size: 0.75rem !important; height: auto !important; border-radius: 6px !important; line-height: 1 !important; }
 .wf-step-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.wf-copy-btn { position: absolute; top: 6px; right: 6px; background: var(--overlay-10); border: none; color: var(--text-secondary); border-radius: 4px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; opacity: 0; pointer-events: none; }
-.wf-copy-btn:hover { background: var(--overlay-15); color: var(--text-primary); }
+.wf-copy-btn { 
+    position: absolute; 
+    top: 6px; 
+    right: 6px; 
+    background: var(--overlay-15); 
+    border: 1px solid var(--panel-border); 
+    color: var(--text-primary); 
+    border-radius: 6px; 
+    width: 26px; 
+    height: 26px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    cursor: pointer; 
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+    opacity: 0; 
+    pointer-events: none; 
+    box-shadow: 0 2px 8px var(--shadow-base);
+}
+.wf-copy-btn:hover { 
+    background: var(--accent); 
+    color: var(--accent-text); 
+    border-color: var(--accent); 
+    box-shadow: 0 0 10px var(--accent-glow);
+}
 :has(> .wf-copy-btn):hover > .wf-copy-btn,
 div:hover > .wf-copy-btn,
 span:hover > .wf-copy-btn,
 .input-with-copy:hover .wf-copy-btn,
 .wf-copy-btn:focus { opacity: 1; pointer-events: auto; }
+
 
 
 .input-with-copy { position: relative; display: flex; align-items: center; flex: 1; width: 100%; }
