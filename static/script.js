@@ -1141,8 +1141,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Set category to Custom
             const catBadge = document.getElementById('right-panel-category-badge');
             if (catBadge) {
-                catBadge.innerHTML = `<span style="font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; background: var(--info-bg); color: var(--info); border: 1px solid var(--info-border); display: inline-flex; align-items: center; gap: 4px; font-weight: 500;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4l2-9 5 18 3-9h6"></path></svg>Custom</span>`;
+                catBadge.innerHTML = `<span style="font-size: 0.75rem; height: 26px; padding: 0 10px; border-radius: 13px; background: var(--info-bg); color: var(--info); border: 1px solid var(--info-border); display: inline-flex; align-items: center; gap: 6px; font-weight: 600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4l2-9 5 18 3-9h6"></path></svg>Custom</span>`;
             }
+
         } else if (mode === 'history') {
             badge.style.color = 'var(--badge-custom-text)';
             badge.style.borderColor = 'rgba(167, 139, 250, 0.5)';
@@ -1814,10 +1815,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (rightPanelCatContainer && rightPanelCatBadge) {
                         const trueCategory = ep.category || category.category;
                         if (trueCategory && trueCategory !== "⭐ 收藏夹 (Bookmarks)") {
-                            rightPanelCatBadge.innerHTML = `<span style="font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; background: var(--badge-custom-bg); color: var(--badge-custom-text); border: 1px solid rgba(167, 139, 250, 0.25); display: inline-flex; align-items: center; gap: 4px; font-weight: 500;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>${trueCategory}</span>`;
+                            rightPanelCatBadge.innerHTML = `<span style="font-size: 0.75rem; height: 26px; padding: 0 10px; border-radius: 13px; background: var(--badge-custom-bg); color: var(--badge-custom-text); border: 1px solid rgba(167, 139, 250, 0.25); display: inline-flex; align-items: center; gap: 6px; font-weight: 600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>${trueCategory}</span>`;
                         } else {
-                            rightPanelCatBadge.innerHTML = `<span style="font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; background: var(--info-bg); color: var(--info); border: 1px solid var(--info-border); display: inline-flex; align-items: center; gap: 4px; font-weight: 500;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4l2-9 5 18 3-9h6"></path></svg>Custom</span>`;
+                            rightPanelCatBadge.innerHTML = `<span style="font-size: 0.75rem; height: 26px; padding: 0 10px; border-radius: 13px; background: var(--info-bg); color: var(--info); border: 1px solid var(--info-border); display: inline-flex; align-items: center; gap: 6px; font-weight: 600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4l2-9 5 18 3-9h6"></path></svg>Custom</span>`;
                         }
+
                         originalCategoryHtml = rightPanelCatBadge.innerHTML;
                     }
                     
