@@ -5806,18 +5806,23 @@ window.runGlobalUserManager = async function() {
             body: JSON.stringify({ endpoint: wsEndpoint, method: 'GET' })
         });
         
-        if (!wsRes.ok) {
+        const wsData = await wsRes.json();
+        
+        if (!wsRes.ok || (wsData && wsData.success === false)) {
+            const errDetail = (wsData && (wsData.error || wsData.message)) ? (wsData.error || wsData.message) : wsRes.statusText;
             if (isAdminMode) {
-                appendLog(`[ERROR] Admin Scan failed (${wsRes.status}). Ensure Service Principal has Tenant.Read.All and is enabled in Power BI Admin Portal.`);
+                appendLog(`[ERROR] Admin Scan failed: ${errDetail}. Ensure Service Principal has Tenant.Read.All and is enabled in Power BI Admin Portal.`);
+            } else {
+                appendLog(`[ERROR] Fetch Workspaces failed: ${errDetail}`);
             }
-            throw new Error(`Failed to fetch workspaces: ${wsRes.statusText}`);
+            return;
         }
         
-        const wsData = await wsRes.json();
         const wsPayload = wsData.data || wsData;
-        const workspaces = wsPayload.value || [];
+        const workspaces = Array.isArray(wsPayload) ? wsPayload : (wsPayload.value || []);
         window.gumWorkspaces = workspaces;
         appendLog(`[OK] Found ${workspaces.length} workspaces. Starting user processing...`);
+
         
         let processed = 0;
         let totalUsers = 0;
