@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/powerbi-client/dist/powerbi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260803_v154">
+    <link rel="stylesheet" href="/static/style.css?v=20260803_v155">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -387,20 +387,23 @@
                     <label style="color: var(--text-secondary); font-weight: bold; display: flex; align-items: center; gap: 6px; width: 120px;">
                         Select Workflow:
                     </label>
-                    <select id="wf-selector" class="wf-input" style="flex: 1;">
-                        <option value="export_report">Export Report to File (PDF/Excel/etc.)</option>
-                        <option value="export_visual">Export Visual Data (CSV) - Underlying/Summarized</option>
-                        <option value="export_dataset_tables">Export Dataset Tables (CSV)</option>
-                        <option value="report_view_count">Admin Report View Count (Activity Events)</option>
-                        <option value="check_permissions">Check Current Permissions (Token/Features)</option>
-                        <option value="smart_pipeline">Smart DataOps Pipeline (Auto Bind/Scan/Check)</option>
-                        <option value="global_user_manager">Global Workspace Permissions Manager</option>
-                        <option value="local_model_query">Local Model Diagnostics & Query (DAX)</option>
-                    </select>
-                    <button type="button" class="icon-btn" title="Copy Workflow Name" onclick="window.handleCopyAction(this, document.getElementById('wf-selector').options[document.getElementById('wf-selector').selectedIndex].text)" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                    </button>
+                    <div class="input-with-copy" style="flex: 1;">
+                        <select id="wf-selector" class="wf-input">
+                            <option value="export_report">Export Report to File (PDF/Excel/etc.)</option>
+                            <option value="export_visual">Export Visual Data (CSV) - Underlying/Summarized</option>
+                            <option value="export_dataset_tables">Export Dataset Tables (CSV)</option>
+                            <option value="report_view_count">Admin Report View Count (Activity Events)</option>
+                            <option value="check_permissions">Check Current Permissions (Token/Features)</option>
+                            <option value="smart_pipeline">Smart DataOps Pipeline (Auto Bind/Scan/Check)</option>
+                            <option value="global_user_manager">Global Workspace Permissions Manager</option>
+                            <option value="local_model_query">Local Model Diagnostics & Query (DAX)</option>
+                        </select>
+                        <button type="button" class="wf-copy-btn" title="Copy Workflow Name" onclick="window.handleCopyAction(this, document.getElementById('wf-selector').options[document.getElementById('wf-selector').selectedIndex].text)">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        </button>
+                    </div>
                 </div>
+
                 
                 <div id="wf-config-export_report" class="wf-config-pane">
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
@@ -741,17 +744,19 @@
                         <div style="padding: 0 0 15px 0; color: var(--text-secondary); font-size: 0.85rem; border-bottom: 1px solid var(--overlay-10); margin-bottom: 15px;">
                             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
                                 <label style="color: var(--text-secondary); font-weight: bold; width: 120px;">Target Instance:</label>
-                                <select id="local-model-instance" class="wf-input" style="flex: 1; max-width: 300px;">
-                                    <option value="">Detecting local instances...</option>
-                                </select>
-                                <button type="button" class="btn-action-secondary" style="padding: 2px 8px; font-size: 0.72rem; height: 26px; display: inline-flex; align-items: center; gap: 4px;" onclick="window.fetchLocalModelInstances()">
-                                    <span>🔄</span> Refresh
+                                <div class="input-with-copy" style="flex: 1;">
+                                    <select id="local-model-instance" class="wf-input">
+                                        <option value="">Detecting local instances...</option>
+                                    </select>
+                                    <button type="button" class="wf-copy-btn" title="Copy Port Number" onclick="navigator.clipboard.writeText(document.getElementById('local-model-instance').value); window.showNotification('Port copied', 'success');">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                    </button>
+                                </div>
+                                <button type="button" class="btn-action-secondary" style="padding: 0 8px; font-size: 0.85rem; height: 32px; display: inline-flex; align-items: center; justify-content: center;" onclick="window.fetchLocalModelInstances()" title="Refresh Local Instances">
+                                    🔄
                                 </button>
-                                <button type="button" class="btn-action-secondary" style="padding: 2px 8px; font-size: 0.72rem; height: 26px; display: inline-flex; align-items: center; gap: 4px;" onclick="navigator.clipboard.writeText(document.getElementById('local-model-instance').value); window.showNotification('Port copied', 'success');" title="Copy Port Number">
-                                    <span>📋</span> Copy
-                                </button>
-
                             </div>
+
                             <div id="local-model-instance-error" style="color: var(--error-color); font-size: 0.75rem; display: none; margin-left: 132px;"></div>
                         </div>
                         
