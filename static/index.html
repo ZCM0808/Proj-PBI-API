@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/powerbi-client/dist/powerbi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260803_v168">
+    <link rel="stylesheet" href="/static/style.css?v=20260803_v169">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -255,10 +255,11 @@
                                     <option value="DELETE">DELETE</option>
                                 </select>
                             </div>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <span id="right-panel-category-badge"><span style="font-size: 0.75rem; height: 26px; padding: 0 10px; border-radius: 13px; background: var(--info-bg); color: var(--info); border: 1px solid var(--info-border); display: inline-flex; align-items: center; gap: 6px; font-weight: 600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4l2-9 5 18 3-9h6"></path></svg>Custom</span></span>
-                                <span id="request-mode-badge" style="font-size: 0.75rem; height: 26px; padding: 0 10px; border-radius: 13px; font-weight: 500; color: var(--info); border: 1px solid var(--info-border); background: var(--info-bg); display: inline-flex; align-items: center; gap: 4px;">Free Mode</span>
+                            <div style="display: flex; align-items: center; gap: 8px; height: 40px;">
+                                <span id="right-panel-category-badge" style="display: flex; align-items: center; height: 100%;"><span style="font-size: 0.8rem; height: 32px; padding: 0 12px; border-radius: 6px; background: var(--overlay-8); color: var(--text-primary); border: 1px solid var(--panel-border); display: inline-flex; align-items: center; gap: 6px; font-weight: 600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M2 12h4l2-9 5 18 3-9h6"></path></svg>Custom</span></span>
+                                <span id="request-mode-badge" style="font-size: 0.8rem; height: 32px; padding: 0 12px; border-radius: 6px; font-weight: 500; color: var(--text-secondary); border: 1px solid var(--panel-border); background: var(--overlay-5); display: inline-flex; align-items: center; gap: 6px;">Free Mode</span>
                             </div>
+
 
                         </div>
 
