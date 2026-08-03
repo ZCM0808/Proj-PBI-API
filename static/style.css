@@ -1,53 +1,54 @@
 :root {
     --sidebar-width: 250px;
-    --bg-color: #0f1115;
-    --panel-bg: rgba(25, 28, 36, 0.6);
-    --panel-border: rgba(255, 255, 255, 0.08);
-    --text-primary: #e2e8f0;
-    --text-secondary: #94a3b8;
-    --accent: #F2C811; /* Power BI Yellow */
-    --accent-text: #0f1115;
-    --accent-hover: #d4af37;
-    --accent-glow: rgba(242, 200, 17, 0.2);
+    --bg-color: #0b0d12;
+    --panel-bg: rgba(18, 22, 31, 0.85);
+    --panel-border: rgba(255, 255, 255, 0.12);
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --accent: #F2C811; /* Power BI Vibrant Yellow */
+    --accent-text: #0b0d12;
+    --accent-hover: #ffd700;
+    --accent-glow: rgba(242, 200, 17, 0.35);
     --success: #10b981;
-    --error: #ef4444;
+    --error: #f43f5e;
     --overlay-5: rgba(255, 255, 255, 0.05);
     --overlay-8: rgba(255, 255, 255, 0.08);
-    --overlay-10: rgba(255, 255, 255, 0.1);
-    --overlay-15: rgba(255, 255, 255, 0.15);
-    --overlay-20: rgba(255, 255, 255, 0.2);
-    --overlay-30: rgba(255, 255, 255, 0.3);
-    --shadow-base: rgba(0, 0, 0, 0.3);
-    --shadow-dark: rgba(0, 0, 0, 0.6);
-    --input-bg: rgba(0, 0, 0, 0.3);
-    --input-bg-light: rgba(0, 0, 0, 0.2);
-    /* Syntax Highlighting */
-    --syntax-key: #9cdcfe;
-    --syntax-string: #ce9178;
-    --syntax-number: #b5cea8;
-    --syntax-bool: #569cd6;
-    --syntax-bracket: #d4d4d4;
+    --overlay-10: rgba(255, 255, 255, 0.12);
+    --overlay-15: rgba(255, 255, 255, 0.18);
+    --overlay-20: rgba(255, 255, 255, 0.25);
+    --overlay-30: rgba(255, 255, 255, 0.35);
+    --shadow-base: rgba(0, 0, 0, 0.5);
+    --shadow-dark: rgba(0, 0, 0, 0.8);
+    --input-bg: #141822;
+    --input-bg-light: #1a202c;
+    /* Syntax Highlighting (High-vibrancy Cyberpunk IDE) */
+    --syntax-key: #38bdf8;
+    --syntax-string: #f43f5e;
+    --syntax-number: #34d399;
+    --syntax-bool: #818cf8;
+    --syntax-bracket: #f8fafc;
     /* Components */
-    --modal-bg: rgba(20, 20, 25, 0.85);
-    --modal-overlay: rgba(0, 0, 0, 0.65);
-    --dropdown-bg: #1a1e23;
-    /* Method Badges */
-    --badge-get-bg: rgba(56, 189, 248, 0.15);
+    --modal-bg: #121620;
+    --modal-overlay: rgba(5, 7, 10, 0.75);
+    --dropdown-bg: #161b26;
+    /* Method Badges (Ultra vivid high-contrast badges) */
+    --badge-get-bg: rgba(56, 189, 248, 0.2);
     --badge-get-text: #38bdf8;
-    --badge-post-bg: rgba(16, 185, 129, 0.15);
-    --badge-post-text: #10b981;
-    --badge-put-bg: rgba(245, 158, 11, 0.15);
-    --badge-put-text: #f59e0b;
-    --badge-delete-bg: rgba(239, 68, 68, 0.15);
-    --badge-delete-text: #ef4444;
+    --badge-post-bg: rgba(52, 211, 153, 0.2);
+    --badge-post-text: #34d399;
+    --badge-put-bg: rgba(251, 191, 36, 0.2);
+    --badge-put-text: #fbbf24;
+    --badge-delete-bg: rgba(244, 63, 94, 0.2);
+    --badge-delete-text: #f43f5e;
     /* Global Status */
-    --status-success-bg: rgba(16, 185, 129, 0.1);
-    --status-error-bg: rgba(239, 68, 68, 0.2);
-    --status-error-text: #ef4444;
+    --status-success-bg: rgba(52, 211, 153, 0.2);
+    --status-error-bg: rgba(244, 63, 94, 0.2);
+    --status-error-text: #f43f5e;
     /* Misc Components */
-    --badge-custom-bg: rgba(167, 139, 250, 0.2);
-    --badge-custom-text: #a78bfa;
-    --markdown-border: #30363d;
+    --badge-custom-bg: rgba(167, 139, 250, 0.25);
+    --badge-custom-text: #c084fc;
+    --markdown-border: #334155;
+
     /* Semantic Colors added safely */
     --error-hover: #dc2626;
     --error-light: #f87171;
