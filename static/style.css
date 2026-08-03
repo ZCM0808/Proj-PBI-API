@@ -67,25 +67,25 @@
 }
 
 [data-theme="light"] {
-    --bg-color: #f1f5f9;
-    --panel-bg: rgba(255, 255, 255, 0.85);
-    --panel-border: rgba(0, 0, 0, 0.15);
+    --bg-color: #f8fafc;
+    --panel-bg: #ffffff;
+    --panel-border: #cbd5e1;
     --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --accent: #F2C811;
-    --accent-text: #0f1115;
-    --accent-hover: #d4af37;
-    --accent-glow: rgba(212, 175, 55, 0.3);
-    --overlay-5: rgba(0, 0, 0, 0.05);
-    --overlay-8: rgba(0, 0, 0, 0.08);
-    --overlay-10: rgba(0, 0, 0, 0.08);
-    --overlay-15: rgba(0, 0, 0, 0.12);
-    --overlay-20: rgba(0, 0, 0, 0.15);
-    --overlay-30: rgba(0, 0, 0, 0.25);
-    --shadow-base: rgba(0, 0, 0, 0.08);
-    --shadow-dark: rgba(0, 0, 0, 0.15);
-    --input-bg: rgba(255, 255, 255, 0.7);
-    --input-bg-light: rgba(255, 255, 255, 0.5);
+    --text-secondary: #334155;
+    --accent: #d97706; /* Crisp amber accent for high contrast on light bg */
+    --accent-text: #ffffff;
+    --accent-hover: #b45309;
+    --accent-glow: rgba(217, 119, 6, 0.2);
+    --overlay-5: rgba(15, 23, 42, 0.04);
+    --overlay-8: rgba(15, 23, 42, 0.07);
+    --overlay-10: rgba(15, 23, 42, 0.1);
+    --overlay-15: rgba(15, 23, 42, 0.15);
+    --overlay-20: rgba(15, 23, 42, 0.2);
+    --overlay-30: rgba(15, 23, 42, 0.3);
+    --shadow-base: rgba(15, 23, 42, 0.06);
+    --shadow-dark: rgba(15, 23, 42, 0.12);
+    --input-bg: #f1f5f9;
+    --input-bg-light: #f8fafc;
     /* Syntax Highlighting (VS Code Light Theme inspired) */
     --syntax-key: #0451a5;
     --syntax-string: #a31515;
@@ -93,27 +93,28 @@
     --syntax-bool: #0000ff;
     --syntax-bracket: #333333;
     /* Components */
-    --modal-bg: rgba(248, 250, 252, 0.95);
-    --modal-overlay: rgba(15, 23, 42, 0.4);
+    --modal-bg: #ffffff;
+    --modal-overlay: rgba(15, 23, 42, 0.45);
     --dropdown-bg: #ffffff;
-    /* Method Badges (slightly darker for contrast on light) */
-    --badge-get-bg: rgba(2, 132, 199, 0.15);
-    --badge-get-text: #0284c7;
-    --badge-post-bg: rgba(5, 150, 105, 0.15);
-    --badge-post-text: #059669;
-    --badge-put-bg: rgba(217, 119, 6, 0.15);
-    --badge-put-text: #d97706;
-    --badge-delete-bg: rgba(220, 38, 38, 0.15);
-    --badge-delete-text: #dc2626;
+    /* Method Badges (Crisp, high contrast on light mode) */
+    --badge-get-bg: #e0f2fe;
+    --badge-get-text: #0369a1;
+    --badge-post-bg: #dcfce7;
+    --badge-post-text: #15803d;
+    --badge-put-bg: #fef3c7;
+    --badge-put-text: #b45309;
+    --badge-delete-bg: #fee2e2;
+    --badge-delete-text: #b91c1c;
     /* Global Status */
-    --status-success-bg: rgba(5, 150, 105, 0.15);
-    --status-error-bg: rgba(220, 38, 38, 0.15);
-    --status-error-text: #dc2626;
+    --status-success-bg: #dcfce7;
+    --status-error-bg: #fee2e2;
+    --status-error-text: #b91c1c;
     /* Misc Components */
-    --badge-custom-bg: rgba(139, 92, 246, 0.15);
-    --badge-custom-text: #7c3aed;
-    --markdown-border: rgba(0,0,0,0.1);
+    --badge-custom-bg: #f3e8ff;
+    --badge-custom-text: #6b21a8;
+    --markdown-border: #cbd5e1;
 }
+
 
 * {
     box-sizing: border-box;
