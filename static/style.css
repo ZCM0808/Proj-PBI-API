@@ -652,6 +652,9 @@ textarea:focus {
     min-width: 0;
     width: 100%;
     min-height: 200px;
+    overflow: hidden; /* 裁切内部子元素，确保左下与右下完全遵循 .glass-panel 的圆角 */
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
 }
 
 .response-header {
@@ -708,7 +711,10 @@ textarea:focus {
     background: var(--input-bg-light);
     min-width: 0;
     width: 100%;
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
 }
+
 
 .response-body pre {
     font-family: 'Fira Code', 'Consolas', monospace;
