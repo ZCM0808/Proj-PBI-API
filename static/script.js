@@ -4821,8 +4821,13 @@ document.addEventListener('mousedown', (e) => {
                 } else if (wfType === 'check_permissions') {
                     if (window.runCheckPermsWorkflow) await window.runCheckPermsWorkflow();
                 } else if (wfType === 'global_user_manager') {
-                      if (window.runGlobalUserManager) await window.runGlobalUserManager();
-                  } else if (wfType === 'smart_pipeline') {
+                    if (window.runGlobalUserManager) {
+                        await window.runGlobalUserManager();
+                    } else {
+                        console.error('runGlobalUserManager is not defined');
+                    }
+                } else if (wfType === 'smart_pipeline') {
+
                     // Smart Pipeline trigger
                 }
             } finally {
@@ -5864,12 +5869,18 @@ window.gumWorkspaces = [];
         }
         
         appendLog(`\n[DONE] Scan complete! Found ${totalUsers} user permission records across ${workspaces.length} workspaces.`);
+        // Auto expand table if collapsed
+        const tableDiv = document.getElementById('wf-out-gum-table');
+        if (tableDiv && tableDiv.classList.contains('collapsed-console')) {
+            window.toggleConsole('wf-out-gum-table');
+        }
         window.filterGumTable();
         
     } catch (e) {
-        appendLog(`[EXCEPTION] ${e.message}`);
+        appendLog(`[EXCEPTION] ${e.message || e}`);
     }
 };
+
 
 window.filterGumTable = function() {
     const term = (document.getElementById('wf-gum-search').value || '').toLowerCase();
