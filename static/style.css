@@ -68,53 +68,54 @@
 }
 
 [data-theme="light"] {
-    --bg-color: #f1f5f9;
-    --panel-bg: #ffffff;
-    --panel-border: #cbd5e1;
-    --text-primary: #020617; /* Deep midnight obsidian for razor-sharp text readability */
-    --text-secondary: #1e293b; /* Deep slate gray for subtext - high contrast */
-    --accent: #2563eb; /* Vibrant Royal Sapphire Blue for light mode */
+    --bg-color: #e2e8f0; /* Crisp contrasting slate background */
+    --panel-bg: #ffffff; /* Ultra crisp pure white panel */
+    --panel-border: #94a3b8; /* Strong, clear slate border definition */
+    --text-primary: #020617; /* Deepest jet black for absolute readability */
+    --text-secondary: #0f172a; /* Strong midnight blue for labels */
+    --accent: #2563eb; /* High-vibrancy Royal Sapphire Blue */
     --accent-text: #ffffff;
     --accent-hover: #1d4ed8;
-    --accent-glow: rgba(37, 99, 235, 0.25);
-    --overlay-5: rgba(2, 6, 23, 0.04);
-    --overlay-8: rgba(2, 6, 23, 0.07);
-    --overlay-10: rgba(2, 6, 23, 0.1);
-    --overlay-15: rgba(2, 6, 23, 0.15);
-    --overlay-20: rgba(2, 6, 23, 0.2);
-    --overlay-30: rgba(2, 6, 23, 0.3);
-    --shadow-base: rgba(15, 23, 42, 0.08);
-    --shadow-dark: rgba(15, 23, 42, 0.16);
+    --accent-glow: rgba(37, 99, 235, 0.35);
+    --overlay-5: #f1f5f9;
+    --overlay-8: #e2e8f0;
+    --overlay-10: #cbd5e1;
+    --overlay-15: #94a3b8;
+    --overlay-20: #64748b;
+    --overlay-30: #475569;
+    --shadow-base: rgba(15, 23, 42, 0.12);
+    --shadow-dark: rgba(15, 23, 42, 0.22);
     --input-bg: #ffffff;
     --input-bg-light: #f8fafc;
-    /* Syntax Highlighting (VS Code Light High Contrast) */
+    /* Syntax Highlighting (High contrast crisp IDE) */
     --syntax-key: #0284c7;
-    --syntax-string: #b91c1c;
-    --syntax-number: #15803d;
-    --syntax-bool: #0369a1;
-    --syntax-bracket: #0f172a;
+    --syntax-string: #dc2626;
+    --syntax-number: #16a34a;
+    --syntax-bool: #2563eb;
+    --syntax-bracket: #020617;
     /* Components */
     --modal-bg: #ffffff;
-    --modal-overlay: rgba(15, 23, 42, 0.5);
+    --modal-overlay: rgba(15, 23, 42, 0.6);
     --dropdown-bg: #ffffff;
-    /* Method Badges (Ultra vibrant & high contrast in light mode) */
-    --badge-get-bg: #e0f2fe;
+    /* Method Badges (Solid crisp high contrast) */
+    --badge-get-bg: #bae6fd;
     --badge-get-text: #0369a1;
-    --badge-post-bg: #dcfce7;
+    --badge-post-bg: #bbf7d0;
     --badge-post-text: #15803d;
-    --badge-put-bg: #fef3c7;
-    --badge-put-text: #b45309;
-    --badge-delete-bg: #fee2e2;
+    --badge-put-bg: #fef08a;
+    --badge-put-text: #a16207;
+    --badge-delete-bg: #fecaca;
     --badge-delete-text: #b91c1c;
     /* Global Status */
-    --status-success-bg: #dcfce7;
-    --status-error-bg: #fee2e2;
+    --status-success-bg: #bbf7d0;
+    --status-error-bg: #fecaca;
     --status-error-text: #b91c1c;
     /* Misc Components */
-    --badge-custom-bg: #f3e8ff;
+    --badge-custom-bg: #e9d5ff;
     --badge-custom-text: #6b21a8;
-    --markdown-border: #cbd5e1;
+    --markdown-border: #94a3b8;
 }
+
 
 
 
@@ -130,9 +131,10 @@ body {
     color: var(--text-primary);
     height: 100vh;
     background-image: 
-        radial-gradient(circle at 15% 50%, rgba(242, 200, 17, 0.05), transparent 25%),
-        radial-gradient(circle at 85% 30%, rgba(56, 189, 248, 0.05), transparent 25%);
+        radial-gradient(circle at 10% 20%, rgba(37, 99, 235, 0.08), transparent 30%),
+        radial-gradient(circle at 90% 80%, rgba(242, 200, 17, 0.1), transparent 30%);
 }
+
 
 .app-container {
     display: flex;
