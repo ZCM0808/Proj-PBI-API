@@ -2534,6 +2534,14 @@ div:hover > .wf-copy-btn,
 .input-with-copy:has(> textarea.wf-input) .wf-copy-btn,
 .input-with-copy:has(> .wf-console) .wf-copy-btn { top: 8px; transform: none; }
 
+/* Disable text selection on table headers for multi-sort */
+table.data-table th,
+.dax-expand-panel th {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+}
+
+
 
 
 
