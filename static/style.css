@@ -2565,6 +2565,15 @@ span:hover > .wf-copy-btn,
 .input-with-copy:hover .wf-copy-btn,
 .wf-copy-btn:focus { opacity: 1; pointer-events: auto; }
 
+#display-tenant:hover .copy-icon-wrapper,
+#display-client:hover .copy-icon-wrapper {
+    background: var(--accent) !important;
+    color: var(--accent-text) !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 8px var(--accent-glow);
+}
+
+
 
 
 .input-with-copy { position: relative; display: flex; align-items: center; flex: 1; width: 100%; }

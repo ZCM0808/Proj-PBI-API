@@ -5631,7 +5631,7 @@ window.toggleRvcLogs = function() {
 window.handleCopyAction = function(targetEl, text) {
     if(!text) return;
     navigator.clipboard.writeText(text).then(() => {
-        // If target is an icon button or has svg icon, toggle feedback icon
+        const iconWrapper = targetEl.querySelector('.copy-icon-wrapper');
         const iconContainer = targetEl.querySelector('svg') || targetEl;
         const isSelfButton = targetEl.tagName === 'BUTTON' || targetEl.classList.contains('wf-copy-btn');
         
@@ -5642,6 +5642,21 @@ window.handleCopyAction = function(targetEl, text) {
             setTimeout(() => { 
                 targetEl.innerHTML = origHTML; 
                 targetEl.style.color = '';
+            }, 1500);
+        } else if (iconWrapper) {
+            const origHTML = iconWrapper.innerHTML;
+            const origBg = iconWrapper.style.background;
+            const origBorder = iconWrapper.style.borderColor;
+            
+            iconWrapper.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+            iconWrapper.style.background = 'var(--status-success-bg)';
+            iconWrapper.style.borderColor = 'var(--success)';
+            
+            if (window.showNotification) window.showNotification('Copied to clipboard!', 'success');
+            setTimeout(() => { 
+                iconWrapper.innerHTML = origHTML;
+                iconWrapper.style.background = origBg;
+                iconWrapper.style.borderColor = origBorder;
             }, 1500);
         } else if (iconContainer) {
             const origColor = iconContainer.style.color || '';
@@ -5660,6 +5675,7 @@ window.handleCopyAction = function(targetEl, text) {
         alert('Failed to copy: ' + err);
     });
 };
+
 
 
 
