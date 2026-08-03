@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/powerbi-client/dist/powerbi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260803_v155">
+    <link rel="stylesheet" href="/static/style.css?v=20260803_v156">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -780,12 +780,12 @@
                                             <option value="custom">5. Custom DAX Query</option>
                                         </select>
                                     </div>
-                                    <div style="display: flex; flex-direction: column; gap: 8px; position: relative;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                                            <label style="color: var(--text-secondary); font-weight: bold;">DAX Query:</label>
-                                            <button type="button" id="wf-local-dax-copy-btn" class="wf-copy-btn" style="position:static;opacity:1;pointer-events:auto;padding:2px 6px;" onclick="window.handleCopyAction(this, document.getElementById('local-dax-editor').value)" title="Copy DAX Query"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                                        <label style="color: var(--text-secondary); font-weight: bold;">DAX Query:</label>
+                                        <div class="input-with-copy">
+                                            <textarea id="local-dax-editor" class="wf-input" style="width: 100%; height: 100px; font-family: monospace; font-size: 0.85rem; padding: 8px; resize: vertical;" placeholder="Enter DAX EVALUATE statement..."></textarea>
+                                            <button type="button" id="wf-local-dax-copy-btn" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('local-dax-editor').value)" title="Copy DAX Query"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
                                         </div>
-                                        <textarea id="local-dax-editor" class="wf-input" style="width: 100%; height: 100px; font-family: monospace; font-size: 0.85rem; padding: 8px; resize: vertical;" placeholder="Enter DAX EVALUATE statement..."></textarea>
                                     </div>
                                 </div>
                             </div>
