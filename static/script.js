@@ -5950,19 +5950,20 @@ window.openGumResultModal = function() {
     ].join(';');
 
     const hdr = document.createElement('div');
-    hdr.style.cssText = 'padding:10px 16px;border-bottom:1px solid var(--panel-border);display:flex;align-items:center;justify-content:space-between;background:var(--input-bg-light);flex-shrink:0;';
+    hdr.style.cssText = 'position:relative;padding:10px 16px;border-bottom:1px solid var(--panel-border);display:flex;align-items:center;justify-content:space-between;background:var(--input-bg-light);flex-shrink:0;';
     hdr.innerHTML = `
         <div style="font-weight:bold;font-size:0.9rem;color:var(--accent);display:flex;align-items:center;gap:8px;">
             <span>🌐 Global Workspace Permissions Table</span>
             <span id="gum-modal-stats" style="font-size:0.75rem;font-weight:normal;color:var(--text-secondary);">(${data.length} records)</span>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;">
-            <button type="button" class="wf-copy-btn" style="position:relative;opacity:0;pointer-events:none;transition:opacity 0.2s;" onclick="window.handleCopyAction(this, document.getElementById('gum-result-expand-body').innerText)" title="Copy Table Text">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-            </button>
+        <div style="display:flex;align-items:center;gap:12px;padding-right:28px;">
             <button type="button" onclick="window.closeGumResultModal()" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:1.1rem;line-height:1;padding:2px 6px;">✕</button>
         </div>
+        <button type="button" class="wf-copy-btn" style="top:50%;transform:translateY(-50%);right:12px;z-index:10;" onclick="window.handleCopyAction(this, document.getElementById('gum-result-expand-body').innerText)" title="Copy Table Text">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+        </button>
     `;
+
 
     // Filter Bar with Column Dropdown
     const filterBar = document.createElement('div');
@@ -6012,6 +6013,25 @@ window.toggleGumColDropdown = function(e) {
     drop.style.display = isVis ? 'none' : 'block';
     if (!isVis) window.renderGumColItems();
 };
+
+// Global click listener to close dropdowns when clicking outside
+document.addEventListener('click', function(e) {
+    const gumDrop = document.getElementById('gum-col-dropdown-list');
+    const gumBtn = document.getElementById('gum-col-dropdown-btn');
+    if (gumDrop && gumDrop.style.display === 'block') {
+        if (!gumDrop.contains(e.target) && !gumBtn?.contains(e.target)) {
+            gumDrop.style.display = 'none';
+        }
+    }
+    const daxDrop = document.getElementById('dax-col-dropdown-list');
+    const daxBtn = document.getElementById('dax-col-dropdown-btn');
+    if (daxDrop && daxDrop.style.display === 'block') {
+        if (!daxDrop.contains(e.target) && !daxBtn?.contains(e.target)) {
+            daxDrop.style.display = 'none';
+        }
+    }
+});
+
 
 window.renderGumColItems = function() {
     const container = document.getElementById('gum-col-items');
