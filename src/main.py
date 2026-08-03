@@ -688,18 +688,7 @@ async def proxy_request(request: Request):
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-@app.post("/api/local-model/instances")
-async def local_model_instances():
-    from src.dax_executor import get_all_instances
-    try:
-        instances = get_all_instances()
-        return {"success": True, "instances": instances}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-
     if endpoint in ["local-model/dax", "/local-model/dax", "/api/local-model/dax"]:
-
         from src.dax_executor import get_dynamic_port, execute_dax_via_ps
         try:
             dax = ""
@@ -708,7 +697,7 @@ async def local_model_instances():
             else:
                 return {"success": False, "error": "Missing 'query' field in body"}
                 
-            port = body.get("port")
+            port = body.get("port") if body else None
             if not port:
                 port = get_dynamic_port()
             result = await execute_dax_via_ps(port, dax)
@@ -719,6 +708,7 @@ async def local_model_instances():
             }
         except Exception as e:
             return {"success": False, "error": str(e)}
+
 
     # 拦截 MCP 查询请求
     if endpoint == "/api/mcp/query":
@@ -759,7 +749,32 @@ async def local_model_instances():
         return {"success": True, "data": response_data}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+@app.post("/api/local-model/instances")
+async def api_local_model_instances():
+    from src.dax_executor import get_all_instances
+    try:
+        instances = get_all_instances()
+        return {"success": True, "instances": instances}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+class LocalDaxRequest(BaseModel):
+    query: str
+    port: Optional[int] = None
+
+@app.post("/api/local-model/dax")
+async def api_local_model_dax(req: LocalDaxRequest):
+    from src.dax_executor import get_dynamic_port, execute_dax_via_ps
+    try:
+        port = req.port or get_dynamic_port()
+        result = await execute_dax_via_ps(port, req.query)
+        return {"success": True, "data": result}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 @app.post("/api/clear-cache")
+
 async def clear_cache(request: Request):
     """Clear MSAL Token Cache"""
     try:
