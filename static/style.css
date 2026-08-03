@@ -68,53 +68,54 @@
 }
 
 [data-theme="light"] {
-    --bg-color: #e2e8f0; /* Crisp contrasting slate background */
-    --panel-bg: #ffffff; /* Ultra crisp pure white panel */
-    --panel-border: #94a3b8; /* Strong, clear slate border definition */
-    --text-primary: #020617; /* Deepest jet black for absolute readability */
-    --text-secondary: #0f172a; /* Strong midnight blue for labels */
-    --accent: #2563eb; /* High-vibrancy Royal Sapphire Blue */
+    --bg-color: #f1f5f9; /* Soft, serene off-white canvas */
+    --panel-bg: #ffffff; /* Clean white card panel */
+    --panel-border: rgba(148, 163, 184, 0.4); /* Soft subtle border - no harsh lines */
+    --text-primary: #0f172a; /* Rich Slate Obsidian text for clarity without harshness */
+    --text-secondary: #475569; /* Soft slate gray for subtext */
+    --accent: #2563eb; /* Elegant Sapphire Blue */
     --accent-text: #ffffff;
     --accent-hover: #1d4ed8;
-    --accent-glow: rgba(37, 99, 235, 0.35);
-    --overlay-5: #f1f5f9;
-    --overlay-8: #e2e8f0;
-    --overlay-10: #cbd5e1;
-    --overlay-15: #94a3b8;
-    --overlay-20: #64748b;
-    --overlay-30: #475569;
-    --shadow-base: rgba(15, 23, 42, 0.12);
-    --shadow-dark: rgba(15, 23, 42, 0.22);
-    --input-bg: #ffffff;
-    --input-bg-light: #f8fafc;
-    /* Syntax Highlighting (High contrast crisp IDE) */
+    --accent-glow: rgba(37, 99, 235, 0.15);
+    --overlay-5: #f8fafc;
+    --overlay-8: #f1f5f9;
+    --overlay-10: #e2e8f0;
+    --overlay-15: #cbd5e1;
+    --overlay-20: #94a3b8;
+    --overlay-30: #64748b;
+    --shadow-base: rgba(15, 23, 42, 0.05); /* Gentle floating shadow */
+    --shadow-dark: rgba(15, 23, 42, 0.12);
+    --input-bg: #f8fafc;
+    --input-bg-light: #ffffff;
+    /* Syntax Highlighting (Mac OS Pro Light Theme) */
     --syntax-key: #0284c7;
-    --syntax-string: #dc2626;
+    --syntax-string: #d97706;
     --syntax-number: #16a34a;
     --syntax-bool: #2563eb;
-    --syntax-bracket: #020617;
+    --syntax-bracket: #334155;
     /* Components */
     --modal-bg: #ffffff;
-    --modal-overlay: rgba(15, 23, 42, 0.6);
+    --modal-overlay: rgba(15, 23, 42, 0.35);
     --dropdown-bg: #ffffff;
-    /* Method Badges (Solid crisp high contrast) */
-    --badge-get-bg: #bae6fd;
-    --badge-get-text: #0369a1;
-    --badge-post-bg: #bbf7d0;
-    --badge-post-text: #15803d;
-    --badge-put-bg: #fef08a;
-    --badge-put-text: #a16207;
-    --badge-delete-bg: #fecaca;
-    --badge-delete-text: #b91c1c;
+    /* Method Badges (Soft pastel badges with rich text) */
+    --badge-get-bg: #e0f2fe;
+    --badge-get-text: #0284c7;
+    --badge-post-bg: #dcfce7;
+    --badge-post-text: #16a34a;
+    --badge-put-bg: #fef3c7;
+    --badge-put-text: #d97706;
+    --badge-delete-bg: #fee2e2;
+    --badge-delete-text: #dc2626;
     /* Global Status */
-    --status-success-bg: #bbf7d0;
-    --status-error-bg: #fecaca;
-    --status-error-text: #b91c1c;
+    --status-success-bg: #dcfce7;
+    --status-error-bg: #fee2e2;
+    --status-error-text: #dc2626;
     /* Misc Components */
-    --badge-custom-bg: #e9d5ff;
-    --badge-custom-text: #6b21a8;
-    --markdown-border: #94a3b8;
+    --badge-custom-bg: #f3e8ff;
+    --badge-custom-text: #7c3aed;
+    --markdown-border: rgba(148, 163, 184, 0.4);
 }
+
 
 
 
@@ -152,8 +153,9 @@ body {
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--panel-border);
     border-radius: 16px;
-    box-shadow: 0 10px 30px -5px var(--shadow-base), 0 0 1px var(--panel-border);
+    box-shadow: 0 4px 20px -2px var(--shadow-base), 0 0 1px var(--panel-border);
 }
+
 
 
 /* Sidebar */
