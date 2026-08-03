@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/powerbi-client/dist/powerbi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260803_v159">
+    <link rel="stylesheet" href="/static/style.css?v=20260803_v160">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -530,22 +530,24 @@
                                 
                                 <div id="wf-gum-containers" style="display: flex; flex-direction: column; gap: 12px;">
                                     <!-- Logs Section -->
-                                    <div style="position: relative;">
-                                        <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; user-select: none;">
-                                            <div style="display: flex; align-items: center; cursor: pointer; width: fit-content;" onclick="window.toggleConsole('wf-out-gum-logs')">
-                                                <svg id="wf-out-gum-logs-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs
-                                            </div>
-                                            <div style="display: flex; align-items: center; gap: 12px;">
-                                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; color: var(--text-secondary); font-size: 0.75rem; font-weight: normal;">
-                                                    <input type="checkbox" id="gum-admin-mode" class="wf-input" style="width: auto; margin: 0; cursor: pointer;">
-                                                    Admin Mode (All Workspaces)
-                                                </label>
-                                                <button class="btn-action-primary" id="btn-run-gum" style="padding: 4px 12px; font-size: 0.75rem; height: 24px;" onclick="if(window.runGlobalUserManager) window.runGlobalUserManager()">Run Scan</button>
-                                            </div>
-                                        </div>
-                                        <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-gum-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
-                                        <div id="wf-out-gum-logs" class="wf-console collapsed-console" style="min-height: 100px; padding-bottom: 20px;">Ready to scan all workspaces...</div>
-                                    </div>
+                                     <div>
+                                         <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; user-select: none;">
+                                             <div style="display: flex; align-items: center; cursor: pointer; width: fit-content;" onclick="window.toggleConsole('wf-out-gum-logs')">
+                                                 <svg id="wf-out-gum-logs-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs
+                                             </div>
+                                             <div style="display: flex; align-items: center; gap: 12px;">
+                                                 <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; color: var(--text-secondary); font-size: 0.75rem; font-weight: normal;">
+                                                     <input type="checkbox" id="gum-admin-mode" class="wf-input" style="width: auto; margin: 0; cursor: pointer;">
+                                                     Admin Mode (All Workspaces)
+                                                 </label>
+                                                 <button class="btn-action-primary" id="btn-run-gum" style="padding: 4px 12px; font-size: 0.75rem; height: 24px;" onclick="if(window.runGlobalUserManager) window.runGlobalUserManager()">Run Scan</button>
+                                             </div>
+                                         </div>
+                                         <div class="input-with-copy" style="position: relative;">
+                                             <div id="wf-out-gum-logs" class="wf-console collapsed-console" style="width: 100%; min-height: 100px; padding-bottom: 20px;">Ready to scan all workspaces...</div>
+                                             <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-gum-logs').innerText)" title="Copy Logs" style="top: 8px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                         </div>
+                                     </div>
                                     
                                     <!-- Result header: click to open expand modal -->
                                     <div id="wf-gum-result-wrap" style="display: none; margin-top: 14px; position: relative;">

@@ -5771,11 +5771,17 @@ window.runGlobalUserManager = async function() {
     const tableDiv = document.getElementById('wf-out-gum-table');
     const statsSpan = document.getElementById('wf-gum-stats');
     
-    logsDiv.innerHTML = '';
-    tableDiv.innerHTML = 'Scanning workspaces...';
-    statsSpan.textContent = '';
+    if (logsDiv) {
+        logsDiv.innerHTML = '';
+        if (logsDiv.classList.contains('collapsed-console')) {
+            window.toggleConsole('wf-out-gum-logs');
+        }
+    }
+    if (tableDiv) tableDiv.innerHTML = 'Scanning workspaces...';
+    if (statsSpan) statsSpan.textContent = '';
     window.gumData = [];
-window.gumWorkspaces = [];
+    window.gumWorkspaces = [];
+
     
     const appendLog = (msg) => {
         const div = document.createElement('div');
