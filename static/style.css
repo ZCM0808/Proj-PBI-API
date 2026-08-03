@@ -67,36 +67,36 @@
 }
 
 [data-theme="light"] {
-    --bg-color: #f8fafc;
+    --bg-color: #f1f5f9;
     --panel-bg: #ffffff;
     --panel-border: #cbd5e1;
-    --text-primary: #0f172a;
-    --text-secondary: #334155;
-    --accent: #d97706; /* Crisp amber accent for high contrast on light bg */
+    --text-primary: #020617; /* Deep midnight obsidian for razor-sharp text readability */
+    --text-secondary: #1e293b; /* Deep slate gray for subtext - high contrast */
+    --accent: #2563eb; /* Vibrant Royal Sapphire Blue for light mode */
     --accent-text: #ffffff;
-    --accent-hover: #b45309;
-    --accent-glow: rgba(217, 119, 6, 0.2);
-    --overlay-5: rgba(15, 23, 42, 0.04);
-    --overlay-8: rgba(15, 23, 42, 0.07);
-    --overlay-10: rgba(15, 23, 42, 0.1);
-    --overlay-15: rgba(15, 23, 42, 0.15);
-    --overlay-20: rgba(15, 23, 42, 0.2);
-    --overlay-30: rgba(15, 23, 42, 0.3);
-    --shadow-base: rgba(15, 23, 42, 0.06);
-    --shadow-dark: rgba(15, 23, 42, 0.12);
-    --input-bg: #f1f5f9;
+    --accent-hover: #1d4ed8;
+    --accent-glow: rgba(37, 99, 235, 0.25);
+    --overlay-5: rgba(2, 6, 23, 0.04);
+    --overlay-8: rgba(2, 6, 23, 0.07);
+    --overlay-10: rgba(2, 6, 23, 0.1);
+    --overlay-15: rgba(2, 6, 23, 0.15);
+    --overlay-20: rgba(2, 6, 23, 0.2);
+    --overlay-30: rgba(2, 6, 23, 0.3);
+    --shadow-base: rgba(15, 23, 42, 0.08);
+    --shadow-dark: rgba(15, 23, 42, 0.16);
+    --input-bg: #ffffff;
     --input-bg-light: #f8fafc;
-    /* Syntax Highlighting (VS Code Light Theme inspired) */
-    --syntax-key: #0451a5;
-    --syntax-string: #a31515;
-    --syntax-number: #098658;
-    --syntax-bool: #0000ff;
-    --syntax-bracket: #333333;
+    /* Syntax Highlighting (VS Code Light High Contrast) */
+    --syntax-key: #0284c7;
+    --syntax-string: #b91c1c;
+    --syntax-number: #15803d;
+    --syntax-bool: #0369a1;
+    --syntax-bracket: #0f172a;
     /* Components */
     --modal-bg: #ffffff;
-    --modal-overlay: rgba(15, 23, 42, 0.45);
+    --modal-overlay: rgba(15, 23, 42, 0.5);
     --dropdown-bg: #ffffff;
-    /* Method Badges (Crisp, high contrast on light mode) */
+    /* Method Badges (Ultra vibrant & high contrast in light mode) */
     --badge-get-bg: #e0f2fe;
     --badge-get-text: #0369a1;
     --badge-post-bg: #dcfce7;
@@ -114,6 +114,7 @@
     --badge-custom-text: #6b21a8;
     --markdown-border: #cbd5e1;
 }
+
 
 
 * {
@@ -148,8 +149,9 @@ body {
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--panel-border);
     border-radius: 16px;
-    box-shadow: 0 4px 24px -1px var(--shadow-base);
+    box-shadow: 0 10px 30px -5px var(--shadow-base), 0 0 1px var(--panel-border);
 }
+
 
 /* Sidebar */
 
