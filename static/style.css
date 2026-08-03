@@ -2531,7 +2531,9 @@ div:hover > .wf-copy-btn,
 .input-with-copy .wf-input { padding-right: 32px !important; }
 .input-with-copy .wf-copy-btn { top: 50%; transform: translateY(-50%); right: 6px; z-index: 10; }
 .input-with-copy:has(> textarea) .wf-copy-btn,
-.input-with-copy:has(> textarea.wf-input) .wf-copy-btn { top: 8px; transform: none; }
+.input-with-copy:has(> textarea.wf-input) .wf-copy-btn,
+.input-with-copy:has(> .wf-console) .wf-copy-btn { top: 8px; transform: none; }
+
 
 
 
