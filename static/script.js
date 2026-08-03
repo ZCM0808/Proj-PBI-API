@@ -417,14 +417,14 @@ window.renderEnvIdentity = function() {
     
     if (tenantEl) {
         if (tenantId) {
-            tenantEl.style.display = 'inline';
+            tenantEl.style.display = 'inline-flex';
             tenantEl.querySelector('strong').textContent = tenantId;
         } else {
             tenantEl.style.display = 'none';
         }
     }
     if (clientEl) {
-        clientEl.style.display = 'inline';
+        clientEl.style.display = 'inline-flex';
         if (appName) {
             clientEl.querySelector('strong').textContent = appName;
             clientEl.querySelector('strong').style.color = 'var(--text-primary)';
@@ -435,6 +435,7 @@ window.renderEnvIdentity = function() {
             clientEl.title = "Please go to Settings and click 'Verify Connection' to fetch the App Name";
         }
     }
+
 };
 
 window.getInjectedEndpoint = function(endpoint) {

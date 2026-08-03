@@ -2538,8 +2538,10 @@ json-viewer {
 .wf-copy-btn:hover { background: var(--overlay-15); color: var(--text-primary); }
 :has(> .wf-copy-btn):hover > .wf-copy-btn,
 div:hover > .wf-copy-btn,
+span:hover > .wf-copy-btn,
 .input-with-copy:hover .wf-copy-btn,
 .wf-copy-btn:focus { opacity: 1; pointer-events: auto; }
+
 
 .input-with-copy { position: relative; display: flex; align-items: center; flex: 1; width: 100%; }
 .input-with-copy .wf-input { padding-right: 32px !important; }
