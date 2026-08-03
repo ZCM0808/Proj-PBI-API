@@ -680,7 +680,7 @@ async def proxy_request(request: Request):
             return {"success": False, "error": str(e)}
 
     # 拦截纯 DAX 执行请求
-    if endpoint == "local-model/instances":
+    if endpoint in ["local-model/instances", "/local-model/instances", "/api/local-model/instances"]:
         from src.dax_executor import get_all_instances
         try:
             instances = get_all_instances()
@@ -688,7 +688,18 @@ async def proxy_request(request: Request):
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    if endpoint == "local-model/dax":
+@app.post("/api/local-model/instances")
+async def local_model_instances():
+    from src.dax_executor import get_all_instances
+    try:
+        instances = get_all_instances()
+        return {"success": True, "instances": instances}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+    if endpoint in ["local-model/dax", "/local-model/dax", "/api/local-model/dax"]:
+
         from src.dax_executor import get_dynamic_port, execute_dax_via_ps
         try:
             dax = ""
