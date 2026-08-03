@@ -5568,22 +5568,39 @@ window.toggleRvcLogs = function() {
 };
 
 
-window.handleCopyAction = function(btn, text) {
+window.handleCopyAction = function(targetEl, text) {
     if(!text) return;
     navigator.clipboard.writeText(text).then(() => {
-        const origHTML = btn.innerHTML;
-        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-        btn.style.color = 'var(--success)';
-        btn.style.borderColor = 'var(--success)';
-        setTimeout(() => { 
-            btn.innerHTML = origHTML; 
-            btn.style.color = '';
-            btn.style.borderColor = '';
-        }, 1500);
+        // If target is an icon button or has svg icon, toggle feedback icon
+        const iconContainer = targetEl.querySelector('svg') || targetEl;
+        const isSelfButton = targetEl.tagName === 'BUTTON' || targetEl.classList.contains('wf-copy-btn');
+        
+        if (isSelfButton) {
+            const origHTML = targetEl.innerHTML;
+            targetEl.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+            targetEl.style.color = 'var(--success)';
+            setTimeout(() => { 
+                targetEl.innerHTML = origHTML; 
+                targetEl.style.color = '';
+            }, 1500);
+        } else if (iconContainer) {
+            const origColor = iconContainer.style.color || '';
+            const origStroke = iconContainer.getAttribute('stroke') || '';
+            iconContainer.style.color = 'var(--success)';
+            iconContainer.setAttribute('stroke', 'var(--success)');
+            if (window.showNotification) window.showNotification('Copied to clipboard!', 'success');
+            setTimeout(() => { 
+                iconContainer.style.color = origColor; 
+                if (origStroke) iconContainer.setAttribute('stroke', origStroke); else iconContainer.removeAttribute('stroke');
+            }, 1500);
+        } else {
+            if (window.showNotification) window.showNotification('Copied to clipboard!', 'success');
+        }
     }).catch(err => {
         alert('Failed to copy: ' + err);
     });
 };
+
 
 
 window.runCheckPermsWorkflow = async function() {
