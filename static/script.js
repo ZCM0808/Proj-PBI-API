@@ -3860,19 +3860,60 @@ window.createNewNote = function() {
     }
 };
 
+window._lastNoteErrorDetail = '';
+
+window.showNoteErrorDetail = function() {
+    if (!window._lastNoteErrorDetail) return;
+    
+    let modal = document.getElementById('note-error-detail-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'note-error-detail-modal';
+        modal.className = 'modal-overlay';
+        modal.style.cssText = 'display:flex; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:30000; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s;';
+        modal.innerHTML = `
+            <div class="modal-content glass-panel" style="max-width:550px; width:90%; padding:20px; position:relative; background:var(--modal-bg);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid var(--panel-border); padding-bottom:8px;">
+                    <h4 style="margin:0; color:var(--error); display:flex; align-items:center; gap:6px;">⚠️ Note Save/Push Traceback Detail</h4>
+                    <button type="button" onclick="document.getElementById('note-error-detail-modal').style.display='none'" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:1.2rem;">✕</button>
+                </div>
+                <div class="input-with-copy" style="position:relative; margin-bottom:16px;">
+                    <textarea id="note-error-detail-text" readonly style="width:100%; height:160px; font-family:'Fira Code',monospace; font-size:0.8rem; background:var(--input-bg); color:var(--error); padding:10px 36px 10px 10px; border-radius:6px; border:1px solid var(--error); resize:vertical;"></textarea>
+                    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('note-error-detail-text').value)" title="Copy Error Traceback" style="top:8px; right:8px; z-index:10; opacity:1; pointer-events:auto;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    </button>
+                </div>
+                <div style="display:flex; justify-content:flex-end;">
+                    <button type="button" class="btn-action-secondary" onclick="document.getElementById('note-error-detail-modal').style.display='none'">Close</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    document.getElementById('note-error-detail-text').value = window._lastNoteErrorDetail;
+    modal.style.display = 'flex';
+    requestAnimationFrame(() => { modal.style.opacity = '1'; });
+};
+
 window.saveMarkdownNote = async function() {
     if (!easyMDE) return;
     const content = easyMDE.value().trim();
     if (!content) {
-        alert("Note content cannot be empty!");
+        if (window.showNotification) window.showNotification("Note content cannot be empty!", "error");
         return;
     }
     const filename = document.getElementById('note-filename').value.trim();
     
     const btn = document.getElementById('btn-save-note');
-    const oldText = btn.innerHTML;
+    const errWrapper = document.getElementById('note-error-wrapper');
+    const errMsg = document.getElementById('note-error-msg');
+    
+    if (errWrapper) errWrapper.style.display = 'none';
+    window._lastNoteErrorDetail = '';
+
     btn.disabled = true;
-    btn.innerHTML = 'Saving...';
+    btn.innerHTML = '<span class="loader" style="width:12px;height:12px;border-width:2px;"></span> Saving & Pushing...';
     
     try {
         const response = await fetch('/api/save-note', {
@@ -3881,23 +3922,41 @@ window.saveMarkdownNote = async function() {
             body: JSON.stringify({ filename, content })
         });
         const data = await response.json();
+        
         if (data.success) {
             if (data.filename) {
                 document.getElementById('note-filename').value = data.filename;
             }
-            alert(data.message || "Note saved successfully!");
+            if (window.showNotification) {
+                window.showNotification(data.message || "Note saved & pushed successfully!", "success");
+            }
             // Refresh note history
             window.searchNotes();
         } else {
-            alert("Error saving note: " + data.error);
+            window._lastNoteErrorDetail = data.error || 'Unknown error occurred while saving note.';
+            if (errWrapper && errMsg) {
+                errMsg.textContent = data.local_saved ? 'Git Push Failed (Saved locally)' : 'Save Note Failed';
+                errWrapper.style.display = 'inline-flex';
+            }
+            if (window.showNotification) {
+                window.showNotification("Save/Push Note Error! Click '❗' for details.", "error");
+            }
         }
     } catch (e) {
-        alert("Error saving note: " + e.message);
+        window._lastNoteErrorDetail = e.message || String(e);
+        if (errWrapper && errMsg) {
+            errMsg.textContent = 'Network/Server Error';
+            errWrapper.style.display = 'inline-flex';
+        }
+        if (window.showNotification) {
+            window.showNotification("Network Error! Click '❗' for details.", "error");
+        }
     } finally {
         btn.disabled = false;
-        btn.innerHTML = oldText;
+        btn.innerHTML = '<span id="save-note-icon">💾</span> Save & Push to GitHub';
     }
 };
+
 
 
 // Global document listener to close Note window when clicking any blank area outside of it

@@ -946,19 +946,29 @@ async def save_note(payload: NotePayload):
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(payload.content)
             
-        def _git_push_note():
-            try:
-                subprocess.run(["git", "add", f"notes/{filename}"], cwd=root_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                subprocess.run(["git", "commit", "-m", f"docs(notes): add {filename}"], cwd=root_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                subprocess.run(["git", "push", "origin", "main"], cwd=root_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            except Exception as e:
-                print(f"Git push note failed: {e}")
-                
-        asyncio.create_task(asyncio.to_thread(_git_push_note))
-        
-        return {"success": True, "message": f"Saved {filename} and pushing to GitHub in background.", "filename": filename}
+        git_error = None
+        try:
+            r1 = subprocess.run(["git", "add", f"notes/{filename}"], cwd=root_dir, capture_output=True, text=True)
+            if r1.returncode != 0:
+                git_error = f"Git Add Error: {r1.stderr.strip()}"
+            else:
+                r2 = subprocess.run(["git", "commit", "-m", f"docs(notes): add {filename}"], cwd=root_dir, capture_output=True, text=True)
+                if r2.returncode != 0 and "nothing to commit" not in r2.stdout and "nothing to commit" not in r2.stderr:
+                    git_error = f"Git Commit Error: {r2.stderr.strip() or r2.stdout.strip()}"
+                else:
+                    r3 = subprocess.run(["git", "push", "origin", "main"], cwd=root_dir, capture_output=True, text=True)
+                    if r3.returncode != 0:
+                        git_error = f"Git Push Error: {r3.stderr.strip() or r3.stdout.strip()}"
+        except Exception as ge:
+            git_error = f"Git Subprocess Exception: {str(ge)}"
+
+        if git_error:
+            return {"success": False, "error": git_error, "filename": filename, "local_saved": True}
+
+        return {"success": True, "message": f"Successfully saved {filename} and pushed to GitHub!", "filename": filename}
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"File Write Error: {str(e)}"}
+
 
 @app.post("/api/delete-note")
 async def delete_note(payload: DeleteNotePayload):

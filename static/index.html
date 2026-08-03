@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/powerbi-client/dist/powerbi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260803_v178">
+    <link rel="stylesheet" href="/static/style.css?v=20260803_v179">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -1064,18 +1064,27 @@
                     <div style="flex: 1; border-radius: 4px; overflow: hidden; min-height: 380px;">
                         <textarea id="note-editor"></textarea>
                     </div>
-                    <div style="display: flex; justify-content: flex-end; gap: 10px;">
-                        <button class="btn-action-secondary" onclick="createNewNote()" id="btn-new-note">
-                            📝 New Note
-                        </button>
-                        <button class="btn-action-primary" onclick="saveMarkdownNote()" id="btn-save-note">
-                            <span id="save-note-icon">💾</span> Save & Push to GitHub
-                        </button>
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                        <div id="note-error-wrapper" style="display: none; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--error);">
+                            <button type="button" id="btn-note-err-icon" class="input-with-copy" onclick="window.showNoteErrorDetail()" style="background: rgba(239,68,68,0.15); border: 1px solid var(--error); color: var(--error); border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer;" title="Click to view full error traceback & copy">
+                                ❗
+                            </button>
+                            <span id="note-error-msg" style="font-weight: 500;">Failed to save/push</span>
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-left: auto;">
+                            <button type="button" class="btn-action-secondary" onclick="createNewNote()" id="btn-new-note">
+                                📝 New Note
+                            </button>
+                            <button type="button" class="btn-action-primary" onclick="saveMarkdownNote()" id="btn-save-note">
+                                <span id="save-note-icon">💾</span> Save & Push to GitHub
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
 
 
 
