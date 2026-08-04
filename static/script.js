@@ -1270,6 +1270,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     seedDefaultBookmarks();
 
+    function syncBookmarksFromBackend() {
+        fetch('/api/bookmarks')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data !== null) {
+                    localStorage.setItem('pbi-bookmarks', JSON.stringify(data.data));
+                    const searchInput = document.getElementById('api-search-input');
+                    if (typeof renderTree === 'function') {
+                        renderTree(searchInput ? searchInput.value : "");
+                    }
+                }
+            })
+            .catch(e => console.error('Backend bookmarks sync failed', e));
+    }
+    syncBookmarksFromBackend();
     function getBookmarks() {
         try {
             const data = localStorage.getItem('pbi-bookmarks');
@@ -1299,6 +1314,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             bookmarks.push(ep);
         }
         localStorage.setItem('pbi-bookmarks', JSON.stringify(bookmarks));
+        fetch('/api/bookmarks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bookmarks) }).catch(console.error);
         window.lastToggledBookmarkId = ep.method + '_' + ep.path;
         const searchInput = document.getElementById('api-search-input');
         renderTree(searchInput ? searchInput.value : "");
@@ -3053,7 +3069,10 @@ const loadReqHistory = (searchTerm = "") => {
             reader.onload = async (event) => {
                 try {
                     const data = JSON.parse(event.target.result);
-                    if (data.bookmarks) localStorage.setItem('pbi-bookmarks', data.bookmarks);
+                    if (data.bookmarks) {
+                        localStorage.setItem('pbi-bookmarks', data.bookmarks);
+                        await fetch('/api/bookmarks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: data.bookmarks }).catch(e=>console.error(e));
+                    }
                     if (data.history) localStorage.setItem('apiReqHistory', data.history);
                     if (data.workspaces) localStorage.setItem('pbi_workspaces', data.workspaces);
                     if (data.datasets) localStorage.setItem('pbi_datasets', data.datasets);
