@@ -1358,17 +1358,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     function togglePinBookmark(ep, e) {
         if (e) e.stopPropagation();
-        
-        // --- FLIP Animation Start: First ---
-        let firstRect = null;
-        let clickedItemEl = null;
-        if (e && e.target) {
-            clickedItemEl = e.target.closest('.api-item');
-            if (clickedItemEl) {
-                firstRect = clickedItemEl.getBoundingClientRect();
-            }
-        }
-        
         const bookmarks = getBookmarks();
         
         const cleanEpPath = (ep.path || '').replace("/v1.0/myorg", "");
@@ -1392,56 +1381,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.lastToggledBookmarkId = ep.method + '_' + ep.path;
             const searchInput = document.getElementById('api-search-input');
             
-            if (isNowPinned && clickedItemEl) {
-                // Elegant Collapse Animation for old item
-                clickedItemEl.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-                clickedItemEl.style.transform = 'scale(0.95) translateX(-15px)';
-                clickedItemEl.style.opacity = '0';
-                clickedItemEl.style.maxHeight = '0px';
-                clickedItemEl.style.paddingTop = '0px';
-                clickedItemEl.style.paddingBottom = '0px';
-                clickedItemEl.style.marginTop = '0px';
-                clickedItemEl.style.marginBottom = '0px';
-                clickedItemEl.style.borderWidth = '0px';
-                clickedItemEl.style.overflow = 'hidden';
-                
-                setTimeout(() => {
-                    renderTree(searchInput ? searchInput.value : "");
-                    // Elegant Expand & Bounce Animation for new item at top
-                    const newEl = document.querySelector('.api-category:first-child .api-list .api-item:first-child');
-                    if (newEl) {
-                        const originalHeight = newEl.offsetHeight;
-                        newEl.style.transition = 'none';
-                        newEl.style.maxHeight = '0px';
-                        newEl.style.opacity = '0';
-                        newEl.style.transform = 'translateY(-20px) scale(0.95)';
-                        newEl.style.overflow = 'hidden';
-                        newEl.style.backgroundColor = 'var(--overlay-10)';
-                        
-                        requestAnimationFrame(() => {
-                            requestAnimationFrame(() => {
-                                // Bouncy spring curve
-                                newEl.style.transition = 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
-                                newEl.style.maxHeight = (originalHeight + 50) + 'px';
-                                newEl.style.opacity = '1';
-                                newEl.style.transform = 'translateY(0) scale(1)';
-                                newEl.style.backgroundColor = 'transparent';
-                                
-                                setTimeout(() => {
-                                    newEl.style.transition = '';
-                                    newEl.style.maxHeight = '';
-                                    newEl.style.overflow = '';
-                                    newEl.style.transform = '';
-                                    newEl.style.backgroundColor = '';
-                                }, 500);
-                            });
-                        });
-                    }
-                    renderRightPanelBookmarkState(ep);
-                }, 280);
-            } else {
-                renderTree(searchInput ? searchInput.value : "");
-                renderRightPanelBookmarkState(ep);
+            // 立即渲染，没有任何阻碍动画
+            renderTree(searchInput ? searchInput.value : "");
+            renderRightPanelBookmarkState(ep);
+            
+            if (isNowPinned) {
+                // 定位到第一个元素
+                const newEl = document.querySelector('.api-category:first-child .api-list .api-item:first-child');
+                if (newEl) {
+                    // 跳转至元素
+                    newEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
+                    // 闪烁两次以提供明确的成功反馈
+                    newEl.style.animation = 'flashBlink 0.4s ease-in-out 2';
+                    setTimeout(() => {
+                        newEl.style.animation = '';
+                    }, 850);
+                }
             }
         }
     }
