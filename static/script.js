@@ -340,7 +340,7 @@ window.addEventListener('click', (e) => {
     }
 }, true); // Use capture phase to prevent stopPropagation from hiding the click
 
-window.selectCustomOption = function(type, id, alias) {
+window.selectCustomOption = function(type, id, alias, skipCascade = false) {
     const input = document.getElementById(`active-${type}`);
     const trigger = document.getElementById(`trigger-${type}`);
     if (!input || !trigger) return;
@@ -363,6 +363,77 @@ window.selectCustomOption = function(type, id, alias) {
     
     document.getElementById(`options-${type}`).style.display = 'none';
     trigger.style.borderColor = 'var(--panel-border)';
+
+    if (type === 'workspace' && id && !skipCascade) {
+        const cascadeFetch = async (itemType) => {
+            try {
+                let cachedSettings = typeof backendSettingsCache !== 'undefined' ? backendSettingsCache : {};
+                const reqBody = {
+                    pbi_client_id: document.getElementById('set-client')?.value?.trim() || cachedSettings.CLIENT_ID || '',
+                    pbi_client_secret: document.getElementById('set-secret')?.value?.trim() || cachedSettings.CLIENT_SECRET || '',
+                    pbi_tenant_id: document.getElementById('set-tenant')?.value?.trim() || cachedSettings.TENANT_ID || '',
+                    workspace_id: id
+                };
+                if (!reqBody.pbi_client_id || !reqBody.pbi_client_secret) return;
+                
+                const targetType = itemType === 'datasets' ? 'dataset' : 'report';
+                const triggerTarget = document.getElementById(`trigger-${targetType}`);
+                if (triggerTarget) {
+                    triggerTarget.querySelector('.cs-name').textContent = '⏳ Loading...';
+                }
+                
+                const res = await fetch(`/api/scan/${itemType}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(reqBody)
+                });
+                const data = await res.json();
+                if (data.success && data.data) {
+                    const formatted = data.data.map(item => ({ alias: item.name, id: item.id }));
+                    window._populateDropdown(targetType, formatted);
+                } else {
+                    window._populateDropdown(targetType, JSON.parse(localStorage.getItem(`pbi_${itemType}`) || '[]'));
+                }
+            } catch (e) {
+                console.error('Cascade error:', e);
+            }
+        };
+        cascadeFetch('datasets');
+        cascadeFetch('reports');
+    }
+};
+
+window._populateDropdown = function(type, data) {
+    const input = document.getElementById(`active-${type}`);
+    const optionsDiv = document.getElementById(`options-${type}`);
+    if (!input || !optionsDiv) return;
+    
+    const savedVal = localStorage.getItem(`pbi-active-${type}`);
+    const currentVal = savedVal !== null ? savedVal : input.value;
+    
+    let html = `<div onclick="selectCustomOption('${type}', '', '')" style="padding: 6px 8px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid var(--panel-border);" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'">
+        <div style="color: var(--text-secondary); font-size: 0.75rem;">-- None --</div>
+    </div>`;
+    
+    data.forEach(item => {
+        const safeAlias = (item.alias || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        const safeId = item.id.replace(/'/g, "\\'");
+        html += `<div onclick="selectCustomOption('${type}', '${safeId}', '${safeAlias}')" style="padding: 6px 8px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid var(--panel-border);" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'">
+            <div style="color: var(--text-primary); font-size: 0.75rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.alias}</div>
+            <div style="color: var(--text-secondary); font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.id}</div>
+        </div>`;
+    });
+    
+    optionsDiv.innerHTML = html;
+    
+    if (data.some(d => d.id === currentVal)) {
+        const selected = data.find(d => d.id === currentVal);
+        selectCustomOption(type, selected.id, selected.alias, true);
+    } else if (data.length > 0) {
+        selectCustomOption(type, data[0].id, data[0].alias, true);
+    } else {
+        selectCustomOption(type, '', '', true);
+    }
 };
 
 window.renderContextDropdowns = function() {
@@ -370,43 +441,9 @@ window.renderContextDropdowns = function() {
     const dData = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
     const rData = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
 
-    const populate = (type, data) => {
-        const input = document.getElementById(`active-${type}`);
-        const optionsDiv = document.getElementById(`options-${type}`);
-        if (!input || !optionsDiv) return;
-        
-        // Restore from localStorage or use current input value
-        const savedVal = localStorage.getItem(`pbi-active-${type}`);
-        const currentVal = savedVal !== null ? savedVal : input.value;
-        
-        let html = `<div onclick="selectCustomOption('${type}', '', '')" style="padding: 6px 8px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid var(--panel-border);" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'">
-            <div style="color: var(--text-secondary); font-size: 0.75rem;">-- None --</div>
-        </div>`;
-        
-        data.forEach(item => {
-            const safeAlias = (item.alias || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-            const safeId = item.id.replace(/'/g, "\\'");
-            html += `<div onclick="selectCustomOption('${type}', '${safeId}', '${safeAlias}')" style="padding: 6px 8px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid var(--panel-border);" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'">
-                <div style="color: var(--text-primary); font-size: 0.75rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.alias}</div>
-                <div style="color: var(--text-secondary); font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.id}</div>
-            </div>`;
-        });
-        
-        optionsDiv.innerHTML = html;
-        
-        if (data.some(d => d.id === currentVal)) {
-            const selected = data.find(d => d.id === currentVal);
-            selectCustomOption(type, selected.id, selected.alias);
-        } else if (data.length > 0) {
-            selectCustomOption(type, data[0].id, data[0].alias);
-        } else {
-            selectCustomOption(type, '', '');
-        }
-    };
-    
-    populate('workspace', wData);
-    populate('dataset', dData);
-    populate('report', rData);
+    window._populateDropdown('workspace', wData);
+    window._populateDropdown('dataset', dData);
+    window._populateDropdown('report', rData);
 };
 
 window.renderEnvIdentity = function() {

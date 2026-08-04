@@ -60,7 +60,7 @@ def scan_local_instances():
                             "path": path
                         })
         return instances
-    except Exception as e:
+    except Exception:
         return []
 
 def run_dax_query(port: str, query: str):
@@ -78,7 +78,7 @@ def run_dax_query(port: str, query: str):
             clr.AddReference("Microsoft.PowerBI.AdomdClient")
         except:
             pass # might be already loaded
-        from Microsoft.AnalysisServices.AdomdClient import AdomdConnection, AdomdCommand
+        from Microsoft.AnalysisServices.AdomdClient import AdomdConnection
         
         conn_str = f"Data Source=localhost:{port};"
         conn = AdomdConnection(conn_str)

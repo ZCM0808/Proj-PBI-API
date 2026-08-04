@@ -11,7 +11,6 @@ from pydantic import BaseModel
 from src.local_pbi import scan_local_instances, run_dax_query
 from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
 from typing import Optional, Any, List, Dict
 from datetime import datetime
 import hashlib
