@@ -324,7 +324,7 @@
                                 <span>Send Request</span>
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
                             </button>
-                            <button id="copy-btn" type="button" class="icon-btn" title="复制完整 cURL 格式请求" style="height: 46px; width: 46px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid var(--panel-border); border-radius: 8px; background: var(--shadow-base); color: var(--text-primary); cursor: pointer;">
+                            <button id="copy-btn" type="button" class="icon-btn copy-btn" title="复制完整 cURL 格式请求">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                             </button>
                         </div>
@@ -347,7 +347,7 @@
                             <button id="format-req-body-btn" class="icon-btn" title="Format JSON" type="button" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer; margin-right: 6px;">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
                             </button>
-                            <button id="copy-req-body-btn" class="icon-btn" title="Copy Request Body" type="button" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer;" onclick="window.handleCopyAction(this, document.getElementById('req-body').value)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                            <button id="copy-req-body-btn" class="icon-btn copy-btn" title="Copy Request Body" type="button" onclick="window.handleCopyAction(this, document.getElementById('req-body').value)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
                         </div>
                     </div>
                     <textarea id="request-body" placeholder="[当前 API 接口无需提供 Request Body 请求体]"></textarea>
@@ -371,7 +371,7 @@
                             <button class="view-mode-btn" data-mode="raw" style="border:none; background:transparent; color:var(--text-secondary); padding: 2px 8px; font-size:0.7rem; cursor:pointer;" title="Raw JSON">Raw</button>
                         </div>
                         <div class="response-status" id="response-status">Waiting for request...</div>
-                        <button id="copy-res-body-btn" class="icon-btn" title="Copy Response JSON" type="button" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer;" onclick="window.handleCopyAction(this, window.currentJsonResponse ? JSON.stringify(window.currentJsonResponse, null, 2) : document.getElementById('response-output').textContent)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                        <button id="copy-res-body-btn" class="icon-btn copy-btn" title="Copy Response JSON" type="button" onclick="window.handleCopyAction(this, window.currentJsonResponse ? JSON.stringify(window.currentJsonResponse, null, 2) : document.getElementById('response-output').textContent)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
                     </div>
                 </div>
                 <div class="response-body">
@@ -424,7 +424,7 @@
                             <option value="global_user_manager">Global Workspace Permissions Manager</option>
                             <option value="local_model_query">Local Model Diagnostics & Query (DAX)</option>
                         </select>
-                        <button type="button" class="wf-copy-btn" title="Copy Workflow Name" onclick="window.handleCopyAction(this, document.getElementById('wf-selector').options[document.getElementById('wf-selector').selectedIndex].text)">
+                        <button type="button" class="icon-btn copy-btn" title="Copy Workflow Name" onclick="window.handleCopyAction(this, document.getElementById('wf-selector').options[document.getElementById('wf-selector').selectedIndex].text)">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                         </button>
                     </div>

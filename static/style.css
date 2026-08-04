@@ -471,6 +471,22 @@ body {
     color: var(--text-primary);
 }
 
+.copy-btn {
+    width: 46px;
+    height: 46px;
+    padding: 0;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.copy-btn:hover {
+    background: var(--overlay-10);
+    color: var(--text-primary);
+}
+
 /* Scrollbar */
 
 ::-webkit-scrollbar {
