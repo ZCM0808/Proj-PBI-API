@@ -1358,6 +1358,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     function togglePinBookmark(ep, e) {
         if (e) e.stopPropagation();
+        
+        // --- FLIP Animation Start: First ---
+        let firstRect = null;
+        let clickedItemEl = null;
+        if (e && e.target) {
+            clickedItemEl = e.target.closest('.api-item');
+            if (clickedItemEl) {
+                firstRect = clickedItemEl.getBoundingClientRect();
+            }
+        }
+        
         const bookmarks = getBookmarks();
         
         const cleanEpPath = (ep.path || '').replace("/v1.0/myorg", "");
@@ -1380,7 +1391,49 @@ document.addEventListener('DOMContentLoaded', async () => {
             fetch('/api/bookmarks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bookmarks) }).catch(console.error);
             window.lastToggledBookmarkId = ep.method + '_' + ep.path;
             const searchInput = document.getElementById('api-search-input');
+            
+            // --- FLIP Animation: Re-render ---
             renderTree(searchInput ? searchInput.value : "");
+            
+            // --- FLIP Animation: Last, Invert, Play ---
+            if (firstRect && isNowPinned) {
+                // Since bookmarks are the first category, and this item was unshifted to index 0,
+                // it is guaranteed to be the first .api-item in the first .api-category
+                const newEl = document.querySelector('.api-category:first-child .api-list .api-item:first-child');
+                if (newEl) {
+                    const lastRect = newEl.getBoundingClientRect();
+                    const deltaY = firstRect.top - lastRect.top;
+                    
+                    // Invert
+                    newEl.style.transition = 'none';
+                    newEl.style.transform = `translateY(${deltaY}px)`;
+                    newEl.style.zIndex = '100'; 
+                    newEl.style.position = 'relative';
+                    newEl.style.boxShadow = '0 10px 25px rgba(0,0,0,0.5)';
+                    newEl.style.backgroundColor = 'var(--overlay-20)';
+                    
+                    // Play
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            newEl.style.transition = 'transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.5s ease, background-color 0.5s ease';
+                            newEl.style.transform = 'translateY(0)';
+                            newEl.style.boxShadow = 'none';
+                            newEl.style.backgroundColor = 'transparent';
+                            
+                            // Cleanup
+                            setTimeout(() => {
+                                newEl.style.transition = '';
+                                newEl.style.transform = '';
+                                newEl.style.zIndex = '';
+                                newEl.style.position = '';
+                                newEl.style.boxShadow = '';
+                                newEl.style.backgroundColor = '';
+                            }, 550);
+                        });
+                    });
+                }
+            }
+            
             renderRightPanelBookmarkState(ep);
         }
     }
