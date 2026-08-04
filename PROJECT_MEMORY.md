@@ -165,3 +165,12 @@ python src/main.py
   (Get-NetTCPConnection -OwningProcess (Get-Process msmdsrv -ErrorAction SilentlyContinue).Id -State Listen -ErrorAction SilentlyContinue).LocalPort
   ```
   获取到最新端口后，必须主动将新的连接字符串 `Data Source=localhost:<新端口>;Application Name=MCP-PBIModeling` 覆写更新至全局配置文件 `C:\Users\ZCM\.gemini\antigravity-cli\mcp.json` 中，并在写入后提醒用户重启客户端或开启新会话以完成热重载。
+
+
+## 9. PBIP 模型疑难杂症与数据清洗实战 (PBIP Refactoring & CSV Repair)
+- **硬编码路径批量重构**：PBIP 的语义模型代码（.tmdl, .bim, .m, .json）中常常残留原始作者的本地绝对路径（如 C:\Users\ZHAOC）。必须通过 Python 递归扫描并进行全局 UTF-8 编码安全的替换为当前环境路径，才能确保底层源数据正常连接。
+- **DAX 计算列与 M 查询物理列名冲突 (Column Name Collision)**：如果 TMDL 中定义了一个 DAX 计算列（如 column date_only = DATE(...)），而底层的 CSV 源数据中也刚好包含同名的列，Power BI 加载时会抛出“已对表使用名称...”的致命错误。**解决方案**：在 .tmdl 文件的 M 查询 let...in 语句末尾，追加一步 Table.RemoveColumns(Typed, {"冲突列名"}) 来抹平底层物理列，确保 DAX 逻辑正常生效。
+- **单行粘连 CSV 物理损坏修复 (Malformed Single-Line CSV Repair)**：在遇到 Power BI 报告“已加载 1 行。 1 个错误。”时，通常是因为 CSV 文件丢失了换行符（如 Python 写入时用了 ','.join(row) 未加 
+），导致上一行的最后一列与下一行的第一列发生物理粘连（例如日期和 ID 粘连成 2024-02-1612698）。**解决方案**：利用 M 查询中定义的总列数作为切分步长，并结合已知最后列的数据类型（如 	ype date 固定为 YYYY-MM-DD 10 位长度），利用正则或切片进行反向拆解，重新注入 
+，可将 1 行的废弃文件无损还原出数万行标准数据。
+- **Dim_Date 维度表空载导致度量值与视觉对象失效**：如果报表中的特定页面（如使用了 Dim_Date.year_month 为 X 轴的折线图）无法显示任何数据（视觉对象为空白），优先检查底层的维度表是否为空。在排查中发现底层的 dim_date.csv 只有表头没有数据。通过自编 Python 脚本按需生成覆盖分析年份（如 2024-2025）的日历维度数据并回写 CSV，即可使依赖该维度的所有高级聚合度量值瞬间恢复正常工作。

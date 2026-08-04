@@ -1271,7 +1271,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     seedDefaultBookmarks();
 
     function syncStateFromBackend() {
-        // Sync Bookmarks
+
+        // Sync Bulk KV (Everything else)
+        fetch('/api/db/kv')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data !== null) {
+                    for (const [key, value] of Object.entries(data.data)) {
+                        originalSetItem.call(localStorage, key, value);
+                    }
+                }
+            }).catch(e => console.error('Backend bulk KV sync failed', e));        // Sync Bookmarks
         fetch('/api/bookmarks')
             .then(res => res.json())
             .then(data => {
@@ -4994,6 +5004,21 @@ document.addEventListener('mousedown', (e) => {
 
 
 document.addEventListener('DOMContentLoaded', () => {
+    // --- KV Store Interceptor ---
+    const originalSetItem = localStorage.setItem;
+    localStorage.setItem = function(key, value) {
+        originalSetItem.apply(this, arguments);
+        const ignoredKeys = ['pbi-sidebar-width', 'pbi-request-height', 'pbi-details-collapsed', 'apiReqHistory', 'pbi-bookmarks'];
+        if (!ignoredKeys.includes(key)) {
+            fetch(`/api/db/kv/${key}`, { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify({value: value}) 
+            }).catch(e => console.error('KV sync error:', e));
+        }
+    };
+    // ----------------------------
+
     const loadBtn = document.getElementById('load-tables-btn');
     if(loadBtn) {
         loadBtn.addEventListener('click', async () => {
