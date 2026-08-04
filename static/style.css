@@ -472,19 +472,31 @@ body {
 }
 
 .copy-btn {
+    padding: 4px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.copy-btn:hover {
+    background: var(--accent);
+    color: var(--accent-text);
+    border-color: var(--accent);
+    box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.copy-btn:active {
+    transform: scale(0.92);
+}
+
+.copy-btn--lg {
     width: 46px;
     height: 46px;
     padding: 0;
     border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-}
-
-.copy-btn:hover {
-    background: var(--overlay-10);
-    color: var(--text-primary);
 }
 
 /* Scrollbar */
@@ -1396,31 +1408,7 @@ select.settings-input option {
 
    ========================================= */
 
-#copy-btn {
-    background: var(--overlay-5);
-    color: var(--text-primary);
-    border: 1px solid var(--overlay-10);
-    padding: 0 1.2rem;
-    border-radius: 8px;
-    font-weight: 500;
-    font-size: 0.95rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
 
-#copy-btn:hover {
-    background: var(--overlay-15) !important;
-    border-color: var(--overlay-30) !important;
-    color: var(--text-primary) !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-#copy-btn:active {
-    transform: scale(0.95) !important;
-}
 
 .flag-badge[data-flag="BOOKMARK"].active {
     background: var(--accent) !important;
