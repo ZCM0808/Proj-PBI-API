@@ -472,6 +472,9 @@ body {
 }
 
 .copy-btn {
+    background: var(--overlay-15);
+    border: 1px solid var(--panel-border);
+    color: var(--text-primary);
     padding: 4px;
     border-radius: 6px;
     display: flex;
@@ -479,6 +482,7 @@ body {
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px var(--shadow-base);
 }
 
 .copy-btn:hover {
