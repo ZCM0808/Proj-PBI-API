@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/powerbi-client/dist/powerbi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260804_v182">
+    <link rel="stylesheet" href="/static/style.css?v=20260804_v183">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -194,7 +194,7 @@
                     <span id="display-tenant" style="display: none; align-items: center; gap: 4px; cursor: pointer; transition: all 0.2s;" onclick="window.handleCopyAction(this, this.querySelector('strong').innerText)" title="Click to Copy Tenant ID">
                         <span style="opacity: 0.85;">🏢 Tenant:</span>
                         <strong style="color: var(--text-primary); font-weight: 600; font-family: 'Fira Code', monospace; font-size: 0.72rem;">Unknown</strong>
-                        <span class="copy-icon-wrapper" style="display: inline-flex; align-items: center; justify-content: center; padding: 2px 4px; border-radius: 4px; background: var(--overlay-15); color: var(--text-primary); border: 1px solid var(--panel-border); margin-left: 2px; transition: all 0.2s;">
+                        <span class="copy-icon-wrapper" style="display: inline-flex; align-items: center; justify-content: center; padding: 2px 4px; border-radius: 4px; background: transparent; color: var(--text-secondary); border: 1px solid transparent; margin-left: 2px; transition: all 0.2s;">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                         </span>
                     </span>
@@ -202,7 +202,7 @@
                     <span id="display-client" style="display: none; align-items: center; gap: 4px; cursor: pointer; transition: all 0.2s;" onclick="window.handleCopyAction(this, this.querySelector('strong').innerText)" title="Click to Copy App Name">
                         <span style="opacity: 0.85;">🔑 Client App:</span>
                         <strong style="color: var(--text-primary); font-weight: 600;">Unknown</strong>
-                        <span class="copy-icon-wrapper" style="display: inline-flex; align-items: center; justify-content: center; padding: 2px 4px; border-radius: 4px; background: var(--overlay-15); color: var(--text-primary); border: 1px solid var(--panel-border); margin-left: 2px; transition: all 0.2s;">
+                        <span class="copy-icon-wrapper" style="display: inline-flex; align-items: center; justify-content: center; padding: 2px 4px; border-radius: 4px; background: transparent; color: var(--text-secondary); border: 1px solid transparent; margin-left: 2px; transition: all 0.2s;">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                         </span>
                     </span>
