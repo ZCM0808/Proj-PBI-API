@@ -577,26 +577,42 @@ async def download_proxy(request: Request):
 
 @app.get("/api/bookmarks")
 async def get_bookmarks():
+    import sqlite3
     import json
     import os
     try:
-        if os.path.exists('data/bookmarks.json'):
-            with open('data/bookmarks.json', 'r', encoding='utf-8') as f:
-                return {"success": True, "data": json.load(f)}
+        if not os.path.exists('data'):
+            os.makedirs('data')
+        conn = sqlite3.connect('data/pbi_app.db')
+        c = conn.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS bookmarks 
+                     (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT)''')
+        c.execute('SELECT data FROM bookmarks ORDER BY id DESC LIMIT 1')
+        row = c.fetchone()
+        conn.close()
+        if row:
+            return {"success": True, "data": json.loads(row[0])}
     except Exception as e:
         return {"success": False, "error": str(e)}
     return {"success": True, "data": None}
 
 @app.post("/api/bookmarks")
 async def sync_bookmarks(request: Request):
+    import sqlite3
     import json
     import os
     try:
         data = await request.json()
         if not os.path.exists('data'):
             os.makedirs('data')
-        with open('data/bookmarks.json', 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        conn = sqlite3.connect('data/pbi_app.db')
+        c = conn.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS bookmarks 
+                     (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT)''')
+        # Just store the entire array as a single JSON blob for the MVP database sync
+        c.execute('INSERT INTO bookmarks (data) VALUES (?)', (json.dumps(data, ensure_ascii=False),))
+        conn.commit()
+        conn.close()
         return {"success": True}
     except Exception as e:
         return {"success": False, "error": str(e)}
