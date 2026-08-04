@@ -1270,7 +1270,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     seedDefaultBookmarks();
 
-    function syncBookmarksFromBackend() {
+    function syncStateFromBackend() {
+        // Sync Bookmarks
         fetch('/api/bookmarks')
             .then(res => res.json())
             .then(data => {
@@ -1281,10 +1282,33 @@ document.addEventListener('DOMContentLoaded', async () => {
                         renderTree(searchInput ? searchInput.value : "");
                     }
                 }
-            })
-            .catch(e => console.error('Backend bookmarks sync failed', e));
+            }).catch(e => console.error('Backend bookmarks sync failed', e));
+
+        // Sync History
+        fetch('/api/db/history')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data !== null) {
+                    localStorage.setItem('apiReqHistory', JSON.stringify(data.data));
+                    if (typeof renderHistory === 'function') renderHistory();
+                }
+            }).catch(e => console.error('Backend history sync failed', e));
+
+        // Sync Theme
+        fetch('/api/db/kv/pbi-theme')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data !== null) {
+                    localStorage.setItem('pbi-theme', data.data);
+                    if (data.data === 'dark') {
+                        document.documentElement.setAttribute('data-theme', 'dark');
+                    } else {
+                        document.documentElement.removeAttribute('data-theme');
+                    }
+                }
+            }).catch(e => console.error('Backend theme sync failed', e));
     }
-    syncBookmarksFromBackend();
+    syncStateFromBackend();
     function getBookmarks() {
         try {
             const data = localStorage.getItem('pbi-bookmarks');
