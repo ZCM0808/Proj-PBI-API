@@ -1491,7 +1491,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     e.path === cleanBmPath && 
                     e.method.toUpperCase() === (bm.method || '').toUpperCase()
                 );
-                if (found) return { ...found, category: cat.category };
+                if (found) return { ...found, category: cat.category, isPinned: !!bm.isPinned };
             }
             return bm;
         });
@@ -1689,10 +1689,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                     editBtnHtml = `<button class="bm-edit-btn" title="Edit alias & tags">✏️</button>`;
                 }
                 
+                let pinBtnHtml = '';
+                if (category.category === "⭐ 收藏夹 (Bookmarks)") {
+                    const opacity = ep.isPinned ? '1.0' : '0.2';
+                    pinBtnHtml = `<span class="tree-pin-btn" title="Toggle Pin" style="cursor:pointer; opacity:${opacity}; font-size:1.0rem; padding:0; user-select:none;">📌</span>`;
+                }
+                
                 const metaRowClass = metaHtml ? 'bm-meta-row has-content' : 'bm-meta-row empty';
 
                 nameEl.innerHTML = `
                     <div style="display:flex; align-items:center; margin-bottom: 4px; flex-wrap: wrap; gap: 4px;">
+                        ${pinBtnHtml}
                         <strong style="color:var(--text-primary); font-weight: 600; font-size: 0.85rem;">${primaryName}</strong>
                         ${categoryBadgeHtml}
                         ${editBtnHtml}
@@ -1733,6 +1740,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 itemEl.appendChild(insertNoteBtn);
                 itemEl.appendChild(starBtn);
                 
+                // Bind pin button
+                const pinBtn = nameEl.querySelector('.tree-pin-btn');
+                if (pinBtn) {
+                    pinBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        togglePinBookmark(ep, e);
+                    };
+                }
+
                 // Bind edit button
                 const editBtn = nameEl.querySelector('.bm-edit-btn');
                 if (editBtn) {
