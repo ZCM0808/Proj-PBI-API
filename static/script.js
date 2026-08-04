@@ -1692,7 +1692,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let pinBtnHtml = '';
                 if (category.category === "⭐ 收藏夹 (Bookmarks)") {
                     const pinClass = ep.isPinned ? 'pinned' : 'unpinned';
-                    pinBtnHtml = `<span class="tree-pin-btn ${pinClass}" title="Toggle Pin" style="margin-right: 2px;">📌</span>`;
+                    const pinIcon = ep.isPinned ? '📍' : '📌';
+                    pinBtnHtml = `<span class="tree-pin-btn ${pinClass}" title="Toggle Pin" style="margin-right: 2px; font-size: 1.1rem;">${pinIcon}</span>`;
                 }
                 
                 const metaRowClass = metaHtml ? 'bm-meta-row has-content' : 'bm-meta-row empty';
