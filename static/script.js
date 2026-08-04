@@ -1367,7 +1367,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         
         if (index >= 0) {
-            bookmarks[index].isPinned = !bookmarks[index].isPinned;
+            const isNowPinned = !bookmarks[index].isPinned;
+            bookmarks[index].isPinned = isNowPinned;
+            
+            // Move newly pinned item to the very top (index 0)
+            if (isNowPinned) {
+                const pinnedItem = bookmarks.splice(index, 1)[0];
+                bookmarks.unshift(pinnedItem);
+            }
+            
             localStorage.setItem('pbi-bookmarks', JSON.stringify(bookmarks));
             fetch('/api/bookmarks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bookmarks) }).catch(console.error);
             window.lastToggledBookmarkId = ep.method + '_' + ep.path;
