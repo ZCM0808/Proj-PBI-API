@@ -580,7 +580,6 @@ async def download_proxy(request: Request):
 async def get_history():
     import sqlite3
     import json
-    import os
     try:
         conn = sqlite3.connect('data/pbi_app.db')
         c = conn.cursor()
@@ -598,7 +597,6 @@ async def get_history():
 async def sync_history(request: Request):
     import sqlite3
     import json
-    import os
     try:
         data = await request.json()
         conn = sqlite3.connect('data/pbi_app.db')
@@ -629,8 +627,6 @@ async def get_all_kv():
 @app.get("/api/db/kv/{key}")
 async def get_kv(key: str):
     import sqlite3
-    import json
-    import os
     try:
         conn = sqlite3.connect('data/pbi_app.db')
         c = conn.cursor()
@@ -647,8 +643,6 @@ async def get_kv(key: str):
 @app.post("/api/db/kv/{key}")
 async def set_kv(key: str, request: Request):
     import sqlite3
-    import json
-    import os
     try:
         body = await request.json()
         value = body.get('value', '')
