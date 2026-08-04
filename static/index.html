@@ -38,6 +38,30 @@
             }
         })();
     </script>
+
+    <style>
+        .tree-pin-btn {
+            cursor: pointer;
+            padding: 0;
+            user-select: none;
+            transition: all 0.2s ease;
+            display: inline-block;
+        }
+        .tree-pin-btn.unpinned {
+            opacity: 0.2;
+        }
+        .tree-pin-btn.pinned {
+            opacity: 1.0;
+        }
+        .tree-pin-btn.unpinned:hover {
+            opacity: 1.0;
+            transform: scale(1.1);
+        }
+        .tree-pin-btn.pinned:hover {
+            opacity: 1.0;
+            transform: scale(1.1);
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
@@ -1184,7 +1208,7 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
-    <script src="/static/script.js?v=20260804_v194"></script>
+    <script src="/static/script.js?v=20260804_v195"></script>
 
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
