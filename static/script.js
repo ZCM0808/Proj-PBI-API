@@ -1494,7 +1494,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (found) return { ...found, category: cat.category, isPinned: !!bm.isPinned };
             }
             return bm;
-        });
+        }).sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
         
         // 伪造一个书签分类
         const categoryList = [];
@@ -1691,8 +1691,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 let pinBtnHtml = '';
                 if (category.category === "⭐ 收藏夹 (Bookmarks)") {
-                    const opacity = ep.isPinned ? '1.0' : '0.2';
-                    pinBtnHtml = `<span class="tree-pin-btn" title="Toggle Pin" style="cursor:pointer; opacity:${opacity}; font-size:1.0rem; padding:0; user-select:none;">📌</span>`;
+                    const pinClass = ep.isPinned ? 'pinned' : 'unpinned';
+                    pinBtnHtml = `<span class="tree-pin-btn ${pinClass}" title="Toggle Pin" style="margin-right: 2px;">📌</span>`;
                 }
                 
                 const metaRowClass = metaHtml ? 'bm-meta-row has-content' : 'bm-meta-row empty';
