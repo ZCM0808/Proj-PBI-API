@@ -3084,7 +3084,7 @@ const loadReqHistory = (searchTerm = "") => {
                         body: JSON.stringify(payload)
                     });
                     
-                    await showCustomAlert('导入成功！页面即将刷新以应用本地及全局配置。');
+                    // 导入后瞬间刷新页面，不再阻塞等待用户点击
                     window.location.reload();
                 } catch (err) {
                     alert('导入失败：文件格式错误或已损坏。');
