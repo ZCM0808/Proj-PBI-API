@@ -3056,9 +3056,10 @@ const loadReqHistory = (searchTerm = "") => {
         settingsForm.addEventListener('submit', async (e) => {
             e.preventDefault(); // 阻止页面刷新，但允许浏览器捕获 submit 以保存表单历史
             const rect = saveSettingsBtn.getBoundingClientRect();
-            saveSettingsBtn.style.minWidth = rect.width + 'px';
-            saveSettingsBtn.style.minHeight = rect.height + 'px';
+            saveSettingsBtn.style.width = rect.width + 'px';
+            saveSettingsBtn.style.height = rect.height + 'px';
             saveSettingsBtn.style.boxSizing = 'border-box';
+            saveSettingsBtn.style.justifyContent = 'center';
             saveSettingsBtn.disabled = true;
             saveSettingsBtn.textContent = '保存中...';
             
@@ -3103,18 +3104,20 @@ const loadReqHistory = (searchTerm = "") => {
                             settingsModal.style.display = 'none';
                             settingsModal.classList.remove('fade-out');
                             saveSettingsBtn.disabled = false;
-                            saveSettingsBtn.style.minWidth = '';
-                            saveSettingsBtn.style.minHeight = '';
+                            saveSettingsBtn.style.width = '';
+                            saveSettingsBtn.style.height = '';
                             saveSettingsBtn.style.boxSizing = '';
+                            saveSettingsBtn.style.justifyContent = '';
                             saveSettingsBtn.textContent = '💾 保存配置 (Save & Apply)';
                         }, 250);
                     }, 800);
                 } else {
                     alert('保存失败: ' + result.message);
                     saveSettingsBtn.disabled = false;
-                    saveSettingsBtn.style.minWidth = '';
-                    saveSettingsBtn.style.minHeight = '';
+                    saveSettingsBtn.style.width = '';
+                    saveSettingsBtn.style.height = '';
                     saveSettingsBtn.style.boxSizing = '';
+                    saveSettingsBtn.style.justifyContent = '';
                     saveSettingsBtn.textContent = '💾 保存配置 (Save & Apply)';
                 }
             } catch (err) {
