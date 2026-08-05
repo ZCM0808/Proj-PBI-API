@@ -186,3 +186,18 @@ python src/main.py
 - ✅ **成功细节 4：弃用视觉对象筛选器，采用纯血 DAX 截断**。由于视觉对象筛选器稳定性差，最终放弃它，转而直接编写了一个强封装的新度量值 Rolling Total Leads。其逻辑为：如果当前上下文日期在动态窗口内则返回 [Total Leads]，否则返回 BLANK()。利用 Power BI 默认不绘制 BLANK() 的特性，干净利落地完成了 X 轴的自动裁剪。
 - ✅ **成功细节 5：解决恒定数值（直线）缺乏业务波动的问题**。发现度量值在时间轴上是一条直线，原因是 Dim_Leads 没有日期标识且与日历表处于断开状态。随后利用 Python 反向给源数据 leads.csv 注入了带有真实季节波动的 created_date，并在 Dim_Leads.tmdl 中扩充了 Power Query M 解析引擎列，最后在 
 elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，实现了完美的数据起伏趋势。
+
+
+## 11. 中国式报表 (多层级矩阵) 开发避坑指南与经验总结 (PBIP & TMDL)
+在构建“按年份对比”与“按不同业务状态汇总”揉入同一个矩阵列中，并支持自定义“小计”的复杂不对称多级表头时，经历了以下坑点：
+
+- ❌ **失败细节 1：TREATAS 严格编译期类型检查**。使用 TREATAS 将文本类型的 MatrixHeaders[L1] 映射给整数类型的 Dim_Date[year] 会在编译期被拦截，导致 DAX 语法错误。
+  - ✅ **成功修复**：改用 FILTER(VALUES(Dim_Date[year]), FORMAT(Dim_Date[year], "0") IN VALUES(MatrixHeaders[L1])) 将日历表年份转为文本后进行安全的 IN 比较。
+- ❌ **失败细节 2：VALUE() 转换空字符串引发运行时崩溃 (QueryUserError)**。由于维度表隐式加空行等原因，可能产生空字符串 ""。在总计计算时，执行 VALUE("") 导致计算引擎抛错崩溃。
+  - ✅ **成功修复**：使用安全的 DAX 过滤，或干脆避免使用 VALUE，完全依靠文本进行匹配。
+- ❌ **失败细节 3：TMDL 度量值定义位置导致 Missing_References**。在 .tmdl 脚本中用代码追加度量值时，如果定义在 partition xxx = calculated 之后，编译器会将其无视，前端因找不到字段报错。
+  - ✅ **成功修复**：TMDL 中的所有 measure 必须严格放在 partition 分区声明之前。
+- ❌ **失败细节 4：TMDL 解析器的多行 DAX“缩进地狱”**。如果换行的 DAX 表达式与底下的 ormatString 属性同样缩进了 2 个 Tab，解析器会把配置属性当成 DAX 代码吸入引擎，抛出乱码级报错。
+  - ✅ **成功修复**：必须保证换行的 DAX 代码缩进比属性标签**至少深一层**（即 3 个 Tab）。
+- ❌ **失败细节 5：试图通过代码生成 Matrix (pivotTable) 的 visual.json**。矩阵依赖于封闭加密的 dataTransforms 和 expansionStates 来映射层级，纯手工构造必定因缺少这些节点而触发 InvalidUnconstrainedJoin（笛卡尔积）错误。
+  - ✅ **成功修复**：只用代码构建强健的 TMDL 语义模型，图表布局必须保留给 Power BI UI 拖拽。
