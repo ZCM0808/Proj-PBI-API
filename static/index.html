@@ -34,7 +34,15 @@
                 styleStr += `.body-editor-container { height: ${requestHeight}; flex: none; } `;
             }
             if (styleStr) {
-                document.write('<style>' + styleStr + '</style>');
+                document.write('<style>' + styleStr + '
+        @keyframes fadeOutModal {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0; transform: scale(0.95); }
+        }
+        .modal-overlay.fade-out {
+            animation: fadeOutModal 0.25s forwards ease-in-out;
+        }
+    </style>');
             }
         })();
     </script>
@@ -64,6 +72,14 @@
         .tree-pin-btn.pinned:hover {
             opacity: 1.0;
             transform: scale(1.1);
+        }
+    
+        @keyframes fadeOutModal {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0; transform: scale(0.95); }
+        }
+        .modal-overlay.fade-out {
+            animation: fadeOutModal 0.25s forwards ease-in-out;
         }
     </style>
 </head>
@@ -167,7 +183,15 @@
                     #toggle-info-btn {
                         transition: all 0.2s;
                     }
-                </style>
+                
+        @keyframes fadeOutModal {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0; transform: scale(0.95); }
+        }
+        .modal-overlay.fade-out {
+            animation: fadeOutModal 0.25s forwards ease-in-out;
+        }
+    </style>
                 <div id="selected-api-info" class="selected-api-info glass-panel" style="display: none; padding: 1rem; margin-top: 0.5rem; flex-shrink: 0; background: var(--input-bg); border-radius: 8px; word-break: break-word; overflow-wrap: anywhere;">
                     <div id="info-header-row" class="info-header-row" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.25rem; cursor: pointer; user-select: none;" title="点击最小化/最大化 (Click to toggle)">
                         <div style="font-size: 0.75rem; color: var(--accent);">CURRENT SELECTION</div>
@@ -1212,7 +1236,7 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
-    <script src="/static/script.js?v=20260805_v201"></script>
+    <script src="/static/script.js?v=20260805_v203"></script>
 
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->

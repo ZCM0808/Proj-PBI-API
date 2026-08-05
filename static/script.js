@@ -3055,6 +3055,10 @@ const loadReqHistory = (searchTerm = "") => {
         const settingsForm = document.getElementById('settings-form');
         settingsForm.addEventListener('submit', async (e) => {
             e.preventDefault(); // 阻止页面刷新，但允许浏览器捕获 submit 以保存表单历史
+            const rect = saveSettingsBtn.getBoundingClientRect();
+            saveSettingsBtn.style.minWidth = rect.width + 'px';
+            saveSettingsBtn.style.minHeight = rect.height + 'px';
+            saveSettingsBtn.style.boxSizing = 'border-box';
             saveSettingsBtn.disabled = true;
             saveSettingsBtn.textContent = '保存中...';
             
@@ -3094,18 +3098,29 @@ const loadReqHistory = (searchTerm = "") => {
                     backendSettingsCache = { ...backendSettingsCache, ...payload };
                     saveSettingsBtn.textContent = '✅ 已保存';
                     setTimeout(() => {
-                        settingsModal.style.display = 'none';
-                        saveSettingsBtn.disabled = false;
-                        saveSettingsBtn.textContent = '💾 保存配置 (Save & Apply)';
-                    }, 1000);
+                        settingsModal.classList.add('fade-out');
+                        setTimeout(() => {
+                            settingsModal.style.display = 'none';
+                            settingsModal.classList.remove('fade-out');
+                            saveSettingsBtn.disabled = false;
+                            saveSettingsBtn.style.minWidth = '';
+                            saveSettingsBtn.style.minHeight = '';
+                            saveSettingsBtn.style.boxSizing = '';
+                            saveSettingsBtn.textContent = '💾 保存配置 (Save & Apply)';
+                        }, 250);
+                    }, 800);
                 } else {
                     alert('保存失败: ' + result.message);
                     saveSettingsBtn.disabled = false;
+                    saveSettingsBtn.style.minWidth = '';
+                    saveSettingsBtn.style.minHeight = '';
+                    saveSettingsBtn.style.boxSizing = '';
                     saveSettingsBtn.textContent = '💾 保存配置 (Save & Apply)';
                 }
             } catch (err) {
                 alert('网络错误: ' + err);
                 saveSettingsBtn.disabled = false;
+                saveSettingsBtn.style.width = '';
                 saveSettingsBtn.textContent = '💾 保存配置 (Save & Apply)';
             }
         });
