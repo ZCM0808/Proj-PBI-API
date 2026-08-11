@@ -2695,26 +2695,28 @@ const loadReqHistory = (searchTerm = "") => {
 
         dragHandle.addEventListener('mousedown', (e) => {
             if (window.innerWidth <= 768) return; // Prevent drag on mobile
+            if (['INPUT', 'BUTTON', 'TEXTAREA'].includes(e.target.tagName) || e.target.closest('button')) return;
+
             isDragging = true;
             dragHandle.style.cursor = 'grabbing';
             startMouseX = e.clientX;
             startMouseY = e.clientY;
 
-            // 1. Disable parent overlay Flex centering so layout Reflow never recalculates center lines
+            // 1. Capture absolute physics viewport rect BEFORE changing any layout
+            const rect = modalContent.getBoundingClientRect();
+            initialPageTop = rect.top;
+            initialPageLeft = rect.left;
+
+            // 2. Disable parent overlay Flex centering so layout Reflow never recalculates center lines
             const parent = modalContent.parentElement;
             if (parent) {
                 parent.style.alignItems = 'flex-start';
                 parent.style.justifyContent = 'flex-start';
             }
 
-            // 2. Kill CSS keyframe animation and transitions to prevent drag lag
+            // 3. Kill CSS keyframe animation and transitions to prevent drag lag
             modalContent.style.animation = 'none';
             modalContent.style.setProperty('transition', 'none', 'important');
-
-            // 3. Capture absolute physics viewport rect
-            const rect = modalContent.getBoundingClientRect();
-            initialPageTop = rect.top;
-            initialPageLeft = rect.left;
 
             // 4. Lock coordinates
             modalContent.style.position = 'fixed';
