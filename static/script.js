@@ -2689,9 +2689,16 @@ const loadReqHistory = (searchTerm = "") => {
     function makeDraggable(modalContent, dragHandle) {
         let isDragging = false;
         let startMouseX, startMouseY;
-        let initialPageTop = 0, initialPageLeft = 0;
+        let currentTranslateX = 0, currentTranslateY = 0;
+        let initialTranslateX = 0, initialTranslateY = 0;
 
         dragHandle.style.cursor = 'grab';
+
+        // Read previous translation state to avoid jumping on subsequent drags
+        const dt = modalContent.getAttribute('data-translate-y');
+        const dl = modalContent.getAttribute('data-translate-x');
+        if (dt) currentTranslateY = parseFloat(dt);
+        if (dl) currentTranslateX = parseFloat(dl);
 
         dragHandle.addEventListener('mousedown', (e) => {
             if (window.innerWidth <= 768) return; // Prevent drag on mobile
@@ -2701,31 +2708,13 @@ const loadReqHistory = (searchTerm = "") => {
             dragHandle.style.cursor = 'grabbing';
             startMouseX = e.clientX;
             startMouseY = e.clientY;
+            initialTranslateX = currentTranslateX;
+            initialTranslateY = currentTranslateY;
 
-            // 1. Capture absolute physics viewport rect BEFORE changing any layout
-            const rect = modalContent.getBoundingClientRect();
-            initialPageTop = rect.top;
-            initialPageLeft = rect.left;
-
-            // 2. Disable parent overlay Flex centering so layout Reflow never recalculates center lines
-            const parent = modalContent.parentElement;
-            if (parent) {
-                parent.style.alignItems = 'flex-start';
-                parent.style.justifyContent = 'flex-start';
-            }
-
-            // 3. Kill CSS keyframe animation and transitions to prevent drag lag
+            // Kill CSS keyframe animation and transitions to prevent drag lag
             modalContent.style.animation = 'none';
             modalContent.style.setProperty('transition', 'none', 'important');
-
-            // 4. Lock coordinates
-            modalContent.style.position = 'fixed';
-            modalContent.style.top = `${initialPageTop}px`;
-            modalContent.style.left = `${initialPageLeft}px`;
-            modalContent.style.margin = '0';
-            modalContent.style.transform = 'none';
-            modalContent.setAttribute('data-drag-top', `${initialPageTop}px`);
-            modalContent.setAttribute('data-drag-left', `${initialPageLeft}px`);
+            modalContent.style.willChange = 'transform'; // hardware acceleration
 
             document.body.style.userSelect = 'none';
         });
@@ -2735,13 +2724,11 @@ const loadReqHistory = (searchTerm = "") => {
             const dx = e.clientX - startMouseX;
             const dy = e.clientY - startMouseY;
 
-            let newTop = initialPageTop + dy;
-            let newLeft = initialPageLeft + dx;
+            currentTranslateX = initialTranslateX + dx;
+            currentTranslateY = initialTranslateY + dy;
 
-            modalContent.style.top = `${newTop}px`;
-            modalContent.style.left = `${newLeft}px`;
-            modalContent.setAttribute('data-drag-top', `${newTop}px`);
-            modalContent.setAttribute('data-drag-left', `${newLeft}px`);
+            // Use GPU-accelerated translate3d instead of top/left to completely eliminate reflow/repaint lag
+            modalContent.style.transform = 	ranslate3d( + currentTranslateX + px,  + currentTranslateY + px, 0);
         });
 
         document.addEventListener('mouseup', () => {
@@ -2749,10 +2736,12 @@ const loadReqHistory = (searchTerm = "") => {
                 isDragging = false;
                 dragHandle.style.cursor = 'grab';
                 document.body.style.userSelect = '';
+                modalContent.style.willChange = 'auto';
+                modalContent.setAttribute('data-translate-y', currentTranslateY);
+                modalContent.setAttribute('data-translate-x', currentTranslateX);
             }
         });
     }
-
     function setupFLIPModal(btnOpen, btnClose, modalOverlay, onLoadCallback = null) {
         if (!btnOpen || !btnClose || !modalOverlay) return;
         const modalContent = modalOverlay.querySelector('.modal-content');
@@ -6857,4 +6846,5 @@ window.openDaxResultModal = function() {
         console.error("Universal modal script not loaded.");
     }
 };
+
 
