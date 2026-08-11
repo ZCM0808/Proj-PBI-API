@@ -199,5 +199,5 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
   - ✅ **成功修复**：TMDL 中的所有 measure 必须严格放在 partition 分区声明之前。
 - ❌ **失败细节 4：TMDL 解析器的多行 DAX“缩进地狱”**。如果换行的 DAX 表达式与底下的 ormatString 属性同样缩进了 2 个 Tab，解析器会把配置属性当成 DAX 代码吸入引擎，抛出乱码级报错。
   - ✅ **成功修复**：必须保证换行的 DAX 代码缩进比属性标签**至少深一层**（即 3 个 Tab）。
-- ❌ **失败细节 5：试图通过代码生成 Matrix (pivotTable) 的 visual.json**。矩阵依赖于封闭加密的 dataTransforms 和 expansionStates 来映射层级，纯手工构造必定因缺少这些节点而触发 InvalidUnconstrainedJoin（笛卡尔积）错误。
-  - ✅ **成功修复**：只用代码构建强健的 TMDL 语义模型，图表布局必须保留给 Power BI UI 拖拽。
+- ❌ **失败细节 5：试图通过代码生成 Matrix (pivotTable) 的 visual.json。** 矩阵依赖于封闭加密的 `dataTransforms` 和 `expansionStates` 来映射层级，纯手工构造必定因缺少这些节点而触发 `InvalidUnconstrainedJoin`（笛卡尔积）错误。
+  - ✅ **成功修复与进阶突破**：虽然矩阵（Matrix/PivotTable）等极其复杂的层级数据钻取图表强依赖于 Power BI Desktop UI 生成数据绑定，但**AI (Antigravity) 已经证明具备直接在 PBIP/PBIR 底层通过 JSON 代码结构生成标准视觉对象（Visuals）的能力**（例如文本框、标准容器、甚至特定配置的基础图表）。对于无复杂数据转换绑定的组件，可以直接要求 AI 跨过 UI 直接构建 `visual.json`，并写入特定的 `visuals/` 目录中。

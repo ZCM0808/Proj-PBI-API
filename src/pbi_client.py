@@ -121,6 +121,18 @@ class PBIClient:
         try:
             response.raise_for_status()
         except requests.exceptions.HTTPError as e:
+            # 自动降级处理：Personal Workspace (My Workspace) 不支持 /groups/{id} 的 API 路径
+            # 遇到 GroupNotAccessible 错误时，剥离 /groups/{id} 前缀并重试
+            if e.response is not None and e.response.status_code in (401, 403, 400):
+                resp_text = e.response.text.lower()
+                if "groupnotaccessible" in resp_text and "personal workspace" in resp_text:
+                    import re
+                    new_endpoint = re.sub(r'^/?groups/[^/]+', '', endpoint)
+                    if new_endpoint != endpoint:
+                        if not new_endpoint.startswith("/"):
+                            new_endpoint = "/" + new_endpoint
+                        return self.request(method, new_endpoint, api_type, raw_response, **kwargs)
+
             error_msg = str(e)
             if e.response is not None and e.response.text:
                 try:
