@@ -2707,8 +2707,9 @@ const loadReqHistory = (searchTerm = "") => {
                 parent.style.justifyContent = 'flex-start';
             }
 
-            // 2. Kill CSS keyframe animation to prevent animation re-evaluation
+            // 2. Kill CSS keyframe animation and transitions to prevent drag lag
             modalContent.style.animation = 'none';
+            modalContent.style.setProperty('transition', 'none', 'important');
 
             // 3. Capture absolute physics viewport rect
             const rect = modalContent.getBoundingClientRect();

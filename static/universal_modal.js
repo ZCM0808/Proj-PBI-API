@@ -13,8 +13,7 @@ window.showUniversalDataModal = function(options) {
     // State
     let selectedCols = new Set(columns);
     let searchText = "";
-    let sortColIndex = -1;
-    let sortAsc = true;
+    let sortState = []; // Array of {index, asc}
 
     // Remove existing if any
     let existing = document.getElementById('universal-modal-overlay');
@@ -198,11 +197,15 @@ window.showUniversalDataModal = function(options) {
 
     // Body
     const body = document.createElement('div');
-    body.style.cssText = 'flex:1;overflow:auto;padding:0;';
+    body.id = 'universal-modal-body';
+    body.style.cssText = 'flex:1;overflow:auto;padding:12px;';
     
+    const tableId = 'uni-modal-table-' + Math.random().toString(36).substr(2, 9);
     const table = document.createElement('table');
+    table.id = tableId;
     table.className = 'data-table';
-    table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left; white-space: pre-wrap; word-break: break-all;';
+    table.setAttribute('data-table-id', tableId);
+    table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 0.82rem; text-align: left;';
     
     const thead = document.createElement('thead');
     thead.style.cssText = 'position: sticky; top: 0; background: var(--bg-color); z-index: 5; box-shadow: 0 1px 0 var(--panel-border);';
@@ -227,19 +230,27 @@ window.showUniversalDataModal = function(options) {
                 });
             });
         }
-        if (sortColIndex >= 0) {
-            const sortKey = columns[sortColIndex];
+        if (sortState.length > 0) {
             filtered = [...filtered].sort((a, b) => {
-                let va = a[sortKey]; let vb = b[sortKey];
-                if (va === null || va === undefined) va = '';
-                if (vb === null || vb === undefined) vb = '';
-                if (typeof va === 'number' && typeof vb === 'number') {
-                    return sortAsc ? va - vb : vb - va;
+                for (let s of sortState) {
+                    const sortKey = columns[s.index];
+                    let va = a[sortKey]; let vb = b[sortKey];
+                    if (va === null || va === undefined) va = '';
+                    if (vb === null || vb === undefined) vb = '';
+                    
+                    let diff = 0;
+                    if (typeof va === 'number' && typeof vb === 'number') {
+                        diff = va - vb;
+                    } else {
+                        const sa = va.toString().toLowerCase();
+                        const sb = vb.toString().toLowerCase();
+                        if (sa < sb) diff = -1;
+                        else if (sa > sb) diff = 1;
+                    }
+                    if (diff !== 0) {
+                        return s.asc ? diff : -diff;
+                    }
                 }
-                const sa = va.toString().toLowerCase();
-                const sb = vb.toString().toLowerCase();
-                if (sa < sb) return sortAsc ? -1 : 1;
-                if (sa > sb) return sortAsc ? 1 : -1;
                 return 0;
             });
         }
@@ -261,22 +272,32 @@ window.showUniversalDataModal = function(options) {
         columns.forEach((col, idx) => {
             if (!selectedCols.has(col)) return;
             const th = document.createElement('th');
-            th.style.cssText = 'padding:8px 12px; border-bottom:1px solid var(--panel-border); font-weight:600; cursor:pointer; user-select:none; resize:horizontal; overflow:hidden; min-width:50px;';
-            th.title = 'Click to sort, Drag right edge to resize';
+            th.style.cssText = 'padding:8px 12px; border-bottom:1px solid var(--panel-border); font-weight:600; cursor:pointer; user-select:none; resize:horizontal; overflow:hidden; min-width:80px; white-space:nowrap;';
+            th.title = 'Click to sort, Shift+Click multi-sort, Drag right edge to resize';
             
             let arrow = '';
-            if (sortColIndex === idx) {
-                arrow = sortAsc ? ' ↑' : ' ↓';
+            const existingSort = sortState.find(s => s.index === idx);
+            if (existingSort) {
+                arrow = existingSort.asc ? ' ↑' : ' ↓';
                 th.style.color = 'var(--accent)';
+                if (sortState.length > 1) {
+                    arrow += ` <span style="font-size:0.65rem;color:var(--text-secondary);">${sortState.indexOf(existingSort) + 1}</span>`;
+                }
             }
             
-            th.textContent = displayNames[idx] + arrow;
-            th.onclick = () => {
-                if (sortColIndex === idx) {
-                    sortAsc = !sortAsc;
+            th.innerHTML = displayNames[idx] + arrow;
+            th.onclick = (e) => {
+                if (e.shiftKey) {
+                    const s = sortState.find(s => s.index === idx);
+                    if (s) s.asc = !s.asc;
+                    else sortState.push({index: idx, asc: true});
                 } else {
-                    sortColIndex = idx;
-                    sortAsc = true;
+                    const s = sortState.find(s => s.index === idx);
+                    if (s && sortState.length === 1) {
+                        s.asc = !s.asc;
+                    } else {
+                        sortState = [{index: idx, asc: true}];
+                    }
                 }
                 renderTable();
             };
@@ -302,7 +323,7 @@ window.showUniversalDataModal = function(options) {
             columns.forEach(col => {
                 if (!selectedCols.has(col)) return;
                 const td = document.createElement('td');
-                td.style.cssText = 'padding: 8px 12px; border-bottom: 1px solid var(--panel-border);';
+                td.style.cssText = 'padding: 6px 12px; color: var(--text-primary); border-bottom: 1px solid var(--panel-border); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
                 
                 let val = row[col];
                 if (typeof val === 'boolean') {
@@ -310,8 +331,11 @@ window.showUniversalDataModal = function(options) {
                 } else if (val === null || val === undefined) {
                     td.innerHTML = `<span style="color:var(--text-secondary);font-style:italic;">null</span>`;
                 } else if (typeof val === 'object') {
-                    td.textContent = JSON.stringify(val);
+                    const str = JSON.stringify(val);
+                    td.title = str;
+                    td.textContent = str;
                 } else {
+                    td.title = val;
                     td.textContent = val;
                 }
                 tr.appendChild(td);
