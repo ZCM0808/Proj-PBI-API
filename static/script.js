@@ -2694,15 +2694,41 @@ const loadReqHistory = (searchTerm = "") => {
 
         dragHandle.style.cursor = 'grab';
 
-        // Read previous translation state to avoid jumping on subsequent drags
-        const dt = modalContent.getAttribute('data-translate-y');
-        const dl = modalContent.getAttribute('data-translate-x');
-        if (dt) currentTranslateY = parseFloat(dt);
-        if (dl) currentTranslateX = parseFloat(dl);
+        const onMouseMove = (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - startMouseX;
+            const dy = e.clientY - startMouseY;
+
+            currentTranslateX = initialTranslateX + dx;
+            currentTranslateY = initialTranslateY + dy;
+
+            // Use GPU-accelerated translate3d instead of top/left to completely eliminate reflow/repaint lag
+            modalContent.style.transform = 'translate3d(' + currentTranslateX + 'px, ' + currentTranslateY + 'px, 0)';
+        };
+
+        const onMouseUp = () => {
+            if (isDragging) {
+                isDragging = false;
+                dragHandle.style.cursor = 'grab';
+                document.body.style.userSelect = '';
+                modalContent.style.willChange = 'auto';
+                modalContent.setAttribute('data-translate-y', currentTranslateY);
+                modalContent.setAttribute('data-translate-x', currentTranslateX);
+
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            }
+        };
 
         dragHandle.addEventListener('mousedown', (e) => {
             if (window.innerWidth <= 768) return; // Prevent drag on mobile
             if (['INPUT', 'BUTTON', 'TEXTAREA'].includes(e.target.tagName) || e.target.closest('button')) return;
+
+            // Read previous translation state to avoid jumping on subsequent drags
+            const dt = modalContent.getAttribute('data-translate-y');
+            const dl = modalContent.getAttribute('data-translate-x');
+            if (dt) currentTranslateY = parseFloat(dt);
+            if (dl) currentTranslateX = parseFloat(dl);
 
             isDragging = true;
             dragHandle.style.cursor = 'grabbing';
@@ -2717,29 +2743,9 @@ const loadReqHistory = (searchTerm = "") => {
             modalContent.style.willChange = 'transform'; // hardware acceleration
 
             document.body.style.userSelect = 'none';
-        });
 
-        document.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            const dx = e.clientX - startMouseX;
-            const dy = e.clientY - startMouseY;
-
-            currentTranslateX = initialTranslateX + dx;
-            currentTranslateY = initialTranslateY + dy;
-
-            // Use GPU-accelerated translate3d instead of top/left to completely eliminate reflow/repaint lag
-            modalContent.style.transform = 'translate3d(' + currentTranslateX + 'px, ' + currentTranslateY + 'px, 0)';
-        });
-
-        document.addEventListener('mouseup', () => {
-            if (isDragging) {
-                isDragging = false;
-                dragHandle.style.cursor = 'grab';
-                document.body.style.userSelect = '';
-                modalContent.style.willChange = 'auto';
-                modalContent.setAttribute('data-translate-y', currentTranslateY);
-                modalContent.setAttribute('data-translate-x', currentTranslateX);
-            }
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
         });
     }
     function setupFLIPModal(btnOpen, btnClose, modalOverlay, onLoadCallback = null) {
