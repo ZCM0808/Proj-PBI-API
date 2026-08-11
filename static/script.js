@@ -5993,19 +5993,8 @@ window.runCheckPermsWorkflow = async function() {
         if (featuresArray && Array.isArray(featuresArray)) {
             appendLog(`[SUCCESS] Loaded ${featuresArray.length} features. Rendering table row by row...`);
             
-            // Render table skeleton
-            tableDiv.innerHTML = `
-            <table data-table-id="perms" class="data-table" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
-                <thead style="position: sticky; top: 0; background: var(--bg-color); z-index: 5;">
-                    <tr>
-                        <th onclick="window.sortTable(this, event, 0)" style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px;" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Feature Name</th>
-                        <th onclick="window.sortTable(this, event, 1)" style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px;" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">State</th>
-                        <th onclick="window.sortTable(this, event, 2)" style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px;" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Extended State</th>
-                    </tr>
-                </thead>
-                <tbody id="perms-dynamic-tbody"></tbody>
-            </table>`;
-            const tbody = document.getElementById('perms-dynamic-tbody');
+            const tbody = document.getElementById('check-perms-tbody');
+            tbody.innerHTML = '';
             
             // Dynamically append rows
             for(let i=0; i<featuresArray.length; i++) {
@@ -6035,6 +6024,20 @@ window.runCheckPermsWorkflow = async function() {
             appendLog(`[DONE] Table rendering complete.`);
             statusDiv.textContent = `Successfully loaded ${featuresArray.length} features.`;
             statusDiv.style.color = 'var(--success)';
+            
+            // Show modal
+            const modalContent = document.getElementById('check-perms-modal-content');
+            const modalHeader = document.getElementById('check-perms-modal-header');
+            if (window.makeDraggable && !modalContent.hasAttribute('data-drag-init')) {
+                window.makeDraggable(modalContent, modalHeader);
+                modalContent.setAttribute('data-drag-init', 'true');
+            }
+            window.centerModal(modalContent);
+            const modal = document.getElementById('check-perms-modal');
+            modal.style.display = 'flex';
+            void modal.offsetWidth;
+            modal.style.visibility = 'visible';
+            modal.style.opacity = '1';
         } else {
             appendLog(`[WARN] No features array found. Raw response below:
 ` + JSON.stringify(data, null, 2));
@@ -6050,6 +6053,35 @@ window.runCheckPermsWorkflow = async function() {
         btn.disabled = false;
         btn.innerHTML = 'Run Check';
     }
+};
+
+window.filterCheckPermsTable = function() {
+    const input = document.getElementById("check-perms-search");
+    const filter = input.value.toLowerCase();
+    const tbody = document.getElementById("check-perms-tbody");
+    const trs = tbody.getElementsByTagName("tr");
+    for (let i = 0; i < trs.length; i++) {
+        let text = trs[i].textContent || trs[i].innerText;
+        if (text.toLowerCase().indexOf(filter) > -1) {
+            trs[i].style.display = "";
+        } else {
+            trs[i].style.display = "none";
+        }
+    }
+};
+
+window.copyCheckPermsTable = function(btn) {
+    const tbody = document.getElementById('check-perms-tbody');
+    if(!tbody) return;
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const lines = ["Feature Name\tState\tExtended State"];
+    rows.forEach(tr => {
+        if (tr.style.display !== 'none') {
+            const cols = Array.from(tr.querySelectorAll('td')).map(td => td.innerText.trim());
+            lines.push(cols.join('\t'));
+        }
+    });
+    window.handleCopyAction(btn, lines.join('\n'));
 };
 
 // ==================== TABLE SORTING ====================
