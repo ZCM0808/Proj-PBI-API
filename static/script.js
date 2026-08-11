@@ -1,4 +1,4 @@
-
+﻿
 window.expandConsole = function(id) {
     const consoleEl = document.getElementById(id);
     if (!consoleEl) return;
@@ -6295,238 +6295,37 @@ window.openGumResultModal = function() {
         return;
     }
 
-    if (!window._gumSelectedCols) {
-        window._gumSelectedCols = new Set(['Workspace', 'User / Principal', 'Type', 'Role', 'Actions']);
-    }
-
-    let overlay = document.getElementById('gum-result-expand-overlay');
-    if (overlay) {
-        window.renderGumModalTable();
-        overlay.style.display = 'flex';
-        requestAnimationFrame(() => {
-            overlay.style.opacity = '1';
-            overlay.querySelector('.dax-expand-panel').style.transform = 'scale(1)';
-        });
-        return;
-    }
-
-    overlay = document.createElement('div');
-    overlay.id = 'gum-result-expand-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:20000;opacity:0;transition:opacity 0.25s;';
-    
-    const panel = document.createElement('div');
-    panel.className = 'dax-expand-panel';
-    panel.style.cssText = [
-        'position:relative','background:var(--bg-color)','border:1px solid var(--panel-border)',
-        'border-radius:10px','box-shadow:0 24px 80px rgba(0,0,0,0.5)',
-        'width:88vw','height:80vh','min-width:450px','min-height:300px',
-        'display:flex','flex-direction:column','overflow:hidden',
-        'resize:both','transform:scale(0.94)','transition:transform 0.25s'
-    ].join(';');
-
-    const hdr = document.createElement('div');
-    hdr.style.cssText = 'padding:10px 16px;border-bottom:1px solid var(--panel-border);display:flex;align-items:center;justify-content:space-between;background:var(--input-bg-light);flex-shrink:0;';
-    hdr.innerHTML = `
-        <div style="font-weight:bold;font-size:0.9rem;color:var(--accent);display:flex;align-items:center;gap:8px;">
-            <span>🌐 Global Workspace Permissions Table</span>
-            <span id="gum-modal-stats" style="font-size:0.75rem;font-weight:normal;color:var(--text-secondary);">(${data.length} records)</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-            <button type="button" class="wf-copy-btn" style="position:relative;top:auto;right:auto;transform:none;" onclick="window.handleCopyAction(this, document.getElementById('gum-result-expand-body').innerText)" title="Copy Table Text">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-            </button>
-            <button type="button" onclick="window.closeGumResultModal()" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:1.1rem;line-height:1;padding:2px 6px;" title="Close">✕</button>
-        </div>
-    `;
-
-
-
-    // Filter Bar with Column Dropdown
-    const filterBar = document.createElement('div');
-    filterBar.style.cssText = 'padding:6px 16px;background:var(--overlay-5);border-bottom:1px solid var(--overlay-10);display:flex;align-items:center;gap:10px;font-size:0.75rem;flex-shrink:0;position:relative;z-index:20;';
-    
-    const allGumCols = ['Workspace', 'User / Principal', 'Type', 'Role', 'Actions'];
-    filterBar.innerHTML = `
-        <span style="font-weight:bold;color:var(--text-secondary);">Visible Fields:</span>
-        <div style="position:relative;display:inline-block;">
-            <button type="button" id="gum-col-dropdown-btn" class="wf-input" style="padding:4px 10px;font-size:0.75rem;cursor:pointer;display:flex;align-items:center;gap:6px;background:var(--bg-color);" onclick="window.toggleGumColDropdown(event)">
-                Select Columns (${window._gumSelectedCols.size}/5)
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-            </button>
-            <div id="gum-col-dropdown-list" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--dropdown-bg, #1a1a24);border:1px solid var(--panel-border);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,0.8);max-height:220px;overflow-y:auto;width:200px;padding:6px;z-index:3000;">
-                <div style="display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid var(--overlay-10);margin-bottom:4px;">
-                    <span style="color:var(--accent);cursor:pointer;font-weight:bold;" onclick="window.toggleAllGumCols(true)">Select All</span>
-                    <span style="color:var(--text-secondary);cursor:pointer;" onclick="window.toggleAllGumCols(false)">Deselect All</span>
-                </div>
-                <div id="gum-col-items"></div>
-            </div>
-        </div>
-    `;
-
-    const body = document.createElement('div');
-    body.id = 'gum-result-expand-body';
-    body.style.cssText = 'flex:1;overflow:auto;padding:12px;';
-
-    panel.appendChild(hdr);
-    panel.appendChild(filterBar);
-    panel.appendChild(body);
-    overlay.appendChild(panel);
-    document.body.appendChild(overlay);
-
-    window.renderGumModalTable();
-
-    requestAnimationFrame(() => {
-        overlay.style.opacity = '1';
-        panel.style.transform = 'scale(1)';
-    });
-};
-
-window.toggleGumColDropdown = function(e) {
-    if (e) e.stopPropagation();
-    const drop = document.getElementById('gum-col-dropdown-list');
-    if (!drop) return;
-    const isVis = drop.style.display === 'block';
-    drop.style.display = isVis ? 'none' : 'block';
-    if (!isVis) window.renderGumColItems();
-};
-
-// Global click listener to close dropdowns when clicking outside
-document.addEventListener('click', function(e) {
-    const gumDrop = document.getElementById('gum-col-dropdown-list');
-    const gumBtn = document.getElementById('gum-col-dropdown-btn');
-    if (gumDrop && gumDrop.style.display === 'block') {
-        if (!gumDrop.contains(e.target) && !gumBtn?.contains(e.target)) {
-            gumDrop.style.display = 'none';
-        }
-    }
-    const daxDrop = document.getElementById('dax-col-dropdown-list');
-    const daxBtn = document.getElementById('dax-col-dropdown-btn');
-    if (daxDrop && daxDrop.style.display === 'block') {
-        if (!daxDrop.contains(e.target) && !daxBtn?.contains(e.target)) {
-            daxDrop.style.display = 'none';
-        }
-    }
-});
-
-
-window.renderGumColItems = function() {
-    const container = document.getElementById('gum-col-items');
-    if (!container) return;
-    const allCols = ['Workspace', 'User / Principal', 'Type', 'Role', 'Actions'];
-    let html = '';
-    allCols.forEach(col => {
-        const checked = window._gumSelectedCols.has(col) ? 'checked' : '';
-        html += `
-            <label style="display:flex;align-items:center;gap:6px;padding:3px 6px;cursor:pointer;font-size:0.75rem;color:var(--text-primary);user-select:none;">
-                <input type="checkbox" ${checked} onchange="window.toggleGumCol('${col}', this.checked)" style="cursor:pointer;" />
-                <span>${col}</span>
-            </label>
-        `;
-    });
-    container.innerHTML = html;
-};
-
-window.toggleGumCol = function(colName, isChecked) {
-    if (!window._gumSelectedCols) window._gumSelectedCols = new Set();
-    if (isChecked) {
-        window._gumSelectedCols.add(colName);
-    } else {
-        window._gumSelectedCols.delete(colName);
-    }
-    const btn = document.getElementById('gum-col-dropdown-btn');
-    if (btn) btn.innerHTML = `Select Columns (${window._gumSelectedCols.size}/5) <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>`;
-    window.renderGumModalTable();
-};
-
-window.toggleAllGumCols = function(selectAll) {
-    const allCols = ['Workspace', 'User / Principal', 'Type', 'Role', 'Actions'];
-    if (selectAll) {
-        window._gumSelectedCols = new Set(allCols);
-    } else {
-        window._gumSelectedCols = new Set();
-    }
-    window.renderGumColItems();
-    const btn = document.getElementById('gum-col-dropdown-btn');
-    if (btn) btn.innerHTML = `Select Columns (${window._gumSelectedCols.size}/5) <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>`;
-    window.renderGumModalTable();
-};
-
-window.closeGumResultModal = function() {
-    const overlay = document.getElementById('gum-result-expand-overlay');
-    if (!overlay) return;
-    overlay.style.opacity = '0';
-    const panel = overlay.querySelector('.dax-expand-panel');
-    if (panel) panel.style.transform = 'scale(0.94)';
-    setTimeout(() => { overlay.style.display = 'none'; }, 250);
-};
-
-window.renderGumModalTable = function() {
-    const data = window._lastGumFiltered || window.gumData || [];
-    const body = document.getElementById('gum-result-expand-body');
-    const stats = document.getElementById('gum-modal-stats');
-    if (!body) return;
-
-    if (stats) stats.textContent = `(${data.length} records)`;
-
-    const selectedCols = window._gumSelectedCols || new Set(['Workspace', 'User / Principal', 'Type', 'Role', 'Actions']);
-
-    if (data.length === 0 || selectedCols.size === 0) {
-        body.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-secondary);">No columns selected or no records to display.</div>';
-        return;
-    }
-
-    const tableId = 'gum-result-table-modal';
-    if (!window.tableSortStates) window.tableSortStates = {};
-    window.tableSortStates[tableId] = [];
-
-    const allCols = ['Workspace', 'User / Principal', 'Type', 'Role', 'Actions'];
-    const colIndices = [];
-    allCols.forEach((col, idx) => {
-        if (selectedCols.has(col)) colIndices.push({ name: col, index: idx });
-    });
-
-    let html = `
-    <table id="${tableId}" data-table-id="${tableId}" class="data-table" style="width: 100%; border-collapse: collapse;">
-        <thead style="position: sticky; top: 0; background: var(--bg-color); z-index: 5;">
-            <tr>`;
-
-    colIndices.forEach((cObj, sortIdx) => {
-        if (cObj.name === 'Actions') {
-            html += `<th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid var(--overlay-10); width: 100px;">Actions</th>`;
-        } else {
-            html += `<th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid var(--overlay-10); cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 80px;" onclick="window.sortTable(this, event, ${sortIdx})" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">${cObj.name}</th>`;
-        }
-    });
-
-    html += `</tr></thead><tbody>`;
-
-    for (const d of data) {
-        html += `<tr style="border-bottom: 1px solid var(--overlay-10);" onmouseover="this.style.background='var(--overlay-5)'" onmouseout="this.style.background='transparent'">`;
+    const mappedData = data.map(d => ({
+        'Workspace': d.wsName,
+        'User / Principal': d.identifier,
+        'Type': d.principalType,
+        'Role': d.role,
+        'Actions': '', // placeholder
         
-        colIndices.forEach(cObj => {
-            if (cObj.name === 'Workspace') {
-                html += `<td style="padding: 8px 12px; font-size: 0.85rem; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${d.wsName}">${d.wsName}</td>`;
-            } else if (cObj.name === 'User / Principal') {
-                html += `<td style="padding: 8px 12px; font-size: 0.85rem; word-break: break-all;" title="${d.identifier}">${d.identifier}</td>`;
-            } else if (cObj.name === 'Type') {
-                html += `<td style="padding: 8px 12px; font-size: 0.85rem;"><span style="padding:2px 6px;border-radius:4px;background:var(--overlay-10);font-size:0.75rem;">${d.principalType}</span></td>`;
-            } else if (cObj.name === 'Role') {
-                html += `<td style="padding: 8px 12px; font-size: 0.85rem; font-weight: bold; color: var(--accent);">${d.role}</td>`;
-            } else if (cObj.name === 'Actions') {
-                html += `<td style="padding: 8px 12px; font-size: 0.85rem;">
-                    <button class="btn-action-danger" style="padding: 2px 6px; font-size: 0.7rem;" onclick="if(window.removeGumUser) window.removeGumUser('${d.wsId}', '${d.identifier}')">Remove</button>
-                </td>`;
+        _wsId: d.wsId,
+        _identifier: d.identifier
+    }));
+
+    if (window.showUniversalDataModal) {
+        window.showUniversalDataModal({
+            title: 'Global Workspace Permissions',
+            data: mappedData,
+            columns: ['Workspace', 'User / Principal', 'Type', 'Role', 'Actions'],
+            cellRenderer: (col, val, row) => {
+                if (col === 'Type') {
+                    return '<span style="padding:2px 6px;border-radius:4px;background:var(--overlay-10);font-size:0.75rem;">' + val + '</span>';
+                }
+                if (col === 'Role') {
+                    return '<span style="font-weight:bold;color:var(--accent);">' + val + '</span>';
+                }
+                if (col === 'Actions') {
+                    return '<button class="btn-action-danger" style="padding: 2px 6px; font-size: 0.7rem;" onclick="if(window.removeGumUser) window.removeGumUser(\'' + row._wsId + '\', \'' + row._identifier + '\')">Remove</button>';
+                }
+                return undefined;
             }
         });
-
-        html += `</tr>`;
     }
-
-    html += `</tbody></table>`;
-    body.innerHTML = html;
 };
-
-
 window.editGumUser = function(wsId, wsName, identifier, principalType, currentRole) {
     document.getElementById('gum-edit-ws-id').value = wsId;
     document.getElementById('gum-edit-ws-name').value = wsName;
@@ -7058,3 +6857,4 @@ window.openDaxResultModal = function() {
         console.error("Universal modal script not loaded.");
     }
 };
+

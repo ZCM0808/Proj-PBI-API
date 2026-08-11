@@ -326,6 +326,16 @@ window.showUniversalDataModal = function(options) {
                 td.style.cssText = 'padding: 6px 12px; color: var(--text-primary); border-bottom: 1px solid var(--panel-border); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
                 
                 let val = row[col];
+                
+                if (options.cellRenderer) {
+                    const customHtml = options.cellRenderer(col, val, row);
+                    if (customHtml !== undefined) {
+                        td.innerHTML = customHtml;
+                        tr.appendChild(td);
+                        return;
+                    }
+                }
+                
                 if (typeof val === 'boolean') {
                     td.innerHTML = val ? `<span style="color:var(--success);font-weight:500;">True</span>` : `<span style="color:var(--error);font-weight:500;">False</span>`;
                 } else if (val === null || val === undefined) {
