@@ -1,4 +1,4 @@
-# Proj-PBI-API 项目上下文与架构记忆库 (Project Memory)
+﻿# Proj-PBI-API 项目上下文与架构记忆库 (Project Memory)
 
 > **文档用途**：本文档旨在为 AI Agent（Antigravity）提供一个持久化、全局性的项目状态与规则上下文字典。每次接手新任务时，请快速扫视本文档以保证上下文不丢失，避免重复踩坑或引入破坏现有逻辑的 Bug。
 
@@ -128,6 +128,10 @@ python src/main.py
   - **前端体验**：实现了与 `Export Report to File` 完全一致的 **Step 1 / Step 2 UI 分步日志流**（极客风 Console 输出），完美支持了独立步骤触发和 `Run Full Workflow` 自动串联执行逻辑。
   - **稳定性修复**：排除了因按钮 ID 查找失败导致的隐藏 TypeError 从而引发的“死锁（永久 Loading）”问题，重写了纯净的 JS 代码规避了多行字符串插值的换行符注入错误。
 
+- **通用数据弹窗引擎与 GPU 性能极致优化 (Universal Modal Engine & GPU Acceleration)**：
+  - **大一统重构 (Universal Modal)**：彻底清剿了 Global Workspace Permissions 和 Admin Report View Count 等各个工作流散落在外的独立、硬编码表格弹窗（裁掉了大几百行冗余代码）。所有具备表格输出的工作流现已全部收编入 showUniversalDataModal 统一管理，并且增加了 cellRenderer 以支持自定义 HTML 操作按钮。未来任何新工作流都将“免费”获得：列隐藏、全局关键字筛选、Shift 多列联合排序、复制为 TSV。
+  - **彻底消灭拖拽卡顿 (GPU 硬件加速)**：用户曾反馈拖拽千行表格时有严重的滞后感。经查明是因为通过频繁修改 	op 和 left 触发了极度昂贵的 Layout Reflow。现已重构 window.makeDraggable，强制利用 	ransform: translate3d(x, y, 0) 并在鼠标按下时利用 will-change: transform 锁定层，将拖拽操作100%卸载至 GPU 合成层，彻底消除了 Layout 和 Repaint 的 CPU 开销，实现了 60FPS 如黄油般顺滑的拖拽手感。
+  - **避坑笔记 (PowerShell 转义灾难)**：在使用 PowerShell 脚本跨文件替换字符串常量时，由于使用了双引号包围和反引号（`  `），导致 JS 代码中的 ` 	 ` 意外地被转义为制表符，进而造成整个页面逻辑瘫痪。警示：跨语言替换时必须绝对谨慎字符串拼接与转义符。
 - **全局弹窗拖拽体验 (Draggable Popups)**：所有的浮层弹窗 (Modal/Popup) 必须支持通过头部自由拖拽移动位置，避免遮挡底部重要内容，并且在关闭后再次打开时必须自动重置回居中位置。
 
 - **同质功能外观一致性 (Consistent Button Appearance)**：如果不同按钮具有相同或类似的功能（例如“关闭”弹窗、“保存”等），它们必须在整个项目中保持完全相同的外观设计（如相同的 HTML/SVG 结构、统一 of CSS 类名、悬停反馈及过渡动画等），绝对禁止在不同组件中出现多种不同的样式变体。
@@ -201,3 +205,4 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
   - ✅ **成功修复**：必须保证换行的 DAX 代码缩进比属性标签**至少深一层**（即 3 个 Tab）。
 - ❌ **失败细节 5：试图通过代码生成 Matrix (pivotTable) 的 visual.json。** 矩阵依赖于封闭加密的 `dataTransforms` 和 `expansionStates` 来映射层级，纯手工构造必定因缺少这些节点而触发 `InvalidUnconstrainedJoin`（笛卡尔积）错误。
   - ✅ **成功修复与进阶突破**：虽然矩阵（Matrix/PivotTable）等极其复杂的层级数据钻取图表强依赖于 Power BI Desktop UI 生成数据绑定，但**AI (Antigravity) 已经证明具备直接在 PBIP/PBIR 底层通过 JSON 代码结构生成标准视觉对象（Visuals）的能力**（例如文本框、标准容器、甚至特定配置的基础图表）。对于无复杂数据转换绑定的组件，可以直接要求 AI 跨过 UI 直接构建 `visual.json`，并写入特定的 `visuals/` 目录中。
+
