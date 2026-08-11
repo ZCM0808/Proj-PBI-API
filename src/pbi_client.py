@@ -125,7 +125,7 @@ class PBIClient:
             # 遇到 GroupNotAccessible 错误时，剥离 /groups/{id} 前缀并重试
             if e.response is not None and e.response.status_code in (401, 403, 400):
                 resp_text = e.response.text.lower()
-                if "groupnotaccessible" in resp_text and "personal workspace" in resp_text:
+                if ("groupnotaccessible" in resp_text and "personal workspace" in resp_text) or "powerbinotauthorizedexception" in resp_text:
                     import re
                     new_endpoint = re.sub(r'^/?groups/[^/]+', '', endpoint)
                     if new_endpoint != endpoint:
