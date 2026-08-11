@@ -1,4 +1,4 @@
-﻿
+
 window.expandConsole = function(id) {
     const consoleEl = document.getElementById(id);
     if (!consoleEl) return;
@@ -2728,7 +2728,7 @@ const loadReqHistory = (searchTerm = "") => {
             currentTranslateY = initialTranslateY + dy;
 
             // Use GPU-accelerated translate3d instead of top/left to completely eliminate reflow/repaint lag
-            modalContent.style.transform = 	ranslate3d( + currentTranslateX + px,  + currentTranslateY + px, 0);
+            modalContent.style.transform = 'translate3d(' + currentTranslateX + 'px, ' + currentTranslateY + 'px, 0)';
         });
 
         document.addEventListener('mouseup', () => {
