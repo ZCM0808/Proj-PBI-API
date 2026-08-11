@@ -131,10 +131,18 @@ class PBIClient:
                     if new_endpoint != endpoint:
                         if not new_endpoint.startswith("/"):
                             new_endpoint = "/" + new_endpoint
-                        res = self.request(method, new_endpoint, api_type, raw_response, **kwargs)
-                        if not raw_response and isinstance(res, dict):
-                            res["_fallback_applied"] = True
-                        return res
+                        try:
+                            res = self.request(method, new_endpoint, api_type, raw_response, **kwargs)
+                            if not raw_response and isinstance(res, dict):
+                                res["_fallback_applied"] = True
+                            return res
+                        except Exception as fallback_e:
+                            fallback_err_str = str(fallback_e)
+                            # 如果是因为 Service Principal 访问个人工作区被拦截，抛出友好的双重提示
+                            if "is not accessible for application" in fallback_err_str:
+                                raise Exception(f"Original Auth Error: {e.response.text}\n[Service Principal Blocked] 尝试降级为 Personal Workspace 路由失败，因为 Service Principal (App) 永远无法访问个人工作区。请在设置中切换为 Personal Auth 模式，或者使用标准的 App 工作区。")
+                            # 否则，可能是真正没有权限访问的普通工作区，静默忽略降级错误，抛出原始错误
+                            pass
 
             error_msg = str(e)
             if e.response is not None and e.response.text:
