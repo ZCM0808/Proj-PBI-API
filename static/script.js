@@ -1,4 +1,4 @@
-﻿
+
 window.expandConsole = function(id) {
     const consoleEl = document.getElementById(id);
     if (!consoleEl) return;
@@ -5692,7 +5692,7 @@ window.runRvcWorkflow = async function() {
                 const d = new Date(timeStr);
                 d.setUTCHours(d.getUTCHours() + 8); // Shift to UTC+8
                 const pad = n => n.toString().padStart(2, '0');
-                timeStr = ${d.getUTCFullYear()}-- ::;
+                timeStr = `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
             }
             
             return {
@@ -5707,20 +5707,141 @@ window.runRvcWorkflow = async function() {
 
         if (window.showUniversalDataModal) {
             window.showUniversalDataModal({
-                title: 'Report View Details (' + dateIso + ')',
+                title: `Report View Details (${dateIso})`,
                 data: mappedData,
                 columns: ['Time (UTC+8)', 'User ID', 'Report Name', 'Access Route', 'Client IP', 'Status'],
                 cellRenderer: (col, val) => {
                     if (col === 'Status') {
                         return val === 'Success' 
-                            ? '<span style="color: var(--success); font-weight: 500;">Success</span>' 
-                            : '<span style="color: var(--error); font-weight: 500;">Failed</span>';
+                            ? `<span style="color: var(--success); font-weight: 500;">Success</span>` 
+                            : `<span style="color: var(--error); font-weight: 500;">Failed</span>`;
                     }
                     return undefined;
                 }
             });
         }
     };
+
+    
+
+window.toggleRvcLogs = function() {
+        const logsDiv = document.getElementById('wf-out-rvc-logs');
+        const chevron = document.getElementById('wf-rvc-logs-chevron');
+        const copyBtn = document.getElementById('wf-rvc-logs-copybtn');
+        if(logsDiv.style.maxHeight === '0px') {
+            logsDiv.style.maxHeight = '250px';
+            logsDiv.style.padding = '12px 32px 20px 12px'; // Restoring padding (20px bottom as defined in inline style)
+            logsDiv.style.borderWidth = '1px';
+            logsDiv.style.opacity = '1';
+            chevron.style.transform = 'rotate(90deg)';
+            copyBtn.style.display = 'block';
+        } else {
+            logsDiv.style.maxHeight = '0px';
+            logsDiv.style.padding = '0px';
+            logsDiv.style.borderWidth = '0px';
+            logsDiv.style.opacity = '0';
+            chevron.style.transform = 'rotate(0deg)';
+            copyBtn.style.display = 'none';
+        }
+    };
+
+    const btn = document.getElementById('btn-run-rvc');
+    btn.disabled = true;
+    btn.innerHTML = 'Running...';
+    
+    try {
+        let currentDate = new Date(dStart);
+        while(currentDate <= dEnd) {
+            const dateIso = currentDate.toISOString().split('T')[0];
+            appendLog(`[FETCH] Requesting events for ${dateIso}...`);
+            
+            const startDateTime = `'${dateIso}T00:00:00Z'`;
+            const endDateTime = `'${dateIso}T23:59:59Z'`;
+            let url = `/admin/activityevents?startDateTime=${startDateTime}&endDateTime=${endDateTime}`;
+            
+            let continuationUri = url;
+            let pageCount = 1;
+            while(continuationUri) {
+                let endpoint = continuationUri;
+                if(endpoint.startsWith('http')) {
+                    try {
+                        const u = new URL(endpoint);
+                        endpoint = u.pathname + u.search;
+                        if(endpoint.startsWith('/v1.0/myorg')) {
+                            endpoint = endpoint.substring('/v1.0/myorg'.length);
+                        }
+                    } catch(e) {
+                        console.error('Invalid continuationUri:', endpoint);
+                    }
+                }
+                const res = await fetch('/api/proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint: endpoint, method: 'GET' })
+                });
+                
+                if(!res.ok) {
+                    appendLog(`[ERROR] ${res.status} ${res.statusText}`);
+                    statusDiv.textContent = `Error: ${res.status} ${res.statusText}`;
+                    statusDiv.style.color = 'var(--error)';
+                    btn.disabled = false;
+                    btn.innerHTML = 'Run Analysis';
+                    return;
+                }
+                
+                const resData = await res.json();
+                if (resData.success === false) {
+                    appendLog(`[ERROR] Proxy Error: ${resData.error || resData.message}`);
+                    statusDiv.textContent = `Error: ${resData.error || resData.message}`;
+                    statusDiv.style.color = 'var(--error)';
+                    btn.disabled = false;
+                    btn.innerHTML = 'Run Analysis';
+                    return;
+                }
+                const payload = resData.data || resData;
+                const events = payload.activityEventEntities || [];
+                
+                let foundToday = 0;
+                for(const e of events) {
+                    const activity = (e.Activity || '').toLowerCase();
+                    const rId = (e.ReportId || e.ItemIdentifier || '').toLowerCase();
+                    const targetId = reportId.toLowerCase();
+                    
+                    if(activity === "viewreport" && rId === targetId) {
+                        foundToday++;
+                        totalViews++;
+                        if(!window._rvcDateStats[dateIso]) window._rvcDateStats[dateIso] = [];
+                        window._rvcDateStats[dateIso].push(e);
+                    }
+                }
+                appendLog(`  -> Page ${pageCount}: Scanned ${events.length} events, found ${foundToday} target report views.`);
+                continuationUri = payload.continuationUri || null;
+                pageCount++;
+                
+                // Dynamically update the table as data flows in!
+                if (foundToday > 0 || window._rvcDateStats[dateIso] !== undefined) {
+                    renderTableRows();
+                    
+                }
+            }
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        appendLog(`[DONE] Analysis Complete. Total Views: ${totalViews}`);
+        statusDiv.textContent = `Analysis Complete: ${totalViews} total views.`;
+        statusDiv.style.color = 'var(--success)';
+        
+    } catch (e) {
+        appendLog(`[EXCEPTION] ${e.message}`);
+        statusDiv.textContent = `Exception: ${e.message}`;
+        statusDiv.style.color = 'var(--error)';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Run Analysis';
+    }
+};
+
+
 window.handleCopyAction = function(targetEl, text) {
     if(!text) return;
     navigator.clipboard.writeText(text).then(() => {
@@ -6678,6 +6799,5 @@ window.openDaxResultModal = function() {
         console.error("Universal modal script not loaded.");
     }
 };
-
 
 
