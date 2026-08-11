@@ -6021,26 +6021,26 @@ window.runCheckPermsWorkflow = async function() {
                 `;
                 tbody.appendChild(tr);
             }
-            appendLog(`[DONE] Table rendering complete.`);
-            statusDiv.textContent = `Successfully loaded ${featuresArray.length} features.`;
-            statusDiv.style.color = 'var(--success)';
-            
-            // Show modal
-            const modalContent = document.getElementById('check-perms-modal-content');
-            const modalHeader = document.getElementById('check-perms-modal-header');
-            if (window.makeDraggable && !modalContent.hasAttribute('data-drag-init')) {
-                window.makeDraggable(modalContent, modalHeader);
-                modalContent.setAttribute('data-drag-init', 'true');
+            // Show modal using universal component
+            if (window.showUniversalDataModal) {
+                const formattedData = featuresArray.map(f => ({
+                    'Feature Name': f.name || 'Unknown',
+                    'State': f.state || 'N/A',
+                    'Extended State': f.extendedState || 'N/A'
+                }));
+                
+                window.showUniversalDataModal({
+                    title: 'Permissions & Features',
+                    data: formattedData,
+                    columns: ['Feature Name', 'State', 'Extended State'],
+                    enableSearch: true,
+                    enableColumnFilter: true
+                });
+            } else {
+                console.error("Universal modal script not loaded.");
             }
-            window.centerModal(modalContent);
-            const modal = document.getElementById('check-perms-modal');
-            modal.style.display = 'flex';
-            void modal.offsetWidth;
-            modal.style.visibility = 'visible';
-            modal.style.opacity = '1';
         } else {
-            appendLog(`[WARN] No features array found. Raw response below:
-` + JSON.stringify(data, null, 2));
+            appendLog(`[WARN] No features array found. Raw response below:\n` + JSON.stringify(data, null, 2));
             statusDiv.textContent = `Loaded JSON format (No features array found).`;
             statusDiv.style.color = 'var(--warning)';
         }
@@ -6053,35 +6053,6 @@ window.runCheckPermsWorkflow = async function() {
         btn.disabled = false;
         btn.innerHTML = 'Run Check';
     }
-};
-
-window.filterCheckPermsTable = function() {
-    const input = document.getElementById("check-perms-search");
-    const filter = input.value.toLowerCase();
-    const tbody = document.getElementById("check-perms-tbody");
-    const trs = tbody.getElementsByTagName("tr");
-    for (let i = 0; i < trs.length; i++) {
-        let text = trs[i].textContent || trs[i].innerText;
-        if (text.toLowerCase().indexOf(filter) > -1) {
-            trs[i].style.display = "";
-        } else {
-            trs[i].style.display = "none";
-        }
-    }
-};
-
-window.copyCheckPermsTable = function(btn) {
-    const tbody = document.getElementById('check-perms-tbody');
-    if(!tbody) return;
-    const rows = Array.from(tbody.querySelectorAll('tr'));
-    const lines = ["Feature Name\tState\tExtended State"];
-    rows.forEach(tr => {
-        if (tr.style.display !== 'none') {
-            const cols = Array.from(tr.querySelectorAll('td')).map(td => td.innerText.trim());
-            lines.push(cols.join('\t'));
-        }
-    });
-    window.handleCopyAction(btn, lines.join('\n'));
 };
 
 // ==================== TABLE SORTING ====================
@@ -7017,40 +6988,11 @@ window.runLocalModelWorkflow = async function() {
                 return;
             }
 
-            // --- Build standard project table ---
-            const tableId = 'local-dax-result-table';
-            if (!window.tableSortStates) window.tableSortStates = {};
-            window.tableSortStates[tableId] = [];
-
-            let html = `<table data-table-id="${tableId}" class="data-table" style="width:100%;border-collapse:collapse;font-size:0.82rem;">
-                <thead style="position:sticky;top:0;background:var(--bg-color);z-index:5;">
-                    <tr>`;
-            displayNames.forEach((name, idx) => {
-                html += `<th onclick="window.sortTable(this,event,${idx})"
-                    style="padding:8px 12px;border-bottom:1px solid var(--panel-border);font-weight:600;cursor:pointer;user-select:none;resize:horizontal;overflow:hidden;min-width:60px;white-space:nowrap;"
-                    title="Click to sort · Shift+Click multi-sort · Drag right edge to resize">${name}</th>`;
-            });
-            html += `</tr></thead><tbody>`;
-
-            rows.forEach(item => {
-                html += `<tr style="border-bottom:1px solid var(--overlay-10);" onmouseover="this.style.background='var(--overlay-5)'" onmouseout="this.style.background='transparent'">`;
-                columns.forEach(col => {
-                    let val = item ? item[col] : '';
-                    if (val === null || val === undefined) val = '';
-                    if (typeof val === 'object') val = JSON.stringify(val);
-                    const escaped = String(val).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-                    html += `<td style="padding:6px 12px;color:var(--text-primary);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escaped}">${escaped}</td>`;
-                });
-                html += `</tr>`;
-            });
-            html += `</tbody></table>`;
-
             // Save raw tabular data for column selector and modal rendering
             window._lastDaxResult = { rows, columns, displayNames };
 
-            resultDiv.innerHTML = ''; // Keep main panel clean, no direct table rendering
-            statsSpan.textContent = `${rows.length} rows × ${columns.length} cols`;
             resultWrap.style.display = 'block';
+            statsSpan.textContent = `${rows.length} rows × ${columns.length} cols`;
 
             out.textContent = `✅ Query executed — ${rows.length} rows returned. Click "DAX Query Results" above to view table.`;
             out.style.color = 'var(--success)';
@@ -7092,58 +7034,7 @@ window.toggleLocalDaxEditor = function(e) {
     }
 };
 
-
-
-// === Render Table with Column Visibility ===
-window.renderDaxModalTable = function() {
-    const data = window._lastDaxResult;
-    const body = document.getElementById('dax-result-expand-body');
-    if (!data || !body) return;
-
-    const selectedCols = window._daxSelectedCols || new Set(data.columns);
-    const visibleIndices = [];
-    data.columns.forEach((col, idx) => {
-        if (selectedCols.has(col)) visibleIndices.push(idx);
-    });
-
-    if (visibleIndices.length === 0) {
-        body.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-secondary);">No columns selected to display.</div>';
-        return;
-    }
-
-    const tableId = 'local-dax-result-table-modal';
-    if (!window.tableSortStates) window.tableSortStates = {};
-    window.tableSortStates[tableId] = [];
-
-    let html = `<table id="${tableId}" data-table-id="${tableId}" class="data-table" style="width:100%;border-collapse:collapse;font-size:0.82rem;">
-        <thead style="position:sticky;top:0;background:var(--bg-color);z-index:5;">
-            <tr>`;
-    visibleIndices.forEach((colIdx, sortIdx) => {
-        const name = data.displayNames[colIdx];
-        html += `<th onclick="window.sortTable(this,event,${sortIdx})"
-            style="padding:8px 12px;border-bottom:1px solid var(--panel-border);font-weight:600;cursor:pointer;user-select:none;resize:horizontal;overflow:hidden;min-width:60px;white-space:nowrap;"
-            title="Click to sort · Shift+Click multi-sort · Drag right edge to resize">${name}</th>`;
-    });
-    html += `</tr></thead><tbody>`;
-
-    data.rows.forEach(item => {
-        html += `<tr style="border-bottom:1px solid var(--overlay-10);" onmouseover="this.style.background='var(--overlay-5)'" onmouseout="this.style.background='transparent'">`;
-        visibleIndices.forEach(colIdx => {
-            const col = data.columns[colIdx];
-            let val = item ? item[col] : '';
-            if (val === null || val === undefined) val = '';
-            if (typeof val === 'object') val = JSON.stringify(val);
-            const escaped = String(val).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-            html += `<td style="padding:6px 12px;color:var(--text-primary);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escaped}">${escaped}</td>`;
-        });
-        html += `</tr>`;
-    });
-    html += `</tbody></table>`;
-
-    body.innerHTML = html;
-};
-
-// === DAX Query Results: Open resizable popup modal with Dropdown Column Selector ===
+// === DAX Query Results: Open resizable popup modal via Universal Modal ===
 window.openDaxResultModal = function() {
     const data = window._lastDaxResult;
     if (!data || !data.rows || data.rows.length === 0) {
@@ -7151,153 +7042,16 @@ window.openDaxResultModal = function() {
         return;
     }
 
-    if (!window._daxSelectedCols) {
-        window._daxSelectedCols = new Set(data.columns);
-    }
-
-    let overlay = document.getElementById('dax-result-expand-overlay');
-    if (overlay) {
-        window.renderDaxModalTable();
-        overlay.style.display = 'flex';
-        requestAnimationFrame(() => {
-            overlay.style.opacity = '1';
-            overlay.querySelector('.dax-expand-panel').style.transform = 'scale(1)';
+    if (window.showUniversalDataModal) {
+        window.showUniversalDataModal({
+            title: 'DAX Query Results',
+            data: data.rows,
+            columns: data.columns,
+            displayNames: data.displayNames,
+            enableSearch: true,
+            enableColumnFilter: true
         });
-        return;
+    } else {
+        console.error("Universal modal script not loaded.");
     }
-
-    // Create overlay
-    overlay = document.createElement('div');
-    overlay.id = 'dax-result-expand-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:20000;opacity:0;transition:opacity 0.25s;';
-    
-    // Panel
-    const panel = document.createElement('div');
-    panel.className = 'dax-expand-panel';
-    panel.style.cssText = [
-        'position:relative','background:var(--bg-color)','border:1px solid var(--panel-border)',
-        'border-radius:10px','box-shadow:0 24px 80px rgba(0,0,0,0.5)',
-        'width:88vw','height:80vh','min-width:450px','min-height:300px',
-        'display:flex','flex-direction:column','overflow:hidden',
-        'resize:both','transform:scale(0.94)','transition:transform 0.25s'
-    ].join(';');
-
-    // Header
-    const statsText = `${data.rows.length} rows × ${data.columns.length} cols`;
-    const hdr = document.createElement('div');
-    hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--overlay-10);cursor:move;user-select:none;flex-shrink:0;background:var(--bg-color);';
-    hdr.innerHTML = `
-        <span style="font-size:0.85rem;font-weight:bold;color:var(--text-primary);display:flex;align-items:center;gap:8px;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-            DAX Query Results
-            <span id="dax-expand-stats" style="color:var(--accent);font-weight:normal;font-size:0.75rem;">${statsText}</span>
-        </span>
-        <div style="display:flex;align-items:center;gap:8px;">
-            <button class="wf-copy-btn" style="position:relative;top:auto;right:auto;transform:none;"
-                onclick="window.handleCopyAction(this,document.getElementById('dax-result-expand-body').innerText)"
-                title="Copy Table">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-            </button>
-            <button class="close-btn" id="dax-expand-close" title="Close">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-            </button>
-        </div>`;
-
-
-    // Column Filter Dropdown List
-    const filterBar = document.createElement('div');
-    filterBar.style.cssText = 'padding:6px 16px;background:var(--overlay-5);border-bottom:1px solid var(--overlay-10);display:flex;align-items:center;gap:10px;font-size:0.75rem;flex-shrink:0;position:relative;z-index:20;';
-    
-    filterBar.innerHTML = `
-        <span style="font-weight:bold;color:var(--text-secondary);">Visible Fields:</span>
-        <div style="position:relative;display:inline-block;">
-            <button type="button" id="dax-col-dropdown-btn" class="wf-input" style="padding:4px 10px;font-size:0.75rem;cursor:pointer;display:flex;align-items:center;gap:6px;background:var(--bg-color);">
-                Select Columns (${window._daxSelectedCols.size}/${data.columns.length})
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-            </button>
-            <div id="dax-col-dropdown-list" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--dropdown-bg, #1a1a24);border:1px solid var(--panel-border);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,0.8);max-height:220px;overflow-y:auto;width:240px;padding:6px;z-index:3000;">
-                <div style="display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid var(--overlay-10);margin-bottom:4px;">
-                    <span style="color:var(--accent);cursor:pointer;font-weight:bold;" onclick="window.toggleAllDaxCols(true)">Select All</span>
-                    <span style="color:var(--text-secondary);cursor:pointer;" onclick="window.toggleAllDaxCols(false)">Deselect All</span>
-                </div>
-                <div id="dax-col-items"></div>
-            </div>
-        </div>
-    `;
-
-    panel.appendChild(hdr);
-    panel.appendChild(filterBar);
-
-    // Body
-    const body = document.createElement('div');
-    body.id = 'dax-result-expand-body';
-    body.style.cssText = 'flex:1;overflow:auto;padding:12px;white-space:normal;';
-    panel.appendChild(body);
-    overlay.appendChild(panel);
-    document.body.appendChild(overlay);
-
-    // Render Dropdown List Items
-    const renderColItems = () => {
-        const container = document.getElementById('dax-col-items');
-        if (!container) return;
-        let html = '';
-        data.columns.forEach((col, idx) => {
-            const checked = window._daxSelectedCols.has(col) ? 'checked' : '';
-            html += `<label style="display:flex;align-items:center;gap:6px;padding:4px 6px;cursor:pointer;font-size:0.75rem;border-radius:4px;" onmouseover="this.style.background='var(--overlay-5)'" onmouseout="this.style.background='transparent'">
-                <input type="checkbox" ${checked} onchange="window.toggleDaxColumn('${col}', this.checked)" style="cursor:pointer;">
-                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${data.displayNames[idx]}">${data.displayNames[idx]}</span>
-            </label>`;
-        });
-        container.innerHTML = html;
-        document.getElementById('dax-col-dropdown-btn').innerHTML = `Select Columns (${window._daxSelectedCols.size}/${data.columns.length}) <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>`;
-    };
-
-    window.toggleDaxColumn = function(colName, isChecked) {
-        if (isChecked) window._daxSelectedCols.add(colName);
-        else window._daxSelectedCols.delete(colName);
-        renderColItems();
-        window.renderDaxModalTable();
-    };
-
-    window.toggleAllDaxCols = function(selectAll) {
-        if (selectAll) {
-            window._daxSelectedCols = new Set(data.columns);
-        } else {
-            window._daxSelectedCols.clear();
-        }
-        renderColItems();
-        window.renderDaxModalTable();
-    };
-
-    // Toggle Dropdown Menu
-    const dropdownBtn = document.getElementById('dax-col-dropdown-btn');
-    const dropdownList = document.getElementById('dax-col-dropdown-list');
-    dropdownBtn.onclick = (e) => {
-        e.stopPropagation();
-        const isOpen = dropdownList.style.display === 'block';
-        dropdownList.style.display = isOpen ? 'none' : 'block';
-    };
-    document.addEventListener('click', (e) => {
-        if (dropdownList && !filterBar.contains(e.target)) {
-            dropdownList.style.display = 'none';
-        }
-    });
-
-    renderColItems();
-    window.renderDaxModalTable();
-
-    // Animate in
-    requestAnimationFrame(() => {
-        overlay.style.opacity = '1';
-        panel.style.transform = 'scale(1)';
-    });
-
-    // Close
-    const closeModal = () => {
-        overlay.style.opacity = '0';
-        panel.style.transform = 'scale(0.94)';
-        setTimeout(() => { overlay.style.display = 'none'; }, 250);
-    };
-    document.getElementById('dax-expand-close').onclick = closeModal;
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
 };

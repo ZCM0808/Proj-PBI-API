@@ -1,0 +1,330 @@
+/**
+ * Universal Data Modal Component
+ * Dynamically generates a premium data grid modal with search, column selection, sorting, and export.
+ */
+window.showUniversalDataModal = function(options) {
+    const title = options.title || 'Data View';
+    const data = options.data || [];
+    const columns = options.columns || (data.length > 0 ? Object.keys(data[0]) : []);
+    const displayNames = options.displayNames || columns;
+    const enableSearch = options.enableSearch !== false;
+    const enableColumnFilter = options.enableColumnFilter !== false;
+
+    // State
+    let selectedCols = new Set(columns);
+    let searchText = "";
+    let sortColIndex = -1;
+    let sortAsc = true;
+
+    // Remove existing if any
+    let existing = document.getElementById('universal-modal-overlay');
+    if (existing) existing.remove();
+
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'universal-modal-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:20000;opacity:0;transition:opacity 0.25s;';
+    
+    // Panel
+    const panel = document.createElement('div');
+    panel.className = 'glass-panel';
+    panel.style.cssText = [
+        'position:relative','background:var(--bg-color)','border:1px solid var(--panel-border)',
+        'border-radius:10px','box-shadow:0 24px 80px rgba(0,0,0,0.5)',
+        'width:90vw','height:85vh','max-width:1200px','min-width:450px','min-height:300px',
+        'display:flex','flex-direction:column','overflow:hidden',
+        'resize:both','transform:scale(0.94)','transition:transform 0.25s'
+    ].join(';');
+
+    // Header
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--overlay-10);cursor:move;user-select:none;flex-shrink:0;background:var(--bg-color);';
+    
+    const hdrTitle = document.createElement('span');
+    hdrTitle.style.cssText = 'font-size:1.05rem;font-weight:bold;color:var(--text-primary);display:flex;align-items:center;gap:8px;';
+    hdrTitle.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg> 
+        ${title} <span id="uni-modal-stats" style="color:var(--accent);font-weight:normal;font-size:0.8rem;margin-left:8px;"></span>`;
+
+    const hdrActions = document.createElement('div');
+    hdrActions.style.cssText = 'display:flex;align-items:center;gap:12px;';
+
+    // Search Input
+    let searchInput = null;
+    if (enableSearch) {
+        searchInput = document.createElement('input');
+        searchInput.type = 'text';
+        searchInput.className = 'wf-input';
+        searchInput.placeholder = 'Search globally...';
+        searchInput.style.cssText = 'width:200px;padding:4px 8px;min-height:unset;font-size:0.8rem;';
+        searchInput.onkeyup = (e) => {
+            searchText = e.target.value.toLowerCase();
+            renderTable();
+        };
+        hdrActions.appendChild(searchInput);
+    }
+
+    // Copy Button
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'icon-btn copy-btn';
+    copyBtn.title = 'Copy Visible Data';
+    copyBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+    copyBtn.onclick = () => {
+        const visibleData = getFilteredData();
+        if (visibleData.length === 0) {
+            window.showNotification('No data to copy', 'warning');
+            return;
+        }
+        const visibleCols = columns.filter(c => selectedCols.has(c));
+        const headerRow = visibleCols.map(c => displayNames[columns.indexOf(c)]).join('\t');
+        const lines = [headerRow];
+        visibleData.forEach(row => {
+            lines.push(visibleCols.map(c => (row[c] !== null && row[c] !== undefined ? row[c].toString() : '')).join('\t'));
+        });
+        window.handleCopyAction(copyBtn, lines.join('\n'));
+    };
+    hdrActions.appendChild(copyBtn);
+
+    // Close Button
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'close-btn';
+    closeBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>`;
+    closeBtn.onclick = () => {
+        overlay.style.opacity = '0';
+        panel.style.transform = 'scale(0.94)';
+        setTimeout(() => overlay.remove(), 250);
+    };
+    hdrActions.appendChild(closeBtn);
+
+    hdr.appendChild(hdrTitle);
+    hdr.appendChild(hdrActions);
+    panel.appendChild(hdr);
+
+    // Make Draggable
+    if (window.makeDraggable) {
+        window.makeDraggable(panel, hdr);
+    }
+
+    // Filter Bar (Column Selector)
+    let filterBar = null;
+    let colDropdownBtn = null;
+    let renderColItems = null;
+    if (enableColumnFilter && columns.length > 0) {
+        filterBar = document.createElement('div');
+        filterBar.style.cssText = 'padding:6px 16px;background:var(--overlay-5);border-bottom:1px solid var(--overlay-10);display:flex;align-items:center;gap:10px;font-size:0.75rem;flex-shrink:0;position:relative;z-index:20;';
+        
+        const filterLabel = document.createElement('span');
+        filterLabel.style.cssText = 'font-weight:bold;color:var(--text-secondary);';
+        filterLabel.textContent = 'Visible Fields:';
+        filterBar.appendChild(filterLabel);
+
+        const dropdownWrapper = document.createElement('div');
+        dropdownWrapper.style.cssText = 'position:relative;display:inline-block;';
+
+        colDropdownBtn = document.createElement('button');
+        colDropdownBtn.className = 'wf-input';
+        colDropdownBtn.style.cssText = 'padding:4px 10px;font-size:0.75rem;cursor:pointer;display:flex;align-items:center;gap:6px;background:var(--bg-color);';
+        dropdownWrapper.appendChild(colDropdownBtn);
+
+        const dropdownList = document.createElement('div');
+        dropdownList.style.cssText = 'display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--dropdown-bg, #1a1a24);border:1px solid var(--panel-border);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,0.8);max-height:220px;overflow-y:auto;width:240px;padding:6px;z-index:3000;';
+        
+        const dropdownHeader = document.createElement('div');
+        dropdownHeader.style.cssText = 'display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid var(--overlay-10);margin-bottom:4px;';
+        dropdownHeader.innerHTML = `
+            <span style="color:var(--accent);cursor:pointer;font-weight:bold;" id="uni-sel-all">Select All</span>
+            <span style="color:var(--text-secondary);cursor:pointer;" id="uni-dsel-all">Deselect All</span>
+        `;
+        dropdownList.appendChild(dropdownHeader);
+
+        const colItemsContainer = document.createElement('div');
+        dropdownList.appendChild(colItemsContainer);
+        dropdownWrapper.appendChild(dropdownList);
+        filterBar.appendChild(dropdownWrapper);
+        panel.appendChild(filterBar);
+
+        dropdownHeader.querySelector('#uni-sel-all').onclick = () => {
+            selectedCols = new Set(columns);
+            renderColItems();
+            renderTable();
+        };
+        dropdownHeader.querySelector('#uni-dsel-all').onclick = () => {
+            selectedCols.clear();
+            renderColItems();
+            renderTable();
+        };
+
+        colDropdownBtn.onclick = (e) => {
+            e.stopPropagation();
+            dropdownList.style.display = dropdownList.style.display === 'block' ? 'none' : 'block';
+        };
+        document.addEventListener('click', (e) => {
+            if (!dropdownWrapper.contains(e.target)) {
+                dropdownList.style.display = 'none';
+            }
+        });
+
+        renderColItems = () => {
+            colDropdownBtn.innerHTML = `Select Columns (${selectedCols.size}/${columns.length}) <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>`;
+            colItemsContainer.innerHTML = '';
+            columns.forEach((col, idx) => {
+                const lbl = document.createElement('label');
+                lbl.style.cssText = 'display:flex;align-items:center;gap:6px;padding:4px 6px;cursor:pointer;font-size:0.75rem;border-radius:4px;';
+                lbl.onmouseover = () => lbl.style.background = 'var(--overlay-5)';
+                lbl.onmouseout = () => lbl.style.background = 'transparent';
+                
+                const chk = document.createElement('input');
+                chk.type = 'checkbox';
+                chk.checked = selectedCols.has(col);
+                chk.style.cursor = 'pointer';
+                chk.onchange = (e) => {
+                    if (e.target.checked) selectedCols.add(col);
+                    else selectedCols.delete(col);
+                    renderColItems();
+                    renderTable();
+                };
+                
+                const span = document.createElement('span');
+                span.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+                span.title = displayNames[idx];
+                span.textContent = displayNames[idx];
+                
+                lbl.appendChild(chk);
+                lbl.appendChild(span);
+                colItemsContainer.appendChild(lbl);
+            });
+        };
+        renderColItems();
+    }
+
+    // Body
+    const body = document.createElement('div');
+    body.style.cssText = 'flex:1;overflow:auto;padding:0;';
+    
+    const table = document.createElement('table');
+    table.className = 'data-table';
+    table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left; white-space: pre-wrap; word-break: break-all;';
+    
+    const thead = document.createElement('thead');
+    thead.style.cssText = 'position: sticky; top: 0; background: var(--bg-color); z-index: 5; box-shadow: 0 1px 0 var(--panel-border);';
+    
+    const tbody = document.createElement('tbody');
+    table.appendChild(thead);
+    table.appendChild(tbody);
+    body.appendChild(table);
+    panel.appendChild(body);
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+
+    const getFilteredData = () => {
+        let filtered = data;
+        if (searchText) {
+            filtered = data.filter(row => {
+                return columns.some(col => {
+                    if (!selectedCols.has(col)) return false;
+                    const val = row[col];
+                    if (val === null || val === undefined) return false;
+                    return val.toString().toLowerCase().includes(searchText);
+                });
+            });
+        }
+        if (sortColIndex >= 0) {
+            const sortKey = columns[sortColIndex];
+            filtered = [...filtered].sort((a, b) => {
+                let va = a[sortKey]; let vb = b[sortKey];
+                if (va === null || va === undefined) va = '';
+                if (vb === null || vb === undefined) vb = '';
+                if (typeof va === 'number' && typeof vb === 'number') {
+                    return sortAsc ? va - vb : vb - va;
+                }
+                const sa = va.toString().toLowerCase();
+                const sb = vb.toString().toLowerCase();
+                if (sa < sb) return sortAsc ? -1 : 1;
+                if (sa > sb) return sortAsc ? 1 : -1;
+                return 0;
+            });
+        }
+        return filtered;
+    };
+
+    const renderTable = () => {
+        const visibleData = getFilteredData();
+        
+        // Update stats
+        const statsEl = hdrTitle.querySelector('#uni-modal-stats');
+        if (statsEl) {
+            statsEl.textContent = `${visibleData.length} rows / ${selectedCols.size} cols`;
+        }
+
+        // Render Head
+        thead.innerHTML = '';
+        const trHead = document.createElement('tr');
+        columns.forEach((col, idx) => {
+            if (!selectedCols.has(col)) return;
+            const th = document.createElement('th');
+            th.style.cssText = 'padding:8px 12px; border-bottom:1px solid var(--panel-border); font-weight:600; cursor:pointer; user-select:none; resize:horizontal; overflow:hidden; min-width:50px;';
+            th.title = 'Click to sort, Drag right edge to resize';
+            
+            let arrow = '';
+            if (sortColIndex === idx) {
+                arrow = sortAsc ? ' ↑' : ' ↓';
+                th.style.color = 'var(--accent)';
+            }
+            
+            th.textContent = displayNames[idx] + arrow;
+            th.onclick = () => {
+                if (sortColIndex === idx) {
+                    sortAsc = !sortAsc;
+                } else {
+                    sortColIndex = idx;
+                    sortAsc = true;
+                }
+                renderTable();
+            };
+            trHead.appendChild(th);
+        });
+        thead.appendChild(trHead);
+
+        // Render Body
+        tbody.innerHTML = '';
+        if (visibleData.length === 0) {
+            const emptyTr = document.createElement('tr');
+            emptyTr.innerHTML = `<td colspan="${selectedCols.size}" style="padding:16px;text-align:center;color:var(--text-secondary);">No matching records found.</td>`;
+            tbody.appendChild(emptyTr);
+            return;
+        }
+
+        visibleData.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.style.cssText = "transition: background 0.2s;";
+            tr.onmouseover = () => tr.style.background='var(--overlay-10)';
+            tr.onmouseout = () => tr.style.background='transparent';
+            
+            columns.forEach(col => {
+                if (!selectedCols.has(col)) return;
+                const td = document.createElement('td');
+                td.style.cssText = 'padding: 8px 12px; border-bottom: 1px solid var(--panel-border);';
+                
+                let val = row[col];
+                if (typeof val === 'boolean') {
+                    td.innerHTML = val ? `<span style="color:var(--success);font-weight:500;">True</span>` : `<span style="color:var(--error);font-weight:500;">False</span>`;
+                } else if (val === null || val === undefined) {
+                    td.innerHTML = `<span style="color:var(--text-secondary);font-style:italic;">null</span>`;
+                } else if (typeof val === 'object') {
+                    td.textContent = JSON.stringify(val);
+                } else {
+                    td.textContent = val;
+                }
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+    };
+
+    renderTable();
+
+    // Animate in
+    requestAnimationFrame(() => {
+        overlay.style.opacity = '1';
+        panel.style.transform = 'scale(1)';
+    });
+};
