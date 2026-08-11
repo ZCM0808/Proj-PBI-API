@@ -2799,3 +2799,16 @@ div:has(> .collapsed-console) > .wf-copy-btn,
     opacity: 0 !important;
     pointer-events: none !important;
 }
+
+/* Hover Action Buttons */
+.api-item .hover-action-btn {
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    transform: scale(0.9);
+    pointer-events: none;
+}
+.api-item:hover .hover-action-btn {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+}

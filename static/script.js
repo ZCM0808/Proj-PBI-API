@@ -1704,14 +1704,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const bmData = getBookmarkMeta(ep.path, ep.method);
                 const isBookmarked = !!bmData;
                 let metaHtml = '';
-                let editBtnHtml = '';
                 
                 if (isBookmarked) {
                     const alias = bmData.alias || '';
                     const tags = bmData.userTags || [];
                     if (alias) metaHtml += `<span class="bm-alias">${alias}</span>`;
                     tags.forEach(t => metaHtml += `<span class="bm-tag">${t}</span>`);
-                    editBtnHtml = `<button class="bm-edit-btn" title="Edit alias & tags">✏️</button>`;
                 }
                 
                 let pinBtnHtml = '';
@@ -1728,7 +1726,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         ${pinBtnHtml}
                         <strong style="color:var(--text-primary); font-weight: 600; font-size: 0.85rem;">${primaryName}</strong>
                         ${categoryBadgeHtml}
-                        ${editBtnHtml}
                     </div>
                     <div style="font-size:0.7rem; color:var(--text-secondary); margin-bottom: 2px; line-height: 1.3;">
                         <span style="opacity: 0.6; margin-right: 4px; font-weight: bold;">EN:</span>${englishDesc}
@@ -1753,7 +1750,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 starBtn.onclick = (e) => toggleBookmark(ep, e);
 
                 const insertNoteBtn = document.createElement('button');
-                insertNoteBtn.className = 'bookmark-btn';
+                insertNoteBtn.className = 'bookmark-btn hover-action-btn';
                 insertNoteBtn.innerHTML = '📝';
                 insertNoteBtn.title = "Insert API Link to Note";
                 insertNoteBtn.onclick = (e) => {
@@ -1761,9 +1758,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                     insertSpecificApiIntoNote(ep.method, ep.path);
                 };
 
+                let editBtn = null;
+                if (isBookmarked) {
+                    editBtn = document.createElement('button');
+                    editBtn.className = 'bookmark-btn hover-action-btn bm-edit-btn';
+                    editBtn.innerHTML = '✏️';
+                    editBtn.title = "Edit alias & tags";
+                }
+
                 itemEl.appendChild(badge);
                 itemEl.appendChild(nameEl);
                 itemEl.appendChild(insertNoteBtn);
+                if (editBtn) itemEl.appendChild(editBtn);
                 itemEl.appendChild(starBtn);
                 
                 // Bind pin button
@@ -1776,9 +1782,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 // Bind edit button
-                const editBtn = nameEl.querySelector('.bm-edit-btn');
-                if (editBtn) {
-                    editBtn.onclick = (e) => {
+                const editBtnElement = itemEl.querySelector('.bm-edit-btn');
+                if (editBtnElement) {
+                    editBtnElement.onclick = (e) => {
                         e.stopPropagation(); // prevent selecting the item
                         const editorPanel = nameEl.querySelector('.bm-editor-panel');
                         if (editorPanel.style.display === 'flex') {
@@ -2148,6 +2154,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const data = await res.json();
             
             if (data.success) {
+                if (data.data && data.data._fallback_applied && window.showNotification) {
+                    window.showNotification("注意：检测到 Personal Workspace，已自动静默降级为个人路由接口。", "info");
+                }
+                
                 responseStatus.textContent = `Success`;
                 responseStatus.className = 'response-status status-success';
                 // 注入高亮的 JSON 树状视图

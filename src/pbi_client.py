@@ -131,7 +131,10 @@ class PBIClient:
                     if new_endpoint != endpoint:
                         if not new_endpoint.startswith("/"):
                             new_endpoint = "/" + new_endpoint
-                        return self.request(method, new_endpoint, api_type, raw_response, **kwargs)
+                        res = self.request(method, new_endpoint, api_type, raw_response, **kwargs)
+                        if not raw_response and isinstance(res, dict):
+                            res["_fallback_applied"] = True
+                        return res
 
             error_msg = str(e)
             if e.response is not None and e.response.text:
