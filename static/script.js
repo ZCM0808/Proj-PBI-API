@@ -2721,6 +2721,12 @@ const loadReqHistory = (searchTerm = "") => {
                 modalContent.setAttribute('data-translate-y', currentTranslateY);
                 modalContent.setAttribute('data-translate-x', currentTranslateX);
 
+                // Restore expensive CSS effects after dragging
+                modalContent.style.backdropFilter = '';
+                modalContent.style.webkitBackdropFilter = '';
+                modalContent.style.boxShadow = '';
+                modalContent.style.transition = '';
+
                 document.removeEventListener('mousemove', onMouseMove);
                 document.removeEventListener('mouseup', onMouseUp);
             }
@@ -2745,7 +2751,15 @@ const loadReqHistory = (searchTerm = "") => {
 
             // Kill CSS keyframe animation and transitions to prevent drag lag
             modalContent.style.animation = 'none';
+            modalContent.style.transition = 'none'; // Force kill transition
             modalContent.style.setProperty('transition', 'none', 'important');
+            
+            // Turn off massive performance killers during drag!
+            modalContent.style.backdropFilter = 'none';
+            modalContent.style.webkitBackdropFilter = 'none';
+            // Also turn off box-shadow to prevent repaint drops
+            modalContent.style.boxShadow = 'none';
+            
             modalContent.style.willChange = 'transform'; // hardware acceleration
 
             document.body.style.userSelect = 'none';
