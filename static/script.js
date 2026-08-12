@@ -5989,6 +5989,39 @@ window.runCheckPermsWorkflow = async function() {
     }
 };
 
+window.openPermsResultModal = function() {
+    const data = window._lastPermsData || [];
+    if (!data || data.length === 0) {
+        if(window.showNotification) window.showNotification('No permissions data found. Run check first.', 'info');
+        return;
+    }
+    
+    const formattedData = data.map(f => ({
+        'Feature Name': f.name || 'Unknown',
+        'State': f.state || 'N/A',
+        'Extended State': f.extendedState || 'N/A'
+    }));
+    
+    if (window.showUniversalDataModal) {
+        window.showUniversalDataModal({
+            title: 'Permissions & Features',
+            data: formattedData,
+            columns: ['Feature Name', 'State', 'Extended State'],
+            enableSearch: true,
+            enableColumnFilter: true,
+            cellRenderer: (col, val, row) => {
+                if (col === 'State') {
+                    if (val === 'Enabled') return `<span style="color:var(--success);font-weight:500;">Enabled</span>`;
+                    if (val === 'Disabled') return `<span style="color:var(--error);font-weight:500;">Disabled</span>`;
+                }
+                return undefined;
+            }
+        });
+    } else {
+        console.error("Universal modal script not loaded.");
+    }
+};
+
 // ==================== TABLE SORTING ====================
 window.tableSortStates = {};
 
