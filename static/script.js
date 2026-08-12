@@ -2717,11 +2717,11 @@ const loadReqHistory = (searchTerm = "") => {
                 isDragging = false;
                 dragHandle.style.cursor = 'grab';
                 document.body.style.userSelect = '';
-                modalContent.style.willChange = 'auto';
                 modalContent.setAttribute('data-translate-y', currentTranslateY);
                 modalContent.setAttribute('data-translate-x', currentTranslateX);
 
                 // Restore expensive CSS effects after dragging
+                modalContent.style.pointerEvents = '';
                 modalContent.style.backdropFilter = '';
                 modalContent.style.webkitBackdropFilter = '';
                 modalContent.style.boxShadow = '';
@@ -2755,12 +2755,11 @@ const loadReqHistory = (searchTerm = "") => {
             modalContent.style.setProperty('transition', 'none', 'important');
             
             // Turn off massive performance killers during drag!
+            modalContent.style.pointerEvents = 'none'; // Prevent massive hit-testing and :hover recalculations on table cells
             modalContent.style.backdropFilter = 'none';
             modalContent.style.webkitBackdropFilter = 'none';
             // Also turn off box-shadow to prevent repaint drops
             modalContent.style.boxShadow = 'none';
-            
-            modalContent.style.willChange = 'transform'; // hardware acceleration
 
             document.body.style.userSelect = 'none';
 
