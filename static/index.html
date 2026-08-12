@@ -575,12 +575,15 @@
                                         <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-perms-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
                                         <div id="wf-out-perms-logs" class="wf-console collapsed-console" style="min-height: 100px; padding-bottom: 20px;">Ready...</div>
                                     </div>
-                                    
-                                    <!-- Table Section -->
-                                    <div style="position: relative;">
-                                        <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary);">Permissions Table</div>
-                                        <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-perms-table').innerText)" title="Copy Table" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
-                                        <div id="wf-out-perms-table" class="wf-console" style="min-height: 150px; padding: 0 32px 60px 12px; white-space: normal;">Waiting for data...</div>
+                                    <!-- Result header: click to open expand modal -->
+                                    <div id="wf-perms-result-wrap" style="display: none; margin-top: 14px; position: relative;">
+                                        <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
+                                            <button type="button" onclick="window.openPermsResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="Click to expand results in a large resizable panel">
+                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                                                Permissions & Features Table Results
+                                            </button>
+                                            <span id="wf-perms-stats" style="color: var(--accent); font-weight: normal;"></span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1237,7 +1240,7 @@
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
     <script src="/static/universal_modal.js?v=20260812_v4"></script>
-    <script src="/static/script.js?v=20260812_v222"></script>
+    <script src="/static/script.js?v=20260812_v223"></script>
 
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->

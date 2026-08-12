@@ -5961,65 +5961,18 @@ window.runCheckPermsWorkflow = async function() {
         const featuresArray = payload.features;
         
         if (featuresArray && Array.isArray(featuresArray)) {
-            appendLog(`[SUCCESS] Loaded ${featuresArray.length} features. Rendering table row by row...`);
+            appendLog(`[SUCCESS] Loaded ${featuresArray.length} features. Ready for table view.`);
             
-            const tableContainer = document.getElementById('wf-out-perms-table');
+            // Save data globally for the modal
+            window._lastPermsData = featuresArray;
             
-            let html = `
-                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
-                    <thead>
-                        <tr>
-                            <th style="padding: 8px 12px; border-bottom: 2px solid var(--panel-border); font-weight: 600; color: var(--text-secondary);">Feature Name</th>
-                            <th style="padding: 8px 12px; border-bottom: 2px solid var(--panel-border); font-weight: 600; color: var(--text-secondary);">State</th>
-                            <th style="padding: 8px 12px; border-bottom: 2px solid var(--panel-border); font-weight: 600; color: var(--text-secondary);">Extended State</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
+            // Show the result wrapper with the 'Click to expand' button
+            const wrap = document.getElementById('wf-perms-result-wrap');
+            if (wrap) wrap.style.display = 'block';
             
-            // Dynamically append rows
-            for(let i=0; i<featuresArray.length; i++) {
-                const f = featuresArray[i];
-                const name = f.name || 'Unknown';
-                const state = f.state || 'N/A';
-                const extState = f.extendedState || 'N/A';
-                
-                let stateHtml = state;
-                if(state === 'Enabled') {
-                    stateHtml = `<span style="color: var(--success); font-weight: 500;">${state}</span>`;
-                } else if(state === 'Disabled') {
-                    stateHtml = `<span style="color: var(--error); font-weight: 500;">${state}</span>`;
-                }
-                
-                html += `
-                    <tr style="transition: background 0.2s;" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'">
-                        <td style="padding: 8px 12px; color: var(--text-primary); font-family: monospace; border-bottom: 1px solid var(--panel-border);">${name}</td>
-                        <td style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border);">${stateHtml}</td>
-                        <td style="padding: 8px 12px; color: var(--text-secondary); border-bottom: 1px solid var(--panel-border);">${extState}</td>
-                    </tr>
-                `;
-            }
+            const stats = document.getElementById('wf-perms-stats');
+            if (stats) stats.textContent = featuresArray.length + ' Features';
             
-            html += `</tbody></table>`;
-            tableContainer.innerHTML = html;
-            // Show modal using universal component
-            if (window.showUniversalDataModal) {
-                const formattedData = featuresArray.map(f => ({
-                    'Feature Name': f.name || 'Unknown',
-                    'State': f.state || 'N/A',
-                    'Extended State': f.extendedState || 'N/A'
-                }));
-                
-                window.showUniversalDataModal({
-                    title: 'Permissions & Features',
-                    data: formattedData,
-                    columns: ['Feature Name', 'State', 'Extended State'],
-                    enableSearch: true,
-                    enableColumnFilter: true
-                });
-            } else {
-                console.error("Universal modal script not loaded.");
-            }
         } else {
             appendLog(`[WARN] No features array found. Raw response below:\n` + JSON.stringify(data, null, 2));
             statusDiv.textContent = `Loaded JSON format (No features array found).`;
