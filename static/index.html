@@ -34,15 +34,14 @@
                 styleStr += `.body-editor-container { height: ${requestHeight}; flex: none; } `;
             }
             if (styleStr) {
-                document.write('<style>' + styleStr + '
-        @keyframes fadeOutModal {
+                document.write('<style>' + styleStr +         @keyframes fadeOutModal {
             from { opacity: 1; transform: scale(1); }
             to { opacity: 0; transform: scale(0.95); }
         }
         .modal-overlay.fade-out {
             animation: fadeOutModal 0.25s forwards ease-in-out;
         }
-    </style>');
+    </style>\);
             }
         })();
     </script>
@@ -82,15 +81,6 @@
             animation: fadeOutModal 0.25s forwards ease-in-out;
         }
     </style>
-    <script>
-        // Prevent FOUC (Flash of Unstyled Content) by setting sidebar width before rendering
-        (function() {
-            var savedWidth = localStorage.getItem('pbi-sidebar-width');
-            if (savedWidth) {
-                document.documentElement.style.setProperty('--sidebar-width', savedWidth);
-            }
-        })();
-    </script>
 </head>
 <body>
     <div class="app-container">
