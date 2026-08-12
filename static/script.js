@@ -1310,8 +1310,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             .then(data => {
                 if (data.success && data.data !== null) {
                     localStorage.setItem('pbi-theme', data.data);
-                    if (data.data === 'dark') {
-                        document.documentElement.setAttribute('data-theme', 'dark');
+                    if (data.data === 'light') {
+                        document.documentElement.setAttribute('data-theme', 'light');
                     } else {
                         document.documentElement.removeAttribute('data-theme');
                     }
