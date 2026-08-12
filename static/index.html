@@ -531,7 +531,7 @@
                         <div class="wf-step active" id="wf-rvc-step-1">
                             <div class="wf-step-header">
                                 <span class="wf-step-title">Get View Count (Activity Events)</span>
-                                <button class="btn-wf-sm" id="btn-run-rvc" style="margin-left: auto;" onclick="window.runRvcWorkflow()">Run Analysis</button>
+                                <!-- removed redundant Run Analysis -->
                             </div>
                             <div class="wf-step-content" style="display: block; margin-top: 8px;">
                                 <div id="wf-rvc-status" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px;">Ready. Select date range (max 30 days recommended).</div>
@@ -563,7 +563,7 @@
                         <div class="wf-step active">
                             <div class="wf-step-header">
                                 <span class="wf-step-title">Fetch Available Features & Token Info</span>
-                                <button class="btn-wf-sm" id="btn-run-check-perms" style="margin-left: auto;" onclick="window.runCheckPermsWorkflow()">Run Check</button>
+                                <!-- removed redundant Run Check -->
                             </div>
                             <div class="wf-step-content" style="display: block; margin-top: 8px;">
                                 <div id="wf-perms-status" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px;">Ready. Click "Run Check" to fetch /availableFeatures.</div>
@@ -604,7 +604,7 @@
                                         <input type="text" id="wf-gum-search" class="wf-input" placeholder="Search by user email, name or workspace..." onkeyup="if(window.filterGumTable) window.filterGumTable()">
                                     </div>
                                     <div style="padding-bottom: 2px;">
-                                        <button class="btn-action-primary" style="height: 34px; padding: 0 16px;" onclick="if(window.openGumAddUserModal) window.openGumAddUserModal()">+ Add User</button>
+                                        <button class="btn-wf-md btn-wf-secondary" onclick="if(window.openGumAddUserModal) window.openGumAddUserModal()">+ Add User</button>
                                     </div>
                                 </div>
                                 
@@ -620,7 +620,7 @@
                                                      <input type="checkbox" id="gum-admin-mode" class="wf-input" style="width: auto; margin: 0; cursor: pointer;">
                                                      Admin Mode (All Workspaces)
                                                  </label>
-                                                 <button class="btn-wf-sm" id="btn-run-gum" onclick="if(window.runGlobalUserManager) window.runGlobalUserManager()">Run Scan</button>
+                                                 <!-- removed redundant Run Scan -->
                                              </div>
                                          </div>
                                          <div class="input-with-copy" style="position: relative;">
@@ -632,7 +632,7 @@
                                     <!-- Result header: click to open expand modal -->
                                     <div id="wf-gum-result-wrap" style="display: none; margin-top: 14px; position: relative;">
                                         <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
-                                            <button type="button" onclick="window.openGumResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="Click to expand results in a large resizable panel">
+                                            <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="window.openGumResultModal()" title="Click to expand results in a large resizable panel">
                                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
                                                 Global Permissions Table Results
                                             </button>
@@ -893,7 +893,7 @@
             <div class="modal-footer" style="padding: 12px 1.5rem 10px 1.5rem; border-top: 1px solid var(--overlay-10); display: flex; justify-content: flex-end; align-items: center;">
                 <button id="wf-btn-runall" class="btn-wf-lg">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                    Run Full Workflow
+                    ▶ Run Selected Workflow
                 </button>
             </div>
         </div>

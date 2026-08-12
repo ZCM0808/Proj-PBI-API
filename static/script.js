@@ -5172,7 +5172,7 @@ document.addEventListener('mousedown', (e) => {
                 isWorkflowRunning = false;
                 if (!window.skipWfBtnReset) {
                     this.disabled = false;
-                    this.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Run Full Workflow';
+                    this.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Run Selected Workflow';
                 }
                 window.skipWfBtnReset = false;
             }
@@ -6773,7 +6773,7 @@ window.runLocalModelWorkflow = async function() {
     } finally {
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Run Full Workflow';
+            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Run Selected Workflow';
         }
     }
 };
