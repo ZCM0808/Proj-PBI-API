@@ -2812,3 +2812,60 @@ div:has(> .collapsed-console) > .wf-copy-btn,
     transform: scale(1);
     pointer-events: auto;
 }
+
+/* Workflow Standardized Buttons */
+.btn-wf-sm, .btn-wf-md, .btn-wf-lg {
+    background: var(--accent);
+    color: var(--accent-text);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    margin: 0;
+}
+.btn-wf-sm:hover, .btn-wf-md:hover, .btn-wf-lg:hover {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(139, 92, 246, 0.3);
+}
+.btn-wf-sm:active, .btn-wf-md:active, .btn-wf-lg:active {
+    transform: translateY(1px);
+    box-shadow: none;
+}
+.btn-wf-sm:disabled, .btn-wf-md:disabled, .btn-wf-lg:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+.btn-wf-secondary {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--panel-border);
+}
+.btn-wf-secondary:hover:not(:disabled) {
+    background: var(--overlay-10);
+    border-color: var(--accent);
+    color: var(--text-primary);
+}
+/* Sizes */
+.btn-wf-sm {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    height: 26px;
+}
+.btn-wf-md {
+    padding: 6px 14px;
+    font-size: 0.82rem;
+    height: 32px;
+}
+.btn-wf-lg {
+    padding: 8px 18px;
+    font-size: 0.9rem;
+    height: 38px;
+}

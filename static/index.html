@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/powerbi-client/dist/powerbi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260812_v185">
+    <link rel="stylesheet" href="/static/style.css?v=20260812_v186">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -531,7 +531,7 @@
                         <div class="wf-step active" id="wf-rvc-step-1">
                             <div class="wf-step-header">
                                 <span class="wf-step-title">Get View Count (Activity Events)</span>
-                                <button class="btn-action-primary" id="btn-run-rvc" style="margin-left: auto; padding: 4px 12px; font-size: 0.8rem;" onclick="window.runRvcWorkflow()">Run Analysis</button>
+                                <button class="btn-wf-sm" id="btn-run-rvc" style="margin-left: auto;" onclick="window.runRvcWorkflow()">Run Analysis</button>
                             </div>
                             <div class="wf-step-content" style="display: block; margin-top: 8px;">
                                 <div id="wf-rvc-status" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px;">Ready. Select date range (max 30 days recommended).</div>
@@ -563,7 +563,7 @@
                         <div class="wf-step active">
                             <div class="wf-step-header">
                                 <span class="wf-step-title">Fetch Available Features & Token Info</span>
-                                <button class="btn-action-primary" id="btn-run-check-perms" style="margin-left: auto; padding: 4px 12px; font-size: 0.8rem;" onclick="window.runCheckPermsWorkflow()">Run Check</button>
+                                <button class="btn-wf-sm" id="btn-run-check-perms" style="margin-left: auto;" onclick="window.runCheckPermsWorkflow()">Run Check</button>
                             </div>
                             <div class="wf-step-content" style="display: block; margin-top: 8px;">
                                 <div id="wf-perms-status" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px;">Ready. Click "Run Check" to fetch /availableFeatures.</div>
@@ -620,7 +620,7 @@
                                                      <input type="checkbox" id="gum-admin-mode" class="wf-input" style="width: auto; margin: 0; cursor: pointer;">
                                                      Admin Mode (All Workspaces)
                                                  </label>
-                                                 <button class="btn-action-primary" id="btn-run-gum" style="padding: 4px 12px; font-size: 0.75rem; height: 24px;" onclick="if(window.runGlobalUserManager) window.runGlobalUserManager()">Run Scan</button>
+                                                 <button class="btn-wf-sm" id="btn-run-gum" onclick="if(window.runGlobalUserManager) window.runGlobalUserManager()">Run Scan</button>
                                              </div>
                                          </div>
                                          <div class="input-with-copy" style="position: relative;">
@@ -674,7 +674,7 @@
                         <div class="wf-step" id="wf-ds-step-1">
                             <div class="wf-step-header">
                                 <span class="wf-step-title">Step 1: Fetch Available Tables</span>
-                                <button id="wf-ds-btn-step1" class="btn-action-secondary wf-step-btn" onclick="window.loadDatasetTablesStep1(this)">Run Step 1</button>
+                                <button id="wf-ds-btn-step1" class="btn-wf-sm btn-wf-secondary wf-step-btn" onclick="window.loadDatasetTablesStep1(this)">Run Step 1</button>
                             </div>
                             <div style="position: relative;">
                                 <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-ds-step1')"><svg id="wf-out-ds-step1-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs</div>
@@ -706,7 +706,7 @@
                                     </div>
                                 </div>
                                 
-                                <button id="wf-ds-btn-step2" class="btn-action-secondary wf-step-btn" style="white-space: nowrap;" onclick="window.executeDatasetStep2(this)">Run Step 2</button>
+                                <button id="wf-ds-btn-step2" class="btn-wf-sm btn-wf-secondary wf-step-btn" style="white-space: nowrap;" onclick="window.executeDatasetStep2(this)">Run Step 2</button>
                             </div>
                             
                             <div style="position: relative;">
@@ -780,7 +780,7 @@
                     <div class="wf-step" id="wf-step-1">
                         <div class="wf-step-header">
                             <span class="wf-step-title">Step 1: Trigger Export (POST)</span>
-                            <button id="wf-btn-step1" class="btn-action-secondary wf-step-btn">Run Step 1</button>
+                            <button id="wf-btn-step1" class="btn-wf-sm btn-wf-secondary wf-step-btn">Run Step 1</button>
                         </div>
                         <div style="position: relative;">
                             <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-step1')"><svg id="wf-out-step1-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs</div>
@@ -794,7 +794,7 @@
                     <div class="wf-step" id="wf-step-2">
                         <div class="wf-step-header">
                             <span class="wf-step-title">Step 2: Poll Status (GET)</span>
-                            <button id="wf-btn-step2" class="btn-action-secondary wf-step-btn" disabled>Run Step 2</button>
+                            <button id="wf-btn-step2" class="btn-wf-sm btn-wf-secondary wf-step-btn" disabled>Run Step 2</button>
                         </div>
                         <div style="position: relative;">
                             <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-step2')"><svg id="wf-out-step2-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs</div>
@@ -808,7 +808,7 @@
                     <div class="wf-step" id="wf-step-3">
                         <div class="wf-step-header">
                             <span class="wf-step-title">Step 3: Download File (GET)</span>
-                            <button id="wf-btn-step3" class="btn-action-secondary wf-step-btn" disabled>Run Step 3</button>
+                            <button id="wf-btn-step3" class="btn-wf-sm btn-wf-secondary wf-step-btn" disabled>Run Step 3</button>
                         </div>
                         <div style="position: relative;">
                             <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-step3')"><svg id="wf-out-step3-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs</div>
@@ -891,7 +891,7 @@
                     </div>
             </div> <!-- Close modal body here! -->
             <div class="modal-footer" style="padding: 12px 1.5rem 10px 1.5rem; border-top: 1px solid var(--overlay-10); display: flex; justify-content: flex-end; align-items: center;">
-                <button id="wf-btn-runall" class="btn-action-primary" style="padding: 8px 16px; font-weight: bold; display: flex; align-items: center; gap: 6px; line-height: 1; margin: 0;">
+                <button id="wf-btn-runall" class="btn-wf-lg">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                     Run Full Workflow
                 </button>
