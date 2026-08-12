@@ -5165,8 +5165,8 @@ document.addEventListener('mousedown', (e) => {
                         console.error('runGlobalUserManager is not defined');
                     }
                 } else if (wfType === 'smart_pipeline') {
-
-                    // Smart Pipeline trigger
+                    const btn = document.getElementById('start-pipeline-btn');
+                    if (btn) btn.click();
                 }
             } finally {
                 isWorkflowRunning = false;
