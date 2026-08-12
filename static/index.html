@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/powerbi-client/dist/powerbi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260811_v184">
+    <link rel="stylesheet" href="/static/style.css?v=20260812_v185">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -28,25 +28,25 @@
             const requestHeight = localStorage.getItem('pbi-request-height');
             let styleStr = '';
             if (sidebarWidth) {
-                styleStr += `.sidebar { width: ${sidebarWidth} !important; min-width: ${sidebarWidth} !important; } `;
+                styleStr += `:root { --sidebar-width: ${sidebarWidth}; } `;
             }
             if (requestHeight) {
                 styleStr += `.body-editor-container { height: ${requestHeight}; flex: none; } `;
             }
             if (styleStr) {
-                document.write('<style>' + styleStr +         @keyframes fadeOutModal {
+                document.write('<style>' + styleStr + '</style>');
+            }
+        })();
+    </script>
+
+    <style>
+        @keyframes fadeOutModal {
             from { opacity: 1; transform: scale(1); }
             to { opacity: 0; transform: scale(0.95); }
         }
         .modal-overlay.fade-out {
             animation: fadeOutModal 0.25s forwards ease-in-out;
         }
-    </style>\);
-            }
-        })();
-    </script>
-
-    <style>
         @keyframes flashBlink {
             0%, 100% { background-color: transparent; }
             50% { background-color: rgba(242, 200, 17, 0.4); }
@@ -1239,7 +1239,7 @@
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
     <script src="/static/universal_modal.js?v=20260812_v4"></script>
-    <script src="/static/script.js?v=20260812_v224"></script>
+    <script src="/static/script.js?v=20260812_v225"></script>
 
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
