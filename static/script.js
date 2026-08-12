@@ -5875,11 +5875,24 @@ window.handleCopyAction = function(targetEl, text) {
         const isSelfButton = targetEl.tagName === 'BUTTON' || targetEl.classList.contains('wf-copy-btn');
         
         if (isSelfButton) {
-            const origHTML = targetEl.innerHTML;
-            targetEl.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+            const svgEl = targetEl.querySelector('svg');
+            let origSVG = null;
+            let origHTML = null;
+            if (svgEl) {
+                origSVG = svgEl.outerHTML;
+                svgEl.outerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+            } else {
+                origHTML = targetEl.innerHTML;
+                targetEl.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+            }
             targetEl.style.color = 'var(--success)';
             setTimeout(() => { 
-                targetEl.innerHTML = origHTML; 
+                if (origSVG) {
+                    const newSvg = targetEl.querySelector('svg');
+                    if (newSvg) newSvg.outerHTML = origSVG;
+                } else if (origHTML !== null) {
+                    targetEl.innerHTML = origHTML;
+                }
                 targetEl.style.color = '';
             }, 1500);
         } else if (iconWrapper) {
