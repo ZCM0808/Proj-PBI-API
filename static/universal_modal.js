@@ -37,7 +37,7 @@ window.showUniversalDataModal = function(options) {
     
     // Panel
     const panel = document.createElement('div');
-    panel.className = 'glass-panel';
+    // Removed glass-panel to prevent expensive backdrop-filter rendering during modal animation
     panel.style.cssText = [
         'position:relative','background:var(--bg-color)','border:1px solid var(--panel-border)',
         'border-radius:10px','box-shadow:0 24px 80px rgba(0,0,0,0.5)',
