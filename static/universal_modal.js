@@ -3,6 +3,17 @@
  * Dynamically generates a premium data grid modal with search, column selection, sorting, and export.
  */
 window.showUniversalDataModal = function(options) {
+    // Inject hardware-accelerated CSS hover rules globally once
+    if (!document.getElementById('uni-modal-style')) {
+        const style = document.createElement('style');
+        style.id = 'uni-modal-style';
+        style.textContent = `
+            .uni-modal-table tbody tr { transition: background 0.2s; }
+            .uni-modal-table tbody tr:hover { background: var(--overlay-10) !important; }
+        `;
+        document.head.appendChild(style);
+    }
+
     const title = options.title || 'Data View';
     const data = options.data || [];
     const columns = options.columns || (data.length > 0 ? Object.keys(data[0]) : []);
@@ -89,7 +100,14 @@ window.showUniversalDataModal = function(options) {
     closeBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>`;
     closeBtn.onclick = () => {
         overlay.style.opacity = '0';
-        panel.style.transform = 'scale(0.94)';
+        const tx = panel.getAttribute('data-translate-x') || 0;
+        const ty = panel.getAttribute('data-translate-y') || 0;
+        panel.style.transition = 'transform 0.25s, opacity 0.25s';
+        if (tx != 0 || ty != 0) {
+            panel.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(0.94)`;
+        } else {
+            panel.style.transform = 'scale(0.94)';
+        }
         setTimeout(() => overlay.remove(), 250);
     };
     hdrActions.appendChild(closeBtn);
@@ -203,7 +221,7 @@ window.showUniversalDataModal = function(options) {
     const tableId = 'uni-modal-table-' + Math.random().toString(36).substr(2, 9);
     const table = document.createElement('table');
     table.id = tableId;
-    table.className = 'data-table';
+    table.className = 'data-table uni-modal-table';
     table.setAttribute('data-table-id', tableId);
     table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 0.82rem; text-align: left;';
     
@@ -314,44 +332,44 @@ window.showUniversalDataModal = function(options) {
             return;
         }
 
+        // Fast String Concatenation Engine for blazing fast render
+        let htmlRows = '';
         visibleData.forEach(row => {
-            const tr = document.createElement('tr');
-            tr.style.cssText = "transition: background 0.2s;";
-            tr.onmouseover = () => tr.style.background='var(--overlay-10)';
-            tr.onmouseout = () => tr.style.background='transparent';
-            
+            htmlRows += `<tr>`;
             columns.forEach(col => {
                 if (!selectedCols.has(col)) return;
-                const td = document.createElement('td');
-                td.style.cssText = 'padding: 6px 12px; color: var(--text-primary); border-bottom: 1px solid var(--panel-border); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
                 
                 let val = row[col];
+                let cellHtml = '';
+                let cellTitle = '';
                 
                 if (options.cellRenderer) {
                     const customHtml = options.cellRenderer(col, val, row);
                     if (customHtml !== undefined) {
-                        td.innerHTML = customHtml;
-                        tr.appendChild(td);
+                        htmlRows += `<td style="padding: 6px 12px; color: var(--text-primary); border-bottom: 1px solid var(--panel-border); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${customHtml}</td>`;
                         return;
                     }
                 }
                 
                 if (typeof val === 'boolean') {
-                    td.innerHTML = val ? `<span style="color:var(--success);font-weight:500;">True</span>` : `<span style="color:var(--error);font-weight:500;">False</span>`;
+                    cellHtml = val ? `<span style="color:var(--success);font-weight:500;">True</span>` : `<span style="color:var(--error);font-weight:500;">False</span>`;
                 } else if (val === null || val === undefined) {
-                    td.innerHTML = `<span style="color:var(--text-secondary);font-style:italic;">null</span>`;
+                    cellHtml = `<span style="color:var(--text-secondary);font-style:italic;">null</span>`;
                 } else if (typeof val === 'object') {
                     const str = JSON.stringify(val);
-                    td.title = str;
-                    td.textContent = str;
+                    cellTitle = str.replace(/"/g, '&quot;');
+                    cellHtml = str.replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 } else {
-                    td.title = val;
-                    td.textContent = val;
+                    const str = String(val);
+                    cellTitle = str.replace(/"/g, '&quot;');
+                    cellHtml = str.replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 }
-                tr.appendChild(td);
+                
+                htmlRows += `<td title="${cellTitle}" style="padding: 6px 12px; color: var(--text-primary); border-bottom: 1px solid var(--panel-border); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${cellHtml}</td>`;
             });
-            tbody.appendChild(tr);
+            htmlRows += `</tr>`;
         });
+        tbody.innerHTML = htmlRows;
     };
 
     renderTable();
