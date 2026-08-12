@@ -2694,6 +2694,8 @@ const loadReqHistory = (searchTerm = "") => {
 
         dragHandle.style.cursor = 'grab';
 
+        let rafId = null;
+
         const onMouseMove = (e) => {
             if (!isDragging) return;
             const dx = e.clientX - startMouseX;
@@ -2702,8 +2704,12 @@ const loadReqHistory = (searchTerm = "") => {
             currentTranslateX = initialTranslateX + dx;
             currentTranslateY = initialTranslateY + dy;
 
-            // Use GPU-accelerated translate3d instead of top/left to completely eliminate reflow/repaint lag
-            modalContent.style.transform = 'translate3d(' + currentTranslateX + 'px, ' + currentTranslateY + 'px, 0)';
+            if (!rafId) {
+                rafId = requestAnimationFrame(() => {
+                    modalContent.style.transform = `translate3d(${currentTranslateX}px, ${currentTranslateY}px, 0)`;
+                    rafId = null;
+                });
+            }
         };
 
         const onMouseUp = () => {
