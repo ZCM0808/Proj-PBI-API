@@ -5963,8 +5963,19 @@ window.runCheckPermsWorkflow = async function() {
         if (featuresArray && Array.isArray(featuresArray)) {
             appendLog(`[SUCCESS] Loaded ${featuresArray.length} features. Rendering table row by row...`);
             
-            const tbody = document.getElementById('check-perms-tbody');
-            tbody.innerHTML = '';
+            const tableContainer = document.getElementById('wf-out-perms-table');
+            
+            let html = `
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
+                    <thead>
+                        <tr>
+                            <th style="padding: 8px 12px; border-bottom: 2px solid var(--panel-border); font-weight: 600; color: var(--text-secondary);">Feature Name</th>
+                            <th style="padding: 8px 12px; border-bottom: 2px solid var(--panel-border); font-weight: 600; color: var(--text-secondary);">State</th>
+                            <th style="padding: 8px 12px; border-bottom: 2px solid var(--panel-border); font-weight: 600; color: var(--text-secondary);">Extended State</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
             
             // Dynamically append rows
             for(let i=0; i<featuresArray.length; i++) {
@@ -5980,17 +5991,17 @@ window.runCheckPermsWorkflow = async function() {
                     stateHtml = `<span style="color: var(--error); font-weight: 500;">${state}</span>`;
                 }
                 
-                const tr = document.createElement('tr');
-                tr.style.cssText = "transition: background 0.2s;";
-                tr.onmouseover = () => tr.style.background='var(--overlay-10)';
-                tr.onmouseout = () => tr.style.background='transparent';
-                tr.innerHTML = `
-                    <td style="padding: 8px 12px; color: var(--text-primary); font-family: monospace; border-bottom: 1px solid var(--panel-border);">${name}</td>
-                    <td style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border);">${stateHtml}</td>
-                    <td style="padding: 8px 12px; color: var(--text-secondary); border-bottom: 1px solid var(--panel-border);">${extState}</td>
+                html += `
+                    <tr style="transition: background 0.2s;" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'">
+                        <td style="padding: 8px 12px; color: var(--text-primary); font-family: monospace; border-bottom: 1px solid var(--panel-border);">${name}</td>
+                        <td style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border);">${stateHtml}</td>
+                        <td style="padding: 8px 12px; color: var(--text-secondary); border-bottom: 1px solid var(--panel-border);">${extState}</td>
+                    </tr>
                 `;
-                tbody.appendChild(tr);
             }
+            
+            html += `</tbody></table>`;
+            tableContainer.innerHTML = html;
             // Show modal using universal component
             if (window.showUniversalDataModal) {
                 const formattedData = featuresArray.map(f => ({
