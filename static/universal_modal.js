@@ -26,13 +26,16 @@ window.showUniversalDataModal = function(options) {
     let searchText = "";
     let sortState = []; // Array of {index, asc}
 
-    // Remove existing if any
-    let existing = document.getElementById('universal-modal-overlay');
+    // Support unique modal IDs for stacking
+    const modalId = options.modalId || 'universal-modal-overlay';
+
+    // Remove existing with SAME ID if any
+    let existing = document.getElementById(modalId);
     if (existing) existing.remove();
 
     // Create overlay
     const overlay = document.createElement('div');
-    overlay.id = 'universal-modal-overlay';
+    overlay.id = modalId;
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:20000;opacity:0;transition:opacity 0.25s;';
     
     // Panel
@@ -41,9 +44,9 @@ window.showUniversalDataModal = function(options) {
     panel.style.cssText = [
         'position:relative','background:var(--bg-color)','border:1px solid var(--panel-border)',
         'border-radius:10px','box-shadow:0 24px 80px rgba(0,0,0,0.5)',
-        'width:90vw','height:85vh','max-width:1200px','min-width:450px','min-height:300px',
+        'width:90vw','max-height:85vh','max-width:1200px','min-width:450px',
         'display:flex','flex-direction:column','overflow:hidden',
-        'resize:both','transform:scale(0.94)','transition:transform 0.25s'
+        'resize:both','transform:scale(0.96)','transition:transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
     ].join(';');
 
     // Header
@@ -100,14 +103,9 @@ window.showUniversalDataModal = function(options) {
     closeBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>`;
     closeBtn.onclick = () => {
         overlay.style.opacity = '0';
-        const tx = panel.getAttribute('data-translate-x') || 0;
-        const ty = panel.getAttribute('data-translate-y') || 0;
-        panel.style.transition = 'transform 0.25s, opacity 0.25s';
-        if (tx != 0 || ty != 0) {
-            panel.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(0.94)`;
-        } else {
-            panel.style.transform = 'scale(0.94)';
-        }
+        // Avoid animating transform on close to prevent lag with huge DOM trees
+        panel.style.transition = 'opacity 0.25s ease';
+        panel.style.opacity = '0';
         setTimeout(() => overlay.remove(), 250);
     };
     hdrActions.appendChild(closeBtn);
@@ -216,7 +214,7 @@ window.showUniversalDataModal = function(options) {
     // Body
     const body = document.createElement('div');
     body.id = 'universal-modal-body';
-    body.style.cssText = 'flex:1;overflow:auto;padding:12px;';
+    body.style.cssText = 'flex:1; min-height:0; overflow:auto; padding:12px;';
     
     const tableId = 'uni-modal-table-' + Math.random().toString(36).substr(2, 9);
     const table = document.createElement('table');

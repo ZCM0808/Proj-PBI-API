@@ -4311,10 +4311,12 @@ document.addEventListener('mousedown', (e) => {
                 </button>
             `;
             const close = (result) => {
-                modal.style.opacity = '0';
-                content.style.transform = 'scale(0.95)';
-                setTimeout(() => { modal.style.visibility = 'hidden'; }, 250);
-                resolve(result);
+                modal.classList.add('closing');
+                setTimeout(() => { 
+                    modal.style.display = 'none';
+                    modal.classList.remove('closing');
+                    resolve(result);
+                }, 150);
             };
 
             
@@ -4328,9 +4330,47 @@ document.addEventListener('mousedown', (e) => {
             
             // Animation logic
             modal.style.display = 'flex';
-            modal.style.visibility = 'visible';
-            modal.style.opacity = '1';
-            content.style.transform = 'scale(1)';
+        });
+    };
+
+    window.showCustomPrompt = function(message, defaultText = "", title = "✏️ Input Required") {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('custom-dialog-modal');
+            const titleEl = document.getElementById('custom-dialog-title');
+            const msgEl = document.getElementById('custom-dialog-message');
+            const buttonsEl = document.getElementById('custom-dialog-buttons');
+            const content = modal.querySelector('.modal-content');
+            
+            titleEl.innerHTML = title;
+            msgEl.innerHTML = '<div>' + message + '</div><input type="text" id="custom-prompt-input" class="modern-input" style="width: 100%; margin-top: 10px; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary);" value="' + defaultText + '">';
+            
+            window.centerModal(content);
+            
+            buttonsEl.innerHTML = '<button class="btn-action-secondary" id="custom-prompt-cancel-btn" style="padding: 0.5rem 1.25rem;">Cancel</button><button class="btn-action-primary" id="custom-prompt-ok-btn" style="padding: 0.5rem 1.25rem; border: none; background: var(--accent); color: var(--accent-text);">OK</button>';
+            
+            const close = (val) => {
+                modal.classList.add('closing');
+                setTimeout(() => { 
+                    modal.style.display = 'none';
+                    modal.classList.remove('closing');
+                    resolve(val);
+                }, 150);
+            };
+            
+            const input = document.getElementById('custom-prompt-input');
+            
+            document.getElementById('custom-prompt-ok-btn').onclick = () => close(input.value);
+            document.getElementById('custom-prompt-cancel-btn').onclick = () => close(null);
+            modal.querySelector('.close-btn').onclick = () => close(null);
+            
+            input.onkeypress = (e) => {
+                if (e.key === 'Enter') close(input.value);
+            };
+            
+            modal.style.display = 'flex';
+            
+            setTimeout(() => input.focus(), 100);
+            setTimeout(() => input.select(), 150);
         });
     };
 
@@ -4359,12 +4399,11 @@ document.addEventListener('mousedown', (e) => {
             `;
             
             const close = () => {
-                modal.style.opacity = '0';
-                content.style.transform = 'scale(0.95)';
+                modal.classList.add('closing');
                 setTimeout(() => { 
-                    modal.style.visibility = 'hidden'; 
                     modal.style.display = 'none';
-                }, 250);
+                    modal.classList.remove('closing');
+                }, 200);
                 resolve();
             };
             
@@ -4372,9 +4411,6 @@ document.addEventListener('mousedown', (e) => {
             modal.querySelector('.close-btn').onclick = close;
             
             modal.style.display = 'flex';
-            modal.style.visibility = 'visible';
-            modal.style.opacity = '1';
-            content.style.transform = 'scale(1)';
         });
     };
 
@@ -5649,7 +5685,8 @@ window.runRvcWorkflow = async function() {
     
     const diffDays = Math.ceil((dEnd - dStart) / (1000 * 60 * 60 * 24));
     if(diffDays > 30) {
-        if(!confirm('Date range is larger than 30 days. This will make many API calls. Continue?')) return;
+        const proceed = await window.showCustomConfirm('Date range is larger than 30 days. This will make many API calls. Continue?');
+        if(!proceed) return;
     }
 
     containersDiv.style.display = 'flex';
@@ -5665,39 +5702,41 @@ window.runRvcWorkflow = async function() {
     appendLog(`[INIT] Fetching Activity Events from ${startStr} to ${endStr}...`);
     statusDiv.textContent = `Running analysis...`;
     
-    // Setup dynamic table skeleton (2 Columns)
-    tableDiv.innerHTML = `
-    <table data-table-id="rvc" class="data-table" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
-        <thead style="position: sticky; top: 0; background: var(--bg-color); z-index: 5;">
-            <tr>
-                <th onclick="window.sortTable(this, event, 0)" style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px;" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">Date</th>
-                <th onclick="window.sortTable(this, event, 1)" style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px;" title="Click to sort, Shift+Click for multi-sort, Drag right edge to resize">View Count</th>
-            </tr>
-        </thead>
-        <tbody id="rvc-dynamic-tbody"></tbody>
-    </table>`;
-    const tbody = document.getElementById('rvc-dynamic-tbody');
-    
+    const wrap = document.getElementById('wf-rvc-result-wrap');
+    if (wrap) wrap.style.display = 'none';
+
     let totalViews = 0;
     window._rvcDateStats = {}; // dateIso -> [events...]
     
-    const renderTableRows = () => {
-        let rowsHtml = '';
-        const sortedDates = Object.keys(window._rvcDateStats).sort(); // Chronological
+    window.openRvcResultModal = function() {
+        const sortedDates = Object.keys(window._rvcDateStats).sort();
+        const data = sortedDates.map(d => {
+            const count = window._rvcDateStats[d].length;
+            return {
+                Date: d,
+                "View Count": count
+            };
+        });
         
-        for(const d of sortedDates) {
-            const eventsArr = window._rvcDateStats[d];
-            const count = eventsArr.length;
-            rowsHtml += `
-                <tr style="transition: background 0.2s;" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'">
-                    <td style="padding: 6px 12px; color: var(--text-primary); font-family: monospace; border-bottom: 1px solid var(--panel-border);">${d}</td>
-                    <td style="padding: 6px 12px; color: var(--info); font-weight: 500; border-bottom: 1px solid var(--panel-border);">
-                        ${count > 0 ? `<span style="cursor: pointer; text-decoration: underline; text-underline-offset: 2px;" onclick="window.showViewDetails('${d}')">${count}</span>` : count}
-                    </td>
-                </tr>
-            `;
+        if (data.length === 0) {
+            if(window.showNotification) window.showNotification('No activity events found.', 'info');
+            return;
         }
-        tbody.innerHTML = rowsHtml;
+        
+        if (window.showUniversalDataModal) {
+            window.showUniversalDataModal({
+                modalId: 'rvc-summary-modal',
+                title: 'Activity Events Summary',
+                data: data,
+                columns: ['Date', 'View Count'],
+                cellRenderer: (col, val, row) => {
+                    if (col === 'View Count' && val > 0) {
+                        return `<span style="cursor: pointer; text-decoration: underline; text-underline-offset: 2px; color: var(--info);" onclick="window.showViewDetails('${row.Date}')">${val}</span>`;
+                    }
+                    return undefined;
+                }
+            });
+        }
     };
 
     window.showViewDetails = function(dateIso) {
@@ -5732,6 +5771,7 @@ window.runRvcWorkflow = async function() {
 
         if (window.showUniversalDataModal) {
             window.showUniversalDataModal({
+                modalId: `rvc-details-modal`,
                 title: `Report View Details (${dateIso})`,
                 data: mappedData,
                 columns: ['Time (UTC+8)', 'User ID', 'Report Name', 'Access Route', 'Client IP', 'Status'],
@@ -5771,15 +5811,23 @@ window.toggleRvcLogs = function() {
     };
 
     const btn = document.getElementById('btn-run-rvc');
-    btn.disabled = true;
-    btn.innerHTML = 'Running...';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = 'Running...';
+    }
     
     try {
+        const datesToProcess = [];
         let currentDate = new Date(dStart);
         while(currentDate <= dEnd) {
-            const dateIso = currentDate.toISOString().split('T')[0];
+            datesToProcess.push(currentDate.toISOString().split('T')[0]);
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        appendLog(`[INIT] Starting parallel fetch for ${datesToProcess.length} days...`);
+
+        const processDay = async (dateIso) => {
             appendLog(`[FETCH] Requesting events for ${dateIso}...`);
-            
             const startDateTime = `'${dateIso}T00:00:00Z'`;
             const endDateTime = `'${dateIso}T23:59:59Z'`;
             let url = `/admin/activityevents?startDateTime=${startDateTime}&endDateTime=${endDateTime}`;
@@ -5806,21 +5854,13 @@ window.toggleRvcLogs = function() {
                 });
                 
                 if(!res.ok) {
-                    appendLog(`[ERROR] ${res.status} ${res.statusText}`);
-                    statusDiv.textContent = `Error: ${res.status} ${res.statusText}`;
-                    statusDiv.style.color = 'var(--error)';
-                    btn.disabled = false;
-                    btn.innerHTML = 'Run Analysis';
+                    appendLog(`[ERROR] ${dateIso}: ${res.status} ${res.statusText}`);
                     return;
                 }
                 
                 const resData = await res.json();
                 if (resData.success === false) {
-                    appendLog(`[ERROR] Proxy Error: ${resData.error || resData.message}`);
-                    statusDiv.textContent = `Error: ${resData.error || resData.message}`;
-                    statusDiv.style.color = 'var(--error)';
-                    btn.disabled = false;
-                    btn.innerHTML = 'Run Analysis';
+                    appendLog(`[ERROR] Proxy Error for ${dateIso}: ${resData.error || resData.message}`);
                     return;
                 }
                 const payload = resData.data || resData;
@@ -5839,30 +5879,42 @@ window.toggleRvcLogs = function() {
                         window._rvcDateStats[dateIso].push(e);
                     }
                 }
-                appendLog(`  -> Page ${pageCount}: Scanned ${events.length} events, found ${foundToday} target report views.`);
+                appendLog(`  -> [${dateIso}] Page ${pageCount}: Scanned ${events.length} events, found ${foundToday} target views.`);
                 continuationUri = payload.continuationUri || null;
                 pageCount++;
                 
-                // Dynamically update the table as data flows in!
                 if (foundToday > 0 || window._rvcDateStats[dateIso] !== undefined) {
-                    renderTableRows();
-                    
+                    const stats = document.getElementById('wf-rvc-stats');
+                    if (stats && wrap) {
+                        wrap.style.display = 'block';
+                        stats.textContent = `Found ${totalViews} views so far...`;
+                    }
                 }
             }
-            currentDate.setDate(currentDate.getDate() + 1);
-        }
+        };
+
+        // Execute all days in parallel
+        await Promise.all(datesToProcess.map(d => processDay(d)));
         
         appendLog(`[DONE] Analysis Complete. Total Views: ${totalViews}`);
         statusDiv.textContent = `Analysis Complete: ${totalViews} total views.`;
         statusDiv.style.color = 'var(--success)';
+        
+        const stats = document.getElementById('wf-rvc-stats');
+        if (wrap && stats) {
+            wrap.style.display = 'block';
+            stats.textContent = `${totalViews} Views Found`;
+        }
         
     } catch (e) {
         appendLog(`[EXCEPTION] ${e.message}`);
         statusDiv.textContent = `Exception: ${e.message}`;
         statusDiv.style.color = 'var(--error)';
     } finally {
-        btn.disabled = false;
-        btn.innerHTML = 'Run Analysis';
+        if(btn) {
+            btn.disabled = false;
+            btn.innerHTML = 'Run Analysis';
+        }
     }
 };
 
@@ -6361,7 +6413,8 @@ window.submitGumEdit = async function() {
 };
 
 window.deleteGumUser = async function(wsId, identifier, wsName) {
-    if (!confirm(`Are you sure you want to completely REMOVE access for:\n${identifier}\nfrom workspace [${wsName}]?`)) return;
+    const proceed = await window.showCustomConfirm(`Are you sure you want to completely REMOVE access for:\n${identifier}\nfrom workspace [${wsName}]?`);
+    if (!proceed) return;
     
     const logsDiv = document.getElementById('wf-out-gum-logs');
     
@@ -6836,3 +6889,12 @@ window.openDaxResultModal = function() {
 };
 
 
+
+// Override native alert to use our custom modal
+window.alert = function(msg) {
+    if (window.showCustomAlert) {
+        window.showCustomAlert(msg);
+    } else {
+        console.log("ALERT:", msg);
+    }
+};

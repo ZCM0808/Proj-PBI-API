@@ -106,9 +106,10 @@
             }
 
             // Delete Logic
-            delBtn.onclick = (e) => {
+            delBtn.onclick = async (e) => {
                 e.stopPropagation();
-                if (confirm(`删除快照 "${snap.name}"?`)) {
+                const proceed = await window.showCustomConfirm(`删除快照 "${snap.name}"?`);
+                if (proceed) {
                     snapshots = snapshots.filter(s => s.id !== snap.id);
                     if (activeSnapshotId === snap.id) activeSnapshotId = null;
                     saveSnapshots();
@@ -252,8 +253,10 @@
     setTimeout(() => {
         const btnSave = document.getElementById('btn-save-snapshot');
         if (btnSave) {
-            btnSave.onclick = () => {
-                const name = prompt('为当前配置起一个名字:', `Profile ${snapshots.length + 1}`);
+            btnSave.onclick = async () => {
+                const name = window.showCustomPrompt 
+                    ? await window.showCustomPrompt('为当前配置起一个名字:', `Profile ${snapshots.length + 1}`)
+                    : prompt('为当前配置起一个名字:', `Profile ${snapshots.length + 1}`);
                 if (name !== null) window.saveAuthSnapshot(name.trim() || undefined, true);
             };
         }

@@ -1008,6 +1008,13 @@ textarea:focus {
     animation: modalPopUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
+/* Modal overrides for specific modals since inline styles were removed */
+#workflow-modal .modal-content { width: 90%; max-width: 800px; max-height: 85vh; }
+#scan-modal .modal-content { width: 80%; max-width: 1000px; max-height: 85vh; }
+#custom-dialog-modal .modal-content { max-width: 400px; }
+#gum-edit-modal .modal-content, #gum-add-modal .modal-content { max-width: 450px; }
+#pipeline-modal .modal-content { width: 90%; max-width: 800px; }
+
 .modal-header {
     display: flex; justify-content: space-between; align-items: center;
     padding: 1rem 1.5rem;
@@ -1049,21 +1056,24 @@ textarea:focus {
 }
 
 @keyframes modalPopDown {
-    from { transform: scale(1) translateY(0); opacity: 1; }
-
-    to { transform: scale(0.95) translateY(20px); opacity: 0; }
-
+    from { opacity: 1; }
+    to { opacity: 0; }
 }
 
 .modal-overlay.closing {
-    animation: modalFadeOut 0.2s ease-in forwards !important;
+    animation: modalFadeOut 0.2s ease forwards !important;
 }
 
 .modal-overlay.closing .modal-content {
-    animation: modalPopDown 0.2s ease-in forwards !important;
+    animation: modalPopDown 0.2s ease forwards !important;
 }
 
-.modal-body { padding: 1.5rem; }
+.modal-body { 
+    padding: 1.5rem; 
+    flex: 1; 
+    overflow-y: auto; 
+    min-height: 0; 
+}
 
 .terminal-view {
     background: var(--input-bg); color: var(--text-primary);
