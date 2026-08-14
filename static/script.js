@@ -2773,6 +2773,12 @@ const loadReqHistory = (searchTerm = "") => {
             initialTranslateX = currentTranslateX;
             initialTranslateY = currentTranslateY;
 
+            const rect = modalContent.getBoundingClientRect();
+            baseX = rect.left - initialTranslateX;
+            baseY = rect.top - initialTranslateY;
+            modalWidth = rect.width;
+            modalHeight = rect.height;
+
             // Kill CSS keyframe animation and transitions to prevent drag lag
             modalContent.style.animation = 'none';
             modalContent.style.transition = 'none'; // Force kill transition
