@@ -2689,7 +2689,7 @@ const loadReqHistory = (searchTerm = "") => {
         dragHandle.style.cursor = 'grab';
 
         let rafId = null;
-        const SNAP_THRESHOLD = 30; // 30px snapping distance
+        const SNAP_THRESHOLD = 15; // 15px snapping distance
 
         const onMouseMove = (e) => {
             if (!isDragging) return;
