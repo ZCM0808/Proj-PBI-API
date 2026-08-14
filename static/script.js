@@ -2767,7 +2767,7 @@ const loadReqHistory = (searchTerm = "") => {
             document.addEventListener('mouseup', onMouseUp);
         });
     }
-    function setupFLIPModal(btnOpen, btnClose, modalOverlay, onLoadCallback = null) {
+    window.setupFLIPModal = function setupFLIPModal(btnOpen, btnClose, modalOverlay, onLoadCallback = null) {
         if (!btnOpen || !btnClose || !modalOverlay) return;
         const modalContent = modalOverlay.querySelector('.modal-content');
         const modalHeader = modalOverlay.querySelector('.modal-header');
