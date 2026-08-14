@@ -206,3 +206,11 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
 - ❌ **失败细节 5：试图通过代码生成 Matrix (pivotTable) 的 visual.json。** 矩阵依赖于封闭加密的 `dataTransforms` 和 `expansionStates` 来映射层级，纯手工构造必定因缺少这些节点而触发 `InvalidUnconstrainedJoin`（笛卡尔积）错误。
   - ✅ **成功修复与进阶突破**：虽然矩阵（Matrix/PivotTable）等极其复杂的层级数据钻取图表强依赖于 Power BI Desktop UI 生成数据绑定，但**AI (Antigravity) 已经证明具备直接在 PBIP/PBIR 底层通过 JSON 代码结构生成标准视觉对象（Visuals）的能力**（例如文本框、标准容器、甚至特定配置的基础图表）。对于无复杂数据转换绑定的组件，可以直接要求 AI 跨过 UI 直接构建 `visual.json`，并写入特定的 `visuals/` 目录中。
 
+
+## 12. GitHub 代理阻断与穿透推送记录 (GitHub Proxy Bypass & SSL Defense)
+在中国大陆等复杂网络环境下执行 `git push` 时，经常遇到代理重置和 SSL 拦截，记录了以下攻防手段：
+
+- ❌ **失败细节 1：代理阻断与连接重置**。挂载本地代理 (`127.0.0.1:3067`) 推送时，始终报 `Recv failure: Connection was reset`；直连时报 `unable to get local issuer certificate (20)` (OpenSSL 未信任证书)。
+  - ✅ **成功修复**：通过 PowerShell 修改系统注册表 `ProxyOverride`，将 `*.github.com;github.com;` 加入绕过名单，并清除 Git 自身全局的 `http.proxy` 配置。
+- ❌ **失败细节 2：纯直连彻底超时**。虽然排除了死代理，但因为 GitHub 遭 SNI 阻断，纯直连报 `Failed to connect to github.com port 443 after 21098 ms`。
+  - ✅ **成功修复 (黑魔法穿透)**：抛弃全局代理变量和默认的 OpenSSL 后端，强行在命令级执行组合拳：`$env:http_proxy=""; $env:https_proxy=""; git -c http.sslbackend=schannel -c http.schannelCheckRevoke=false push`。利用剥离环境变量配合 Windows 底层 SChannel 并关闭 CRL 吊销检查，成功绕过 SSL 拦截秒级推送到云端。
