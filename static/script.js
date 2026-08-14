@@ -4324,10 +4324,16 @@ document.addEventListener('mousedown', (e) => {
 
         window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHarnessTests);
         
+        let toggleDebounce = false;
         btnHarnessToggleAll?.addEventListener('click', () => {
+            if (toggleDebounce) return;
+            toggleDebounce = true;
+            
             const checkboxes = document.querySelectorAll('.harness-test-cb');
             const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
             checkboxes.forEach(cb => cb.checked = !anyChecked);
+            
+            setTimeout(() => { toggleDebounce = false; }, 300); // Prevent double-click toggle cancellation
         });
         
         btnHarnessExecute?.addEventListener('click', async () => {
