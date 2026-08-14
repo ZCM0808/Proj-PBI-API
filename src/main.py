@@ -1287,21 +1287,23 @@ async def run_harness_tests(request: Request):
         results = ""
         
         if playwright_tests:
-            import re
-            pattern = "|".join([re.escape(t) for t in playwright_tests])
-            # For powershell/cmd we need to wrap the grep pattern in quotes carefully, better to pass as list
-            # But npx playwright test -g regex expects the regex to be the next argument.
-            cmd = ["npx", "playwright", "test", "-g", pattern]
+            # Join names simply with |, no regex escaping needed as we exact match names, except to avoid breaking the CLI string quotes
+            pattern = "|".join([t.replace('"', '') for t in playwright_tests])
+            cmd = f'npx playwright test -g "{pattern}"'
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
             results += "\n=== Playwright E2E Tests ===\n"
-            results += (result.stdout or "") + "\n" + (result.stderr or "")
+            results += f"> Executed: {cmd} (Exit Code: {result.returncode})\n\n"
+            results += "--- STDOUT ---\n" + (result.stdout or "No STDOUT") + "\n"
+            results += "--- STDERR ---\n" + (result.stderr or "No STDERR") + "\n"
             
         if pytest_tests:
             pattern = " or ".join(pytest_tests)
             cmd = ["pytest", "tests/test_backend.py", "-k", pattern, "-v"]
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
             results += "\n=== Pytest Backend Tests ===\n"
-            results += (result.stdout or "") + "\n" + (result.stderr or "")
+            results += f"> Executed: {' '.join(cmd)} (Exit Code: {result.returncode})\n\n"
+            results += "--- STDOUT ---\n" + (result.stdout or "No STDOUT") + "\n"
+            results += "--- STDERR ---\n" + (result.stderr or "No STDERR") + "\n"
             
         return {"success": True, "logs": results}
     except Exception as e:
