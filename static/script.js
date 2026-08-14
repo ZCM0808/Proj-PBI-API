@@ -6900,6 +6900,8 @@ window.alert = function(msg) {
 };
 
     // Test Harness Modal Logic
+document.addEventListener('DOMContentLoaded', () => {
+
     const btnTestHarness = document.getElementById('btn-test-harness');
     const testHarnessModal = document.getElementById('test-harness-modal');
     const closeHarnessBtn = testHarnessModal ? testHarnessModal.querySelector('.close-modal') : null;
@@ -6998,3 +7000,4 @@ window.alert = function(msg) {
         });
     }
     
+});
