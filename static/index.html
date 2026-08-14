@@ -1044,10 +1044,10 @@
                     </div>
                 </div>
                 <div class="modal-footer" style="display: flex; justify-content: flex-end; align-items: center; gap: 8px;">
-                    <button type="button" id="export-local-btn" class="btn-cancel" style="background: var(--input-bg); color: var(--text-secondary); border: 1px solid var(--panel-border); border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; cursor: pointer;" title="导出所有设置、书签和历史记录 (Export All Settings, Bookmarks & History)">📤 导出 (Export)</button>
-                    <button type="button" id="import-local-btn" class="btn-cancel" style="background: var(--input-bg); color: var(--text-secondary); border: 1px solid var(--panel-border); border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; cursor: pointer;" title="导入所有设置、书签和历史记录 (Import All Settings, Bookmarks & History)">📥 导入 (Import)</button>
+                    <button type="button" id="export-local-btn" class="btn-cancel" title="导出所有设置、书签和历史记录 (Export All Settings, Bookmarks & History)">📤 导出 (Export)</button>
+                    <button type="button" id="import-local-btn" class="btn-cancel" title="导入所有设置、书签和历史记录 (Import All Settings, Bookmarks & History)">📥 导入 (Import)</button>
                     <input type="file" id="import-local-file" style="display: none;" accept=".json">
-                    <button type="submit" id="save-settings-btn" class="btn-action-primary" style="font-size: 0.8rem; border: 1px solid transparent; padding: 4px 12px;">💾 保存配置 (Save & Apply)</button>
+                    <button type="submit" id="save-settings-btn" class="btn-action-primary">💾 保存配置 (Save & Apply)</button>
                 </div>
             </form>
         </div>
@@ -1086,7 +1086,7 @@
             <div id="scan-results-container" style="max-height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; background: var(--shadow-light); border-radius: 6px; border: 1px solid var(--panel-border); padding: 8px;">
             </div>
             <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                <button type="button" class="btn-pipeline btn-scan-cancel" onclick="document.getElementById('scan-modal').style.display='none'">取消 (Cancel)</button>
+                <button type="button" class="btn-cancel" onclick="document.getElementById('scan-modal').style.display='none'">取消 (Cancel)</button>
                 <button type="button" class="btn-pipeline btn-scan-add" id="scan-modal-add-btn">✅ 添加选中项 (Add Selected)</button>
             </div>
         </div>
@@ -1307,7 +1307,7 @@
                 <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
                     <p style="margin: 0; color: var(--text-secondary);">Select tests to run and click Execute.</p>
                     <div>
-                        <button id="btn-harness-toggle-all" class="btn-cancel" style="padding: 4px 8px; font-size: 0.8rem;">全选/取消 (Toggle All)</button>
+                        <button id="btn-harness-toggle-all" class="btn-cancel">全选/取消 (Toggle All)</button>
                     </div>
                 </div>
                 <div id="harness-test-list" style="display: flex; flex-direction: column; gap: 8px; background: var(--panel-bg); padding: 15px; border-radius: 6px; border: 1px solid var(--panel-border);">
