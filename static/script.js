@@ -4170,7 +4170,7 @@ window.showNoteErrorDetail = function() {
             <div class="modal-content glass-panel" style="max-width:550px; width:90%; padding:20px; position:relative; background:var(--modal-bg);">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid var(--panel-border); padding-bottom:8px;">
                     <h4 style="margin:0; color:var(--error); display:flex; align-items:center; gap:6px;">⚠️ Note Save/Push Traceback Detail</h4>
-                    <button type="button" onclick="document.getElementById('note-error-detail-modal').style.display='none'" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:1.2rem;">✕</button>
+                    <button type="button" class="close-btn" onclick="document.getElementById('note-error-detail-modal').style.display='none'" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
                 </div>
                 <div class="input-with-copy" style="position:relative; margin-bottom:16px;">
                     <textarea id="note-error-detail-text" readonly style="width:100%; height:160px; font-family:'Fira Code',monospace; font-size:0.8rem; background:var(--input-bg); color:var(--error); padding:10px 36px 10px 10px; border-radius:6px; border:1px solid var(--error); resize:vertical;"></textarea>
