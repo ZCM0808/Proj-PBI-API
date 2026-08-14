@@ -2691,6 +2691,7 @@ const loadReqHistory = (searchTerm = "") => {
         let startMouseX, startMouseY;
         let currentTranslateX = 0, currentTranslateY = 0;
         let initialTranslateX = 0, initialTranslateY = 0;
+        let baseX = 0, baseY = 0, modalWidth = 0, modalHeight = 0;
 
         dragHandle.style.cursor = 'grab';
 
@@ -2701,8 +2702,39 @@ const loadReqHistory = (searchTerm = "") => {
             const dx = e.clientX - startMouseX;
             const dy = e.clientY - startMouseY;
 
-            currentTranslateX = initialTranslateX + dx;
-            currentTranslateY = initialTranslateY + dy;
+            let proposedTranslateX = initialTranslateX + dx;
+            let proposedTranslateY = initialTranslateY + dy;
+
+            // Enforce 5% screen edge margin rules
+            const marginX = window.innerWidth * 0.05;
+            const marginY = window.innerHeight * 0.05;
+            
+            const proposedLeft = baseX + proposedTranslateX;
+            const proposedTop = baseY + proposedTranslateY;
+            
+            const maxRight = window.innerWidth - marginX;
+            const maxBottom = window.innerHeight - marginY;
+
+            // Clamp X if modal is smaller than allowed area
+            if (modalWidth <= maxRight - marginX) {
+                if (proposedLeft < marginX) proposedTranslateX += (marginX - proposedLeft);
+                else if (proposedLeft + modalWidth > maxRight) proposedTranslateX -= (proposedLeft + modalWidth - maxRight);
+            } else {
+                // Too wide, at least keep header accessible
+                if (proposedLeft > window.innerWidth - 100) proposedTranslateX -= (proposedLeft - (window.innerWidth - 100));
+            }
+
+            // Clamp Y if modal is smaller than allowed area
+            if (modalHeight <= maxBottom - marginY) {
+                if (proposedTop < marginY) proposedTranslateY += (marginY - proposedTop);
+                else if (proposedTop + modalHeight > maxBottom) proposedTranslateY -= (proposedTop + modalHeight - maxBottom);
+            } else {
+                // Too tall, prioritize top accessibility
+                if (proposedTop < marginY) proposedTranslateY += (marginY - proposedTop);
+            }
+
+            currentTranslateX = proposedTranslateX;
+            currentTranslateY = proposedTranslateY;
 
             if (!rafId) {
                 rafId = requestAnimationFrame(() => {
@@ -4371,7 +4403,7 @@ document.addEventListener('mousedown', (e) => {
             window.centerModal(content);
             
             buttonsEl.innerHTML = `
-                <button class="btn-action-secondary" id="custom-alert-ok-btn" style="padding: 0.5rem 1.25rem;">
+                <button class="btn-action-primary" id="custom-alert-ok-btn">
                     OK
                 </button>
             `;
@@ -4403,10 +4435,10 @@ document.addEventListener('mousedown', (e) => {
             window.centerModal(content);
             
             buttonsEl.innerHTML = `
-                <button class="btn-action-secondary" id="custom-confirm-cancel-btn" style="padding: 0.5rem 1.25rem;">
+                <button class="btn-cancel" id="custom-confirm-cancel-btn">
                     Cancel
                 </button>
-                <button class="btn-action-primary" id="custom-confirm-ok-btn" style="padding: 0.5rem 1.25rem; border: none; background: var(--accent); color: var(--accent-text);">
+                <button class="btn-action-primary" id="custom-confirm-ok-btn">
                     Confirm
                 </button>
             `;
@@ -4446,7 +4478,7 @@ document.addEventListener('mousedown', (e) => {
             
             window.centerModal(content);
             
-            buttonsEl.innerHTML = '<button class="btn-action-secondary" id="custom-prompt-cancel-btn" style="padding: 0.5rem 1.25rem;">Cancel</button><button class="btn-action-primary" id="custom-prompt-ok-btn" style="padding: 0.5rem 1.25rem; border: none; background: var(--accent); color: var(--accent-text);">OK</button>';
+            buttonsEl.innerHTML = '<button class="btn-cancel" id="custom-prompt-cancel-btn">Cancel</button><button class="btn-action-primary" id="custom-prompt-ok-btn">OK</button>';
             
             const close = (val) => {
                 modal.classList.add('closing');
@@ -4493,7 +4525,7 @@ document.addEventListener('mousedown', (e) => {
             window.centerModal(content);
             
             buttonsEl.innerHTML = `
-                <button class="btn-action-secondary" id="custom-dialog-ok-btn" style="padding: 0.5rem 1.25rem;">
+                <button class="btn-action-primary" id="custom-dialog-ok-btn">
                     Close
                 </button>
             `;
