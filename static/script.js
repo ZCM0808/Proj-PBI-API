@@ -2691,18 +2691,42 @@ const loadReqHistory = (searchTerm = "") => {
         let startMouseX, startMouseY;
         let currentTranslateX = 0, currentTranslateY = 0;
         let initialTranslateX = 0, initialTranslateY = 0;
+        let baseX = 0, baseY = 0, modalWidth = 0, modalHeight = 0;
 
         dragHandle.style.cursor = 'grab';
 
         let rafId = null;
+        const SNAP_THRESHOLD = 30; // 30px snapping distance
 
         const onMouseMove = (e) => {
             if (!isDragging) return;
             const dx = e.clientX - startMouseX;
             const dy = e.clientY - startMouseY;
 
-            currentTranslateX = initialTranslateX + dx;
-            currentTranslateY = initialTranslateY + dy;
+            let proposedTranslateX = initialTranslateX + dx;
+            let proposedTranslateY = initialTranslateY + dy;
+
+            // Calculate absolute position
+            let proposedLeft = baseX + proposedTranslateX;
+            let proposedTop = baseY + proposedTranslateY;
+            let proposedRight = proposedLeft + modalWidth;
+            let proposedBottom = proposedTop + modalHeight;
+
+            // Edge Snapping Logic
+            if (Math.abs(proposedLeft) < SNAP_THRESHOLD) {
+                proposedTranslateX -= proposedLeft; // Snap to left edge (0)
+            } else if (Math.abs(window.innerWidth - proposedRight) < SNAP_THRESHOLD) {
+                proposedTranslateX += (window.innerWidth - proposedRight); // Snap to right edge
+            }
+
+            if (Math.abs(proposedTop) < SNAP_THRESHOLD) {
+                proposedTranslateY -= proposedTop; // Snap to top edge (0)
+            } else if (Math.abs(window.innerHeight - proposedBottom) < SNAP_THRESHOLD) {
+                proposedTranslateY += (window.innerHeight - proposedBottom); // Snap to bottom edge
+            }
+
+            currentTranslateX = proposedTranslateX;
+            currentTranslateY = proposedTranslateY;
 
             if (!rafId) {
                 rafId = requestAnimationFrame(() => {
