@@ -141,7 +141,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
     
     if req.password == Config.APP_ACCESS_PASSWORD:
         token = hashlib.sha256(Config.APP_ACCESS_PASSWORD.encode()).hexdigest()
-        response.set_cookie(key="pbi_auth_token", value=token, httponly=True, max_age=86400*30)
+        response.set_cookie(key="pbi_auth_token", value=token, httponly=True, max_age=86400)
         if device_id in lockouts:
             del lockouts[device_id]
             save_lockouts(lockouts)
