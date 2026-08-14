@@ -1309,7 +1309,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             .then(res => res.json())
             .then(data => {
                 if (data.success && data.data !== null) {
-                    localStorage.setItem('pbi-theme', data.data);
+                    Storage.prototype.setItem.call(localStorage, 'pbi-theme', data.data);
                     if (data.data === 'light') {
                         document.documentElement.setAttribute('data-theme', 'light');
                     } else {
