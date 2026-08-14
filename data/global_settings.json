@@ -1,0 +1,59 @@
+{
+    "PBI_AUTH_MODE": "personal",
+    "PBI_TENANT_ID": "78a11419-9556-437d-843b-55d8396908e1",
+    "SQL_CONN_STR": "Server=myServerAddress;Database=myDataBase;User Id=myUsername;",
+    "PBI_WORKSPACES": [
+        {
+            "alias": "my",
+            "id": "C06A2729-EE28-4471-AF27-803B56A3D8CC"
+        },
+        {
+            "alias": "WorkSpace_DEV",
+            "id": "2c51e061-0f9f-4d02-bed0-c169019e5d83"
+        }
+    ],
+    "PBI_DATASETS": [
+        {
+            "alias": "PBI_BI_SAP_Demo",
+            "id": "8f2a320c-7ab8-44df-ae3d-c722664ee9d1"
+        },
+        {
+            "alias": "Report Usage Metrics Model",
+            "id": "554db73d-77e4-40a6-8d4c-fdbf07b63f77"
+        },
+        {
+            "alias": "Usage Metrics Report",
+            "id": "7c599a28-e386-4507-a1be-df4735f797be"
+        },
+        {
+            "alias": "PBI_Salesforce_demo",
+            "id": "0359b9d6-7128-463f-ab49-66d8a7eeedbf"
+        },
+        {
+            "alias": "AstraZeneca_SFE",
+            "id": "c97cbbf8-c326-4d0c-85a5-4bb602dcfd80"
+        }
+    ],
+    "PBI_REPORTS": [
+        {
+            "alias": "PBI_BI_SAP_Demo",
+            "id": "3a6e9e19-9aed-4372-a7d9-17155e9dd49d"
+        },
+        {
+            "alias": "Report Usage Metrics Report",
+            "id": "1b4b8c16-98ba-4122-a9f4-45b515254966"
+        },
+        {
+            "alias": "Usage Metrics Report",
+            "id": "98c86f67-010c-45be-b62c-70123f7d5854"
+        },
+        {
+            "alias": "PBI_Salesforce_demo",
+            "id": "cbc29d9e-0d69-4791-9862-03543960bd08"
+        },
+        {
+            "alias": "AstraZeneca_SFE",
+            "id": "5c6df788-fcc6-4758-ba9c-42bc1b969666"
+        }
+    ]
+}
