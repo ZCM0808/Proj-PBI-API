@@ -4255,6 +4255,15 @@ window.saveMarkdownNote = async function() {
 
 // Global document listener to close Note window when clicking any blank area outside of it
 document.addEventListener('mousedown', (e) => {
+    window.updateHarnessStats = () => {
+        const statsSpan = document.getElementById('harness-stats');
+        if (!statsSpan) return;
+        const checkboxes = document.querySelectorAll('.harness-test-cb');
+        const total = checkboxes.length;
+        const checked = Array.from(checkboxes).filter(cb => cb.checked).length;
+        statsSpan.textContent = `已选: ${checked} / 总计: ${total}`;
+    };
+
     const noteModal = document.getElementById('modal-note');
     if (noteModal && noteModal.style.display === 'flex') {
         const noteContent = noteModal.querySelector('.modal-content');
@@ -4329,10 +4338,12 @@ document.addEventListener('mousedown', (e) => {
         
         btnHarnessSelectAll?.addEventListener('click', () => {
             document.querySelectorAll('.harness-test-cb').forEach(cb => cb.checked = true);
+            if (window.updateHarnessStats) window.updateHarnessStats();
         });
         
         btnHarnessClearAll?.addEventListener('click', () => {
             document.querySelectorAll('.harness-test-cb').forEach(cb => cb.checked = false);
+            if (window.updateHarnessStats) window.updateHarnessStats();
         });
         
         btnHarnessExecute?.addEventListener('click', async () => {
