@@ -2751,7 +2751,7 @@ const loadReqHistory = (searchTerm = "") => {
 
         dragHandle.addEventListener('mousedown', (e) => {
             if (window.innerWidth <= 768) return; // Prevent drag on mobile
-            if (['INPUT', 'BUTTON', 'TEXTAREA'].includes(e.target.tagName) || e.target.closest('button')) return;
+            if (['INPUT', 'BUTTON', 'TEXTAREA'].includes(e.target.tagName) || e.target.closest('button') || e.target.closest('h1, h2, h3, h4, h5, h6, p, span.copyable')) return;
 
             // Read previous translation state to avoid jumping on subsequent drags
             const dt = modalContent.getAttribute('data-translate-y');
@@ -4282,7 +4282,8 @@ document.addEventListener('mousedown', (e) => {
     const testHarnessModal = document.getElementById('test-harness-modal');
     const closeHarnessBtn = testHarnessModal ? testHarnessModal.querySelector('.close-modal') : null;
     const btnHarnessExecute = document.getElementById('btn-harness-execute');
-    const btnHarnessToggleAll = document.getElementById('btn-harness-toggle-all');
+    const btnHarnessSelectAll = document.getElementById('btn-harness-select-all');
+    const btnHarnessClearAll = document.getElementById('btn-harness-clear-all');
     const harnessTestList = document.getElementById('harness-test-list');
 
     if (btnTestHarness && testHarnessModal) {
@@ -4324,16 +4325,12 @@ document.addEventListener('mousedown', (e) => {
 
         window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHarnessTests);
         
-        let toggleDebounce = false;
-        btnHarnessToggleAll?.addEventListener('click', () => {
-            if (toggleDebounce) return;
-            toggleDebounce = true;
-            
-            const checkboxes = document.querySelectorAll('.harness-test-cb');
-            const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
-            checkboxes.forEach(cb => cb.checked = !anyChecked);
-            
-            setTimeout(() => { toggleDebounce = false; }, 300); // Prevent double-click toggle cancellation
+        btnHarnessSelectAll?.addEventListener('click', () => {
+            document.querySelectorAll('.harness-test-cb').forEach(cb => cb.checked = true);
+        });
+        
+        btnHarnessClearAll?.addEventListener('click', () => {
+            document.querySelectorAll('.harness-test-cb').forEach(cb => cb.checked = false);
         });
         
         btnHarnessExecute?.addEventListener('click', async () => {
