@@ -1246,7 +1246,7 @@
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
     <script src="/static/universal_modal.js?v=20260813_v8"></script>
-    <script src="/static/script.js?v=20260813_v256"></script>
+    <script src="/static/script.js?v=20260813_v257"></script>
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: none;">
@@ -1307,17 +1307,16 @@
                 <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
                     <p style="margin: 0; color: var(--text-secondary);">Select tests to run and click Execute.</p>
                     <div>
-                        <button id="btn-harness-select-all" class="btn-cancel" style="background: var(--input-bg); color: var(--text-secondary); border: 1px solid var(--panel-border); border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; cursor: pointer; margin-right: 5px;">全选 (Select All)</button>
-                        <button id="btn-harness-deselect-all" class="btn-cancel" style="background: var(--input-bg); color: var(--text-secondary); border: 1px solid var(--panel-border); border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; cursor: pointer;">取消全选 (Deselect All)</button>
+                        <button id="btn-harness-toggle-all" class="btn-cancel" style="padding: 4px 8px; font-size: 0.8rem;">全选/取消 (Toggle All)</button>
                     </div>
                 </div>
                 <div id="harness-test-list" style="display: flex; flex-direction: column; gap: 8px; background: var(--panel-bg); padding: 15px; border-radius: 6px; border: 1px solid var(--panel-border);">
                     <!-- Tests injected via JS -->
                 </div>
             </div>
-            <div class="modal-footer" style="display: flex; justify-content: flex-end; align-items: center; gap: 8px;">
-                <button type="button" class="btn-cancel" onclick="document.getElementById('test-harness-modal').querySelector('.close-modal').click()" style="background: var(--input-bg); color: var(--text-secondary); border: 1px solid var(--panel-border); border-radius: 4px; padding: 4px 12px; font-size: 0.8rem; cursor: pointer;">关闭 (Close)</button>
-                <button id="btn-harness-execute" class="btn-action-primary" style="font-size: 0.8rem; border: 1px solid transparent; padding: 4px 12px;">▶️ 运行测试 (Execute)</button>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+                <button type="button" class="btn-cancel" onclick="document.getElementById('test-harness-modal').querySelector('.close-modal').click()">关闭</button>
+                <button id="btn-harness-execute" class="btn-action-primary">运行测试</button>
             </div>
         </div>
     </div>

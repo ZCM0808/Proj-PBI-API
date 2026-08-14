@@ -4259,8 +4259,7 @@ document.addEventListener('mousedown', (e) => {
     const testHarnessModal = document.getElementById('test-harness-modal');
     const closeHarnessBtn = testHarnessModal ? testHarnessModal.querySelector('.close-modal') : null;
     const btnHarnessExecute = document.getElementById('btn-harness-execute');
-    const btnHarnessSelectAll = document.getElementById('btn-harness-select-all');
-    const btnHarnessDeselectAll = document.getElementById('btn-harness-deselect-all');
+    const btnHarnessToggleAll = document.getElementById('btn-harness-toggle-all');
     const harnessTestList = document.getElementById('harness-test-list');
 
     if (btnTestHarness && testHarnessModal) {
@@ -4302,11 +4301,10 @@ document.addEventListener('mousedown', (e) => {
 
         window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHarnessTests);
         
-        btnHarnessSelectAll?.addEventListener('click', () => {
-            document.querySelectorAll('.harness-test-cb').forEach(cb => cb.checked = true);
-        });
-        btnHarnessDeselectAll?.addEventListener('click', () => {
-            document.querySelectorAll('.harness-test-cb').forEach(cb => cb.checked = false);
+        btnHarnessToggleAll?.addEventListener('click', () => {
+            const checkboxes = document.querySelectorAll('.harness-test-cb');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !allChecked);
         });
         
         btnHarnessExecute?.addEventListener('click', async () => {
@@ -7000,4 +6998,4 @@ window.alert = function(msg) {
         console.log("ALERT:", msg);
     }
 };
-
+
