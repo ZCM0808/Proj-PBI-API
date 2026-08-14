@@ -4307,6 +4307,7 @@ document.addEventListener('mousedown', (e) => {
                         cb.dataset.name = test.name;
                         cb.dataset.type = test.type;
                         
+                        cb.addEventListener('change', window.updateHarnessStats);
                         const text = document.createElement('span');
                         text.textContent = `[${test.type}] ${test.name}`;
                         text.style.fontSize = '0.85rem';
@@ -4315,6 +4316,7 @@ document.addEventListener('mousedown', (e) => {
                         label.appendChild(text);
                         harnessTestList.appendChild(label);
                     });
+                    if (window.updateHarnessStats) window.updateHarnessStats();
                 } else {
                     harnessTestList.innerHTML = `<p style="color: var(--danger-color);">Error loading tests: ${data.error}</p>`;
                 }
