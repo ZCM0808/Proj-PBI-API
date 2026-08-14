@@ -2691,7 +2691,6 @@ const loadReqHistory = (searchTerm = "") => {
         let startMouseX, startMouseY;
         let currentTranslateX = 0, currentTranslateY = 0;
         let initialTranslateX = 0, initialTranslateY = 0;
-        let baseX = 0, baseY = 0, modalWidth = 0, modalHeight = 0;
 
         dragHandle.style.cursor = 'grab';
 
@@ -2702,39 +2701,8 @@ const loadReqHistory = (searchTerm = "") => {
             const dx = e.clientX - startMouseX;
             const dy = e.clientY - startMouseY;
 
-            let proposedTranslateX = initialTranslateX + dx;
-            let proposedTranslateY = initialTranslateY + dy;
-
-            // Enforce 5% screen edge margin rules
-            const marginX = window.innerWidth * 0.05;
-            const marginY = window.innerHeight * 0.05;
-            
-            const proposedLeft = baseX + proposedTranslateX;
-            const proposedTop = baseY + proposedTranslateY;
-            
-            const maxRight = window.innerWidth - marginX;
-            const maxBottom = window.innerHeight - marginY;
-
-            // Clamp X if modal is smaller than allowed area
-            if (modalWidth <= maxRight - marginX) {
-                if (proposedLeft < marginX) proposedTranslateX += (marginX - proposedLeft);
-                else if (proposedLeft + modalWidth > maxRight) proposedTranslateX -= (proposedLeft + modalWidth - maxRight);
-            } else {
-                // Too wide, at least keep header accessible
-                if (proposedLeft > window.innerWidth - 100) proposedTranslateX -= (proposedLeft - (window.innerWidth - 100));
-            }
-
-            // Clamp Y if modal is smaller than allowed area
-            if (modalHeight <= maxBottom - marginY) {
-                if (proposedTop < marginY) proposedTranslateY += (marginY - proposedTop);
-                else if (proposedTop + modalHeight > maxBottom) proposedTranslateY -= (proposedTop + modalHeight - maxBottom);
-            } else {
-                // Too tall, prioritize top accessibility
-                if (proposedTop < marginY) proposedTranslateY += (marginY - proposedTop);
-            }
-
-            currentTranslateX = proposedTranslateX;
-            currentTranslateY = proposedTranslateY;
+            currentTranslateX = initialTranslateX + dx;
+            currentTranslateY = initialTranslateY + dy;
 
             if (!rafId) {
                 rafId = requestAnimationFrame(() => {
