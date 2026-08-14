@@ -1294,14 +1294,14 @@ async def run_harness_tests(request: Request):
             cmd = ["npx", "playwright", "test", "-g", pattern]
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
             results += "\n=== Playwright E2E Tests ===\n"
-            results += result.stdout + "\n" + result.stderr
+            results += (result.stdout or "") + "\n" + (result.stderr or "")
             
         if pytest_tests:
             pattern = " or ".join(pytest_tests)
             cmd = ["pytest", "tests/test_backend.py", "-k", pattern, "-v"]
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
             results += "\n=== Pytest Backend Tests ===\n"
-            results += result.stdout + "\n" + result.stderr
+            results += (result.stdout or "") + "\n" + (result.stderr or "")
             
         return {"success": True, "logs": results}
     except Exception as e:
