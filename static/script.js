@@ -1278,7 +1278,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             .then(data => {
                 if (data.success && data.data !== null) {
                     for (const [key, value] of Object.entries(data.data)) {
-                        originalSetItem.call(localStorage, key, value);
+                        Storage.prototype.setItem.call(localStorage, key, value);
                     }
                 }
             }).catch(e => console.error('Backend bulk KV sync failed', e));        // Sync Bookmarks
