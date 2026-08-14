@@ -2268,6 +2268,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (bodyContent) {
                 try {
                     await navigator.clipboard.writeText(bodyContent);
+                    
+                    window.flashCopiedElement(document.getElementById('graphql-editor-container').style.display !== 'none' ? document.getElementById('graphql-editor-container') : document.getElementById('req-body-container'));
                     copyReqBodyBtn.innerHTML = '<span style="font-size: 12px; padding: 0 4px;">Copied!</span>';
                     copyReqBodyBtn.style.color = 'var(--accent)';
                     setTimeout(() => {
@@ -6058,10 +6060,24 @@ window.toggleRvcLogs = function() {
 };
 
 
+
+window.flashCopiedElement = function(element) {
+    if (!element) return;
+    element.classList.remove('flash-success-anim');
+    void element.offsetWidth; // trigger reflow
+    element.classList.add('flash-success-anim');
+    setTimeout(() => {
+        element.classList.remove('flash-success-anim');
+    }, 600);
+};
+
 window.handleCopyAction = function(targetEl, text) {
     if(!text) return;
     navigator.clipboard.writeText(text).then(() => {
-        const iconWrapper = targetEl.querySelector('.copy-icon-wrapper');
+        
+        let flashTarget = targetEl.closest('.input-with-copy, pre, textarea, .panel') || targetEl.previousElementSibling;
+        window.flashCopiedElement(flashTarget);
+const iconWrapper = targetEl.querySelector('.copy-icon-wrapper');
         const iconContainer = targetEl.querySelector('svg') || targetEl;
         const isSelfButton = targetEl.tagName === 'BUTTON' || targetEl.classList.contains('wf-copy-btn');
         
