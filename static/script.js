@@ -6898,3 +6898,103 @@ window.alert = function(msg) {
         console.log("ALERT:", msg);
     }
 };
+
+    // Test Harness Modal Logic
+    const btnTestHarness = document.getElementById('btn-test-harness');
+    const testHarnessModal = document.getElementById('test-harness-modal');
+    const closeHarnessBtn = testHarnessModal ? testHarnessModal.querySelector('.close-modal') : null;
+    const btnHarnessExecute = document.getElementById('btn-harness-execute');
+    const btnHarnessSelectAll = document.getElementById('btn-harness-select-all');
+    const btnHarnessDeselectAll = document.getElementById('btn-harness-deselect-all');
+    const harnessTestList = document.getElementById('harness-test-list');
+
+    if (btnTestHarness && testHarnessModal) {
+        const loadHarnessTests = async () => {
+            try {
+                harnessTestList.innerHTML = '<p>Loading tests...</p>';
+                const res = await fetch('/api/harness/tests');
+                const data = await res.json();
+                if (data.success) {
+                    harnessTestList.innerHTML = '';
+                    data.tests.forEach((test, idx) => {
+                        const label = document.createElement('label');
+                        label.style.display = 'flex';
+                        label.style.alignItems = 'center';
+                        label.style.gap = '8px';
+                        label.style.cursor = 'pointer';
+                        
+                        const cb = document.createElement('input');
+                        cb.type = 'checkbox';
+                        cb.className = 'harness-test-cb';
+                        cb.dataset.name = test.name;
+                        cb.dataset.type = test.type;
+                        
+                        const text = document.createElement('span');
+                        text.textContent = `[${test.type}] ${test.name}`;
+                        text.style.fontSize = '0.85rem';
+                        
+                        label.appendChild(cb);
+                        label.appendChild(text);
+                        harnessTestList.appendChild(label);
+                    });
+                } else {
+                    harnessTestList.innerHTML = `<p style="color: var(--danger-color);">Error loading tests: ${data.error}</p>`;
+                }
+            } catch (err) {
+                harnessTestList.innerHTML = `<p style="color: var(--danger-color);">Error loading tests: ${err.message}</p>`;
+            }
+        };
+
+        setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHarnessTests);
+        
+        btnHarnessSelectAll?.addEventListener('click', () => {
+            document.querySelectorAll('.harness-test-cb').forEach(cb => cb.checked = true);
+        });
+        btnHarnessDeselectAll?.addEventListener('click', () => {
+            document.querySelectorAll('.harness-test-cb').forEach(cb => cb.checked = false);
+        });
+        
+        btnHarnessExecute?.addEventListener('click', async () => {
+            const selected = Array.from(document.querySelectorAll('.harness-test-cb:checked')).map(cb => ({
+                name: cb.dataset.name,
+                type: cb.dataset.type
+            }));
+            
+            if (selected.length === 0) {
+                showCustomAlert('Please select at least one test to execute.', 'warning');
+                return;
+            }
+            
+            btnHarnessExecute.disabled = true;
+            const originalText = btnHarnessExecute.innerHTML;
+            btnHarnessExecute.innerHTML = '<span class="spinner" style="display:inline-block; width:12px; height:12px; border:2px solid var(--text-primary); border-top-color:transparent; border-radius:50%; animation:spin 1s linear infinite;"></span> Running tests...';
+            
+            try {
+                const res = await fetch('/api/harness/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tests: selected })
+                });
+                const data = await res.json();
+                
+                // close modal
+                testHarnessModal.classList.add('closing');
+                setTimeout(() => { 
+                    testHarnessModal.style.display = 'none'; 
+                    testHarnessModal.classList.remove('closing'); 
+                }, 150);
+                
+                if (data.success) {
+                    showCustomAlert(`✅ Tests executed.\n\nLogs:\n${data.logs.substring(0, 1000)}${data.logs.length > 1000 ? '...' : ''}`, 'info');
+                } else {
+                    showCustomAlert(`❌ Tests execution failed: ${data.error}`, 'error');
+                }
+            } catch (err) {
+                showCustomAlert(`❌ Error executing tests: ${err.message}`, 'error');
+            } finally {
+                btnHarnessExecute.disabled = false;
+                btnHarnessExecute.innerHTML = originalText;
+            }
+        });
+    }
+    

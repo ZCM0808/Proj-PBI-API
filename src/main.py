@@ -1253,3 +1253,57 @@ async def export_dataset_queries(workspace_id: str, dataset_id: str, request: Re
 
     except Exception as e:
         return {"success": False, "message": f"Server Error: {str(e)}"}
+
+
+@app.get("/api/harness/tests")
+async def get_harness_tests():
+    try:
+        import re
+        tests = []
+        with open("tests/e2e.spec.js", "r", encoding="utf-8") as f:
+            content = f.read()
+            matches = re.findall(r"test\(['\"]([^'\"]+)['\"]", content)
+            tests.extend([{"name": m, "type": "playwright"} for m in matches])
+        with open("tests/test_backend.py", "r", encoding="utf-8") as f:
+            content = f.read()
+            matches = re.findall(r"def (test_[^\(]+)", content)
+            tests.extend([{"name": m, "type": "pytest"} for m in matches])
+        return {"success": True, "tests": tests}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/harness/run")
+async def run_harness_tests(request: Request):
+    try:
+        data = await request.json()
+        selected_tests = data.get("tests", [])
+        if not selected_tests:
+            return {"success": False, "error": "No tests selected"}
+        
+        playwright_tests = [t["name"] for t in selected_tests if t["type"] == "playwright"]
+        pytest_tests = [t["name"] for t in selected_tests if t["type"] == "pytest"]
+        
+        import subprocess
+        results = ""
+        
+        if playwright_tests:
+            import re
+            pattern = "|".join([re.escape(t) for t in playwright_tests])
+            # For powershell/cmd we need to wrap the grep pattern in quotes carefully, better to pass as list
+            # But npx playwright test -g regex expects the regex to be the next argument.
+            cmd = ["npx", "playwright", "test", "-g", pattern]
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+            results += "\n=== Playwright E2E Tests ===\n"
+            results += result.stdout + "\n" + result.stderr
+            
+        if pytest_tests:
+            pattern = " or ".join(pytest_tests)
+            cmd = ["pytest", "tests/test_backend.py", "-k", pattern, "-v"]
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+            results += "\n=== Pytest Backend Tests ===\n"
+            results += result.stdout + "\n" + result.stderr
+            
+        return {"success": True, "logs": results}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
