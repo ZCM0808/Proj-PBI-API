@@ -4425,7 +4425,7 @@ document.addEventListener('mousedown', (e) => {
 
     // Global override of standard window.alert
     window.alert = function(message) {
-        window.showCustomAlert(message);
+        window.window.showCustomAlert(message);
     };
 
     // --- AI Chat Logic ---
@@ -6893,7 +6893,7 @@ window.openDaxResultModal = function() {
 // Override native alert to use our custom modal
 window.alert = function(msg) {
     if (window.showCustomAlert) {
-        window.showCustomAlert(msg);
+        window.window.showCustomAlert(msg);
     } else {
         console.log("ALERT:", msg);
     }
@@ -6947,7 +6947,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHarnessTests);
+        window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHarnessTests);
         
         btnHarnessSelectAll?.addEventListener('click', () => {
             document.querySelectorAll('.harness-test-cb').forEach(cb => cb.checked = true);
@@ -6963,7 +6963,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }));
             
             if (selected.length === 0) {
-                showCustomAlert('Please select at least one test to execute.', 'warning');
+                window.showCustomAlert('Please select at least one test to execute.', 'warning');
                 return;
             }
             
@@ -6987,12 +6987,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, 150);
                 
                 if (data.success) {
-                    showCustomAlert(`✅ Tests executed.\n\nLogs:\n${data.logs.substring(0, 1000)}${data.logs.length > 1000 ? '...' : ''}`, 'info');
+                    window.showCustomAlert(`✅ Tests executed.\n\nLogs:\n${data.logs.substring(0, 1000)}${data.logs.length > 1000 ? '...' : ''}`, 'info');
                 } else {
-                    showCustomAlert(`❌ Tests execution failed: ${data.error}`, 'error');
+                    window.showCustomAlert(`❌ Tests execution failed: ${data.error}`, 'error');
                 }
             } catch (err) {
-                showCustomAlert(`❌ Error executing tests: ${err.message}`, 'error');
+                window.showCustomAlert(`❌ Error executing tests: ${err.message}`, 'error');
             } finally {
                 btnHarnessExecute.disabled = false;
                 btnHarnessExecute.innerHTML = originalText;
