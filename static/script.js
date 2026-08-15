@@ -4415,7 +4415,7 @@ document.addEventListener('mousedown', (e) => {
 
 
     // Custom Dialog Modal System (Alert/Confirm) replacing native popups
-    window.showCustomAlert = function(message, title = "🔔 System Message") {
+    window.showCustomAlert = function(message, title = "🔔 System Message", isHtml = false) {
         return new Promise((resolve) => {
             const modal = document.getElementById('custom-dialog-modal');
             const titleEl = document.getElementById('custom-dialog-title');
@@ -4424,7 +4424,8 @@ document.addEventListener('mousedown', (e) => {
             const content = modal.querySelector('.modal-content');
             
             titleEl.innerHTML = title;
-            msgEl.textContent = message;
+            if (isHtml) msgEl.innerHTML = message;
+            else msgEl.textContent = message;
             
             // Reset position to center
             window.centerModal(content);
