@@ -4299,6 +4299,7 @@ document.addEventListener('mousedown', (e) => {
 
     if (btnTestHarness && testHarnessModal) {
         const loadHarnessTests = async () => {
+            if (harnessTestList.querySelectorAll('.harness-test-cb').length > 0) return;
             try {
                 harnessTestList.innerHTML = '<p>Loading tests...</p>';
                 const res = await fetch('/api/harness/tests');
