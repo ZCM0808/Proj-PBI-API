@@ -4379,26 +4379,22 @@ document.addEventListener('mousedown', (e) => {
                 }, 150);
                 
                 if (data.success) {
-                    const htmlContent = `
-                        <div style="font-size: 14px; margin-bottom: 10px; color: var(--text-primary);">
-                            <strong>Tests executed successfully!</strong>
-                        </div>
-                        <details style="background: var(--bg-color); padding: 8px; border-radius: 4px; border: 1px solid var(--panel-border);">
-                            <summary style="cursor: pointer; font-weight: bold; color: var(--accent); user-select: none;">Click to view detailed logs</summary>
-                            <pre style="margin-top: 10px; white-space: pre-wrap; font-size: 12px; max-height: 300px; overflow-y: auto; color: var(--text-secondary); background: transparent; border: none;">${data.logs.substring(0, 5000)}${data.logs.length > 5000 ? '\n... (truncated)' : ''}</pre>
-                        </details>
-                    `;
+                    const htmlContent = `<div style="font-size: 14px; margin-bottom: 10px; color: var(--text-primary);">
+<strong>Tests executed successfully!</strong>
+</div>
+<details style="background: var(--bg-color); padding: 8px; border-radius: 4px; border: 1px solid var(--panel-border);">
+<summary style="cursor: pointer; font-weight: bold; color: var(--accent); user-select: none;">Click to view detailed logs</summary>
+<pre style="margin-top: 10px; white-space: pre-wrap; font-size: 12px; max-height: 300px; overflow-y: auto; color: var(--text-secondary); background: transparent; border: none;">${data.logs.substring(0, 5000)}${data.logs.length > 5000 ? '\\n... (truncated)' : ''}</pre>
+</details>`;
                     window.showCustomAlert(htmlContent, '✅ Tests executed', true);
                 } else {
-                    const htmlContent = `
-                        <div style="font-size: 14px; margin-bottom: 10px; color: var(--danger);">
-                            <strong>Tests execution failed.</strong>
-                        </div>
-                        <details style="background: var(--bg-color); padding: 8px; border-radius: 4px; border: 1px solid var(--danger);">
-                            <summary style="cursor: pointer; font-weight: bold; color: var(--danger); user-select: none;">Click to view detailed error logs</summary>
-                            <pre style="margin-top: 10px; white-space: pre-wrap; font-size: 12px; max-height: 300px; overflow-y: auto; color: var(--text-secondary); background: transparent; border: none;">${data.error}</pre>
-                        </details>
-                    `;
+                    const htmlContent = `<div style="font-size: 14px; margin-bottom: 10px; color: var(--danger);">
+<strong>Tests execution failed.</strong>
+</div>
+<details style="background: var(--bg-color); padding: 8px; border-radius: 4px; border: 1px solid var(--danger);">
+<summary style="cursor: pointer; font-weight: bold; color: var(--danger); user-select: none;">Click to view detailed error logs</summary>
+<pre style="margin-top: 10px; white-space: pre-wrap; font-size: 12px; max-height: 300px; overflow-y: auto; color: var(--text-secondary); background: transparent; border: none;">${data.error}</pre>
+</details>`;
                     window.showCustomAlert(htmlContent, '❌ Execution Failed', true);
                 }
             } catch (err) {
