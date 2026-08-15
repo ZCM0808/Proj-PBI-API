@@ -1,4 +1,14 @@
 
+// Global Fetch Interceptor for 401 Unauthorized
+const originalFetch = window.fetch;
+window.fetch = async function(...args) {
+    const response = await originalFetch.apply(window, args);
+    if (response.status === 401 && !window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+    }
+    return response;
+};
+
 window.expandConsole = function(id) {
     const consoleEl = document.getElementById(id);
     if (!consoleEl) return;
@@ -2792,6 +2802,7 @@ const loadReqHistory = (searchTerm = "") => {
             document.addEventListener('mouseup', onMouseUp);
         });
     }
+
     window.setupFLIPModal = function setupFLIPModal(btnOpen, btnClose, modalOverlay, onLoadCallback = null) {
         if (!btnOpen || !btnClose || !modalOverlay) return;
         const modalContent = modalOverlay.querySelector('.modal-content');
@@ -2801,7 +2812,7 @@ const loadReqHistory = (searchTerm = "") => {
             makeDraggable(modalContent, modalHeader);
         }
 
-        btnOpen.addEventListener('click', async () => {
+        btnOpen.addEventListener('click', async () => { console.log('FLIPModal CLICKED', btnOpen.id);
             if (onLoadCallback) {
                 onLoadCallback();
             }
@@ -2896,6 +2907,136 @@ const loadReqHistory = (searchTerm = "") => {
             };
         });
     }
+
+
+    // Test Harness Modal Logic
+
+    const btnTestHarness = document.getElementById('btn-test-harness');
+    const testHarnessModal = document.getElementById('test-harness-modal');
+    const closeHarnessBtn = testHarnessModal ? testHarnessModal.querySelector('.close-modal') : null;
+    const btnHarnessExecute = document.getElementById('btn-harness-execute');
+    const btnHarnessSelectAll = document.getElementById('btn-harness-select-all');
+    const btnHarnessClearAll = document.getElementById('btn-harness-clear-all');
+    const harnessTestList = document.getElementById('harness-test-list');
+
+    if (btnTestHarness && testHarnessModal) {
+        const loadHarnessTests = async () => {
+            if (harnessTestList.querySelectorAll('.harness-test-cb').length > 0) return;
+            try {
+                harnessTestList.innerHTML = '<p>Loading tests...</p>';
+                const res = await fetch('/api/harness/tests');
+                const data = await res.json();
+                if (data.success) {
+                    harnessTestList.innerHTML = '';
+                    data.tests.forEach((test, idx) => {
+                        const label = document.createElement('label');
+                        label.style.display = 'flex';
+                        label.style.alignItems = 'center';
+                        label.style.gap = '8px';
+                        label.style.cursor = 'pointer';
+                        
+                        const cb = document.createElement('input');
+                        cb.type = 'checkbox';
+                        cb.className = 'harness-test-cb';
+                        cb.dataset.name = test.name;
+                        cb.dataset.type = test.type;
+                        
+                        cb.addEventListener('change', window.updateHarnessStats);
+                        const text = document.createElement('span');
+                        text.textContent = `[${test.type}] ${test.name}`;
+                        text.style.fontSize = '0.85rem';
+                        
+                        label.appendChild(cb);
+                        label.appendChild(text);
+                        harnessTestList.appendChild(label);
+                    });
+                    if (window.updateHarnessStats) window.updateHarnessStats();
+                } else {
+                    harnessTestList.innerHTML = `<p style="color: var(--danger-color);">Error loading tests: ${data.error}</p>`;
+                }
+            } catch (err) {
+                harnessTestList.innerHTML = `<p style="color: var(--danger-color);">Error loading tests: ${err.message}</p>`;
+            }
+        };
+
+        console.log('BINDING btnTestHarness:', !!btnTestHarness);
+window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHarnessTests);
+        
+        btnHarnessSelectAll?.addEventListener('click', () => {
+            document.querySelectorAll('.harness-test-cb').forEach(cb => cb.checked = true);
+            if (window.updateHarnessStats) window.updateHarnessStats();
+        });
+        
+        btnHarnessClearAll?.addEventListener('click', () => {
+            document.querySelectorAll('.harness-test-cb').forEach(cb => cb.checked = false);
+            if (window.updateHarnessStats) window.updateHarnessStats();
+        });
+        
+        btnHarnessExecute?.addEventListener('click', async () => {
+            const selected = Array.from(document.querySelectorAll('.harness-test-cb:checked')).map(cb => ({
+                name: cb.dataset.name,
+                type: cb.dataset.type
+            }));
+            
+            if (selected.length === 0) {
+                window.showCustomAlert('Please select at least one test to execute.', 'warning');
+                return;
+            }
+            
+            btnHarnessExecute.disabled = true;
+            const originalText = btnHarnessExecute.innerHTML;
+            const originalMainText = btnTestHarness ? btnTestHarness.innerHTML : '';
+            const spinnerHtml = '<span class="spinner" style="display:inline-block; width:12px; height:12px; border:2px solid var(--text-primary); border-top-color:transparent; border-radius:50%; animation:spin 1s linear infinite;"></span>';
+            btnHarnessExecute.innerHTML = `${spinnerHtml} Running tests...`;
+            if (btnTestHarness) {
+                btnTestHarness.innerHTML = spinnerHtml;
+            }
+            btnHarnessExecute.innerHTML = '<span class="spinner" style="display:inline-block; width:12px; height:12px; border:2px solid var(--text-primary); border-top-color:transparent; border-radius:50%; animation:spin 1s linear infinite;"></span> Running tests...';
+            
+            try {
+                const res = await fetch('/api/harness/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tests: selected })
+                });
+                const data = await res.json();
+                
+                // keep modal open so results popup over it
+                
+                if (data.success) {
+                    const htmlContent = `<div style="font-size: 14px; margin-bottom: 10px; color: var(--text-primary);">
+<strong>Tests executed successfully!</strong>
+</div>
+<details style="background: var(--bg-color); padding: 8px; border-radius: 4px; border: 1px solid var(--panel-border);">
+<summary style="cursor: pointer; font-weight: bold; color: var(--accent); user-select: none;">Click to view detailed logs</summary>
+<pre style="margin-top: 10px; white-space: pre-wrap; font-size: 12px; max-height: 300px; overflow-y: auto; color: var(--text-secondary); background: transparent; border: none;">${data.logs.substring(0, 5000)}${data.logs.length > 5000 ? '\\n... (truncated)' : ''}</pre>
+</details>`;
+                    window.showCustomAlert(htmlContent, '✅ Tests executed', true);
+                } else {
+                    const htmlContent = `<div style="font-size: 14px; margin-bottom: 10px; color: var(--danger);">
+<strong>Tests execution failed.</strong>
+</div>
+<details style="background: var(--bg-color); padding: 8px; border-radius: 4px; border: 1px solid var(--danger);">
+<summary style="cursor: pointer; font-weight: bold; color: var(--danger); user-select: none;">Click to view detailed error logs</summary>
+<pre style="margin-top: 10px; white-space: pre-wrap; font-size: 12px; max-height: 300px; overflow-y: auto; color: var(--text-secondary); background: transparent; border: none;">${data.error}</pre>
+</details>`;
+                    window.showCustomAlert(htmlContent, '❌ Execution Failed', true);
+                }
+            } catch (err) {
+                window.showCustomAlert(`❌ Error executing tests: ${err.message}`, 'error');
+            } finally {
+                btnHarnessExecute.disabled = false;
+                btnHarnessExecute.innerHTML = originalText;
+                if (btnTestHarness) {
+                    btnTestHarness.innerHTML = originalMainText;
+                }
+            }
+        });
+    }
+    
+
+
+
 
     // Settings Modal Logic
     const btnSettings = document.getElementById('btn-settings');
@@ -4286,122 +4427,6 @@ document.addEventListener('mousedown', (e) => {
             window.closeNoteModal();
         }
     }
-
-    // Test Harness Modal Logic
-
-    const btnTestHarness = document.getElementById('btn-test-harness');
-    const testHarnessModal = document.getElementById('test-harness-modal');
-    const closeHarnessBtn = testHarnessModal ? testHarnessModal.querySelector('.close-modal') : null;
-    const btnHarnessExecute = document.getElementById('btn-harness-execute');
-    const btnHarnessSelectAll = document.getElementById('btn-harness-select-all');
-    const btnHarnessClearAll = document.getElementById('btn-harness-clear-all');
-    const harnessTestList = document.getElementById('harness-test-list');
-
-    if (btnTestHarness && testHarnessModal) {
-        const loadHarnessTests = async () => {
-            if (harnessTestList.querySelectorAll('.harness-test-cb').length > 0) return;
-            try {
-                harnessTestList.innerHTML = '<p>Loading tests...</p>';
-                const res = await fetch('/api/harness/tests');
-                const data = await res.json();
-                if (data.success) {
-                    harnessTestList.innerHTML = '';
-                    data.tests.forEach((test, idx) => {
-                        const label = document.createElement('label');
-                        label.style.display = 'flex';
-                        label.style.alignItems = 'center';
-                        label.style.gap = '8px';
-                        label.style.cursor = 'pointer';
-                        
-                        const cb = document.createElement('input');
-                        cb.type = 'checkbox';
-                        cb.className = 'harness-test-cb';
-                        cb.dataset.name = test.name;
-                        cb.dataset.type = test.type;
-                        
-                        cb.addEventListener('change', window.updateHarnessStats);
-                        const text = document.createElement('span');
-                        text.textContent = `[${test.type}] ${test.name}`;
-                        text.style.fontSize = '0.85rem';
-                        
-                        label.appendChild(cb);
-                        label.appendChild(text);
-                        harnessTestList.appendChild(label);
-                    });
-                    if (window.updateHarnessStats) window.updateHarnessStats();
-                } else {
-                    harnessTestList.innerHTML = `<p style="color: var(--danger-color);">Error loading tests: ${data.error}</p>`;
-                }
-            } catch (err) {
-                harnessTestList.innerHTML = `<p style="color: var(--danger-color);">Error loading tests: ${err.message}</p>`;
-            }
-        };
-
-        window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHarnessTests);
-        
-        btnHarnessSelectAll?.addEventListener('click', () => {
-            document.querySelectorAll('.harness-test-cb').forEach(cb => cb.checked = true);
-            if (window.updateHarnessStats) window.updateHarnessStats();
-        });
-        
-        btnHarnessClearAll?.addEventListener('click', () => {
-            document.querySelectorAll('.harness-test-cb').forEach(cb => cb.checked = false);
-            if (window.updateHarnessStats) window.updateHarnessStats();
-        });
-        
-        btnHarnessExecute?.addEventListener('click', async () => {
-            const selected = Array.from(document.querySelectorAll('.harness-test-cb:checked')).map(cb => ({
-                name: cb.dataset.name,
-                type: cb.dataset.type
-            }));
-            
-            if (selected.length === 0) {
-                window.showCustomAlert('Please select at least one test to execute.', 'warning');
-                return;
-            }
-            
-            btnHarnessExecute.disabled = true;
-            const originalText = btnHarnessExecute.innerHTML;
-            btnHarnessExecute.innerHTML = '<span class="spinner" style="display:inline-block; width:12px; height:12px; border:2px solid var(--text-primary); border-top-color:transparent; border-radius:50%; animation:spin 1s linear infinite;"></span> Running tests...';
-            
-            try {
-                const res = await fetch('/api/harness/run', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ tests: selected })
-                });
-                const data = await res.json();
-                
-                // keep modal open so results popup over it
-                
-                if (data.success) {
-                    const htmlContent = `<div style="font-size: 14px; margin-bottom: 10px; color: var(--text-primary);">
-<strong>Tests executed successfully!</strong>
-</div>
-<details style="background: var(--bg-color); padding: 8px; border-radius: 4px; border: 1px solid var(--panel-border);">
-<summary style="cursor: pointer; font-weight: bold; color: var(--accent); user-select: none;">Click to view detailed logs</summary>
-<pre style="margin-top: 10px; white-space: pre-wrap; font-size: 12px; max-height: 300px; overflow-y: auto; color: var(--text-secondary); background: transparent; border: none;">${data.logs.substring(0, 5000)}${data.logs.length > 5000 ? '\\n... (truncated)' : ''}</pre>
-</details>`;
-                    window.showCustomAlert(htmlContent, '✅ Tests executed', true);
-                } else {
-                    const htmlContent = `<div style="font-size: 14px; margin-bottom: 10px; color: var(--danger);">
-<strong>Tests execution failed.</strong>
-</div>
-<details style="background: var(--bg-color); padding: 8px; border-radius: 4px; border: 1px solid var(--danger);">
-<summary style="cursor: pointer; font-weight: bold; color: var(--danger); user-select: none;">Click to view detailed error logs</summary>
-<pre style="margin-top: 10px; white-space: pre-wrap; font-size: 12px; max-height: 300px; overflow-y: auto; color: var(--text-secondary); background: transparent; border: none;">${data.error}</pre>
-</details>`;
-                    window.showCustomAlert(htmlContent, '❌ Execution Failed', true);
-                }
-            } catch (err) {
-                window.showCustomAlert(`❌ Error executing tests: ${err.message}`, 'error');
-            } finally {
-                btnHarnessExecute.disabled = false;
-                btnHarnessExecute.innerHTML = originalText;
-            }
-        });
-    }
-    
 
 });
 
