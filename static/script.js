@@ -4263,7 +4263,7 @@ document.addEventListener('mousedown', (e) => {
         const checkboxes = document.querySelectorAll('.harness-test-cb');
         const total = checkboxes.length;
         const checked = Array.from(checkboxes).filter(cb => cb.checked).length;
-        statsSpan.textContent = `已选: ${checked} / 总计: ${total}`;
+        statsSpan.textContent = `Selected: ${checked} / Total: ${total}`;
     };
 
     const noteModal = document.getElementById('modal-note');
@@ -4371,12 +4371,7 @@ document.addEventListener('mousedown', (e) => {
                 });
                 const data = await res.json();
                 
-                // close modal
-                testHarnessModal.classList.add('closing');
-                setTimeout(() => { 
-                    testHarnessModal.style.display = 'none'; 
-                    testHarnessModal.classList.remove('closing'); 
-                }, 150);
+                // keep modal open so results popup over it
                 
                 if (data.success) {
                     const htmlContent = `<div style="font-size: 14px; margin-bottom: 10px; color: var(--text-primary);">
@@ -4637,17 +4632,17 @@ document.addEventListener('mousedown', (e) => {
         if (window.isAutoApprove) {
             btn.style.borderColor = 'var(--success)';
             btn.style.color = 'var(--success)';
-            btn.title = '免审模式已开启 (点击关闭)';
+            btn.title = 'Auto-Approve ON (Click to disable)';
             icon.textContent = '🔓';
-            text.textContent = '免审模式';
+            text.textContent = 'Auto-Approve';
             btn.style.transform = 'scale(1.05)';
             setTimeout(() => btn.style.transform = 'scale(1)', 150);
         } else {
             btn.style.borderColor = 'var(--panel-border)';
             btn.style.color = 'var(--text-secondary)';
-            btn.title = '审批模式已开启 (点击开启免审)';
+            btn.title = 'Approval Mode (Click to auto-approve)';
             icon.textContent = '🔒';
-            text.textContent = '审批模式';
+            text.textContent = 'Approval Mode';
             btn.style.transform = 'scale(0.95)';
             setTimeout(() => btn.style.transform = 'scale(1)', 150);
         }
@@ -4682,7 +4677,7 @@ document.addEventListener('mousedown', (e) => {
         const msgs = document.getElementById('ai-chat-messages');
         const loadingDiv = document.createElement('div');
         loadingDiv.style.cssText = 'align-self: flex-start; background: var(--overlay-10); padding: 10px 14px; border-radius: 12px; border-bottom-left-radius: 2px; max-width: 85%; color: var(--text-secondary); opacity: 0; transform: translateY(10px); transition: all 0.3s ease-out;';
-        loadingDiv.textContent = '思考中...';
+        loadingDiv.textContent = 'Thinking...';
         msgs.appendChild(loadingDiv);
         
         void loadingDiv.offsetWidth;
@@ -4699,7 +4694,7 @@ document.addEventListener('mousedown', (e) => {
 
             if (!res.ok) {
                 const data = await res.json();
-                loadingDiv.textContent = "抱歉，无法连接到 AI：" + (data.message || "未知错误");
+                loadingDiv.textContent = "Sorry, unable to connect to AI: " + (data.message || "未知错误");
                 loadingDiv.style.color = "var(--error)";
                 return;
             }
@@ -4750,13 +4745,13 @@ document.addEventListener('mousedown', (e) => {
                                 toolCard.innerHTML = `
                                     <div style="font-weight: bold; margin-bottom: 8px; color: var(--warning); display: flex; align-items: center; gap: 6px;">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                                        AI 请求执行高危操作
+                                        AI Requests High-Risk Tool Execution
                                     </div>
-                                    <div style="font-size: 0.85rem; margin-bottom: 4px;">工具名称: <code style="background: var(--shadow-light); padding: 2px 6px; border-radius: 4px;">${data.name}</code></div>
+                                    <div style="font-size: 0.85rem; margin-bottom: 4px;">Tool Name: <code style="background: var(--shadow-light); padding: 2px 6px; border-radius: 4px;">${data.name}</code></div>
                                     <pre style="background: var(--input-bg); padding: 8px; border-radius: 6px; font-size: 0.8rem; overflow-x: auto; margin-bottom: 12px; white-space: pre-wrap; color: var(--info-light, #a5d6ff);">${JSON.stringify(data.args, null, 2)}</pre>
                                     <div style="display: flex; gap: 8px;">
-                                        <button class="approve-btn" style="flex: 1; background: var(--success); color: white; border: none; padding: 6px 0; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px var(--status-success-bg)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'">✅ 批准执行</button>
-                                        <button class="reject-btn" style="flex: 1; background: var(--error); color: white; border: none; padding: 6px 0; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px var(--status-error-bg)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'">❌ 拒绝</button>
+                                        <button class="approve-btn" style="flex: 1; background: var(--success); color: white; border: none; padding: 6px 0; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px var(--status-success-bg)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'">✅ Approve</button>
+                                        <button class="reject-btn" style="flex: 1; background: var(--error); color: white; border: none; padding: 6px 0; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px var(--status-error-bg)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'">❌ Reject</button>
                                     </div>
                                 `;
                                 msgs.appendChild(toolCard);
@@ -4776,7 +4771,7 @@ document.addEventListener('mousedown', (e) => {
                                     btnReject.style.opacity = '0.4';
                                     btnApprove.style.cursor = 'not-allowed';
                                     btnReject.style.cursor = 'not-allowed';
-                                    btnApprove.innerHTML = approved ? '执行中...' : '已拒绝';
+                                    btnApprove.innerHTML = approved ? 'Executing...' : 'Rejected';
                                     
                                     const actionPayload = {
                                         session_id: window.aiSessionId,
@@ -4800,7 +4795,7 @@ document.addEventListener('mousedown', (e) => {
                                 msgs.scrollTop = Math.max(0, msgs.scrollHeight - msgs.clientHeight * 0.66);
                             }
                         } else {
-                            loadingDiv.textContent = "抱歉，发生错误：" + (data.message || "未知错误");
+                            loadingDiv.textContent = "Sorry, an error occurred: " + (data.message || "未知错误");
                             loadingDiv.style.color = "var(--error)";
                         }
                     } catch (e) {
@@ -4809,7 +4804,7 @@ document.addEventListener('mousedown', (e) => {
                 }
             }
         } catch (e) {
-            loadingDiv.textContent = "网络请求失败，无法连接到 AI。";
+            loadingDiv.textContent = "Network request failed. Unable to connect to AI.";
             loadingDiv.style.color = "var(--error)";
         }
         msgs.scrollTop = Math.max(0, msgs.scrollHeight - msgs.clientHeight * 0.66);
