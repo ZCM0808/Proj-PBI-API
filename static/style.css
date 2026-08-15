@@ -1014,6 +1014,7 @@ textarea:focus {
 #custom-dialog-modal .modal-content { max-width: 400px; }
 #gum-edit-modal .modal-content, #gum-add-modal .modal-content { max-width: 450px; }
 #pipeline-modal .modal-content { width: 90%; max-width: 800px; }
+#modal-note .modal-content { width: 90%; max-width: 900px; }
 
 .modal-header {
     display: flex; justify-content: space-between; align-items: center;
