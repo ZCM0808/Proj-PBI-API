@@ -46,7 +46,7 @@ def scan_local_instances():
                             with open(port_file, 'r', encoding='utf-16-le') as f:
                                 port = f.read().strip()
                                 port = "".join(filter(str.isdigit, port))
-                        except:
+                        except Exception:
                             with open(port_file, 'r', encoding='utf-8') as f:
                                 port = f.read().strip()
                                 port = "".join(filter(str.isdigit, port))
@@ -73,12 +73,12 @@ def run_dax_query(port: str, query: str):
         sys.path.append(bin_dir)
         
     try:
-        import clr
+        import clr # type: ignore
         try:
             clr.AddReference("Microsoft.PowerBI.AdomdClient")
-        except:
+        except Exception:
             pass # might be already loaded
-        from Microsoft.AnalysisServices.AdomdClient import AdomdConnection
+        from Microsoft.AnalysisServices.AdomdClient import AdomdConnection # type: ignore
         
         conn_str = f"Data Source=localhost:{port};"
         conn = AdomdConnection(conn_str)
@@ -94,7 +94,7 @@ def run_dax_query(port: str, query: str):
             
         rows = []
         while reader.Read():
-            row = {}
+            row: dict[str, str | None] = {}
             for i in range(reader.FieldCount):
                 val = reader.GetValue(i)
                 # handle DBNull or .NET types

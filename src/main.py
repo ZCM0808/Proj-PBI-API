@@ -1287,8 +1287,8 @@ async def run_harness_tests(request: Request):
         results = ""
         
         if playwright_tests:
-            # Join names simply with |, no regex escaping needed as we exact match names, except to avoid breaking the CLI string quotes
-            pattern = "|".join([t.replace('"', '') for t in playwright_tests])
+            # Replace all regex metacharacters with '.' to avoid Playwright test parsing errors
+            pattern = "|".join([re.sub(r'[()[\]{}.?*+^$|\\]', '.', t) for t in playwright_tests])
             cmd = f'npx playwright test -g "{pattern}"'
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
             results += "\n=== Playwright E2E Tests ===\n"
@@ -1298,10 +1298,10 @@ async def run_harness_tests(request: Request):
             
         if pytest_tests:
             pattern = " or ".join(pytest_tests)
-            cmd = ["pytest", "tests/test_backend.py", "-k", pattern, "-v"]
-            result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+            pytest_cmd = ["pytest", "tests/test_backend.py", "-k", pattern, "-v"]
+            result = subprocess.run(pytest_cmd, shell=True, capture_output=True, text=True)
             results += "\n=== Pytest Backend Tests ===\n"
-            results += f"> Executed: {' '.join(cmd)} (Exit Code: {result.returncode})\n\n"
+            results += f"> Executed: {' '.join(pytest_cmd)} (Exit Code: {result.returncode})\n\n"
             results += "--- STDOUT ---\n" + (result.stdout or "No STDOUT") + "\n"
             results += "--- STDERR ---\n" + (result.stderr or "No STDERR") + "\n"
             
