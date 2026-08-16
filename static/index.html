@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/powerbi-client/dist/powerbi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260815_v281">
+    <link rel="stylesheet" href="/static/style.css?v=20260816_v312">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -245,20 +245,20 @@
 
 <!-- Env Identity -->
                 <div id="env-identity" style="display: flex; align-items: center; gap: 16px; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 2px; flex-wrap: wrap; user-select: none;">
-                    <span id="display-tenant" style="display: none; align-items: center; gap: 4px; cursor: pointer; transition: all 0.2s;" onclick="window.handleCopyAction(this, this.querySelector('strong').innerText)" title="Click to Copy Tenant ID">
-                        <span style="opacity: 0.85;">🏢 Tenant:</span>
-                        <strong style="color: var(--text-primary); font-weight: 600; font-family: 'Fira Code', monospace; font-size: 0.72rem;">Unknown</strong>
-                        <span class="copy-icon-wrapper" style="display: inline-flex; align-items: center; justify-content: center; padding: 2px 4px; border-radius: 4px; background: transparent; color: var(--text-secondary); border: 1px solid transparent; margin-left: 2px; transition: all 0.2s;">
+                    <span id="display-tenant" style="display: none; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; transition: background 0.2s ease, color 0.2s ease; height: 24px; box-sizing: border-box;" title="Tenant ID">
+                        <span style="opacity: 0.85; line-height: 1;">🏢 Tenant:</span>
+                        <strong style="color: var(--text-primary); font-weight: 600; font-family: 'Fira Code', monospace; font-size: 0.72rem; line-height: 1;">Unknown</strong>
+                        <button type="button" class="copy-icon-wrapper icon-btn" style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; border-radius: 4px; background: transparent; color: var(--text-secondary); border: none; margin-left: 2px; transition: all 0.2s; cursor: pointer; flex-shrink: 0;" onclick="window.handleCopyAction(this, this.parentElement.querySelector('strong').innerText, this.parentElement)" title="Click to Copy Tenant ID">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                        </span>
+                        </button>
                     </span>
                     <span style="opacity: 0.25;">|</span>
-                    <span id="display-client" style="display: none; align-items: center; gap: 4px; cursor: pointer; transition: all 0.2s;" onclick="window.handleCopyAction(this, this.querySelector('strong').innerText)" title="Click to Copy App Name">
-                        <span style="opacity: 0.85;">🔑 Client App:</span>
-                        <strong style="color: var(--text-primary); font-weight: 600;">Unknown</strong>
-                        <span class="copy-icon-wrapper" style="display: inline-flex; align-items: center; justify-content: center; padding: 2px 4px; border-radius: 4px; background: transparent; color: var(--text-secondary); border: 1px solid transparent; margin-left: 2px; transition: all 0.2s;">
+                    <span id="display-client" style="display: none; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; transition: background 0.2s ease, color 0.2s ease; height: 24px; box-sizing: border-box;" title="Client App Name">
+                        <span style="opacity: 0.85; line-height: 1;">🔑 Client App:</span>
+                        <strong style="color: var(--text-primary); font-weight: 600; line-height: 1;">Unknown</strong>
+                        <button type="button" class="copy-icon-wrapper icon-btn" style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; border-radius: 4px; background: transparent; color: var(--text-secondary); border: none; margin-left: 2px; transition: all 0.2s; cursor: pointer; flex-shrink: 0;" onclick="window.handleCopyAction(this, this.parentElement.querySelector('strong').innerText, this.parentElement)" title="Click to Copy App Name">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                        </span>
+                        </button>
                     </span>
                 </div>
 
@@ -401,7 +401,7 @@
                             <button id="format-req-body-btn" class="icon-btn" title="Format JSON" type="button" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer; margin-right: 6px;">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
                             </button>
-                            <button id="copy-req-body-btn" class="icon-btn copy-btn" title="Copy Request Body" type="button" onclick="window.handleCopyAction(this, document.getElementById('req-body').value)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                            <button id="copy-req-body-btn" class="icon-btn copy-btn" title="Copy Request Body" type="button" onclick="window.handleCopyAction(this, document.getElementById('request-body').value)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
                         </div>
                     </div>
                     <textarea id="request-body" placeholder="[当前 API 接口无需提供 Request Body 请求体]"></textarea>
@@ -419,10 +419,10 @@
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
                             </button>
                         </div>
-                        <div id="view-mode-toggles" style="display: none; gap: 4px; border: 1px solid var(--panel-border); border-radius: 4px; overflow: hidden; background: var(--shadow-light); align-items: center;">
-                            <button class="view-mode-btn" data-mode="table" style="border:none; background:transparent; color:var(--text-secondary); padding: 2px 8px; font-size:0.7rem; cursor:pointer;" title="Table View">Table</button>
-                            <button class="view-mode-btn active" data-mode="tree" style="border:none; background:var(--accent); color:var(--accent-text); padding: 2px 8px; font-size:0.7rem; cursor:pointer;" title="Tree View">Tree</button>
-                            <button class="view-mode-btn" data-mode="raw" style="border:none; background:transparent; color:var(--text-secondary); padding: 2px 8px; font-size:0.7rem; cursor:pointer;" title="Raw JSON">Raw</button>
+                        <div id="view-mode-toggles" style="display: none; gap: 2px; border: 1px solid var(--panel-border); border-radius: 6px; overflow: hidden; background: var(--input-bg); padding: 2px; align-items: center;">
+                            <button class="view-mode-btn" data-mode="table" style="border:none; background:transparent; color:var(--text-secondary); padding: 4px 10px; font-size:0.8rem; font-weight:600; cursor:pointer; border-radius:4px; transition:all 0.2s ease; display:flex; align-items:center; gap:4px;" title="Table View">📊 Table</button>
+                            <button class="view-mode-btn active" data-mode="tree" style="border:none; background:var(--accent); color:var(--accent-text); padding: 4px 10px; font-size:0.8rem; font-weight:600; cursor:pointer; border-radius:4px; transition:all 0.2s ease; display:flex; align-items:center; gap:4px;" title="Tree View">🌲 Tree</button>
+                            <button class="view-mode-btn" data-mode="raw" style="border:none; background:transparent; color:var(--text-secondary); padding: 4px 10px; font-size:0.8rem; font-weight:600; cursor:pointer; border-radius:4px; transition:all 0.2s ease; display:flex; align-items:center; gap:4px;" title="Raw JSON">📄 Raw</button>
                         </div>
                         <div class="response-status" id="response-status">Waiting for request...</div>
                         <button id="copy-res-body-btn" class="icon-btn copy-btn" title="Copy Response JSON" type="button" onclick="window.handleCopyAction(this, window.currentJsonResponse ? JSON.stringify(window.currentJsonResponse, null, 2) : document.getElementById('response-output').textContent)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
@@ -1011,34 +1011,60 @@
 
                     <div class="form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="const list = document.getElementById('workspace-list'); const icon = this.querySelector('.collapse-icon'); if (list.style.display === 'none') { list.style.display = 'flex'; icon.textContent = '▼'; } else { list.style.display = 'none'; icon.textContent = '▶'; }" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_WORKSPACES (工作区字典 / groupId)</label>
+                            <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="toggleSettingsSection('workspace-list', this)" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_WORKSPACES (工作区字典 / groupId) <span id="workspace-count" style="margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 0.7rem; background: var(--overlay-10); color: var(--accent); font-weight: 600;">(0 rows)</span></label>
                             <div style="display: flex; gap: 6px;">
                                 <button type="button" onclick="verifySelectedGuid('groups', 'workspace-list', this)" class="btn-verify" title="Verify Selected">⚡</button>
                                 <button type="button" onclick="scanItems('workspaces', this)" class="btn-scan">🔍 Scan</button>
                                 <button type="button" onclick="addListRow('workspace-list')" class="btn-add-row">+ Add</button>
                             </div>
                         </div>
+                        <!-- Grid Column Headers with Sort & Resizable Handles -->
+                        <div class="grid-header-bar" data-list-id="workspace-list" style="display: flex; gap: 8px; align-items: center; padding: 4px 0; margin-top: 6px; border-bottom: 1px solid var(--panel-border); font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); user-select: none;">
+                            <span style="width: 18px; flex-shrink: 0;"></span>
+                            <div class="grid-col-header" data-col="alias" onclick="sortSettingsList('workspace-list', 'alias', event)" style="width: 180px; min-width: 120px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Alias (别名)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'workspace-list', 'alias')"></span></span></div>
+                            <div class="grid-col-header" data-col="id" onclick="sortSettingsList('workspace-list', 'id', event)" style="width: 320px; min-width: 200px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>GUID (标识符)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'workspace-list', 'id')"></span></span></div>
+                            <div class="grid-col-header" data-col="type" onclick="sortSettingsList('workspace-list', 'type', event)" style="width: 160px; min-width: 140px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Type & State (属性与状态)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'workspace-list', 'type')"></span></span></div>
+                            <span style="width: 20px; flex-shrink: 0;"></span>
+                        </div>
                         <div id="workspace-list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
                     </div>
+
                     <div class="form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="const list = document.getElementById('dataset-list'); const icon = this.querySelector('.collapse-icon'); if (list.style.display === 'none') { list.style.display = 'flex'; icon.textContent = '▼'; } else { list.style.display = 'none'; icon.textContent = '▶'; }" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_DATASETS (数据集字典 / datasetId)</label>
+                            <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="toggleSettingsSection('dataset-list', this)" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_DATASETS (数据集字典 / datasetId) <span id="dataset-count" style="margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 0.7rem; background: var(--overlay-10); color: var(--accent); font-weight: 600;">(0 rows)</span></label>
                             <div style="display: flex; gap: 6px;">
                                 <button type="button" onclick="verifySelectedGuid('datasets', 'dataset-list', this)" class="btn-verify" title="Verify Selected">⚡</button>
                                 <button type="button" onclick="scanItems('datasets', this)" class="btn-scan">🔍 Scan</button>
                                 <button type="button" onclick="addListRow('dataset-list')" class="btn-add-row">+ Add</button>
                             </div>
                         </div>
+                        <!-- Grid Column Headers with Sort & Resizable Handles -->
+                        <div class="grid-header-bar" data-list-id="dataset-list" style="display: flex; gap: 8px; align-items: center; padding: 4px 0; margin-top: 6px; border-bottom: 1px solid var(--panel-border); font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); user-select: none;">
+                            <span style="width: 18px; flex-shrink: 0;"></span>
+                            <div class="grid-col-header" data-col="alias" onclick="sortSettingsList('dataset-list', 'alias', event)" style="width: 180px; min-width: 120px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Alias (别名)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'dataset-list', 'alias')"></span></span></div>
+                            <div class="grid-col-header" data-col="id" onclick="sortSettingsList('dataset-list', 'id', event)" style="width: 320px; min-width: 200px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>GUID (标识符)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'dataset-list', 'id')"></span></span></div>
+                            <div class="grid-col-header" data-col="type" onclick="sortSettingsList('dataset-list', 'type', event)" style="width: 160px; min-width: 140px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Type & State (属性与状态)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'dataset-list', 'type')"></span></span></div>
+                            <span style="width: 20px; flex-shrink: 0;"></span>
+                        </div>
                         <div id="dataset-list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
                     </div>
+
                     <div class="form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="const list = document.getElementById('report-list'); const icon = this.querySelector('.collapse-icon'); if (list.style.display === 'none') { list.style.display = 'flex'; icon.textContent = '▼'; } else { list.style.display = 'none'; icon.textContent = '▶'; }" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_REPORTS (报表字典 / reportId)</label>
+                            <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="toggleSettingsSection('report-list', this)" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_REPORTS (报表字典 / reportId) <span id="report-count" style="margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 0.7rem; background: var(--overlay-10); color: var(--accent); font-weight: 600;">(0 rows)</span></label>
                             <div style="display: flex; gap: 6px;">
                                 <button type="button" onclick="verifySelectedGuid('reports', 'report-list', this)" class="btn-verify" title="Verify Selected">⚡</button>
                                 <button type="button" onclick="scanItems('reports', this)" class="btn-scan">🔍 Scan</button>
                                 <button type="button" onclick="addListRow('report-list')" class="btn-add-row">+ Add</button>
                             </div>
+                        </div>
+                        <!-- Grid Column Headers with Sort & Resizable Handles -->
+                        <div class="grid-header-bar" data-list-id="report-list" style="display: flex; gap: 8px; align-items: center; padding: 4px 0; margin-top: 6px; border-bottom: 1px solid var(--panel-border); font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); user-select: none;">
+                            <span style="width: 18px; flex-shrink: 0;"></span>
+                            <div class="grid-col-header" data-col="alias" onclick="sortSettingsList('report-list', 'alias', event)" style="width: 180px; min-width: 120px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Alias (别名)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'report-list', 'alias')"></span></span></div>
+                            <div class="grid-col-header" data-col="id" onclick="sortSettingsList('report-list', 'id', event)" style="width: 320px; min-width: 200px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>GUID (标识符)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'report-list', 'id')"></span></span></div>
+                            <div class="grid-col-header" data-col="type" onclick="sortSettingsList('report-list', 'type', event)" style="width: 160px; min-width: 140px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Type & State (属性与状态)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'report-list', 'type')"></span></span></div>
+                            <span style="width: 20px; flex-shrink: 0;"></span>
                         </div>
                         <div id="report-list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
                     </div>
@@ -1246,7 +1272,7 @@
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
     <script src="/static/universal_modal.js?v=20260813_v8"></script>
-    <script src="/static/script.js?v=20260815_v280"></script>
+    <script src="/static/script.js?v=20260816_v318"></script>
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: none; z-index: 10005;">

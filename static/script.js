@@ -106,8 +106,41 @@ window.closeModalWithAnimation = function(modalId) {
         }, 200);
     }
 };
+window.updateListCounts = function() {
+    ['workspace-list', 'dataset-list', 'report-list'].forEach(id => {
+        const container = document.getElementById(id);
+        const countSpan = document.getElementById(id.replace('-list', '-count'));
+        if (container && countSpan) {
+            const validRows = Array.from(container.children).filter(row => {
+                const input = row.querySelector('.id-input');
+                return input && input.value.trim().length > 0;
+            }).length;
+            countSpan.textContent = `(${validRows} rows)`;
+        }
+    });
+};
+
+window.toggleSettingsSection = function(listId, labelEl) {
+    const list = document.getElementById(listId);
+    const headerBar = document.querySelector(`.grid-header-bar[data-list-id="${listId}"]`);
+    const icon = labelEl ? labelEl.querySelector('.collapse-icon') : null;
+    
+    if (!list) return;
+    const isHidden = list.style.display === 'none';
+    
+    if (isHidden) {
+        list.style.display = 'flex';
+        if (headerBar) headerBar.style.display = 'flex';
+        if (icon) icon.textContent = '▼';
+    } else {
+        list.style.display = 'none';
+        if (headerBar) headerBar.style.display = 'none';
+        if (icon) icon.textContent = '▶';
+    }
+};
+
 // Global Context Management Functions
-window.addListRow = function(containerId, alias = "", id = "") {
+window.addListRow = function(containerId, alias = "", id = "", itemType = "", itemState = "") {
     const container = document.getElementById(containerId);
     if (!container) return;
     const type = containerId === 'workspace-list' ? 'groups' : (containerId === 'dataset-list' ? 'datasets' : 'reports');
@@ -115,13 +148,72 @@ window.addListRow = function(containerId, alias = "", id = "") {
     
     const row = document.createElement('div');
     row.style.cssText = "display: flex; gap: 8px; align-items: center;";
+    
+    // Auto-infer type/state from alias or ID if not explicitly provided (e.g. historical data in localStorage)
+    if (!itemType && alias && String(alias).toLowerCase().includes('personal')) {
+        itemType = 'PersonalGroup';
+    } else if (!itemType && id) {
+        itemType = 'Workspace';
+    }
+    if (!itemState && id) {
+        itemState = 'Active';
+    }
+
+    // Construct badges if itemType or itemState exist
+    let badgesHtml = '';
+    if (itemType || itemState) {
+        const isPersonal = String(itemType).toLowerCase().includes('personal');
+        const isDeleted = String(itemState).toLowerCase().includes('delete');
+        
+        const typeBadgeStyle = isPersonal
+            ? 'background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);'
+            : 'background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);';
+            
+        const stateBadgeStyle = isDeleted
+            ? 'background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);'
+            : 'background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);';
+
+        if (itemType) {
+            badgesHtml += `<span class="badge-type" style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 500; white-space: nowrap; ${typeBadgeStyle}">${itemType}</span>`;
+        }
+        if (itemState) {
+            badgesHtml += `<span class="badge-state" style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 500; white-space: nowrap; ${stateBadgeStyle}">${itemState}</span>`;
+        }
+    }
+
     row.innerHTML = `
-        <input type="radio" name="${containerId}-radio" style="cursor: pointer; margin-right: 4px;" title="选中为默认/活动 (Set as Default/Active)">
-        <input type="text" class="settings-input alias-input" placeholder="Alias (e.g. DEV)" value="${alias}" style="flex: 1; min-width: 0; padding: 4px 8px; font-size: 0.75rem;">
-        <input type="text" class="settings-input id-input" placeholder="GUID" value="${id}" style="flex: 2; min-width: 0; padding: 4px 8px; font-size: 0.75rem;">
-        <button type="button" onclick="if(this.parentElement.parentElement.children.length > 1) { this.parentElement.remove(); } else { alert('必须保留至少一个输入框！(At least one row must be kept)'); }" style="color: var(--error-light); background: transparent; border: none; cursor: pointer; font-size: 1.2rem; line-height: 1; padding: 0 4px; opacity: 0.3; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'">&times;</button>
+        <input type="radio" name="${containerId}-radio" style="cursor: pointer; flex-shrink: 0;" title="选中为默认/活动 (Set as Default/Active)">
+        <input type="text" class="settings-input alias-input" placeholder="Alias (e.g. DEV)" value="${alias}" style="width: 180px; min-width: 120px; flex-shrink: 0; padding: 4px 8px; font-size: 0.75rem;">
+        <input type="text" class="settings-input id-input" placeholder="GUID" value="${id}" style="width: 320px; min-width: 200px; flex-shrink: 0; font-family: monospace; font-size: 0.75rem; padding: 4px 8px;" data-type="${itemType}" data-state="${itemState}">
+        <div class="row-badges type-input" style="display: flex; gap: 4px; align-items: center; width: 160px; min-width: 140px; flex-shrink: 0; justify-content: flex-start;">${badgesHtml}</div>
+        <button type="button" onclick="if(this.parentElement.parentElement.children.length > 1) { this.parentElement.remove(); } else { alert('必须保留至少一个输入框！(At least one row must be kept)'); }" style="color: var(--error-light); background: transparent; border: none; cursor: pointer; font-size: 1.2rem; line-height: 1; padding: 0 4px; opacity: 0.3; transition: opacity 0.2s; flex-shrink: 0;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'">&times;</button>
     `;
     container.appendChild(row);
+    
+    // Synchronize initial column widths if previously resized
+    ['alias', 'id', 'type'].forEach(col => {
+        const hdr = document.querySelector(`.grid-header-bar[data-list-id="${containerId}"] .grid-col-header[data-col="${col}"]`);
+        if (hdr && hdr.style.width) {
+            const targetEl = row.querySelector(`.${col}-input`);
+            if (targetEl) targetEl.style.width = hdr.style.width;
+        }
+    });
+    
+    window.updateListCounts();
+    
+    // Add event listener to delete button for live count update
+    const delBtn = row.querySelector('button');
+    if (delBtn) {
+        const origOnClick = delBtn.onclick;
+        delBtn.onclick = function(e) {
+            if (origOnClick) origOnClick.call(this, e);
+            window.updateListCounts();
+        };
+    }
+    
+    // Input listeners to update title counts dynamically
+    const inputs = row.querySelectorAll('input');
+    inputs.forEach(inp => inp.addEventListener('input', () => window.updateListCounts()));
     
     const radio = row.querySelector('input[type="radio"]');
     const idInput = row.querySelector('.id-input');
@@ -146,6 +238,146 @@ window.addListRow = function(containerId, alias = "", id = "") {
     } else if (!activeId && existingRadios.length === 1) {
         radio.checked = true;
     }
+};
+
+// Global Resizable Column Logic
+window.initColumnResize = function(e, listId, colKey) {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    const headerBar = document.querySelector(`.grid-header-bar[data-list-id="${listId}"]`);
+    const headerCol = headerBar ? headerBar.querySelector(`.grid-col-header[data-col="${colKey}"]`) : null;
+    const container = document.getElementById(listId);
+    
+    if (!headerCol || !container) return;
+    
+    const minW = colKey === 'alias' ? 120 : (colKey === 'id' ? 200 : 140);
+    const startX = e.clientX;
+    const startWidth = headerCol.offsetWidth;
+    
+    // Calculate max width so the rightmost delete button and padding never overflow the modal/headerBar width
+    const containerWidth = headerBar.clientWidth || 840;
+    // Calculate current width of OTHER columns and fixed elements (18px radio + 20px delete button + gaps)
+    let otherColsWidth = 18 + 20 + 24; // 18px radio + 20px delBtn + 3*8px gaps
+    headerBar.querySelectorAll('.grid-col-header').forEach(hdr => {
+        if (hdr !== headerCol) {
+            otherColsWidth += hdr.offsetWidth;
+        }
+    });
+    const maxW = Math.max(minW, containerWidth - otherColsWidth);
+    
+    const resizer = e.target;
+    if (resizer) resizer.classList.add('resizing');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    
+    const onMouseMove = (moveEvent) => {
+        const deltaX = moveEvent.clientX - startX;
+        const newWidth = Math.min(maxW, Math.max(minW, startWidth + deltaX));
+        
+        // Update header width
+        headerCol.style.width = newWidth + 'px';
+        headerCol.style.flex = 'none';
+        
+        // Update all corresponding row elements in real-time
+        const rowElements = container.querySelectorAll(`.${colKey}-input`);
+        rowElements.forEach(el => {
+            el.style.width = newWidth + 'px';
+            el.style.flex = 'none';
+        });
+    };
+    
+    const onMouseUp = () => {
+        if (resizer) resizer.classList.remove('resizing');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+    };
+    
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+};
+
+// Global Sort State for Global Settings Lists: Map of containerId -> Array<{col: string, asc: boolean}>
+window._settingsSortState = {};
+
+window.sortSettingsList = function(containerId, colKey, event) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    if (!window._settingsSortState[containerId]) {
+        window._settingsSortState[containerId] = [];
+    }
+    let sortState = window._settingsSortState[containerId];
+    
+    const isShift = event && event.shiftKey;
+    const existing = sortState.find(s => s.col === colKey);
+    
+    if (isShift) {
+        if (existing) {
+            existing.asc = !existing.asc;
+        } else {
+            sortState.push({ col: colKey, asc: true });
+        }
+    } else {
+        if (existing && sortState.length === 1) {
+            existing.asc = !existing.asc;
+        } else {
+            window._settingsSortState[containerId] = [{ col: colKey, asc: true }];
+            sortState = window._settingsSortState[containerId];
+        }
+    }
+
+    // Update Header Icons & Visual Feedback
+    const headerBar = document.querySelector(`.grid-header-bar[data-list-id="${containerId}"]`);
+    if (headerBar) {
+        headerBar.querySelectorAll('.grid-col-header').forEach(hdr => {
+            const colName = hdr.getAttribute('data-col');
+            const iconSpan = hdr.querySelector('.sort-icon');
+            const s = sortState.find(st => st.col === colName);
+            if (s) {
+                let arrow = s.asc ? ' ↑' : ' ↓';
+                if (sortState.length > 1) {
+                    const priority = sortState.indexOf(s) + 1;
+                    arrow += `<sub style="font-size:0.6rem;opacity:0.8;">${priority}</sub>`;
+                }
+                iconSpan.innerHTML = arrow;
+                hdr.style.color = 'var(--accent)';
+            } else {
+                iconSpan.innerHTML = '';
+                hdr.style.color = 'var(--text-secondary)';
+            }
+        });
+    }
+
+    // Collect DOM Rows and Sort
+    const rowsArr = Array.from(container.children);
+    rowsArr.sort((a, b) => {
+        for (let s of sortState) {
+            let va = '';
+            let vb = '';
+            if (s.col === 'alias') {
+                va = a.querySelector('.alias-input')?.value.trim() || '';
+                vb = b.querySelector('.alias-input')?.value.trim() || '';
+            } else if (s.col === 'id') {
+                va = a.querySelector('.id-input')?.value.trim() || '';
+                vb = b.querySelector('.id-input')?.value.trim() || '';
+            } else if (s.col === 'type') {
+                va = a.querySelector('.id-input')?.getAttribute('data-type') || '';
+                vb = b.querySelector('.id-input')?.getAttribute('data-type') || '';
+            }
+            
+            let cmp = va.localeCompare(vb, undefined, { numeric: true, sensitivity: 'base' });
+            if (cmp !== 0) {
+                return s.asc ? cmp : -cmp;
+            }
+        }
+        return 0;
+    });
+
+    // Re-append sorted rows
+    rowsArr.forEach(row => container.appendChild(row));
 };
 
 window.verifySelectedGuid = async function(type, containerId, btn) {
@@ -188,7 +420,41 @@ window.verifySelectedGuid = async function(type, containerId, btn) {
         });
         return await res.json();
     }, (result) => {
-        alert(`✅ 验证成功 (Valid)\n名称: ${result.name}`);
+        const container = document.getElementById(containerId);
+        const selectedRadio = container ? container.querySelector(`input[type="radio"]:checked`) : null;
+        if (selectedRadio) {
+            const row = selectedRadio.parentElement;
+            const input = row.querySelector('.id-input');
+            const aliasInput = row.querySelector('.alias-input');
+            if (input && !aliasInput.value.trim() && result.name) {
+                aliasInput.value = result.name;
+            }
+            if (input) {
+                input.setAttribute('data-type', result.type || '');
+                input.setAttribute('data-state', result.state || '');
+            }
+            const badgesContainer = row.querySelector('.row-badges');
+            if (badgesContainer && (result.type || result.state)) {
+                const itemType = result.type || '';
+                const itemState = result.state || '';
+                const isPersonal = String(itemType).toLowerCase().includes('personal');
+                const isDeleted = String(itemState).toLowerCase().includes('delete');
+                
+                const typeBadgeStyle = isPersonal
+                    ? 'background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);'
+                    : 'background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);';
+                    
+                const stateBadgeStyle = isDeleted
+                    ? 'background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);'
+                    : 'background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);';
+
+                let bHtml = '';
+                if (itemType) bHtml += `<span class="badge-type" style="font-size: 0.65rem; padding: 1px 4px; border-radius: 3px; font-weight: 500; white-space: nowrap; ${typeBadgeStyle}">${itemType}</span>`;
+                if (itemState) bHtml += `<span class="badge-state" style="font-size: 0.65rem; padding: 1px 4px; border-radius: 3px; font-weight: 500; white-space: nowrap; ${stateBadgeStyle}">${itemState}</span>`;
+                badgesContainer.innerHTML = bHtml;
+            }
+        }
+        alert(`✅ 验证成功 (Valid)\n名称: ${result.name}${result.type ? '\n类型: ' + result.type : ''}${result.state ? '\n状态: ' + result.state : ''}`);
     });
 };
 
@@ -228,13 +494,34 @@ window.scanItems = async function(type, btn) {
             
             data.data.forEach(item => {
                 const row = document.createElement('label');
-                row.style.cssText = 'display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background 0.2s;';
+                row.style.cssText = 'display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 6px 8px; border-radius: 4px; transition: background 0.2s;';
                 row.onmouseover = () => row.style.background = 'var(--overlay-5)';
                 row.onmouseout = () => row.style.background = 'transparent';
                 
+                const typeStr = item.type || '';
+                const stateStr = item.state || '';
+                
+                // Styling badges based on workspace type & state
+                const isPersonal = typeStr.toLowerCase().includes('personal');
+                const isDeleted = stateStr.toLowerCase().includes('delete');
+                
+                const typeBadgeStyle = isPersonal
+                    ? 'background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);'
+                    : 'background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);';
+                    
+                const stateBadgeStyle = isDeleted
+                    ? 'background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);'
+                    : 'background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);';
+
+                const badgesHtml = `
+                    <span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; ${typeBadgeStyle}">${typeStr}</span>
+                    <span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; ${stateBadgeStyle}">${stateStr}</span>
+                `;
+
                 row.innerHTML = `
-                    <input type="checkbox" value="${item.id}" data-name="${item.name.replace(/"/g, '&quot;')}" checked>
+                    <input type="checkbox" value="${item.id}" data-name="${item.name.replace(/"/g, '&quot;')}" data-type="${typeStr}" data-state="${stateStr}" ${isDeleted ? '' : 'checked'}>
                     <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8rem;" title="${item.name}">${item.name}</span>
+                    ${badgesHtml}
                     <span style="color: var(--text-secondary); font-size: 0.7rem; font-family: monospace;">${item.id}</span>
                 `;
                 container.appendChild(row);
@@ -256,8 +543,10 @@ window.scanItems = async function(type, btn) {
 
                 checked.forEach(cb => {
                     const guid = cb.value;
+                    const itemType = cb.getAttribute('data-type') || '';
+                    const itemState = cb.getAttribute('data-state') || '';
                     if (!existingGuids.has(guid)) {
-                        window.addListRow(targetListId, cb.getAttribute('data-name'), guid);
+                        window.addListRow(targetListId, cb.getAttribute('data-name'), guid, itemType, itemState);
                         existingGuids.add(guid);
                     }
                 });
@@ -280,9 +569,14 @@ window.getListData = function(containerId) {
     const rows = container.children;
     const data = [];
     for (let row of rows) {
-        const alias = row.querySelector('.alias-input').value.trim();
-        const id = row.querySelector('.id-input').value.trim();
-        if (alias || id) data.push({ alias, id });
+        const aliasInput = row.querySelector('.alias-input');
+        const idInput = row.querySelector('.id-input');
+        if (!aliasInput || !idInput) continue;
+        const alias = aliasInput.value.trim();
+        const id = idInput.value.trim();
+        const type = idInput.getAttribute('data-type') || '';
+        const state = idInput.getAttribute('data-state') || '';
+        if (alias || id) data.push({ alias, id, type, state });
     }
     return data;
 };
@@ -2293,25 +2587,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    const copyResBodyBtn = document.getElementById('copy-res-body-btn');
-    if (copyResBodyBtn) {
-        const origResBodyBtnHTML = copyResBodyBtn.innerHTML;
-        copyResBodyBtn.addEventListener('click', async () => {
-            if (window.currentJsonResponse) {
-                try {
-                    await navigator.clipboard.writeText(JSON.stringify(window.currentJsonResponse, null, 2));
-                    copyResBodyBtn.innerHTML = '<span style="font-size: 12px; padding: 0 4px;">Copied!</span>';
-                    copyResBodyBtn.style.color = 'var(--accent)';
-                    setTimeout(() => {
-                        copyResBodyBtn.innerHTML = origResBodyBtnHTML;
-                        copyResBodyBtn.style.color = '';
-                    }, 2000);
-                } catch(e) {
-                    console.error('Failed to copy', e);
-                }
-            }
-        });
-    }
+
 
     toggleMethodBtn.addEventListener('click', () => {
         methodSelect.disabled = !methodSelect.disabled;
@@ -2411,7 +2687,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 复制 cURL 请求绑定
     const copyBtn = document.getElementById('copy-btn');
     if (copyBtn) {
-        const origMainCopyBtnHTML = copyBtn.innerHTML;
         copyBtn.addEventListener('click', () => {
             const method = methodSelect.value;
             const endpoint = window.getInjectedEndpoint(endpointInput.value.trim());
@@ -2431,18 +2706,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 curlCmd += ' \\\n  -d \'' + escapedBody + '\'';
             }
             
-            navigator.clipboard.writeText(curlCmd).then(() => {
-                copyBtn.innerHTML = '<span style="font-size: 12px; font-weight: bold;">Copied!</span>';
-                copyBtn.style.borderColor = 'var(--success)';
-                copyBtn.style.color = 'var(--success)';
-                setTimeout(() => {
-                    copyBtn.innerHTML = origMainCopyBtnHTML;
-                    copyBtn.style.borderColor = '';
-                    copyBtn.style.color = '';
-                }, 1200);
-            }).catch(err => {
-                console.error('Copy failed:', err);
-            });
+            window.handleCopyAction(copyBtn, curlCmd);
         });
     }
 
@@ -3072,7 +3336,7 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                     if (items.length === 0) {
                         window.addListRow(containerId); // one empty row default
                     } else {
-                        items.forEach(item => window.addListRow(containerId, item.alias || item.name, item.id));
+                        items.forEach(item => window.addListRow(containerId, item.alias || item.name, item.id, item.type || "", item.state || ""));
                     }
                 };
                 loadList('workspace-list', 'pbi_workspaces', data.PBI_WORKSPACES);
@@ -3524,7 +3788,6 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
 function renderJsonTable(data, container, nodePath = '') {
     container.innerHTML = '';
-    container.className = 'json-table-viewer';
     
     let arr = null;
     let targetData = data;
@@ -3645,18 +3908,50 @@ function renderJsonTable(data, container, nodePath = '') {
             }
             
             const table = document.createElement('table');
-            table.className = 'data-table';
-            table.style.cssText = "width: 100%; border-collapse: collapse; text-align: left;";
+            table.className = 'data-table json-rendered-table';
+            table.style.cssText = "width: 100%; border-collapse: collapse; text-align: left; table-layout: fixed;";
             
             const thead = document.createElement('thead');
             thead.style.cssText = "position: sticky; top: 0; background: var(--bg-color); z-index: 5;";
             const trHead = document.createElement('tr');
             activeCols.forEach((col, idx) => {
                 const th = document.createElement('th');
-                th.textContent = col;
-                th.style.cssText = "padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; resize: horizontal; overflow: hidden; min-width: 50px; max-width: 250px; white-space: nowrap; text-overflow: ellipsis;";
+                th.style.cssText = "position: relative; padding: 8px 12px; border-bottom: 1px solid var(--panel-border); font-weight: 600; cursor: pointer; user-select: none; min-width: 80px; width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
                 th.title = col + " (Click to sort, Drag right edge to resize)";
-                th.onclick = (e) => window.sortTable(th, e, idx);
+                
+                const titleSpan = document.createElement('span');
+                titleSpan.textContent = col;
+                titleSpan.onclick = (e) => window.sortTable(th, e, idx);
+                th.appendChild(titleSpan);
+                
+                // Add column resizer handle
+                const resizer = document.createElement('span');
+                resizer.className = 'col-resizer';
+                resizer.onclick = (e) => e.stopPropagation();
+                resizer.onmousedown = (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    const startX = e.clientX;
+                    const startWidth = th.offsetWidth;
+                    resizer.classList.add('resizing');
+                    document.body.style.cursor = 'col-resize';
+                    document.body.style.userSelect = 'none';
+                    
+                    const onMouseMove = (moveEvent) => {
+                        const newWidth = Math.max(60, startWidth + (moveEvent.clientX - startX));
+                        th.style.width = newWidth + 'px';
+                    };
+                    const onMouseUp = () => {
+                        resizer.classList.remove('resizing');
+                        document.body.style.cursor = '';
+                        document.body.style.userSelect = '';
+                        window.removeEventListener('mousemove', onMouseMove);
+                        window.removeEventListener('mouseup', onMouseUp);
+                    };
+                    window.addEventListener('mousemove', onMouseMove);
+                    window.addEventListener('mouseup', onMouseUp);
+                };
+                th.appendChild(resizer);
                 trHead.appendChild(th);
             });
             thead.appendChild(trHead);
@@ -3665,19 +3960,44 @@ function renderJsonTable(data, container, nodePath = '') {
             const tbody = document.createElement('tbody');
             arr.forEach(item => {
                 const tr = document.createElement('tr');
-                tr.style.cssText = "transition: background 0.2s; cursor: default;";
-                tr.onmouseover = () => tr.style.background = "rgba(255,255,255,0.02)";
+                tr.style.cssText = "transition: background 0.15s ease; cursor: default;";
+                tr.onmouseover = () => tr.style.background = "var(--overlay-5)";
                 tr.onmouseout = () => tr.style.background = "transparent";
                 activeCols.forEach(col => {
                     const td = document.createElement('td');
-                    td.style.cssText = "border: 1px solid var(--panel-border); padding: 8px; color: var(--text-primary); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;";
+                    td.className = 'interactive-cell';
+                    td.style.cssText = "border: 1px solid var(--panel-border); padding: 6px 10px; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease;";
                     let val = item ? item[col] : undefined;
+                    let strVal = '';
                     if (typeof val === 'object' && val !== null) {
-                        td.textContent = JSON.stringify(val);
+                        strVal = JSON.stringify(val);
                     } else {
-                        td.textContent = val !== undefined && val !== null ? String(val) : '';
+                        strVal = val !== undefined && val !== null ? String(val) : '';
                     }
-                    td.title = td.textContent;
+                    td.textContent = strVal;
+                    td.title = `${col}: ${strVal} (Click to copy/view)`;
+                    
+                    // Click cell to copy or open full view if content is long
+                    td.onclick = (e) => {
+                        e.stopPropagation();
+                        if (navigator.clipboard && strVal) {
+                            navigator.clipboard.writeText(strVal).then(() => {
+                                if (window.showNotification) {
+                                    window.showNotification(`Copied [${col}]: ${strVal.substring(0, 30)}${strVal.length > 30 ? '...' : ''}`, 'success');
+                                }
+                            });
+                        }
+                    };
+                    
+                    td.onmouseover = () => {
+                        td.style.background = "var(--overlay-10)";
+                        td.style.borderColor = "var(--accent)";
+                    };
+                    td.onmouseout = () => {
+                        td.style.background = "transparent";
+                        td.style.borderColor = "var(--panel-border)";
+                    };
+                    
                     tr.appendChild(td);
                 });
                 tbody.appendChild(tr);
@@ -6104,71 +6424,80 @@ window.flashCopiedElement = function(element) {
     element.classList.add('flash-success-anim');
     setTimeout(() => {
         element.classList.remove('flash-success-anim');
-    }, 600);
+    }, 220);
 };
 
-window.handleCopyAction = function(targetEl, text) {
+window.handleCopyAction = function(targetEl, text, customFlashTarget = null) {
     if(!text) return;
-    navigator.clipboard.writeText(text).then(() => {
+
+    // 1. Target Flash (被复制的目标对象高亮闪烁)
+    let flashTarget = customFlashTarget || targetEl.closest('.input-with-copy, pre, textarea, .panel, .body-editor-container, .endpoint-input') || targetEl.previousElementSibling;
+    if (targetEl.id === 'copy-btn') {
+        flashTarget = document.querySelector('.endpoint-input') || document.getElementById('api-endpoint');
+    } else if (targetEl.id === 'copy-req-body-btn') {
+        flashTarget = document.getElementById('request-body') || document.querySelector('.body-editor-container');
+    } else if (targetEl.id === 'copy-res-body-btn') {
+        const table = document.querySelector('.response-body table.json-rendered-table, .response-body table');
+        const tree = document.getElementById('response-json-tree');
+        const raw = document.getElementById('response-output');
         
-        let flashTarget = targetEl.closest('.input-with-copy, pre, textarea, .panel') || targetEl.previousElementSibling;
-        window.flashCopiedElement(flashTarget);
-const iconWrapper = targetEl.querySelector('.copy-icon-wrapper');
-        const iconContainer = targetEl.querySelector('svg') || targetEl;
-        const isSelfButton = targetEl.tagName === 'BUTTON' || targetEl.classList.contains('wf-copy-btn');
-        
-        if (isSelfButton) {
-            const svgEl = targetEl.querySelector('svg');
-            let origSVG = null;
-            let origHTML = null;
-            if (svgEl) {
-                origSVG = svgEl.outerHTML;
-                svgEl.outerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-            } else {
-                origHTML = targetEl.innerHTML;
-                targetEl.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-            }
-            targetEl.style.color = 'var(--success)';
-            setTimeout(() => { 
-                if (origSVG) {
-                    const newSvg = targetEl.querySelector('svg');
-                    if (newSvg) newSvg.outerHTML = origSVG;
-                } else if (origHTML !== null) {
-                    targetEl.innerHTML = origHTML;
-                }
-                targetEl.style.color = '';
-            }, 1500);
-        } else if (iconWrapper) {
-            const origHTML = iconWrapper.innerHTML;
-            const origBg = iconWrapper.style.background;
-            const origBorder = iconWrapper.style.borderColor;
-            
-            iconWrapper.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-            iconWrapper.style.background = 'var(--status-success-bg)';
-            iconWrapper.style.borderColor = 'var(--success)';
-            
-            if (window.showNotification) window.showNotification('Copied to clipboard!', 'success');
-            setTimeout(() => { 
-                iconWrapper.innerHTML = origHTML;
-                iconWrapper.style.background = origBg;
-                iconWrapper.style.borderColor = origBorder;
-            }, 1500);
-        } else if (iconContainer) {
-            const origColor = iconContainer.style.color || '';
-            const origStroke = iconContainer.getAttribute('stroke') || '';
-            iconContainer.style.color = 'var(--success)';
-            iconContainer.setAttribute('stroke', 'var(--success)');
-            if (window.showNotification) window.showNotification('Copied to clipboard!', 'success');
-            setTimeout(() => { 
-                iconContainer.style.color = origColor; 
-                if (origStroke) iconContainer.setAttribute('stroke', origStroke); else iconContainer.removeAttribute('stroke');
-            }, 1500);
+        if (table && table.offsetWidth > 0) {
+            // 表格模式：精准闪烁表格本身（外框）
+            flashTarget = table.closest('div[style*="overflow"]') || table;
+        } else if (tree && tree.offsetWidth > 0) {
+            // 树形模式：闪烁树结构容器
+            flashTarget = tree;
+        } else if (raw && raw.offsetWidth > 0) {
+            // Raw 文本模式：闪烁 <pre>/<code> 框
+            flashTarget = raw.parentElement || raw;
         } else {
-            if (window.showNotification) window.showNotification('Copied to clipboard!', 'success');
+            flashTarget = document.querySelector('.response-body');
         }
-    }).catch(err => {
-        alert('Failed to copy: ' + err);
-    });
+    }
+    if (flashTarget) window.flashCopiedElement(flashTarget);
+    
+    // 2. Button Flash (复制按钮本身闪烁)
+    window.flashCopiedElement(targetEl);
+
+    // 3. Icon Checkmark Feedback (图标变绿打钩)
+    const svgEl = targetEl.querySelector('svg');
+    let origSVG = null;
+    let origHTML = null;
+    
+    if (svgEl) {
+        origSVG = svgEl.outerHTML;
+        svgEl.outerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+    } else {
+        origHTML = targetEl.innerHTML;
+        targetEl.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+    }
+    
+    const origColor = targetEl.style.color;
+    const origBorder = targetEl.style.borderColor;
+    targetEl.style.color = 'var(--success)';
+    targetEl.style.borderColor = 'var(--success)';
+
+    const doCopy = () => {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).catch(e => console.error(e));
+        }
+        if (window.showNotification) {
+            window.showNotification('Copied to clipboard!', 'success');
+        }
+    };
+    doCopy();
+
+    // 快速恢复原状 (350ms 极短间隔)
+    setTimeout(() => { 
+        if (origSVG) {
+            const newSvg = targetEl.querySelector('svg');
+            if (newSvg) newSvg.outerHTML = origSVG;
+        } else if (origHTML !== null) {
+            targetEl.innerHTML = origHTML;
+        }
+        targetEl.style.color = origColor;
+        targetEl.style.borderColor = origBorder;
+    }, 350);
 };
 
 

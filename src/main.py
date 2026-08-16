@@ -958,24 +958,55 @@ async def test_guid(request: Request):
         
         access_token = result["access_token"]
         
-        if item_type in ["datasets", "reports"] and workspace_id:
-            endpoint = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/{item_type}/{guid}"
-        else:
-            endpoint = f"https://api.powerbi.com/v1.0/myorg/{item_type}/{guid}"
-            
+        endpoints_to_try = []
+        if item_type == "groups":
+            endpoints_to_try = [
+                f"https://api.powerbi.com/v1.0/myorg/admin/groups/{guid}",
+                f"https://api.powerbi.com/v1.0/myorg/groups/{guid}"
+            ]
+        elif item_type in ["datasets", "reports"]:
+            if workspace_id:
+                endpoints_to_try = [
+                    f"https://api.powerbi.com/v1.0/myorg/admin/groups/{workspace_id}/{item_type}/{guid}",
+                    f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/{item_type}/{guid}",
+                    f"https://api.powerbi.com/v1.0/myorg/admin/{item_type}/{guid}"
+                ]
+            else:
+                endpoints_to_try = [
+                    f"https://api.powerbi.com/v1.0/myorg/admin/{item_type}/{guid}"
+                ]
+
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Accept": "application/json"
         }
-        
-        response = await asyncio.to_thread(requests.get, endpoint, headers=headers)
-        
-        if response.status_code == 200:
-            resp_data = response.json()
+
+        resp_data = None
+        last_err = ""
+        for ep in endpoints_to_try:
+            try:
+                response = await asyncio.to_thread(requests.get, ep, headers=headers)
+                if response.status_code == 200:
+                    resp_data = response.json()
+                    break
+                else:
+                    last_err = f"{response.status_code} - {response.text}"
+            except Exception as ex:
+                last_err = str(ex)
+
+        if resp_data is not None:
             name = resp_data.get("name", "Unknown")
-            return {"success": True, "message": "Valid!", "name": name}
+            raw_type = resp_data.get("type") or ("Personal" if resp_data.get("isOnDedicatedCapacity") is False and "type" not in resp_data else "Workspace")
+            raw_state = resp_data.get("state") or "Active"
+            return {
+                "success": True,
+                "message": "Valid!",
+                "name": name,
+                "type": str(raw_type),
+                "state": str(raw_state)
+            }
         else:
-            return {"success": False, "message": f"API Error: {response.status_code} - {response.text}"}
+            return {"success": False, "message": f"API Error: {last_err}"}
 
     except Exception as e:
         return {"success": False, "message": f"Server Error: {str(e)}"}
@@ -1015,18 +1046,35 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
         
         access_token = result["access_token"]
         
+        # Candidate endpoints to try in order (Note: Service Principals cannot use /myorg/datasets or /myorg/reports, so we use Admin endpoints or /groups/{id}/ endpoints)
+        endpoints_to_try = []
         if item_type == "workspaces":
-            endpoint = "https://api.powerbi.com/v1.0/myorg/groups"
+            endpoints_to_try = [
+                "https://api.powerbi.com/v1.0/myorg/admin/groups?$top=5000",
+                "https://api.powerbi.com/v1.0/myorg/groups?$top=5000"
+            ]
         elif item_type == "datasets":
             if workspace_id:
-                endpoint = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets"
+                endpoints_to_try = [
+                    f"https://api.powerbi.com/v1.0/myorg/admin/groups/{workspace_id}/datasets",
+                    f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets",
+                    "https://api.powerbi.com/v1.0/myorg/admin/datasets?$top=5000"
+                ]
             else:
-                endpoint = "https://api.powerbi.com/v1.0/myorg/datasets"
+                endpoints_to_try = [
+                    "https://api.powerbi.com/v1.0/myorg/admin/datasets?$top=5000"
+                ]
         elif item_type == "reports":
             if workspace_id:
-                endpoint = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/reports"
+                endpoints_to_try = [
+                    f"https://api.powerbi.com/v1.0/myorg/admin/groups/{workspace_id}/reports",
+                    f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/reports",
+                    "https://api.powerbi.com/v1.0/myorg/admin/reports?$top=5000"
+                ]
             else:
-                endpoint = "https://api.powerbi.com/v1.0/myorg/reports"
+                endpoints_to_try = [
+                    "https://api.powerbi.com/v1.0/myorg/admin/reports?$top=5000"
+                ]
         else:
             return {"success": False, "error": "Invalid item type"}
 
@@ -1036,12 +1084,32 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
             "Accept": "application/json"
         }
         
-        response = await asyncio.to_thread(requests.get, endpoint, headers=headers)
-        response.raise_for_status()
-        response_data = response.json()
+        response_data = None
+        error_details = []
+        for ep in endpoints_to_try:
+            try:
+                resp = await asyncio.to_thread(requests.get, ep, headers=headers)
+                resp.raise_for_status()
+                response_data = resp.json()
+                break
+            except Exception as e:
+                error_details.append(f"{ep} -> {str(e)}")
+
+        if response_data is None:
+            err_msg = " | ".join(error_details)
+            return {"success": False, "error": f"Scan failed. Service Principal may lack permissions or Workspace ID is invalid. Details: {err_msg}"}
 
         items = response_data.get("value", [])
-        result_items = [{"id": item.get("id"), "name": item.get("name")} for item in items]
+        result_items = []
+        for item in items:
+            raw_type = item.get("type") or ("Personal" if item.get("isOnDedicatedCapacity") is False and "type" not in item else "Workspace")
+            raw_state = item.get("state") or "Active"
+            result_items.append({
+                "id": item.get("id"),
+                "name": item.get("name") or item.get("id"),
+                "type": str(raw_type),
+                "state": str(raw_state)
+            })
         return {"success": True, "data": result_items}
     except Exception as e:
         return {"success": False, "error": str(e)}

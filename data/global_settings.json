@@ -1,59 +1,125 @@
 {
-    "PBI_AUTH_MODE": "personal",
+    "PBI_AUTH_MODE": "service_principal",
     "PBI_TENANT_ID": "78a11419-9556-437d-843b-55d8396908e1",
     "SQL_CONN_STR": "Server=myServerAddress;Database=myDataBase;User Id=myUsername;",
     "PBI_WORKSPACES": [
         {
             "alias": "my",
-            "id": "C06A2729-EE28-4471-AF27-803B56A3D8CC"
+            "id": "C06A2729-EE28-4471-AF27-803B56A3D8CC",
+            "type": "Workspace",
+            "state": "Active"
         },
         {
             "alias": "WorkSpace_DEV",
-            "id": "2c51e061-0f9f-4d02-bed0-c169019e5d83"
+            "id": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
+            "type": "Workspace",
+            "state": "Active"
+        },
+        {
+            "alias": "PersonalWorkspace CM Z",
+            "id": "c06a2729-ee28-4471-af27-803b56a3d8cc",
+            "type": "PersonalGroup",
+            "state": "Active"
+        },
+        {
+            "alias": "PersonalWorkspace zhaochengmei@sina.cn",
+            "id": "c38cfce4-99a9-45a9-929b-44374b63a30a",
+            "type": "PersonalGroup",
+            "state": "Active"
+        },
+        {
+            "alias": "Admin monitoring",
+            "id": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5",
+            "type": "Workspace",
+            "state": "Active"
+        },
+        {
+            "alias": "PersonalWorkspace nameless@carman.ccwu.cc",
+            "id": "ad88bcfe-af01-4744-968e-c59af1daab02",
+            "type": "PersonalGroup",
+            "state": "Active"
+        },
+        {
+            "alias": "Workspace-2",
+            "id": "0373c69f-d701-475e-afc6-30c2bafa6146",
+            "type": "Workspace",
+            "state": "Active"
+        },
+        {
+            "alias": "Microsoft Fabric Capacity Metrics",
+            "id": "9b9146c9-f8fe-4c9e-b026-f4f2e25c233c",
+            "type": "Workspace",
+            "state": "Active"
+        },
+        {
+            "alias": "PersonalWorkspace APP_Automation",
+            "id": "50e6b428-68a9-4366-8aee-e6113d8ed3db",
+            "type": "PersonalGroup",
+            "state": "Active"
         }
     ],
     "PBI_DATASETS": [
         {
             "alias": "PBI_BI_SAP_Demo",
-            "id": "8f2a320c-7ab8-44df-ae3d-c722664ee9d1"
+            "id": "8f2a320c-7ab8-44df-ae3d-c722664ee9d1",
+            "type": "Workspace",
+            "state": "Active"
         },
         {
             "alias": "Report Usage Metrics Model",
-            "id": "554db73d-77e4-40a6-8d4c-fdbf07b63f77"
+            "id": "554db73d-77e4-40a6-8d4c-fdbf07b63f77",
+            "type": "Workspace",
+            "state": "Active"
         },
         {
             "alias": "Usage Metrics Report",
-            "id": "7c599a28-e386-4507-a1be-df4735f797be"
+            "id": "7c599a28-e386-4507-a1be-df4735f797be",
+            "type": "Workspace",
+            "state": "Active"
         },
         {
             "alias": "PBI_Salesforce_demo",
-            "id": "0359b9d6-7128-463f-ab49-66d8a7eeedbf"
+            "id": "0359b9d6-7128-463f-ab49-66d8a7eeedbf",
+            "type": "Workspace",
+            "state": "Active"
         },
         {
             "alias": "AstraZeneca_SFE",
-            "id": "c97cbbf8-c326-4d0c-85a5-4bb602dcfd80"
+            "id": "c97cbbf8-c326-4d0c-85a5-4bb602dcfd80",
+            "type": "Workspace",
+            "state": "Active"
         }
     ],
     "PBI_REPORTS": [
         {
             "alias": "PBI_BI_SAP_Demo",
-            "id": "3a6e9e19-9aed-4372-a7d9-17155e9dd49d"
+            "id": "3a6e9e19-9aed-4372-a7d9-17155e9dd49d",
+            "type": "Workspace",
+            "state": "Active"
         },
         {
             "alias": "Report Usage Metrics Report",
-            "id": "1b4b8c16-98ba-4122-a9f4-45b515254966"
+            "id": "1b4b8c16-98ba-4122-a9f4-45b515254966",
+            "type": "Workspace",
+            "state": "Active"
         },
         {
             "alias": "Usage Metrics Report",
-            "id": "98c86f67-010c-45be-b62c-70123f7d5854"
+            "id": "98c86f67-010c-45be-b62c-70123f7d5854",
+            "type": "Workspace",
+            "state": "Active"
         },
         {
             "alias": "PBI_Salesforce_demo",
-            "id": "cbc29d9e-0d69-4791-9862-03543960bd08"
+            "id": "cbc29d9e-0d69-4791-9862-03543960bd08",
+            "type": "Workspace",
+            "state": "Active"
         },
         {
             "alias": "AstraZeneca_SFE",
-            "id": "5c6df788-fcc6-4758-ba9c-42bc1b969666"
+            "id": "5c6df788-fcc6-4758-ba9c-42bc1b969666",
+            "type": "Workspace",
+            "state": "Active"
         }
     ]
 }
