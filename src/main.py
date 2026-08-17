@@ -169,22 +169,13 @@ async def login(req: LoginRequest, request: Request, response: Response):
         mfa_enabled = bool(Config.MFA_SECRET)
         if mfa_enabled:
             if not req.mfa_code:
-                # 第一步通过：密码正确，同时返回 QR 码供首次绑定
-                totp = pyotp.TOTP(Config.MFA_SECRET)
-                provisioning_uri = totp.provisioning_uri(name="admin", issuer_name="PBI API Explorer")
-                img = qrcode.make(provisioning_uri)
-                buf = io.BytesIO()
-                img.save(buf, format="PNG")
-                buf.seek(0)
-                qr_b64 = base64.b64encode(buf.read()).decode()
+                # 第一步通过：密码正确，要求用户提交 TOTP 动态口令（不泄露二维码与 Secret）
                 return JSONResponse(
                     status_code=200,
                     content={
                         "success": False,
                         "mfa_required": True,
                         "message": "Password verified. Please enter your Authenticator code.",
-                        "qr_image_base64": qr_b64,
-                        "secret": Config.MFA_SECRET,
                     }
                 )
             # 第二步：校验 TOTP 动态口令（允许 ±1 个 30 秒窗口容错）

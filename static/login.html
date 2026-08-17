@@ -404,16 +404,6 @@
                 <span>打开 <strong>Google / Microsoft Authenticator</strong>，输入「PBI API Explorer」的 6 位动态验证码：</span>
             </div>
 
-            <!-- QR 码绑定区域（默认折叠，首次使用或换设备时展开扫码）-->
-            <button type="button" class="qr-setup-toggle" id="qr-toggle">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-                📱 扫码绑定 / 重新绑定 Authenticator App
-            </button>
-            <div class="qr-setup-box" id="qr-setup-box">
-                <img id="qr-img" src="" alt="MFA QR Code">
-                <p class="qr-label">用 Authenticator App 扫描上方二维码完成绑定<br>或手动输入密钥：</p>
-                <div class="qr-secret" id="qr-secret"></div>
-            </div>
 
             <div class="input-group">
                 <label for="mfa-code">Authenticator Code（6 位动态验证码）</label>
@@ -461,12 +451,8 @@
                     // MFA disabled, direct login success
                     loginSuccess(btn, btnText, spinner);
                 } else if (data.mfa_required) {
-                    // MFA enabled: inject QR code and go to step 2
+                    // MFA enabled: go to step 2
                     savedPassword = password;
-                    if (data.qr_image_base64) {
-                        document.getElementById('qr-img').src = 'data:image/png;base64,' + data.qr_image_base64;
-                        document.getElementById('qr-secret').textContent = data.secret || '';
-                    }
                     goToStep2();
                     btn.disabled = false;
                     btnText.style.display = 'block';
@@ -585,14 +571,6 @@
         });
 
         document.getElementById('btn-back').addEventListener('click', goToStep1);
-
-        // QR 码绑定区块展开/折叠
-        document.getElementById('qr-toggle').addEventListener('click', () => {
-            const box = document.getElementById('qr-setup-box');
-            const btn = document.getElementById('qr-toggle');
-            box.classList.toggle('open');
-            btn.classList.toggle('open');
-        });
 
         // Add dynamic keyframes
         const style = document.createElement('style');
