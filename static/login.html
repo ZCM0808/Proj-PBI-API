@@ -404,10 +404,10 @@
                 <span>打开 <strong>Google / Microsoft Authenticator</strong>，输入「PBI API Explorer」的 6 位动态验证码：</span>
             </div>
 
-            <!-- 首次绑定 QR 码区域 -->
+            <!-- QR 码绑定区域（默认折叠，首次使用或换设备时展开扫码）-->
             <button type="button" class="qr-setup-toggle" id="qr-toggle">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-                首次使用？展开扫码绑定 Authenticator App
+                📱 扫码绑定 / 重新绑定 Authenticator App
             </button>
             <div class="qr-setup-box" id="qr-setup-box">
                 <img id="qr-img" src="" alt="MFA QR Code">
@@ -466,13 +466,6 @@
                     if (data.qr_image_base64) {
                         document.getElementById('qr-img').src = 'data:image/png;base64,' + data.qr_image_base64;
                         document.getElementById('qr-secret').textContent = data.secret || '';
-                    }
-                    // 已绑定过则隐藏 QR 码入口
-                    const qrToggle = document.getElementById('qr-toggle');
-                    if (localStorage.getItem('mfa_bound')) {
-                        qrToggle.style.display = 'none';
-                    } else {
-                        qrToggle.style.display = 'flex';
                     }
                     goToStep2();
                     btn.disabled = false;
@@ -558,8 +551,6 @@
 
         // ===== Success animation =====
         function loginSuccess(btn, btnText, spinner) {
-            // 标记此浏览器已完成 MFA 绑定
-            localStorage.setItem('mfa_bound', '1');
             btn.style.background = '#10b981';
             spinner.style.display = 'none';
             btnText.style.display = 'block';
