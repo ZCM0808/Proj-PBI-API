@@ -98,6 +98,10 @@ def verify_auth_token(token_str: str) -> bool:
 
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
+    # 开发模式开关：若 DEV_MODE 为 True，直接跳过所有身份鉴权拦截
+    if os.getenv("DEV_MODE", "false").lower() in ("true", "1") or os.getenv("APP_ENV", "").lower() == "development":
+        return await call_next(request)
+
     if Config.APP_ACCESS_PASSWORD:
         whitelist = ["/login", "/api/login", "/static/login.html"]
         if request.url.path not in whitelist and not request.url.path.startswith("/static/"):
@@ -261,6 +265,62 @@ async def logout(response: Response):
     """清除登录 Cookie，强制退出并跳转回登录页"""
     response.delete_cookie(key="pbi_auth_token")
     return JSONResponse(content={"success": True, "redirect": "/login"})
+
+
+@app.get("/api/session-status")
+async def session_status(request: Request):
+    """查询当前 Session 剩余时间及登录模式"""
+    token = request.cookies.get("pbi_auth_token")
+    if not token or not verify_auth_token(token):
+        return JSONResponse(status_code=401, content={"success": False, "message": "Unauthorized"})
+    try:
+        parts = token.split(".", 2)
+        if len(parts) == 2:
+            ts_str, _ = parts
+            mode = "mfa"
+        else:
+            ts_str, mode, _ = parts
+        ts = int(ts_str)
+        now = int(time.time())
+        max_age = 3600 if mode == "pwd1" else 10800
+        remaining_seconds = max(0, max_age - (now - ts))
+        return JSONResponse(content={
+            "success": True,
+            "mode": mode,
+            "remaining_seconds": remaining_seconds,
+            "max_age_seconds": max_age
+        })
+    except Exception:
+        return JSONResponse(status_code=400, content={"success": False, "message": "Invalid session token"})
+
+
+class RenewMfaRequest(BaseModel):
+    mfa_code: str
+
+@app.post("/api/renew-mfa-session")
+async def renew_mfa_session(req: RenewMfaRequest, request: Request, response: Response):
+    """MFA 模式专属会话续期：在 10 分钟倒计时时输入新的 6 位 TOTP 动态码，直接续期 3 小时"""
+    token = request.cookies.get("pbi_auth_token")
+    if not token or not verify_auth_token(token):
+        return JSONResponse(status_code=401, content={"success": False, "message": "Unauthorized or session expired."})
+    
+    # 验证只有 MFA 模式支持续期
+    parts = token.split(".", 2)
+    mode = parts[1] if len(parts) == 3 else "mfa"
+    if mode != "mfa":
+        return JSONResponse(status_code=400, content={"success": False, "message": "Password 1 session cannot be renewed. Please login with MFA mode."})
+    
+    if not Config.MFA_SECRET:
+        return JSONResponse(status_code=400, content={"success": False, "message": "MFA is not configured."})
+    
+    totp = pyotp.TOTP(Config.MFA_SECRET)
+    if not totp.verify(req.mfa_code, valid_window=1):
+        return JSONResponse(status_code=401, content={"success": False, "message": "Invalid MFA code. Renew failed."})
+    
+    now = int(time.time())
+    new_token = make_auth_token(now, mode="mfa")
+    response.set_cookie(key="pbi_auth_token", value=new_token, httponly=True, max_age=10800)
+    return JSONResponse(content={"success": True, "message": "Session successfully extended by 3 hours."})
 
 _current_api_key = None
 _model_instance = None

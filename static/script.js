@@ -4419,6 +4419,63 @@ if (btnLogout) {
     });
 }
 
+// ===== Session 倒计时提醒与 MFA 无缝续期逻辑 =====
+(function initSessionStatusTracker() {
+    if (window.location.pathname.includes('/login')) return;
+
+    let warningPrompted = false;
+
+    async function checkSession() {
+        try {
+            const res = await fetch('/api/session-status');
+            if (res.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
+            const data = await res.json();
+            if (!data.success) return;
+
+            const remaining = data.remaining_seconds;
+            const mode = data.mode;
+
+            // 倒计时 10 分钟 (600秒) 内，触发弹窗提醒
+            if (remaining <= 600 && remaining > 0 && !warningPrompted) {
+                warningPrompted = true;
+                const minutesLeft = Math.ceil(remaining / 60);
+
+                if (mode === 'mfa') {
+                    // MFA 模式：提示用户输入新 6 位口令完成续期
+                    const inputCode = prompt(`⏱️ 您的 MFA 会话将在 ${minutesLeft} 分钟内到期！\n\n请输入手机 Authenticator 上最新的 6 位动态验证码，可延长 3 小时使用时间：`);
+                    if (inputCode && inputCode.trim().length === 6) {
+                        try {
+                            const renewRes = await fetch('/api/renew-mfa-session', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ mfa_code: inputCode.trim() })
+                            });
+                            const renewData = await renewRes.json();
+                            if (renewData.success) {
+                                alert('✅ 会话续期成功！已增加 3 小时使用时长。');
+                                warningPrompted = false; // 重置提醒标志
+                            } else {
+                                alert('❌ 续期失败：' + (renewData.message || '动态码无效'));
+                            }
+                        } catch (e) {
+                            alert('网络错误，续期失败。');
+                        }
+                    }
+                } else {
+                    // 密码一模式：友情提醒到期
+                    alert(`⏱️ 提示：您当前通过密码一登录，会话将在 ${minutesLeft} 分钟内到期。到期后请使用 MFA 动态口令解锁更长使用时间。`);
+                }
+            }
+        } catch (_) { /* ignore background check error */ }
+    }
+
+    // 每 1 分钟检查一次 Session 状态
+    setInterval(checkSession, 60000);
+    setTimeout(checkSession, 3000);
+})();
 
 let easyMDE = null;
 
