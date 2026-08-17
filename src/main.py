@@ -205,7 +205,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
         response.set_cookie(key="pbi_auth_token", value=token, httponly=True, max_age=10800)
         return {"success": True, "mode": "mfa"}
 
-    # ===== 平行分支 2: 使用密码一 (主密码) 登录 (每天限1次，1小时有效) =====
+    # ===== 平行分支 2: 使用密码一 (主密码) 登录 (不限登录次数，单次/累计上限1小时) =====
     if req.password:
         if req.password != Config.APP_ACCESS_PASSWORD:
             device_record["attempts"] += 1
@@ -219,20 +219,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
             asyncio.create_task(async_git_push())
             return JSONResponse(status_code=401, content={"success": False, "message": msg})
 
-        # 校验密码一今日配额
-        today_str = datetime.now().strftime("%Y-%m-%d")
-        last_pwd1_date = device_record.get("last_pwd1_date", "")
-        if last_pwd1_date == today_str:
-            return JSONResponse(
-                status_code=403,
-                content={
-                    "success": False,
-                    "message": "密码一今天已使用过 (每天限1次·最长1小时)。请使用 MFA 动态口令完成登录。"
-                }
-            )
-
-        # 密码一验证成功：记录今日日期，颁发 1 小时有效 Token (mode="pwd1")
-        device_record["last_pwd1_date"] = today_str
+        # 密码一验证成功：颁发 1 小时有效 Token (mode="pwd1")
         device_record["attempts"] = 0
         device_record["locked_until"] = 0
         lockouts[device_id] = device_record
