@@ -60,16 +60,36 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Power BI API Explorer", lifespan=lifespan)
 
+def make_auth_token(timestamp: int) -> str:
+    raw_val = f"{timestamp}:{Config.APP_ACCESS_PASSWORD}"
+    sig = hashlib.sha256(raw_val.encode()).hexdigest()
+    return f"{timestamp}.{sig}"
+
+def verify_auth_token(token_str: str) -> bool:
+    if not token_str or "." not in token_str:
+        return False
+    try:
+        ts_str, sig = token_str.split(".", 1)
+        ts = int(ts_str)
+        now = int(time.time())
+        # 超出 3 小时 (10800 秒) 强制失效
+        if now - ts > 10800 or ts > now + 300:
+            return False
+        raw_val = f"{ts}:{Config.APP_ACCESS_PASSWORD}"
+        expected_sig = hashlib.sha256(raw_val.encode()).hexdigest()
+        return sig == expected_sig
+    except Exception:
+        return False
+
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
     if Config.APP_ACCESS_PASSWORD:
         whitelist = ["/login", "/api/login", "/static/login.html"]
         if request.url.path not in whitelist and not request.url.path.startswith("/static/"):
             token = request.cookies.get("pbi_auth_token")
-            expected_token = hashlib.sha256(Config.APP_ACCESS_PASSWORD.encode()).hexdigest()
-            if token != expected_token:
+            if not token or not verify_auth_token(token):
                 if request.url.path.startswith("/api/"):
-                    return JSONResponse(status_code=401, content={"success": False, "message": "Unauthorized. Please login."})
+                    return JSONResponse(status_code=401, content={"success": False, "message": "Session expired or unauthorized. Please login."})
                 else:
                     return RedirectResponse(url="/login", status_code=302)
     return await call_next(request)
@@ -141,7 +161,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
         device_record["locked_until"] = 0
     
     if req.password == Config.APP_ACCESS_PASSWORD:
-        token = hashlib.sha256(Config.APP_ACCESS_PASSWORD.encode()).hexdigest()
+        token = make_auth_token(int(now))
         response.set_cookie(key="pbi_auth_token", value=token, httponly=True, max_age=10800)
         if device_id in lockouts:
             del lockouts[device_id]
