@@ -36,6 +36,7 @@ class Config:
     # Security Configuration
     # ==========================================
     APP_ACCESS_PASSWORD: str = os.getenv("APP_ACCESS_PASSWORD", "")
+    MFA_SECRET: str = os.getenv("MFA_SECRET", "")
 
     # ==========================================
     # Smart DataOps Pipeline 共享配置

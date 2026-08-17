@@ -20,6 +20,10 @@ import re
 import uuid
 import asyncio
 import subprocess
+import io
+import base64
+import pyotp  # type: ignore[import-untyped]
+import qrcode  # type: ignore[import-untyped]
 from src.config import Config
 from src.pbi_client import PBIClient
 from src.pipeline import PBIPipeline
@@ -141,6 +145,7 @@ async def async_git_push():
 
 class LoginRequest(BaseModel):
     password: str
+    mfa_code: Optional[str] = None  # 第二步提交的 TOTP 动态口令（可选）
 
 @app.post("/api/login")
 async def login(req: LoginRequest, request: Request, response: Response):
@@ -161,6 +166,22 @@ async def login(req: LoginRequest, request: Request, response: Response):
         device_record["locked_until"] = 0
     
     if req.password == Config.APP_ACCESS_PASSWORD:
+        mfa_enabled = bool(Config.MFA_SECRET)
+        if mfa_enabled:
+            if not req.mfa_code:
+                # 第一步通过：密码正确，要求用户提交 TOTP 动态口令
+                return JSONResponse(
+                    status_code=200,
+                    content={"success": False, "mfa_required": True, "message": "Password verified. Please enter your Authenticator code."}
+                )
+            # 第二步：校验 TOTP 动态口令（允许 ±1 个 30 秒窗口容错）
+            totp = pyotp.TOTP(Config.MFA_SECRET)
+            if not totp.verify(req.mfa_code, valid_window=1):
+                return JSONResponse(
+                    status_code=401,
+                    content={"success": False, "message": "Invalid authenticator code. Please try again."}
+                )
+        # 密码+MFA 均通过，颁发 Session Token
         token = make_auth_token(int(now))
         response.set_cookie(key="pbi_auth_token", value=token, httponly=True, max_age=10800)
         if device_id in lockouts:
@@ -181,6 +202,29 @@ async def login(req: LoginRequest, request: Request, response: Response):
     asyncio.create_task(async_git_push())
     
     return JSONResponse(status_code=401, content={"success": False, "message": msg})
+
+
+@app.get("/api/mfa-setup")
+async def mfa_setup(request: Request):
+    """返回 MFA 绑定二维码（仅在已登录状态下可访问，用于首次绑定手机 Authenticator App）"""
+    token = request.cookies.get("pbi_auth_token")
+    if not token or not verify_auth_token(token):
+        return JSONResponse(status_code=401, content={"success": False, "message": "Please login first."})
+    if not Config.MFA_SECRET:
+        return JSONResponse(status_code=400, content={"success": False, "message": "MFA is not configured on this server."})
+    totp = pyotp.TOTP(Config.MFA_SECRET)
+    provisioning_uri = totp.provisioning_uri(name="admin", issuer_name="PBI API Explorer")
+    img = qrcode.make(provisioning_uri)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    qr_b64 = base64.b64encode(buf.read()).decode()
+    return JSONResponse(content={
+        "success": True,
+        "qr_image_base64": qr_b64,
+        "secret": Config.MFA_SECRET,
+        "provisioning_uri": provisioning_uri
+    })
 
 _current_api_key = None
 _model_instance = None
