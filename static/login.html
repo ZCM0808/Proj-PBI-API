@@ -377,50 +377,47 @@
         <!-- Step Indicator -->
         <div class="step-indicator" id="step-indicator">
             <div class="step-dot active" id="dot-1"></div>
-            <div class="step-line"><div class="step-line-fill" id="line-fill"></div></div>
-            <div class="step-dot" id="dot-2"></div>
+        <!-- Mode Selector Tabs -->
+        <div style="display: flex; background: rgba(0,0,0,0.25); border-radius: 12px; padding: 4px; margin-bottom: 24px; border: 1px solid var(--glass-border);">
+            <button type="button" id="tab-btn-pwd" style="flex: 1; padding: 10px; font-size: 0.85rem; background: var(--accent); color: #fff; border-radius: 8px; border: none; cursor: pointer; transition: all 0.3s ease;">🔑 密码一登录</button>
+            <button type="button" id="tab-btn-mfa" style="flex: 1; padding: 10px; font-size: 0.85rem; background: transparent; color: var(--text-secondary); border-radius: 8px; border: none; cursor: pointer; transition: all 0.3s ease;">🛡️ MFA 动态口令</button>
         </div>
 
-        <!-- Step 1: Password & Mode Choice -->
-        <div class="step-panel active" id="step-1">
+        <!-- Panel 1: Password 1 Login Mode -->
+        <div class="step-panel active" id="panel-pwd">
+            <div class="mfa-hint" style="background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.25); color: #93c5fd; margin-bottom: 16px;">
+                <span>每天限登录 <strong>1 次</strong>，单次最长使用 <strong>1 小时</strong>。</span>
+            </div>
             <div class="input-group">
-                <label for="password">Access Password (密码一 / 主密码)</label>
-                <input type="password" id="password" name="password" placeholder="••••••••" required autofocus autocomplete="current-password">
+                <label for="password">Access Password (主密码)</label>
+                <input type="password" id="password" name="password" placeholder="••••••••" autofocus autocomplete="current-password">
             </div>
-            <div style="display: flex; gap: 10px; margin-top: 10px;">
-                <button type="button" id="btn-pwd1-login" style="flex: 1; background: rgba(255,255,255,0.08); border: 1px solid var(--glass-border); color: #cbd5e1; font-size: 0.88rem;">
-                    <span class="btn-text">🔑 密码一登录<br><small style="font-size: 0.72rem; opacity: 0.7; font-weight: 300;">(每天限1次·1小时)</small></span>
-                    <div class="spinner"></div>
-                </button>
-                <button type="button" id="btn-step1" style="flex: 1;">
-                    <span class="btn-text">🛡️ MFA 验证登录<br><small style="font-size: 0.72rem; opacity: 0.9; font-weight: 300;">(不限次数·3小时)</small></span>
-                    <div class="spinner"></div>
-                </button>
-            </div>
-            <div class="error-message" id="error-step1"></div>
+            <button type="button" id="btn-pwd-login">
+                <span class="btn-text">Unlock with Password</span>
+                <div class="spinner"></div>
+            </button>
+            <div class="error-message" id="error-pwd"></div>
         </div>
 
-        <!-- Step 2: MFA Code -->
-        <div class="step-panel" id="step-2">
-            <div class="mfa-hint">
+        <!-- Panel 2: MFA Code Independent Login Mode -->
+        <div class="step-panel" id="panel-mfa">
+            <div class="mfa-hint" style="margin-bottom: 16px;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:1px">
                     <rect x="5" y="11" width="14" height="10" rx="2"/>
                     <path d="M8 11V7a4 4 0 018 0v4"/>
                 </svg>
-                <span>打开 <strong>Google / Microsoft Authenticator</strong>，输入「PBI API Explorer」的 6 位动态验证码：</span>
+                <span>独立鉴权模式：无需主密码，直接使用 Authenticator 动态口令解锁。<strong>不限每天次数</strong>，单次最长 <strong>3 小时</strong>。</span>
             </div>
-
 
             <div class="input-group">
-                <label for="mfa-code">Authenticator Code（6 位动态验证码）</label>
+                <label for="mfa-code">6 位动态验证码</label>
                 <input type="text" id="mfa-code" name="mfa-code" placeholder="000000" maxlength="6" autocomplete="one-time-code" inputmode="numeric">
             </div>
-            <button type="button" id="btn-step2">
-                <span class="btn-text">Unlock Application</span>
+            <button type="button" id="btn-mfa-login">
+                <span class="btn-text">Unlock with MFA Code</span>
                 <div class="spinner"></div>
             </button>
-            <button type="button" class="btn-back" id="btn-back">← Back to Password</button>
-            <div class="error-message" id="error-step2"></div>
+            <div class="error-message" id="error-mfa"></div>
         </div>
     </div>
 
@@ -428,18 +425,43 @@
     <div id="fade-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0d1117; opacity: 0; pointer-events: none; z-index: 9999; transition: opacity 0.7s ease;"></div>
 
     <script>
-        // ===== Shared state =====
-        let savedPassword = '';
+        // ===== Tab Switching =====
+        const tabBtnPwd = document.getElementById('tab-btn-pwd');
+        const tabBtnMfa = document.getElementById('tab-btn-mfa');
+        const panelPwd = document.getElementById('panel-pwd');
+        const panelMfa = document.getElementById('panel-mfa');
 
-        // ===== Step 1: Password 1 Direct Login (1 hour, max 1/day) =====
-        async function submitPassword1Direct() {
+        tabBtnPwd.addEventListener('click', () => {
+            tabBtnPwd.style.background = 'var(--accent)';
+            tabBtnPwd.style.color = '#fff';
+            tabBtnMfa.style.background = 'transparent';
+            tabBtnMfa.style.color = 'var(--text-secondary)';
+            panelPwd.classList.add('active');
+            panelMfa.classList.remove('active');
+            document.getElementById('page-subtitle').textContent = 'Mode 1 • Password Authentication';
+            setTimeout(() => document.getElementById('password').focus(), 100);
+        });
+
+        tabBtnMfa.addEventListener('click', () => {
+            tabBtnMfa.style.background = 'var(--accent)';
+            tabBtnMfa.style.color = '#fff';
+            tabBtnPwd.style.background = 'transparent';
+            tabBtnPwd.style.color = 'var(--text-secondary)';
+            panelMfa.classList.add('active');
+            panelPwd.classList.remove('active');
+            document.getElementById('page-subtitle').textContent = 'Mode 2 • MFA Authenticator';
+            setTimeout(() => document.getElementById('mfa-code').focus(), 100);
+        });
+
+        // ===== Pathway 1: Password 1 Login =====
+        async function submitPassword1() {
             const password = document.getElementById('password').value.trim();
             if (!password) return;
 
-            const btn = document.getElementById('btn-pwd1-login');
+            const btn = document.getElementById('btn-pwd-login');
             const btnText = btn.querySelector('.btn-text');
             const spinner = btn.querySelector('.spinner');
-            const errorMsg = document.getElementById('error-step1');
+            const errorMsg = document.getElementById('error-pwd');
             errorMsg.classList.remove('visible');
             btn.disabled = true;
             btnText.style.display = 'none';
@@ -456,10 +478,6 @@
                 if (data.success) {
                     loginSuccess(btn, btnText, spinner);
                 } else {
-                    if (data.mfa_required) {
-                        savedPassword = password;
-                        goToStep2();
-                    }
                     throw new Error(data.message || 'Authentication failed');
                 }
             } catch (err) {
@@ -473,24 +491,15 @@
             }
         }
 
-        // ===== Step 1: MFA Flow (Continue to Step 2) =====
-        async function submitPassword() {
-            const password = document.getElementById('password').value.trim();
-            if (!password) return;
-
-            savedPassword = password;
-            goToStep2();
-        }
-
-        // ===== Step 2: MFA Code Submit =====
+        // ===== Pathway 2: MFA Independent Code Login =====
         async function submitMfaCode() {
             const mfaCode = document.getElementById('mfa-code').value.trim();
             if (!mfaCode) return;
 
-            const btn = document.getElementById('btn-step2');
+            const btn = document.getElementById('btn-mfa-login');
             const btnText = btn.querySelector('.btn-text');
             const spinner = btn.querySelector('.spinner');
-            const errorMsg = document.getElementById('error-step2');
+            const errorMsg = document.getElementById('error-mfa');
             errorMsg.classList.remove('visible');
             btn.disabled = true;
             btnText.style.display = 'none';
@@ -500,14 +509,14 @@
                 const res = await fetch('/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: savedPassword, mfa_code: mfaCode })
+                    body: JSON.stringify({ mfa_code: mfaCode })
                 });
                 const data = await res.json();
 
                 if (data.success) {
                     loginSuccess(btn, btnText, spinner);
                 } else {
-                    throw new Error(data.message || 'Invalid code');
+                    throw new Error(data.message || 'Invalid MFA code');
                 }
             } catch (err) {
                 errorMsg.textContent = err.message || 'Network error. Please try again.';
@@ -518,34 +527,6 @@
                 document.getElementById('mfa-code').value = '';
                 document.getElementById('mfa-code').focus();
                 shakeContainer();
-            }
-        }
-
-        // ===== Step navigation =====
-        function goToStep2() {
-            document.getElementById('step-1').classList.remove('active');
-            document.getElementById('step-2').classList.add('active');
-            document.getElementById('dot-1').classList.remove('active');
-            document.getElementById('dot-1').classList.add('done');
-            document.getElementById('dot-2').classList.add('active');
-            document.getElementById('line-fill').style.width = '100%';
-            document.getElementById('page-subtitle').textContent = 'Step 2 of 2 • Authenticator Verification';
-            setTimeout(() => document.getElementById('mfa-code').focus(), 100);
-        }
-
-        function goToStep1() {
-            document.getElementById('step-2').classList.remove('active');
-            document.getElementById('step-1').classList.add('active');
-            document.getElementById('dot-2').classList.remove('active');
-            document.getElementById('dot-1').classList.remove('done');
-            document.getElementById('dot-1').classList.add('active');
-            document.getElementById('line-fill').style.width = '0%';
-            document.getElementById('page-subtitle').textContent = 'Private Environment • Enter Password';
-            document.getElementById('mfa-code').value = '';
-            document.getElementById('error-step2').classList.remove('visible');
-            setTimeout(() => document.getElementById('password').focus(), 100);
-        }
-
         // ===== Success animation =====
         function loginSuccess(btn, btnText, spinner) {
             btn.style.background = 'var(--accent)';
@@ -570,19 +551,15 @@
             container.style.animation = 'shake 0.4s cubic-bezier(.36,.07,.19,.97) both';
         }
 
-        // ===== Event listeners =====
-        document.getElementById('btn-pwd1-login').addEventListener('click', submitPassword1Direct);
-        document.getElementById('btn-step1').addEventListener('click', submitPassword);
-        document.getElementById('password').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitPassword(); });
+        // ===== Event Listeners =====
+        document.getElementById('btn-pwd-login').addEventListener('click', submitPassword1);
+        document.getElementById('password').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitPassword1(); });
 
-        document.getElementById('btn-step2').addEventListener('click', submitMfaCode);
+        document.getElementById('btn-mfa-login').addEventListener('click', submitMfaCode);
         document.getElementById('mfa-code').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitMfaCode(); });
         document.getElementById('mfa-code').addEventListener('input', (e) => {
-            // 只允许数字
             e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
         });
-
-        document.getElementById('btn-back').addEventListener('click', goToStep1);
 
         // Add dynamic keyframes
         const style = document.createElement('style');
