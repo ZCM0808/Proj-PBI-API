@@ -4407,7 +4407,8 @@ if (btnKeepAwake) {
 const btnLogout = document.getElementById('btn-logout');
 if (btnLogout) {
     btnLogout.addEventListener('click', async () => {
-        if (!confirm('确定要退出登录吗？')) return;
+        const confirmed = await window.showCustomConfirm('确定要退出登录吗？', '🔒 退出登录');
+        if (!confirmed) return;
         try {
             await fetch('/api/logout', { method: 'POST' });
         } catch (_) { /* ignore */ }
