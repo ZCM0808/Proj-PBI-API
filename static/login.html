@@ -467,6 +467,13 @@
                         document.getElementById('qr-img').src = 'data:image/png;base64,' + data.qr_image_base64;
                         document.getElementById('qr-secret').textContent = data.secret || '';
                     }
+                    // 已绑定过则隐藏 QR 码入口
+                    const qrToggle = document.getElementById('qr-toggle');
+                    if (localStorage.getItem('mfa_bound')) {
+                        qrToggle.style.display = 'none';
+                    } else {
+                        qrToggle.style.display = 'flex';
+                    }
                     goToStep2();
                     btn.disabled = false;
                     btnText.style.display = 'block';
@@ -551,6 +558,8 @@
 
         // ===== Success animation =====
         function loginSuccess(btn, btnText, spinner) {
+            // 标记此浏览器已完成 MFA 绑定
+            localStorage.setItem('mfa_bound', '1');
             btn.style.background = '#10b981';
             spinner.style.display = 'none';
             btnText.style.display = 'block';
