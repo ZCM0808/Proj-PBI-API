@@ -64,23 +64,34 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Power BI API Explorer", lifespan=lifespan)
 
-def make_auth_token(timestamp: int) -> str:
-    raw_val = f"{timestamp}:{Config.APP_ACCESS_PASSWORD}"
+def make_auth_token(timestamp: int, mode: str = "mfa") -> str:
+    raw_val = f"{timestamp}:{mode}:{Config.APP_ACCESS_PASSWORD}"
     sig = hashlib.sha256(raw_val.encode()).hexdigest()
-    return f"{timestamp}.{sig}"
+    return f"{timestamp}.{mode}.{sig}"
 
 def verify_auth_token(token_str: str) -> bool:
     if not token_str or "." not in token_str:
         return False
     try:
-        ts_str, sig = token_str.split(".", 1)
+        parts = token_str.split(".", 2)
+        if len(parts) == 2:
+            # Backward compatibility for old tokens without mode
+            ts_str, sig = parts
+            mode = "mfa"
+            raw_val = f"{ts_str}:{Config.APP_ACCESS_PASSWORD}"
+            expected_sig = hashlib.sha256(raw_val.encode()).hexdigest()
+            max_age = 10800
+        else:
+            ts_str, mode, sig = parts
+            raw_val = f"{ts_str}:{mode}:{Config.APP_ACCESS_PASSWORD}"
+            expected_sig = hashlib.sha256(raw_val.encode()).hexdigest()
+            # 密码一 (pwd1) 单次会话最多 1 小时 (3600s)；MFA 模式最多 3 小时 (10800s)
+            max_age = 3600 if mode == "pwd1" else 10800
+
         ts = int(ts_str)
         now = int(time.time())
-        # 超出 3 小时 (10800 秒) 强制失效
-        if now - ts > 10800 or ts > now + 300:
+        if now - ts > max_age or ts > now + 300:
             return False
-        raw_val = f"{ts}:{Config.APP_ACCESS_PASSWORD}"
-        expected_sig = hashlib.sha256(raw_val.encode()).hexdigest()
         return sig == expected_sig
     except Exception:
         return False
@@ -167,32 +178,53 @@ async def login(req: LoginRequest, request: Request, response: Response):
     
     if req.password == Config.APP_ACCESS_PASSWORD:
         mfa_enabled = bool(Config.MFA_SECRET)
-        if mfa_enabled:
-            if not req.mfa_code:
-                # 第一步通过：密码正确，要求用户提交 TOTP 动态口令（不泄露二维码与 Secret）
-                return JSONResponse(
-                    status_code=200,
-                    content={
-                        "success": False,
-                        "mfa_required": True,
-                        "message": "Password verified. Please enter your Authenticator code.",
-                    }
-                )
-            # 第二步：校验 TOTP 动态口令（允许 ±1 个 30 秒窗口容错）
+        
+        # 模式判断：提供了有效 mfa_code 走 MFA 登录模式（无每日次数限制，3小时有效）；
+        # 未提供 mfa_code 且客户端请求直接登录，走密码一模式（每天仅限1次，累计时长1小时）。
+        if mfa_enabled and req.mfa_code:
             totp = pyotp.TOTP(Config.MFA_SECRET)
             if not totp.verify(req.mfa_code, valid_window=1):
                 return JSONResponse(
                     status_code=401,
                     content={"success": False, "message": "Invalid authenticator code. Please try again."}
                 )
-        # 密码+MFA 均通过，颁发 Session Token
-        token = make_auth_token(int(now))
-        response.set_cookie(key="pbi_auth_token", value=token, httponly=True, max_age=10800)
-        if device_id in lockouts:
-            del lockouts[device_id]
-            save_lockouts(lockouts)
-            asyncio.create_task(async_git_push())
-        return {"success": True}
+            # MFA 登录成功：颁发 3 小时有效 Token (mode="mfa")
+            token = make_auth_token(int(now), mode="mfa")
+            response.set_cookie(key="pbi_auth_token", value=token, httponly=True, max_age=10800)
+            if device_id in lockouts:
+                device_record["attempts"] = 0
+                device_record["locked_until"] = 0
+                lockouts[device_id] = device_record
+                save_lockouts(lockouts)
+                asyncio.create_task(async_git_push())
+            return {"success": True, "mode": "mfa"}
+        
+        # 仅输入主密码（密码一登录模式或第一步提示）
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        last_pwd1_date = device_record.get("last_pwd1_date", "")
+        
+        # 检查是否已完成密码一今日额度
+        if last_pwd1_date == today_str:
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "success": False,
+                    "message": "密码一模式今天已使用过 (每天仅限1次，每次最长1小时)。请使用 MFA 动态口令完成登录。",
+                    "mfa_required": True
+                }
+            )
+        
+        # 允许以密码一模式登录：记录今日使用日期，颁发 1 小时有效 Token (mode="pwd1")
+        device_record["last_pwd1_date"] = today_str
+        device_record["attempts"] = 0
+        device_record["locked_until"] = 0
+        lockouts[device_id] = device_record
+        save_lockouts(lockouts)
+        asyncio.create_task(async_git_push())
+
+        token = make_auth_token(int(now), mode="pwd1")
+        response.set_cookie(key="pbi_auth_token", value=token, httponly=True, max_age=3600)
+        return {"success": True, "mode": "pwd1"}
     
     device_record["attempts"] += 1
     if device_record["attempts"] >= 3:

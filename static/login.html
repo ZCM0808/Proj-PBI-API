@@ -381,16 +381,22 @@
             <div class="step-dot" id="dot-2"></div>
         </div>
 
-        <!-- Step 1: Password -->
+        <!-- Step 1: Password & Mode Choice -->
         <div class="step-panel active" id="step-1">
             <div class="input-group">
-                <label for="password">Access Password</label>
+                <label for="password">Access Password (密码一 / 主密码)</label>
                 <input type="password" id="password" name="password" placeholder="••••••••" required autofocus autocomplete="current-password">
             </div>
-            <button type="button" id="btn-step1">
-                <span class="btn-text">Continue</span>
-                <div class="spinner"></div>
-            </button>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button type="button" id="btn-pwd1-login" style="flex: 1; background: rgba(255,255,255,0.08); border: 1px solid var(--glass-border); color: #cbd5e1; font-size: 0.88rem;">
+                    <span class="btn-text">🔑 密码一登录<br><small style="font-size: 0.72rem; opacity: 0.7; font-weight: 300;">(每天限1次·1小时)</small></span>
+                    <div class="spinner"></div>
+                </button>
+                <button type="button" id="btn-step1" style="flex: 1;">
+                    <span class="btn-text">🛡️ MFA 验证登录<br><small style="font-size: 0.72rem; opacity: 0.9; font-weight: 300;">(不限次数·3小时)</small></span>
+                    <div class="spinner"></div>
+                </button>
+            </div>
             <div class="error-message" id="error-step1"></div>
         </div>
 
@@ -425,12 +431,12 @@
         // ===== Shared state =====
         let savedPassword = '';
 
-        // ===== Step 1: Password Submit =====
-        async function submitPassword() {
+        // ===== Step 1: Password 1 Direct Login (1 hour, max 1/day) =====
+        async function submitPassword1Direct() {
             const password = document.getElementById('password').value.trim();
             if (!password) return;
 
-            const btn = document.getElementById('btn-step1');
+            const btn = document.getElementById('btn-pwd1-login');
             const btnText = btn.querySelector('.btn-text');
             const spinner = btn.querySelector('.spinner');
             const errorMsg = document.getElementById('error-step1');
@@ -448,16 +454,12 @@
                 const data = await res.json();
 
                 if (data.success) {
-                    // MFA disabled, direct login success
                     loginSuccess(btn, btnText, spinner);
-                } else if (data.mfa_required) {
-                    // MFA enabled: go to step 2
-                    savedPassword = password;
-                    goToStep2();
-                    btn.disabled = false;
-                    btnText.style.display = 'block';
-                    spinner.style.display = 'none';
                 } else {
+                    if (data.mfa_required) {
+                        savedPassword = password;
+                        goToStep2();
+                    }
                     throw new Error(data.message || 'Authentication failed');
                 }
             } catch (err) {
@@ -469,6 +471,15 @@
                 document.getElementById('password').focus();
                 shakeContainer();
             }
+        }
+
+        // ===== Step 1: MFA Flow (Continue to Step 2) =====
+        async function submitPassword() {
+            const password = document.getElementById('password').value.trim();
+            if (!password) return;
+
+            savedPassword = password;
+            goToStep2();
         }
 
         // ===== Step 2: MFA Code Submit =====
@@ -560,6 +571,7 @@
         }
 
         // ===== Event listeners =====
+        document.getElementById('btn-pwd1-login').addEventListener('click', submitPassword1Direct);
         document.getElementById('btn-step1').addEventListener('click', submitPassword);
         document.getElementById('password').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitPassword(); });
 
