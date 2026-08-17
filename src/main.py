@@ -226,6 +226,13 @@ async def mfa_setup(request: Request):
         "provisioning_uri": provisioning_uri
     })
 
+
+@app.post("/api/logout")
+async def logout(response: Response):
+    """清除登录 Cookie，强制退出并跳转回登录页"""
+    response.delete_cookie(key="pbi_auth_token")
+    return JSONResponse(content={"success": True, "redirect": "/login"})
+
 _current_api_key = None
 _model_instance = None
 _project_memory = ""

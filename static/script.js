@@ -4403,6 +4403,21 @@ if (btnKeepAwake) {
     });
 }
 
+// ===== 退出登录 (Logout) =====
+const btnLogout = document.getElementById('btn-logout');
+if (btnLogout) {
+    btnLogout.addEventListener('click', async () => {
+        if (!confirm('确定要退出登录吗？')) return;
+        try {
+            await fetch('/api/logout', { method: 'POST' });
+        } catch (_) { /* ignore */ }
+        // 渐隐退出动画
+        document.body.style.transition = 'opacity 0.4s ease';
+        document.body.style.opacity = '0';
+        setTimeout(() => { window.location.href = '/login'; }, 420);
+    });
+}
+
 
 let easyMDE = null;
 
