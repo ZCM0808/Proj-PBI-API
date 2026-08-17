@@ -34,7 +34,6 @@
             position: relative;
         }
 
-        /* Animated Background Elements */
         .blob {
             position: absolute;
             filter: blur(80px);
@@ -61,7 +60,6 @@
             100% { transform: translate(30px, 50px) scale(1.1); }
         }
 
-        /* Glass Login Container */
         .login-container {
             position: relative;
             z-index: 10;
@@ -70,12 +68,10 @@
             -webkit-backdrop-filter: blur(16px);
             border: 1px solid var(--glass-border);
             border-radius: 24px;
-            padding: 40px;
+            padding: 36px 32px 32px 32px;
             width: 100%;
-            max-width: 420px;
+            max-width: 400px;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            transform: translateY(0);
-            opacity: 1;
             animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
@@ -86,30 +82,30 @@
 
         .header {
             text-align: center;
-            margin-bottom: 32px;
+            margin-bottom: 24px;
         }
 
         .logo {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 56px;
-            height: 56px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            margin-bottom: 16px;
+            width: 52px;
+            height: 52px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            margin-bottom: 12px;
             box-shadow: inset 0 0 0 1px var(--glass-border);
         }
 
         .logo svg {
-            width: 32px;
-            height: 32px;
+            width: 28px;
+            height: 28px;
         }
 
         h1 {
-            font-size: 1.5rem;
+            font-size: 1.35rem;
             font-weight: 600;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             background: linear-gradient(to right, #fff, #a5b4fc);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -117,51 +113,80 @@
 
         p.subtitle {
             color: var(--text-secondary);
-            font-size: 0.9rem;
+            font-size: 0.82rem;
         }
 
-        /* Step indicator */
-        .step-indicator {
+        /* Modern Segmented Control Tabs */
+        .tab-switcher {
+            display: flex;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 3px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            position: relative;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 9px 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: transparent;
+            border: none;
+            border-radius: 9px;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
             display: flex;
             align-items: center;
             justify-content: center;
+            gap: 6px;
+            user-select: none;
+        }
+
+        .tab-btn.active {
+            background: rgba(139, 92, 246, 0.25);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 0 0 1px rgba(139, 92, 246, 0.4);
+            font-weight: 600;
+        }
+
+        .tab-btn:hover:not(.active) {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Info Badge */
+        .info-badge {
+            display: flex;
+            align-items: center;
             gap: 8px;
-            margin-bottom: 24px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            line-height: 1.4;
+            margin-bottom: 20px;
         }
-        .step-dot {
-            width: 8px; height: 8px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.15);
-            transition: background 0.4s ease, transform 0.4s ease;
+        .info-badge.pwd {
+            background: rgba(59, 130, 246, 0.08);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            color: #93c5fd;
         }
-        .step-dot.active {
-            background: var(--accent);
-            transform: scale(1.3);
-        }
-        .step-dot.done {
-            background: #10b981;
-        }
-        .step-line {
-            width: 40px; height: 2px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 2px;
-            overflow: hidden;
-        }
-        .step-line-fill {
-            height: 100%;
-            width: 0%;
-            background: #10b981;
-            transition: width 0.5s ease;
+        .info-badge.mfa {
+            background: rgba(139, 92, 246, 0.08);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            color: #c4b5fd;
         }
 
         .input-group {
-            margin-bottom: 24px;
+            margin-bottom: 20px;
         }
 
         .input-group label {
             display: block;
             margin-bottom: 8px;
-            font-size: 0.85rem;
+            font-size: 0.82rem;
             font-weight: 500;
             color: var(--text-secondary);
         }
@@ -169,12 +194,12 @@
         input[type="password"],
         input[type="text"] {
             width: 100%;
-            background: rgba(0, 0, 0, 0.2);
+            background: rgba(0, 0, 0, 0.25);
             border: 1px solid var(--glass-border);
             border-radius: 12px;
-            padding: 14px 16px;
+            padding: 12px 14px;
             color: #fff;
-            font-size: 1rem;
+            font-size: 0.95rem;
             transition: all 0.3s ease;
             outline: none;
         }
@@ -183,45 +208,25 @@
         input[type="text"]:focus {
             border-color: var(--accent);
             box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.35);
         }
 
-        /* MFA code input special style */
         #mfa-code {
-            font-size: 1.6rem;
-            letter-spacing: 0.4em;
+            font-size: 1.5rem;
+            letter-spacing: 0.35em;
             text-align: center;
             font-weight: 600;
-            padding: 16px;
+            padding: 12px;
         }
 
-        /* MFA hint badge */
-        .mfa-hint {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            background: rgba(139, 92, 246, 0.1);
-            border: 1px solid rgba(139, 92, 246, 0.25);
-            border-radius: 12px;
-            padding: 12px 14px;
-            margin-bottom: 20px;
-            font-size: 0.82rem;
-            color: #c4b5fd;
-            line-height: 1.5;
-        }
-        .mfa-hint svg {
-            flex-shrink: 0;
-            margin-top: 1px;
-        }
-
-        button {
+        button.btn-submit {
             width: 100%;
             background: var(--accent);
             color: #fff;
             border: none;
             border-radius: 12px;
-            padding: 14px;
-            font-size: 1rem;
+            padding: 13px;
+            font-size: 0.95rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -231,51 +236,35 @@
             gap: 8px;
         }
 
-        button:hover {
+        button.btn-submit:hover {
             background: var(--accent-hover);
             transform: translateY(-2px);
             box-shadow: 0 8px 16px -4px rgba(139, 92, 246, 0.4);
         }
 
-        button:active {
+        button.btn-submit:active {
             transform: translateY(0) scale(0.98);
-        }
-
-        .btn-back {
-            background: transparent;
-            border: 1px solid var(--glass-border);
-            color: var(--text-secondary);
-            margin-top: 10px;
-            font-size: 0.85rem;
-            font-weight: 400;
-        }
-        .btn-back:hover {
-            background: rgba(255,255,255,0.05);
-            color: var(--text-main);
-            transform: translateY(-1px);
-            box-shadow: none;
         }
 
         .error-message {
             color: #ef4444;
-            font-size: 0.85rem;
-            margin-top: 12px;
+            font-size: 0.82rem;
+            margin-top: 10px;
             text-align: center;
-            min-height: 20px;
+            min-height: 18px;
             opacity: 0;
             transition: opacity 0.3s ease;
         }
-        
+
         .error-message.visible {
             opacity: 1;
         }
-        
-        /* Spinner */
+
         .spinner {
             display: none;
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(255,255,255,0.3);
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
             border-top-color: #fff;
             animation: spin 1s ease-in-out infinite;
@@ -284,76 +273,16 @@
             to { transform: rotate(360deg); }
         }
 
-        /* Step panels */
-        .step-panel {
+        .tab-panel {
             display: none;
-            animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        .step-panel.active {
+        .tab-panel.active {
             display: block;
         }
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(12px); }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
             to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* QR Code Binding Section */
-        .qr-setup-toggle {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: none;
-            border: none;
-            width: auto;
-            padding: 0;
-            margin-bottom: 14px;
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            cursor: pointer;
-            transition: color 0.2s;
-            font-weight: 400;
-        }
-        .qr-setup-toggle:hover {
-            color: var(--accent-hover);
-            background: none;
-            transform: none;
-            box-shadow: none;
-        }
-        .qr-setup-toggle svg { transition: transform 0.3s ease; }
-        .qr-setup-toggle.open svg { transform: rotate(180deg); }
-        .qr-setup-box {
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-            background: rgba(0,0,0,0.2);
-            border: 1px solid var(--glass-border);
-            border-radius: 14px;
-            padding: 16px;
-            margin-bottom: 16px;
-            animation: fadeInUp 0.3s ease;
-        }
-        .qr-setup-box.open { display: flex; }
-        .qr-setup-box img {
-            width: 160px;
-            height: 160px;
-            border-radius: 8px;
-            background: #fff;
-            padding: 6px;
-        }
-        .qr-secret {
-            font-family: monospace;
-            font-size: 0.78rem;
-            color: #94a3b8;
-            letter-spacing: 0.1em;
-            word-break: break-all;
-            text-align: center;
-        }
-        .qr-label {
-            font-size: 0.78rem;
-            color: #94a3b8;
-            text-align: center;
-            line-height: 1.5;
         }
     </style>
 </head>
@@ -371,50 +300,46 @@
                 </svg>
             </div>
             <h1>Power BI API Explorer</h1>
-            <p class="subtitle" id="page-subtitle">Private Environment • Enter Password</p>
+            <p class="subtitle" id="page-subtitle">选择登录通道进入系统</p>
         </div>
 
-        <!-- Step Indicator -->
-        <div class="step-indicator" id="step-indicator">
-            <div class="step-dot active" id="dot-1"></div>
         <!-- Mode Selector Tabs -->
-        <div style="display: flex; background: rgba(0,0,0,0.25); border-radius: 12px; padding: 4px; margin-bottom: 24px; border: 1px solid var(--glass-border);">
-            <button type="button" id="tab-btn-pwd" style="flex: 1; padding: 10px; font-size: 0.85rem; background: var(--accent); color: #fff; border-radius: 8px; border: none; cursor: pointer; transition: all 0.3s ease;">🔑 密码一登录</button>
-            <button type="button" id="tab-btn-mfa" style="flex: 1; padding: 10px; font-size: 0.85rem; background: transparent; color: var(--text-secondary); border-radius: 8px; border: none; cursor: pointer; transition: all 0.3s ease;">🛡️ MFA 动态口令</button>
+        <div class="tab-switcher">
+            <button type="button" class="tab-btn active" id="tab-btn-pwd">
+                🔑 密码一登录
+            </button>
+            <button type="button" class="tab-btn" id="tab-btn-mfa">
+                🛡️ MFA 动态口令
+            </button>
         </div>
 
         <!-- Panel 1: Password 1 Login Mode -->
-        <div class="step-panel active" id="panel-pwd">
-            <div class="mfa-hint" style="background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.25); color: #93c5fd; margin-bottom: 16px;">
-                <span>每天限登录 <strong>1 次</strong>，单次最长使用 <strong>1 小时</strong>。</span>
+        <div class="tab-panel active" id="panel-pwd">
+            <div class="info-badge pwd">
+                <span>每天限登录 <strong>1 次</strong>，单次会话最长使用 <strong>1 小时</strong>。</span>
             </div>
             <div class="input-group">
                 <label for="password">Access Password (主密码)</label>
                 <input type="password" id="password" name="password" placeholder="••••••••" autofocus autocomplete="current-password">
             </div>
-            <button type="button" id="btn-pwd-login">
-                <span class="btn-text">Unlock with Password</span>
+            <button type="button" class="btn-submit" id="btn-pwd-login">
+                <span class="btn-text">使用密码登录</span>
                 <div class="spinner"></div>
             </button>
             <div class="error-message" id="error-pwd"></div>
         </div>
 
         <!-- Panel 2: MFA Code Independent Login Mode -->
-        <div class="step-panel" id="panel-mfa">
-            <div class="mfa-hint" style="margin-bottom: 16px;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:1px">
-                    <rect x="5" y="11" width="14" height="10" rx="2"/>
-                    <path d="M8 11V7a4 4 0 018 0v4"/>
-                </svg>
-                <span>独立鉴权模式：无需主密码，直接使用 Authenticator 动态口令解锁。<strong>不限每天次数</strong>，单次最长 <strong>3 小时</strong>。</span>
+        <div class="tab-panel" id="panel-mfa">
+            <div class="info-badge mfa">
+                <span>独立口令鉴权，<strong>不限每日次数</strong>，单次会话最长 <strong>3 小时</strong>。</span>
             </div>
-
             <div class="input-group">
-                <label for="mfa-code">6 位动态验证码</label>
+                <label for="mfa-code">6 位 MFA 动态验证码</label>
                 <input type="text" id="mfa-code" name="mfa-code" placeholder="000000" maxlength="6" autocomplete="one-time-code" inputmode="numeric">
             </div>
-            <button type="button" id="btn-mfa-login">
-                <span class="btn-text">Unlock with MFA Code</span>
+            <button type="button" class="btn-submit" id="btn-mfa-login">
+                <span class="btn-text">使用 MFA 登录</span>
                 <div class="spinner"></div>
             </button>
             <div class="error-message" id="error-mfa"></div>
@@ -432,24 +357,20 @@
         const panelMfa = document.getElementById('panel-mfa');
 
         tabBtnPwd.addEventListener('click', () => {
-            tabBtnPwd.style.background = 'var(--accent)';
-            tabBtnPwd.style.color = '#fff';
-            tabBtnMfa.style.background = 'transparent';
-            tabBtnMfa.style.color = 'var(--text-secondary)';
+            tabBtnPwd.classList.add('active');
+            tabBtnMfa.classList.remove('active');
             panelPwd.classList.add('active');
             panelMfa.classList.remove('active');
-            document.getElementById('page-subtitle').textContent = 'Mode 1 • Password Authentication';
+            document.getElementById('page-subtitle').textContent = '通道一 • 主密码登录 (每天限1次/1小时)';
             setTimeout(() => document.getElementById('password').focus(), 100);
         });
 
         tabBtnMfa.addEventListener('click', () => {
-            tabBtnMfa.style.background = 'var(--accent)';
-            tabBtnMfa.style.color = '#fff';
-            tabBtnPwd.style.background = 'transparent';
-            tabBtnPwd.style.color = 'var(--text-secondary)';
+            tabBtnMfa.classList.add('active');
+            tabBtnPwd.classList.remove('active');
             panelMfa.classList.add('active');
             panelPwd.classList.remove('active');
-            document.getElementById('page-subtitle').textContent = 'Mode 2 • MFA Authenticator';
+            document.getElementById('page-subtitle').textContent = '通道二 • MFA 动态口令 (不限次数/3小时)';
             setTimeout(() => document.getElementById('mfa-code').focus(), 100);
         });
 
@@ -527,6 +448,9 @@
                 document.getElementById('mfa-code').value = '';
                 document.getElementById('mfa-code').focus();
                 shakeContainer();
+            }
+        }
+
         // ===== Success animation =====
         function loginSuccess(btn, btnText, spinner) {
             btn.style.background = 'var(--accent)';
@@ -574,14 +498,8 @@
                 from { transform: translateY(0) scale(1); opacity: 1; filter: blur(0); }
                 to { transform: translateY(-40px) scale(0.95); opacity: 0; filter: blur(8px); }
             }
-            @keyframes fadeOutBg {
-                to { opacity: 0; }
-            }
         `;
         document.head.appendChild(style);
-
-        // Hide step indicator if single-step (MFA disabled)
-        // Will be shown/hidden dynamically based on backend response
     </script>
 </body>
 </html>
