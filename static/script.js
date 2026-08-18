@@ -6737,7 +6737,7 @@ window.sortTable = function(thElement, event, colIndex) {
               let s = sorts[sortInfo];
               let arrow = s.dir === 'asc' ? '▲' : '▼';
               let priority = sorts.length > 1 ? (sortInfo + 1) : '';
-              targetNode.innerText = ${text} ;
+              targetNode.innerText = `${text} ${arrow}${priority}`;
               targetNode.style.color = 'var(--accent)';
           } else {
               targetNode.innerText = text;
