@@ -6693,7 +6693,6 @@ window.sortTable = function(thElement, event, colIndex) {
         window.getSelection()?.removeAllRanges();
     }
     const table = thElement.closest('table');
-
     const tableId = table.getAttribute('data-table-id') || 'default_table';
     const tbody = table.querySelector('tbody');
     const headers = Array.from(table.querySelectorAll('th'));
@@ -6702,7 +6701,6 @@ window.sortTable = function(thElement, event, colIndex) {
         window.tableSortStates[tableId] = [];
     }
     let sorts = window.tableSortStates[tableId];
-    
     let existingIdx = sorts.findIndex(s => s.colIndex === colIndex);
     
     if (!event.shiftKey) {
@@ -6721,34 +6719,38 @@ window.sortTable = function(thElement, event, colIndex) {
     }
     window.tableSortStates[tableId] = sorts;
     
-      headers.forEach((th, idx) => {
-          let targetNode = th.querySelector('span:not(.col-resizer)');
-          if (!targetNode) targetNode = th;
-          
-          let text = targetNode.getAttribute('data-original-text');
-          if (!text) {
-              text = targetNode.innerText.replace(/ [▲▼][\\d]*$/, '');
-              targetNode.setAttribute('data-original-text', text);
-          }
-          
-          let sortInfo = sorts.findIndex(s => s.colIndex === idx);
-          if (sortInfo >= 0) {
-              let s = sorts[sortInfo];
-              let arrow = s.dir === 'asc' ? '▲' : '▼';
-              let priority = sorts.length > 1 ? (sortInfo + 1) : '';
-              targetNode.innerText = `${text} ${arrow}${priority}`;
-              targetNode.style.color = 'var(--accent)';
-          } else {
-              targetNode.innerText = text;
-              targetNode.style.color = '';
-          }
-      });
-
+    headers.forEach((th, idx) => {
+        let targetNode = th.querySelector('span:not(.col-resizer)');
+        if (!targetNode) targetNode = th;
+        
+        let text = targetNode.getAttribute('data-original-text');
+        if (!text) {
+            text = targetNode.innerText.replace(/ [\u25B2\u25BC][\d]*$/, '');
+            targetNode.setAttribute('data-original-text', text);
+        }
+        
+        let sortInfo = sorts.findIndex(s => s.colIndex === idx);
+        if (sortInfo >= 0) {
+            let s = sorts[sortInfo];
+            let arrow = s.dir === 'asc' ? '\u25B2' : '\u25BC';
+            let priority = sorts.length > 1 ? (sortInfo + 1) : '';
+            targetNode.innerText = `${text} ${arrow}${priority}`;
+            targetNode.style.color = 'var(--accent)';
+        } else {
+            targetNode.innerText = text;
+            targetNode.style.color = '';
+        }
+    });
+    
     let rows = Array.from(tbody.querySelectorAll('tr'));
     rows.sort((a, b) => {
         for (let s of sorts) {
-            let cellA = a.children[s.colIndex].innerText.trim();
-            let cellB = b.children[s.colIndex].innerText.trim();
+            let tdA = a.children[s.colIndex];
+            let tdB = b.children[s.colIndex];
+            if (!tdA || !tdB) continue;
+            
+            let cellA = tdA.innerText.trim();
+            let cellB = tdB.innerText.trim();
             
             let numA = parseFloat(cellA);
             let numB = parseFloat(cellB);
@@ -6769,7 +6771,6 @@ window.sortTable = function(thElement, event, colIndex) {
     
     rows.forEach(r => tbody.appendChild(r));
 };
-
 
 // --- Global User Manager Logic ---
 window.gumData = [];
