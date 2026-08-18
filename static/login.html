@@ -30,6 +30,7 @@
             --glass-bg: rgba(255, 255, 255, 0.65);
             --glass-border: rgba(0, 0, 0, 0.1);
             --text-main: #0f172a;
+            --h1-gradient: linear-gradient(to right, #1e293b, #4f46e5);
             --text-secondary: #475569;
             --input-bg: rgba(255, 255, 255, 0.9);
             --input-focus-bg: #ffffff;
@@ -132,7 +133,7 @@
             font-size: 1.35rem;
             font-weight: 600;
             margin-bottom: 4px;
-            background: linear-gradient(to right, #fff, #a5b4fc);
+            background: var(--h1-gradient, linear-gradient(to right, #fff, #a5b4fc));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
