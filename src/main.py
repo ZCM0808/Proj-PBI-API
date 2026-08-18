@@ -717,16 +717,22 @@ async def get_embed_info(request: Request):
             
         embed_url = report_info.get("embedUrl")
         
-        # Get embed token
+        # Get embed token (fallback to client's AAD token if GenerateToken fails, e.g. for RLS/personal auth reports)
         token_res = await asyncio.to_thread(
             client.request, "POST", f"/groups/{w_id}/reports/{r_id}/GenerateToken", json={"accessLevel": "View"}
         )
-        if "error" in token_res:
-            return {"success": False, "error": token_res["error"]}
+        if "error" in token_res or not token_res.get("token"):
+            # Fallback to direct AAD Token (models.TokenType.Aad)
+            aad_token = client._get_token()
+            return {
+                "success": True,
+                "embedUrl": embed_url,
+                "embedToken": aad_token,
+                "tokenType": "Aad"
+            }
             
         embed_token = token_res.get("token")
-        
-        return {"success": True, "embedUrl": embed_url, "embedToken": embed_token}
+        return {"success": True, "embedUrl": embed_url, "embedToken": embed_token, "tokenType": "Embed"}
     except Exception as e:
         return {"success": False, "error": str(e)}
 

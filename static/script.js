@@ -5574,9 +5574,10 @@ document.addEventListener('mousedown', (e) => {
                 
                 // 2. Embed the report
                 const models = window['powerbi-client'].models;
+                const tokenType = (data.tokenType === 'Aad') ? models.TokenType.Aad : models.TokenType.Embed;
                 const config = {
                     type: 'report',
-                    tokenType: models.TokenType.Embed,
+                    tokenType: tokenType,
                     accessToken: data.embedToken,
                     embedUrl: data.embedUrl,
                     id: rId,
