@@ -5660,10 +5660,10 @@ document.addEventListener('mousedown', (e) => {
             const visSelect = document.getElementById('wf-vis-visual');
             visSelect.innerHTML = '<option value="">Loading visuals...</option>';
             
-            if (!pId || !currentEmbeddedReport) return;
+            if (!pId) return;
             
-            if (pId === 'ALL') {
-                visSelect.innerHTML = '<option value="ALL">🌟 ALL VISUALS IN ALL PAGES 🌟</option>';
+            if (pId === 'ALL' || !currentEmbeddedReport) {
+                visSelect.innerHTML = '<option value="ALL">🌟 ALL VISUALS ON THIS PAGE (全部视觉对象) 🌟</option>';
                 return;
             }
             
@@ -5682,15 +5682,17 @@ document.addEventListener('mousedown', (e) => {
                 const visuals = await activePage.getVisuals();
                 visSelect.innerHTML = '<option value="">-- Select a Visual --</option>';
                 visSelect.innerHTML += '<option value="ALL">🌟 ALL VISUALS ON THIS PAGE 🌟</option>';
-                visuals.forEach(v => {
-                    const opt = document.createElement('option');
-                    opt.value = v.name;
-                    const vTitle = v.title ? v.title : (v.type ? `[${v.type}]` : 'Unnamed Visual');
-                    opt.textContent = vTitle + ' (' + v.name + ')';
-                    visSelect.appendChild(opt);
-                });
+                if (Array.isArray(visuals) && visuals.length > 0) {
+                    visuals.forEach(v => {
+                        const opt = document.createElement('option');
+                        opt.value = v.name;
+                        const vTitle = v.title ? v.title : (v.type ? `[${v.type}]` : 'Unnamed Visual');
+                        opt.textContent = vTitle + ' (' + v.name + ')';
+                        visSelect.appendChild(opt);
+                    });
+                }
             } catch (err) {
-                visSelect.innerHTML = '<option value="">Error loading visuals</option>';
+                visSelect.innerHTML = '<option value="ALL">🌟 ALL VISUALS ON THIS PAGE (全部视觉对象) 🌟</option>';
             }
         };
 
