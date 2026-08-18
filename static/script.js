@@ -4435,6 +4435,12 @@ if (btnLogout) {
             const data = await res.json();
             if (!data.success) return;
 
+            // 若在开发模式下，显示 DEV MODE 徽章
+            if (data.is_dev_mode) {
+                const mainDevBadge = document.getElementById('main-dev-badge');
+                if (mainDevBadge) mainDevBadge.style.display = 'inline-block';
+            }
+
             const remaining = data.remaining_seconds;
             const mode = data.mode;
 

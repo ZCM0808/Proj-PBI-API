@@ -93,7 +93,10 @@
                     <rect x="15" y="2" width="5" height="19" fill="#F2C811"/>
                 </svg>
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                    <h2>PBI Explorer</h2>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <h2>PBI Explorer</h2>
+                        <span id="main-dev-badge" style="display: none; font-size: 0.6rem; background: rgba(234, 179, 8, 0.2); border: 1px solid rgba(234, 179, 8, 0.4); color: #fde047; padding: 1px 6px; border-radius: 12px; font-weight: 600;" title="开发模式：已跳过鉴权限制 (DEV_MODE=true)">🛠️ DEV</span>
+                    </div>
                     <div style="display: flex; gap: 8px;">
                         <button id="btn-keep-awake" class="btn-action-icon" title="Toggle Anti-Sleep (Keep Render Awake)">
                             <span>☕</span>

@@ -96,14 +96,17 @@ def verify_auth_token(token_str: str) -> bool:
     except Exception:
         return False
 
+def is_dev_mode() -> bool:
+    return os.getenv("DEV_MODE", "false").lower() in ("true", "1") or os.getenv("APP_ENV", "").lower() == "development"
+
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
     # 开发模式开关：若 DEV_MODE 为 True，直接跳过所有身份鉴权拦截
-    if os.getenv("DEV_MODE", "false").lower() in ("true", "1") or os.getenv("APP_ENV", "").lower() == "development":
+    if is_dev_mode():
         return await call_next(request)
 
     if Config.APP_ACCESS_PASSWORD:
-        whitelist = ["/login", "/api/login", "/static/login.html"]
+        whitelist = ["/login", "/api/login", "/static/login.html", "/api/app-info"]
         if request.url.path not in whitelist and not request.url.path.startswith("/static/"):
             token = request.cookies.get("pbi_auth_token")
             if not token or not verify_auth_token(token):
@@ -267,9 +270,28 @@ async def logout(response: Response):
     return JSONResponse(content={"success": True, "redirect": "/login"})
 
 
+@app.get("/api/app-info")
+async def app_info():
+    """公开接口：获取系统运行模式及环境信息（无需鉴权，供登录页等显示 DEV 模式标记）"""
+    return JSONResponse(content={
+        "success": True,
+        "is_dev_mode": is_dev_mode(),
+        "env": os.getenv("APP_ENV", "production" if not is_dev_mode() else "development")
+    })
+
+
 @app.get("/api/session-status")
 async def session_status(request: Request):
     """查询当前 Session 剩余时间及登录模式"""
+    if is_dev_mode():
+        return JSONResponse(content={
+            "success": True,
+            "mode": "dev",
+            "is_dev_mode": True,
+            "remaining_seconds": 999999,
+            "max_age_seconds": 999999
+        })
+
     token = request.cookies.get("pbi_auth_token")
     if not token or not verify_auth_token(token):
         return JSONResponse(status_code=401, content={"success": False, "message": "Unauthorized"})
@@ -287,6 +309,7 @@ async def session_status(request: Request):
         return JSONResponse(content={
             "success": True,
             "mode": mode,
+            "is_dev_mode": False,
             "remaining_seconds": remaining_seconds,
             "max_age_seconds": max_age
         })
