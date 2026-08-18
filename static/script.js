@@ -5705,8 +5705,21 @@ document.addEventListener('mousedown', (e) => {
 
         window.loadExportVisualPages = loadPages;
 
+        document.getElementById('wf-vis-report').addEventListener('change', () => {
+            // Auto match workspace for AstraZeneca_SFE or reports belonging to WorkSpace_DEV
+            const rVal = document.getElementById('wf-vis-report').value;
+            const reports = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+            const matchedR = reports.find(r => r.id === rVal);
+            if (matchedR && matchedR.alias === 'AstraZeneca_SFE') {
+                const workspaces = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+                const devW = workspaces.find(w => w.alias === 'WorkSpace_DEV');
+                if (devW) {
+                    document.getElementById('wf-vis-workspace').value = devW.id;
+                }
+            }
+            loadPages();
+        });
         document.getElementById('wf-vis-workspace').addEventListener('change', loadPages);
-        document.getElementById('wf-vis-report').addEventListener('change', loadPages);
         document.getElementById('wf-vis-page').addEventListener('change', loadVisuals);
 
         const executeExportVisual = async () => {
