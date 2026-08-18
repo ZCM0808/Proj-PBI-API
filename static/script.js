@@ -5296,6 +5296,11 @@ document.addEventListener('mousedown', (e) => {
             if (activeW) document.getElementById('wf-rvc-workspace').value = activeW;
             if (activeR) document.getElementById('wf-rvc-report').value = activeR;
 
+            if (document.getElementById('wf-selector')?.value === 'export_visual') {
+                setTimeout(() => {
+                    if (window.loadExportVisualPages) window.loadExportVisualPages();
+                }, 300);
+            }
         });
 
         closeWorkflowBtn.addEventListener('click', () => {
@@ -5510,6 +5515,7 @@ document.addEventListener('mousedown', (e) => {
             } else if (val === 'export_visual') {
                 document.getElementById('wf-config-export_visual').style.display = 'block';
                 document.getElementById('wf-btn-runall').style.display = 'flex';
+                loadPages();
             } else if (val === 'report_view_count') {
                 document.getElementById('wf-config-report_view_count').style.display = 'block';
                 document.getElementById('wf-btn-runall').style.display = 'flex';
@@ -5695,6 +5701,8 @@ document.addEventListener('mousedown', (e) => {
                 visSelect.innerHTML = '<option value="ALL">🌟 ALL VISUALS ON THIS PAGE (全部视觉对象) 🌟</option>';
             }
         };
+
+        window.loadExportVisualPages = loadPages;
 
         document.getElementById('wf-vis-workspace').addEventListener('change', loadPages);
         document.getElementById('wf-vis-report').addEventListener('change', loadPages);
