@@ -713,19 +713,41 @@ async def get_embed_info(request: Request):
             client.request, "GET", f"/groups/{w_id}/reports/{r_id}"
         )
         embed_url = report_info.get("embedUrl")
+        dataset_id = report_info.get("datasetId")
         
-        # If this dataset requires OnPremGateway or RLS roles, direct AAD Token (models.TokenType.Aad) 
-        # is the official Microsoft mechanism for full user impersonation without MSOLAP gateway role errors.
+        # 1. Try standard GenerateToken first
         try:
-            aad_token = client._get_token()
-            return {
-                "success": True,
-                "embedUrl": embed_url,
-                "embedToken": aad_token,
-                "tokenType": "Aad"
+            token_res = await asyncio.to_thread(
+                client.request, "POST", f"/groups/{w_id}/reports/{r_id}/GenerateToken", json={"accessLevel": "View"}
+            )
+            if token_res and token_res.get("token"):
+                return {"success": True, "embedUrl": embed_url, "embedToken": token_res.get("token"), "tokenType": "Embed"}
+        except Exception:
+            pass
+
+        # 2. Try RLS GenerateToken with effective identity (Sales_Rep role) for RLS datasets like AstraZeneca_SFE
+        try:
+            rls_identity = {
+                "username": Config().USERNAME or "seven@carman.ccwu.cc",
+                "roles": ["Sales_Rep"],
+                "datasets": [dataset_id] if dataset_id else []
             }
-        except Exception as aad_err:
-            return {"success": False, "error": str(aad_err)}
+            token_res = await asyncio.to_thread(
+                client.request, "POST", f"/groups/{w_id}/reports/{r_id}/GenerateToken", json={"accessLevel": "View", "identities": [rls_identity]}
+            )
+            if token_res and token_res.get("token"):
+                return {"success": True, "embedUrl": embed_url, "embedToken": token_res.get("token"), "tokenType": "Embed"}
+        except Exception as rls_err:
+            print(f"RLS GenerateToken notice: {rls_err}")
+
+        # 3. Fallback to direct AAD Token (models.TokenType.Aad)
+        aad_token = client._get_token()
+        return {
+            "success": True,
+            "embedUrl": embed_url,
+            "embedToken": aad_token,
+            "tokenType": "Aad"
+        }
     except Exception as e:
         return {"success": False, "error": str(e)}
 
