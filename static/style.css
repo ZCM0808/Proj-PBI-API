@@ -68,6 +68,9 @@
 }
 
 [data-theme="light"] {
+    --dev-badge-text: #b45309;
+    --dev-badge-bg: rgba(245, 158, 11, 0.2);
+    --dev-badge-border: rgba(245, 158, 11, 0.4);
     --bg-color: #f1f5f9; /* Soft, serene off-white canvas */
     --panel-bg: #ffffff; /* Clean white card panel */
     --panel-border: rgba(148, 163, 184, 0.4); /* Soft subtle border - no harsh lines */

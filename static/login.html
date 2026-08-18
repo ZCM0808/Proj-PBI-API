@@ -26,6 +26,9 @@
         }
 
         [data-theme="light"] {
+            --dev-badge-text: #b45309;
+            --dev-badge-bg: rgba(245, 158, 11, 0.2);
+            --dev-badge-border: rgba(245, 158, 11, 0.4);
             --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
             --glass-bg: rgba(255, 255, 255, 0.65);
             --glass-border: rgba(0, 0, 0, 0.1);
@@ -366,7 +369,7 @@
                     <rect x="15" y="2" width="5" height="19" fill="#F2C811"/>
                 </svg>
             </div>
-            <h1>Power BI API Explorer <span id="dev-badge" style="display: none; font-size: 0.65rem; background: rgba(234, 179, 8, 0.2); border: 1px solid rgba(234, 179, 8, 0.4); color: #fde047; padding: 2px 8px; border-radius: 20px; vertical-align: middle; margin-left: 6px; font-weight: 600;">🛠️ DEV MODE</span></h1>
+            <h1>Power BI API Explorer <span id="dev-badge" style="display: none; font-size: 0.65rem; background: var(--dev-badge-bg, rgba(234, 179, 8, 0.2)); border: 1px solid var(--dev-badge-border, rgba(234, 179, 8, 0.4)); color: var(--dev-badge-text, #fde047); padding: 2px 8px; border-radius: 20px; vertical-align: middle; margin-left: 6px; font-weight: 600;">🛠️ DEV MODE</span></h1>
             <p class="subtitle" id="page-subtitle">选择登录通道进入系统</p>
         </div>
 
