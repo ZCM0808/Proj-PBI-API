@@ -5296,6 +5296,18 @@ document.addEventListener('mousedown', (e) => {
             if (activeW) document.getElementById('wf-rvc-workspace').value = activeW;
             if (activeR) document.getElementById('wf-rvc-report').value = activeR;
 
+            // Auto match workspace for selected report
+            const currentRVal = document.getElementById('wf-vis-report')?.value;
+            const reports = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+            const matchedR = reports.find(r => r.id === currentRVal);
+            if (matchedR && matchedR.alias === 'AstraZeneca_SFE') {
+                const workspaces = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+                const devW = workspaces.find(w => w.alias === 'WorkSpace_DEV');
+                if (devW) {
+                    document.getElementById('wf-vis-workspace').value = devW.id;
+                }
+            }
+
             if (document.getElementById('wf-selector')?.value === 'export_visual') {
                 setTimeout(() => {
                     if (window.loadExportVisualPages) window.loadExportVisualPages();
