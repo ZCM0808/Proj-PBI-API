@@ -5288,8 +5288,13 @@ document.addEventListener('mousedown', (e) => {
             const activeR = document.getElementById('active-report')?.value;
             if (activeW) document.getElementById('wf-exp-workspace').value = activeW;
             if (activeR) document.getElementById('wf-exp-report').value = activeR;
-            if (activeW) document.getElementById('wf-vis-workspace').value = activeW;
-            if (activeR) document.getElementById('wf-vis-report').value = activeR;
+            
+            // For vis workflow, keep AstraZeneca_SFE if selected or match correctly
+            const visRSelect = document.getElementById('wf-vis-report');
+            if (visRSelect && !visRSelect.value && activeR) {
+                visRSelect.value = activeR;
+            }
+            
             if (activeW) document.getElementById('wf-ds-workspace').value = activeW;
             const activeD = document.getElementById('active-dataset')?.value;
             if (activeD) document.getElementById('wf-ds-dataset').value = activeD;
@@ -5299,12 +5304,13 @@ document.addEventListener('mousedown', (e) => {
             // Auto match workspace for selected report
             const currentRVal = document.getElementById('wf-vis-report')?.value;
             const reports = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
-            const matchedR = reports.find(r => r.id === currentRVal);
+            const matchedR = reports.find(r => r.id === currentRVal || r.alias === 'AstraZeneca_SFE');
             if (matchedR && matchedR.alias === 'AstraZeneca_SFE') {
                 const workspaces = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
                 const devW = workspaces.find(w => w.alias === 'WorkSpace_DEV');
                 if (devW) {
                     document.getElementById('wf-vis-workspace').value = devW.id;
+                    if (visRSelect) visRSelect.value = matchedR.id;
                 }
             }
 
