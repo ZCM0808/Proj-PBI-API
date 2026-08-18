@@ -1783,6 +1783,7 @@ json-viewer {
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     box-shadow: 0 10px 50px var(--shadow-dark);
+    padding: 20px 24px 24px 24px;
 }
 
 /* Modern Input Styling */
