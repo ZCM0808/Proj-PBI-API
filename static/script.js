@@ -1212,25 +1212,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         let fabricSwagger = { paths: {} };
 
         try {
-            const resPbi = await fetch('/static/swagger.json');
-            if (resPbi.ok) {
+            const [resPbi, resFabric] = await Promise.all([
+                fetch('/static/swagger.json').catch(e => { console.error("Failed to load Power BI Swagger:", e); return null; }),
+                fetch('/static/fabric_swagger.json').catch(e => { console.warn("Failed to load Fabric Swagger:", e); return null; })
+            ]);
+
+            if (resPbi && resPbi.ok) {
                 swagger = await resPbi.json();
-            } else {
+            } else if (resPbi) {
                 console.error("Failed to load Power BI Swagger: server returned status", resPbi.status);
             }
-        } catch (e) {
-            console.error("Failed to load Power BI Swagger:", e);
-        }
 
-        try {
-            const resFabric = await fetch('/static/fabric_swagger.json');
-            if (resFabric.ok) {
+            if (resFabric && resFabric.ok) {
                 fabricSwagger = await resFabric.json();
-            } else {
+            } else if (resFabric) {
                 console.warn("Failed to load Fabric Swagger: server returned status", resFabric.status);
             }
         } catch (e) {
-            console.warn("Failed to load Fabric Swagger:", e);
+            console.error("Error during parallel swagger fetch:", e);
         }
         
         // Injections removed per user request
