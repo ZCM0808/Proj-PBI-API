@@ -3920,7 +3920,7 @@ function renderJsonTable(data, container, nodePath = '') {
                 
                 const titleSpan = document.createElement('span');
                 titleSpan.textContent = col;
-                titleSpan.onclick = (e) => window.sortTable(th, e, idx);
+                th.onclick = (e) => window.sortTable(th, e, idx);
                 th.appendChild(titleSpan);
                 
                 // Add column resizer handle
