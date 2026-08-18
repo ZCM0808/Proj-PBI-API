@@ -37,6 +37,7 @@ class Config:
     # ==========================================
     APP_ACCESS_PASSWORD: str = os.getenv("APP_ACCESS_PASSWORD", "")
     MFA_SECRET: str = os.getenv("MFA_SECRET", "")
+    DEV_MODE: bool = os.getenv("DEV_MODE", "false").lower() in ("true", "1")
 
     # ==========================================
     # Smart DataOps Pipeline 共享配置
