@@ -6591,7 +6591,18 @@ window.flashCopiedElement = function(element) {
 };
 
 window.handleCopyAction = function(targetEl, text, customFlashTarget = null) {
-    if(!text) return;
+    let copyText = (text !== undefined && text !== null && text !== '') ? text : '';
+    
+    // 如果没有明确传 text，或者 text 为空，自动智能从同级 input/select 中提取 value 或 placeholder 或 selected option 的文本
+    if (!copyText && targetEl) {
+        const input = targetEl.previousElementSibling || targetEl.closest('.input-with-copy')?.querySelector('input, select, textarea');
+        if (input) {
+            copyText = input.value || input.placeholder || (input.options && input.options[input.selectedIndex] ? input.options[input.selectedIndex].text : '');
+        }
+    }
+    
+    // 强制转换为字符串
+    copyText = String(copyText || '');
 
     // 1. Target Flash (被复制的目标对象高亮闪烁)
     let flashTarget = customFlashTarget || targetEl.closest('.input-with-copy, pre, textarea, .panel, .body-editor-container, .endpoint-input') || targetEl.previousElementSibling;
@@ -6642,7 +6653,7 @@ window.handleCopyAction = function(targetEl, text, customFlashTarget = null) {
 
     const doCopy = () => {
         if (navigator.clipboard) {
-            navigator.clipboard.writeText(text).catch(e => console.error(e));
+            navigator.clipboard.writeText(copyText).catch(e => console.error(e));
         }
         if (window.showNotification) {
             window.showNotification('Copied to clipboard!', 'success');
