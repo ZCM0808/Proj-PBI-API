@@ -5556,9 +5556,9 @@ document.addEventListener('mousedown', (e) => {
                 });
                 const data = await res.json();
                 if (!data.success) {
-                    out.textContent += `Error getting embed info: ${data.error}\n`;
+                    out.textContent += `Notice: Embed token generation error: ${data.error}. Falling back to Power BI REST API Mode...\n`;
                     setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
-                    pageSelect.innerHTML = '<option value="">Error</option>';
+                    await fetchPagesViaRestApi(wId, rId);
                     return;
                 }
                 
