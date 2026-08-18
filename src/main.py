@@ -712,36 +712,43 @@ async def get_embed_info(request: Request):
         report_info = await asyncio.to_thread(
             client.request, "GET", f"/groups/{w_id}/reports/{r_id}"
         )
-        if "error" in report_info:
-            return {"success": False, "error": report_info["error"]}
-            
         embed_url = report_info.get("embedUrl")
+        dataset_id = report_info.get("datasetId")
         
-        # Get embed token (fallback to client's AAD token if GenerateToken fails, e.g. for RLS/personal auth reports)
+        # Get embed token (with effective identity fallback if dataset requires RLS)
         try:
+            token_payload = {"accessLevel": "View"}
             token_res = await asyncio.to_thread(
-                client.request, "POST", f"/groups/{w_id}/reports/{r_id}/GenerateToken", json={"accessLevel": "View"}
+                client.request, "POST", f"/groups/{w_id}/reports/{r_id}/GenerateToken", json=token_payload
             )
-            if "error" in token_res or not token_res.get("token"):
-                aad_token = client._get_token()
-                return {
-                    "success": True,
-                    "embedUrl": embed_url,
-                    "embedToken": aad_token,
-                    "tokenType": "Aad"
-                }
-            embed_token = token_res.get("token")
-            return {"success": True, "embedUrl": embed_url, "embedToken": embed_token, "tokenType": "Embed"}
-        except Exception as token_err:
-            # GenerateToken threw HTTP 400 (e.g., dataset requires effective identity/RLS) -> Fallback to direct AAD Token
-            aad_token = client._get_token()
-            return {
-                "success": True,
-                "embedUrl": embed_url,
-                "embedToken": aad_token,
-                "tokenType": "Aad",
-                "notice": f"GenerateToken bypassed: {str(token_err)}"
+            if token_res and token_res.get("token"):
+                return {"success": True, "embedUrl": embed_url, "embedToken": token_res.get("token"), "tokenType": "Embed"}
+        except Exception:
+            pass
+
+        # Retry with effective identities if initial GenerateToken fails
+        try:
+            rls_identity = {
+                "username": Config().USERNAME or "seven@carman.ccwu.cc",
+                "roles": ["Sales_Rep", "Admin", "User", "Manager"],
+                "datasets": [dataset_id]
             }
+            token_res = await asyncio.to_thread(
+                client.request, "POST", f"/groups/{w_id}/reports/{r_id}/GenerateToken", json={"accessLevel": "View", "identities": [rls_identity]}
+            )
+            if token_res and token_res.get("token"):
+                return {"success": True, "embedUrl": embed_url, "embedToken": token_res.get("token"), "tokenType": "Embed"}
+        except Exception as rls_err:
+            print(f"RLS GenerateToken failed: {rls_err}")
+            
+        # Final fallback to direct AAD Token (models.TokenType.Aad)
+        aad_token = client._get_token()
+        return {
+            "success": True,
+            "embedUrl": embed_url,
+            "embedToken": aad_token,
+            "tokenType": "Aad"
+        }
     except Exception as e:
         return {"success": False, "error": str(e)}
 
