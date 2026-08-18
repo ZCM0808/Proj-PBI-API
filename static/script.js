@@ -4479,7 +4479,7 @@ if (btnLogout) {
 
     // 每 1 分钟检查一次 Session 状态
     setInterval(checkSession, 60000);
-    setTimeout(checkSession, 3000);
+    checkSession();
 })();
 
 let easyMDE = null;
