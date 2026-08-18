@@ -5588,26 +5588,69 @@ document.addEventListener('mousedown', (e) => {
                 currentEmbeddedReport.on("loaded", async function () {
                     out.textContent += `Report rendered in UI! Fetching Pages via JS SDK...\n`;
                     setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
-                    const pages = await currentEmbeddedReport.getPages();
-                    pageSelect.innerHTML = '<option value="">-- Select a Page --</option>';
-                    pageSelect.innerHTML += '<option value="ALL">🌟 ALL PAGES (全部页面) 🌟</option>';
-                    pages.forEach(p => {
-                        const opt = document.createElement('option');
-                        opt.value = p.name; // This is the internal name
-                        opt.textContent = p.displayName + ' (' + p.name + ')';
-                        pageSelect.appendChild(opt);
-                    });
+                    try {
+                        const pages = await currentEmbeddedReport.getPages();
+                        populatePagesDropdown(pages);
+                    } catch (e) {
+                        out.textContent += `JS SDK getPages failed, trying REST API fallback...\n`;
+                        await fetchPagesViaRestApi(wId, rId);
+                    }
                 });
                 
                 currentEmbeddedReport.off("error");
-                currentEmbeddedReport.on("error", function (event) {
-                    out.textContent += `Embed Error: ${event.detail.message}\n`;
+                currentEmbeddedReport.on("error", async function (event) {
+                    const errMsg = (event.detail && event.detail.message) ? event.detail.message : JSON.stringify(event.detail || event);
+                    out.textContent += `Embed Event/Error: ${errMsg}\n`;
                     setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                    // Fallback to REST API if page dropdown is still loading/empty
+                    if (pageSelect.value === '' || pageSelect.innerHTML.includes('Loading')) {
+                        await fetchPagesViaRestApi(wId, rId);
+                    }
                 });
 
             } catch (err) {
-                out.textContent += `Exception: ${err.message}\n`;
-                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                out.textContent += `Exception: ${err.message}\nTrying REST API fallback...\n`;
+                setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                await fetchPagesViaRestApi(wId, rId);
+            }
+        };
+
+        const populatePagesDropdown = (pages) => {
+            const pageSelect = document.getElementById('wf-vis-page');
+            pageSelect.innerHTML = '<option value="">-- Select a Page --</option>';
+            pageSelect.innerHTML += '<option value="ALL">🌟 ALL PAGES (全部页面) 🌟</option>';
+            if (Array.isArray(pages) && pages.length > 0) {
+                pages.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.name; // This is the internal name
+                    const dName = p.displayName || p.name || 'Unnamed Page';
+                    opt.textContent = dName + ' (' + p.name + ')';
+                    pageSelect.appendChild(opt);
+                });
+            }
+        };
+
+        const fetchPagesViaRestApi = async (wId, rId) => {
+            const pageSelect = document.getElementById('wf-vis-page');
+            const out = document.getElementById('wf-out-vis');
+            try {
+                const res = await fetch('/api/proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint: `/groups/${wId}/reports/${rId}/pages`, method: 'GET' })
+                });
+                const data = await res.json();
+                const payload = data.data || data;
+                const pages = payload.value || payload;
+                if (Array.isArray(pages) && pages.length > 0) {
+                    out.textContent += `[REST API Fallback] Loaded ${pages.length} pages via Power BI REST API.\n`;
+                    populatePagesDropdown(pages);
+                } else {
+                    out.textContent += `[REST API Fallback] No pages returned or permission restricted.\n`;
+                    pageSelect.innerHTML = '<option value="">No pages found</option>';
+                }
+            } catch (err) {
+                out.textContent += `REST API fallback error: ${err.message}\n`;
                 pageSelect.innerHTML = '<option value="">Error loading pages</option>';
             }
         };
