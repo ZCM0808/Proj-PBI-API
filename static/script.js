@@ -6587,20 +6587,25 @@ window.runCheckPermsWorkflow = async function() {
     const statusDiv = document.getElementById('wf-perms-status');
     const btn = document.getElementById('btn-run-check-perms');
     
-    btn.disabled = true;
-    btn.innerHTML = 'Running...';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = 'Running...';
+    }
     
-    logsDiv.innerHTML = '';
+    if (logsDiv) logsDiv.innerHTML = '';
     
     const appendLog = (msg) => {
+        if (!logsDiv) return;
         const div = document.createElement('div');
         div.textContent = msg;
         logsDiv.appendChild(div);
         setTimeout(() => { logsDiv.scrollTop = Math.max(0, logsDiv.scrollHeight - logsDiv.clientHeight * 0.66); }, 10);
     };
 
-    statusDiv.textContent = `Fetching /availableFeatures...`;
-    statusDiv.style.color = 'var(--text-secondary)';
+    if (statusDiv) {
+        statusDiv.textContent = `Fetching /availableFeatures...`;
+        statusDiv.style.color = 'var(--text-secondary)';
+    }
     appendLog(`[INIT] Calling GET /v1.0/myorg/availableFeatures ...`);
     
     try {
@@ -6611,11 +6616,15 @@ window.runCheckPermsWorkflow = async function() {
         });
         
         if(!res.ok) {
-            statusDiv.textContent = `Error: ${res.status} ${res.statusText}`;
-            statusDiv.style.color = 'var(--error)';
+            if (statusDiv) {
+                statusDiv.textContent = `Error: ${res.status} ${res.statusText}`;
+                statusDiv.style.color = 'var(--error)';
+            }
             appendLog(`[ERROR] Failed to fetch: ${res.status} ${res.statusText}`);
-            btn.disabled = false;
-            btn.innerHTML = 'Run Check';
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = 'Run Check';
+            }
             return;
         }
         
@@ -6638,17 +6647,23 @@ window.runCheckPermsWorkflow = async function() {
             
         } else {
             appendLog(`[WARN] No features array found. Raw response below:\n` + JSON.stringify(data, null, 2));
-            statusDiv.textContent = `Loaded JSON format (No features array found).`;
-            statusDiv.style.color = 'var(--warning)';
+            if (statusDiv) {
+                statusDiv.textContent = `Loaded JSON format (No features array found).`;
+                statusDiv.style.color = 'var(--warning)';
+            }
         }
         
     } catch (e) {
         appendLog(`[EXCEPTION] ${e.message}`);
-        statusDiv.textContent = `Exception: ${e.message}`;
-        statusDiv.style.color = 'var(--error)';
+        if (statusDiv) {
+            statusDiv.textContent = `Exception: ${e.message}`;
+            statusDiv.style.color = 'var(--error)';
+        }
     } finally {
-        btn.disabled = false;
-        btn.innerHTML = 'Run Check';
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = 'Run Check';
+        }
     }
 };
 
