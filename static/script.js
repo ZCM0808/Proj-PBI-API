@@ -6722,26 +6722,29 @@ window.sortTable = function(thElement, event, colIndex) {
     }
     window.tableSortStates[tableId] = sorts;
     
-    headers.forEach((th, idx) => {
-        let text = th.getAttribute('data-original-text');
-        if (!text) {
-            text = th.innerText.replace(/ [▲▼][\d]*$/, '');
-            th.setAttribute('data-original-text', text);
-        }
-        
-        let sortInfo = sorts.findIndex(s => s.colIndex === idx);
-        if (sortInfo >= 0) {
-            let s = sorts[sortInfo];
-            let arrow = s.dir === 'asc' ? '▲' : '▼';
-            let priority = sorts.length > 1 ? (sortInfo + 1) : '';
-            th.innerText = `${text} ${arrow}${priority}`;
-            th.style.color = 'var(--accent)';
-        } else {
-            th.innerText = text;
-            th.style.color = '';
-        }
-    });
-    
+      headers.forEach((th, idx) => {
+          let targetNode = th.querySelector('span:not(.col-resizer)');
+          if (!targetNode) targetNode = th;
+          
+          let text = targetNode.getAttribute('data-original-text');
+          if (!text) {
+              text = targetNode.innerText.replace(/ [▲▼][\\d]*$/, '');
+              targetNode.setAttribute('data-original-text', text);
+          }
+          
+          let sortInfo = sorts.findIndex(s => s.colIndex === idx);
+          if (sortInfo >= 0) {
+              let s = sorts[sortInfo];
+              let arrow = s.dir === 'asc' ? '▲' : '▼';
+              let priority = sorts.length > 1 ? (sortInfo + 1) : '';
+              targetNode.innerText = ${text} ;
+              targetNode.style.color = 'var(--accent)';
+          } else {
+              targetNode.innerText = text;
+              targetNode.style.color = '';
+          }
+      });
+
     let rows = Array.from(tbody.querySelectorAll('tr'));
     rows.sort((a, b) => {
         for (let s of sorts) {
