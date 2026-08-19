@@ -8,5 +8,9 @@
     "attempts": 0,
     "locked_until": 0,
     "last_pwd1_date": "2026-08-18"
+  },
+  "e866c77e-8570-4701-9a3c-53ba78e3f68e": {
+    "attempts": 0,
+    "locked_until": 0
   }
 }
