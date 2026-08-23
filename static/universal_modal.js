@@ -3,13 +3,39 @@
  * Dynamically generates a premium data grid modal with search, column selection, sorting, and export.
  */
 window.showUniversalDataModal = function(options) {
-    // Inject hardware-accelerated CSS hover rules globally once
+    // Inject hardware-accelerated CSS hover rules & comfortable custom scrollbars globally once
     if (!document.getElementById('uni-modal-style')) {
         const style = document.createElement('style');
         style.id = 'uni-modal-style';
         style.textContent = `
             .uni-modal-table tbody tr { transition: background 0.2s; }
             .uni-modal-table tbody tr:hover { background: var(--overlay-10) !important; }
+            
+            /* Enhanced Comfortable Scrollbars for Modal Body */
+            #universal-modal-body::-webkit-scrollbar {
+                width: 10px;
+                height: 10px;
+            }
+            #universal-modal-body::-webkit-scrollbar-track {
+                background: var(--overlay-5);
+                border-radius: 6px;
+                margin: 4px;
+            }
+            #universal-modal-body::-webkit-scrollbar-thumb {
+                background: var(--overlay-20);
+                border-radius: 6px;
+                border: 2px solid transparent;
+                background-clip: padding-box;
+                transition: background 0.2s;
+            }
+            #universal-modal-body::-webkit-scrollbar-thumb:hover {
+                background: var(--accent);
+                background-clip: padding-box;
+            }
+            #universal-modal-body {
+                scrollbar-width: thin;
+                scrollbar-color: var(--overlay-20) var(--overlay-5);
+            }
         `;
         document.head.appendChild(style);
     }
@@ -21,10 +47,34 @@ window.showUniversalDataModal = function(options) {
     const enableSearch = options.enableSearch !== false;
     const enableColumnFilter = options.enableColumnFilter !== false;
 
-    // State
+    // Storage Key for Settings Persistence
+    const storageKey = options.storageKey || `pbi_grid_pref_${title.toLowerCase().replace(/[^a-z0-9_]/g, '_')}`;
+    let savedPrefs = {};
+    try {
+        savedPrefs = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    } catch(e) {}
+
+    // State (Hydrated from persistent storage)
     let selectedCols = new Set(columns);
+    if (savedPrefs.selectedCols && Array.isArray(savedPrefs.selectedCols) && savedPrefs.selectedCols.length > 0) {
+        // Intersect with valid current columns
+        const validSaved = savedPrefs.selectedCols.filter(c => columns.includes(c));
+        if (validSaved.length > 0) selectedCols = new Set(validSaved);
+    }
+
     let searchText = "";
-    let sortState = []; // Array of {index, asc}
+    let sortState = Array.isArray(savedPrefs.sortState) ? savedPrefs.sortState : []; // Array of {index, asc}
+    const colWidths = (savedPrefs.colWidths && typeof savedPrefs.colWidths === 'object') ? savedPrefs.colWidths : {};
+
+    const savePreferences = () => {
+        try {
+            localStorage.setItem(storageKey, JSON.stringify({
+                selectedCols: Array.from(selectedCols),
+                sortState: sortState,
+                colWidths: colWidths
+            }));
+        } catch(e) {}
+    };
 
     // Support unique modal IDs for stacking
     const modalId = options.modalId || 'universal-modal-overlay';
@@ -44,7 +94,7 @@ window.showUniversalDataModal = function(options) {
     panel.style.cssText = [
         'position:relative','background:var(--bg-color)','border:1px solid var(--panel-border)',
         'border-radius:10px','box-shadow:0 24px 80px rgba(0,0,0,0.5)',
-        'width:90vw','max-height:85vh','max-width:1200px','min-width:450px',
+        'width:min(94vw, 1200px)','max-height:min(88vh, 900px)','max-width:1200px','min-width:min(100%, 300px)',
         'display:flex','flex-direction:column','overflow:hidden',
         'resize:both','transform:scale(0.96)','transition:transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
     ].join(';');
@@ -159,11 +209,13 @@ window.showUniversalDataModal = function(options) {
 
         dropdownHeader.querySelector('#uni-sel-all').onclick = () => {
             selectedCols = new Set(columns);
+            savePreferences();
             renderColItems();
             renderTable();
         };
         dropdownHeader.querySelector('#uni-dsel-all').onclick = () => {
             selectedCols.clear();
+            savePreferences();
             renderColItems();
             renderTable();
         };
@@ -194,6 +246,7 @@ window.showUniversalDataModal = function(options) {
                 chk.onchange = (e) => {
                     if (e.target.checked) selectedCols.add(col);
                     else selectedCols.delete(col);
+                    savePreferences();
                     renderColItems();
                     renderTable();
                 };
@@ -214,19 +267,21 @@ window.showUniversalDataModal = function(options) {
     // Body
     const body = document.createElement('div');
     body.id = 'universal-modal-body';
-    body.style.cssText = 'flex:1; min-height:0; overflow:auto; padding:12px;';
+    body.style.cssText = 'flex:1; min-height:0; overflow:auto; padding:12px; position:relative;';
     
     const tableId = 'uni-modal-table-' + Math.random().toString(36).substr(2, 9);
     const table = document.createElement('table');
     table.id = tableId;
     table.className = 'data-table uni-modal-table';
     table.setAttribute('data-table-id', tableId);
-    table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 0.82rem; text-align: left;';
+    table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 0.82rem; text-align: left; table-layout: fixed;';
     
+    const colgroup = document.createElement('colgroup');
     const thead = document.createElement('thead');
-    thead.style.cssText = 'position: sticky; top: 0; background: var(--bg-color); z-index: 5; box-shadow: 0 1px 0 var(--panel-border);';
+    thead.style.cssText = 'position: sticky; top: 0; background: var(--bg-color); z-index: 15; box-shadow: 0 1px 0 var(--panel-border);';
     
     const tbody = document.createElement('tbody');
+    table.appendChild(colgroup);
     table.appendChild(thead);
     table.appendChild(tbody);
     body.appendChild(table);
@@ -289,14 +344,24 @@ window.showUniversalDataModal = function(options) {
             statsEl.textContent = `${visibleData.length} rows / ${selectedCols.size} cols`;
         }
 
-        // Render Head
+        // Render Colgroup & Head with Visual Column Resizers
+        colgroup.innerHTML = '';
         thead.innerHTML = '';
         const trHead = document.createElement('tr');
-        columns.forEach((col, idx) => {
-            if (!selectedCols.has(col)) return;
+        
+        const activeCols = columns.filter(c => selectedCols.has(c));
+        activeCols.forEach((col) => {
+            const idx = columns.indexOf(col);
+            const colEl = document.createElement('col');
+            const initialWidth = colWidths[col] || Math.max(140, Math.min(300, displayNames[idx].length * 14 + 50));
+            colWidths[col] = initialWidth;
+            colEl.style.width = initialWidth + 'px';
+            colEl.setAttribute('data-col', col);
+            colgroup.appendChild(colEl);
+
             const th = document.createElement('th');
-            th.style.cssText = 'padding:8px 12px; border-bottom:1px solid var(--panel-border); font-weight:600; cursor:pointer; user-select:none; resize:horizontal; overflow:hidden; min-width:80px; white-space:nowrap;';
-            th.title = 'Click to sort, Shift+Click multi-sort, Drag right edge to resize';
+            th.style.cssText = 'position:relative; padding:8px 16px 8px 12px; border-bottom:1px solid var(--panel-border); font-weight:600; cursor:pointer; user-select:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; box-sizing:border-box;';
+            th.title = 'Click to sort, Shift+Click multi-sort, Drag right divider to resize, Double click to auto-fit';
             
             let arrow = '';
             const existingSort = sortState.find(s => s.index === idx);
@@ -308,8 +373,97 @@ window.showUniversalDataModal = function(options) {
                 }
             }
             
-            th.innerHTML = displayNames[idx] + arrow;
+            const titleSpan = document.createElement('span');
+            titleSpan.style.cssText = 'display:inline-block; max-width:calc(100% - 14px); overflow:hidden; text-overflow:ellipsis; vertical-align:middle;';
+            titleSpan.innerHTML = displayNames[idx] + arrow;
+            th.appendChild(titleSpan);
+
+            // Visual Column Resizer Handle (Single unified divider handle)
+            const resizer = document.createElement('div');
+            resizer.className = 'uni-col-resizer';
+            resizer.style.cssText = 'position:absolute; top:0; right:-4px; width:8px; height:100%; cursor:col-resize; user-select:none; z-index:20; display:flex; align-items:center; justify-content:center;';
+            
+            const resizerLine = document.createElement('div');
+            resizerLine.style.cssText = 'width:2px; height:60%; background:var(--overlay-20); border-radius:1px; transition:background 0.2s, height 0.2s, box-shadow 0.2s;';
+            resizer.appendChild(resizerLine);
+
+            resizer.onmouseenter = () => {
+                resizerLine.style.background = 'var(--accent)';
+                resizerLine.style.height = '100%';
+            };
+            resizer.onmouseleave = () => {
+                if (!isResizing) {
+                    resizerLine.style.background = 'var(--overlay-20)';
+                    resizerLine.style.height = '65%';
+                }
+            };
+
+            let startX = 0;
+            let startWidth = 0;
+            let isResizing = false;
+
+            resizer.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                isResizing = true;
+                startX = e.pageX;
+                startWidth = colWidths[col] || th.offsetWidth;
+                resizerLine.style.background = 'var(--accent)';
+                resizerLine.style.height = '100%';
+                resizerLine.style.boxShadow = '0 0 8px var(--accent-glow)';
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+
+                const onMouseMove = (moveEvent) => {
+                    if (!isResizing) return;
+                    const diffX = moveEvent.pageX - startX;
+                    const newWidth = Math.max(70, startWidth + diffX);
+                    colWidths[col] = newWidth;
+                    colEl.style.width = newWidth + 'px';
+                };
+
+                const onMouseUp = () => {
+                    if (isResizing) {
+                        isResizing = false;
+                        resizerLine.style.background = 'var(--overlay-20)';
+                        resizerLine.style.height = '65%';
+                        resizerLine.style.boxShadow = 'none';
+                        document.body.style.cursor = '';
+                        document.body.style.userSelect = '';
+                        document.removeEventListener('mousemove', onMouseMove);
+                        document.removeEventListener('mouseup', onMouseUp);
+                        savePreferences();
+                    }
+                };
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+
+            // Double click to auto fit content width
+            resizer.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                let maxLen = displayNames[idx].length;
+                visibleData.slice(0, 100).forEach(r => {
+                    const v = r[col];
+                    if (v !== null && v !== undefined) {
+                        maxLen = Math.max(maxLen, String(v).length);
+                    }
+                });
+                const fitWidth = Math.max(90, Math.min(600, maxLen * 9 + 40));
+                colWidths[col] = fitWidth;
+                colEl.style.width = fitWidth + 'px';
+                savePreferences();
+            });
+
+            resizer.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+
+            th.appendChild(resizer);
+
             th.onclick = (e) => {
+                if (isResizing) return;
                 if (e.shiftKey) {
                     const s = sortState.find(s => s.index === idx);
                     if (s) s.asc = !s.asc;
@@ -322,6 +476,7 @@ window.showUniversalDataModal = function(options) {
                         sortState = [{index: idx, asc: true}];
                     }
                 }
+                savePreferences();
                 renderTable();
             };
             trHead.appendChild(th);
@@ -351,7 +506,7 @@ window.showUniversalDataModal = function(options) {
                 if (options.cellRenderer) {
                     const customHtml = options.cellRenderer(col, val, row);
                     if (customHtml !== undefined) {
-                        htmlRows += `<td style="padding: 6px 12px; color: var(--text-primary); border-bottom: 1px solid var(--panel-border); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${customHtml}</td>`;
+                        htmlRows += `<td style="padding: 6px 12px; color: var(--text-primary); border-bottom: 1px solid var(--panel-border); border-right: 1px solid var(--overlay-5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${customHtml}</td>`;
                         return;
                     }
                 }
@@ -370,7 +525,7 @@ window.showUniversalDataModal = function(options) {
                     cellHtml = str.replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 }
                 
-                htmlRows += `<td title="${cellTitle}" style="padding: 6px 12px; color: var(--text-primary); border-bottom: 1px solid var(--panel-border); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${cellHtml}</td>`;
+                htmlRows += `<td title="${cellTitle}" style="padding: 6px 12px; color: var(--text-primary); border-bottom: 1px solid var(--panel-border); border-right: 1px solid var(--overlay-5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${cellHtml}</td>`;
             });
             htmlRows += `</tr>`;
         });

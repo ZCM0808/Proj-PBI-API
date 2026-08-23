@@ -9,6 +9,156 @@ window.fetch = async function(...args) {
     return response;
 };
 
+// ─── 全局 Workflow 输出框自动滚动机制 ─────────────────────────────
+// 规则：每当 .wf-console 有新内容时，自动将滚动位置设到底部上方两行距离处，
+// 让用户始终能看到最新输出行，同时感知到"还有更多内容在上方"。
+// 两行距离 = 约 2 × 1.5em × 13px ≈ 40px
+const WF_CONSOLE_SCROLL_BOTTOM_MARGIN = 40; // px，约两行行高
+
+function wfConsoleScrollToLatest(el) {
+    if (!el || el.classList.contains('collapsed-console')) return;
+    // scrollTop 设到 scrollHeight - clientHeight - margin，留出底部两行空间
+    const target = el.scrollHeight - el.clientHeight - WF_CONSOLE_SCROLL_BOTTOM_MARGIN;
+    el.scrollTop = Math.max(0, target);
+}
+
+// 用 MutationObserver 批量监听页面内所有 .wf-console 元素的内容变化
+function attachWfConsoleObservers() {
+    document.querySelectorAll('.wf-console').forEach(el => {
+        if (el._wfObserver) return; // 避免重复绑定
+        const obs = new MutationObserver(() => wfConsoleScrollToLatest(el));
+        obs.observe(el, { childList: true, characterData: true, subtree: true });
+        el._wfObserver = obs;
+    });
+}
+
+// 页面加载后首次绑定
+document.addEventListener('DOMContentLoaded', () => {
+    attachWfConsoleObservers();
+    // 动态注入 overflow-y: auto 到所有 .wf-console（防止 CSS 未设导致无法滚动）
+    const style = document.createElement('style');
+    style.textContent = `.wf-console { overflow-y: auto !important; }`;
+    document.head.appendChild(style);
+});
+
+// 对外暴露，供动态新增 wf-console 元素后手动触发重绑定
+window.attachWfConsoleObservers = attachWfConsoleObservers;
+// ──────────────────────────────────────────────────────────────────
+
+// ─── Workflow 自定义命名 & 参数持久化 ──────────────────────────────
+// 存储结构：
+//   pbi-wf-names  = { "export_report": "我的导出任务", ... }
+//   pbi-wf-params-{type} = { field_id: value, ... }
+
+function getWfNames() {
+    try { return JSON.parse(localStorage.getItem('pbi-wf-names') || '{}'); } catch(e) { return {}; }
+}
+
+function saveWfNames(names) {
+    localStorage.setItem('pbi-wf-names', JSON.stringify(names));
+}
+
+// 将自定义名称应用到 <select> 所有 <option>
+window.applyWfNames = function() {
+    const names = getWfNames();
+    const sel = document.getElementById('wf-selector');
+    if (!sel) return;
+    sel.querySelectorAll('option').forEach(opt => {
+        const custom = names[opt.value];
+        if (custom && custom.trim()) {
+            // 保留原始内置名（存在 dataset-default 属性里），显示自定义名
+            if (!opt.dataset.defaultName) opt.dataset.defaultName = opt.textContent;
+            opt.textContent = custom;
+        } else if (opt.dataset.defaultName) {
+            // 无自定义名时恢复原始内置名
+            opt.textContent = opt.dataset.defaultName;
+        }
+    });
+};
+
+// 开始重命名：显示输入框，预填当前名称
+window.startWfRename = function() {
+    const sel = document.getElementById('wf-selector');
+    const bar = document.getElementById('wf-rename-bar');
+    const input = document.getElementById('wf-rename-input');
+    if (!sel || !bar || !input) return;
+    const currentText = sel.options[sel.selectedIndex]?.textContent || '';
+    input.value = currentText;
+    bar.style.display = 'flex';
+    input.focus();
+    input.select();
+    // 回车保存
+    input.onkeydown = (e) => {
+        if (e.key === 'Enter') window.saveWfRename();
+        if (e.key === 'Escape') window.cancelWfRename();
+    };
+};
+
+// 保存重命名
+window.saveWfRename = function() {
+    const sel = document.getElementById('wf-selector');
+    const bar = document.getElementById('wf-rename-bar');
+    const input = document.getElementById('wf-rename-input');
+    if (!sel || !bar || !input) return;
+    const wfType = sel.value;
+    const newName = input.value.trim();
+    const names = getWfNames();
+    if (newName) {
+        names[wfType] = newName;
+    } else {
+        delete names[wfType]; // 空名称 = 恢复默认
+    }
+    saveWfNames(names);
+    window.applyWfNames();
+    bar.style.display = 'none';
+    window.showNotification && window.showNotification(
+        newName ? `已将此 Workflow 重命名为「${newName}」` : '已恢复默认名称', 'success'
+    );
+};
+
+// 取消重命名
+window.cancelWfRename = function() {
+    const bar = document.getElementById('wf-rename-bar');
+    if (bar) bar.style.display = 'none';
+};
+
+// ── 参数持久化：保存当前 WF 的表单参数快照 ──
+const WF_PARAM_FIELDS = {
+    export_report:             ['wf-exp-workspace', 'wf-exp-report', 'wf-exp-format'],
+    export_visual:             ['wf-vis-workspace', 'wf-vis-report'],
+    export_dataset_tables:     ['wf-ds-workspace', 'wf-ds-dataset'],
+    report_view_count:         ['wf-rvc-workspace', 'wf-rvc-report', 'wf-rvc-start', 'wf-rvc-end'],
+    dataset_partitions_manager:[],
+    check_permissions:         [],
+    global_user_manager:       [],
+    smart_pipeline:            [],
+    local_model_query:         ['local-dax-editor'],
+};
+
+window.saveWfParams = function(wfType) {
+    const fields = WF_PARAM_FIELDS[wfType];
+    if (!fields || fields.length === 0) return;
+    const snapshot = {};
+    fields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) snapshot[id] = el.value;
+    });
+    localStorage.setItem(`pbi-wf-params-${wfType}`, JSON.stringify(snapshot));
+};
+
+window.restoreWfParams = function(wfType) {
+    const fields = WF_PARAM_FIELDS[wfType];
+    if (!fields || fields.length === 0) return;
+    try {
+        const snapshot = JSON.parse(localStorage.getItem(`pbi-wf-params-${wfType}`) || '{}');
+        fields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el && snapshot[id] !== undefined) el.value = snapshot[id];
+        });
+    } catch(e) {}
+};
+// ──────────────────────────────────────────────────────────────────
+
 window.expandConsole = function(id) {
     const consoleEl = document.getElementById(id);
     if (!consoleEl) return;
@@ -16,6 +166,8 @@ window.expandConsole = function(id) {
     if (consoleEl.classList.contains('collapsed-console')) {
         consoleEl.classList.remove('collapsed-console');
         if (chevron) chevron.style.transform = 'rotate(90deg)';
+        // 展开后延迟一帧让 DOM 渲染，再滚到最新输出位置
+        requestAnimationFrame(() => wfConsoleScrollToLatest(consoleEl));
     }
 };
 
@@ -29,6 +181,8 @@ window.toggleConsole = function(id) {
     if (consoleEl.classList.contains('collapsed-console')) {
         consoleEl.classList.remove('collapsed-console');
         if (chevron) chevron.style.transform = 'rotate(90deg)';
+        // 展开后延迟一帧让 DOM 渲染，再滚到最新输出位置
+        requestAnimationFrame(() => wfConsoleScrollToLatest(consoleEl));
     } else {
         consoleEl.classList.add('collapsed-console');
         if (chevron) chevron.style.transform = 'rotate(0deg)';
@@ -465,9 +619,15 @@ window.scanItems = async function(type, btn) {
     btn.disabled = true;
     
     let workspaceId = document.getElementById('active-workspace')?.value || '';
+    // 如果没有活跃工作区，先尝试从工作区列表中提取
     if (!workspaceId) {
         const wList = window.getListData('workspace-list');
         if (wList.length > 0) workspaceId = wList[0].id;
+    }
+    
+    // 如果扫描的是 workspaces，清空 workspace_id 进行全局扫描
+    if (type === 'workspaces') {
+        workspaceId = '';
     }
     
     try {
@@ -1369,6 +1529,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         const paramOptionsContainer = document.getElementById('param-filter-options');
         const triggerLabel = document.getElementById('param-filter-label');
+        if (paramOptionsContainer) paramOptionsContainer.innerHTML = '';
         if (paramOptionsContainer && allApiParams.size > 0) {
             const sortedParams = Array.from(allApiParams).sort();
             const totalParams = sortedParams.length;
@@ -2936,13 +3097,13 @@ const loadReqHistory = (searchTerm = "") => {
         // Always reset to center! User explicitly requested:
         // "在关闭后再次打开时必须自动重置回居中位置"
         if (parent) {
-            parent.style.alignItems = 'flex-start';
+            parent.style.alignItems = 'center';
             parent.style.justifyContent = 'center';
         }
         modalContent.style.position = 'relative';
         modalContent.style.top = '0px';
         modalContent.style.left = '0px';
-        modalContent.style.margin = '0 auto';
+        modalContent.style.margin = 'auto';
         modalContent.style.transform = 'none';
         modalContent.style.animation = ''; // Do NOT kill animation, allow CSS to handle it
         
@@ -3012,8 +3173,12 @@ const loadReqHistory = (searchTerm = "") => {
                 modalContent.setAttribute('data-translate-y', currentTranslateY);
                 modalContent.setAttribute('data-translate-x', currentTranslateX);
 
-                // Restore expensive CSS effects after dragging
-                modalContent.style.pointerEvents = '';
+                // Hide drag shield
+                const shield = modalContent.querySelector('.drag-shield');
+                if (shield) shield.style.display = 'none';
+
+                // Restore all iframe pointer events
+                document.querySelectorAll('iframe').forEach(f => f.style.pointerEvents = '');
                 modalContent.style.backdropFilter = '';
                 modalContent.style.webkitBackdropFilter = '';
                 modalContent.style.boxShadow = '';
@@ -3025,8 +3190,7 @@ const loadReqHistory = (searchTerm = "") => {
         };
 
         dragHandle.addEventListener('mousedown', (e) => {
-            if (window.innerWidth <= 768) return; // Prevent drag on mobile
-            if (['INPUT', 'BUTTON', 'TEXTAREA'].includes(e.target.tagName) || e.target.closest('button') || e.target.closest('h1, h2, h3, h4, h5, h6, p, span.copyable')) return;
+            if (['INPUT', 'BUTTON', 'TEXTAREA'].includes(e.target.tagName) || e.target.closest('button, input, select, textarea')) return;
 
             // Read previous translation state to avoid jumping on subsequent drags
             const dt = modalContent.getAttribute('data-translate-y');
@@ -3052,11 +3216,20 @@ const loadReqHistory = (searchTerm = "") => {
             modalContent.style.transition = 'none'; // Force kill transition
             modalContent.style.setProperty('transition', 'none', 'important');
             
-            // Turn off massive performance killers during drag!
-            modalContent.style.pointerEvents = 'none'; // Prevent massive hit-testing and :hover recalculations on table cells
+            // Create a full transparent drag shield over modal to eliminate 100% of iframe hover & GPU backdrop recalculation lag
+            let shield = modalContent.querySelector('.drag-shield');
+            if (!shield) {
+                shield = document.createElement('div');
+                shield.className = 'drag-shield';
+                shield.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 999999; background: transparent; cursor: grabbing;';
+                modalContent.appendChild(shield);
+            } else {
+                shield.style.display = 'block';
+            }
+
+            document.querySelectorAll('iframe').forEach(f => f.style.pointerEvents = 'none');
             modalContent.style.backdropFilter = 'none';
             modalContent.style.webkitBackdropFilter = 'none';
-            // Also turn off box-shadow to prevent repaint drops
             modalContent.style.boxShadow = 'none';
 
             document.body.style.userSelect = 'none';
@@ -3147,7 +3320,8 @@ const loadReqHistory = (searchTerm = "") => {
                 const timeStr = new Date().toLocaleTimeString('en-US', {hour12: false});
                 line.innerHTML = `<span style="color: var(--text-secondary)">[${timeStr}]</span> <span class="${cls}">${data.message}</span>`;
                 terminal.appendChild(line);
-                terminal.scrollTop = Math.max(0, terminal.scrollHeight - terminal.clientHeight * 0.66); // Auto-scroll
+                // 统一规则：滚到底部上方两行距离处（约40px），让用户始终能看到最新输出
+                terminal.scrollTop = Math.max(0, terminal.scrollHeight - terminal.clientHeight - 40);
                 
                 if (data.status === 'error' || data.status === 'success') {
                     evtSource.close();
@@ -5241,7 +5415,7 @@ document.addEventListener('mousedown', (e) => {
     const wfContent = document.getElementById('workflow-modal-content');
     
     let currentExportId = null;
-    let isWorkflowRunning = false;
+    // isWorkflowRunning 已废弃，改由 runningWorkflows Set 按 wfType 独立跟踪（见 wf-selector change 处理器）
 
     if (btnWorkflows && workflowModal) {
 
@@ -5258,7 +5432,35 @@ document.addEventListener('mousedown', (e) => {
             workflowModal.style.display = 'flex';
 
             
-            // Auto-fill active workspace/report if available
+            // Helper: Filter reports dropdown by selected workspace
+            const updateReportsForWorkspace = (wSelectId, rSelectId) => {
+                const wSelect = document.getElementById(wSelectId);
+                const rSelect = document.getElementById(rSelectId);
+                if (!wSelect || !rSelect) return;
+                
+                const selectedWId = wSelect.value;
+                const reports = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+                const currentRVal = rSelect.value;
+                
+                rSelect.innerHTML = '<option value="">-- Select Report --</option>';
+                let matchFound = false;
+                
+                reports.forEach(item => {
+                    // Match report if workspace_id matches or if no workspace is explicitly specified on report item
+                    const opt = document.createElement('option');
+                    opt.value = item.id;
+                    opt.textContent = `${item.alias || item.name || "Unnamed"} (${item.id})`;
+                    rSelect.appendChild(opt);
+                    if (item.id === currentRVal) matchFound = true;
+                });
+                
+                if (matchFound) {
+                    rSelect.value = currentRVal;
+                } else if (rSelect.options.length > 1) {
+                    rSelect.selectedIndex = 1; // Auto select first available report
+                }
+            };
+
             const fillSelect = (selectId, storageKey) => {
                 const select = document.getElementById(selectId);
                 if(!select) return;
@@ -5280,39 +5482,33 @@ document.addEventListener('mousedown', (e) => {
             fillSelect('wf-rvc-workspace', 'pbi_workspaces');
             fillSelect('wf-rvc-report', 'pbi_reports');
             
-            // Auto trigger loadPages if there's a selection
-            setTimeout(loadPages, 500);
+            // Set Default Workspace for wf-vis-workspace if empty (Default to WorkSpace_DEV or first active workspace)
+            const visWSelect = document.getElementById('wf-vis-workspace');
+            if (visWSelect && !visWSelect.value) {
+                const workspaces = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+                const devW = workspaces.find(w => w.alias === 'WorkSpace_DEV' || w.id === '2c51e061-0f9f-4d02-bed0-c169019e5d83') || workspaces[0];
+                if (devW) {
+                    visWSelect.value = devW.id;
+                }
+            }
 
+            const visRSelect = document.getElementById('wf-vis-report');
+            const reports = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+            const azReport = reports.find(r => r.alias === 'AstraZeneca_SFE' || r.id === '5c6df788-fcc6-4758-ba9c-42bc1b969666') || reports[0];
+            if (visRSelect && !visRSelect.value && azReport) {
+                visRSelect.value = azReport.id;
+            }
 
             const activeW = document.getElementById('active-workspace')?.value;
             const activeR = document.getElementById('active-report')?.value;
             if (activeW) document.getElementById('wf-exp-workspace').value = activeW;
             if (activeR) document.getElementById('wf-exp-report').value = activeR;
             
-            // For vis workflow, keep AstraZeneca_SFE if selected or match correctly
-            const visRSelect = document.getElementById('wf-vis-report');
-            if (visRSelect && !visRSelect.value && activeR) {
-                visRSelect.value = activeR;
-            }
-            
             if (activeW) document.getElementById('wf-ds-workspace').value = activeW;
             const activeD = document.getElementById('active-dataset')?.value;
             if (activeD) document.getElementById('wf-ds-dataset').value = activeD;
             if (activeW) document.getElementById('wf-rvc-workspace').value = activeW;
             if (activeR) document.getElementById('wf-rvc-report').value = activeR;
-
-            // Auto match workspace for selected report
-            const currentRVal = document.getElementById('wf-vis-report')?.value;
-            const reports = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
-            const matchedR = reports.find(r => r.id === currentRVal || r.alias === 'AstraZeneca_SFE');
-            if (matchedR && matchedR.alias === 'AstraZeneca_SFE') {
-                const workspaces = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
-                const devW = workspaces.find(w => w.alias === 'WorkSpace_DEV');
-                if (devW) {
-                    document.getElementById('wf-vis-workspace').value = devW.id;
-                    if (visRSelect) visRSelect.value = matchedR.id;
-                }
-            }
 
             if (document.getElementById('wf-selector')?.value === 'export_visual') {
                 setTimeout(() => {
@@ -5497,7 +5693,31 @@ document.addEventListener('mousedown', (e) => {
 
         
         const wfSelector = document.getElementById('wf-selector');
+        
+        // 每个 workflow 独立维护 running 状态，避免切换时按钮卡死
+        const runningWorkflows = new Set();
+        
+        function setRunBtnState(wfType) {
+            const btn = document.getElementById('wf-btn-runall');
+            if (!btn) return;
+            if (runningWorkflows.has(wfType)) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="loader" style="width: 12px; height: 12px; border-width: 2px;"></span> Running...';
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Run Selected Workflow';
+            }
+        }
+        
         wfSelector.addEventListener('change', (e) => {
+            // 保存切换前 WF 的参数快照
+            const prevVal = wfSelector.dataset.prevVal;
+            if (prevVal) window.saveWfParams && window.saveWfParams(prevVal);
+            wfSelector.dataset.prevVal = e.target.value;
+            
+            // 关闭重命名输入框
+            window.cancelWfRename && window.cancelWfRename();
+            
             const val = e.target.value;
             // Hide all first
             document.getElementById('wf-config-export_report').style.display = 'none';
@@ -5507,12 +5727,17 @@ document.addEventListener('mousedown', (e) => {
             document.getElementById('wf-config-export_dataset_tables').style.display = 'none';
             document.getElementById('wf-config-report_view_count').style.display = 'none';
             document.getElementById('wf-config-check_permissions').style.display = 'none';
-              const gumPane = document.getElementById('wf-config-global_user_manager'); if(gumPane) gumPane.style.display = 'none';
+            const dpmPane = document.getElementById('wf-config-dataset_partitions_manager'); if(dpmPane) dpmPane.style.display = 'none';
+            const gumPane = document.getElementById('wf-config-global_user_manager'); if(gumPane) gumPane.style.display = 'none';
             const localQPane = document.getElementById('wf-container-local_model_query'); if(localQPane) localQPane.style.display = 'none';
             
             if (val === 'smart_pipeline') {
                 document.getElementById('wf-config-smart_pipeline').style.display = 'block';
                 document.getElementById('wf-btn-runall').style.display = 'flex';
+            } else if (val === 'dataset_partitions_manager') {
+                if (dpmPane) dpmPane.style.display = 'block';
+                document.getElementById('wf-btn-runall').style.display = 'flex';
+                // ❌ 已移除：不再自动扫描，用户需点击 Run 才触发
             } else if (val === 'export_dataset_tables') {
                 document.getElementById('wf-config-export_dataset_tables').style.display = 'block';
                 document.getElementById('wf-btn-runall').style.display = 'flex';
@@ -5525,10 +5750,7 @@ document.addEventListener('mousedown', (e) => {
             } else if (val === 'local_model_query') {
                 document.getElementById('wf-container-local_model_query').style.display = 'block';
                 document.getElementById('wf-btn-runall').style.display = 'flex';
-                if (!window._fetchedLocalInstances) {
-                    window.fetchLocalModelInstances();
-                    window._fetchedLocalInstances = true;
-                }
+                window.fetchLocalModelInstances();
                 window.updateLocalDaxTemplate(); // Init template
             } else if (val === 'export_visual') {
                 document.getElementById('wf-config-export_visual').style.display = 'block';
@@ -5547,7 +5769,27 @@ document.addEventListener('mousedown', (e) => {
                 document.getElementById('wf-export-wrapper').style.display = 'block';
                 document.getElementById('wf-btn-runall').style.display = 'flex';
             }
+            
+            // 切换 workflow 时，根据该 wf 是否在运行来恢复/保持按钮状态
+            setRunBtnState(val);
+            
+            // 恢复此 WF 上次保存的参数（延迟一帧确保 DOM 已显示）
+            requestAnimationFrame(() => window.restoreWfParams && window.restoreWfParams(val));
+            
+            // 持久化：记住用户上次选择的 workflow
+            try { localStorage.setItem('pbi-last-workflow', val); } catch(e) {}
         });
+        
+        // 应用自定义 WF 名称（需在 selector 初始化之后立即执行）
+        window.applyWfNames && window.applyWfNames();
+        
+        // 恢复上次选中的 workflow（跨刷新持久化）
+        const savedWf = localStorage.getItem('pbi-last-workflow');
+        if (savedWf && wfSelector.querySelector(`option[value="${savedWf}"]`)) {
+            wfSelector.value = savedWf;
+            wfSelector.dataset.prevVal = savedWf;
+            wfSelector.dispatchEvent(new Event('change')); // 触发 change 以渲染对应面板
+        }
 
         document.getElementById('wf-btn-step1').onclick = executeStep1;
         document.getElementById('wf-btn-step2').onclick = () => executeStep2(false);
@@ -5588,6 +5830,8 @@ document.addEventListener('mousedown', (e) => {
                 
                 out.textContent += `Token received. Initializing Power BI Embedded iframe...\n`;
                     setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                const embedWrapper = document.getElementById('pbi-embed-wrapper');
+                if (embedWrapper) embedWrapper.style.display = 'block';
                 embedContainer.style.display = 'block';
                 
                 // 2. Embed the report
@@ -5599,15 +5843,26 @@ document.addEventListener('mousedown', (e) => {
                     accessToken: data.embedToken,
                     embedUrl: data.embedUrl,
                     id: rId,
-                    permissions: models.Permissions.Read,
                     settings: {
-                        panes: { filters: { visible: false }, pageNavigation: { visible: false } }
+                        panes: { filters: { visible: false }, pageNavigation: { visible: true } },
+                        layoutType: models.LayoutType.FitToPage
                     }
                 };
                 
                 // Reset container
                 powerbi.reset(embedContainer);
                 currentEmbeddedReport = powerbi.embed(embedContainer, config);
+                
+                currentEmbeddedReport.off("pageChanged");
+                currentEmbeddedReport.on("pageChanged", function (event) {
+                    const newPage = event.detail.newPage;
+                    if (newPage && newPage.name) {
+                        const pageSelect = document.getElementById('wf-vis-page');
+                        const fsPageSelect = document.getElementById('pbi-fs-page-select');
+                        if (pageSelect && pageSelect.value !== newPage.name) pageSelect.value = newPage.name;
+                        if (fsPageSelect && fsPageSelect.value !== newPage.name) fsPageSelect.value = newPage.name;
+                    }
+                });
                 
                 currentEmbeddedReport.off("loaded");
                 currentEmbeddedReport.on("loaded", async function () {
@@ -5642,8 +5897,13 @@ document.addEventListener('mousedown', (e) => {
 
         const populatePagesDropdown = (pages) => {
             const pageSelect = document.getElementById('wf-vis-page');
+            const fsPageSelect = document.getElementById('pbi-fs-page-select');
+            
             pageSelect.innerHTML = '<option value="">-- Select a Page --</option>';
             pageSelect.innerHTML += '<option value="ALL">🌟 ALL PAGES (全部页面) 🌟</option>';
+            
+            if (fsPageSelect) fsPageSelect.innerHTML = '<option value="">-- Select a Page --</option>';
+            
             if (Array.isArray(pages) && pages.length > 0) {
                 pages.forEach(p => {
                     const opt = document.createElement('option');
@@ -5651,7 +5911,49 @@ document.addEventListener('mousedown', (e) => {
                     const dName = p.displayName || p.name || 'Unnamed Page';
                     opt.textContent = dName + ' (' + p.name + ')';
                     pageSelect.appendChild(opt);
+
+                    if (fsPageSelect) {
+                        const fsOpt = document.createElement('option');
+                        fsOpt.value = p.name;
+                        fsOpt.textContent = dName;
+                        fsPageSelect.appendChild(fsOpt);
+                    }
                 });
+            }
+        };
+
+        window.switchEmbedPage = async function(pageName) {
+            if (!currentEmbeddedReport || !pageName) return;
+            try {
+                const pages = await currentEmbeddedReport.getPages();
+                const targetPage = pages.find(p => p.name === pageName);
+                if (targetPage) {
+                    await targetPage.setActive();
+                    // Sync workflow page select if different
+                    const pageSelect = document.getElementById('wf-vis-page');
+                    if (pageSelect && pageSelect.value !== pageName) pageSelect.value = pageName;
+                    const fsPageSelect = document.getElementById('pbi-fs-page-select');
+                    if (fsPageSelect && fsPageSelect.value !== pageName) fsPageSelect.value = pageName;
+                }
+            } catch (e) {
+                console.error("switchEmbedPage error:", e);
+            }
+        };
+
+        window.refreshEmbeddedReport = async function(btn) {
+            if (!currentEmbeddedReport) return;
+            const svgIcon = btn ? btn.querySelector('svg') : null;
+            if (svgIcon) svgIcon.classList.add('spinning');
+            try {
+                await currentEmbeddedReport.refresh();
+                if (window.showNotification) window.showNotification("Report data refreshed!", "success");
+            } catch (e) {
+                console.error("refreshEmbeddedReport error:", e);
+                if (window.showNotification) window.showNotification("Refresh notice: " + (e.message || "Updated"), "info");
+            } finally {
+                if (svgIcon) {
+                    setTimeout(() => svgIcon.classList.remove('spinning'), 600);
+                }
             }
         };
 
@@ -5724,24 +6026,16 @@ document.addEventListener('mousedown', (e) => {
         window.loadExportVisualPages = loadPages;
 
         document.getElementById('wf-vis-report').addEventListener('change', () => {
-            // Auto match workspace for AstraZeneca_SFE or reports belonging to WorkSpace_DEV
-            const rVal = document.getElementById('wf-vis-report').value;
-            const reports = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
-            const matchedR = reports.find(r => r.id === rVal);
-            if (matchedR && matchedR.alias === 'AstraZeneca_SFE') {
-                const workspaces = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
-                const devW = workspaces.find(w => w.alias === 'WorkSpace_DEV');
-                if (devW) {
-                    document.getElementById('wf-vis-workspace').value = devW.id;
-                }
-            }
             loadPages();
         });
-        document.getElementById('wf-vis-workspace').addEventListener('change', loadPages);
+        document.getElementById('wf-vis-workspace').addEventListener('change', () => {
+            loadPages();
+        });
         document.getElementById('wf-vis-page').addEventListener('change', loadVisuals);
 
         const executeExportVisual = async () => {
             const out = document.getElementById('wf-out-vis');
+            window.expandConsole('wf-out-vis'); // 点击 Run 时自动展开
             out.textContent = `[${new Date().toLocaleTimeString()}] Triggering JS SDK exportData() -> Excel...\n`;
             
             const pId = document.getElementById('wf-vis-page').value;
@@ -5826,16 +6120,42 @@ document.addEventListener('mousedown', (e) => {
             }
         };
 
+        window.togglePbiEmbedFullscreen = function() {
+            const embedWrapper = document.getElementById('pbi-embed-wrapper');
+            const maxBtn = document.getElementById('pbi-embed-max-btn');
+            
+            if (!embedWrapper) return;
+            
+            const isFs = document.fullscreenElement || document.webkitFullscreenElement;
+            
+            if (!isFs) {
+                if (embedWrapper.requestFullscreen) embedWrapper.requestFullscreen().catch(() => {});
+                else if (embedWrapper.webkitRequestFullscreen) embedWrapper.webkitRequestFullscreen();
+                if (maxBtn) maxBtn.title = "Restore / Normal Preview";
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                if (maxBtn) maxBtn.title = "Maximize / Fullscreen Preview";
+            }
+        };
+
         // --- End Export Visual Data Logic ---
 
-        document.getElementById('wf-btn-runall').onclick = async function() {
-            if (isWorkflowRunning) return;
-            isWorkflowRunning = true;
-            this.disabled = true;
-            this.innerHTML = '<span class="loader" style="width: 12px; height: 12px; border-width: 2px;"></span> Running...';
+        window.triggerWorkflowRun = async function() {
+            const btn = document.getElementById('wf-btn-runall');
+            const wfType = document.getElementById('wf-selector') ? document.getElementById('wf-selector').value : '';
+            if (!wfType) return;
+            
+            // 检查当前 wf 是否已在运行
+            if (runningWorkflows.has(wfType)) return;
+            
+            runningWorkflows.add(wfType);
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="loader" style="width: 12px; height: 12px; border-width: 2px;"></span> Running...';
+            }
             
             try {
-                const wfType = document.getElementById('wf-selector').value;
                 if (wfType === 'local_model_query') {
                     await window.runLocalModelWorkflow();
                 } else if (wfType === 'export_report') {
@@ -5848,6 +6168,8 @@ document.addEventListener('mousedown', (e) => {
                     }
                 } else if (wfType === 'export_dataset_tables') {
                     await window.executeExportDataset();
+                } else if (wfType === 'dataset_partitions_manager') {
+                    await window.scanDatasetPartitions();
                 } else if (wfType === 'export_visual') {
                     await executeExportVisual();
                 } else if (wfType === 'report_view_count') {
@@ -5861,18 +6183,24 @@ document.addEventListener('mousedown', (e) => {
                         console.error('runGlobalUserManager is not defined');
                     }
                 } else if (wfType === 'smart_pipeline') {
-                    const btn = document.getElementById('start-pipeline-btn');
-                    if (btn) btn.click();
+                    const pipelineBtn = document.getElementById('start-pipeline-btn');
+                    if (pipelineBtn) pipelineBtn.click();
                 }
+            } catch(wfErr) {
+                console.error("Workflow execution error:", wfErr);
+                window.showNotification && window.showNotification("Workflow error: " + (wfErr.message || wfErr), "error");
             } finally {
-                isWorkflowRunning = false;
-                if (!window.skipWfBtnReset) {
-                    this.disabled = false;
-                    this.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Run Selected Workflow';
+                runningWorkflows.delete(wfType);
+                if (btn && !window.skipWfBtnReset && document.getElementById('wf-selector')?.value === wfType) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Run Selected Workflow';
                 }
                 window.skipWfBtnReset = false;
             }
         };
+
+        const runAllBtn = document.getElementById('wf-btn-runall');
+        if (runAllBtn) runAllBtn.onclick = window.triggerWorkflowRun;
     }
     // --- End Workflow Modal Logic ---
 
@@ -6351,6 +6679,7 @@ window.runRvcWorkflow = async function() {
 
     containersDiv.style.display = 'flex';
     logsDiv.innerHTML = '';
+    window.expandConsole('wf-out-rvc-logs'); // 点击 Run 时自动展开
     
     const appendLog = (msg) => {
         const div = document.createElement('div');
@@ -6593,16 +6922,31 @@ window.flashCopiedElement = function(element) {
 window.handleCopyAction = function(targetEl, text, customFlashTarget = null) {
     let copyText = (text !== undefined && text !== null && text !== '') ? text : '';
     
-    // 如果没有明确传 text，或者 text 为空，自动智能从同级 input/select 中提取 value 或 placeholder 或 selected option 的文本
-    if (!copyText && targetEl) {
-        const input = targetEl.previousElementSibling || targetEl.closest('.input-with-copy')?.querySelector('input, select, textarea');
-        if (input) {
-            copyText = input.value || input.placeholder || (input.options && input.options[input.selectedIndex] ? input.options[input.selectedIndex].text : '');
+    // 智能提取输入框/文本区域/下拉框的文本或占位符
+    if (targetEl) {
+        // 如果未传 text 或传进来的是空字符串
+        if (!copyText) {
+            const container = targetEl.closest('.input-with-copy, .body-editor-container, .endpoint-input, div');
+            const input = targetEl.previousElementSibling || container?.querySelector('input, select, textarea');
+            if (input) {
+                if (input.tagName === 'SELECT') {
+                    if (input.options && input.options[input.selectedIndex]) {
+                        // 优先复制用户在界面上看到的直观名称文本（例如 "[Cloud] 销售数据集 (生产工作区)"）
+                        copyText = input.options[input.selectedIndex].text || input.value;
+                    }
+                } else {
+                    copyText = input.value || input.placeholder || '';
+                }
+            }
         }
     }
     
-    // 强制转换为字符串
+    // 强制转换为字符串并清理首尾空行（若依然为空，尝试从触发源附近抓取 placeholder）
     copyText = String(copyText || '');
+    if (!copyText && targetEl) {
+        const anyInput = targetEl.parentElement?.querySelector('input, textarea');
+        if (anyInput && anyInput.placeholder) copyText = anyInput.placeholder;
+    }
 
     // 1. Target Flash (被复制的目标对象高亮闪烁)
     let flashTarget = customFlashTarget || targetEl.closest('.input-with-copy, pre, textarea, .panel, .body-editor-container, .endpoint-input') || targetEl.previousElementSibling;
@@ -6688,7 +7032,10 @@ window.runCheckPermsWorkflow = async function() {
         btn.innerHTML = 'Running...';
     }
     
-    if (logsDiv) logsDiv.innerHTML = '';
+    if (logsDiv) {
+        logsDiv.innerHTML = '';
+        window.expandConsole('wf-out-perms-logs'); // 点击 Run 时自动展开
+    }
     
     const appendLog = (msg) => {
         if (!logsDiv) return;
@@ -6919,9 +7266,7 @@ window.runGlobalUserManager = async function() {
     
     if (logsDiv) {
         logsDiv.innerHTML = '';
-        if (logsDiv.classList.contains('collapsed-console')) {
-            window.toggleConsole('wf-out-gum-logs');
-        }
+        window.expandConsole('wf-out-gum-logs'); // 点击 Run 时自动展开（只展开，不折叠）
     }
     if (tableDiv) tableDiv.innerHTML = 'Scanning workspaces...';
     if (statsSpan) statsSpan.textContent = '';
@@ -7427,37 +7772,144 @@ window.runLocalDAX = async function(btn) {
     btn.textContent = oldText;
 };
 
-// Local Model Logic
+// Local & Cloud Model DAX Diagnostics Logic
 window.fetchLocalModelInstances = async function() {
     const sel = document.getElementById('local-model-instance');
     const err = document.getElementById('local-model-instance-error');
-    if(!sel || !err) return;
+    const refreshBtn = document.getElementById('wf-local-instance-refresh-btn');
+    if(!sel) return;
     
-    sel.innerHTML = '<option value="">Fetching instances...</option>';
-    err.style.display = 'none';
+    if (err) err.style.display = 'none';
+    if (refreshBtn) refreshBtn.classList.add('spinning');
     
-    try {
-        const res = await fetch('/api/local-model/instances', { method: 'POST' });
-        const json = await res.json();
-        if(json.success && json.instances.length > 0) {
-            sel.innerHTML = '';
-            json.instances.forEach(inst => {
+    // 1. 获取并格式化云端数据（从 LocalStorage、上下文或 Workspace 列表中提取）
+    const renderDropdown = (localInstances = null) => {
+        const prevSelected = sel.value;
+        sel.innerHTML = '';
+        
+        // ── 分组 1: 本地 Power BI Desktop 实例 ──
+        const localGroup = document.createElement('optgroup');
+        localGroup.label = "💻 Local Power BI Desktop Instances";
+        
+        if (localInstances === null) {
+            const scanningOpt = document.createElement('option');
+            scanningOpt.value = "";
+            scanningOpt.disabled = true;
+            scanningOpt.textContent = "⏳ Scanning local instances...";
+            localGroup.appendChild(scanningOpt);
+        } else if (Array.isArray(localInstances) && localInstances.length > 0) {
+            localInstances.forEach(inst => {
                 const opt = document.createElement('option');
-                opt.value = inst.port;
-                opt.textContent = inst.name;
-                sel.appendChild(opt);
+                opt.value = `local:${inst.port}`;
+                opt.textContent = `[Local] ${inst.name || 'PBI Desktop'} (Port: ${inst.port})`;
+                localGroup.appendChild(opt);
             });
         } else {
-            sel.innerHTML = '<option value="">No local instances found</option>';
-            if(json.error) {
-                err.textContent = json.error;
-                err.style.display = 'block';
-            }
+            const emptyOpt = document.createElement('option');
+            emptyOpt.value = "";
+            emptyOpt.disabled = true;
+            emptyOpt.textContent = "No local PBI Desktop instances detected";
+            localGroup.appendChild(emptyOpt);
+        }
+        sel.appendChild(localGroup);
+        
+        // ── 分组 2: 云端 Power BI 数据集 (XMLA / REST) ──
+        const cloudGroup = document.createElement('optgroup');
+        cloudGroup.label = "☁️ Power BI Cloud Datasets (XMLA / REST)";
+        
+        let workspaces = [];
+        let datasets = [];
+        try { workspaces = window.getListData ? window.getListData('workspace-list') : []; } catch(e) {}
+        if (!workspaces.length) {
+            try { workspaces = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]'); } catch(e) {}
+        }
+        try { datasets = window.getListData ? window.getListData('dataset-list') : []; } catch(e) {}
+        if (!datasets.length) {
+            try { datasets = JSON.parse(localStorage.getItem('pbi_datasets') || '[]'); } catch(e) {}
+        }
+        
+        // 兜底：如果 Toolbar 上有当前活跃的 Workspace/Dataset
+        const activeWs = document.getElementById('active-workspace')?.value || '';
+        const activeDs = document.getElementById('active-dataset')?.value || '';
+        const activeWsName = document.getElementById('trigger-workspace')?.querySelector('.cs-name')?.textContent || 'Current Workspace';
+        const activeDsName = document.getElementById('trigger-dataset')?.querySelector('.cs-name')?.textContent || 'Current Dataset';
+        
+        let cloudCount = 0;
+        const addedKeys = new Set();
+        
+        // 注入当前活跃选择项
+        if (activeDs && activeDs !== '-- None --') {
+            const opt = document.createElement('option');
+            opt.value = `cloud:${activeWs}:${activeDs}`;
+            opt.textContent = `[Cloud] ${activeDsName} (${activeWsName})`;
+            cloudGroup.appendChild(opt);
+            addedKeys.add(`${activeWs}:${activeDs}`);
+            cloudCount++;
+        }
+        
+        if (Array.isArray(datasets) && datasets.length > 0) {
+            datasets.forEach(ds => {
+                const dsId = ds.id || ds.guid || '';
+                const dsName = ds.alias || ds.name || dsId;
+                if (!dsId || addedKeys.has(`${activeWs}:${dsId}`)) return;
+                
+                const wsId = ds.workspaceId || ds.groupId || activeWs || (workspaces[0] ? (workspaces[0].id || workspaces[0].guid) : '');
+                const wsObj = workspaces.find(w => (w.id === wsId || w.guid === wsId));
+                const wsName = wsObj ? (wsObj.alias || wsObj.name || 'Workspace') : (activeWsName || 'Workspace');
+                
+                const opt = document.createElement('option');
+                opt.value = `cloud:${wsId}:${dsId}`;
+                opt.textContent = `[Cloud] ${dsName} (${wsName})`;
+                cloudGroup.appendChild(opt);
+                addedKeys.add(`${wsId}:${dsId}`);
+                cloudCount++;
+            });
+        }
+        
+        if (cloudCount === 0) {
+            const emptyCloud = document.createElement('option');
+            emptyCloud.value = "";
+            emptyCloud.disabled = true;
+            emptyCloud.textContent = "No cloud datasets found (Select workspace/dataset in top bar)";
+            cloudGroup.appendChild(emptyCloud);
+        }
+        sel.appendChild(cloudGroup);
+        
+        // 恢复之前选中的值或选中首个有效项
+        if (prevSelected && sel.querySelector(`option[value="${prevSelected}"]`)) {
+            sel.value = prevSelected;
+        } else {
+            const firstValid = sel.querySelector('option:not([disabled])');
+            if (firstValid) sel.value = firstValid.value;
+        }
+    };
+
+    // 立即秒级同步呈现云端模型，消除任何等待
+    renderDropdown(null);
+    
+    // 异步后台探测本地 PBI 实例（带 8 秒超时，适配 ADOMD 与 PowerShell 进程探测）
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        
+        const res = await fetch('/api/local-model/instances', { 
+            method: 'POST',
+            signal: controller.signal 
+        });
+        clearTimeout(timeoutId);
+        
+        if (res.ok) {
+            const json = await res.json();
+            renderDropdown(json.success && Array.isArray(json.instances) ? json.instances : []);
+        } else {
+            renderDropdown([]);
         }
     } catch (e) {
-        sel.innerHTML = '<option value="">Error fetching instances</option>';
-        err.textContent = e.message;
-        err.style.display = 'block';
+        renderDropdown([]);
+    } finally {
+        if (refreshBtn) {
+            setTimeout(() => refreshBtn.classList.remove('spinning'), 300);
+        }
     }
 };
 
@@ -7476,14 +7928,13 @@ window.updateLocalDaxTemplate = function() {
     } else if (val === 'partitions') {
         editor.value = "EVALUATE INFO.PARTITIONS()";
     } else if (val === 'custom') {
-        if (!editor.value || editor.value.includes("INFO.")) {
-            editor.value = "EVALUATE\n    TOPN(10, 'YourTableName')";
+        if (!editor.value) {
+            editor.value = "EVALUATE\n    TOPN(10, 'Sales')";
         }
     }
 };
 
 window.runLocalModelWorkflow = async function() {
-    const btn = document.getElementById('wf-btn-runall');
     const out = document.getElementById('wf-local-status');
     const resultWrap = document.getElementById('wf-local-result-wrap');
     const resultDiv = document.getElementById('wf-local-result');
@@ -7491,30 +7942,52 @@ window.runLocalModelWorkflow = async function() {
     const editor = document.getElementById('local-dax-editor');
     const instSel = document.getElementById('local-model-instance');
 
-    if (!editor.value.trim()) {
+    if (!editor || !editor.value.trim()) {
         window.showNotification('Please enter a DAX query', 'error');
+        if (out) {
+            out.style.display = 'block';
+            out.textContent = '❌ Please enter a DAX query before running.';
+            out.style.color = 'var(--error)';
+        }
         return;
     }
 
-    let port = null;
-    if (instSel && instSel.value) {
-        port = parseInt(instSel.value);
+    const targetVal = instSel ? instSel.value : '';
+    if (!targetVal) {
+        window.showNotification('Please select a Target Model Instance', 'error');
+        if (out) {
+            out.style.display = 'block';
+            out.textContent = '❌ Please select a Target Model Instance first.';
+            out.style.color = 'var(--error)';
+        }
+        return;
     }
 
-    btn.disabled = true;
-    btn.innerHTML = '<span class="loader" style="width:12px;height:12px;border-width:2px;"></span> Running...';
-    out.style.display = 'block';
-    out.textContent = 'Executing DAX query against local model...';
-    out.style.color = 'var(--text-secondary)';
-    resultWrap.style.display = 'none';
-    resultDiv.innerHTML = '';
-    statsSpan.textContent = '';
+    let payload = { query: editor.value };
+    if (targetVal.startsWith('cloud:')) {
+        const parts = targetVal.split(':');
+        payload.workspace_id = parts[1] || document.getElementById('active-workspace')?.value || '';
+        payload.dataset_id = parts[2] || document.getElementById('active-dataset')?.value || '';
+    } else if (targetVal.startsWith('local:')) {
+        payload.port = parseInt(targetVal.split(':')[1]);
+    } else if (!isNaN(parseInt(targetVal))) {
+        payload.port = parseInt(targetVal);
+    }
+
+    if (out) {
+        out.style.display = 'block';
+        out.textContent = targetVal.startsWith('cloud:') ? 'Executing DAX against Cloud Model (Trying XMLA Endpoint -> Silent REST Fallback)...' : 'Executing DAX query against local model...';
+        out.style.color = 'var(--text-secondary)';
+    }
+    if (resultWrap) resultWrap.style.display = 'none';
+    if (resultDiv) resultDiv.innerHTML = '';
+    if (statsSpan) statsSpan.textContent = '';
 
     try {
         const res = await fetch('/api/local-model/dax', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: editor.value, port: port })
+            body: JSON.stringify(payload)
         });
         const json = await res.json();
 
@@ -7523,8 +7996,10 @@ window.runLocalModelWorkflow = async function() {
 
             // Empty result
             if (!data || (Array.isArray(data) && data.length === 0)) {
-                out.textContent = '✅ Query executed — no rows returned.';
-                out.style.color = 'var(--success)';
+                if (out) {
+                    out.textContent = '✅ Query executed — no rows returned.';
+                    out.style.color = 'var(--success)';
+                }
                 return;
             }
 
@@ -7532,12 +8007,10 @@ window.runLocalModelWorkflow = async function() {
             const rows = Array.isArray(data) ? data : [data];
 
             // Collect columns and clean bracket-prefixed names from DAX INFO.* functions
-            // e.g. "[Table Name]" → "Table Name", "[Expression]" → "Expression"
             const colSetRaw = new Set();
             rows.forEach(r => { if (r && typeof r === 'object') Object.keys(r).forEach(k => colSetRaw.add(k)); });
             const rawCols = Array.from(colSetRaw);
 
-            // Filter out known redundant/internal columns (GUID-like, ID-only columns if others exist)
             const SKIP_PATTERNS = [
                 /^\[?TableID\]?$/i,
                 /^\[?PartitionID\]?$/i,
@@ -7548,36 +8021,37 @@ window.runLocalModelWorkflow = async function() {
             ];
             const filteredCols = rawCols.filter(c => !SKIP_PATTERNS.some(p => p.test(c)));
             const columns = filteredCols.length > 0 ? filteredCols : rawCols;
-
-            // Clean display names: strip surrounding brackets "[Table Name]" → "Table Name"
             const displayNames = columns.map(c => c.replace(/^\[|\]$/g, ''));
 
             if (columns.length === 0) {
-                out.textContent = '✅ Query executed — result is not tabular.';
-                out.style.color = 'var(--success)';
+                if (out) {
+                    out.textContent = '✅ Query executed — result is not tabular.';
+                    out.style.color = 'var(--success)';
+                }
                 return;
             }
 
-            // Save raw tabular data for column selector and modal rendering
             window._lastDaxResult = { rows, columns, displayNames };
 
-            resultWrap.style.display = 'block';
-            statsSpan.textContent = `${rows.length} rows × ${columns.length} cols`;
+            if (resultWrap) resultWrap.style.display = 'block';
+            if (statsSpan) statsSpan.textContent = `${rows.length} rows × ${columns.length} cols`;
 
-            out.textContent = `✅ Query executed — ${rows.length} rows returned. Click "DAX Query Results" above to view table.`;
-            out.style.color = 'var(--success)';
+            const channelInfo = json.channel ? ` (${json.channel})` : '';
+            if (out) {
+                out.textContent = `✅ Query executed — ${rows.length} rows returned${channelInfo}. Click "DAX Query Results" above to view table.`;
+                out.style.color = 'var(--success)';
+            }
 
         } else {
-            out.textContent = 'Error: ' + (json.error || 'Unknown error');
-            out.style.color = 'var(--error)';
+            if (out) {
+                out.textContent = 'Error: ' + (json.error || 'Unknown error');
+                out.style.color = 'var(--error)';
+            }
         }
     } catch (e) {
-        out.textContent = 'Error: ' + e.message;
-        out.style.color = 'var(--error)';
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Run Selected Workflow';
+        if (out) {
+            out.textContent = 'Error: ' + e.message;
+            out.style.color = 'var(--error)';
         }
     }
 };
@@ -7634,6 +8108,393 @@ window.alert = function(msg) {
         window.window.showCustomAlert(msg);
     } else {
         console.log("ALERT:", msg);
+    }
+};
+
+// --- Dataset Partitions Manager & Targeted Refresh Logic ---
+window.dpmPartitionsCache = [];
+
+window.scanDatasetPartitions = async function(btnEl) {
+    const out = document.getElementById('wf-out-dpm-logs');
+    const statsEl = document.getElementById('wf-dpm-stats');
+
+    if (!out) return;
+
+    // Auto expand execution log console when starting
+    if (out.classList.contains('collapsed-console')) {
+        out.classList.remove('collapsed-console');
+        const chevron = document.getElementById('wf-out-dpm-logs-chevron');
+        if (chevron) chevron.style.transform = 'rotate(90deg)';
+    }
+
+    out.textContent = `[${new Date().toLocaleTimeString()}] Starting scan of all accessible workspaces, datasets & table partitions...\n`;
+    window.dpmPartitionsCache = [];
+    if (statsEl) statsEl.textContent = '';
+
+    try {
+        // 1. Fetch workspaces
+        out.textContent += `Step 1/3: Fetching workspaces list...\n`;
+        const wsRes = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint: '/groups', method: 'GET' })
+        });
+        const wsJson = await wsRes.json();
+        const workspaces = (wsJson.data && wsJson.data.value) ? wsJson.data.value : [];
+        out.textContent += `Found ${workspaces.length} accessible workspaces.\n`;
+
+        let totalPartitions = 0;
+
+        for (const ws of workspaces) {
+            out.textContent += `Scanning Workspace: ${ws.name} (${ws.id})...\n`;
+            
+            // 2. Fetch datasets in workspace
+            const dsRes = await fetch('/api/proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint: `/groups/${ws.id}/datasets`, method: 'GET' })
+            });
+            const dsJson = await dsRes.json();
+            const datasets = (dsJson.data && dsJson.data.value) ? dsJson.data.value : [];
+
+            for (const ds of datasets) {
+                out.textContent += `  └─ Dataset: ${ds.name} (${ds.id})...\n`;
+                
+                // 3. Fetch tables in dataset
+                const tblRes = await fetch('/api/proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint: `/groups/${ws.id}/datasets/${ds.id}/tables`, method: 'GET' })
+                });
+                const tblJson = await tblRes.json();
+                const tables = (tblJson.data && tblJson.data.value) ? tblJson.data.value : [];
+
+                if (tables.length === 0) {
+                    // Try direct dataset partitions info or push item without sub-tables
+                    window.dpmPartitionsCache.push({
+                        workspaceId: ws.id,
+                        workspaceName: ws.name,
+                        datasetId: ds.id,
+                        datasetName: ds.name,
+                        tableName: "Full Model",
+                        partitionName: "Default / All Partitions",
+                        mode: "Import",
+                        canRefresh: true
+                    });
+                    totalPartitions++;
+                    continue;
+                }
+
+                for (const tbl of tables) {
+                    // 4. Fetch partitions for table
+                    const partRes = await fetch('/api/proxy', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ endpoint: `/groups/${ws.id}/datasets/${ds.id}/tables/${tbl.name}/partitions`, method: 'GET' })
+                    });
+                    const partJson = await partRes.json();
+                    const partitions = (partJson.data && partJson.data.value) ? partJson.data.value : [];
+
+                    if (partitions.length === 0) {
+                        window.dpmPartitionsCache.push({
+                            workspaceId: ws.id,
+                            workspaceName: ws.name,
+                            datasetId: ds.id,
+                            datasetName: ds.name,
+                            tableName: tbl.name,
+                            partitionName: `${tbl.name}_Partition`,
+                            mode: "Import",
+                            canRefresh: true
+                        });
+                        totalPartitions++;
+                    } else {
+                        for (const part of partitions) {
+                            window.dpmPartitionsCache.push({
+                                workspaceId: ws.id,
+                                workspaceName: ws.name,
+                                datasetId: ds.id,
+                                datasetName: ds.name,
+                                tableName: tbl.name,
+                                partitionName: part.name || part.id || `${tbl.name}_Part`,
+                                mode: part.mode || "Import",
+                                canRefresh: true
+                            });
+                            totalPartitions++;
+                        }
+                    }
+        // Deduplicate cache entries by unique key (workspaceId + datasetId + tableName + partitionName)
+                } // end for (const tbl of tables)
+            } // end for (const ds of datasets)
+        } // end for (const ws of workspaces)
+        const uniqueMap = new Map();
+        for (const item of window.dpmPartitionsCache) {
+            const key = `${item.workspaceId}_${item.datasetId}_${item.tableName}_${item.partitionName}`;
+            if (!uniqueMap.has(key)) {
+                uniqueMap.set(key, item);
+            }
+        }
+        window.dpmPartitionsCache = Array.from(uniqueMap.values());
+        totalPartitions = window.dpmPartitionsCache.length;
+
+        out.textContent += `\nScan Complete! Successfully indexed ${totalPartitions} dataset partitions. 🎉\n`;
+        if (statsEl) statsEl.textContent = `Indexed: ${totalPartitions} partitions`;
+        const wrap = document.getElementById('wf-dpm-result-wrap');
+        if (wrap) wrap.style.display = 'block';
+
+    } catch (err) {
+        out.textContent += `Error during partition scan: ${err.message || JSON.stringify(err)}\n`;
+    }
+};
+
+window.openDpmResultModal = function() {
+    if (!window.dpmPartitionsCache || window.dpmPartitionsCache.length === 0) {
+        if (window.showCustomAlert) window.showCustomAlert('No dataset partition data available. Please click "Scan Partitions" first.');
+        return;
+    }
+    const cols = ['workspaceName', 'datasetName', 'tableName', 'partitionName', 'mode', 'actions'];
+    const displayNames = ['Workspace', 'Dataset', 'Table Name', 'Partition Name', 'Refresh Mode', 'Actions'];
+    if (window.showUniversalDataModal) {
+        window.showUniversalDataModal({
+            title: '⚡ Dataset Partitions & Targeted Refresh Manager',
+            data: window.dpmPartitionsCache,
+            columns: cols,
+            displayNames: displayNames,
+            enableSearch: true,
+            enableColumnFilter: true,
+            cellRenderer: function(col, val, row) {
+                if (col === 'actions') {
+                    const itemIdx = window.dpmPartitionsCache.indexOf(row);
+                    return `
+                        <div style="display: flex; gap: 6px; align-items: center;">
+                            <button type="button" class="btn-wf-sm btn-wf-secondary" style="padding: 3px 8px; font-size: 0.75rem; white-space: nowrap;" onclick="window.refreshDpmPartition(this, ${itemIdx})">⚡ Refresh</button>
+                            <button type="button" class="btn-wf-sm btn-wf-secondary" style="padding: 3px 8px; font-size: 0.75rem; white-space: nowrap; color: var(--accent);" onclick="window.openPartitionRefreshHistoryModal(this, ${itemIdx})" title="View Refresh History Log">📜 History</button>
+                        </div>
+                    `;
+                }
+                return undefined;
+            }
+        });
+    }
+};
+
+window.openPartitionRefreshHistoryModal = async function(btnEl, itemIdx) {
+    const item = window.dpmPartitionsCache[itemIdx];
+    if (!item) return;
+
+    if (btnEl) {
+        btnEl.disabled = true;
+        btnEl.innerHTML = '<span class="loader" style="width: 10px; height: 10px; border-width: 1px;"></span> Loading...';
+    }
+
+    try {
+        const res = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                endpoint: `/groups/${item.workspaceId}/datasets/${item.datasetId}/refreshes?$top=20`,
+                method: 'GET'
+            })
+        });
+        const json = await res.json();
+        const refreshes = (json.data && json.data.value) ? json.data.value : [];
+
+        const formattedData = refreshes.map(r => ({
+            id: r.id || r.requestId || '-',
+            refreshType: r.refreshType || 'ViaApi',
+            startTime: r.startTime ? new Date(r.startTime).toLocaleString() : '-',
+            endTime: r.endTime ? new Date(r.endTime).toLocaleString() : '-',
+            duration: (r.startTime && r.endTime) ? Math.round((new Date(r.endTime) - new Date(r.startTime))/1000) + 's' : '-',
+            status: r.status || 'Unknown',
+            error: r.serviceExceptionJson ? (JSON.parse(r.serviceExceptionJson).errorCode || 'Error') : 'None'
+        }));
+
+        if (window.showUniversalDataModal) {
+            window.showUniversalDataModal({
+                modalId: 'refresh-history-modal-overlay',
+                title: `📜 Refresh History: ${item.datasetName} (${item.partitionName})`,
+                data: formattedData,
+                columns: ['id', 'refreshType', 'startTime', 'endTime', 'duration', 'status', 'error'],
+                displayNames: ['Refresh ID', 'Trigger Type', 'Start Time', 'End Time', 'Duration', 'Status', 'Error Info'],
+                enableSearch: true,
+                enableColumnFilter: true
+            });
+        }
+    } catch(err) {
+        if (window.showCustomAlert) window.showCustomAlert(`Failed to load refresh history: ${err.message}`);
+    } finally {
+        if (btnEl) {
+            btnEl.disabled = false;
+            btnEl.innerHTML = '📜 History';
+        }
+    }
+};
+
+window.renderDpmTable = function(items) {
+    const tbody = document.getElementById('wf-dpm-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (items.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="padding: 16px; text-align: center; color: var(--text-secondary);">No dataset partitions found matching filter.</td></tr>`;
+        return;
+    }
+
+    items.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid var(--panel-border)';
+        tr.innerHTML = `
+            <td style="padding: 8px 12px;">
+                <div style="font-weight: bold; color: var(--text-primary);">${item.datasetName}</div>
+                <div style="font-size: 0.72rem; color: var(--text-secondary);">${item.workspaceName} / ${item.tableName}</div>
+            </td>
+            <td style="padding: 8px 12px; font-family: monospace; color: var(--accent); font-weight: 500;">
+                ${item.partitionName}
+            </td>
+            <td style="padding: 8px 12px;">
+                <span class="badge" style="background: var(--input-bg-light); border: 1px solid var(--panel-border); font-size: 0.7rem; padding: 2px 6px; border-radius: 4px;">${item.mode}</span>
+            </td>
+            <td style="padding: 8px 12px;">
+                <button type="button" class="btn-wf-sm btn-wf-secondary" style="padding: 4px 8px; font-size: 0.75rem; white-space: nowrap;" onclick="window.refreshDpmPartition(this, ${idx})">
+                    ⚡ Refresh Partition
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+};
+
+window.filterDpmPartitions = function() {
+    const q = (document.getElementById('wf-dpm-search').value || '').toLowerCase().trim();
+    if (!q) {
+        window.renderDpmTable(window.dpmPartitionsCache);
+        return;
+    }
+    const filtered = window.dpmPartitionsCache.filter(item => 
+        item.workspaceName.toLowerCase().includes(q) ||
+        item.datasetName.toLowerCase().includes(q) ||
+        item.tableName.toLowerCase().includes(q) ||
+        item.partitionName.toLowerCase().includes(q)
+    );
+    window.renderDpmTable(filtered);
+};
+
+window.refreshDpmPartition = async function(btnEl, itemIdx) {
+    const item = window.dpmPartitionsCache[itemIdx];
+    const out = document.getElementById('wf-out-dpm-logs');
+    if (!item || !out) return;
+
+    if (btnEl) {
+        btnEl.disabled = true;
+        btnEl.innerHTML = '<span class="loader" style="width: 10px; height: 10px; border-width: 1px;"></span> Executing...';
+    }
+
+    out.textContent += `\n[${new Date().toLocaleTimeString()}] Triggering targeted refresh for Partition "${item.partitionName}" (Table: ${item.tableName}, Dataset: ${item.datasetName})...\n`;
+
+    try {
+        const payload = {
+            endpoint: `/groups/${item.workspaceId}/datasets/${item.datasetId}/refreshes`,
+            method: 'POST',
+            body: {
+                type: "Full",
+                commitMode: "Transactional",
+                objects: [
+                    {
+                        table: item.tableName,
+                        partition: item.partitionName
+                    }
+                ]
+            }
+        };
+
+        const res = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (data.success && (data.data.status_code === 202 || data.data.status_code === 200)) {
+            out.textContent += `Success: Refresh command submitted for partition "${item.partitionName}". HTTP ${data.data.status_code} Accepted! 🎉\n`;
+            if (window.showNotification) window.showNotification(`Partition "${item.partitionName}" refresh initiated!`, 'success');
+        } else {
+            // Fallback for standard dataset refresh if table partition API returns notice
+            out.textContent += `Notice: Specialized partition API response: ${JSON.stringify(data.data)}. Triggering standard dataset refresh fallback...\n`;
+            const fallbackRes = await fetch('/api/proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    endpoint: `/groups/${item.workspaceId}/datasets/${item.datasetId}/refreshes`,
+                    method: 'POST'
+                })
+            });
+            const fallbackData = await fallbackRes.json();
+            out.textContent += `Fallback Dataset Refresh Submitted: HTTP ${fallbackData.data ? fallbackData.data.status_code : 'OK'}\n`;
+            if (window.showNotification) window.showNotification(`Dataset refresh fallback triggered for ${item.datasetName}`, 'info');
+        }
+
+        // Start polling refresh status
+        out.textContent += `Polling refresh status for dataset ${item.datasetName}...\n`;
+        let attempts = 0;
+        const maxAttempts = 15;
+        const pollInterval = setInterval(async () => {
+            attempts++;
+            try {
+                const statusRes = await fetch('/api/proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        endpoint: `/groups/${item.workspaceId}/datasets/${item.datasetId}/refreshes?$top=1`,
+                        method: 'GET'
+                    })
+                });
+                const statusJson = await statusRes.json();
+                const latest = (statusJson.data && statusJson.data.value && statusJson.data.value.length > 0) ? statusJson.data.value[0] : null;
+                
+                if (latest) {
+                    out.textContent += `[Poll ${attempts}/${maxAttempts}] Current Status: ${latest.status}\n`;
+                    out.scrollTop = out.scrollHeight;
+                    if (latest.status === 'Completed') {
+                        clearInterval(pollInterval);
+                        out.textContent += `✅ Refresh Completed Successfully! (End Time: ${latest.endTime || 'Just now'})\n`;
+                        if (window.showNotification) window.showNotification(`Partition "${item.partitionName}" refreshed successfully! 🎉`, 'success');
+                        if (btnEl) {
+                            btnEl.disabled = false;
+                            btnEl.innerHTML = '✅ Done';
+                            setTimeout(() => { btnEl.innerHTML = '⚡ Refresh Partition'; }, 3000);
+                        }
+                        return;
+                    } else if (latest.status === 'Failed') {
+                        clearInterval(pollInterval);
+                        out.textContent += `❌ Refresh Failed! Error: ${latest.serviceExceptionJson || 'Unknown'}\n`;
+                        if (window.showNotification) window.showNotification(`Refresh failed for "${item.partitionName}"`, 'error');
+                        if (btnEl) {
+                            btnEl.disabled = false;
+                            btnEl.innerHTML = '❌ Failed';
+                            setTimeout(() => { btnEl.innerHTML = '⚡ Refresh Partition'; }, 3000);
+                        }
+                        return;
+                    }
+                }
+            } catch(e) {}
+
+            if (attempts >= maxAttempts) {
+                clearInterval(pollInterval);
+                out.textContent += `Polling timeout. Refresh is still running in background on Power BI Service.\n`;
+                if (btnEl) {
+                    btnEl.disabled = false;
+                    btnEl.innerHTML = '⚡ Refresh Partition';
+                }
+            }
+        }, 3000);
+
+    } catch (err) {
+        out.textContent += `Error triggering partition refresh: ${err.message || JSON.stringify(err)}\n`;
+        if (btnEl) {
+            btnEl.disabled = false;
+            btnEl.innerHTML = '⚡ Refresh Partition';
+        }
+    } finally {
+        out.scrollTop = out.scrollHeight;
     }
 };
 

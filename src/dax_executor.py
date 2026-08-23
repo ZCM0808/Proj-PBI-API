@@ -252,3 +252,184 @@ async def execute_dax_via_ps(port, query):
             except Exception:
                 pass
 
+
+async def execute_cloud_dax(workspace_name_or_id: str, dataset_name_or_id: str, query: str) -> dict:
+    """
+    Execute DAX against Power BI Cloud Model:
+    1. Try XMLA Endpoint via ADOMD.NET (Method 2: Premium / Fabric XMLA)
+    2. Fallback silently to Power BI REST API executeQueries (Method 1: Pro / Standard REST)
+    """
+    from src.config import Config
+    import requests  # type: ignore[import-untyped]
+
+    config = Config()
+    
+    # ── 途径二：尝试 XMLA Endpoint 直连 ──
+    xmla_error = None
+    if config.AUTH_MODE != "personal" and config.CLIENT_ID and config.CLIENT_SECRET and config.TENANT_ID:
+        try:
+            ws_input = workspace_name_or_id.strip()
+            ds_input = dataset_name_or_id.strip()
+
+            # 智能解析工作区与数据集易读名称（XMLA Endpoint 强依赖 Workspace Name 与 Dataset Name）
+            ws_target = ws_input
+            for w in config.PBI_WORKSPACES:
+                if (w.get("id") or "").lower() == ws_input.lower():
+                    ws_target = w.get("alias") or w.get("name") or ws_input
+                    break
+
+            ds_target = ds_input
+            for d in config.PBI_DATASETS:
+                if (d.get("id") or "").lower() == ds_input.lower():
+                    ds_target = d.get("alias") or d.get("name") or ds_input
+                    break
+
+            from src.pbi_client import PBIClient
+            client = PBIClient(config)
+            token = client._get_token("powerbi")
+
+            # Build XMLA connection string with Password token / Service Principal
+            conn_str = (
+                f"Data Source=powerbi://api.powerbi.com/v1.0/myorg/{ws_target};"
+                f"Initial Catalog={ds_target};"
+                f"Password={token};"
+                f"Application Name=PBI-API-Explorer;"
+            )
+            
+            dll_path = _find_adomd_dll()
+            bin_dir = os.path.dirname(dll_path) if dll_path else ""
+
+            ps_script = f"""
+            $ErrorActionPreference = 'Stop'
+            $binDir = '{bin_dir}'
+            if ($binDir -and (Test-Path $binDir)) {{
+                [System.AppDomain]::CurrentDomain.add_AssemblyResolve({{
+                    param($sender, $args)
+                    $assemblyName = ($args.Name -split ',')[0]
+                    $targetPath = Join-Path $binDir ($assemblyName + ".dll")
+                    if (Test-Path $targetPath) {{
+                        return [System.Reflection.Assembly]::LoadFrom($targetPath)
+                    }}
+                    return $null
+                }})
+            }}
+            if ('{dll_path}' -and (Test-Path '{dll_path}')) {{
+                [System.Reflection.Assembly]::LoadFrom('{dll_path}') | Out-Null
+            }} else {{
+                [System.Reflection.Assembly]::LoadWithPartialName("Microsoft.AnalysisServices.AdomdClient") | Out-Null
+            }}
+
+            $connStr = @'
+{conn_str}
+'@
+            $conn = New-Object Microsoft.AnalysisServices.AdomdClient.AdomdConnection($connStr)
+            $conn.Open()
+            $cmd = $conn.CreateCommand()
+            $cmd.CommandText = @'
+{query}
+'@
+            $adapter = New-Object Microsoft.AnalysisServices.AdomdClient.AdomdDataAdapter($cmd)
+            $dt = New-Object System.Data.DataTable
+            $adapter.Fill($dt) | Out-Null
+
+            $result = @()
+            foreach ($row in $dt.Rows) {{
+                $obj = @{{}}
+                foreach ($col in $dt.Columns) {{
+                    $obj[$col.ColumnName] = $row[$col.ColumnName]
+                }}
+                $result += $obj
+            }}
+            $conn.Close()
+            $result | ConvertTo-Json -Compress -Depth 10
+            """
+            
+            script_path = os.path.join(os.environ.get("TEMP", "C:/Windows/Temp"), f"run_cloud_xmla_{os.getpid()}.ps1")
+            with open(script_path, "w", encoding="utf-8") as f:
+                f.write(ps_script)
+
+            try:
+                proc = await asyncio.to_thread(_run_ps_script_sync, script_path)
+                if proc.returncode == 0 and proc.stdout.strip():
+                    parsed = json.loads(proc.stdout.strip())
+                    if isinstance(parsed, dict):
+                        parsed = [parsed]
+                    return {
+                        "success": True,
+                        "data": parsed,
+                        "channel": "XMLA Endpoint (Method 2 - Direct AS Engine)"
+                    }
+                else:
+                    xmla_error = proc.stderr.strip() or "XMLA query returned empty result"
+            finally:
+                if os.path.exists(script_path):
+                    try:
+                        os.remove(script_path)
+                    except Exception:
+                        pass
+        except Exception as e:
+            xmla_error = str(e)
+
+    # ── 途径一：静默回退到 REST API executeQueries ──
+    try:
+        from src.pbi_client import PBIClient
+        client = PBIClient(config)
+        token = client._get_token("powerbi")
+        
+        # 智能判断工作区 URL 结构（如果传入 'my'、'me' 或空则调用个人工作区，否则调用群组工作区）
+        ws_clean = (workspace_name_or_id or '').strip()
+        if not ws_clean or ws_clean.lower() in ('my', 'me', 'myorg', 'default', 'null', 'undefined'):
+            url = f"https://api.powerbi.com/v1.0/myorg/datasets/{dataset_name_or_id}/executeQueries"
+        else:
+            url = f"https://api.powerbi.com/v1.0/myorg/groups/{ws_clean}/datasets/{dataset_name_or_id}/executeQueries"
+        
+        # Ensure query is clean
+        dax_stmt = query.strip()
+        
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "queries": [{"query": dax_stmt}],
+            "serializerSettings": {"includeNulls": True}
+        }
+        
+        resp = await asyncio.to_thread(requests.post, url, headers=headers, json=payload, timeout=60)
+        
+        if resp.status_code == 200:
+            res_json = resp.json()
+            rows = []
+            if "results" in res_json and len(res_json["results"]) > 0:
+                tables = res_json["results"][0].get("tables", [])
+                if tables and "rows" in tables[0]:
+                    rows = tables[0]["rows"]
+            return {
+                "success": True,
+                "data": rows,
+                "channel": f"REST API (Method 1 - executeQueries) [XMLA note: {xmla_error or 'Direct XMLA bypassed'}]"
+            }
+        else:
+            error_msg = resp.text
+            try:
+                err_obj = resp.json()
+                if "error" in err_obj:
+                    pbi_err = err_obj["error"].get("pbi.error", {})
+                    details = pbi_err.get("details", [])
+                    if details:
+                        detail_texts = [d.get("detail", {}).get("value", "") for d in details if d.get("detail", {}).get("value")]
+                        if detail_texts:
+                            error_msg = " | ".join(detail_texts)
+            except Exception:
+                pass
+            return {
+                "success": False,
+                "error": f"DAX Execution Error ({resp.status_code}): {error_msg}. (Note: INFO.* DMV functions like INFO.TABLES() are only supported on XMLA/Desktop AS engine; for REST API executeQueries, please use standard DAX tables like EVALUATE 'TableName' or EVALUATE TOPN(10, 'TableName'))"
+            }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Execution failed: {str(e)}"
+        }
+
+

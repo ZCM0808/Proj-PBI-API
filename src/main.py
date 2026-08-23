@@ -725,11 +725,11 @@ async def get_embed_info(request: Request):
         except Exception:
             pass
 
-        # 2. Try RLS GenerateToken with effective identity (Sales_Rep role) for RLS datasets like AstraZeneca_SFE
+        # 2. Try RLS GenerateToken with effective identity (EastRegionManager role) for RLS datasets like AstraZeneca_SFE
         try:
             rls_identity = {
                 "username": Config().USERNAME or "seven@carman.ccwu.cc",
-                "roles": ["Sales_Rep"],
+                "roles": ["EastRegionManager"],
                 "datasets": [dataset_id] if dataset_id else []
             }
             token_res = await asyncio.to_thread(
@@ -1080,10 +1080,11 @@ async def proxy_request(request: Request):
         return {"success": False, "error": str(e)}
 
 @app.post("/api/local-model/instances")
+@app.get("/api/local-model/instances")
 async def api_local_model_instances():
     from src.dax_executor import get_all_instances
     try:
-        instances = get_all_instances()
+        instances = await asyncio.to_thread(get_all_instances)
         return {"success": True, "instances": instances}
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -1091,14 +1092,22 @@ async def api_local_model_instances():
 class LocalDaxRequest(BaseModel):
     query: str
     port: Optional[int] = None
+    workspace_id: Optional[str] = None
+    dataset_id: Optional[str] = None
 
 @app.post("/api/local-model/dax")
 async def api_local_model_dax(req: LocalDaxRequest):
-    from src.dax_executor import get_dynamic_port, execute_dax_via_ps
+    from src.dax_executor import get_dynamic_port, execute_dax_via_ps, execute_cloud_dax
     try:
+        # 如果指定了云端工作区和数据集，走云端（途径二 XMLA 优先 -> 自动回退途径一 REST API）
+        if req.workspace_id and req.dataset_id:
+            res = await execute_cloud_dax(req.workspace_id, req.dataset_id, req.query)
+            return res
+        
+        # 否则走本地实例
         port = req.port or get_dynamic_port()
         result = await execute_dax_via_ps(port, req.query)
-        return {"success": True, "data": result}
+        return {"success": True, "data": result, "channel": f"Local PBI Desktop Instance (Port: {port})"}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -1293,11 +1302,40 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
         for ep in endpoints_to_try:
             try:
                 resp = await asyncio.to_thread(requests.get, ep, headers=headers)
-                resp.raise_for_status()
-                response_data = resp.json()
-                break
+                if resp.status_code == 200:
+                    response_data = resp.json()
+                    break
+                else:
+                    error_details.append(f"{ep} -> HTTP {resp.status_code}")
             except Exception as e:
                 error_details.append(f"{ep} -> {str(e)}")
+
+        # 如果全局 Admin 扫描受限且未指定单工作区，自动遍历拉取该主体可见的所有 Workspaces 并聚合其下的 datasets/reports
+        if (response_data is None or len(response_data.get("value", [])) == 0) and item_type in ("datasets", "reports") and not workspace_id:
+            try:
+                groups_resp = await asyncio.to_thread(requests.get, "https://api.powerbi.com/v1.0/myorg/groups?$top=5000", headers=headers)
+                if groups_resp.status_code == 200:
+                    groups_list = groups_resp.json().get("value", [])
+                    aggregated_items = []
+                    for g in groups_list:
+                        g_id = g.get("id")
+                        g_name = g.get("name") or "Workspace"
+                        if not g_id:
+                            continue
+                        sub_ep = f"https://api.powerbi.com/v1.0/myorg/groups/{g_id}/{item_type}"
+                        try:
+                            sub_res = await asyncio.to_thread(requests.get, sub_ep, headers=headers)
+                            if sub_res.status_code == 200:
+                                for sub_item in sub_res.json().get("value", []):
+                                    sub_item["workspaceName"] = g_name
+                                    sub_item["workspaceId"] = g_id
+                                    aggregated_items.append(sub_item)
+                        except Exception:
+                            pass
+                    if aggregated_items:
+                        response_data = {"value": aggregated_items}
+            except Exception:
+                pass
 
         if response_data is None:
             err_msg = " | ".join(error_details)
@@ -1308,11 +1346,13 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
         for item in items:
             raw_type = item.get("type") or ("Personal" if item.get("isOnDedicatedCapacity") is False and "type" not in item else "Workspace")
             raw_state = item.get("state") or "Active"
+            ws_prefix = f"[{item.get('workspaceName')}] " if item.get("workspaceName") else ""
             result_items.append({
                 "id": item.get("id"),
-                "name": item.get("name") or item.get("id"),
+                "name": f"{ws_prefix}{item.get('name') or item.get('id')}",
                 "type": str(raw_type),
-                "state": str(raw_state)
+                "state": str(raw_state),
+                "workspaceId": item.get("workspaceId", "")
             })
         return {"success": True, "data": result_items}
     except Exception as e:

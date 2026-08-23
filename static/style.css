@@ -1,5 +1,5 @@
 :root {
-    --sidebar-width: 250px;
+    --sidebar-width: clamp(240px, 22vw, 420px);
     --bg-color: #0b0d12;
     --panel-bg: rgba(18, 22, 31, 0.85);
     --panel-border: rgba(255, 255, 255, 0.12);
@@ -997,8 +997,8 @@ textarea:focus {
 .modal-overlay {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
     background: var(--shadow-dark);
-    display: flex; justify-content: center; align-items: flex-start;
-    padding-top: 60px;
+    display: flex; justify-content: center; align-items: center;
+    padding: 20px;
     box-sizing: border-box;
     overflow-y: auto;
     z-index: 1000;
@@ -1020,7 +1020,8 @@ textarea:focus {
 }
 
 .modal-content {
-    width: 600px; max-width: 90vw; max-height: 90vh;
+    width: min(92vw, 650px);
+    max-height: min(90vh, 900px);
     margin: 0 auto;
     position: relative;
     background: var(--panel-bg);
@@ -1030,14 +1031,23 @@ textarea:focus {
     animation: modalPopUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
-/* Modal overrides for specific modals since inline styles were removed */
-#workflow-modal .modal-content { width: 90%; max-width: 800px; max-height: 85vh; }
-#scan-modal .modal-content { width: 80%; max-width: 1000px; max-height: 85vh; }
-#custom-dialog-modal .modal-content { max-width: 400px; }
-#gum-edit-modal .modal-content, #gum-add-modal .modal-content { max-width: 450px; }
-#pipeline-modal .modal-content { width: 90%; max-width: 800px; }
-#settings-modal .modal-content { width: 90%; max-width: 900px; }
-#modal-note .modal-content { width: 90%; max-width: 900px; }
+/* Modal fluid overrides for specific modals */
+#workflow-modal .modal-content { width: min(92vw, 840px); max-height: min(88vh, 850px); }
+#scan-modal .modal-content { width: min(94vw, 1080px); max-height: min(88vh, 850px); }
+#custom-dialog-modal .modal-content { width: min(90vw, 420px); max-width: 420px; }
+#gum-edit-modal .modal-content, #gum-add-modal .modal-content { width: min(90vw, 460px); max-width: 460px; }
+#pipeline-modal .modal-content { width: min(92vw, 840px); max-height: min(88vh, 850px); }
+#settings-modal .modal-content { width: min(94vw, 960px); max-height: min(90vh, 900px); }
+#modal-note .modal-content { width: min(94vw, 960px); max-height: min(90vh, 900px); }
+
+/* Fluid Responsive Grid for Form Inputs */
+.wf-fluid-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+    gap: 12px;
+    margin-bottom: 8px;
+    width: 100%;
+}
 
 /* Grid Header & Resizable Columns Styling */
 .grid-col-header {
@@ -2680,10 +2690,22 @@ span:hover > .wf-copy-btn,
 
 .input-with-copy { position: relative; display: flex; align-items: center; flex: 1; width: 100%; }
 .input-with-copy .wf-input { padding-right: 32px !important; }
-.input-with-copy .wf-copy-btn { top: 50%; transform: translateY(-50%); right: 6px; z-index: 10; }
+.input-with-copy .wf-copy-btn { 
+    top: 0; 
+    bottom: 0; 
+    margin: auto 0; 
+    transform: none !important; 
+    right: 6px; 
+    z-index: 10; 
+}
 .input-with-copy:has(> textarea) .wf-copy-btn,
 .input-with-copy:has(> textarea.wf-input) .wf-copy-btn,
-.input-with-copy:has(> .wf-console) .wf-copy-btn { top: 8px; transform: none; }
+.input-with-copy:has(> .wf-console) .wf-copy-btn { 
+    top: 8px; 
+    bottom: auto; 
+    margin: 0; 
+    transform: none !important; 
+}
 
 /* Disable text selection on table headers for multi-sort */
 table.data-table th,
@@ -2999,4 +3021,73 @@ div:has(> .collapsed-console) > .wf-copy-btn,
 
 .flash-success-anim {
     animation: flash-success 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Hover-visible Action Buttons for PBI Embed Container */
+#pbi-embed-wrapper {
+    position: relative;
+}
+.pbi-action-btn {
+    background: rgba(18, 22, 31, 0.85);
+    color: var(--text-secondary);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 6px;
+    cursor: pointer;
+    opacity: 0;
+    transform: scale(0.9);
+    transition: opacity 0.25s ease, transform 0.25s ease, background 0.2s ease, color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+}
+#pbi-embed-wrapper:hover .pbi-action-btn {
+    opacity: 1;
+    transform: scale(1);
+}
+.pbi-action-btn:hover {
+    background: var(--accent);
+    color: var(--accent-text);
+    border-color: var(--accent);
+    box-shadow: 0 0 12px var(--accent-glow);
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+.spinning svg,
+svg.spinning {
+    animation: spin 0.8s linear infinite !important;
+    transform-origin: center center !important;
+}
+
+/* HTML5 Fullscreen API Mode for PBI Embed Wrapper - Instant Hardware Fullscreen */
+#pbi-embed-wrapper:fullscreen,
+#pbi-embed-wrapper:-webkit-full-screen {
+    width: 100vw !important;
+    height: 100vh !important;
+    background: var(--panel-bg) !important;
+    padding: 16px !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+#pbi-embed-wrapper:fullscreen #pbi-embed-container,
+#pbi-embed-wrapper:-webkit-full-screen #pbi-embed-container {
+    width: 100% !important;
+    height: 100% !important;
+    aspect-ratio: auto !important;
+}
+#pbi-embed-wrapper:fullscreen .pbi-embed-actions,
+#pbi-embed-wrapper:-webkit-full-screen .pbi-embed-actions {
+    top: 24px !important;
+    right: 24px !important;
+}
+
+#pbi-embed-container iframe {
+    width: 100% !important;
+    height: 100% !important;
+    transition: none !important;
 }

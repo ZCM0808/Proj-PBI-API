@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/powerbi-client/dist/powerbi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260818_v321">
+    <link rel="stylesheet" href="/static/style.css?v=20260823_v360">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -350,7 +350,7 @@
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                                     <span>History</span>
                                 </button>
-                                <div id="request-history-dropdown" class="animated-dropdown" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: var(--dropdown-bg); border: 1px solid var(--panel-border); border-radius: 6px; z-index: 1000; width: 450px; max-height: 400px; overflow-y: auto; box-shadow: 0 4px 12px var(--shadow-dark); flex-direction: column;">
+                                <div id="request-history-dropdown" class="animated-dropdown" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: var(--dropdown-bg); border: 1px solid var(--panel-border); border-radius: 6px; z-index: 1000; width: min(90vw, 450px); max-height: min(70vh, 400px); overflow-y: auto; box-shadow: 0 4px 12px var(--shadow-dark); flex-direction: column;">
                                     <div style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); position: sticky; top: 0; background: var(--dropdown-bg); z-index: 2;">
                                         <input type="search" id="history-search-input" placeholder="Fuzzy search URL, Method, or Body..." class="modern-input">
                                     </div>
@@ -411,7 +411,7 @@
                             <button id="format-req-body-btn" class="icon-btn" title="Format JSON" type="button" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer; margin-right: 6px;">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
                             </button>
-                            <button id="copy-req-body-btn" class="icon-btn copy-btn" title="Copy Request Body" type="button" onclick="window.handleCopyAction(this, document.getElementById('request-body').value)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                            <button id="copy-req-body-btn" class="icon-btn copy-btn" title="Copy Request Body" type="button" onclick="window.handleCopyAction(this, document.getElementById('request-body').value || document.getElementById('request-body').placeholder)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
                         </div>
                     </div>
                     <textarea id="request-body" placeholder="[当前 API 接口无需提供 Request Body 请求体]"></textarea>
@@ -479,24 +479,43 @@
                     </label>
                     <div class="input-with-copy" style="flex: 1;">
                         <select id="wf-selector" class="wf-input">
+                            <!-- 1. Data & Visual Export -->
                             <option value="export_report">Export Report to File (PDF/Excel/etc.)</option>
                             <option value="export_visual">Export Visual Data (CSV) - Underlying/Summarized</option>
                             <option value="export_dataset_tables">Export Dataset Tables (CSV)</option>
+                            
+                            <!-- 2. Power BI Platform Admin & Operations -->
+                            <option value="dataset_partitions_manager">Dataset Partitions Manager & Targeted Refresh</option>
+                            <option value="global_user_manager">Global Workspace Permissions Manager</option>
                             <option value="report_view_count">Admin Report View Count (Activity Events)</option>
                             <option value="check_permissions">Check Current Permissions (Token/Features)</option>
+
+                            <!-- 3. Advanced Automation & Diagnostics -->
                             <option value="smart_pipeline">Smart DataOps Pipeline (Auto Bind/Scan/Check)</option>
-                            <option value="global_user_manager">Global Workspace Permissions Manager</option>
                             <option value="local_model_query">Local Model Diagnostics & Query (DAX)</option>
                         </select>
-                        <button type="button" class="wf-copy-btn" title="Copy Workflow Name" onclick="window.handleCopyAction(this, document.getElementById('wf-selector').options[document.getElementById('wf-selector').selectedIndex].text)">
+                        <!-- 复制按钮 (居右 34px) -->
+                        <button type="button" class="wf-copy-btn" title="Copy Workflow Name" onclick="window.handleCopyAction(this, document.getElementById('wf-selector').options[document.getElementById('wf-selector').selectedIndex].text)" style="right: 34px;">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                         </button>
+                        <!-- ✏️ 重命名按钮 (最右侧 6px) -->
+                        <button type="button" id="wf-rename-btn" class="wf-copy-btn" title="重命名当前 Workflow（自定义显示名称）" onclick="window.startWfRename()" style="right: 6px; color: var(--accent);">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
                     </div>
+                </div>
+                <!-- 行内重命名输入框（默认隐藏，点击✏️后显示） -->
+                <div id="wf-rename-bar" style="display:none; align-items:center; gap:8px; padding: 6px 10px; background: var(--overlay-5); border: 1px solid var(--accent); border-radius: 6px; transition: all 0.2s;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    <span style="font-size:0.8rem; color:var(--text-secondary); white-space:nowrap;">重命名为：</span>
+                    <input id="wf-rename-input" type="text" placeholder="输入自定义名称，回车保存..." style="flex:1; background:transparent; border:none; outline:none; font-size:0.85rem; color:var(--text-primary); font-family:inherit;" />
+                    <button type="button" onclick="window.saveWfRename()" style="background:var(--accent); color:#fff; border:none; border-radius:4px; padding:3px 10px; font-size:0.78rem; cursor:pointer; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">保存</button>
+                    <button type="button" onclick="window.cancelWfRename()" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:0.85rem; padding:2px 6px; transition:color 0.2s;" onmouseover="this.style.color='var(--error)'" onmouseout="this.style.color='var(--text-secondary)'">✕</button>
                 </div>
 
                 
                 <div id="wf-config-export_report" class="wf-config-pane">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
+                    <div class="wf-fluid-grid">
                         <div>
                             <label style="font-size: 0.85rem; color: var(--text-secondary);">Workspace ID</label>
                             <select id="wf-exp-workspace" class="wf-input"></select>
@@ -505,7 +524,7 @@
                             <label style="font-size: 0.85rem; color: var(--text-secondary);">Report ID</label>
                             <select id="wf-exp-report" class="wf-input"></select>
                         </div>
-                        <div style="grid-column: span 2;">
+                        <div style="grid-column: 1 / -1;">
                             <label style="font-size: 0.85rem; color: var(--text-secondary);">Export Format</label>
                             <select id="wf-exp-format" class="wf-input">
                                 <option value="PDF">PDF</option>
@@ -522,7 +541,7 @@
                 <!-- Smart Pipeline Container -->
                 
                 <div id="wf-config-report_view_count" class="wf-config-pane" style="display: none;">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
+                    <div class="wf-fluid-grid">
                         <div>
                             <label style="font-size: 0.85rem; color: var(--text-secondary);">Workspace ID</label>
                             <select id="wf-rvc-workspace" class="wf-input"></select>
@@ -675,7 +694,7 @@
                 </div>
 
                 <div id="wf-config-export_dataset_tables" class="wf-config-pane" style="display: none;">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
+                    <div class="wf-fluid-grid">
                         <div>
                             <label style="font-size: 0.85rem; color: var(--text-secondary);">Workspace ID</label>
                             <select id="wf-ds-workspace" class="wf-input"></select>
@@ -736,8 +755,40 @@
                         </div>
                     </div>
                 </div>
+                <div id="wf-config-dataset_partitions_manager" class="wf-config-pane" style="display: none;">
+                    <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+                        <div class="wf-step active">
+                            <div class="wf-step-header" style="display: flex; justify-content: space-between; align-items: center;">
+                                <span class="wf-step-title">🔍 全工作区数据集表与分区扫描 (Scan Dataset Partitions)</span>
+                                <span id="wf-dpm-stats" style="font-size: 0.8rem; color: var(--accent); font-weight: 500;"></span>
+                            </div>
+                            <div class="wf-step-content" style="display: block; margin-top: 8px;">
+                                <!-- Logs Section -->
+                                <div style="position: relative;">
+                                    <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-dpm-logs')">
+                                        <svg id="wf-out-dpm-logs-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                        Execution Logs
+                                    </div>
+                                    <button type="button" id="wf-dpm-logs-copybtn" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-dpm-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                    <div id="wf-out-dpm-logs" class="wf-console collapsed-console" style="min-height: 0; padding-bottom: 20px; transition: max-height 0.3s ease, padding 0.3s ease, border-width 0.3s ease, opacity 0.3s ease; overflow-y: auto; max-height: 250px;">点击下方 "Run Selected Workflow" 获取所有工作区下的数据集表分区结构...</div>
+                                </div>
+                                
+                                <!-- Result header: click to open expand modal -->
+                                <div id="wf-dpm-result-wrap" style="display: none; margin-top: 14px; position: relative;">
+                                    <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
+                                        <button type="button" onclick="window.openDpmResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="Click to expand partitions in a large resizable table modal">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                                            View Detailed Table & Refresh Partitions
+                                        </button>
+                                        <span id="wf-dpm-badge-stats" style="color: var(--success); font-weight: 500;"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <div id="wf-config-export_visual" class="wf-config-pane" style="display: none;">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
+                    <div class="wf-fluid-grid">
                         <div>
                             <label style="font-size: 0.85rem; color: var(--text-secondary);">Workspace ID</label>
                             <div class="input-with-copy">
@@ -793,7 +844,18 @@
 
                     
                     
-                    <div id="pbi-embed-container" style="display: none; width: 100%; height: 400px; border: 1px solid var(--panel-border); border-radius: 6px; margin: 12px 0; background: var(--input-bg);"></div>
+                    <div id="pbi-embed-wrapper" style="position: relative; margin: 12px 0; display: none;">
+                        <div id="pbi-embed-container" style="width: 100%; aspect-ratio: 16 / 9; border: 1px solid var(--panel-border); border-radius: 6px; background: var(--input-bg);"></div>
+                        <div class="pbi-embed-actions" style="position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; z-index: 10;">
+                            <button type="button" class="pbi-action-btn" onclick="window.refreshEmbeddedReport(this)" title="Refresh Report Data">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                            </button>
+                            <button type="button" id="pbi-embed-max-btn" class="pbi-action-btn" onclick="window.togglePbiEmbedFullscreen()" title="Maximize / Fullscreen Preview">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+                            </button>
+                        </div>
+                    </div>
+
 <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
                         <div class="wf-step active" id="wf-vis-step-1">
                             <div class="wf-step-header">
@@ -863,16 +925,18 @@
                             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
                                 <label style="color: var(--text-secondary); font-weight: bold; width: 120px;">Target Instance:</label>
                                 <div class="input-with-copy" style="flex: 1;">
-                                    <select id="local-model-instance" class="wf-input">
-                                        <option value="">Detecting local instances...</option>
+                                    <select id="local-model-instance" class="wf-input" style="padding-right: 64px !important;">
+                                        <option value="">-- Select Target Model --</option>
                                     </select>
-                                    <button type="button" class="wf-copy-btn" title="Copy Port Number" onclick="navigator.clipboard.writeText(document.getElementById('local-model-instance').value); window.showNotification('Port copied', 'success');">
+                                    <!-- 复制按钮 (居右 34px) -->
+                                    <button type="button" class="wf-copy-btn" title="Copy Target Model Name" onclick="window.handleCopyAction(this)" style="right: 34px;">
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                                     </button>
+                                    <!-- 🔄 刷新按钮 (最右侧 6px，悬浮浮现，带动态旋转反馈) -->
+                                    <button type="button" id="wf-local-instance-refresh-btn" class="wf-copy-btn" title="Refresh Local &amp; Cloud Models" onclick="window.fetchLocalModelInstances()" style="right: 6px; color: var(--accent);">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+                                    </button>
                                 </div>
-                                <button type="button" class="btn-action-secondary" style="padding: 0 8px; font-size: 0.85rem; height: 32px; display: inline-flex; align-items: center; justify-content: center;" onclick="window.fetchLocalModelInstances()" title="Refresh Local Instances">
-                                    🔄
-                                </button>
                             </div>
 
                             <div id="local-model-instance-error" style="color: var(--error-color); font-size: 0.75rem; display: none; margin-left: 132px;"></div>
@@ -901,8 +965,8 @@
                                     <div style="display: flex; flex-direction: column; gap: 8px;">
                                         <label style="color: var(--text-secondary); font-weight: bold;">DAX Query:</label>
                                         <div class="input-with-copy">
-                                            <textarea id="local-dax-editor" class="wf-input" style="width: 100%; height: 100px; font-family: monospace; font-size: 0.85rem; padding: 8px; resize: vertical;" placeholder="Enter DAX EVALUATE statement..."></textarea>
-                                            <button type="button" id="wf-local-dax-copy-btn" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('local-dax-editor').value)" title="Copy DAX Query"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                            <textarea id="local-dax-editor" class="wf-input" style="width: 100%; height: 100px; font-family: monospace; font-size: 0.85rem; padding: 8px; resize: vertical;" placeholder="Enter DAX EVALUATE statement...">EVALUATE INFO.TABLES()</textarea>
+                                            <button type="button" id="wf-local-dax-copy-btn" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('local-dax-editor').value || document.getElementById('local-dax-editor').placeholder)" title="Copy DAX Query"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
                                         </div>
                                     </div>
                                 </div>
@@ -926,7 +990,7 @@
                     </div>
             </div> <!-- Close modal body here! -->
             <div class="modal-footer" style="padding: 12px 1.5rem 10px 1.5rem; border-top: 1px solid var(--overlay-10); display: flex; justify-content: flex-end; align-items: center;">
-                <button id="wf-btn-runall" class="btn-wf-lg">
+                <button id="wf-btn-runall" class="btn-wf-lg" type="button" onclick="window.triggerWorkflowRun()">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                     Run Selected Workflow
                 </button>
@@ -1127,6 +1191,30 @@
         </div>
     </div>
 
+    <!-- Fullscreen Embed Modal (Top-level Body Child for viewport centering & boundary-free drag) -->
+    <div id="pbi-fullscreen-modal" class="modal-overlay" style="display: none; z-index: 99999; align-items: center; justify-content: center;">
+        <div id="pbi-fullscreen-modal-content" class="modal-content glass-panel" style="width: 90vw; max-width: 1400px; height: 85vh; display: flex; flex-direction: column; padding: 16px; margin: 0; position: relative;">
+            <div id="pbi-fullscreen-modal-header" class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; cursor: move; user-select: none;">
+                <h3 style="margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+                    <span>📊 Power BI Report Fullscreen Preview</span>
+                </h3>
+                <div style="display: flex; align-items: center; gap: 10px;" onclick="event.stopPropagation();">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <label style="font-size: 0.8rem; color: var(--text-secondary);">Page:</label>
+                        <select id="pbi-fs-page-select" class="wf-input" style="width: 200px; padding: 4px 8px; height: 32px; font-size: 0.8rem;" onchange="window.switchEmbedPage(this.value)">
+                            <option value="">Loading pages...</option>
+                        </select>
+                    </div>
+                    <button type="button" onclick="window.refreshEmbeddedReport(this)" class="pbi-refresh-btn" title="Refresh Report Data" style="height: 32px; width: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary); cursor: pointer; transition: all 0.2s;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                    </button>
+                    <button type="button" onclick="window.togglePbiEmbedFullscreen()" class="close-btn" title="Close Fullscreen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
+                </div>
+            </div>
+            <div id="pbi-fullscreen-container" style="flex: 1; width: 100%; border: 1px solid var(--panel-border); border-radius: 6px; background: var(--input-bg); overflow: hidden;"></div>
+        </div>
+    </div>
+
     <!-- Scan Results Modal -->
     <div id="scan-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content glass-panel">
@@ -1299,8 +1387,8 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
-    <script src="/static/universal_modal.js?v=20260813_v8"></script>
-    <script src="/static/script.js?v=20260818_v332"></script>
+    <script src="/static/universal_modal.js?v=20260823_v14"></script>
+    <script src="/static/script.js?v=20260823_v391"></script>
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: none; z-index: 10005;">
@@ -1361,8 +1449,8 @@
                 <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
                     <p style="margin: 0; color: var(--text-secondary);">Select tests to run and click Execute. <span id="harness-stats" style="margin-left: 10px; font-weight: 600; color: var(--accent);">Selected: 0 / Total: 0</span></p>
                     <div style="display: flex; gap: 8px;">
-                        <button type="button" id="btn-harness-select-all" class="btn-action-primary" style="padding: 4px 10px; font-size: 0.85rem; height: auto;">Select All</button>
-                        <button type="button" id="btn-harness-clear-all" class="btn-cancel" style="padding: 4px 10px; font-size: 0.85rem; height: auto;">Clear All</button>
+                        <button type="button" id="btn-harness-select-all" class="btn-action-primary">Select All</button>
+                        <button type="button" id="btn-harness-clear-all" class="btn-cancel">Clear All</button>
                     </div>
                 </div>
                 <div id="harness-test-list" style="display: flex; flex-direction: column; gap: 8px; background: var(--panel-bg); padding: 15px; border-radius: 6px; border: 1px solid var(--panel-border);">
@@ -1371,7 +1459,7 @@
             </div>
             <div class="modal-footer" style="display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
                 <button type="button" class="btn-cancel" onclick="document.getElementById('test-harness-modal').querySelector('.close-modal').click()">Cancel</button>
-                <button id="btn-harness-execute" class="btn-action-primary" style="padding: 6px 14px; font-size: 0.8rem; min-width: 130px; justify-content: center;">Run Tests</button>
+                <button id="btn-harness-execute" class="btn-action-primary">Run Tests</button>
             </div>
         </div>
     </div>
