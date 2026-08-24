@@ -1692,51 +1692,74 @@ async def scan_xmla_datasets(req: XMLAScanRequest):
 
 @app.post("/api/xmla/scan-tables")
 async def scan_xmla_tables(req: XMLATablesRequest):
-    """扫描指定 Dataset 模型下的数据表与分区列表"""
+    """扫描指定 Dataset 模型下的数据表与分区列表 (带 Workspace 上下文的黑科技 COLUMNSTATISTICS)"""
     try:
         import requests
-        http_xmla_url = req.xmla_endpoint.replace("powerbi://", "https://").rstrip("/") + "/xmla"
-        headers_xmla = {
-            "Authorization": f"Bearer {req.access_token}",
-            "Content-Type": "text/xml; charset=utf-8",
-            "SOAPAction": '"urn:schemas-microsoft-com:xmla:Discover"'
-        }
+        import html
+        pbi_headers = {"Authorization": f"Bearer {req.access_token}", "Content-Type": "application/json"}
         
-        tables = []
-        # 防线 1: DISCOVER_TMSL_METADATA
-        tmsl_xml = f"""<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><Discover xmlns="urn:schemas-microsoft-com:xmla"><RequestType>DISCOVER_TMSL_METADATA</RequestType><Restrictions /><Properties><PropertyList><Catalog>{req.dataset_name}</Catalog></PropertyList></Properties></Discover></soap:Body></soap:Envelope>"""
-        
+        # 1. 尝试解析工作区 Group ID
+        endpoint = req.xmla_endpoint.rstrip("/")
+        ws_name = endpoint.split("/")[-1] if "/" in endpoint else ""
+        workspace_id = None
         try:
-            r_xmla = await asyncio.to_thread(requests.post, http_xmla_url, data=tmsl_xml.encode('utf-8'), headers=headers_xmla, timeout=12)
-            if r_xmla.status_code == 200 and "<METADATA>" in r_xmla.text:
-                json_str = r_xmla.text.split("<METADATA>")[1].split("</METADATA>")[0]
-                import html
-                m_json = json.loads(html.unescape(json_str))
-                for t in m_json.get("model", {}).get("tables", []):
-                    t_name = t.get("name")
-                    if t_name and not t_name.startswith("DateTableTemplate") and not t_name.startswith("LocalDateTable"):
-                        raw_parts = t.get("partitions", [])
-                        p_list = [{"name": p.get("name"), "mode": p.get("mode", "import")} for p in raw_parts if p.get("name")]
-                        tables.append({"name": t_name, "partitions": p_list or [{"name": t_name, "mode": "import"}]})
+            groups_res = await asyncio.to_thread(requests.get, "https://api.powerbi.com/v1.0/myorg/groups", headers=pbi_headers, timeout=8)
+            if groups_res.status_code == 200:
+                for g in groups_res.json().get("value", []):
+                    if g.get("name", "").lower() == ws_name.lower():
+                        workspace_id = g.get("id")
+                        break
         except Exception:
             pass
 
-        # 防线 2: DAX INFO.TABLES()
-        if not tables and req.dataset_id:
-            pbi_headers = {"Authorization": f"Bearer {req.access_token}", "Content-Type": "application/json"}
-            dax_url = f"https://api.powerbi.com/v1.0/myorg/datasets/{req.dataset_id}/executeQueries"
-            dax_body = {
-                "queries": [{"query": "EVALUATE SELECTCOLUMNS(INFO.TABLES(), \"Name\", [Name], \"ExplicitName\", [ExplicitName])"}],
-                "serializerSettings": {"incNull": True}
+        tables = []
+        
+        # 2. 防线 1: 带 Workspace 路径的 DAX COLUMNSTATISTICS 查询
+        if req.dataset_id:
+            dax_url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets/{req.dataset_id}/executeQueries" if workspace_id else f"https://api.powerbi.com/v1.0/myorg/datasets/{req.dataset_id}/executeQueries"
+            dax_queries = [
+                "EVALUATE SUMMARIZE(COLUMNSTATISTICS(), [Table Name])",
+                "EVALUATE SELECTCOLUMNS(INFO.TABLES(), \"Table Name\", COALESCE([ExplicitName], [Name]))",
+                "EVALUATE SELECTCOLUMNS(FILTER(INFO.TABLES(), [IsHidden] = FALSE()), \"Table Name\", [ExplicitName])"
+            ]
+            for q_str in dax_queries:
+                if tables:
+                    break
+                dax_body = {"queries": [{"query": q_str}], "serializerSettings": {"incNull": True}}
+                try:
+                    r_dax = await asyncio.to_thread(requests.post, dax_url, json=dax_body, headers=pbi_headers, timeout=10)
+                    if r_dax.status_code == 200:
+                        res_j = r_dax.json()
+                        results = res_j.get("results", [])
+                        if results and "tables" in results[0]:
+                            rows = results[0]["tables"][0].get("rows", [])
+                            raw_names = list(set([r.get("[Table Name]") or r.get("Table Name") or r.get("ExplicitName") for r in rows if (r.get("[Table Name]") or r.get("Table Name") or r.get("ExplicitName"))]))
+                            for t_name in sorted(raw_names):
+                                if t_name and not str(t_name).startswith("DateTableTemplate") and not str(t_name).startswith("LocalDateTable") and not str(t_name).startswith("RowNumber"):
+                                    tables.append({"name": t_name, "partitions": [{"name": t_name, "mode": "import"}]})
+                except Exception:
+                    pass
+
+        # 3. 防线 2: XMLA DISCOVER_TMSL_METADATA
+        if not tables:
+            http_xmla_url = req.xmla_endpoint.replace("powerbi://", "https://").rstrip("/") + "/xmla"
+            headers_xmla = {
+                "Authorization": f"Bearer {req.access_token}",
+                "Content-Type": "text/xml; charset=utf-8",
+                "SOAPAction": '"urn:schemas-microsoft-com:xmla:Discover"'
             }
+            tmsl_xml = f"""<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><Discover xmlns="urn:schemas-microsoft-com:xmla"><RequestType>DISCOVER_TMSL_METADATA</RequestType><Restrictions /><Properties><PropertyList><Catalog>{req.dataset_name}</Catalog></PropertyList></Properties></Discover></soap:Body></soap:Envelope>"""
             try:
-                r_dax = await asyncio.to_thread(requests.post, dax_url, json=dax_body, headers=pbi_headers, timeout=10)
-                if r_dax.status_code == 200:
-                    rows = r_dax.json().get("results", [])[0].get("tables", [])[0].get("rows", [])
-                    for row in rows:
-                        t_name = row.get("ExplicitName") or row.get("Name")
+                r_xmla = await asyncio.to_thread(requests.post, http_xmla_url, data=tmsl_xml.encode('utf-8'), headers=headers_xmla, timeout=12)
+                if r_xmla.status_code == 200 and "<METADATA>" in r_xmla.text:
+                    json_str = r_xmla.text.split("<METADATA>")[1].split("</METADATA>")[0]
+                    m_json = json.loads(html.unescape(json_str))
+                    for t in m_json.get("model", {}).get("tables", []):
+                        t_name = t.get("name")
                         if t_name and not t_name.startswith("DateTableTemplate") and not t_name.startswith("LocalDateTable"):
-                            tables.append({"name": t_name, "partitions": [{"name": t_name, "mode": "import"}]})
+                            raw_parts = t.get("partitions", [])
+                            p_list = [{"name": p.get("name"), "mode": p.get("mode", "import")} for p in raw_parts if p.get("name")]
+                            tables.append({"name": t_name, "partitions": p_list or [{"name": t_name, "mode": "import"}]})
             except Exception:
                 pass
 
