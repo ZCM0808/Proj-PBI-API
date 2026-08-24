@@ -5730,10 +5730,14 @@ document.addEventListener('mousedown', (e) => {
             document.getElementById('wf-config-check_permissions').style.display = 'none';
             const dpmPane = document.getElementById('wf-config-dataset_partitions_manager'); if(dpmPane) dpmPane.style.display = 'none';
             const gumPane = document.getElementById('wf-config-global_user_manager'); if(gumPane) gumPane.style.display = 'none';
+            const xmlaPane = document.getElementById('wf-config-xmla_interactive_refresh'); if(xmlaPane) xmlaPane.style.display = 'none';
             const localQPane = document.getElementById('wf-container-local_model_query'); if(localQPane) localQPane.style.display = 'none';
             
             if (val === 'smart_pipeline') {
                 document.getElementById('wf-config-smart_pipeline').style.display = 'block';
+                document.getElementById('wf-btn-runall').style.display = 'flex';
+            } else if (val === 'xmla_interactive_refresh') {
+                if (xmlaPane) xmlaPane.style.display = 'block';
                 document.getElementById('wf-btn-runall').style.display = 'flex';
             } else if (val === 'dataset_partitions_manager') {
                 if (dpmPane) dpmPane.style.display = 'block';
