@@ -8653,6 +8653,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 // 挂载 toggleXmlaTokenLock 解锁/锁定控制函数
+// 修改 toggleXmlaTokenLock 中锁定与解锁图标状态
 window.toggleXmlaTokenLock = function() {
     const tokenInput = document.getElementById('wf-xmla-token');
     const lockBtn = document.getElementById('wf-xmla-toggle-lock-btn');
@@ -8662,7 +8663,7 @@ window.toggleXmlaTokenLock = function() {
         tokenInput.removeAttribute('readonly');
         tokenInput.style.opacity = '1';
         tokenInput.style.borderColor = 'var(--accent)';
-        lockBtn.innerHTML = '🔒 点击锁定输入';
+        lockBtn.innerHTML = '🔓 已解锁 (点击锁定输入)';
         lockBtn.style.color = 'var(--accent)';
         lockBtn.style.borderColor = 'var(--accent)';
         tokenInput.focus();
@@ -8670,7 +8671,7 @@ window.toggleXmlaTokenLock = function() {
         tokenInput.setAttribute('readonly', 'true');
         tokenInput.style.opacity = '0.8';
         tokenInput.style.borderColor = 'var(--panel-border)';
-        lockBtn.innerHTML = '🔓 点击解锁编辑';
+        lockBtn.innerHTML = '🔒 已锁定 (点击解锁编辑)';
         lockBtn.style.color = 'var(--text-secondary)';
         lockBtn.style.borderColor = 'var(--overlay-20)';
     }
