@@ -8649,3 +8649,29 @@ window.initXmlaWorkflow = function() {
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(window.initXmlaWorkflow, 1000);
 });
+
+
+
+// 挂载 toggleXmlaTokenLock 解锁/锁定控制函数
+window.toggleXmlaTokenLock = function() {
+    const tokenInput = document.getElementById('wf-xmla-token');
+    const lockBtn = document.getElementById('wf-xmla-toggle-lock-btn');
+    if (!tokenInput || !lockBtn) return;
+    
+    if (tokenInput.hasAttribute('readonly')) {
+        tokenInput.removeAttribute('readonly');
+        tokenInput.style.opacity = '1';
+        tokenInput.style.borderColor = 'var(--accent)';
+        lockBtn.innerHTML = '🔒 点击锁定输入';
+        lockBtn.style.color = 'var(--accent)';
+        lockBtn.style.borderColor = 'var(--accent)';
+        tokenInput.focus();
+    } else {
+        tokenInput.setAttribute('readonly', 'true');
+        tokenInput.style.opacity = '0.8';
+        tokenInput.style.borderColor = 'var(--panel-border)';
+        lockBtn.innerHTML = '🔓 点击解锁编辑';
+        lockBtn.style.color = 'var(--text-secondary)';
+        lockBtn.style.borderColor = 'var(--overlay-20)';
+    }
+};
