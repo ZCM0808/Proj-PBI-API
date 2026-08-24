@@ -1843,3 +1843,32 @@ async def check_xmla_refresh_status(req: XMLATablesRequest):
         return {"success": True, "history": history, "row_count": row_count}
     except Exception as e:
         return {"success": False, "message": str(e)}
+
+
+
+@app.get("/api/xmla/get-token")
+def get_xmla_cached_token():
+    """从本地 MSAL 缓存中无感提取未过期的 AccessToken"""
+    import os
+    from msal import PublicClientApplication, SerializableTokenCache
+    cache_file = r"C:\Users\ZCM\Desktop\XMLA_Refresh_Tool_Project\msal_token_cache.bin"
+    if os.path.exists(cache_file):
+        try:
+            cache = SerializableTokenCache()
+            cache.deserialize(open(cache_file, "r").read())
+            msal_app = PublicClientApplication(
+                client_id="04b07795-8ddb-461a-bbee-02f9e1bf7b46",
+                authority="https://login.microsoftonline.com/organizations",
+                token_cache=cache
+            )
+            accounts = msal_app.get_accounts()
+            if accounts:
+                res = msal_app.acquire_token_silent(
+                    scopes=["https://analysis.windows.net/powerbi/api/.default"],
+                    account=accounts[0]
+                )
+                if res and "access_token" in res:
+                    return {"success": True, "token": res["access_token"]}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+    return {"success": False, "message": "No cache file found"}
