@@ -1,4 +1,4 @@
-"""Power BI API Web Explorer"""
+﻿"""Power BI API Web Explorer"""
 
 import sys
 import os
@@ -1622,3 +1622,224 @@ async def run_harness_tests(request: Request):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+
+
+from datetime import timedelta
+
+# =========================================================================
+# XMLA 交互式模型/表/分区扫描、定向刷新与历史状态查询 API 端点
+# =========================================================================
+
+class XMLAScanRequest(BaseModel):
+    xmla_endpoint: str
+    access_token: str
+
+class XMLATablesRequest(BaseModel):
+    xmla_endpoint: str
+    access_token: str
+    dataset_name: str
+    dataset_id: Optional[str] = None
+
+class XMLARefreshRequest(BaseModel):
+    xmla_endpoint: str
+    access_token: str
+    dataset_name: str
+    dataset_id: Optional[str] = None
+    table_name: str
+    partition_name: Optional[str] = None
+    refresh_type: Optional[str] = "full"
+
+@app.post("/api/xmla/scan-datasets")
+async def scan_xmla_datasets(req: XMLAScanRequest):
+    """扫描指定 XMLA 端点/工作区下的所有 Datasets"""
+    try:
+        headers = {
+            "Authorization": f"Bearer {req.access_token}",
+            "Content-Type": "application/json"
+        }
+        
+        # 解析工作区名称
+        # 格式: powerbi://api.powerbi.com/v1.0/myorg/WorkspaceName
+        endpoint = req.xmla_endpoint.rstrip("/")
+        ws_name = endpoint.split("/")[-1] if "/" in endpoint else ""
+        
+        # 1. 尝试通过 Workspace 名称查找 Group ID
+        groups_res = await asyncio.to_thread(requests.get, "https://api.powerbi.com/v1.0/myorg/groups", headers=headers, timeout=10)
+        workspace_id = None
+        if groups_res.status_code == 200:
+            groups = groups_res.json().get("value", [])
+            for g in groups:
+                if g.get("name", "").lower() == ws_name.lower():
+                    workspace_id = g.get("id")
+                    break
+        
+        # 2. 查询 Datasets
+        if workspace_id:
+            ds_url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets"
+        else:
+            ds_url = "https://api.powerbi.com/v1.0/myorg/datasets"
+            
+        ds_res = await asyncio.to_thread(requests.get, ds_url, headers=headers, timeout=10)
+        if ds_res.status_code == 200:
+            datasets = ds_res.json().get("value", [])
+            results = [{"id": ds.get("id"), "name": ds.get("name")} for ds in datasets]
+            return {"success": True, "workspace_id": workspace_id, "datasets": results}
+        else:
+            return {"success": False, "message": f"获取模型失败 ({ds_res.status_code}): {ds_res.text}"}
+    except Exception as e:
+        return {"success": False, "message": f"服务器异常: {str(e)}"}
+
+@app.post("/api/xmla/scan-tables")
+async def scan_xmla_tables(req: XMLATablesRequest):
+    """扫描指定 Dataset 模型下的数据表与分区列表"""
+    try:
+        http_xmla_url = req.xmla_endpoint.replace("powerbi://", "https://").rstrip("/") + "/xmla"
+        headers_xmla = {
+            "Authorization": f"Bearer {req.access_token}",
+            "Content-Type": "text/xml; charset=utf-8",
+            "SOAPAction": '"urn:schemas-microsoft-com:xmla:Discover"'
+        }
+        
+        tables = []
+        # 防线 1: DISCOVER_TMSL_METADATA
+        tmsl_xml = f"""<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><Discover xmlns="urn:schemas-microsoft-com:xmla"><RequestType>DISCOVER_TMSL_METADATA</RequestType><Restrictions /><Properties><PropertyList><Catalog>{req.dataset_name}</Catalog></PropertyList></Properties></Discover></soap:Body></soap:Envelope>"""
+        
+        try:
+            r_xmla = await asyncio.to_thread(requests.post, http_xmla_url, data=tmsl_xml.encode('utf-8'), headers=headers_xmla, timeout=12)
+            if r_xmla.status_code == 200 and "<METADATA>" in r_xmla.text:
+                json_str = r_xmla.text.split("<METADATA>")[1].split("</METADATA>")[0]
+                import html
+                m_json = json.loads(html.unescape(json_str))
+                for t in m_json.get("model", {}).get("tables", []):
+                    t_name = t.get("name")
+                    if t_name and not t_name.startswith("DateTableTemplate") and not t_name.startswith("LocalDateTable"):
+                        raw_parts = t.get("partitions", [])
+                        p_list = [{"name": p.get("name"), "mode": p.get("mode", "import")} for p in raw_parts if p.get("name")]
+                        tables.append({"name": t_name, "partitions": p_list or [{"name": t_name, "mode": "import"}]})
+        except Exception:
+            pass
+
+        # 防线 2: DAX INFO.TABLES()
+        if not tables and req.dataset_id:
+            pbi_headers = {"Authorization": f"Bearer {req.access_token}", "Content-Type": "application/json"}
+            dax_url = f"https://api.powerbi.com/v1.0/myorg/datasets/{req.dataset_id}/executeQueries"
+            dax_body = {
+                "queries": [{"query": "EVALUATE SELECTCOLUMNS(INFO.TABLES(), \"Name\", [Name], \"ExplicitName\", [ExplicitName])"}],
+                "serializerSettings": {"incNull": True}
+            }
+            try:
+                r_dax = await asyncio.to_thread(requests.post, dax_url, json=dax_body, headers=pbi_headers, timeout=10)
+                if r_dax.status_code == 200:
+                    rows = r_dax.json().get("results", [])[0].get("tables", [])[0].get("rows", [])
+                    for row in rows:
+                        t_name = row.get("ExplicitName") or row.get("Name")
+                        if t_name and not t_name.startswith("DateTableTemplate") and not t_name.startswith("LocalDateTable"):
+                            tables.append({"name": t_name, "partitions": [{"name": t_name, "mode": "import"}]})
+            except Exception:
+                pass
+
+        return {"success": True, "restricted": len(tables) == 0, "tables": tables}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+@app.post("/api/xmla/trigger-refresh")
+async def trigger_xmla_refresh(req: XMLARefreshRequest):
+    """下发 XMLA / TMSL 定向刷新任务"""
+    try:
+        http_xmla_url = req.xmla_endpoint.replace("powerbi://", "https://").rstrip("/") + "/xmla"
+        
+        if req.partition_name:
+            tmsl_obj = {"database": req.dataset_name, "table": req.table_name, "partition": req.partition_name}
+        else:
+            tmsl_obj = {"database": req.dataset_name, "table": req.table_name}
+            
+        tmsl_payload = {"refresh": {"type": req.refresh_type or "full", "objects": [tmsl_obj]}}
+        
+        xmla_execute_headers = {
+            "Authorization": f"Bearer {req.access_token}",
+            "Content-Type": "text/xml; charset=utf-8",
+            "SOAPAction": '"urn:schemas-microsoft-com:xmla:Execute"'
+        }
+        xmla_soap_body = f"""<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><Execute xmlns="urn:schemas-microsoft-com:xmla"><Command><Statement>{json.dumps(tmsl_payload)}</Statement></Command><Properties><PropertyList><Catalog>{req.dataset_name}</Catalog></PropertyList></Properties></Execute></soap:Body></soap:Envelope>"""
+
+        exec_res = await asyncio.to_thread(requests.post, http_xmla_url, data=xmla_soap_body.encode('utf-8'), headers=xmla_execute_headers, timeout=20)
+        
+        if exec_res.status_code == 200 and "<Error" not in exec_res.text:
+            return {"success": True, "method": "XMLA SOAP", "message": "刷新指令已成功下发至 Power BI XMLA 引擎！"}
+        
+        # 降级尝试 Enhanced Refresh API
+        if req.dataset_id:
+            pbi_headers = {"Authorization": f"Bearer {req.access_token}", "Content-Type": "application/json"}
+            refresh_api_url = f"https://api.powerbi.com/v1.0/myorg/datasets/{req.dataset_id}/refreshes"
+            refresh_body = {"type": (req.refresh_type or "full").capitalize(), "commitMode": "transactional", "objects": [tmsl_obj]}
+            resp = await asyncio.to_thread(requests.post, refresh_api_url, json=refresh_body, headers=pbi_headers, timeout=10)
+            if resp.status_code in [200, 202]:
+                return {"success": True, "method": "Enhanced Refresh API", "message": "局部刷新任务已成功下发至 Power BI 增强刷新 API！"}
+
+        return {"success": False, "message": f"下发失败: {exec_res.text}"}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+@app.post("/api/xmla/refresh-status")
+async def check_xmla_refresh_status(req: XMLATablesRequest):
+    """查询模型最新云端刷新历史、转换为 UTC+8 并算出耗时与目标表当前真实行数"""
+    try:
+        pbi_headers = {"Authorization": f"Bearer {req.access_token}", "Content-Type": "application/json"}
+        ref_status_url = f"https://api.powerbi.com/v1.0/myorg/datasets/{req.dataset_id}/refreshes?$top=5" if req.dataset_id else ""
+        
+        history = []
+        if ref_status_url:
+            s_res = await asyncio.to_thread(requests.get, ref_status_url, headers=pbi_headers, timeout=10)
+            if s_res.status_code == 200:
+                raw_history = s_res.json().get("value", [])
+                for item in raw_history:
+                    start_raw = item.get("startTime", "")
+                    end_raw = item.get("endTime", "")
+                    
+                    # 转换 UTC 到 UTC+8
+                    start_bj = ""
+                    end_bj = "进行中..."
+                    duration_str = "进行中..."
+                    
+                    if start_raw:
+                        clean_s = start_raw[:19].replace("T", " ")
+                        dt_s = datetime.strptime(clean_s, "%Y-%m-%d %H:%M:%S") + timedelta(hours=8)
+                        start_bj = dt_s.strftime("%Y-%m-%d %H:%M:%S") + " (UTC+8)"
+                        
+                        if end_raw:
+                            clean_e = end_raw[:19].replace("T", " ")
+                            dt_e = datetime.strptime(clean_e, "%Y-%m-%d %H:%M:%S") + timedelta(hours=8)
+                            end_bj = dt_e.strftime("%Y-%m-%d %H:%M:%S") + " (UTC+8)"
+                            
+                            diff_sec = int((dt_e - dt_s).total_seconds())
+                            if diff_sec >= 0:
+                                m, s = divmod(diff_sec, 60)
+                                h, m = divmod(m, 60)
+                                duration_str = f"{h}h {m}m {s}s" if h > 0 else (f"{m}m {s}s" if m > 0 else f"{s}s")
+
+                    history.append({
+                        "startTime": start_bj,
+                        "endTime": end_bj,
+                        "duration": duration_str,
+                        "status": item.get("status"),
+                        "refreshType": item.get("refreshType"),
+                        "error": item.get("serviceExceptionJson")
+                    })
+
+        # 实时查询当前表的行数
+        row_count = None
+        if req.dataset_id and req.dataset_name:
+            dax_url = f"https://api.powerbi.com/v1.0/myorg/datasets/{req.dataset_id}/executeQueries"
+            dax_body = {"queries": [{"query": f"EVALUATE {{ COUNTROWS('{req.dataset_name}') }}"}]}
+            try:
+                r_rows = await asyncio.to_thread(requests.post, dax_url, json=dax_body, headers=pbi_headers, timeout=8)
+                if r_rows.status_code == 200:
+                    rows_res = r_rows.json().get("results", [])[0].get("tables", [])[0].get("rows", [])
+                    if rows_res:
+                        row_count = rows_res[0].get("[Value]") or rows_res[0].get("Value")
+            except Exception:
+                pass
+
+        return {"success": True, "history": history, "row_count": row_count}
+    except Exception as e:
+        return {"success": False, "message": str(e)}

@@ -1,4 +1,4 @@
-
+﻿
 // Global Fetch Interceptor for 401 Unauthorized
 const originalFetch = window.fetch;
 window.fetch = async function(...args) {
@@ -8498,3 +8498,130 @@ window.refreshDpmPartition = async function(btnEl, itemIdx) {
     }
 };
 
+
+
+
+// =========================================================================
+// XMLA Interactive Refresh Workflow Client JS Handler
+// =========================================================================
+window.initXmlaWorkflow = function() {
+    const btnAuth = document.getElementById('wf-xmla-auth-btn');
+    const tokenInput = document.getElementById('wf-xmla-token');
+    const endpointInput = document.getElementById('wf-xmla-endpoint');
+    const btnScanDs = document.getElementById('wf-xmla-btn-scan-ds');
+    const btnScanTbl = document.getElementById('wf-xmla-btn-scan-tbl');
+    const selDs = document.getElementById('wf-xmla-dataset');
+    const selTbl = document.getElementById('wf-xmla-table');
+    const selPart = document.getElementById('wf-xmla-partition');
+    const manualBox = document.getElementById('wf-xmla-manual-box');
+    const logsEl = document.getElementById('wf-out-xmla-logs');
+
+    if (!btnAuth || btnAuth._inited) return;
+    btnAuth._inited = true;
+
+    // 1. 个人认证按钮
+    btnAuth.addEventListener('click', async () => {
+        const authUrl = "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize?client_id=04b07795-8ddb-461a-bbee-02f9e1bf7b46&response_type=token&redirect_uri=http://localhost:8000/static/index.html&scope=https://analysis.windows.net/powerbi/api/.default";
+        window.open(authUrl, 'pbi_auth_window', 'width=600,height=700');
+        alert("已打开登录页面，登录成功后请从跳转 URL 中的 #access_token=... 复制 Token 并贴入下方 Token 文本框。");
+    });
+
+    // 2. 扫描模型 (Datasets)
+    btnScanDs.addEventListener('click', async () => {
+        const token = tokenInput.value.trim();
+        const endpoint = endpointInput.value.trim();
+        if (!token) { alert("请先获取或输入 Access Token!"); return; }
+        
+        btnScanDs.innerText = "⏳ 扫描中...";
+        try {
+            const res = await fetch('/api/xmla/scan-datasets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ xmla_endpoint: endpoint, access_token: token })
+            });
+            const data = await res.json();
+            btnScanDs.innerText = "🔄 扫描模型";
+            if (data.success) {
+                selDs.innerHTML = '<option value="">-- 请选择模型 --</option>';
+                data.datasets.forEach(ds => {
+                    const opt = document.createElement('option');
+                    opt.value = ds.name;
+                    opt.dataset.id = ds.id;
+                    opt.textContent = ds.name;
+                    selDs.appendChild(opt);
+                });
+                alert(`✅ 成功扫描到 ${data.datasets.length} 个模型！`);
+            } else {
+                alert("❌ 扫描失败: " + data.message);
+            }
+        } catch (e) {
+            btnScanDs.innerText = "🔄 扫描模型";
+            alert("❌ 请求异常: " + e.message);
+        }
+    });
+
+    // 3. 扫描数据表 (Tables)
+    btnScanTbl.addEventListener('click', async () => {
+        const token = tokenInput.value.trim();
+        const endpoint = endpointInput.value.trim();
+        const dsName = selDs.value;
+        const dsId = selDs.options[selDs.selectedIndex]?.dataset?.id || "";
+        
+        if (!token || !dsName) { alert("请先选择模型！"); return; }
+        
+        btnScanTbl.innerText = "⏳ 扫描中...";
+        try {
+            const res = await fetch('/api/xmla/scan-tables', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ xmla_endpoint: endpoint, access_token: token, dataset_name: dsName, dataset_id: dsId })
+            });
+            const data = await res.json();
+            btnScanTbl.innerText = "🔄 扫描数据表";
+            if (data.success) {
+                selTbl.innerHTML = '<option value="">-- 请选择表 --</option>';
+                window._xmla_tables_cache = data.tables;
+                
+                if (data.tables.length > 0) {
+                    manualBox.style.display = 'none';
+                    data.tables.forEach(t => {
+                        const opt = document.createElement('option');
+                        opt.value = t.name;
+                        opt.textContent = `${t.name} (${t.partitions.length} 个分区)`;
+                        selTbl.appendChild(opt);
+                    });
+                    alert(`✅ 成功解包 ${data.tables.length} 个数据表！`);
+                } else {
+                    manualBox.style.display = 'block';
+                    alert("⚠️ 自动枚举受限，已为您展开下方手动指定表名文本框。");
+                }
+            } else {
+                alert("❌ 扫描表失败: " + data.message);
+            }
+        } catch (e) {
+            btnScanTbl.innerText = "🔄 扫描数据表";
+            alert("❌ 请求异常: " + e.message);
+        }
+    });
+
+    // 联动更新分区下拉框
+    selTbl.addEventListener('change', () => {
+        const tblName = selTbl.value;
+        selPart.innerHTML = '<option value="">-- 全表刷新 (包含所有分区) --</option>';
+        if (window._xmla_tables_cache) {
+            const tObj = window._xmla_tables_cache.find(t => t.name === tblName);
+            if (tObj && tObj.partitions) {
+                tObj.partitions.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.name;
+                    opt.textContent = `分区: ${p.name} (模式: ${p.mode})`;
+                    selPart.appendChild(opt);
+                });
+            }
+        }
+    });
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(window.initXmlaWorkflow, 1000);
+});

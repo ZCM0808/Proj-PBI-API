@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/powerbi-client/dist/powerbi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260823_v360">
+    <link rel="stylesheet" href="/static/style.css?v=20260824_v370">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -486,6 +486,7 @@
                             
                             <!-- 2. Power BI Platform Admin & Operations -->
                             <option value="dataset_partitions_manager">Dataset Partitions Manager & Targeted Refresh</option>
+                            <option value="xmla_interactive_refresh">XMLA Interactive Model/Table/Partition Refresh</option>
                             <option value="global_user_manager">Global Workspace Permissions Manager</option>
                             <option value="report_view_count">Admin Report View Count (Activity Events)</option>
                             <option value="check_permissions">Check Current Permissions (Token/Features)</option>
@@ -540,6 +541,84 @@
                 
                 <!-- Smart Pipeline Container -->
                 
+                
+                <!-- XMLA Interactive Refresh Pane -->
+                <div id="wf-config-xmla_interactive_refresh" class="wf-config-pane" style="display: none;">
+                    <div class="wf-fluid-grid">
+                        <div style="grid-column: 1 / -1;">
+                            <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
+                                <span>XMLA Endpoint URL</span>
+                                <span style="font-size: 0.75rem; color: var(--info);">*需要工作区开启 XMLA Read Write 读写权限</span>
+                            </label>
+                            <input type="text" id="wf-xmla-endpoint" class="wf-input" value="powerbi://api.powerbi.com/v1.0/myorg/DA_APAC_BI_QA" placeholder="powerbi://api.powerbi.com/v1.0/myorg/WorkspaceName">
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
+                                <span>Access Token (Personal Auth / App Token)</span>
+                                <button type="button" id="wf-xmla-auth-btn" style="background: var(--accent); color: #fff; border: none; border-radius: 4px; padding: 2px 8px; font-size: 0.75rem; cursor: pointer;">🔐 点击进行个人身份登录获取 Token</button>
+                            </label>
+                            <textarea id="wf-xmla-token" class="wf-input" style="height: 60px; font-family: monospace; font-size: 0.75rem;" placeholder="自动填充登录后的 AccessToken 或贴入已有的 Token..."></textarea>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between;">
+                                <span>1. Select Dataset (Model)</span>
+                                <button type="button" id="wf-xmla-btn-scan-ds" style="background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.78rem;">🔄 扫描模型</button>
+                            </label>
+                            <select id="wf-xmla-dataset" class="wf-input">
+                                <option value="">-- 请先点击【扫描模型】--</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between;">
+                                <span>2. Select Table</span>
+                                <button type="button" id="wf-xmla-btn-scan-tbl" style="background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.78rem;">🔄 扫描数据表</button>
+                            </label>
+                            <select id="wf-xmla-table" class="wf-input">
+                                <option value="">-- 请先选择模型并扫描表 --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.85rem; color: var(--text-secondary);">3. Select Partition (Optional)</label>
+                            <select id="wf-xmla-partition" class="wf-input">
+                                <option value="">-- 全表刷新 (包含所有分区) --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.85rem; color: var(--text-secondary);">Refresh Type</label>
+                            <select id="wf-xmla-type" class="wf-input">
+                                <option value="full">full (完全刷新 - 默认)</option>
+                                <option value="dataOnly">dataOnly (仅刷新数据)</option>
+                                <option value="calculate">calculate (仅重新计算)</option>
+                                <option value="clearValues">clearValues (清空数据)</option>
+                            </select>
+                        </div>
+                        <div style="grid-column: 1 / -1; display: none;" id="wf-xmla-manual-box">
+                            <label style="font-size: 0.85rem; color: var(--warning);">⚠️ 手动指定表名/分区名 (当模型受限无法自动枚举时使用):</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="wf-xmla-manual-table" class="wf-input" placeholder="输入表名, 如 FactSales">
+                                <input type="text" id="wf-xmla-manual-partition" class="wf-input" placeholder="可选输入特定分区名">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px;">
+                        <div class="wf-step active">
+                            <div class="wf-step-header">
+                                <span class="wf-step-title">Execute XMLA Targeted Refresh & Status Audit</span>
+                            </div>
+                            <div class="wf-step-content" style="display: block; margin-top: 8px;">
+                                <div id="wf-xmla-status" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px;">就绪。完成选型后点击 Run 开始触发刷新与统计。</div>
+                                <div style="position: relative;">
+                                    <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none;" onclick="window.toggleConsole('wf-out-xmla-logs')">
+                                        <svg id="wf-out-xmla-logs-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(90deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                        Execution Logs & Status History
+                                    </div>
+                                    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-xmla-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                    <div id="wf-out-xmla-logs" class="wf-console collapsed-console" style="min-height: 0; padding-bottom: 20px; transition: max-height 0.3s ease, padding 0.3s ease; overflow-y: auto; max-height: 250px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <div id="wf-config-report_view_count" class="wf-config-pane" style="display: none;">
                     <div class="wf-fluid-grid">
                         <div>
