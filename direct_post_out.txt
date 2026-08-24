@@ -1,0 +1,2 @@
+﻿Response Status: 200
+Response Text: {"success":true,"restricted":true,"tables":[]}

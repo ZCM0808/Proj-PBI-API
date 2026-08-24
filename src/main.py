@@ -1714,6 +1714,19 @@ async def scan_xmla_tables(req: XMLATablesRequest):
 
         tables = []
         
+        # 如果 dataset_id 为空，自动反查
+        if not req.dataset_id and workspace_id:
+            try:
+                ds_list_url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets"
+                ds_list_res = await asyncio.to_thread(requests.get, ds_list_url, headers=pbi_headers, timeout=8)
+                if ds_list_res.status_code == 200:
+                    for d in ds_list_res.json().get("value", []):
+                        if d.get("name", "").lower() == req.dataset_name.lower():
+                            req.dataset_id = d.get("id")
+                            break
+            except Exception:
+                pass
+
         # 2. 防线 1: 带 Workspace 路径的 DAX COLUMNSTATISTICS 查询
         if req.dataset_id:
             dax_url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets/{req.dataset_id}/executeQueries" if workspace_id else f"https://api.powerbi.com/v1.0/myorg/datasets/{req.dataset_id}/executeQueries"
@@ -1727,17 +1740,23 @@ async def scan_xmla_tables(req: XMLATablesRequest):
                     break
                 dax_body = {"queries": [{"query": q_str}], "serializerSettings": {"incNull": True}}
                 try:
+                    print(f"[DEBUG XMLA] Querying DAX: {dax_url} with query: {q_str}")
                     r_dax = await asyncio.to_thread(requests.post, dax_url, json=dax_body, headers=pbi_headers, timeout=10)
+                    print(f"[DEBUG XMLA] DAX Status: {r_dax.status_code}")
                     if r_dax.status_code == 200:
                         res_j = r_dax.json()
                         results = res_j.get("results", [])
                         if results and "tables" in results[0]:
                             rows = results[0]["tables"][0].get("rows", [])
+                            print(f"[DEBUG XMLA] Got rows count: {len(rows)}")
                             raw_names = list(set([r.get("[Table Name]") or r.get("Table Name") or r.get("ExplicitName") for r in rows if (r.get("[Table Name]") or r.get("Table Name") or r.get("ExplicitName"))]))
                             for t_name in sorted(raw_names):
                                 if t_name and not str(t_name).startswith("DateTableTemplate") and not str(t_name).startswith("LocalDateTable") and not str(t_name).startswith("RowNumber"):
                                     tables.append({"name": t_name, "partitions": [{"name": t_name, "mode": "import"}]})
-                except Exception:
+                    else:
+                        print(f"[DEBUG XMLA] DAX Error response: {r_dax.text[:200]}")
+                except Exception as ex:
+                    print(f"[DEBUG XMLA] DAX Exception: {ex}")
                     pass
 
         # 3. 防线 2: XMLA DISCOVER_TMSL_METADATA

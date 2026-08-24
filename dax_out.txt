@@ -1,0 +1,12 @@
+﻿Query: EVALUATE SUMMARIZE(COLUMNSTATISTICS(), [Table Name])
+Status: 200
+Response: {"results":[{"tables":[{"rows":[{"[Table Name]":"product manual file(cpa003)"},{"[Table Name]":"product(sap)"},{"[Table Name]":"vf fiscal date(sap)"},{"[Table Name]":"DateTableTemplate_85b77082-5b9d-4a13-a9fc-c157ce47c742"},{"[Table Name]":"LocalDateTable_b4c1fac8-f4b6-4084-ab22-623e65eb4429"},{"[Ta
+
+Query: EVALUATE SELECTCOLUMNS(INFO.TABLES(), "Table Name", COALESCE([ExplicitName], [Name]))
+Status: 400
+Response: {"error":{"code":"DatasetExecuteQueriesError","pbi.error":{"code":"DatasetExecuteQueriesError","parameters":{},"details":[{"code":"DetailsMessage","detail":{"type":1,"value":"Failed to execute the DAX query."}},{"code":"AnalysisServicesErrorCode","detail":{"type":1,"value":"3239575574"}}]}}}
+
+Query: EVALUATE SELECTCOLUMNS(FILTER(INFO.TABLES(), [IsHidden] = FALSE()), "Table Name", [ExplicitName])
+Status: 400
+Response: {"error":{"code":"DatasetExecuteQueriesError","pbi.error":{"code":"DatasetExecuteQueriesError","parameters":{},"details":[{"code":"DetailsMessage","detail":{"type":1,"value":"Failed to execute the DAX query."}},{"code":"AnalysisServicesErrorCode","detail":{"type":1,"value":"3239575574"}}]}}}
+

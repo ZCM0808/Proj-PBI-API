@@ -1,0 +1,3 @@
+﻿DAX Status: 200
+Parsed Tables Count: 8
+Tables: ['dtc inventory(sap)', 'dtp sales raw data(ttpos&oms)', 'location(storedb)', 'product manual file(cpa003)', 'product(sap)', 'store forecast plan target(cpa001)', 'store transaction count&traffic', 'vf fiscal date(sap)']

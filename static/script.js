@@ -8570,11 +8570,13 @@ window.initXmlaWorkflow = function() {
                 data.datasets.forEach(ds => {
                     const opt = document.createElement('option');
                     opt.value = ds.name;
-                    opt.dataset.id = ds.id;
+                    opt.setAttribute('data-id', ds.id || '');
+                    opt.dataset.id = ds.id || '';
                     opt.textContent = ds.name;
                     selDs.appendChild(opt);
                 });
-                alert(`✅ 成功扫描到 ${data.datasets.length} 个模型！`);
+                window._xmla_datasets_cache = data.datasets;
+                alert(`✅ 成功扫描到 ${data.datasets.length} 个模型！请在下拉框中选择要扫描的特定模型。`);
             } else {
                 alert("❌ 扫描失败: " + data.message);
             }
@@ -8589,9 +8591,13 @@ window.initXmlaWorkflow = function() {
         const token = tokenInput.value.trim();
         const endpoint = endpointInput.value.trim();
         const dsName = selDs.value;
-        const dsId = selDs.options[selDs.selectedIndex]?.dataset?.id || "";
+        let dsId = selDs.options[selDs.selectedIndex]?.getAttribute('data-id') || selDs.options[selDs.selectedIndex]?.dataset?.id || "";
+        if (!dsId && window._xmla_datasets_cache) {
+            const found = window._xmla_datasets_cache.find(d => d.name === dsName);
+            if (found) dsId = found.id;
+        }
         
-        if (!token || !dsName) { alert("请先选择模型！"); return; }
+        if (!token || !dsName) { alert("请先在第 1 步下拉菜单中选中具体的模型（如 Carman PA Hypers）！"); return; }
         
         btnScanTbl.innerText = "⏳ 扫描中...";
         try {
