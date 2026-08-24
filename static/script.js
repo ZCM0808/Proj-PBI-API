@@ -8524,11 +8524,26 @@ window.initXmlaWorkflow = function() {
     if (!btnAuth || btnAuth._inited) return;
     btnAuth._inited = true;
 
-    // 1. 个人认证按钮
+        // 1. 个人认证按钮
     btnAuth.addEventListener('click', async () => {
-        // 自动从当前页面活的客户端凭据中读取或者从桌面工具读取`n        if (window.backendSettingsCache && window.backendSettingsCache.ACCESS_TOKEN) {`n            tokenInput.value = window.backendSettingsCache.ACCESS_TOKEN;`n            alert("✅ 已为您自动提取后台生效的 Access Token！");`n            return;`n        }`n        alert("💡 提示：您可以直接使用桌面工具【运行PowerBI刷新工具.bat】（已实现无感自动登录），或将您的 Token 直接贴入下方框中。");
-        window.open(authUrl, 'pbi_auth_window', 'width=600,height=700');
-        alert("已打开登录页面，登录成功后请从跳转 URL 中的 #access_token=... 复制 Token 并贴入下方 Token 文本框。");
+        try {
+            btnAuth.innerText = "⏳ 获取中...";
+            const res = await fetch('/api/check-permissions');
+            const data = await res.json();
+            btnAuth.innerText = "⚡ 自动获取当前 Token";
+            if (data && data.token) {
+                tokenInput.value = data.token;
+                alert("✅ 已成功提取当前系统生效的 Access Token！");
+            } else if (window.backendSettingsCache && window.backendSettingsCache.ACCESS_TOKEN) {
+                tokenInput.value = window.backendSettingsCache.ACCESS_TOKEN;
+                alert("✅ 已为您自动提取后台生效的 Access Token！");
+            } else {
+                alert("💡 提示：您可以直接使用桌面工具【运行PowerBI刷新工具.bat】（已实现无感静默登录），或将已有的 Token 直接贴入下方框中。");
+            }
+        } catch (e) {
+            btnAuth.innerText = "⚡ 自动获取当前 Token";
+            alert("💡 提示：您可以直接使用桌面工具【运行PowerBI刷新工具.bat】（已实现无感静默登录），或将已有的 Token 直接贴入下方框中。");
+        }
     });
 
     // 2. 扫描模型 (Datasets)
