@@ -347,3 +347,31 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
 - **舒适滑动条 (Comfortable Scrollbars)**：
   - 横向/纵向滑动条尺寸拓宽至 10px，圆角胶囊滑块，悬停高亮为品牌强调色，极大提升交互手感。
 
+
+## 16. Power BI XMLA 个人交互式模型/表/分区定向刷新实战与排坑总结 (XMLA Interactive Refresh & Authentication)
+
+### 16.1 业务背景与架构痛点
+为实现在无需配置 Azure App Registration / Service Principal 秘钥的前提下，使用个人登录凭据，对指定 XMLA 端点（如 `powerbi://api.powerbi.com/v1.0/myorg/DA_APAC_BI_QA`）下的语义模型进行交互式菜单扫描，并支持**表级/分区级**的高效局部增量刷新与数据量跟踪。
+
+### 16.2 踩坑记录与排坑断言 (Failure & Root Cause Analysis)
+
+- ❌ **排坑 1：Windows 本地 MSOLAP 驱动身份验证失败**。
+  - **报错**：`Unable to obtain authentication token using the credentials provided.`
+  - **根本原因**：通过 PowerShell 掉用 TOM 的 `Server.Connect(xmlaEndpoint)` 时，MSOLAP 驱动不会自动唤起 Azure AD 交互登录框，而是直接送出 Windows 本地凭据导致拒收。
+- ❌ **排坑 2：PowerShell MSAL 4.x .NET 程序集类型转换冲突**。
+  - **报错**：`Cannot convert PublicClientApplicationBuilder to type PublicClientApplicationBuilder`。
+  - **根本原因**：PowerShell 的 `.NET Framework` 宿主与安装的 `MSAL.PS` 模块依赖的 DLL 版本冲突，导致无法拉起原生的 OAuth2 登录窗口。
+- ❌ **排坑 3：XMLA Audience Token 隔离致 Import 模型查表为空**。
+  - **现象**：已确定是 Import 模式且是 Admin 权限，但 `DISCOVER_TMSL_METADATA` 接口仍返回空表。
+  - **根本原因**：通用 Power BI Token 的 Resource Scope 为 `https://analysis.windows.net/powerbi/api/.default`，而 XMLA 底层的 SSAS 引擎在收到 Discover 请求时因 Token Audience 微调会将响应中的 `<METADATA>` 标签静默剥离（但 Execute 刷新由于走 Gateway 网关不受影响）。
+- ❌ **排坑 4：每次运行均弹出网页认证**。
+  - **解决**：接入 MSAL `SerializableTokenCache` 序列化落盘为 `msal_token_cache.bin`，优先调用 `acquire_token_silent` 实现无感无弹窗秒级连通。
+
+### 16.3 工业级终极成功架构
+
+1. **黑科技表名提取 (DAX COLUMNSTATISTICS)**：
+   利用 `EVALUATE SUMMARIZE(COLUMNSTATISTICS(), [Table Name])` 走 `/executeQueries` 接口，100% 绕过 XMLA Token Audience 限制，精准提取物理业务表名。
+2. **多层导航与时区/数据量审计**：
+   支持全局 `[0] 主菜单` 与 `[B] 上一步` 双向层级退路；刷新后自动转换为 UTC+8 北京时间，计算起止耗时，并使用 `COUNTROWS` 提取最新的千分位格式真实总行数 (如 `154,230 行`)。
+3. **PBI API Explorer 沙盒整合**：
+   后端整合了 `/api/xmla/scan-datasets`、`/api/xmla/scan-tables`、`/api/xmla/trigger-refresh` 和 `/api/xmla/refresh-status` 路由；前端增加了 `XMLA Interactive Model/Table/Partition Refresh` 工作流面板与缓存刷新硬编码（`?v=20260824_v370`）。
