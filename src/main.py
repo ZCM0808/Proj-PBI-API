@@ -1653,6 +1653,7 @@ class XMLARefreshRequest(BaseModel):
 async def scan_xmla_datasets(req: XMLAScanRequest):
     """扫描指定 XMLA 端点/工作区下的所有 Datasets"""
     try:
+        import requests
         headers = {
             "Authorization": f"Bearer {req.access_token}",
             "Content-Type": "application/json"
@@ -1693,6 +1694,7 @@ async def scan_xmla_datasets(req: XMLAScanRequest):
 async def scan_xmla_tables(req: XMLATablesRequest):
     """扫描指定 Dataset 模型下的数据表与分区列表"""
     try:
+        import requests
         http_xmla_url = req.xmla_endpoint.replace("powerbi://", "https://").rstrip("/") + "/xmla"
         headers_xmla = {
             "Authorization": f"Bearer {req.access_token}",
@@ -1746,6 +1748,7 @@ async def scan_xmla_tables(req: XMLATablesRequest):
 async def trigger_xmla_refresh(req: XMLARefreshRequest):
     """下发 XMLA / TMSL 定向刷新任务"""
     try:
+        import requests
         http_xmla_url = req.xmla_endpoint.replace("powerbi://", "https://").rstrip("/") + "/xmla"
         
         if req.partition_name:
