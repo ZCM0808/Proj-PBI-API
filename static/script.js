@@ -8526,7 +8526,7 @@ window.initXmlaWorkflow = function() {
 
     // 1. 个人认证按钮
     btnAuth.addEventListener('click', async () => {
-        const authUrl = "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize?client_id=04b07795-8ddb-461a-bbee-02f9e1bf7b46&response_type=token&redirect_uri=http://localhost:8000/static/index.html&scope=https://analysis.windows.net/powerbi/api/.default";
+        // 自动从当前页面活的客户端凭据中读取或者从桌面工具读取`n        if (window.backendSettingsCache && window.backendSettingsCache.ACCESS_TOKEN) {`n            tokenInput.value = window.backendSettingsCache.ACCESS_TOKEN;`n            alert("✅ 已为您自动提取后台生效的 Access Token！");`n            return;`n        }`n        alert("💡 提示：您可以直接使用桌面工具【运行PowerBI刷新工具.bat】（已实现无感自动登录），或将您的 Token 直接贴入下方框中。");
         window.open(authUrl, 'pbi_auth_window', 'width=600,height=700');
         alert("已打开登录页面，登录成功后请从跳转 URL 中的 #access_token=... 复制 Token 并贴入下方 Token 文本框。");
     });
