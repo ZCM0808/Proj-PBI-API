@@ -129,6 +129,7 @@ const WF_PARAM_FIELDS = {
     export_dataset_tables:     ['wf-ds-workspace', 'wf-ds-dataset'],
     report_view_count:         ['wf-rvc-workspace', 'wf-rvc-report', 'wf-rvc-start', 'wf-rvc-end'],
     dataset_partitions_manager:[],
+    xmla_interactive_refresh:     ['wf-xmla-endpoint', 'wf-xmla-token', 'wf-xmla-dataset', 'wf-xmla-table', 'wf-xmla-partition', 'wf-xmla-type'],
     check_permissions:         [],
     global_user_manager:       [],
     smart_pipeline:            [],
