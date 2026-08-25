@@ -11,30 +11,38 @@ window.showUniversalDataModal = function(options) {
             .uni-modal-table tbody tr { transition: background 0.2s; }
             .uni-modal-table tbody tr:hover { background: var(--overlay-10) !important; }
             
-            /* Enhanced Comfortable Scrollbars for Modal Body */
+            /* Enhanced Comfortable & High-Contrast Scrollbars for Modal Body */
             #universal-modal-body::-webkit-scrollbar {
-                width: 10px;
-                height: 10px;
+                width: 12px;
+                height: 14px;
             }
             #universal-modal-body::-webkit-scrollbar-track {
-                background: var(--overlay-5);
-                border-radius: 6px;
-                margin: 4px;
+                background: var(--overlay-5, rgba(255, 255, 255, 0.04));
+                border-radius: 8px;
+                margin: 2px;
             }
             #universal-modal-body::-webkit-scrollbar-thumb {
-                background: var(--overlay-20);
-                border-radius: 6px;
-                border: 2px solid transparent;
+                background: var(--overlay-30, rgba(255, 255, 255, 0.35));
+                border-radius: 8px;
+                border: 3px solid transparent;
                 background-clip: padding-box;
-                transition: background 0.2s;
+                min-width: 40px;
+                min-height: 40px;
+                transition: background 0.2s ease, border-width 0.2s ease;
             }
             #universal-modal-body::-webkit-scrollbar-thumb:hover {
-                background: var(--accent);
+                background: var(--accent, #6366f1);
+                border: 2px solid transparent;
+                background-clip: padding-box;
+            }
+            #universal-modal-body::-webkit-scrollbar-thumb:active {
+                background: var(--accent-hover, #4f46e5);
+                border: 1px solid transparent;
                 background-clip: padding-box;
             }
             #universal-modal-body {
-                scrollbar-width: thin;
-                scrollbar-color: var(--overlay-20) var(--overlay-5);
+                scrollbar-width: auto;
+                scrollbar-color: var(--overlay-30, rgba(255, 255, 255, 0.35)) var(--overlay-5, rgba(255, 255, 255, 0.04));
             }
         `;
         document.head.appendChild(style);
