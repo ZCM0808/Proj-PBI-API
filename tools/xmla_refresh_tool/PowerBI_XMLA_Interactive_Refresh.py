@@ -161,13 +161,13 @@ def fetch_model_tables(selected_db_name, selected_ds_id):
                 break
             dax_body = {"queries": [{"query": q_str}], "serializerSettings": {"incNull": True}}
             try:
-                r_dax = requests.post(dax_url, json=dax_body, headers=pbi_headers, timeout=10)
+                r_dax = requests.post(dax_url, json=dax_body, headers=pbi_headers, timeout=25)
                 if r_dax.status_code == 200:
                     res_j = r_dax.json()
                     results = res_j.get("results", [])
                     if results and "tables" in results[0]:
                         rows = results[0]["tables"][0].get("rows", [])
-                        raw_names = list(set([r.get("[Table Name]") or r.get("Table Name") or r.get("ExplicitName") for r in rows if (r.get("[Table Name]") or r.get("Table Name") or r.get("ExplicitName"))]))
+                        raw_names = list(set([r.get("[Table Name]") or r.get("Table Name") or r.get("ExplicitName") or r.get("[ExplicitName]") for r in rows if (r.get("[Table Name]") or r.get("Table Name") or r.get("ExplicitName"))]))
                         for t_name in sorted(raw_names):
                             if t_name and not str(t_name).startswith("DateTableTemplate") and not str(t_name).startswith("LocalDateTable") and not str(t_name).startswith("RowNumber"):
                                 tables.append({"name": t_name, "partitions": [{"name": t_name, "mode": "import"}]})

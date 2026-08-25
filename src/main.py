@@ -1764,7 +1764,7 @@ async def scan_xmla_tables(req: XMLATablesRequest):
             except Exception:
                 pass
 
-        # 2. 防线 1: 带 Workspace 路径的 DAX 查询 (COLUMNSTATISTICS / INFO.TABLES)
+        # 2. 防线 1: 带 Workspace 路径的 DAX 查询 (针对大型复杂模型给予 25s 超时)
         if req.dataset_id:
             dax_url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets/{req.dataset_id}/executeQueries" if workspace_id else f"https://api.powerbi.com/v1.0/myorg/datasets/{req.dataset_id}/executeQueries"
             dax_queries = [
@@ -1777,7 +1777,7 @@ async def scan_xmla_tables(req: XMLATablesRequest):
                     break
                 dax_body = {"queries": [{"query": q_str}], "serializerSettings": {"incNull": True}}
                 try:
-                    r_dax = await asyncio.to_thread(requests.post, dax_url, json=dax_body, headers=pbi_headers, timeout=6)
+                    r_dax = await asyncio.to_thread(requests.post, dax_url, json=dax_body, headers=pbi_headers, timeout=25)
                     if r_dax.status_code == 200:
                         res_j = r_dax.json()
                         results = res_j.get("results", [])
