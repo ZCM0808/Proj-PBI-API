@@ -1629,19 +1629,54 @@ async def run_harness_tests(request: Request):
 # XMLA 交互式模型/表/分区扫描、定向刷新与历史状态查询 API 端点
 # =========================================================================
 
+def _get_effective_xmla_token(passed_token: Optional[str]) -> str:
+    """自动解析有效的 XMLA AccessToken (若请求未携带或过期，自动从本地 MSAL 缓存提取)"""
+    if passed_token and passed_token.strip():
+        return passed_token.strip()
+    cache_file = r"C:\Users\ZCM\Desktop\XMLA_Refresh_Tool_Project\msal_token_cache.bin"
+    if os.path.exists(cache_file):
+        try:
+            from msal import PublicClientApplication, SerializableTokenCache
+            cache = SerializableTokenCache()
+            cache.deserialize(open(cache_file, "r").read())
+            msal_app = PublicClientApplication(
+                client_id="04b07795-8ddb-461a-bbee-02f9e1bf7b46",
+                authority="https://login.microsoftonline.com/organizations",
+                token_cache=cache
+            )
+            accounts = msal_app.get_accounts()
+            if accounts:
+                res = msal_app.acquire_token_silent(
+                    scopes=["https://analysis.windows.net/powerbi/api/.default"],
+                    account=accounts[0]
+                )
+                if res and "access_token" in res:
+                    return res["access_token"]
+        except Exception:
+            pass
+    try:
+        from src.pbi_client import PBIClient
+        client = PBIClient()
+        token = client._get_token()
+        if token:
+            return token
+    except Exception:
+        pass
+    return ""
+
 class XMLAScanRequest(BaseModel):
     xmla_endpoint: str
-    access_token: str
+    access_token: Optional[str] = None
 
 class XMLATablesRequest(BaseModel):
     xmla_endpoint: str
-    access_token: str
+    access_token: Optional[str] = None
     dataset_name: str
     dataset_id: Optional[str] = None
 
 class XMLARefreshRequest(BaseModel):
     xmla_endpoint: str
-    access_token: str
+    access_token: Optional[str] = None
     dataset_name: str
     dataset_id: Optional[str] = None
     table_name: str
@@ -1652,14 +1687,16 @@ class XMLARefreshRequest(BaseModel):
 async def scan_xmla_datasets(req: XMLAScanRequest):
     """扫描指定 XMLA 端点/工作区下的所有 Datasets"""
     try:
-        import requests
+        token = _get_effective_xmla_token(req.access_token)
+        if not token:
+            return {"success": False, "message": "未能提取到有效的 Power BI Access Token，请先登录！"}
+
         headers = {
-            "Authorization": f"Bearer {req.access_token}",
+            "Authorization": f"Bearer {token}",
             "Content-Type": "application/json"
         }
         
         # 解析工作区名称
-        # 格式: powerbi://api.powerbi.com/v1.0/myorg/WorkspaceName
         endpoint = req.xmla_endpoint.rstrip("/")
         ws_name = endpoint.split("/")[-1] if "/" in endpoint else ""
         
@@ -1674,16 +1711,13 @@ async def scan_xmla_datasets(req: XMLAScanRequest):
                     break
         
         # 2. 查询 Datasets
-        if workspace_id:
-            ds_url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets"
-        else:
-            ds_url = "https://api.powerbi.com/v1.0/myorg/datasets"
+        ds_url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets" if workspace_id else "https://api.powerbi.com/v1.0/myorg/datasets"
             
         ds_res = await asyncio.to_thread(requests.get, ds_url, headers=headers, timeout=10)
         if ds_res.status_code == 200:
             datasets = ds_res.json().get("value", [])
             results = [{"id": ds.get("id"), "name": ds.get("name")} for ds in datasets]
-            return {"success": True, "workspace_id": workspace_id, "datasets": results}
+            return {"success": True, "workspace_id": workspace_id, "datasets": results, "token": token}
         else:
             return {"success": False, "message": f"获取模型失败 ({ds_res.status_code}): {ds_res.text}"}
     except Exception as e:
@@ -1693,9 +1727,12 @@ async def scan_xmla_datasets(req: XMLAScanRequest):
 async def scan_xmla_tables(req: XMLATablesRequest):
     """扫描指定 Dataset 模型下的数据表与分区列表 (4 重防御：DAX COLUMNSTATISTICS -> INFO.TABLES -> REST API Tables -> XMLA SOAP)"""
     try:
-        import requests
         import html
-        pbi_headers = {"Authorization": f"Bearer {req.access_token}", "Content-Type": "application/json"}
+        token = _get_effective_xmla_token(req.access_token)
+        if not token:
+            return {"success": False, "message": "缺少有效 Access Token"}
+
+        pbi_headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
         
         # 1. 尝试解析工作区 Group ID
         endpoint = req.xmla_endpoint.rstrip("/")
@@ -1712,6 +1749,7 @@ async def scan_xmla_tables(req: XMLATablesRequest):
             pass
 
         tables = []
+        seen_tables = set()
         
         # 如果 dataset_id 为空，自动反查
         if not req.dataset_id and workspace_id:
@@ -1745,10 +1783,13 @@ async def scan_xmla_tables(req: XMLATablesRequest):
                         results = res_j.get("results", [])
                         if results and "tables" in results[0]:
                             rows = results[0]["tables"][0].get("rows", [])
-                            raw_names = list(set([r.get("[Table Name]") or r.get("Table Name") or r.get("ExplicitName") or r.get("[ExplicitName]") for r in rows if (r.get("[Table Name]") or r.get("Table Name") or r.get("ExplicitName") or r.get("[ExplicitName]"))]))
-                            for t_name in sorted(raw_names):
-                                if t_name and not str(t_name).startswith("DateTableTemplate") and not str(t_name).startswith("LocalDateTable") and not str(t_name).startswith("RowNumber"):
-                                    tables.append({"name": t_name, "partitions": [{"name": t_name, "mode": "import"}]})
+                            for r in rows:
+                                t_name = r.get("[Table Name]") or r.get("Table Name") or r.get("ExplicitName") or r.get("[ExplicitName]") or (list(r.values())[0] if r.values() else None)
+                                if t_name and str(t_name) not in seen_tables:
+                                    t_str = str(t_name).strip()
+                                    if not t_str.startswith("DateTableTemplate") and not t_str.startswith("LocalDateTable") and not t_str.startswith("RowNumber"):
+                                        seen_tables.add(t_str)
+                                        tables.append({"name": t_str, "partitions": [{"name": t_str, "mode": "import"}]})
                 except Exception:
                     pass
 
@@ -1761,8 +1802,11 @@ async def scan_xmla_tables(req: XMLATablesRequest):
                     t_items = r_rest_tbl.json().get("value", [])
                     for t in t_items:
                         t_name = t.get("name")
-                        if t_name and not str(t_name).startswith("DateTableTemplate") and not str(t_name).startswith("LocalDateTable") and not str(t_name).startswith("RowNumber"):
-                            tables.append({"name": t_name, "partitions": [{"name": t_name, "mode": "import"}]})
+                        if t_name and str(t_name) not in seen_tables:
+                            t_str = str(t_name).strip()
+                            if not t_str.startswith("DateTableTemplate") and not t_str.startswith("LocalDateTable") and not t_str.startswith("RowNumber"):
+                                seen_tables.add(t_str)
+                                tables.append({"name": t_str, "partitions": [{"name": t_str, "mode": "import"}]})
             except Exception:
                 pass
 
@@ -1770,7 +1814,7 @@ async def scan_xmla_tables(req: XMLATablesRequest):
         if not tables:
             http_xmla_url = req.xmla_endpoint.replace("powerbi://", "https://").rstrip("/") + "/xmla"
             headers_xmla = {
-                "Authorization": f"Bearer {req.access_token}",
+                "Authorization": f"Bearer {token}",
                 "Content-Type": "text/xml; charset=utf-8",
                 "SOAPAction": '"urn:schemas-microsoft-com:xmla:Discover"'
             }
@@ -1782,13 +1826,18 @@ async def scan_xmla_tables(req: XMLATablesRequest):
                     m_json = json.loads(html.unescape(json_str))
                     for t in m_json.get("model", {}).get("tables", []):
                         t_name = t.get("name")
-                        if t_name and not t_name.startswith("DateTableTemplate") and not t_name.startswith("LocalDateTable"):
-                            raw_parts = t.get("partitions", [])
-                            p_list = [{"name": p.get("name"), "mode": p.get("mode", "import")} for p in raw_parts if p.get("name")]
-                            tables.append({"name": t_name, "partitions": p_list or [{"name": t_name, "mode": "import"}]})
+                        if t_name and str(t_name) not in seen_tables:
+                            t_str = str(t_name).strip()
+                            if not t_str.startswith("DateTableTemplate") and not t_str.startswith("LocalDateTable"):
+                                raw_parts = t.get("partitions", [])
+                                p_list = [{"name": p.get("name"), "mode": p.get("mode", "import")} for p in raw_parts if p.get("name")]
+                                seen_tables.add(t_str)
+                                tables.append({"name": t_str, "partitions": p_list or [{"name": t_str, "mode": "import"}]})
             except Exception:
                 pass
 
+        # 排序
+        tables.sort(key=lambda x: x["name"])
         return {"success": True, "restricted": len(tables) == 0, "tables": tables}
     except Exception as e:
         return {"success": False, "message": str(e)}
@@ -1797,7 +1846,10 @@ async def scan_xmla_tables(req: XMLATablesRequest):
 async def trigger_xmla_refresh(req: XMLARefreshRequest):
     """下发 XMLA / TMSL 定向刷新任务"""
     try:
-        import requests
+        token = _get_effective_xmla_token(req.access_token)
+        if not token:
+            return {"success": False, "message": "缺少有效 Access Token"}
+
         http_xmla_url = req.xmla_endpoint.replace("powerbi://", "https://").rstrip("/") + "/xmla"
         
         if req.partition_name:
@@ -1808,7 +1860,7 @@ async def trigger_xmla_refresh(req: XMLARefreshRequest):
         tmsl_payload = {"refresh": {"type": req.refresh_type or "full", "objects": [tmsl_obj]}}
         
         xmla_execute_headers = {
-            "Authorization": f"Bearer {req.access_token}",
+            "Authorization": f"Bearer {token}",
             "Content-Type": "text/xml; charset=utf-8",
             "SOAPAction": '"urn:schemas-microsoft-com:xmla:Execute"'
         }
@@ -1824,7 +1876,7 @@ async def trigger_xmla_refresh(req: XMLARefreshRequest):
             endpoint = req.xmla_endpoint.rstrip("/")
             ws_name = endpoint.split("/")[-1] if "/" in endpoint else ""
             workspace_id = None
-            pbi_headers = {"Authorization": f"Bearer {req.access_token}", "Content-Type": "application/json"}
+            pbi_headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
             try:
                 groups_res = await asyncio.to_thread(requests.get, "https://api.powerbi.com/v1.0/myorg/groups", headers=pbi_headers, timeout=6)
                 if groups_res.status_code == 200:
@@ -1849,7 +1901,11 @@ async def trigger_xmla_refresh(req: XMLARefreshRequest):
 async def check_xmla_refresh_status(req: XMLATablesRequest):
     """查询模型最新云端刷新历史、转换为 UTC+8 并算出耗时与目标表当前真实行数"""
     try:
-        pbi_headers = {"Authorization": f"Bearer {req.access_token}", "Content-Type": "application/json"}
+        token = _get_effective_xmla_token(req.access_token)
+        if not token:
+            return {"success": False, "message": "缺少有效 Access Token"}
+
+        pbi_headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
         
         # 尝试解析 workspace_id
         endpoint = req.xmla_endpoint.rstrip("/")
@@ -1923,31 +1979,10 @@ async def check_xmla_refresh_status(req: XMLATablesRequest):
     except Exception as e:
         return {"success": False, "message": str(e)}
 
-
-
 @app.get("/api/xmla/get-token")
 def get_xmla_cached_token():
     """从本地 MSAL 缓存中无感提取未过期的 AccessToken"""
-    import os
-    from msal import PublicClientApplication, SerializableTokenCache
-    cache_file = r"C:\Users\ZCM\Desktop\XMLA_Refresh_Tool_Project\msal_token_cache.bin"
-    if os.path.exists(cache_file):
-        try:
-            cache = SerializableTokenCache()
-            cache.deserialize(open(cache_file, "r").read())
-            msal_app = PublicClientApplication(
-                client_id="04b07795-8ddb-461a-bbee-02f9e1bf7b46",
-                authority="https://login.microsoftonline.com/organizations",
-                token_cache=cache
-            )
-            accounts = msal_app.get_accounts()
-            if accounts:
-                res = msal_app.acquire_token_silent(
-                    scopes=["https://analysis.windows.net/powerbi/api/.default"],
-                    account=accounts[0]
-                )
-                if res and "access_token" in res:
-                    return {"success": True, "token": res["access_token"]}
-        except Exception as e:
-            return {"success": False, "message": str(e)}
-    return {"success": False, "message": "No cache file found"}
+    token = _get_effective_xmla_token("")
+    if token:
+        return {"success": True, "token": token}
+    return {"success": False, "message": "No cache file or valid token found"}

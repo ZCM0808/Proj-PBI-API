@@ -8536,20 +8536,20 @@ window.initXmlaWorkflow = function() {
             if (btnAuth && !silent) btnAuth.innerText = "⚡ 自动获取当前 Token";
             if (data && data.success && data.token) {
                 tokenInput.value = data.token;
-                if (!silent) window.showNotification ? window.showNotification("✅ 已成功提取未过期的 Access Token！", "success") : alert("✅ 已成功提取未过期的 Access Token！");
+                if (!silent && window.showNotification) window.showNotification("✅ 已成功提取未过期的 Access Token！", "success");
                 return data.token;
             } else {
                 const r2 = await fetch('/api/check-permissions');
                 const d2 = await r2.json();
                 if (d2 && d2.token) {
                     tokenInput.value = d2.token;
-                    if (!silent) window.showNotification ? window.showNotification("✅ 已提取全局 Access Token！", "success") : alert("✅ 已提取全局 Access Token！");
+                    if (!silent && window.showNotification) window.showNotification("✅ 已提取全局 Access Token！", "success");
                     return d2.token;
                 }
             }
         } catch (e) {
             if (btnAuth && !silent) btnAuth.innerText = "⚡ 自动获取当前 Token";
-            if (!silent) window.showNotification ? window.showNotification("❌ 提取 Token 异常: " + e.message, "error") : alert("❌ 提取 Token 异常: " + e.message);
+            if (!silent && window.showNotification) window.showNotification("❌ 提取 Token 异常: " + e.message, "error");
         }
         return tokenInput.value.trim();
     };
@@ -8562,10 +8562,6 @@ window.initXmlaWorkflow = function() {
         let token = tokenInput.value.trim();
         if (!token) token = await autoFetchToken(true);
         const endpoint = endpointInput.value.trim();
-        if (!token) {
-            if (!silent) alert("请先获取或输入 Access Token!");
-            return;
-        }
         
         btnScanDs.innerText = "⏳ 扫描中...";
         try {
@@ -8577,6 +8573,7 @@ window.initXmlaWorkflow = function() {
             const data = await res.json();
             btnScanDs.innerText = "🔄 扫描模型";
             if (data.success) {
+                if (data.token && !tokenInput.value) tokenInput.value = data.token;
                 selDs.innerHTML = '<option value="">-- 请选择模型 --</option>';
                 data.datasets.forEach(ds => {
                     const opt = document.createElement('option');
@@ -8589,6 +8586,11 @@ window.initXmlaWorkflow = function() {
                 window._xmla_datasets_cache = data.datasets;
                 if (!silent && window.showNotification) {
                     window.showNotification(`✅ 成功扫描到 ${data.datasets.length} 个模型！`, "success");
+                }
+                // 若包含模型且当前未选，自动选中首个模型并联动表扫描
+                if (selDs.options.length > 1 && !selDs.value) {
+                    selDs.selectedIndex = 1;
+                    selDs.dispatchEvent(new Event('change'));
                 }
             } else {
                 if (!silent) alert("❌ 扫描模型失败: " + data.message);
@@ -8682,6 +8684,13 @@ window.initXmlaWorkflow = function() {
     // 关键联动：模型下拉框改变时，自动触发扫描数据表！
     selDs.addEventListener('change', () => {
         window.loadXmlaTablesForDataset(true);
+    });
+
+    // 页面初始化时自动尝试预热 Token 并拉取模型
+    autoFetchToken(true).then((tok) => {
+        if (tok && (!selDs.options || selDs.options.length <= 1)) {
+            scanDatasets(true);
+        }
     });
 
     // 联动更新分区下拉框
