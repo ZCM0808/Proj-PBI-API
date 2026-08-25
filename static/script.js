@@ -8527,15 +8527,23 @@ window.initXmlaWorkflow = function() {
     if (!btnAuth || btnAuth._inited) return;
     btnAuth._inited = true;
 
+    const updateTokenBadge = (hasToken) => {
+        const badge = document.getElementById('wf-xmla-token-badge');
+        if (badge) {
+            badge.style.display = hasToken ? 'inline-flex' : 'none';
+        }
+    };
+
     // 自动尝试获取已缓存的 Token
     const autoFetchToken = async (silent = true) => {
         try {
-            if (btnAuth && !silent) btnAuth.innerText = "⏳ 获取中...";
+            if (btnAuth && !silent) btnAuth.innerHTML = "⏳";
             const res = await fetch('/api/xmla/get-token');
             const data = await res.json();
-            if (btnAuth && !silent) btnAuth.innerText = "⚡ 自动获取当前 Token";
+            if (btnAuth && !silent) btnAuth.innerHTML = "⚡";
             if (data && data.success && data.token) {
                 tokenInput.value = data.token;
+                updateTokenBadge(true);
                 if (!silent && window.showNotification) window.showNotification("✅ 已成功提取未过期的 Access Token！", "success");
                 return data.token;
             } else {
@@ -8543,15 +8551,18 @@ window.initXmlaWorkflow = function() {
                 const d2 = await r2.json();
                 if (d2 && d2.token) {
                     tokenInput.value = d2.token;
+                    updateTokenBadge(true);
                     if (!silent && window.showNotification) window.showNotification("✅ 已提取全局 Access Token！", "success");
                     return d2.token;
                 }
             }
         } catch (e) {
-            if (btnAuth && !silent) btnAuth.innerText = "⚡ 自动获取当前 Token";
+            if (btnAuth && !silent) btnAuth.innerHTML = "⚡";
             if (!silent && window.showNotification) window.showNotification("❌ 提取 Token 异常: " + e.message, "error");
         }
-        return tokenInput.value.trim();
+        const currentVal = tokenInput.value.trim();
+        updateTokenBadge(Boolean(currentVal));
+        return currentVal;
     };
 
     // 1. 个人认证按钮
@@ -8563,7 +8574,7 @@ window.initXmlaWorkflow = function() {
         if (!token) token = await autoFetchToken(true);
         const endpoint = endpointInput.value.trim();
         
-        btnScanDs.innerText = "⏳ 扫描中...";
+        btnScanDs.innerHTML = "⏳";
         try {
             const res = await fetch('/api/xmla/scan-datasets', {
                 method: 'POST',
@@ -8571,9 +8582,12 @@ window.initXmlaWorkflow = function() {
                 body: JSON.stringify({ xmla_endpoint: endpoint, access_token: token })
             });
             const data = await res.json();
-            btnScanDs.innerText = "🔄 扫描模型";
+            btnScanDs.innerHTML = "🔄";
             if (data.success) {
-                if (data.token && !tokenInput.value) tokenInput.value = data.token;
+                if (data.token && !tokenInput.value) {
+                    tokenInput.value = data.token;
+                    updateTokenBadge(true);
+                }
                 selDs.innerHTML = '<option value="">-- 请选择模型 --</option>';
                 data.datasets.forEach(ds => {
                     const opt = document.createElement('option');
@@ -8596,7 +8610,7 @@ window.initXmlaWorkflow = function() {
                 if (!silent) alert("❌ 扫描模型失败: " + data.message);
             }
         } catch (e) {
-            btnScanDs.innerText = "🔄 扫描模型";
+            btnScanDs.innerHTML = "🔄";
             if (!silent) alert("❌ 请求异常: " + e.message);
         }
     };
@@ -8620,9 +8634,9 @@ window.initXmlaWorkflow = function() {
             if (found) dsId = found.id;
         }
 
-        btnScanTbl.innerText = "⏳ 扫描中...";
+        btnScanTbl.innerHTML = "⏳";
         selTbl.disabled = true;
-        selTbl.innerHTML = '<option value="">⏳ 正在快速扫描模型数据表与分区...</option>';
+        selTbl.innerHTML = '<option value="">⏳ 正在深度扫描模型数据表与分区 (大型模型预计 10-15s)...</option>';
         selPart.innerHTML = '<option value="">-- 全表刷新 (包含所有分区) --</option>';
 
         try {
@@ -8632,7 +8646,7 @@ window.initXmlaWorkflow = function() {
                 body: JSON.stringify({ xmla_endpoint: endpoint, access_token: token, dataset_name: dsName, dataset_id: dsId })
             });
             const data = await res.json();
-            btnScanTbl.innerText = "🔄 扫描数据表";
+            btnScanTbl.innerHTML = "🔄";
             selTbl.disabled = false;
 
             if (data.success) {
@@ -8851,22 +8865,28 @@ document.addEventListener('DOMContentLoaded', () => {
 // 挂载 toggleXmlaTokenLock 解锁/锁定控制函数
 window.toggleXmlaTokenLock = function() {
     const tokenInput = document.getElementById('wf-xmla-token');
+    const tokenContainer = document.getElementById('wf-xmla-token-container');
     const lockBtn = document.getElementById('wf-xmla-toggle-lock-btn');
     if (!tokenInput || !lockBtn) return;
     
-    if (tokenInput.hasAttribute('readonly')) {
+    const isCurrentlyCollapsed = !tokenContainer || tokenContainer.style.display === 'none';
+    if (isCurrentlyCollapsed) {
+        if (tokenContainer) tokenContainer.style.display = 'block';
         tokenInput.removeAttribute('readonly');
         tokenInput.style.opacity = '1';
         tokenInput.style.borderColor = 'var(--accent)';
-        lockBtn.innerHTML = '🔓 已解锁 (点击锁定输入)';
+        lockBtn.innerHTML = '🔓';
+        lockBtn.title = '点击折叠并锁定 Token';
         lockBtn.style.color = 'var(--accent)';
         lockBtn.style.borderColor = 'var(--accent)';
         tokenInput.focus();
     } else {
+        if (tokenContainer) tokenContainer.style.display = 'none';
         tokenInput.setAttribute('readonly', 'true');
-        tokenInput.style.opacity = '0.8';
+        tokenInput.style.opacity = '0.85';
         tokenInput.style.borderColor = 'var(--panel-border)';
-        lockBtn.innerHTML = '🔒 已锁定 (点击解锁编辑)';
+        lockBtn.innerHTML = '🔒';
+        lockBtn.title = '点击展开并解锁编辑 Token';
         lockBtn.style.color = 'var(--text-secondary)';
         lockBtn.style.borderColor = 'var(--overlay-20)';
     }
