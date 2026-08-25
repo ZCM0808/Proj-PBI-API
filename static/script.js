@@ -6175,6 +6175,8 @@ document.addEventListener('mousedown', (e) => {
                     await window.executeExportDataset();
                 } else if (wfType === 'dataset_partitions_manager') {
                     await window.scanDatasetPartitions();
+                } else if (wfType === 'xmla_interactive_refresh') {
+                    if (window.runXmlaRefreshWorkflow) await window.runXmlaRefreshWorkflow();
                 } else if (wfType === 'export_visual') {
                     await executeExportVisual();
                 } else if (wfType === 'report_view_count') {
@@ -8535,6 +8537,7 @@ window.initXmlaWorkflow = function() {
     };
 
     const SPIN_ICON = '<svg class="spinning" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block;vertical-align:middle;animation:spin 0.8s linear infinite;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>';
+    const AUTH_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" stroke-width="1"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>';
 
     // 自动尝试获取已缓存的 Token
     const autoFetchToken = async (silent = true) => {
@@ -8542,7 +8545,7 @@ window.initXmlaWorkflow = function() {
             if (btnAuth && !silent) btnAuth.innerHTML = SPIN_ICON;
             const res = await fetch('/api/xmla/get-token');
             const data = await res.json();
-            if (btnAuth && !silent) btnAuth.innerHTML = "⚡";
+            if (btnAuth && !silent) btnAuth.innerHTML = AUTH_ICON;
             if (data && data.success && data.token) {
                 tokenInput.value = data.token;
                 updateTokenBadge(true);
@@ -8559,7 +8562,7 @@ window.initXmlaWorkflow = function() {
                 }
             }
         } catch (e) {
-            if (btnAuth && !silent) btnAuth.innerHTML = "⚡";
+            if (btnAuth && !silent) btnAuth.innerHTML = AUTH_ICON;
             if (!silent && window.showNotification) window.showNotification("❌ 提取 Token 异常: " + e.message, "error");
         }
         const currentVal = tokenInput.value.trim();
