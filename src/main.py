@@ -2019,7 +2019,7 @@ async def check_xmla_refresh_status(req: XMLATablesRequest):
 
         pbi_headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
         
-        # 尝试解析 workspace_id
+        # 尝试解析 workspace_id 与 dataset_id
         endpoint = req.xmla_endpoint.rstrip("/")
         ws_name = endpoint.split("/")[-1] if "/" in endpoint else ""
         workspace_id = None
@@ -2033,7 +2033,20 @@ async def check_xmla_refresh_status(req: XMLATablesRequest):
         except Exception:
             pass
 
-        ref_status_url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets/{req.dataset_id}/refreshes?$top=5" if (workspace_id and req.dataset_id) else (f"https://api.powerbi.com/v1.0/myorg/datasets/{req.dataset_id}/refreshes?$top=5" if req.dataset_id else "")
+        dataset_id = req.dataset_id
+        if not dataset_id and req.dataset_name:
+            ds_list_url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets" if workspace_id else "https://api.powerbi.com/v1.0/myorg/datasets"
+            try:
+                ds_res = await asyncio.to_thread(requests.get, ds_list_url, headers=pbi_headers, timeout=6)
+                if ds_res.status_code == 200:
+                    for ds in ds_res.json().get("value", []):
+                        if ds.get("name", "").lower() == req.dataset_name.lower():
+                            dataset_id = ds.get("id")
+                            break
+            except Exception:
+                pass
+
+        ref_status_url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshes?$top=20" if (workspace_id and dataset_id) else (f"https://api.powerbi.com/v1.0/myorg/datasets/{dataset_id}/refreshes?$top=20" if dataset_id else "")
         
         history = []
         if ref_status_url:
@@ -2065,18 +2078,19 @@ async def check_xmla_refresh_status(req: XMLATablesRequest):
                                 duration_str = f"{h}h {m}m {s}s" if h > 0 else (f"{m}m {s}s" if m > 0 else f"{s}s")
 
                     history.append({
+                        "requestId": item.get("requestId", "-"),
                         "startTime": start_bj,
                         "endTime": end_bj,
                         "duration": duration_str,
-                        "status": item.get("status"),
-                        "refreshType": item.get("refreshType"),
-                        "error": item.get("serviceExceptionJson")
+                        "status": item.get("status", "Unknown"),
+                        "refreshType": item.get("refreshType", "ViaApi"),
+                        "error": item.get("serviceExceptionJson") or ""
                     })
 
-        # 实时查询当前表的行数
+        # 实时查询当前表的行数 (如果指定了表名)
         row_count = None
-        if req.dataset_id and req.dataset_name:
-            dax_url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets/{req.dataset_id}/executeQueries" if workspace_id else f"https://api.powerbi.com/v1.0/myorg/datasets/{req.dataset_id}/executeQueries"
+        if dataset_id and req.dataset_name:
+            dax_url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/executeQueries" if workspace_id else f"https://api.powerbi.com/v1.0/myorg/datasets/{dataset_id}/executeQueries"
             dax_body = {"queries": [{"query": f"EVALUATE {{ COUNTROWS('{req.dataset_name}') }}"}]}
             try:
                 r_rows = await asyncio.to_thread(requests.post, dax_url, json=dax_body, headers=pbi_headers, timeout=8)
@@ -2087,7 +2101,7 @@ async def check_xmla_refresh_status(req: XMLATablesRequest):
             except Exception:
                 pass
 
-        return {"success": True, "history": history, "row_count": row_count}
+        return {"success": True, "history": history, "row_count": row_count, "dataset_id": dataset_id}
     except Exception as e:
         return {"success": False, "message": str(e)}
 

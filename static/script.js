@@ -9117,7 +9117,125 @@ window.exportXmlaTableFields = async function(forEntireModel = false) {
         if (logsEl) logsEl.innerText += `❌ 导出字段异常: ${err.message}\n`;
         if (window.showNotification) window.showNotification(`❌ 导出字段异常: ${err.message}`, 'error');
     } finally {
-        if (btnExport) { btnExport.disabled = false; btnExport.innerHTML = '📋'; }
+        if (btnExport) {
+            btnExport.disabled = false;
+            btnExport.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>';
+        }
+        if (logsEl) logsEl.scrollTop = logsEl.scrollHeight;
+    }
+};
+
+// 查询模型/数据表/分区的历史刷新记录与状态
+window.queryXmlaRefreshHistory = async function(scope = 'model') {
+    const tokenInput = document.getElementById('wf-xmla-token');
+    const endpointInput = document.getElementById('wf-xmla-endpoint');
+    const selDs = document.getElementById('wf-xmla-dataset');
+    const selTbl = document.getElementById('wf-xmla-table');
+    const selPart = document.getElementById('wf-xmla-partition');
+    const logsEl = document.getElementById('wf-out-xmla-logs');
+
+    const token = tokenInput ? tokenInput.value.trim() : '';
+    const endpoint = endpointInput ? endpointInput.value.trim() : '';
+    const dsName = selDs ? selDs.value : '';
+    const tblName = selTbl ? selTbl.value : '';
+    const partName = selPart ? selPart.value : '';
+
+    if (!dsName) {
+        if (window.showNotification) window.showNotification('❌ 请先选择 Dataset (Model)！', 'error');
+        return;
+    }
+    if ((scope === 'table' || scope === 'partition') && !tblName) {
+        if (window.showNotification) window.showNotification('❌ 请先选择要查询的数据表 Table！', 'error');
+        return;
+    }
+
+    let dsId = '';
+    if (selDs && selDs.options[selDs.selectedIndex]) {
+        dsId = selDs.options[selDs.selectedIndex].getAttribute('data-id') || selDs.options[selDs.selectedIndex].dataset?.id || '';
+    }
+    if (!dsId && window._xmla_datasets_cache) {
+        const found = window._xmla_datasets_cache.find(d => d.name === dsName);
+        if (found) dsId = found.id;
+    }
+
+    const btnHistory = document.getElementById(scope === 'model' ? 'wf-xmla-btn-history-ds' : (scope === 'table' ? 'wf-xmla-btn-history-tbl' : 'wf-xmla-btn-history-part'));
+    const originalContent = btnHistory ? btnHistory.innerHTML : '';
+    const SPIN_ICON = '<svg class="spinning" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block;vertical-align:middle;animation:spin 0.8s linear infinite;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>';
+    if (btnHistory) { btnHistory.disabled = true; btnHistory.innerHTML = SPIN_ICON; }
+
+    if (window.expandConsole) window.expandConsole('wf-out-xmla-logs');
+    if (logsEl) {
+        logsEl.innerText += `\n[${new Date().toLocaleTimeString()}] 📜 正在查询 [${dsName}${tblName ? ` ▸ ${tblName}` : ''}${partName ? ` ▸ ${partName}` : ''}] 的云端刷新审计历史...\n`;
+        logsEl.scrollTop = logsEl.scrollHeight;
+    }
+
+    try {
+        const res = await fetch('/api/xmla/refresh-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                xmla_endpoint: endpoint,
+                access_token: token,
+                dataset_name: tblName || dsName,
+                dataset_id: dsId
+            })
+        });
+        const data = await res.json();
+
+        if (data.success && data.history && data.history.length > 0) {
+            const tableRows = data.history.map((h, i) => ({
+                '#': i + 1,
+                status: h.status === 'Completed' ? '✅ Completed' : (h.status === 'Failed' ? '❌ Failed' : (h.status === 'Unknown' ? 'ℹ️ Unknown' : '🔄 In Progress')),
+                refreshType: h.refreshType || 'ViaApi',
+                startTime: h.startTime || '-',
+                endTime: h.endTime || '进行中...',
+                duration: h.duration || '-',
+                error: h.error || '-'
+            }));
+
+            if (logsEl) {
+                logsEl.innerText += `✅ 成功获取 ${data.history.length} 条历史刷新审计记录！\n`;
+                if (data.row_count !== null && data.row_count !== undefined) {
+                    logsEl.innerText += `📈 目标表当前实时行数: ${Number(data.row_count).toLocaleString()} 行\n`;
+                }
+                logsEl.scrollTop = logsEl.scrollHeight;
+            }
+
+            let titlePrefix = '📜 语义模型';
+            if (scope === 'table') titlePrefix = `📜 数据表 [${tblName}] (归属模型: ${dsName})`;
+            else if (scope === 'partition') titlePrefix = `📜 分区 [${partName || '全表'}] (模型: ${dsName} ▸ 表: ${tblName})`;
+            else titlePrefix = `📜 模型 [${dsName}] 云端刷新历史审计`;
+
+            if (data.row_count !== null && data.row_count !== undefined) {
+                titlePrefix += ` — 实时行数: ${Number(data.row_count).toLocaleString()} 行`;
+            }
+
+            if (window.showUniversalDataModal) {
+                window.showUniversalDataModal({
+                    title: `${titlePrefix} (最近 ${tableRows.length} 次刷新)`,
+                    data: tableRows,
+                    columns: ['#', 'status', 'refreshType', 'startTime', 'endTime', 'duration', 'error'],
+                    displayNames: ['#', 'Status (状态)', 'Type (类型)', 'Start Time (UTC+8)', 'End Time (UTC+8)', 'Duration (耗时)', 'Error Details (异常明细)'],
+                    enableSearch: true,
+                    enableColumnFilter: true
+                });
+            }
+            if (window.showNotification) {
+                window.showNotification(`📜 成功获取 [${dsName}] 的 ${tableRows.length} 条历史刷新审计！`, 'success');
+            }
+        } else {
+            const noHistMsg = `⚠️ 暂未查询到 [${dsName}] 的云端刷新审计记录 (可能未曾通过 API/计划刷新，或权限受限)。`;
+            if (logsEl) {
+                logsEl.innerText += `${noHistMsg}\n`;
+                logsEl.scrollTop = logsEl.scrollHeight;
+            }
+            if (window.showNotification) window.showNotification(noHistMsg, 'warning');
+        }
+    } catch (err) {
+        if (logsEl) logsEl.innerText += `❌ 查询刷新历史异常: ${err.message}\n`;
+        if (window.showNotification) window.showNotification(`❌ 查询异常: ${err.message}`, 'error');
+    } finally {
+        if (btnHistory) { btnHistory.disabled = false; btnHistory.innerHTML = originalContent; }
         if (logsEl) logsEl.scrollTop = logsEl.scrollHeight;
     }
 };
