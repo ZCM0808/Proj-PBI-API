@@ -8601,9 +8601,14 @@ window.initXmlaWorkflow = function() {
                 if (!silent && window.showNotification) {
                     window.showNotification(`✅ 成功扫描到 ${data.datasets.length} 个模型！`, "success");
                 }
-                // 若包含模型且当前未选，自动选中首个模型并联动表扫描
-                if (selDs.options.length > 1 && !selDs.value) {
+                // 智能联动：优先自动选择上次使用的模型 (例如 Carman PA Hypers)
+                const lastDs = localStorage.getItem('pbi_xmla_last_dataset') || 'Carman PA Hypers';
+                if (lastDs && data.datasets.some(d => d.name === lastDs)) {
+                    selDs.value = lastDs;
+                } else if (selDs.options.length > 1 && !selDs.value) {
                     selDs.selectedIndex = 1;
+                }
+                if (selDs.value) {
                     selDs.dispatchEvent(new Event('change'));
                 }
             } else {
@@ -8663,11 +8668,15 @@ window.initXmlaWorkflow = function() {
                         selTbl.appendChild(opt);
                     });
 
-                    // 默认自动选中第一张业务表并联动分区
-                    if (selTbl.options.length > 1) {
+                    // 智能联动：优先自动选择上次选中的表名
+                    const lastTbl = localStorage.getItem('pbi_xmla_last_table');
+                    if (lastTbl && data.tables.some(t => t.name === lastTbl)) {
+                        selTbl.value = lastTbl;
+                    } else if (selTbl.options.length > 1) {
                         selTbl.selectedIndex = 1;
-                        selTbl.dispatchEvent(new Event('change'));
                     }
+                    selTbl.dispatchEvent(new Event('change'));
+
                     if (!isSilent && window.showNotification) {
                         window.showNotification(`✅ 成功扫描并解包 ${data.tables.length} 张数据表！`, "success");
                     }
@@ -8684,7 +8693,7 @@ window.initXmlaWorkflow = function() {
                 if (!isSilent) alert("❌ 扫描表失败: " + (data.message || "未知错误"));
             }
         } catch (e) {
-            btnScanTbl.innerText = "🔄 扫描数据表";
+            btnScanTbl.innerHTML = "🔄";
             selTbl.disabled = false;
             selTbl.innerHTML = '<option value="">❌ 请求异常</option>';
             if (manualBox) manualBox.style.display = 'block';
@@ -8695,8 +8704,9 @@ window.initXmlaWorkflow = function() {
     // 绑定扫描表按钮
     btnScanTbl.addEventListener('click', () => window.loadXmlaTablesForDataset(false));
 
-    // 关键联动：模型下拉框改变时，自动触发扫描数据表！
+    // 关键联动：模型下拉框改变时，记录到 localStorage 并自动触发扫描数据表！
     selDs.addEventListener('change', () => {
+        if (selDs.value) localStorage.setItem('pbi_xmla_last_dataset', selDs.value);
         window.loadXmlaTablesForDataset(true);
     });
 
@@ -8707,9 +8717,10 @@ window.initXmlaWorkflow = function() {
         }
     });
 
-    // 联动更新分区下拉框
+    // 联动更新分区下拉框并记录最后选择的表
     selTbl.addEventListener('change', () => {
         const tblName = selTbl.value;
+        if (tblName) localStorage.setItem('pbi_xmla_last_table', tblName);
         selPart.innerHTML = '<option value="">-- 全表刷新 (包含所有分区) --</option>';
         if (window._xmla_tables_cache) {
             const tObj = window._xmla_tables_cache.find(t => t.name === tblName);
@@ -8867,26 +8878,29 @@ window.toggleXmlaTokenLock = function() {
     const tokenInput = document.getElementById('wf-xmla-token');
     const tokenContainer = document.getElementById('wf-xmla-token-container');
     const lockBtn = document.getElementById('wf-xmla-toggle-lock-btn');
+    const chevron = document.getElementById('wf-xmla-token-chevron');
     if (!tokenInput || !lockBtn) return;
     
     const isCurrentlyCollapsed = !tokenContainer || tokenContainer.style.display === 'none';
     if (isCurrentlyCollapsed) {
         if (tokenContainer) tokenContainer.style.display = 'block';
+        if (chevron) chevron.style.transform = 'rotate(90deg)';
         tokenInput.removeAttribute('readonly');
         tokenInput.style.opacity = '1';
         tokenInput.style.borderColor = 'var(--accent)';
         lockBtn.innerHTML = '🔓';
-        lockBtn.title = '点击折叠并锁定 Token';
+        lockBtn.title = '折叠并锁定 Token';
         lockBtn.style.color = 'var(--accent)';
         lockBtn.style.borderColor = 'var(--accent)';
         tokenInput.focus();
     } else {
         if (tokenContainer) tokenContainer.style.display = 'none';
+        if (chevron) chevron.style.transform = 'rotate(0deg)';
         tokenInput.setAttribute('readonly', 'true');
         tokenInput.style.opacity = '0.85';
         tokenInput.style.borderColor = 'var(--panel-border)';
         lockBtn.innerHTML = '🔒';
-        lockBtn.title = '点击展开并解锁编辑 Token';
+        lockBtn.title = '展开并解锁编辑 Token';
         lockBtn.style.color = 'var(--text-secondary)';
         lockBtn.style.borderColor = 'var(--overlay-20)';
     }
