@@ -1723,6 +1723,48 @@ async def scan_xmla_datasets(req: XMLAScanRequest):
     except Exception as e:
         return {"success": False, "message": f"服务器异常: {str(e)}"}
 
+def _map_dax_datatype(dt_val, col_name="", min_val="", max_val=""):
+    dt_str = str(dt_val or "").strip().lower()
+    if dt_str in ["2", "int64", "integer", "int"]:
+        return "Int64 (整数)"
+    elif dt_str in ["6", "double", "float", "number"]:
+        return "Double (浮点数)"
+    elif dt_str in ["8", "string", "text", "varchar", "nvarchar"]:
+        return "String (文本)"
+    elif dt_str in ["9", "datetime", "date", "timestamp"]:
+        return "DateTime (日期时间)"
+    elif dt_str in ["10", "decimal", "currency", "money"]:
+        return "Decimal (数值/货币)"
+    elif dt_str in ["11", "boolean", "bool"]:
+        return "Boolean (布尔)"
+    elif dt_str in ["17", "binary"]:
+        return "Binary (二进制)"
+    
+    # 智能启发式推导：根据 Min/Max 范围与字段命名推导真实数据类型
+    s_min = str(min_val).strip()
+    s_max = str(max_val).strip()
+    if s_min and s_max:
+        if (s_min.count("-") == 2 or "/" in s_min) and len(s_min) >= 8:
+            return "DateTime (日期时间)"
+        if s_min.replace("-", "", 1).isdigit() and s_max.replace("-", "", 1).isdigit():
+            return "Int64 (整数)"
+        try:
+            float(s_min)
+            float(s_max)
+            return "Double (数值)"
+        except Exception:
+            pass
+        if s_min.lower() in ["true", "false"]:
+            return "Boolean (布尔)"
+            
+    c_lower = col_name.lower()
+    if any(k in c_lower for k in ["date", "time", "year", "month", "day", "_dt", "fiscal", "created", "modified"]):
+        return "DateTime (日期时间)"
+    if any(c_lower.endswith(k) for k in ["_id", "id", "qty", "count", "amount", "sales", "price", "cost", "total", "rate", "sum", "avg"]):
+        return "Numeric (数值/标识)"
+        
+    return "String (文本)"
+
 @app.post("/api/xmla/scan-tables")
 async def scan_xmla_tables(req: XMLATablesRequest):
     """扫描指定 Dataset 模型下的数据表与分区列表 (4 重防御：DAX COLUMNSTATISTICS -> INFO.TABLES -> REST API Tables -> XMLA SOAP)"""
@@ -1779,11 +1821,11 @@ async def scan_xmla_tables(req: XMLATablesRequest):
             dax_url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets/{req.dataset_id}/executeQueries" if workspace_id else f"https://api.powerbi.com/v1.0/myorg/datasets/{req.dataset_id}/executeQueries"
             dax_queries = [
                 "EVALUATE COLUMNSTATISTICS()",
+                "EVALUATE SELECTCOLUMNS(INFO.VIEW.COLUMNS(), \"Table Name\", [TableName], \"Column Name\", [Name], \"Data Type\", [DataType], \"IsHidden\", [IsHidden])",
                 "EVALUATE SUMMARIZE(COLUMNSTATISTICS(), [Table Name])",
                 "EVALUATE SELECTCOLUMNS(INFO.TABLES(), \"Table Name\", COALESCE([ExplicitName], [Name]))",
                 "EVALUATE SELECTCOLUMNS(FILTER(INFO.TABLES(), [IsHidden] = FALSE()), \"Table Name\", [ExplicitName])",
-                "EVALUATE INFO.VIEW.TABLES()",
-                "EVALUATE SELECTCOLUMNS(FILTER(INFO.VIEW.TABLES(), [IsHidden] = FALSE()), \"Table Name\", [Name])"
+                "EVALUATE INFO.VIEW.TABLES()"
             ]
             for q_str in dax_queries:
                 if tables_dict:
@@ -1811,12 +1853,16 @@ async def scan_xmla_tables(req: XMLATablesRequest):
                                         if col_name:
                                             col_str = str(col_name).strip()
                                             if not col_str.startswith("RowNumber") and not any(c.get("name") == col_str for c in tables_dict[t_str]["columns"]):
+                                                min_v = str(r.get("[Min]") or r.get("Min") or "")
+                                                max_v = str(r.get("[Max]") or r.get("Max") or "")
+                                                dt_raw = r.get("[Data Type]") or r.get("Data Type") or r.get("[DataType]") or r.get("DataType")
+                                                dt_mapped = _map_dax_datatype(dt_raw, col_name=col_str, min_val=min_v, max_val=max_v)
                                                 tables_dict[t_str]["columns"].append({
                                                     "name": col_str,
-                                                    "dataType": str(r.get("[Data Type]") or r.get("Data Type") or "Unknown"),
+                                                    "dataType": dt_mapped,
                                                     "cardinality": r.get("[Cardinality]") or r.get("Cardinality"),
-                                                    "min": str(r.get("[Min]") or ""),
-                                                    "max": str(r.get("[Max]") or "")
+                                                    "min": min_v,
+                                                    "max": max_v
                                                 })
                 except Exception:
                     pass
@@ -1834,7 +1880,7 @@ async def scan_xmla_tables(req: XMLATablesRequest):
                             t_str = str(t_name).strip()
                             if not t_str.startswith("DateTableTemplate") and not t_str.startswith("LocalDateTable") and not t_str.startswith("RowNumber"):
                                 cols_raw = t.get("columns", [])
-                                cols_list = [{"name": c.get("name"), "dataType": c.get("dataType", "string")} for c in cols_raw if c.get("name")]
+                                cols_list = [{"name": c.get("name"), "dataType": _map_dax_datatype(c.get("dataType", "string"), col_name=c.get("name"))} for c in cols_raw if c.get("name")]
                                 tables_dict[t_str] = {
                                     "name": t_str,
                                     "partitions": [{"name": t_str, "mode": "import"}],
@@ -1865,7 +1911,7 @@ async def scan_xmla_tables(req: XMLATablesRequest):
                                 raw_parts = t.get("partitions", [])
                                 p_list = [{"name": p.get("name"), "mode": p.get("mode", "import")} for p in raw_parts if p.get("name")]
                                 raw_cols = t.get("columns", [])
-                                c_list = [{"name": c.get("name"), "dataType": c.get("dataType", "string"), "isHidden": c.get("isHidden", False)} for c in raw_cols if c.get("name")]
+                                c_list = [{"name": c.get("name"), "dataType": _map_dax_datatype(c.get("dataType", "string"), col_name=c.get("name")), "isHidden": c.get("isHidden", False)} for c in raw_cols if c.get("name")]
                                 tables_dict[t_str] = {
                                     "name": t_str,
                                     "partitions": p_list or [{"name": t_str, "mode": "import"}],

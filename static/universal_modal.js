@@ -267,7 +267,7 @@ window.showUniversalDataModal = function(options) {
     // Body
     const body = document.createElement('div');
     body.id = 'universal-modal-body';
-    body.style.cssText = 'flex:1; min-height:0; overflow:auto; padding:12px; position:relative;';
+    body.style.cssText = 'flex:1; min-height:0; overflow:auto; padding:0; position:relative; background:var(--bg-color);';
     
     const tableId = 'uni-modal-table-' + Math.random().toString(36).substr(2, 9);
     const table = document.createElement('table');
@@ -289,7 +289,7 @@ window.showUniversalDataModal = function(options) {
 
     // Footer
     const footer = document.createElement('div');
-    footer.style.cssText = 'padding:12px 16px; border-top:1px solid var(--overlay-10); display:flex; justify-content:flex-end; align-items:center; background:var(--bg-color); flex-shrink:0;';
+    footer.style.cssText = 'padding:10px 16px; border-top:1px solid var(--overlay-10); display:flex; justify-content:flex-end; align-items:center; background:var(--bg-color); flex-shrink:0;';
     footer.appendChild(copyBtn);
     panel.appendChild(footer);
 
@@ -360,7 +360,7 @@ window.showUniversalDataModal = function(options) {
             colgroup.appendChild(colEl);
 
             const th = document.createElement('th');
-            th.style.cssText = 'position:relative; padding:8px 16px 8px 12px; border-bottom:1px solid var(--panel-border); font-weight:600; cursor:pointer; user-select:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; box-sizing:border-box;';
+            th.style.cssText = 'position:sticky; top:0; background:var(--bg-color); z-index:16; padding:10px 16px 10px 12px; border-bottom:1px solid var(--panel-border); font-weight:600; cursor:pointer; user-select:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; box-sizing:border-box;';
             th.title = 'Click to sort, Shift+Click multi-sort, Drag right divider to resize, Double click to auto-fit';
             
             let arrow = '';
@@ -534,9 +534,12 @@ window.showUniversalDataModal = function(options) {
 
     renderTable();
 
-    // Animate in
+    // Animate in & clear transition after open for 60fps smooth dragging
     requestAnimationFrame(() => {
         overlay.style.opacity = '1';
         panel.style.transform = 'scale(1)';
+        setTimeout(() => {
+            panel.style.transition = 'none';
+        }, 260);
     });
 };

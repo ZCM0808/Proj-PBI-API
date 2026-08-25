@@ -8534,10 +8534,12 @@ window.initXmlaWorkflow = function() {
         }
     };
 
+    const SPIN_ICON = '<svg class="spinning" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block;vertical-align:middle;animation:spin 0.8s linear infinite;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>';
+
     // 自动尝试获取已缓存的 Token
     const autoFetchToken = async (silent = true) => {
         try {
-            if (btnAuth && !silent) btnAuth.innerHTML = "⏳";
+            if (btnAuth && !silent) btnAuth.innerHTML = SPIN_ICON;
             const res = await fetch('/api/xmla/get-token');
             const data = await res.json();
             if (btnAuth && !silent) btnAuth.innerHTML = "⚡";
@@ -8574,7 +8576,7 @@ window.initXmlaWorkflow = function() {
         if (!token) token = await autoFetchToken(true);
         const endpoint = endpointInput.value.trim();
         
-        btnScanDs.innerHTML = "⏳";
+        btnScanDs.innerHTML = SPIN_ICON;
         try {
             const res = await fetch('/api/xmla/scan-datasets', {
                 method: 'POST',
@@ -8639,9 +8641,9 @@ window.initXmlaWorkflow = function() {
             if (found) dsId = found.id;
         }
 
-        btnScanTbl.innerHTML = "⏳";
+        btnScanTbl.innerHTML = SPIN_ICON;
         selTbl.disabled = true;
-        selTbl.innerHTML = '<option value="">⏳ 正在深度扫描模型数据表与分区 (大型模型预计 10-15s)...</option>';
+        selTbl.innerHTML = '<option value="">🔄 正在深度扫描模型数据表与分区 (大型模型预计 10-15s)...</option>';
         selPart.innerHTML = '<option value="">-- 全表刷新 (包含所有分区) --</option>';
 
         try {
@@ -8792,7 +8794,7 @@ window.initXmlaWorkflow = function() {
                                `• XMLA 端点: ${endpoint}\n` +
                                `--------------------------------------------------------------------------\n`;
         }
-        if (statusEl) statusEl.innerText = "⏳ 正在下发 XMLA / TMSL 刷新指令...";
+        if (statusEl) statusEl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;">${SPIN_ICON} 正在下发 XMLA / TMSL 刷新指令...</span>`;
 
         try {
             const payload = {
@@ -8816,7 +8818,7 @@ window.initXmlaWorkflow = function() {
                 if (statusEl) statusEl.innerHTML = `<span style="color: var(--success); font-weight: bold;">✅ 刷新指令已成功下发 (${resData.method})！</span> 正在查询最新云端审计与行数...`;
                 if (logsEl) {
                     logsEl.innerText += `[${new Date().toLocaleTimeString()}] ✅ ${resData.message} (通道: ${resData.method})\n` +
-                                        `[${new Date().toLocaleTimeString()}] ⏳ 正在拉取模型云端刷新历史与数据表真实行数...\n`;
+                                        `[${new Date().toLocaleTimeString()}] 🔄 正在拉取模型云端刷新历史与数据表真实行数...\n`;
                     logsEl.scrollTop = logsEl.scrollHeight;
                 }
 
@@ -8839,7 +8841,7 @@ window.initXmlaWorkflow = function() {
                             logsEl.innerText += `==========================================================================\n`;
                             if (sData.history && sData.history.length > 0) {
                                 sData.history.forEach((h, i) => {
-                                    const stIcon = h.status === 'Completed' ? '✅ 成功' : (h.status === 'Failed' ? '❌ 失败' : '⏳ 进行中');
+                                    const stIcon = h.status === 'Completed' ? '✅ 成功' : (h.status === 'Failed' ? '❌ 失败' : '🔄 进行中');
                                     logsEl.innerText += `[#${i + 1}] 起止: ${h.startTime} 至 ${h.endTime}\n` +
                                                         `     耗时: ${h.duration} | 类型: ${h.refreshType || 'Unknown'} | 状态: ${stIcon}\n`;
                                     if (h.error) logsEl.innerText += `     明细: ${h.error}\n`;
@@ -8976,7 +8978,8 @@ window.exportXmlaTableFields = async function(forEntireModel = false) {
     }
 
     const btnExport = document.getElementById(forEntireModel ? 'wf-xmla-btn-export-model-fields' : 'wf-xmla-btn-export-fields');
-    if (btnExport) { btnExport.disabled = true; btnExport.innerHTML = '⏳'; }
+    const SPIN_ICON = '<svg class="spinning" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block;vertical-align:middle;animation:spin 0.8s linear infinite;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>';
+    if (btnExport) { btnExport.disabled = true; btnExport.innerHTML = SPIN_ICON; }
 
     // 展开控制台
     if (window.expandConsole) window.expandConsole('wf-out-xmla-logs');
