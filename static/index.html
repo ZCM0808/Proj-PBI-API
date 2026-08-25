@@ -545,12 +545,15 @@
                 <!-- XMLA Interactive Refresh Pane -->
                 <div id="wf-config-xmla_interactive_refresh" class="wf-config-pane" style="display: none;">
                     <div class="wf-fluid-grid">
-                        <div style="grid-column: 1 / -1; display: flex; align-items: center; gap: 12px;">
-                            <label style="font-size: 0.85rem; color: var(--text-secondary); white-space: nowrap; margin-bottom: 0; min-width: 140px; display: flex; flex-direction: column;">
+                        <div style="grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px;">
+                            <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between;">
                                 <span>XMLA Endpoint URL</span>
                                 <span style="font-size: 0.7rem; color: var(--info); opacity: 0.85;">*需 Read Write 读写权限</span>
                             </label>
-                            <input type="text" id="wf-xmla-endpoint" class="wf-input" style="flex: 1;" value="powerbi://api.powerbi.com/v1.0/myorg/DA_APAC_BI_QA" placeholder="powerbi://api.powerbi.com/v1.0/myorg/WorkspaceName">
+                            <div class="input-with-copy">
+                                <input type="text" id="wf-xmla-endpoint" class="wf-input" value="powerbi://api.powerbi.com/v1.0/myorg/DA_APAC_BI_QA" placeholder="powerbi://api.powerbi.com/v1.0/myorg/WorkspaceName">
+                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy XMLA Endpoint"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                            </div>
                         </div>
                         <div style="grid-column: 1 / -1;">
                             <div style="display: flex; justify-content: space-between; align-items: center; padding: 2px 0;">
@@ -565,50 +568,74 @@
                                 </div>
                             </div>
                             <div id="wf-xmla-token-container" style="display: none; margin-top: 6px; transition: all 0.3s ease;">
-                                <textarea id="wf-xmla-token" class="wf-input" readonly style="height: 60px; font-family: monospace; font-size: 0.75rem; opacity: 0.85; background: var(--input-bg-readonly, rgba(255,255,255,0.03)); border-color: var(--panel-border);" placeholder="默认安全锁定，点击【⚡】自动提取，或点击【🔒】解锁手输..."></textarea>
+                                <div class="input-with-copy" style="position: relative;">
+                                    <textarea id="wf-xmla-token" class="wf-input" readonly style="height: 60px; font-family: monospace; font-size: 0.75rem; opacity: 0.85; background: var(--input-bg-readonly, rgba(255,255,255,0.03)); border-color: var(--panel-border);" placeholder="默认安全锁定，点击【⚡】自动提取，或点击【🔒】解锁手输..."></textarea>
+                                    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Access Token" style="top: 8px; right: 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                </div>
                             </div>
                         </div>
-                        <div>
-                            <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between;">
+                        <div style="grid-column: 1 / -1;">
+                            <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
                                 <span style="display: flex; align-items: center; gap: 4px;"><span style="color: var(--accent); font-size: 0.7rem; opacity: 0.7;">▸</span> Dataset (Model)</span>
-                                <button type="button" id="wf-xmla-btn-scan-ds" style="background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.95rem; padding: 0 4px; display: inline-flex; align-items: center;" title="扫描/刷新模型列表">🔄</button>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <button type="button" id="wf-xmla-btn-export-model-fields" style="background: none; border: none; color: var(--info); cursor: pointer; font-size: 0.85rem; padding: 0 4px; display: inline-flex; align-items: center; opacity: 0.85; transition: opacity 0.2s;" title="导出当前模型所有表与字段元数据" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'">📋</button>
+                                    <button type="button" id="wf-xmla-btn-scan-ds" style="background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.95rem; padding: 0 4px; display: inline-flex; align-items: center;" title="扫描/刷新模型列表">🔄</button>
+                                </div>
                             </label>
-                            <select id="wf-xmla-dataset" class="wf-input">
-                                <option value="">-- 请选择模型 --</option>
-                            </select>
+                            <div class="input-with-copy">
+                                <select id="wf-xmla-dataset" class="wf-input">
+                                    <option value="">-- 请选择模型 --</option>
+                                </select>
+                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Dataset Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                            </div>
                         </div>
-                        <div>
-                            <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between;">
+                        <div style="grid-column: 1 / -1;">
+                            <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
                                 <span style="display: flex; align-items: center; gap: 4px;"><span style="color: var(--accent); font-size: 0.7rem; opacity: 0.7;">▸▸</span> Table</span>
                                 <div style="display: flex; align-items: center; gap: 4px;">
                                     <button type="button" id="wf-xmla-btn-export-fields" style="background: none; border: none; color: var(--info); cursor: pointer; font-size: 0.85rem; padding: 0 4px; display: inline-flex; align-items: center; opacity: 0.85; transition: opacity 0.2s;" title="导出当前选中表的字段/列信息" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'">📋</button>
                                     <button type="button" id="wf-xmla-btn-scan-tbl" style="background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.95rem; padding: 0 4px; display: inline-flex; align-items: center;" title="扫描/刷新数据表列表">🔄</button>
                                 </div>
                             </label>
-                            <select id="wf-xmla-table" class="wf-input">
-                                <option value="">-- 请先选择模型 --</option>
-                            </select>
+                            <div class="input-with-copy">
+                                <select id="wf-xmla-table" class="wf-input">
+                                    <option value="">-- 请先选择模型 --</option>
+                                </select>
+                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Table Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                            </div>
                         </div>
-                        <div>
-                            <label style="font-size: 0.85rem; color: var(--text-secondary);"><span style="display: flex; align-items: center; gap: 4px;"><span style="color: var(--accent); font-size: 0.7rem; opacity: 0.7;">▸▸▸</span> Partition <span style="font-size: 0.7rem; opacity: 0.6;">(Optional)</span></span></label>
-                            <select id="wf-xmla-partition" class="wf-input">
-                                <option value="">-- 全表刷新 (包含所有分区) --</option>
-                            </select>
+                        <div style="grid-column: 1 / -1;">
+                            <label style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px; display: block;"><span style="display: flex; align-items: center; gap: 4px;"><span style="color: var(--accent); font-size: 0.7rem; opacity: 0.7;">▸▸▸</span> Partition <span style="font-size: 0.7rem; opacity: 0.6;">(Optional)</span></span></label>
+                            <div class="input-with-copy">
+                                <select id="wf-xmla-partition" class="wf-input">
+                                    <option value="">-- 全表刷新 (包含所有分区) --</option>
+                                </select>
+                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Partition Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                            </div>
                         </div>
-                        <div>
-                            <label style="font-size: 0.85rem; color: var(--text-secondary);">Refresh Type</label>
-                            <select id="wf-xmla-type" class="wf-input">
-                                <option value="full">full (完全刷新 - 默认)</option>
-                                <option value="dataOnly">dataOnly (仅刷新数据)</option>
-                                <option value="calculate">calculate (仅重新计算)</option>
-                                <option value="clearValues">clearValues (清空数据)</option>
-                            </select>
+                        <div style="grid-column: 1 / -1;">
+                            <label style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px; display: block;">Refresh Type</label>
+                            <div class="input-with-copy">
+                                <select id="wf-xmla-type" class="wf-input">
+                                    <option value="full">full (完全刷新 - 默认)</option>
+                                    <option value="dataOnly">dataOnly (仅刷新数据)</option>
+                                    <option value="calculate">calculate (仅重新计算)</option>
+                                    <option value="clearValues">clearValues (清空数据)</option>
+                                </select>
+                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Refresh Type"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                            </div>
                         </div>
                         <div style="grid-column: 1 / -1; display: none;" id="wf-xmla-manual-box">
-                            <label style="font-size: 0.85rem; color: var(--warning);">⚠️ 手动指定表名/分区名 (当模型受限无法自动枚举时使用):</label>
+                            <label style="font-size: 0.85rem; color: var(--warning); margin-bottom: 4px; display: block;">⚠️ 手动指定表名/分区名 (当模型受限无法自动枚举时使用):</label>
                             <div style="display: flex; gap: 8px;">
-                                <input type="text" id="wf-xmla-manual-table" class="wf-input" placeholder="输入表名, 如 FactSales">
-                                <input type="text" id="wf-xmla-manual-partition" class="wf-input" placeholder="可选输入特定分区名">
+                                <div class="input-with-copy" style="flex: 1;">
+                                    <input type="text" id="wf-xmla-manual-table" class="wf-input" placeholder="输入表名, 如 FactSales">
+                                    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Table Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                </div>
+                                <div class="input-with-copy" style="flex: 1;">
+                                    <input type="text" id="wf-xmla-manual-partition" class="wf-input" placeholder="可选输入特定分区名">
+                                    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Partition Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1479,7 +1506,7 @@
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
     <script src="/static/universal_modal.js?v=20260823_v14"></script>
-    <script src="/static/script.js?v=20260825_v486"></script>
+    <script src="/static/script.js?v=20260825_v487"></script>
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: none; z-index: 10005;">

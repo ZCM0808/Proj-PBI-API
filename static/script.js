@@ -8704,9 +8704,12 @@ window.initXmlaWorkflow = function() {
     // 绑定扫描表按钮
     btnScanTbl.addEventListener('click', () => window.loadXmlaTablesForDataset(false));
 
-    // 绑定导出字段按钮
+    // 绑定导出字段按钮 (单表 / 全模型)
     const btnExportFields = document.getElementById('wf-xmla-btn-export-fields');
-    if (btnExportFields) btnExportFields.addEventListener('click', () => window.exportXmlaTableFields());
+    if (btnExportFields) btnExportFields.addEventListener('click', () => window.exportXmlaTableFields(false));
+
+    const btnExportModelFields = document.getElementById('wf-xmla-btn-export-model-fields');
+    if (btnExportModelFields) btnExportModelFields.addEventListener('click', () => window.exportXmlaTableFields(true));
 
     // 关键联动：模型下拉框改变时，记录到 localStorage 并自动触发扫描数据表！
     selDs.addEventListener('change', () => {
@@ -8941,8 +8944,8 @@ window.unlockXmlaTokenWithConfirm = async function() {
     }
 };
 
-// 导出单个表的字段/列元数据
-window.exportXmlaTableFields = async function() {
+// 导出单个表或整个模型的字段/列元数据
+window.exportXmlaTableFields = async function(forEntireModel = false) {
     const tokenInput = document.getElementById('wf-xmla-token');
     const endpointInput = document.getElementById('wf-xmla-endpoint');
     const selDs = document.getElementById('wf-xmla-dataset');
@@ -8952,14 +8955,14 @@ window.exportXmlaTableFields = async function() {
     const token = tokenInput ? tokenInput.value.trim() : '';
     const endpoint = endpointInput ? endpointInput.value.trim() : '';
     const dsName = selDs ? selDs.value : '';
-    const tblName = selTbl ? selTbl.value : '';
+    const tblName = forEntireModel ? '' : (selTbl ? selTbl.value : '');
 
     if (!dsName) {
         if (window.showNotification) window.showNotification('❌ 请先选择 Dataset (Model)！', 'error');
         return;
     }
-    if (!tblName) {
-        if (window.showNotification) window.showNotification('❌ 请先选择要导出字段的 Table！', 'error');
+    if (!forEntireModel && !tblName) {
+        if (window.showNotification) window.showNotification('❌ 请先选择要导出字段的 Table，或点击模型旁的 📋 导出整模字段！', 'error');
         return;
     }
 
@@ -8972,13 +8975,13 @@ window.exportXmlaTableFields = async function() {
         if (found) dsId = found.id;
     }
 
-    const btnExport = document.getElementById('wf-xmla-btn-export-fields');
+    const btnExport = document.getElementById(forEntireModel ? 'wf-xmla-btn-export-model-fields' : 'wf-xmla-btn-export-fields');
     if (btnExport) { btnExport.disabled = true; btnExport.innerHTML = '⏳'; }
 
     // 展开控制台
     if (window.expandConsole) window.expandConsole('wf-out-xmla-logs');
     if (logsEl) {
-        logsEl.innerText += `\n[${new Date().toLocaleTimeString()}] 📋 正在导出表 [${tblName}] 的列字段元数据...\n`;
+        logsEl.innerText += `\n[${new Date().toLocaleTimeString()}] 📋 正在导出 ${forEntireModel ? `模型 [${dsName}] 全部表与字段` : `表 [${tblName}]`} 的元数据...\n`;
         logsEl.scrollTop = logsEl.scrollHeight;
     }
 
@@ -8991,54 +8994,97 @@ window.exportXmlaTableFields = async function() {
         const data = await res.json();
 
         if (data.success && data.tables && data.tables.length > 0) {
-            const targetTable = data.tables.find(t => t.name === tblName);
-            if (targetTable) {
-                // 构造列信息用于展示
-                const columns = targetTable.columns || [];
-                const partitions = targetTable.partitions || [];
-
-                if (columns.length === 0 && logsEl) {
-                    logsEl.innerText += `⚠️ 未获取到 [${tblName}] 的列信息，该接口可能未返回 columns 属性。\n`;
-                    logsEl.innerText += `尝试通过 DAX COLUMNSTATISTICS() 获取...\n`;
-                    logsEl.scrollTop = logsEl.scrollHeight;
-                }
-
-                // 构建丰富的表元数据展示
-                const fieldData = columns.map((col, i) => ({
-                    '#': i + 1,
-                    columnName: col.name || col.columnName || '-',
-                    dataType: col.dataType || col.type || '-',
-                    isHidden: col.isHidden ? '✅ Hidden' : '',
-                    expression: col.expression || '',
-                    sourceColumn: col.sourceColumn || ''
-                }));
-
-                // 追加分区信息作为附加数据
-                const partitionData = partitions.map((p, i) => ({
-                    '#': i + 1,
-                    partitionName: p.name || '-',
-                    mode: p.mode || 'Import',
-                    source: p.sourceType || p.source || ''
-                }));
+            if (forEntireModel) {
+                // 导出整个模型的全部字段
+                let allFieldData = [];
+                let counter = 1;
+                data.tables.forEach(t => {
+                    const cols = t.columns || [];
+                    if (cols.length > 0) {
+                        cols.forEach(col => {
+                            allFieldData.push({
+                                '#': counter++,
+                                tableName: t.name,
+                                columnName: col.name || col.columnName || '-',
+                                dataType: col.dataType || col.type || '-',
+                                isHidden: col.isHidden ? '✅ Hidden' : '',
+                                cardinality: col.cardinality || '-',
+                                min: col.min || '',
+                                max: col.max || ''
+                            });
+                        });
+                    } else {
+                        allFieldData.push({
+                            '#': counter++,
+                            tableName: t.name,
+                            columnName: '(Table Partition Only)',
+                            dataType: t.partitions?.[0]?.mode || 'Import',
+                            isHidden: '',
+                            cardinality: '-',
+                            min: '',
+                            max: ''
+                        });
+                    }
+                });
 
                 if (logsEl) {
-                    logsEl.innerText += `✅ 成功提取 [${tblName}] 的 ${columns.length} 个列字段 和 ${partitions.length} 个分区信息！\n`;
+                    logsEl.innerText += `✅ 成功导出模型 [${dsName}] 的 ${data.tables.length} 张表，共 ${allFieldData.length} 个字段元数据！\n`;
                     logsEl.scrollTop = logsEl.scrollHeight;
                 }
 
-                // 用 Universal Modal 展示字段信息
-                if (window.showUniversalDataModal && fieldData.length > 0) {
+                if (window.showUniversalDataModal && allFieldData.length > 0) {
                     window.showUniversalDataModal({
-                        title: `📋 ${dsName} ▸ ${tblName} — 列字段元数据 (${fieldData.length} columns)`,
-                        data: fieldData,
-                        columns: ['#', 'columnName', 'dataType', 'isHidden', 'expression', 'sourceColumn'],
-                        displayNames: ['#', 'Column Name', 'Data Type', 'Hidden', 'DAX Expression', 'Source Column'],
+                        title: `📋 ${dsName} — 模型全量表与字段元数据 (${allFieldData.length} 字段, ${data.tables.length} 表)`,
+                        data: allFieldData,
+                        columns: ['#', 'tableName', 'columnName', 'dataType', 'isHidden', 'cardinality'],
+                        displayNames: ['#', 'Table Name', 'Column Name', 'Data Type', 'Hidden', 'Cardinality'],
                         enableSearch: true,
                         enableColumnFilter: true
                     });
-                } else if (fieldData.length === 0) {
-                    // 弹一个分区信息的 modal
-                    if (window.showUniversalDataModal && partitionData.length > 0) {
+                }
+                if (window.showNotification) {
+                    window.showNotification(`📋 成功导出模型 [${dsName}] 全量 ${allFieldData.length} 个字段元数据！`, 'success');
+                }
+            } else {
+                // 导出单个表的字段
+                const targetTable = data.tables.find(t => t.name === tblName);
+                if (targetTable) {
+                    const columns = targetTable.columns || [];
+                    const partitions = targetTable.partitions || [];
+
+                    const fieldData = columns.map((col, i) => ({
+                        '#': i + 1,
+                        tableName: tblName,
+                        columnName: col.name || col.columnName || '-',
+                        dataType: col.dataType || col.type || '-',
+                        isHidden: col.isHidden ? '✅ Hidden' : '',
+                        cardinality: col.cardinality || '-',
+                        min: col.min || '',
+                        max: col.max || ''
+                    }));
+
+                    const partitionData = partitions.map((p, i) => ({
+                        '#': i + 1,
+                        partitionName: p.name || '-',
+                        mode: p.mode || 'Import',
+                        source: p.sourceType || p.source || ''
+                    }));
+
+                    if (logsEl) {
+                        logsEl.innerText += `✅ 成功提取 [${tblName}] 的 ${columns.length} 个列字段 和 ${partitions.length} 个分区信息！\n`;
+                        logsEl.scrollTop = logsEl.scrollHeight;
+                    }
+
+                    if (window.showUniversalDataModal && fieldData.length > 0) {
+                        window.showUniversalDataModal({
+                            title: `📋 ${dsName} ▸ ${tblName} — 列字段元数据 (${fieldData.length} 字段)`,
+                            data: fieldData,
+                            columns: ['#', 'columnName', 'dataType', 'isHidden', 'cardinality'],
+                            displayNames: ['#', 'Column Name', 'Data Type', 'Hidden', 'Cardinality'],
+                            enableSearch: true,
+                            enableColumnFilter: true
+                        });
+                    } else if (fieldData.length === 0 && window.showUniversalDataModal && partitionData.length > 0) {
                         window.showUniversalDataModal({
                             title: `📋 ${dsName} ▸ ${tblName} — 分区信息 (${partitionData.length} partitions)`,
                             data: partitionData,
@@ -9048,18 +9094,18 @@ window.exportXmlaTableFields = async function() {
                             enableColumnFilter: true
                         });
                     }
-                }
 
-                if (window.showNotification) {
-                    window.showNotification(`📋 已导出 [${tblName}] 的 ${fieldData.length} 个列字段！`, 'success');
+                    if (window.showNotification) {
+                        window.showNotification(`📋 已导出 [${tblName}] 的 ${fieldData.length || partitionData.length} 项元数据！`, 'success');
+                    }
+                } else {
+                    if (logsEl) logsEl.innerText += `❌ 在扫描结果中未找到表 [${tblName}]。\n`;
+                    if (window.showNotification) window.showNotification(`❌ 未找到表 [${tblName}]`, 'error');
                 }
-            } else {
-                if (logsEl) logsEl.innerText += `❌ 在扫描结果中未找到表 [${tblName}]。\n`;
-                if (window.showNotification) window.showNotification(`❌ 未找到表 [${tblName}]`, 'error');
             }
         } else {
-            if (logsEl) logsEl.innerText += `❌ 扫描表失败: ${data.message || '未知错误'}\n`;
-            if (window.showNotification) window.showNotification(`❌ 扫描表失败: ${data.message || '未知错误'}`, 'error');
+            if (logsEl) logsEl.innerText += `❌ 扫描元数据失败: ${data.message || '未知错误'}\n`;
+            if (window.showNotification) window.showNotification(`❌ 扫描元数据失败: ${data.message || '未知错误'}`, 'error');
         }
     } catch (err) {
         if (logsEl) logsEl.innerText += `❌ 导出字段异常: ${err.message}\n`;

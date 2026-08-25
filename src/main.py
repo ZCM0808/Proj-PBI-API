@@ -1728,52 +1728,65 @@ async def scan_xmla_tables(req: XMLATablesRequest):
     """扫描指定 Dataset 模型下的数据表与分区列表 (4 重防御：DAX COLUMNSTATISTICS -> INFO.TABLES -> REST API Tables -> XMLA SOAP)"""
     try:
         import html
+        import urllib.parse
         token = _get_effective_xmla_token(req.access_token)
         if not token:
             return {"success": False, "message": "缺少有效 Access Token"}
 
         pbi_headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
         
-        # 1. 尝试解析工作区 Group ID
+        # 1. 尝试解析工作区 Group ID (支持 URL 编码解码与大小写模糊匹配)
         endpoint = req.xmla_endpoint.rstrip("/")
-        ws_name = endpoint.split("/")[-1] if "/" in endpoint else ""
+        ws_name_raw = endpoint.split("/")[-1] if "/" in endpoint else ""
+        ws_name = urllib.parse.unquote(ws_name_raw).strip()
         workspace_id = None
         try:
-            groups_res = await asyncio.to_thread(requests.get, "https://api.powerbi.com/v1.0/myorg/groups", headers=pbi_headers, timeout=6)
+            groups_res = await asyncio.to_thread(requests.get, "https://api.powerbi.com/v1.0/myorg/groups", headers=pbi_headers, timeout=8)
             if groups_res.status_code == 200:
                 for g in groups_res.json().get("value", []):
-                    if g.get("name", "").lower() == ws_name.lower():
+                    g_name = (g.get("name") or "").strip().lower()
+                    if g_name == ws_name.lower() or g_name == ws_name_raw.lower() or g.get("id") == ws_name:
                         workspace_id = g.get("id")
                         break
         except Exception:
             pass
 
-        tables = []
-        seen_tables = set()
-        
-        # 如果 dataset_id 为空，自动反查
-        if not req.dataset_id and workspace_id:
-            try:
-                ds_list_url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets"
-                ds_list_res = await asyncio.to_thread(requests.get, ds_list_url, headers=pbi_headers, timeout=6)
-                if ds_list_res.status_code == 200:
-                    for d in ds_list_res.json().get("value", []):
-                        if d.get("name", "").lower() == req.dataset_name.lower():
-                            req.dataset_id = d.get("id")
-                            break
-            except Exception:
-                pass
+        tables_dict = {}  # table_name -> {"name": str, "partitions": list, "columns": list}
+
+        # 如果 dataset_id 为空，自动反查（多策略）
+        if not req.dataset_id:
+            ds_sources = []
+            if workspace_id:
+                ds_sources.append(f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets")
+            ds_sources.append("https://api.powerbi.com/v1.0/myorg/datasets")
+            for ds_url in ds_sources:
+                if req.dataset_id:
+                    break
+                try:
+                    ds_list_res = await asyncio.to_thread(requests.get, ds_url, headers=pbi_headers, timeout=8)
+                    if ds_list_res.status_code == 200:
+                        for d in ds_list_res.json().get("value", []):
+                            d_name = (d.get("name") or "").strip().lower()
+                            req_d_name = req.dataset_name.strip().lower()
+                            if d_name == req_d_name or d.get("id") == req.dataset_name:
+                                req.dataset_id = d.get("id")
+                                break
+                except Exception:
+                    pass
 
         # 2. 防线 1: 带 Workspace 路径的 DAX 查询 (针对大型复杂模型给予 25s 超时)
         if req.dataset_id:
             dax_url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets/{req.dataset_id}/executeQueries" if workspace_id else f"https://api.powerbi.com/v1.0/myorg/datasets/{req.dataset_id}/executeQueries"
             dax_queries = [
+                "EVALUATE COLUMNSTATISTICS()",
                 "EVALUATE SUMMARIZE(COLUMNSTATISTICS(), [Table Name])",
                 "EVALUATE SELECTCOLUMNS(INFO.TABLES(), \"Table Name\", COALESCE([ExplicitName], [Name]))",
-                "EVALUATE SELECTCOLUMNS(FILTER(INFO.TABLES(), [IsHidden] = FALSE()), \"Table Name\", [ExplicitName])"
+                "EVALUATE SELECTCOLUMNS(FILTER(INFO.TABLES(), [IsHidden] = FALSE()), \"Table Name\", [ExplicitName])",
+                "EVALUATE INFO.VIEW.TABLES()",
+                "EVALUATE SELECTCOLUMNS(FILTER(INFO.VIEW.TABLES(), [IsHidden] = FALSE()), \"Table Name\", [Name])"
             ]
             for q_str in dax_queries:
-                if tables:
+                if tables_dict:
                     break
                 dax_body = {"queries": [{"query": q_str}], "serializerSettings": {"incNull": True}}
                 try:
@@ -1784,34 +1797,54 @@ async def scan_xmla_tables(req: XMLATablesRequest):
                         if results and "tables" in results[0]:
                             rows = results[0]["tables"][0].get("rows", [])
                             for r in rows:
-                                t_name = r.get("[Table Name]") or r.get("Table Name") or r.get("ExplicitName") or r.get("[ExplicitName]") or (list(r.values())[0] if r.values() else None)
-                                if t_name and str(t_name) not in seen_tables:
+                                t_name = r.get("[Table Name]") or r.get("Table Name") or r.get("ExplicitName") or r.get("[ExplicitName]") or r.get("Name") or (list(r.values())[0] if r.values() else None)
+                                col_name = r.get("[Column Name]") or r.get("Column Name")
+                                if t_name:
                                     t_str = str(t_name).strip()
                                     if not t_str.startswith("DateTableTemplate") and not t_str.startswith("LocalDateTable") and not t_str.startswith("RowNumber"):
-                                        seen_tables.add(t_str)
-                                        tables.append({"name": t_str, "partitions": [{"name": t_str, "mode": "import"}]})
+                                        if t_str not in tables_dict:
+                                            tables_dict[t_str] = {
+                                                "name": t_str,
+                                                "partitions": [{"name": t_str, "mode": "import"}],
+                                                "columns": []
+                                            }
+                                        if col_name:
+                                            col_str = str(col_name).strip()
+                                            if not col_str.startswith("RowNumber") and not any(c.get("name") == col_str for c in tables_dict[t_str]["columns"]):
+                                                tables_dict[t_str]["columns"].append({
+                                                    "name": col_str,
+                                                    "dataType": str(r.get("[Data Type]") or r.get("Data Type") or "Unknown"),
+                                                    "cardinality": r.get("[Cardinality]") or r.get("Cardinality"),
+                                                    "min": str(r.get("[Min]") or ""),
+                                                    "max": str(r.get("[Max]") or "")
+                                                })
                 except Exception:
                     pass
 
         # 3. 防线 2: Power BI REST API /datasets/{dataset_id}/tables 直接枚举
-        if not tables and req.dataset_id:
+        if not tables_dict and req.dataset_id:
             try:
                 t_url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets/{req.dataset_id}/tables" if workspace_id else f"https://api.powerbi.com/v1.0/myorg/datasets/{req.dataset_id}/tables"
-                r_rest_tbl = await asyncio.to_thread(requests.get, t_url, headers=pbi_headers, timeout=6)
+                r_rest_tbl = await asyncio.to_thread(requests.get, t_url, headers=pbi_headers, timeout=8)
                 if r_rest_tbl.status_code == 200:
                     t_items = r_rest_tbl.json().get("value", [])
                     for t in t_items:
                         t_name = t.get("name")
-                        if t_name and str(t_name) not in seen_tables:
+                        if t_name:
                             t_str = str(t_name).strip()
                             if not t_str.startswith("DateTableTemplate") and not t_str.startswith("LocalDateTable") and not t_str.startswith("RowNumber"):
-                                seen_tables.add(t_str)
-                                tables.append({"name": t_str, "partitions": [{"name": t_str, "mode": "import"}]})
+                                cols_raw = t.get("columns", [])
+                                cols_list = [{"name": c.get("name"), "dataType": c.get("dataType", "string")} for c in cols_raw if c.get("name")]
+                                tables_dict[t_str] = {
+                                    "name": t_str,
+                                    "partitions": [{"name": t_str, "mode": "import"}],
+                                    "columns": cols_list
+                                }
             except Exception:
                 pass
 
         # 4. 防线 3: XMLA DISCOVER_TMSL_METADATA SOAP
-        if not tables:
+        if not tables_dict:
             http_xmla_url = req.xmla_endpoint.replace("powerbi://", "https://").rstrip("/") + "/xmla"
             headers_xmla = {
                 "Authorization": f"Bearer {token}",
@@ -1820,22 +1853,55 @@ async def scan_xmla_tables(req: XMLATablesRequest):
             }
             tmsl_xml = f"""<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><Discover xmlns="urn:schemas-microsoft-com:xmla"><RequestType>DISCOVER_TMSL_METADATA</RequestType><Restrictions /><Properties><PropertyList><Catalog>{req.dataset_name}</Catalog></PropertyList></Properties></Discover></soap:Body></soap:Envelope>"""
             try:
-                r_xmla = await asyncio.to_thread(requests.post, http_xmla_url, data=tmsl_xml.encode('utf-8'), headers=headers_xmla, timeout=8)
+                r_xmla = await asyncio.to_thread(requests.post, http_xmla_url, data=tmsl_xml.encode('utf-8'), headers=headers_xmla, timeout=20)
                 if r_xmla.status_code == 200 and "<METADATA>" in r_xmla.text:
                     json_str = r_xmla.text.split("<METADATA>")[1].split("</METADATA>")[0]
                     m_json = json.loads(html.unescape(json_str))
                     for t in m_json.get("model", {}).get("tables", []):
                         t_name = t.get("name")
-                        if t_name and str(t_name) not in seen_tables:
+                        if t_name:
                             t_str = str(t_name).strip()
                             if not t_str.startswith("DateTableTemplate") and not t_str.startswith("LocalDateTable"):
                                 raw_parts = t.get("partitions", [])
                                 p_list = [{"name": p.get("name"), "mode": p.get("mode", "import")} for p in raw_parts if p.get("name")]
-                                seen_tables.add(t_str)
-                                tables.append({"name": t_str, "partitions": p_list or [{"name": t_str, "mode": "import"}]})
+                                raw_cols = t.get("columns", [])
+                                c_list = [{"name": c.get("name"), "dataType": c.get("dataType", "string"), "isHidden": c.get("isHidden", False)} for c in raw_cols if c.get("name")]
+                                tables_dict[t_str] = {
+                                    "name": t_str,
+                                    "partitions": p_list or [{"name": t_str, "mode": "import"}],
+                                    "columns": c_list
+                                }
             except Exception:
                 pass
 
+        # 5. 防线 4: XMLA DBSCHEMA_TABLES SOAP (通用 OLE DB/XMLA Schema Rowset 兜底)
+        if not tables_dict:
+            http_xmla_url = req.xmla_endpoint.replace("powerbi://", "https://").rstrip("/") + "/xmla"
+            headers_xmla = {
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "text/xml; charset=utf-8",
+                "SOAPAction": '"urn:schemas-microsoft-com:xmla:Discover"'
+            }
+            dbschema_xml = f"""<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><Discover xmlns="urn:schemas-microsoft-com:xmla"><RequestType>DBSCHEMA_TABLES</RequestType><Restrictions><RestrictionList><CATALOG_NAME>{req.dataset_name}</CATALOG_NAME></RestrictionList></Restrictions><Properties><PropertyList><Catalog>{req.dataset_name}</Catalog></PropertyList></Properties></Discover></soap:Body></soap:Envelope>"""
+            try:
+                r_dbschema = await asyncio.to_thread(requests.post, http_xmla_url, data=dbschema_xml.encode('utf-8'), headers=headers_xmla, timeout=20)
+                if r_dbschema.status_code == 200 and "<TABLE_NAME>" in r_dbschema.text:
+                    import xml.etree.ElementTree as ET
+                    root = ET.fromstring(r_dbschema.content)
+                    for elem in root.iter():
+                        if elem.tag.endswith("TABLE_NAME") and elem.text:
+                            t_str = elem.text.strip()
+                            if not t_str.startswith("DateTableTemplate") and not t_str.startswith("LocalDateTable") and not t_str.startswith("RowNumber") and not t_str.startswith("$"):
+                                if t_str not in tables_dict:
+                                    tables_dict[t_str] = {
+                                        "name": t_str,
+                                        "partitions": [{"name": t_str, "mode": "import"}],
+                                        "columns": []
+                                    }
+            except Exception:
+                pass
+
+        tables = list(tables_dict.values())
         # 排序
         tables.sort(key=lambda x: x["name"])
         return {"success": True, "restricted": len(tables) == 0, "tables": tables}
