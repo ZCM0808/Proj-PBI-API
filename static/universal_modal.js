@@ -272,16 +272,13 @@ window.showUniversalDataModal = function(options) {
         const filterRight = document.createElement('div');
         filterRight.style.cssText = 'display:flex;align-items:center;gap:8px;';
 
-        const copyColsBtn = document.createElement('button');
-        copyColsBtn.className = 'btn-wf-sm btn-wf-primary';
-        copyColsBtn.style.cssText = 'display:flex;align-items:center;gap:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;background:var(--accent);color:#fff;border:none;border-radius:5px;font-weight:500;transition:all 0.2s;box-shadow:0 2px 6px rgba(0,0,0,0.2);';
-        copyColsBtn.title = '复制当前选中列（包含表头，支持 Ctrl+C）';
-        copyColsBtn.onclick = copySelectedColumnsData;
-        filterRight.appendChild(copyColsBtn);
-
         const selectAllColsBtn = document.createElement('button');
-        selectAllColsBtn.style.cssText = 'background:none;border:none;color:var(--accent);font-size:0.72rem;cursor:pointer;padding:2px 6px;border-radius:4px;transition:background 0.2s;';
+        selectAllColsBtn.type = 'button';
+        selectAllColsBtn.style.cssText = 'background:var(--overlay-10, rgba(255,255,255,0.06));border:1px solid var(--overlay-20, rgba(255,255,255,0.15));color:var(--text-primary);font-size:0.75rem;cursor:pointer;padding:4px 8px;border-radius:5px;transition:all 0.2s;font-weight:500;';
         selectAllColsBtn.textContent = '全选列';
+        selectAllColsBtn.title = '选中所有可见列以供复制';
+        selectAllColsBtn.onmouseover = () => { selectAllColsBtn.style.background = 'var(--overlay-20)'; selectAllColsBtn.style.borderColor = 'var(--accent)'; };
+        selectAllColsBtn.onmouseout = () => { selectAllColsBtn.style.background = 'var(--overlay-10)'; selectAllColsBtn.style.borderColor = 'var(--overlay-20)'; };
         selectAllColsBtn.onclick = () => {
             const activeVisibleCols = columns.filter(c => selectedCols.has(c));
             selectedColForCopy = new Set(activeVisibleCols);
@@ -291,8 +288,12 @@ window.showUniversalDataModal = function(options) {
         filterRight.appendChild(selectAllColsBtn);
 
         const clearColsBtn = document.createElement('button');
-        clearColsBtn.style.cssText = 'background:none;border:none;color:var(--text-secondary);font-size:0.72rem;cursor:pointer;padding:2px 6px;border-radius:4px;transition:background 0.2s;';
+        clearColsBtn.type = 'button';
+        clearColsBtn.style.cssText = 'background:var(--overlay-10, rgba(255,255,255,0.06));border:1px solid var(--overlay-20, rgba(255,255,255,0.15));color:var(--text-secondary);font-size:0.75rem;cursor:pointer;padding:4px 8px;border-radius:5px;transition:all 0.2s;font-weight:500;';
         clearColsBtn.textContent = '清空选中';
+        clearColsBtn.title = '取消当前所有已选列';
+        clearColsBtn.onmouseover = () => { clearColsBtn.style.background = 'var(--overlay-20)'; clearColsBtn.style.color = 'var(--text-primary)'; };
+        clearColsBtn.onmouseout = () => { clearColsBtn.style.background = 'var(--overlay-10)'; clearColsBtn.style.color = 'var(--text-secondary)'; };
         clearColsBtn.onclick = () => {
             selectedColForCopy.clear();
             updateCopyToolbar();
@@ -300,14 +301,29 @@ window.showUniversalDataModal = function(options) {
         };
         filterRight.appendChild(clearColsBtn);
 
+        const copyColsBtn = document.createElement('button');
+        copyColsBtn.type = 'button';
+        copyColsBtn.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:5px 12px;font-size:0.8rem;cursor:pointer;background:var(--accent, #6366f1);color:#ffffff;border:1px solid rgba(255,255,255,0.25);border-radius:6px;font-weight:600;transition:all 0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.3);letter-spacing:0.2px;';
+        copyColsBtn.title = '复制当前选中列（包含表头列名，支持快捷键 Ctrl+C）';
+        copyColsBtn.onmouseover = () => { copyColsBtn.style.transform = 'translateY(-1px)'; copyColsBtn.style.boxShadow = '0 4px 12px rgba(0,0,0,0.4)'; };
+        copyColsBtn.onmouseout = () => { copyColsBtn.style.transform = 'none'; copyColsBtn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)'; };
+        copyColsBtn.onclick = copySelectedColumnsData;
+        filterRight.appendChild(copyColsBtn);
+
         filterBar.appendChild(filterRight);
         panel.appendChild(filterBar);
 
         updateCopyToolbar = () => {
             const activeVisibleCols = columns.filter(c => selectedCols.has(c));
-            const count = selectedColForCopy.size > 0 ? selectedColForCopy.size : activeVisibleCols.length;
-            const isAll = selectedColForCopy.size === 0 || selectedColForCopy.size === activeVisibleCols.length;
-            copyColsBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> 复制 ${count} 列 (含列名) <span style="font-size:0.65rem;opacity:0.8;background:rgba(0,0,0,0.2);padding:1px 4px;border-radius:3px;margin-left:2px;">Ctrl+C</span>`;
+            const isExplicit = selectedColForCopy.size > 0;
+            const count = isExplicit ? selectedColForCopy.size : activeVisibleCols.length;
+            const scopeText = isExplicit ? `已选 ${count} 列` : `全表 ${count} 列`;
+            copyColsBtn.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                <span>复制数据 (含列名)</span>
+                <span style="background:rgba(255,255,255,0.25);color:#fff;padding:1px 6px;border-radius:10px;font-size:0.72rem;font-weight:700;margin:0 2px;">${scopeText}</span>
+                <kbd style="background:rgba(0,0,0,0.3);color:#fff;padding:1px 5px;border-radius:4px;font-family:monospace;font-size:0.7rem;border:1px solid rgba(255,255,255,0.2);">Ctrl+C</kbd>
+            `;
         };
 
         dropdownHeader.querySelector('#uni-sel-all').onclick = () => {
