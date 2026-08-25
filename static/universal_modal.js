@@ -177,18 +177,92 @@ window.showUniversalDataModal = function(options) {
         window.makeDraggable(panel, hdr);
     }
 
-    // Filter Bar (Column Selector)
+    // Filter Bar (Column Selector & Copy Toolbar)
     let filterBar = null;
     let colDropdownBtn = null;
     let renderColItems = null;
+    let selectedColForCopy = new Set(); // Multi-selected columns for copying
+    let updateCopyToolbar = null;
+
+    // Core copy columns function
+    const copySelectedColumnsData = () => {
+        const visibleData = getFilteredData();
+        if (visibleData.length === 0) {
+            if (window.showNotification) window.showNotification('⚠️ 当前无匹配数据可供复制', 'warning');
+            return;
+        }
+
+        // If user explicitly selected columns, copy those; otherwise copy all visible columns
+        const activeVisibleCols = columns.filter(c => selectedCols.has(c));
+        const targetCols = selectedColForCopy.size > 0 
+            ? activeVisibleCols.filter(c => selectedColForCopy.has(c))
+            : activeVisibleCols;
+
+        if (targetCols.length === 0) {
+            if (window.showNotification) window.showNotification('⚠️ 请至少选择一列以供复制', 'warning');
+            return;
+        }
+
+        // 1. Build Header Row with Column Display Names
+        const headerRow = targetCols.map(c => displayNames[columns.indexOf(c)]).join('\t');
+        const lines = [headerRow];
+
+        // 2. Build Data Rows
+        visibleData.forEach(row => {
+            lines.push(targetCols.map(c => {
+                const val = row[c];
+                if (val === null || val === undefined) return '';
+                if (typeof val === 'object') return JSON.stringify(val);
+                return String(val);
+            }).join('\t'));
+        });
+
+        const fullText = lines.join('\n');
+        
+        // 3. Write to Clipboard & Notify
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(fullText).then(() => {
+                if (window.showNotification) {
+                    window.showNotification(`✅ 成功复制 ${targetCols.length} 列数据（含列名，共 ${visibleData.length} 行）！可直接粘贴至 Excel`, 'success');
+                }
+            }).catch(() => {
+                fallbackCopy(fullText, targetCols.length, visibleData.length);
+            });
+        } else {
+            fallbackCopy(fullText, targetCols.length, visibleData.length);
+        }
+    };
+
+    const fallbackCopy = (text, colCount, rowCount) => {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            document.execCommand('copy');
+            if (window.showNotification) {
+                window.showNotification(`✅ 成功复制 ${colCount} 列数据（含列名，共 ${rowCount} 行）！可直接粘贴至 Excel`, 'success');
+            }
+        } catch (e) {
+            if (window.showNotification) window.showNotification('❌ 复制失败: ' + e.message, 'error');
+        }
+        document.body.removeChild(ta);
+    };
+
     if (enableColumnFilter && columns.length > 0) {
         filterBar = document.createElement('div');
-        filterBar.style.cssText = 'padding:6px 16px;background:var(--overlay-5);border-bottom:1px solid var(--overlay-10);display:flex;align-items:center;gap:10px;font-size:0.75rem;flex-shrink:0;position:relative;z-index:20;';
+        filterBar.style.cssText = 'padding:6px 16px;background:var(--overlay-5);border-bottom:1px solid var(--overlay-10);display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:0.75rem;flex-shrink:0;position:relative;z-index:20;';
         
+        // Left side: Visible columns selector
+        const filterLeft = document.createElement('div');
+        filterLeft.style.cssText = 'display:flex;align-items:center;gap:8px;';
+
         const filterLabel = document.createElement('span');
-        filterLabel.style.cssText = 'font-weight:bold;color:var(--text-secondary);';
+        filterLabel.style.cssText = 'font-weight:600;color:var(--text-secondary);';
         filterLabel.textContent = 'Visible Fields:';
-        filterBar.appendChild(filterLabel);
+        filterLeft.appendChild(filterLabel);
 
         const dropdownWrapper = document.createElement('div');
         dropdownWrapper.style.cssText = 'position:relative;display:inline-block;';
@@ -212,19 +286,64 @@ window.showUniversalDataModal = function(options) {
         const colItemsContainer = document.createElement('div');
         dropdownList.appendChild(colItemsContainer);
         dropdownWrapper.appendChild(dropdownList);
-        filterBar.appendChild(dropdownWrapper);
+        filterLeft.appendChild(dropdownWrapper);
+        filterBar.appendChild(filterLeft);
+
+        // Right side: Copy Selected Columns Toolbar
+        const filterRight = document.createElement('div');
+        filterRight.style.cssText = 'display:flex;align-items:center;gap:8px;';
+
+        const copyColsBtn = document.createElement('button');
+        copyColsBtn.className = 'btn-wf-sm btn-wf-primary';
+        copyColsBtn.style.cssText = 'display:flex;align-items:center;gap:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;background:var(--accent);color:#fff;border:none;border-radius:5px;font-weight:500;transition:all 0.2s;box-shadow:0 2px 6px rgba(0,0,0,0.2);';
+        copyColsBtn.title = '复制当前选中列（包含表头，支持 Ctrl+C）';
+        copyColsBtn.onclick = copySelectedColumnsData;
+        filterRight.appendChild(copyColsBtn);
+
+        const selectAllColsBtn = document.createElement('button');
+        selectAllColsBtn.style.cssText = 'background:none;border:none;color:var(--accent);font-size:0.72rem;cursor:pointer;padding:2px 6px;border-radius:4px;transition:background 0.2s;';
+        selectAllColsBtn.textContent = '全选列';
+        selectAllColsBtn.onclick = () => {
+            const activeVisibleCols = columns.filter(c => selectedCols.has(c));
+            selectedColForCopy = new Set(activeVisibleCols);
+            updateCopyToolbar();
+            renderTable();
+        };
+        filterRight.appendChild(selectAllColsBtn);
+
+        const clearColsBtn = document.createElement('button');
+        clearColsBtn.style.cssText = 'background:none;border:none;color:var(--text-secondary);font-size:0.72rem;cursor:pointer;padding:2px 6px;border-radius:4px;transition:background 0.2s;';
+        clearColsBtn.textContent = '清空选中';
+        clearColsBtn.onclick = () => {
+            selectedColForCopy.clear();
+            updateCopyToolbar();
+            renderTable();
+        };
+        filterRight.appendChild(clearColsBtn);
+
+        filterBar.appendChild(filterRight);
         panel.appendChild(filterBar);
+
+        updateCopyToolbar = () => {
+            const activeVisibleCols = columns.filter(c => selectedCols.has(c));
+            const count = selectedColForCopy.size > 0 ? selectedColForCopy.size : activeVisibleCols.length;
+            const isAll = selectedColForCopy.size === 0 || selectedColForCopy.size === activeVisibleCols.length;
+            copyColsBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> 复制 ${count} 列 (含列名) <span style="font-size:0.65rem;opacity:0.8;background:rgba(0,0,0,0.2);padding:1px 4px;border-radius:3px;margin-left:2px;">Ctrl+C</span>`;
+        };
 
         dropdownHeader.querySelector('#uni-sel-all').onclick = () => {
             selectedCols = new Set(columns);
             savePreferences();
             renderColItems();
+            updateCopyToolbar();
             renderTable();
         };
         dropdownHeader.querySelector('#uni-dsel-all').onclick = () => {
             selectedCols.clear();
+            selectedColForCopy.clear();
             savePreferences();
             renderColItems();
+            updateCopyToolbar();
             renderTable();
         };
 
@@ -253,9 +372,13 @@ window.showUniversalDataModal = function(options) {
                 chk.style.cursor = 'pointer';
                 chk.onchange = (e) => {
                     if (e.target.checked) selectedCols.add(col);
-                    else selectedCols.delete(col);
+                    else {
+                        selectedCols.delete(col);
+                        selectedColForCopy.delete(col);
+                    }
                     savePreferences();
                     renderColItems();
+                    updateCopyToolbar();
                     renderTable();
                 };
                 
@@ -270,6 +393,7 @@ window.showUniversalDataModal = function(options) {
             });
         };
         renderColItems();
+        updateCopyToolbar();
     }
 
     // Body
@@ -352,6 +476,8 @@ window.showUniversalDataModal = function(options) {
             statsEl.textContent = `${visibleData.length} rows / ${selectedCols.size} cols`;
         }
 
+        let lastSelectedCol = null;
+
         // Render Colgroup & Head with Visual Column Resizers
         colgroup.innerHTML = '';
         thead.innerHTML = '';
@@ -367,10 +493,27 @@ window.showUniversalDataModal = function(options) {
             colEl.setAttribute('data-col', col);
             colgroup.appendChild(colEl);
 
+            const isColSelectedForCopy = selectedColForCopy.has(col);
             const th = document.createElement('th');
-            th.style.cssText = 'position:sticky; top:0; background:var(--bg-color); z-index:16; padding:10px 16px 10px 12px; border-bottom:1px solid var(--panel-border); font-weight:600; cursor:pointer; user-select:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; box-sizing:border-box;';
-            th.title = 'Click to sort, Shift+Click multi-sort, Drag right divider to resize, Double click to auto-fit';
+            th.setAttribute('data-col', col);
+            th.style.cssText = `position:sticky; top:0; background:${isColSelectedForCopy ? 'var(--accent-subtle, rgba(99,102,241,0.18))' : 'var(--bg-color)'}; z-index:16; padding:10px 16px 10px 10px; border-bottom:1px solid var(--panel-border); font-weight:600; cursor:pointer; user-select:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; box-sizing:border-box; transition:background 0.2s; color:${isColSelectedForCopy ? 'var(--accent)' : 'inherit'};`;
+            th.title = '点击表头选择列以供复制 (支持 Ctrl/Shift 多选)；点击右侧标题排序';
             
+            // Checkbox for column selection
+            const colChk = document.createElement('input');
+            colChk.type = 'checkbox';
+            colChk.checked = isColSelectedForCopy;
+            colChk.style.cssText = 'margin-right:6px; cursor:pointer; vertical-align:middle; accent-color:var(--accent);';
+            colChk.title = '选中/取消此列以供复制 (含列名)';
+            colChk.onclick = (e) => {
+                e.stopPropagation();
+                if (colChk.checked) selectedColForCopy.add(col);
+                else selectedColForCopy.delete(col);
+                if (updateCopyToolbar) updateCopyToolbar();
+                renderTable();
+            };
+            th.appendChild(colChk);
+
             let arrow = '';
             const existingSort = sortState.find(s => s.index === idx);
             if (existingSort) {
@@ -382,7 +525,9 @@ window.showUniversalDataModal = function(options) {
             }
             
             const titleSpan = document.createElement('span');
-            titleSpan.style.cssText = 'display:inline-block; max-width:calc(100% - 14px); overflow:hidden; text-overflow:ellipsis; vertical-align:middle;';
+            titleSpan.className = 'uni-sort-trigger';
+            titleSpan.style.cssText = 'display:inline-block; max-width:calc(100% - 30px); overflow:hidden; text-overflow:ellipsis; vertical-align:middle; cursor:pointer;';
+            titleSpan.title = '点击按此列排序 (按住 Shift 多列排序)';
             titleSpan.innerHTML = displayNames[idx] + arrow;
             th.appendChild(titleSpan);
 
@@ -470,8 +615,7 @@ window.showUniversalDataModal = function(options) {
 
             th.appendChild(resizer);
 
-            th.onclick = (e) => {
-                if (isResizing) return;
+            const handleSort = (e) => {
                 if (e.shiftKey) {
                     const s = sortState.find(s => s.index === idx);
                     if (s) s.asc = !s.asc;
@@ -485,6 +629,42 @@ window.showUniversalDataModal = function(options) {
                     }
                 }
                 savePreferences();
+                renderTable();
+            };
+
+            th.onclick = (e) => {
+                if (isResizing) return;
+                
+                // If clicked directly on sort trigger text, sort column
+                if (e.target.closest('.uni-sort-trigger')) {
+                    handleSort(e);
+                    return;
+                }
+                
+                // Otherwise toggle column selection for copying
+                if (e.ctrlKey || e.metaKey) {
+                    if (selectedColForCopy.has(col)) selectedColForCopy.delete(col);
+                    else selectedColForCopy.add(col);
+                } else if (e.shiftKey && lastSelectedCol) {
+                    const colList = activeCols;
+                    const startIdx = colList.indexOf(lastSelectedCol);
+                    const endIdx = colList.indexOf(col);
+                    if (startIdx !== -1 && endIdx !== -1) {
+                        const [minIdx, maxIdx] = [Math.min(startIdx, endIdx), Math.max(startIdx, endIdx)];
+                        for (let i = minIdx; i <= maxIdx; i++) {
+                            selectedColForCopy.add(colList[i]);
+                        }
+                    }
+                } else {
+                    if (selectedColForCopy.has(col) && selectedColForCopy.size === 1) {
+                        selectedColForCopy.clear();
+                    } else {
+                        selectedColForCopy.clear();
+                        selectedColForCopy.add(col);
+                    }
+                }
+                lastSelectedCol = col;
+                if (updateCopyToolbar) updateCopyToolbar();
                 renderTable();
             };
             trHead.appendChild(th);
@@ -507,6 +687,9 @@ window.showUniversalDataModal = function(options) {
             columns.forEach(col => {
                 if (!selectedCols.has(col)) return;
                 
+                const isSelectedCol = selectedColForCopy.has(col);
+                const colHighlight = isSelectedCol ? 'background: rgba(99, 102, 241, 0.08) !important;' : '';
+
                 let val = row[col];
                 let cellHtml = '';
                 let cellTitle = '';
@@ -514,7 +697,7 @@ window.showUniversalDataModal = function(options) {
                 if (options.cellRenderer) {
                     const customHtml = options.cellRenderer(col, val, row);
                     if (customHtml !== undefined) {
-                        htmlRows += `<td style="padding: 6px 12px; color: var(--text-primary); border-bottom: 1px solid var(--panel-border); border-right: 1px solid var(--overlay-5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${customHtml}</td>`;
+                        htmlRows += `<td style="padding: 6px 12px; color: var(--text-primary); border-bottom: 1px solid var(--panel-border); border-right: 1px solid var(--overlay-5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; ${colHighlight}">${customHtml}</td>`;
                         return;
                     }
                 }
@@ -533,7 +716,7 @@ window.showUniversalDataModal = function(options) {
                     cellHtml = str.replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 }
                 
-                htmlRows += `<td title="${cellTitle}" style="padding: 6px 12px; color: var(--text-primary); border-bottom: 1px solid var(--panel-border); border-right: 1px solid var(--overlay-5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${cellHtml}</td>`;
+                htmlRows += `<td title="${cellTitle}" style="padding: 6px 12px; color: var(--text-primary); border-bottom: 1px solid var(--panel-border); border-right: 1px solid var(--overlay-5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; ${colHighlight}">${cellHtml}</td>`;
             });
             htmlRows += `</tr>`;
         });
@@ -541,6 +724,26 @@ window.showUniversalDataModal = function(options) {
     };
 
     renderTable();
+
+    // Global Ctrl+C / Cmd+C shortcut listener for copying columns
+    const handleKeyDown = (e) => {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C')) {
+            const activeEl = document.activeElement;
+            const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA') && activeEl.selectionStart !== activeEl.selectionEnd;
+            if (!isTyping) {
+                e.preventDefault();
+                copySelectedColumnsData();
+            }
+        }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+
+    // Clean up keydown listener on close
+    const originalClose = closeBtn.onclick;
+    closeBtn.onclick = (e) => {
+        document.removeEventListener('keydown', handleKeyDown);
+        if (originalClose) originalClose(e);
+    };
 
     // Animate in & clear transition after open for 60fps smooth dragging
     requestAnimationFrame(() => {
