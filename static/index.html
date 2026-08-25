@@ -639,22 +639,14 @@
                             </div>
                         </div>
                     </div>
-                    <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px;">
-                        <div class="wf-step active">
-                            <div class="wf-step-header">
-                                <span class="wf-step-title">Execute XMLA Targeted Refresh & Status Audit</span>
+                    <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+                        <div style="position: relative;">
+                            <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none;" onclick="window.toggleConsole('wf-out-xmla-logs')">
+                                <svg id="wf-out-xmla-logs-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(90deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                Execution Logs & Status History
                             </div>
-                            <div class="wf-step-content" style="display: block; margin-top: 8px;">
-                                <div id="wf-xmla-status" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px;">就绪。完成选型后点击 Run 开始触发刷新与统计。</div>
-                                <div style="position: relative;">
-                                    <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none;" onclick="window.toggleConsole('wf-out-xmla-logs')">
-                                        <svg id="wf-out-xmla-logs-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(90deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                                        Execution Logs & Status History
-                                    </div>
-                                    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-xmla-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
-                                    <div id="wf-out-xmla-logs" class="wf-console collapsed-console" style="min-height: 0; padding-bottom: 20px; transition: max-height 0.3s ease, padding 0.3s ease; overflow-y: auto; max-height: 250px;"></div>
-                                </div>
-                            </div>
+                            <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-xmla-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                            <div id="wf-out-xmla-logs" class="wf-console collapsed-console" style="min-height: 0; padding-bottom: 20px; transition: max-height 0.3s ease, padding 0.3s ease; overflow-y: auto; max-height: 250px;"></div>
                         </div>
                     </div>
                 </div>
@@ -1506,7 +1498,7 @@
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
     <script src="/static/universal_modal.js?v=20260825_v15"></script>
-    <script src="/static/script.js?v=20260825_v489"></script>
+    <script src="/static/script.js?v=20260825_v490"></script>
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: none; z-index: 10005;">
