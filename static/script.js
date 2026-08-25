@@ -1,4 +1,4 @@
-﻿
+
 // Global Fetch Interceptor for 401 Unauthorized
 const originalFetch = window.fetch;
 window.fetch = async function(...args) {
@@ -8519,42 +8519,53 @@ window.initXmlaWorkflow = function() {
     const selTbl = document.getElementById('wf-xmla-table');
     const selPart = document.getElementById('wf-xmla-partition');
     const manualBox = document.getElementById('wf-xmla-manual-box');
+    const manualTableInput = document.getElementById('wf-xmla-manual-table');
+    const manualPartInput = document.getElementById('wf-xmla-manual-partition');
     const logsEl = document.getElementById('wf-out-xmla-logs');
+    const statusEl = document.getElementById('wf-xmla-status');
 
     if (!btnAuth || btnAuth._inited) return;
     btnAuth._inited = true;
 
-        // 1. 个人认证按钮
-    btnAuth.addEventListener('click', async () => {
+    // 自动尝试获取已缓存的 Token
+    const autoFetchToken = async (silent = true) => {
         try {
-            btnAuth.innerText = "⏳ 获取中...";
+            if (btnAuth && !silent) btnAuth.innerText = "⏳ 获取中...";
             const res = await fetch('/api/xmla/get-token');
             const data = await res.json();
-            btnAuth.innerText = "⚡ 自动获取当前 Token";
+            if (btnAuth && !silent) btnAuth.innerText = "⚡ 自动获取当前 Token";
             if (data && data.success && data.token) {
                 tokenInput.value = data.token;
-                alert("✅ 已成功从静默凭据缓存中无感提取未过期的 Access Token！");
+                if (!silent) window.showNotification ? window.showNotification("✅ 已成功提取未过期的 Access Token！", "success") : alert("✅ 已成功提取未过期的 Access Token！");
+                return data.token;
             } else {
                 const r2 = await fetch('/api/check-permissions');
                 const d2 = await r2.json();
                 if (d2 && d2.token) {
                     tokenInput.value = d2.token;
-                    alert("✅ 已为您提取系统全局连接生效的 Access Token！");
-                } else {
-                    alert("💡 提示：您可以先双击桌面【运行PowerBI刷新工具.bat】登录一次，系统将自动记录免登录凭据。");
+                    if (!silent) window.showNotification ? window.showNotification("✅ 已提取全局 Access Token！", "success") : alert("✅ 已提取全局 Access Token！");
+                    return d2.token;
                 }
             }
         } catch (e) {
-            btnAuth.innerText = "⚡ 自动获取当前 Token";
-            alert("❌ 提取异常: " + e.message);
+            if (btnAuth && !silent) btnAuth.innerText = "⚡ 自动获取当前 Token";
+            if (!silent) window.showNotification ? window.showNotification("❌ 提取 Token 异常: " + e.message, "error") : alert("❌ 提取 Token 异常: " + e.message);
         }
-    });
+        return tokenInput.value.trim();
+    };
+
+    // 1. 个人认证按钮
+    btnAuth.addEventListener('click', () => autoFetchToken(false));
 
     // 2. 扫描模型 (Datasets)
-    btnScanDs.addEventListener('click', async () => {
-        const token = tokenInput.value.trim();
+    const scanDatasets = async (silent = false) => {
+        let token = tokenInput.value.trim();
+        if (!token) token = await autoFetchToken(true);
         const endpoint = endpointInput.value.trim();
-        if (!token) { alert("请先获取或输入 Access Token!"); return; }
+        if (!token) {
+            if (!silent) alert("请先获取或输入 Access Token!");
+            return;
+        }
         
         btnScanDs.innerText = "⏳ 扫描中...";
         try {
@@ -8576,30 +8587,42 @@ window.initXmlaWorkflow = function() {
                     selDs.appendChild(opt);
                 });
                 window._xmla_datasets_cache = data.datasets;
-                alert(`✅ 成功扫描到 ${data.datasets.length} 个模型！请在下拉框中选择要扫描的特定模型。`);
+                if (!silent && window.showNotification) {
+                    window.showNotification(`✅ 成功扫描到 ${data.datasets.length} 个模型！`, "success");
+                }
             } else {
-                alert("❌ 扫描失败: " + data.message);
+                if (!silent) alert("❌ 扫描模型失败: " + data.message);
             }
         } catch (e) {
             btnScanDs.innerText = "🔄 扫描模型";
-            alert("❌ 请求异常: " + e.message);
+            if (!silent) alert("❌ 请求异常: " + e.message);
         }
-    });
+    };
+    btnScanDs.addEventListener('click', () => scanDatasets(false));
 
-    // 3. 扫描数据表 (Tables)
-    btnScanTbl.addEventListener('click', async () => {
-        const token = tokenInput.value.trim();
+    // 3. 扫描数据表 (Tables) 核心函数
+    window.loadXmlaTablesForDataset = async function(isSilent = false) {
+        let token = tokenInput.value.trim();
+        if (!token) token = await autoFetchToken(true);
         const endpoint = endpointInput.value.trim();
         const dsName = selDs.value;
+        if (!dsName) {
+            selTbl.innerHTML = '<option value="">-- 请先选择模型 --</option>';
+            selPart.innerHTML = '<option value="">-- 全表刷新 (包含所有分区) --</option>';
+            return;
+        }
+
         let dsId = selDs.options[selDs.selectedIndex]?.getAttribute('data-id') || selDs.options[selDs.selectedIndex]?.dataset?.id || "";
         if (!dsId && window._xmla_datasets_cache) {
             const found = window._xmla_datasets_cache.find(d => d.name === dsName);
             if (found) dsId = found.id;
         }
-        
-        if (!token || !dsName) { alert("请先在第 1 步下拉菜单中选中具体的模型（如 Carman PA Hypers）！"); return; }
-        
+
         btnScanTbl.innerText = "⏳ 扫描中...";
+        selTbl.disabled = true;
+        selTbl.innerHTML = '<option value="">⏳ 正在快速扫描模型数据表与分区...</option>';
+        selPart.innerHTML = '<option value="">-- 全表刷新 (包含所有分区) --</option>';
+
         try {
             const res = await fetch('/api/xmla/scan-tables', {
                 method: 'POST',
@@ -8608,30 +8631,57 @@ window.initXmlaWorkflow = function() {
             });
             const data = await res.json();
             btnScanTbl.innerText = "🔄 扫描数据表";
+            selTbl.disabled = false;
+
             if (data.success) {
                 selTbl.innerHTML = '<option value="">-- 请选择表 --</option>';
-                window._xmla_tables_cache = data.tables;
-                
-                if (data.tables.length > 0) {
-                    manualBox.style.display = 'none';
+                window._xmla_tables_cache = data.tables || [];
+
+                if (data.tables && data.tables.length > 0) {
+                    if (manualBox) manualBox.style.display = 'none';
                     data.tables.forEach(t => {
                         const opt = document.createElement('option');
                         opt.value = t.name;
-                        opt.textContent = `${t.name} (${t.partitions.length} 个分区)`;
+                        const partCount = (t.partitions && t.partitions.length) ? t.partitions.length : 1;
+                        opt.textContent = `${t.name} (${partCount} 个分区)`;
                         selTbl.appendChild(opt);
                     });
-                    alert(`✅ 成功解包 ${data.tables.length} 个数据表！`);
+
+                    // 默认自动选中第一张业务表并联动分区
+                    if (selTbl.options.length > 1) {
+                        selTbl.selectedIndex = 1;
+                        selTbl.dispatchEvent(new Event('change'));
+                    }
+                    if (!isSilent && window.showNotification) {
+                        window.showNotification(`✅ 成功扫描并解包 ${data.tables.length} 张数据表！`, "success");
+                    }
                 } else {
-                    manualBox.style.display = 'block';
-                    alert("⚠️ 自动枚举受限，已为您展开下方手动指定表名文本框。");
+                    if (manualBox) manualBox.style.display = 'block';
+                    selTbl.innerHTML = '<option value="">⚠️ 自动枚举受限 (请在下方直接输入表名)</option>';
+                    if (!isSilent) {
+                        if (window.showNotification) window.showNotification("⚠️ 自动枚举受限，已自动为您展开下方手动指定表名输入框。", "warning");
+                    }
                 }
             } else {
-                alert("❌ 扫描表失败: " + data.message);
+                selTbl.innerHTML = '<option value="">❌ 扫描失败 (可使用下方手动表名)</option>';
+                if (manualBox) manualBox.style.display = 'block';
+                if (!isSilent) alert("❌ 扫描表失败: " + (data.message || "未知错误"));
             }
         } catch (e) {
             btnScanTbl.innerText = "🔄 扫描数据表";
-            alert("❌ 请求异常: " + e.message);
+            selTbl.disabled = false;
+            selTbl.innerHTML = '<option value="">❌ 请求异常</option>';
+            if (manualBox) manualBox.style.display = 'block';
+            if (!isSilent) alert("❌ 请求异常: " + e.message);
         }
+    };
+
+    // 绑定扫描表按钮
+    btnScanTbl.addEventListener('click', () => window.loadXmlaTablesForDataset(false));
+
+    // 关键联动：模型下拉框改变时，自动触发扫描数据表！
+    selDs.addEventListener('change', () => {
+        window.loadXmlaTablesForDataset(true);
     });
 
     // 联动更新分区下拉框
@@ -8640,26 +8690,156 @@ window.initXmlaWorkflow = function() {
         selPart.innerHTML = '<option value="">-- 全表刷新 (包含所有分区) --</option>';
         if (window._xmla_tables_cache) {
             const tObj = window._xmla_tables_cache.find(t => t.name === tblName);
-            if (tObj && tObj.partitions) {
+            if (tObj && tObj.partitions && tObj.partitions.length > 0) {
                 tObj.partitions.forEach(p => {
                     const opt = document.createElement('option');
                     opt.value = p.name;
-                    opt.textContent = `分区: ${p.name} (模式: ${p.mode})`;
+                    opt.textContent = `分区: ${p.name} (模式: ${p.mode || 'import'})`;
                     selPart.appendChild(opt);
                 });
             }
         }
     });
+
+    // 4. 工作流执行器：触发 XMLA 定向刷新与云端状态审计
+    window.runXmlaRefreshWorkflow = async function() {
+        let token = tokenInput.value.trim();
+        if (!token) token = await autoFetchToken(false);
+        const endpoint = endpointInput.value.trim();
+        const dsName = selDs.value;
+        let tblName = selTbl.value;
+        let partName = selPart.value;
+        const refType = document.getElementById('wf-xmla-type')?.value || 'full';
+
+        if (!token) {
+            if (window.showNotification) window.showNotification("❌ 缺少 Access Token，请先获取认证凭据！", "error");
+            else alert("❌ 缺少 Access Token，请先获取认证凭据！");
+            return;
+        }
+        if (!dsName) {
+            if (window.showNotification) window.showNotification("❌ 请先在第 1 步下拉框中选择要刷新的语义模型！", "error");
+            else alert("❌ 请先在第 1 步下拉框中选择要刷新的语义模型！");
+            return;
+        }
+
+        // 如果下拉框没有有效表名，检查手动输入框
+        if (!tblName && manualBox && manualBox.style.display !== 'none') {
+            tblName = manualTableInput?.value.trim();
+            if (manualPartInput?.value.trim()) partName = manualPartInput.value.trim();
+        }
+
+        if (!tblName) {
+            if (window.showNotification) window.showNotification("❌ 请选择或手动输入要刷新的目标数据表名！", "error");
+            else alert("❌ 请选择或手动输入要刷新的目标数据表名！");
+            return;
+        }
+
+        let dsId = selDs.options[selDs.selectedIndex]?.getAttribute('data-id') || selDs.options[selDs.selectedIndex]?.dataset?.id || "";
+        if (!dsId && window._xmla_datasets_cache) {
+            const found = window._xmla_datasets_cache.find(d => d.name === dsName);
+            if (found) dsId = found.id;
+        }
+
+        // 展开控制台
+        if (window.expandConsole) window.expandConsole('wf-out-xmla-logs');
+        if (logsEl) {
+            logsEl.innerText = `[${new Date().toLocaleTimeString()}] 🚀 准备向 Power BI 发起 XMLA / TMSL 定向刷新...\n` +
+                               `• 语义模型: ${dsName} (${dsId || 'Auto'})\n` +
+                               `• 目标数据表: ${tblName}\n` +
+                               `• 目标分区: ${partName || '全表所有分区'}\n` +
+                               `• 刷新类型: ${refType}\n` +
+                               `• XMLA 端点: ${endpoint}\n` +
+                               `--------------------------------------------------------------------------\n`;
+        }
+        if (statusEl) statusEl.innerText = "⏳ 正在下发 XMLA / TMSL 刷新指令...";
+
+        try {
+            const payload = {
+                xmla_endpoint: endpoint,
+                access_token: token,
+                dataset_name: dsName,
+                dataset_id: dsId,
+                table_name: tblName,
+                partition_name: partName || null,
+                refresh_type: refType
+            };
+
+            const resp = await fetch('/api/xmla/trigger-refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const resData = await resp.json();
+
+            if (resData.success) {
+                if (statusEl) statusEl.innerHTML = `<span style="color: var(--success); font-weight: bold;">✅ 刷新指令已成功下发 (${resData.method})！</span> 正在查询最新云端审计与行数...`;
+                if (logsEl) {
+                    logsEl.innerText += `[${new Date().toLocaleTimeString()}] ✅ ${resData.message} (通道: ${resData.method})\n` +
+                                        `[${new Date().toLocaleTimeString()}] ⏳ 正在拉取模型云端刷新历史与数据表真实行数...\n`;
+                    logsEl.scrollTop = logsEl.scrollHeight;
+                }
+
+                // 轮询查询云端刷新状态与行数
+                setTimeout(async () => {
+                    try {
+                        const statusReq = await fetch('/api/xmla/refresh-status', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                xmla_endpoint: endpoint,
+                                access_token: token,
+                                dataset_name: tblName, // 用于 COUNTROWS
+                                dataset_id: dsId
+                            })
+                        });
+                        const sData = await statusReq.json();
+                        if (sData.success && logsEl) {
+                            logsEl.innerText += `\n📊 模型 [${dsName}] 最新云端刷新记录 (UTC+8 北京时间):\n`;
+                            logsEl.innerText += `==========================================================================\n`;
+                            if (sData.history && sData.history.length > 0) {
+                                sData.history.forEach((h, i) => {
+                                    const stIcon = h.status === 'Completed' ? '✅ 成功' : (h.status === 'Failed' ? '❌ 失败' : '⏳ 进行中');
+                                    logsEl.innerText += `[#${i + 1}] 起止: ${h.startTime} 至 ${h.endTime}\n` +
+                                                        `     耗时: ${h.duration} | 类型: ${h.refreshType || 'Unknown'} | 状态: ${stIcon}\n`;
+                                    if (h.error) logsEl.innerText += `     明细: ${h.error}\n`;
+                                    logsEl.innerText += `--------------------------------------------------------------------------\n`;
+                                });
+                            }
+                            if (sData.row_count !== null && sData.row_count !== undefined) {
+                                logsEl.innerText += `📈 目标表 [${tblName}] 当前真实总行数: ${Number(sData.row_count).toLocaleString()} 行\n`;
+                            }
+                            logsEl.innerText += `==========================================================================\n`;
+                            logsEl.scrollTop = logsEl.scrollHeight;
+                        }
+                    } catch (e) {
+                        if (logsEl) logsEl.innerText += `[WARN] 状态审计查询略过: ${e.message}\n`;
+                    }
+                }, 2000);
+
+                if (window.showNotification) window.showNotification(`✅ 局部刷新指令已成功下发至 ${tblName}！`, "success");
+            } else {
+                if (statusEl) statusEl.innerHTML = `<span style="color: var(--danger); font-weight: bold;">❌ 刷新下发失败</span>`;
+                if (logsEl) {
+                    logsEl.innerText += `[${new Date().toLocaleTimeString()}] ❌ 刷新失败: ${resData.message}\n`;
+                    logsEl.scrollTop = logsEl.scrollHeight;
+                }
+                if (window.showNotification) window.showNotification("❌ 刷新指令下发失败: " + resData.message, "error");
+            }
+        } catch (e) {
+            if (statusEl) statusEl.innerHTML = `<span style="color: var(--danger);">❌ 请求异常: ${e.message}</span>`;
+            if (logsEl) {
+                logsEl.innerText += `[${new Date().toLocaleTimeString()}] ❌ 异常: ${e.message}\n`;
+                logsEl.scrollTop = logsEl.scrollHeight;
+            }
+        }
+    };
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(window.initXmlaWorkflow, 1000);
+    setTimeout(window.initXmlaWorkflow, 500);
 });
 
-
-
 // 挂载 toggleXmlaTokenLock 解锁/锁定控制函数
-// 修改 toggleXmlaTokenLock 中锁定与解锁图标状态
 window.toggleXmlaTokenLock = function() {
     const tokenInput = document.getElementById('wf-xmla-token');
     const lockBtn = document.getElementById('wf-xmla-toggle-lock-btn');
