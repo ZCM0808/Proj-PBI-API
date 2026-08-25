@@ -8704,6 +8704,10 @@ window.initXmlaWorkflow = function() {
     // 绑定扫描表按钮
     btnScanTbl.addEventListener('click', () => window.loadXmlaTablesForDataset(false));
 
+    // 绑定导出字段按钮
+    const btnExportFields = document.getElementById('wf-xmla-btn-export-fields');
+    if (btnExportFields) btnExportFields.addEventListener('click', () => window.exportXmlaTableFields());
+
     // 关键联动：模型下拉框改变时，记录到 localStorage 并自动触发扫描数据表！
     selDs.addEventListener('change', () => {
         if (selDs.value) localStorage.setItem('pbi_xmla_last_dataset', selDs.value);
@@ -8873,35 +8877,195 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(window.initXmlaWorkflow, 500);
 });
 
-// 挂载 toggleXmlaTokenLock 解锁/锁定控制函数
-window.toggleXmlaTokenLock = function() {
+// 纯展开/折叠 Token 输入框（不改变编辑锁定状态）
+window.toggleXmlaTokenVisibility = function() {
+    const tokenContainer = document.getElementById('wf-xmla-token-container');
+    const chevron = document.getElementById('wf-xmla-token-chevron');
+    if (!tokenContainer) return;
+
+    const isCurrentlyCollapsed = tokenContainer.style.display === 'none';
+    if (isCurrentlyCollapsed) {
+        tokenContainer.style.display = 'block';
+        if (chevron) chevron.style.transform = 'rotate(90deg)';
+    } else {
+        tokenContainer.style.display = 'none';
+        if (chevron) chevron.style.transform = 'rotate(0deg)';
+    }
+};
+
+// 解锁编辑 Token — 需要二次弹窗确认
+window.unlockXmlaTokenWithConfirm = async function() {
     const tokenInput = document.getElementById('wf-xmla-token');
     const tokenContainer = document.getElementById('wf-xmla-token-container');
     const lockBtn = document.getElementById('wf-xmla-toggle-lock-btn');
     const chevron = document.getElementById('wf-xmla-token-chevron');
     if (!tokenInput || !lockBtn) return;
-    
-    const isCurrentlyCollapsed = !tokenContainer || tokenContainer.style.display === 'none';
-    if (isCurrentlyCollapsed) {
-        if (tokenContainer) tokenContainer.style.display = 'block';
-        if (chevron) chevron.style.transform = 'rotate(90deg)';
-        tokenInput.removeAttribute('readonly');
-        tokenInput.style.opacity = '1';
-        tokenInput.style.borderColor = 'var(--accent)';
-        lockBtn.innerHTML = '🔓';
-        lockBtn.title = '折叠并锁定 Token';
-        lockBtn.style.color = 'var(--accent)';
-        lockBtn.style.borderColor = 'var(--accent)';
-        tokenInput.focus();
+
+    const isLocked = tokenInput.hasAttribute('readonly');
+
+    if (isLocked) {
+        // 解锁需要二次确认
+        let confirmed = false;
+        if (window.showCustomConfirm) {
+            confirmed = await window.showCustomConfirm(
+                '手动修改 Token 可能导致认证失败，建议优先使用【⚡】自动获取。确认解锁编辑？',
+                '⚠️ 解锁 Access Token'
+            );
+        } else {
+            confirmed = confirm('⚠️ 确认解锁 Access Token 编辑？\n\n手动修改 Token 可能导致认证失败，建议优先使用【⚡】自动获取。');
+        }
+
+        if (confirmed) {
+            if (tokenContainer) tokenContainer.style.display = 'block';
+            if (chevron) chevron.style.transform = 'rotate(90deg)';
+            tokenInput.removeAttribute('readonly');
+            tokenInput.style.opacity = '1';
+            tokenInput.style.borderColor = 'var(--accent)';
+            tokenInput.style.background = '';
+            lockBtn.innerHTML = '🔓';
+            lockBtn.title = '锁定 Token';
+            lockBtn.style.color = 'var(--accent)';
+            lockBtn.style.borderColor = 'var(--accent)';
+            tokenInput.focus();
+        }
     } else {
-        if (tokenContainer) tokenContainer.style.display = 'none';
-        if (chevron) chevron.style.transform = 'rotate(0deg)';
+        // 已解锁 → 直接锁定（无需确认）
         tokenInput.setAttribute('readonly', 'true');
         tokenInput.style.opacity = '0.85';
         tokenInput.style.borderColor = 'var(--panel-border)';
+        tokenInput.style.background = 'var(--input-bg-readonly, rgba(255,255,255,0.03))';
         lockBtn.innerHTML = '🔒';
-        lockBtn.title = '展开并解锁编辑 Token';
+        lockBtn.title = '解锁手动编辑 Token';
         lockBtn.style.color = 'var(--text-secondary)';
         lockBtn.style.borderColor = 'var(--overlay-20)';
+    }
+};
+
+// 导出单个表的字段/列元数据
+window.exportXmlaTableFields = async function() {
+    const tokenInput = document.getElementById('wf-xmla-token');
+    const endpointInput = document.getElementById('wf-xmla-endpoint');
+    const selDs = document.getElementById('wf-xmla-dataset');
+    const selTbl = document.getElementById('wf-xmla-table');
+    const logsEl = document.getElementById('wf-out-xmla-logs');
+
+    const token = tokenInput ? tokenInput.value.trim() : '';
+    const endpoint = endpointInput ? endpointInput.value.trim() : '';
+    const dsName = selDs ? selDs.value : '';
+    const tblName = selTbl ? selTbl.value : '';
+
+    if (!dsName) {
+        if (window.showNotification) window.showNotification('❌ 请先选择 Dataset (Model)！', 'error');
+        return;
+    }
+    if (!tblName) {
+        if (window.showNotification) window.showNotification('❌ 请先选择要导出字段的 Table！', 'error');
+        return;
+    }
+
+    let dsId = '';
+    if (selDs && selDs.options[selDs.selectedIndex]) {
+        dsId = selDs.options[selDs.selectedIndex].getAttribute('data-id') || selDs.options[selDs.selectedIndex].dataset?.id || '';
+    }
+    if (!dsId && window._xmla_datasets_cache) {
+        const found = window._xmla_datasets_cache.find(d => d.name === dsName);
+        if (found) dsId = found.id;
+    }
+
+    const btnExport = document.getElementById('wf-xmla-btn-export-fields');
+    if (btnExport) { btnExport.disabled = true; btnExport.innerHTML = '⏳'; }
+
+    // 展开控制台
+    if (window.expandConsole) window.expandConsole('wf-out-xmla-logs');
+    if (logsEl) {
+        logsEl.innerText += `\n[${new Date().toLocaleTimeString()}] 📋 正在导出表 [${tblName}] 的列字段元数据...\n`;
+        logsEl.scrollTop = logsEl.scrollHeight;
+    }
+
+    try {
+        const res = await fetch('/api/xmla/scan-tables', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ xmla_endpoint: endpoint, access_token: token, dataset_name: dsName, dataset_id: dsId })
+        });
+        const data = await res.json();
+
+        if (data.success && data.tables && data.tables.length > 0) {
+            const targetTable = data.tables.find(t => t.name === tblName);
+            if (targetTable) {
+                // 构造列信息用于展示
+                const columns = targetTable.columns || [];
+                const partitions = targetTable.partitions || [];
+
+                if (columns.length === 0 && logsEl) {
+                    logsEl.innerText += `⚠️ 未获取到 [${tblName}] 的列信息，该接口可能未返回 columns 属性。\n`;
+                    logsEl.innerText += `尝试通过 DAX COLUMNSTATISTICS() 获取...\n`;
+                    logsEl.scrollTop = logsEl.scrollHeight;
+                }
+
+                // 构建丰富的表元数据展示
+                const fieldData = columns.map((col, i) => ({
+                    '#': i + 1,
+                    columnName: col.name || col.columnName || '-',
+                    dataType: col.dataType || col.type || '-',
+                    isHidden: col.isHidden ? '✅ Hidden' : '',
+                    expression: col.expression || '',
+                    sourceColumn: col.sourceColumn || ''
+                }));
+
+                // 追加分区信息作为附加数据
+                const partitionData = partitions.map((p, i) => ({
+                    '#': i + 1,
+                    partitionName: p.name || '-',
+                    mode: p.mode || 'Import',
+                    source: p.sourceType || p.source || ''
+                }));
+
+                if (logsEl) {
+                    logsEl.innerText += `✅ 成功提取 [${tblName}] 的 ${columns.length} 个列字段 和 ${partitions.length} 个分区信息！\n`;
+                    logsEl.scrollTop = logsEl.scrollHeight;
+                }
+
+                // 用 Universal Modal 展示字段信息
+                if (window.showUniversalDataModal && fieldData.length > 0) {
+                    window.showUniversalDataModal({
+                        title: `📋 ${dsName} ▸ ${tblName} — 列字段元数据 (${fieldData.length} columns)`,
+                        data: fieldData,
+                        columns: ['#', 'columnName', 'dataType', 'isHidden', 'expression', 'sourceColumn'],
+                        displayNames: ['#', 'Column Name', 'Data Type', 'Hidden', 'DAX Expression', 'Source Column'],
+                        enableSearch: true,
+                        enableColumnFilter: true
+                    });
+                } else if (fieldData.length === 0) {
+                    // 弹一个分区信息的 modal
+                    if (window.showUniversalDataModal && partitionData.length > 0) {
+                        window.showUniversalDataModal({
+                            title: `📋 ${dsName} ▸ ${tblName} — 分区信息 (${partitionData.length} partitions)`,
+                            data: partitionData,
+                            columns: ['#', 'partitionName', 'mode', 'source'],
+                            displayNames: ['#', 'Partition Name', 'Mode', 'Source'],
+                            enableSearch: true,
+                            enableColumnFilter: true
+                        });
+                    }
+                }
+
+                if (window.showNotification) {
+                    window.showNotification(`📋 已导出 [${tblName}] 的 ${fieldData.length} 个列字段！`, 'success');
+                }
+            } else {
+                if (logsEl) logsEl.innerText += `❌ 在扫描结果中未找到表 [${tblName}]。\n`;
+                if (window.showNotification) window.showNotification(`❌ 未找到表 [${tblName}]`, 'error');
+            }
+        } else {
+            if (logsEl) logsEl.innerText += `❌ 扫描表失败: ${data.message || '未知错误'}\n`;
+            if (window.showNotification) window.showNotification(`❌ 扫描表失败: ${data.message || '未知错误'}`, 'error');
+        }
+    } catch (err) {
+        if (logsEl) logsEl.innerText += `❌ 导出字段异常: ${err.message}\n`;
+        if (window.showNotification) window.showNotification(`❌ 导出字段异常: ${err.message}`, 'error');
+    } finally {
+        if (btnExport) { btnExport.disabled = false; btnExport.innerHTML = '📋'; }
+        if (logsEl) logsEl.scrollTop = logsEl.scrollHeight;
     }
 };

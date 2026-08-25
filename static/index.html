@@ -475,7 +475,7 @@
             <div class="modal-body" style="overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 12px;">
                 <div style="display: flex; gap: 12px; align-items: center;">
                     <label style="color: var(--text-secondary); font-weight: bold; display: flex; align-items: center; gap: 6px; width: 120px;">
-                        Select Workflow:
+                        Workflow:
                     </label>
                     <div class="input-with-copy" style="flex: 1;">
                         <select id="wf-selector" class="wf-input">
@@ -554,23 +554,23 @@
                         </div>
                         <div style="grid-column: 1 / -1;">
                             <div style="display: flex; justify-content: space-between; align-items: center; padding: 2px 0;">
-                                <div onclick="window.toggleXmlaTokenLock()" style="cursor: pointer; display: flex; align-items: center; gap: 8px; user-select: none;" title="点击展开/折叠 Token 输入框">
+                                <div onclick="window.toggleXmlaTokenVisibility()" style="cursor: pointer; display: flex; align-items: center; gap: 8px; user-select: none;" title="展开/折叠 Token 输入框">
                                     <svg id="wf-xmla-token-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition: transform 0.2s ease; transform: rotate(0deg); color: var(--text-secondary);"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                                    <span style="font-size: 0.85rem; color: var(--text-secondary);">Access Token (Personal Auth / App Token)</span>
+                                    <span style="font-size: 0.85rem; color: var(--text-secondary);">Access Token</span>
                                     <span id="wf-xmla-token-badge" style="font-size: 0.85rem; display: none;" title="Access Token 已就绪">✅</span>
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 6px;">
-                                    <button type="button" id="wf-xmla-toggle-lock-btn" onclick="window.toggleXmlaTokenLock()" style="background: var(--btn-secondary-bg, rgba(255,255,255,0.06)); border: 1px solid var(--overlay-20); color: var(--text-secondary); border-radius: 6px; padding: 4px 8px; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease;" title="展开并解锁编辑">🔒</button>
+                                    <button type="button" id="wf-xmla-toggle-lock-btn" onclick="window.unlockXmlaTokenWithConfirm()" style="background: var(--btn-secondary-bg, rgba(255,255,255,0.06)); border: 1px solid var(--overlay-20); color: var(--text-secondary); border-radius: 6px; padding: 4px 8px; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease;" title="解锁手动编辑 Token">🔒</button>
                                     <button type="button" id="wf-xmla-auth-btn" style="background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease; box-shadow: 0 2px 6px rgba(0,0,0,0.15);" title="自动获取当前 Token">⚡</button>
                                 </div>
                             </div>
                             <div id="wf-xmla-token-container" style="display: none; margin-top: 6px; transition: all 0.3s ease;">
-                                <textarea id="wf-xmla-token" class="wf-input" readonly style="height: 60px; font-family: monospace; font-size: 0.75rem; opacity: 0.85; background: var(--input-bg-readonly, rgba(255,255,255,0.03)); border-color: var(--panel-border);" placeholder="默认安全锁定，点击【⚡】自动提取，或点击【🔓】解锁手输..."></textarea>
+                                <textarea id="wf-xmla-token" class="wf-input" readonly style="height: 60px; font-family: monospace; font-size: 0.75rem; opacity: 0.85; background: var(--input-bg-readonly, rgba(255,255,255,0.03)); border-color: var(--panel-border);" placeholder="默认安全锁定，点击【⚡】自动提取，或点击【🔒】解锁手输..."></textarea>
                             </div>
                         </div>
                         <div>
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between;">
-                                <span>1. Select Dataset (Model)</span>
+                                <span style="display: flex; align-items: center; gap: 4px;"><span style="color: var(--accent); font-size: 0.7rem; opacity: 0.7;">▸</span> Dataset (Model)</span>
                                 <button type="button" id="wf-xmla-btn-scan-ds" style="background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.95rem; padding: 0 4px; display: inline-flex; align-items: center;" title="扫描/刷新模型列表">🔄</button>
                             </label>
                             <select id="wf-xmla-dataset" class="wf-input">
@@ -579,15 +579,18 @@
                         </div>
                         <div>
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between;">
-                                <span>2. Select Table</span>
-                                <button type="button" id="wf-xmla-btn-scan-tbl" style="background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.95rem; padding: 0 4px; display: inline-flex; align-items: center;" title="扫描/刷新数据表列表">🔄</button>
+                                <span style="display: flex; align-items: center; gap: 4px;"><span style="color: var(--accent); font-size: 0.7rem; opacity: 0.7;">▸▸</span> Table</span>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <button type="button" id="wf-xmla-btn-export-fields" style="background: none; border: none; color: var(--info); cursor: pointer; font-size: 0.85rem; padding: 0 4px; display: inline-flex; align-items: center; opacity: 0.85; transition: opacity 0.2s;" title="导出当前选中表的字段/列信息" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'">📋</button>
+                                    <button type="button" id="wf-xmla-btn-scan-tbl" style="background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.95rem; padding: 0 4px; display: inline-flex; align-items: center;" title="扫描/刷新数据表列表">🔄</button>
+                                </div>
                             </label>
                             <select id="wf-xmla-table" class="wf-input">
                                 <option value="">-- 请先选择模型 --</option>
                             </select>
                         </div>
                         <div>
-                            <label style="font-size: 0.85rem; color: var(--text-secondary);">3. Select Partition (Optional)</label>
+                            <label style="font-size: 0.85rem; color: var(--text-secondary);"><span style="display: flex; align-items: center; gap: 4px;"><span style="color: var(--accent); font-size: 0.7rem; opacity: 0.7;">▸▸▸</span> Partition <span style="font-size: 0.7rem; opacity: 0.6;">(Optional)</span></span></label>
                             <select id="wf-xmla-partition" class="wf-input">
                                 <option value="">-- 全表刷新 (包含所有分区) --</option>
                             </select>
@@ -1476,7 +1479,7 @@
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
     <script src="/static/universal_modal.js?v=20260823_v14"></script>
-    <script src="/static/script.js?v=20260825_v485"></script>
+    <script src="/static/script.js?v=20260825_v486"></script>
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: none; z-index: 10005;">
