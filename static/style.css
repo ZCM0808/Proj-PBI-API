@@ -2995,9 +2995,11 @@ div:has(> .collapsed-console) > .wf-copy-btn,
     height: 32px;
 }
 .btn-wf-lg {
-    padding: 8px 18px;
+    padding: 8px 22px;
     font-size: 0.9rem;
     height: 38px;
+    min-width: 130px;
+    letter-spacing: 0.3px;
 }
 
 
