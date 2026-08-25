@@ -6,7 +6,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import uvicorn
-from fastapi import FastAPI, Request, Response, HTTPException
+from fastapi import FastAPI, Request, Response, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from src.local_pbi import scan_local_instances, run_dax_query
 from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse, JSONResponse
@@ -1386,11 +1386,11 @@ async def save_note(payload: NotePayload):
             
         git_error = None
         try:
-            r1 = subprocess.run(["git", "add", f"notes/{filename}"], cwd=root_dir, capture_output=True, text=True)
+            r1 = subprocess.run(["git", "add", f"notes/{filename}", "static/uploads/notes/"], cwd=root_dir, capture_output=True, text=True)
             if r1.returncode != 0:
                 git_error = f"Git Add Error: {r1.stderr.strip()}"
             else:
-                r2 = subprocess.run(["git", "commit", "-m", f"docs(notes): add {filename}"], cwd=root_dir, capture_output=True, text=True)
+                r2 = subprocess.run(["git", "commit", "-m", f"docs(notes): add {filename} and attachments"], cwd=root_dir, capture_output=True, text=True)
                 if r2.returncode != 0 and "nothing to commit" not in r2.stdout and "nothing to commit" not in r2.stderr:
                     git_error = f"Git Commit Error: {r2.stderr.strip() or r2.stdout.strip()}"
                 else:
@@ -1476,6 +1476,47 @@ async def search_notes(q: str = ""):
         # Sort by mtime descending
         results.sort(key=lambda x: x["mtime"], reverse=True)
         return {"success": True, "results": results}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/notes/upload")
+async def upload_note_file(file: UploadFile = File(...)):
+    try:
+        root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        uploads_dir = os.path.join(root_dir, "static", "uploads", "notes")
+        os.makedirs(uploads_dir, exist_ok=True)
+        
+        raw_name = file.filename or "uploaded_file"
+        safe_name = os.path.basename(raw_name).replace(" ", "_")
+        time_prefix = datetime.now().strftime("%Y%m%d_%H%M%S")
+        final_filename = f"{time_prefix}_{safe_name}"
+        
+        file_path = os.path.join(uploads_dir, final_filename)
+        content = await file.read()
+        with open(file_path, "wb") as f:
+            f.write(content)
+            
+        def _git_push_upload():
+            try:
+                subprocess.run(["git", "add", f"static/uploads/notes/{final_filename}"], cwd=root_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(["git", "commit", "-m", f"docs(uploads): add note attachment {final_filename}"], cwd=root_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(["git", "push", "origin", "main"], cwd=root_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception as e:
+                print(f"Git push attachment failed: {e}")
+                
+        asyncio.create_task(asyncio.to_thread(_git_push_upload))
+
+        file_url = f"/static/uploads/notes/{final_filename}"
+        is_image = final_filename.lower().endswith((".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"))
+        
+        return {
+            "success": True,
+            "filename": final_filename,
+            "url": file_url,
+            "is_image": is_image,
+            "markdown": f"![{safe_name}]({file_url})" if is_image else f"[{safe_name}]({file_url})"
+        }
     except Exception as e:
         return {"success": False, "error": str(e)}
 

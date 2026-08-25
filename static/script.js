@@ -4710,6 +4710,27 @@ window.openNoteModal = function() {
         if (noteContent && noteHeader && window.makeDraggable) {
             window.makeDraggable(noteContent, noteHeader);
         }
+
+        // Attach Drop & Paste listeners to CodeMirror for seamless file/image uploads
+        if (easyMDE && easyMDE.codemirror) {
+            const cm = easyMDE.codemirror;
+            cm.on('drop', (editor, e) => {
+                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    e.preventDefault();
+                    for (let file of e.dataTransfer.files) {
+                        window.uploadFileToNote(file);
+                    }
+                }
+            });
+            cm.on('paste', (editor, e) => {
+                if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
+                    e.preventDefault();
+                    for (let file of e.clipboardData.files) {
+                        window.uploadFileToNote(file);
+                    }
+                }
+            });
+        }
     } else {
         // Just refresh to avoid layout issues in display:none modals
         setTimeout(() => easyMDE.codemirror.refresh(), 100);
@@ -4717,6 +4738,51 @@ window.openNoteModal = function() {
 
     // Load history
     window.searchNotes();
+};
+
+window.uploadFileToNote = async function(file) {
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    if (window.showNotification) {
+        window.showNotification(`⏳ 正在上传附件 [${file.name}]...`, 'info');
+    }
+    
+    try {
+        const res = await fetch('/api/notes/upload', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        if (data.success && data.markdown) {
+            if (typeof easyMDE !== 'undefined' && easyMDE) {
+                const cm = easyMDE.codemirror;
+                const cursor = cm.getCursor();
+                cm.replaceRange(`\n${data.markdown}\n`, cursor);
+                cm.focus();
+            }
+            if (window.showNotification) {
+                window.showNotification(`✅ 附件 [${file.name}] 上传成功并已插入笔记！`, 'success');
+            }
+        } else {
+            throw new Error(data.error || 'Upload failed');
+        }
+    } catch (err) {
+        console.error('Note file upload error:', err);
+        if (window.showNotification) {
+            window.showNotification(`❌ 上传失败: ${err.message}`, 'error');
+        }
+    }
+};
+
+window.handleNoteFileUpload = function(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    for (let file of files) {
+        window.uploadFileToNote(file);
+    }
+    event.target.value = '';
 };
 
 window.closeNoteModal = function() {
