@@ -134,27 +134,6 @@ window.showUniversalDataModal = function(options) {
         hdrActions.appendChild(searchInput);
     }
 
-    // Copy Button
-    const copyBtn = document.createElement('button');
-    copyBtn.className = 'btn-wf-md btn-wf-secondary';
-    copyBtn.title = 'Copy Visible Data';
-    copyBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy Visible Data`;
-    copyBtn.onclick = () => {
-        const visibleData = getFilteredData();
-        if (visibleData.length === 0) {
-            window.showNotification('No data to copy', 'warning');
-            return;
-        }
-        const visibleCols = columns.filter(c => selectedCols.has(c));
-        const headerRow = visibleCols.map(c => displayNames[columns.indexOf(c)]).join('\t');
-        const lines = [headerRow];
-        visibleData.forEach(row => {
-            lines.push(visibleCols.map(c => (row[c] !== null && row[c] !== undefined ? row[c].toString() : '')).join('\t'));
-        });
-        window.handleCopyAction(copyBtn, lines.join('\n'));
-    };
-    // hdrActions.appendChild(copyBtn); (Moved to Footer)
-
     // Close Button
     const closeBtn = document.createElement('button');
     closeBtn.className = 'close-btn';
@@ -418,13 +397,6 @@ window.showUniversalDataModal = function(options) {
     table.appendChild(tbody);
     body.appendChild(table);
     panel.appendChild(body);
-
-    // Footer
-    const footer = document.createElement('div');
-    footer.style.cssText = 'padding:10px 16px; border-top:1px solid var(--overlay-10); display:flex; justify-content:flex-end; align-items:center; background:var(--bg-color); flex-shrink:0;';
-    footer.appendChild(copyBtn);
-    panel.appendChild(footer);
-
     overlay.appendChild(panel);
     document.body.appendChild(overlay);
 
