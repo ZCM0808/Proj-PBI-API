@@ -2677,12 +2677,120 @@ span:hover > .wf-copy-btn,
 .input-with-copy:hover .wf-copy-btn,
 .wf-copy-btn:focus { opacity: 1; pointer-events: auto; }
 
+/* Env Identity (Buttons 1 & 2): Show copy buttons smoothly on hover */
+#display-tenant .copy-icon-wrapper,
+#display-client .copy-icon-wrapper {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.85);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    background: transparent;
+    border-radius: 4px;
+}
+
+#display-tenant:hover,
+#display-client:hover {
+    background: var(--overlay-8) !important;
+    cursor: pointer;
+}
+
 #display-tenant:hover .copy-icon-wrapper,
-#display-client:hover .copy-icon-wrapper {
+#display-client:hover .copy-icon-wrapper,
+#display-tenant .copy-icon-wrapper:focus,
+#display-client .copy-icon-wrapper:focus,
+#display-tenant .copy-icon-wrapper.copied,
+#display-client .copy-icon-wrapper.copied {
+    opacity: 1;
+    pointer-events: auto;
+    transform: scale(1);
+}
+
+#display-tenant .copy-icon-wrapper:hover,
+#display-client .copy-icon-wrapper:hover {
     background: var(--accent) !important;
     color: var(--accent-text) !important;
     border-color: var(--accent) !important;
     box-shadow: 0 0 8px var(--accent-glow);
+}
+
+/* Endpoint URL Input (Button 3): Floating right copy button revealed on hover */
+.endpoint-copy-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%) scale(0.9);
+    opacity: 0;
+    pointer-events: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    background: var(--input-bg);
+    border: 1px solid var(--panel-border);
+    color: var(--text-secondary);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.endpoint-input:hover .endpoint-copy-btn,
+.endpoint-input:focus-within .endpoint-copy-btn,
+.endpoint-copy-btn:focus,
+.endpoint-copy-btn.copied {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(-50%) scale(1);
+}
+
+.endpoint-copy-btn:hover {
+    background: var(--accent) !important;
+    color: var(--accent-text) !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 10px var(--accent-glow);
+}
+
+/* Request Body (Button 4): Floating inside top-right corner of editor revealed on hover */
+.body-corner-copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    transform: scale(0.9);
+    opacity: 0;
+    pointer-events: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: var(--input-bg);
+    border: 1px solid var(--panel-border);
+    color: var(--text-secondary);
+    backdrop-filter: blur(4px);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.body-textarea-wrapper:hover .body-corner-copy-btn,
+.body-editor-container:hover .body-corner-copy-btn,
+.body-textarea-wrapper:focus-within .body-corner-copy-btn,
+.body-corner-copy-btn:focus,
+.body-corner-copy-btn.copied {
+    opacity: 1;
+    pointer-events: auto;
+    transform: scale(1);
+}
+
+.body-corner-copy-btn:hover {
+    background: var(--accent) !important;
+    color: var(--accent-text) !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 10px var(--accent-glow);
 }
 
 
