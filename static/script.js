@@ -8648,11 +8648,11 @@ window.initXmlaWorkflow = function() {
     if (!btnAuth || btnAuth._inited) return;
     btnAuth._inited = true;
 
-    // 智能联动：如果 XMLA endpoint 为空或为旧占位符，自动从活动工作区中填充真实名称
+    // 智能联动：如果 XMLA endpoint 完全为空，尝试从活动工作区中填充
     const syncActiveWorkspaceToXmla = () => {
         if (!endpointInput) return;
         const activeWsName = document.querySelector('#trigger-workspace .cs-name')?.textContent?.trim();
-        if (activeWsName && activeWsName !== '-- None --' && (!endpointInput.value || endpointInput.value.includes('DA_APAC_BI_QA'))) {
+        if (activeWsName && activeWsName !== '-- None --' && !endpointInput.value.trim()) {
             endpointInput.value = `powerbi://api.powerbi.com/v1.0/myorg/${encodeURIComponent(activeWsName)}`;
         }
     };
