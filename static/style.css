@@ -493,6 +493,13 @@ body {
     color: var(--text-primary);
 }
 
+/* Theme Toggle Icons: Show matching icon for current active theme (Sun for light, Moon for dark) */
+#theme-icon-sun { display: none; }
+#theme-icon-moon { display: block; }
+
+[data-theme="light"] #theme-icon-sun { display: block !important; }
+[data-theme="light"] #theme-icon-moon { display: none !important; }
+
 .copy-btn {
     background: transparent;
     border: 1px solid transparent;

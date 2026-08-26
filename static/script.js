@@ -1151,11 +1151,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     function updateThemeIcons() {
         if (!sunIcon || !moonIcon) return;
         if (document.documentElement.getAttribute('data-theme') === 'light') {
-            sunIcon.style.display = 'none';
-            moonIcon.style.display = 'block';
-        } else {
             sunIcon.style.display = 'block';
             moonIcon.style.display = 'none';
+        } else {
+            sunIcon.style.display = 'none';
+            moonIcon.style.display = 'block';
         }
     }
     updateThemeIcons();
