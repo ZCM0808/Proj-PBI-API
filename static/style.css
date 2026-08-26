@@ -1,5 +1,6 @@
 :root {
     --sidebar-width: clamp(240px, 22vw, 420px);
+    --app-padding: 16px;
     --bg-color: #0b0d12;
     --panel-bg: rgba(18, 22, 31, 0.85);
     --panel-border: rgba(255, 255, 255, 0.12);
@@ -143,7 +144,7 @@ body {
 .app-container {
     display: flex;
     height: 100vh;
-    padding: 1rem;
+    padding: var(--app-padding, 16px);
     box-sizing: border-box;
     /* remove gap so resizer sits flush, or adjust padding */
 }
@@ -465,7 +466,6 @@ body {
     flex-direction: column;
     gap: 16px;
     min-width: 0;
-    padding-right: 0.5rem;
     height: 100%;
 }
 
