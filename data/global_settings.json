@@ -4,12 +4,6 @@
     "SQL_CONN_STR": "Server=myServerAddress;Database=myDataBase;User Id=myUsername;",
     "PBI_WORKSPACES": [
         {
-            "alias": "my",
-            "id": "C06A2729-EE28-4471-AF27-803B56A3D8CC",
-            "type": "PersonalGroup",
-            "state": "Active"
-        },
-        {
             "alias": "WorkSpace_DEV",
             "id": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
             "type": "Workspace",
