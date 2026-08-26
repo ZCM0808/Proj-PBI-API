@@ -3609,6 +3609,7 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                     }, 300);
                 }
             }
+            if (window.updateWorkflowAuthBadge) window.updateWorkflowAuthBadge();
         };
 
         setupFLIPModal(btnSettings, closeSettingsBtn, settingsModal, loadSettings);
@@ -5550,6 +5551,7 @@ window.updateHarnessStats = function() {
             workflowModal.style.visibility = 'visible';
             workflowModal.style.opacity = '1';
             workflowModal.style.display = 'flex';
+            if (window.updateWorkflowAuthBadge) window.updateWorkflowAuthBadge();
 
             
             // Helper: Filter reports dropdown by selected workspace
@@ -8624,8 +8626,202 @@ window.refreshDpmPartition = async function(btnEl, itemIdx) {
     }
 };
 
+// =========================================================================
+// MSAL.js Interactive Popup & Device Code Flow (MFA Fallback) Controller
+// =========================================================================
+let _currentDevicePollTimer = null;
+let _currentDeviceFlowId = null;
 
+window.updateWorkflowAuthBadge = async function() {
+    const badgeEl = document.getElementById('wf-header-auth-badge');
+    const iconEl = document.getElementById('wf-header-auth-icon');
+    const textEl = document.getElementById('wf-header-auth-text');
+    if (!badgeEl || !textEl) return;
+    
+    try {
+        const res = await fetch('/api/auth-info');
+        const data = await res.json();
+        if (data && data.success) {
+            const isPersonal = data.auth_mode === 'personal';
+            if (isPersonal) {
+                if (iconEl) iconEl.textContent = '👤';
+                const userDisplayName = data.username ? data.username : 'Personal User';
+                textEl.textContent = `Personal: ${userDisplayName}`;
+                badgeEl.style.borderColor = 'rgba(56, 189, 248, 0.4)';
+                badgeEl.style.background = 'rgba(56, 189, 248, 0.12)';
+                badgeEl.style.color = '#38bdf8';
+                badgeEl.title = `当前生效认证模式: Personal Auth (个人委派用户认证)\n登录账号: ${data.username || '未配置'}`;
+            } else {
+                if (iconEl) iconEl.textContent = '🛡️';
+                const appDisplayName = data.app_name || (data.client_id ? `App (${data.client_id.substring(0, 8)}...)` : 'Service Principal');
+                textEl.textContent = `Service Principal: ${appDisplayName}`;
+                badgeEl.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+                badgeEl.style.background = 'rgba(245, 158, 11, 0.12)';
+                badgeEl.style.color = '#fbbf24';
+                badgeEl.title = `当前生效认证模式: Service Principal (Azure 应用程序认证)\n客户端 ID: ${data.client_id || '未配置'}`;
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to load auth info badge:', e);
+    }
+};
 
+window.closeDeviceCodeModal = function() {
+    const modal = document.getElementById('device-code-modal');
+    if (modal) {
+        window.closeModalWithAnimation('device-code-modal');
+    }
+    if (_currentDevicePollTimer) {
+        clearInterval(_currentDevicePollTimer);
+        _currentDevicePollTimer = null;
+    }
+    if (_currentDeviceFlowId) {
+        fetch('/api/auth/device-code/cancel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ flow_id: _currentDeviceFlowId })
+        }).catch(() => {});
+        _currentDeviceFlowId = null;
+    }
+};
+
+window.copyDeviceCode = function(btn) {
+    const valEl = document.getElementById('device-code-value');
+    if (!valEl) return;
+    const text = valEl.textContent.trim();
+    if (window.handleCopyAction && btn) {
+        window.handleCopyAction(btn, text, valEl);
+    } else {
+        navigator.clipboard.writeText(text);
+        if (window.showNotification) window.showNotification("✅ 验证码已复制到剪贴板！", "success");
+    }
+};
+
+window.acquireMfaTokenWithFallback = async function(targetInputId = 'wf-xmla-token', onTokenAcquired = null) {
+    const targetInput = document.getElementById(targetInputId);
+    
+    // 优先尝试【方案 2】: 微软官方前端 MSAL.js 网页交互式弹窗登录
+    if (window.msal && window.msal.PublicClientApplication) {
+        try {
+            if (window.showNotification) window.showNotification("🔑 正在唤起微软官方登录弹窗 (Popup)...", "info");
+            
+            let clientId = "04b07795-8ddb-461a-bbee-02f9e1bf7b46";
+            let authority = "https://login.microsoftonline.com/organizations";
+            try {
+                const infoRes = await fetch('/api/auth-info');
+                const infoData = await infoRes.json();
+                if (infoData && infoData.client_id) clientId = infoData.client_id;
+                if (infoData && infoData.tenant_id) authority = `https://login.microsoftonline.com/${infoData.tenant_id}`;
+            } catch (_) {}
+
+            const msalConfig = {
+                auth: {
+                    clientId: clientId,
+                    authority: authority,
+                    redirectUri: window.location.origin
+                },
+                cache: {
+                    cacheLocation: "sessionStorage",
+                    storeAuthStateInCookie: false
+                }
+            };
+            
+            const msalInstance = new window.msal.PublicClientApplication(msalConfig);
+            await msalInstance.initialize();
+            
+            const loginResponse = await msalInstance.loginPopup({
+                scopes: ["https://analysis.windows.net/powerbi/api/.default"],
+                prompt: "select_account"
+            });
+            
+            if (loginResponse && loginResponse.accessToken) {
+                const token = loginResponse.accessToken;
+                if (targetInput) targetInput.value = token;
+                const badge = document.getElementById('wf-xmla-token-badge');
+                if (badge) badge.style.display = 'inline-flex';
+                if (window.showNotification) window.showNotification("✅ 微软官方弹窗登录成功，已自动填入个人 Token！", "success");
+                if (onTokenAcquired) onTokenAcquired(token);
+                return token;
+            }
+        } catch (popupErr) {
+            console.warn("MSAL Popup failed, seamlessly falling back to Device Code Flow:", popupErr);
+            if (window.showNotification) {
+                window.showNotification("ℹ️ 网页弹窗受限，自动为您无缝切换至设备代码流 (Device Code Flow)...", "warning");
+            }
+        }
+    }
+    
+    // 降级轮换【方案 1】: Device Code Flow (设备代码流)
+    try {
+        const initRes = await fetch('/api/auth/device-code/init', { method: 'POST' });
+        const initData = await initRes.json();
+        
+        if (!initData || !initData.success || !initData.user_code) {
+            alert("❌ 初始化设备代码流失败: " + (initData?.message || "网络异常"));
+            return null;
+        }
+        
+        _currentDeviceFlowId = initData.flow_id;
+        const codeValEl = document.getElementById('device-code-value');
+        const codeLinkEl = document.getElementById('device-code-link');
+        const modal = document.getElementById('device-code-modal');
+        const modalContent = modal ? modal.querySelector('.modal-content') : null;
+        
+        if (codeValEl) codeValEl.textContent = initData.user_code;
+        if (codeLinkEl && initData.verification_uri) {
+            codeLinkEl.href = initData.verification_uri;
+        }
+        
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.style.visibility = 'visible';
+            modal.style.opacity = '1';
+            if (modalContent) window.centerModal(modalContent);
+        }
+        
+        // 自动复制设备码到剪贴板，极大提升用户体验
+        try {
+            await navigator.clipboard.writeText(initData.user_code);
+            if (window.showNotification) {
+                window.showNotification(`📋 已自动复制验证码 [${initData.user_code}] 到剪贴板！`, "info");
+            }
+        } catch (_) {}
+        
+        // 启动高频轮询检查
+        return new Promise((resolve) => {
+            if (_currentDevicePollTimer) clearInterval(_currentDevicePollTimer);
+            _currentDevicePollTimer = setInterval(async () => {
+                try {
+                    const pollRes = await fetch(`/api/auth/device-code/poll?flow_id=${_currentDeviceFlowId}`);
+                    const pollData = await pollRes.json();
+                    
+                    if (pollData.status === 'completed' && pollData.token) {
+                        clearInterval(_currentDevicePollTimer);
+                        _currentDevicePollTimer = null;
+                        window.closeDeviceCodeModal();
+                        
+                        const token = pollData.token;
+                        if (targetInput) targetInput.value = token;
+                        const badge = document.getElementById('wf-xmla-token-badge');
+                        if (badge) badge.style.display = 'inline-flex';
+                        if (window.showNotification) window.showNotification("🎉 个人 MFA 验证成功，Token 已自动填入！", "success");
+                        if (onTokenAcquired) onTokenAcquired(token);
+                        resolve(token);
+                    } else if (pollData.status === 'error') {
+                        clearInterval(_currentDevicePollTimer);
+                        _currentDevicePollTimer = null;
+                        alert("❌ 设备流认证失败: " + pollData.message);
+                        window.closeDeviceCodeModal();
+                        resolve(null);
+                    }
+                } catch (_) {}
+            }, 2500);
+        });
+    } catch (err) {
+        alert("❌ 发起认证异常: " + err.message);
+        return null;
+    }
+};
 
 // =========================================================================
 // XMLA Interactive Refresh Workflow Client JS Handler
@@ -8668,7 +8864,7 @@ window.initXmlaWorkflow = function() {
     const SPIN_ICON = '<svg class="spinning" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block;vertical-align:middle;animation:spin 0.8s linear infinite;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>';
     const AUTH_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" stroke-width="1"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>';
 
-    // 自动尝试获取已缓存的 Token
+    // 自动尝试获取已缓存的 Token (静默读取)
     const autoFetchToken = async (silent = true) => {
         try {
             if (btnAuth && !silent) btnAuth.innerHTML = SPIN_ICON;
@@ -8699,8 +8895,17 @@ window.initXmlaWorkflow = function() {
         return currentVal;
     };
 
-    // 1. 个人认证按钮
-    btnAuth.addEventListener('click', () => autoFetchToken(false));
+    // 1. 个人认证按钮 (支持 MSAL 网页弹窗登录 + Device Code Flow 智能轮换)
+    btnAuth.addEventListener('click', async () => {
+        btnAuth.innerHTML = SPIN_ICON;
+        try {
+            await window.acquireMfaTokenWithFallback('wf-xmla-token', (token) => {
+                updateTokenBadge(Boolean(token));
+            });
+        } finally {
+            btnAuth.innerHTML = AUTH_ICON;
+        }
+    });
 
     // 2. 扫描模型 (Datasets)
     const scanDatasets = async (silent = false) => {

@@ -1705,6 +1705,120 @@ def _get_effective_xmla_token(passed_token: Optional[str]) -> str:
         pass
     return ""
 
+# =========================================================================
+# Auth Info & Device Code Flow (MFA Fallback) Endpoints
+# =========================================================================
+
+_active_device_flows: Dict[str, Dict[str, Any]] = {}
+
+class DeviceCodeInitRequest(BaseModel):
+    client_id: Optional[str] = None
+    tenant_id: Optional[str] = None
+
+@app.get("/api/auth-info")
+async def get_auth_info():
+    """获取当前系统的认证模式与主体信息"""
+    try:
+        settings = load_settings()
+        auth_mode = settings.get("PBI_AUTH_MODE", Config.AUTH_MODE)
+        client_id = settings.get("PBI_CLIENT_ID", Config.CLIENT_ID)
+        username = settings.get("PBI_USERNAME", Config.USERNAME)
+        tenant_id = settings.get("PBI_TENANT_ID", Config.TENANT_ID)
+        
+        app_name = "PowerBI Service App"
+        if client_id:
+            app_name = f"App ({client_id[:8]}...)"
+            
+        return {
+            "success": True,
+            "auth_mode": auth_mode,
+            "client_id": client_id,
+            "username": username,
+            "tenant_id": tenant_id,
+            "app_name": app_name
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/auth/device-code/init")
+async def init_device_code_flow(req: Optional[DeviceCodeInitRequest] = None):
+    """初始化 OAuth 2.0 Device Code Flow (设备代码流认证)"""
+    try:
+        from msal import PublicClientApplication
+        settings = load_settings()
+        client_id = (req.client_id if req and req.client_id else None) or settings.get("PBI_CLIENT_ID") or Config.CLIENT_ID or "04b07795-8ddb-461a-bbee-02f9e1bf7b46"
+        tenant_id = (req.tenant_id if req and req.tenant_id else None) or settings.get("PBI_TENANT_ID") or Config.TENANT_ID or "organizations"
+        
+        authority = f"https://login.microsoftonline.com/{tenant_id}"
+        app = PublicClientApplication(client_id=client_id, authority=authority)
+        
+        scopes = ["https://analysis.windows.net/powerbi/api/.default"]
+        flow = await asyncio.to_thread(app.initiate_device_flow, scopes=scopes)
+        
+        if not flow or "user_code" not in flow:
+            return {"success": False, "message": f"初始化设备代码流失败: {flow.get('error_description', '未知错误')}"}
+        
+        flow_id = str(uuid.uuid4())
+        flow_record: Dict[str, Any] = {
+            "flow": flow,
+            "app": app,
+            "result": None,
+            "status": "pending",
+            "created_at": time.time()
+        }
+        
+        # 启动后台轮询任务
+        async def poll_task():
+            try:
+                res = await asyncio.to_thread(app.acquire_token_by_device_flow, flow)
+                flow_record["result"] = res
+                if res and "access_token" in res:
+                    flow_record["status"] = "completed"
+                    flow_record["token"] = res["access_token"]
+                else:
+                    flow_record["status"] = "error"
+                    flow_record["error"] = res.get("error_description", "获取 Token 失败")
+            except Exception as ex:
+                flow_record["status"] = "error"
+                flow_record["error"] = str(ex)
+                
+        asyncio.create_task(poll_task())
+        _active_device_flows[flow_id] = flow_record
+        
+        return {
+            "success": True,
+            "flow_id": flow_id,
+            "user_code": flow.get("user_code"),
+            "verification_uri": flow.get("verification_uri", "https://microsoft.com/devicelogin"),
+            "message": flow.get("message"),
+            "expires_in": flow.get("expires_in", 900)
+        }
+    except Exception as e:
+        return {"success": False, "message": f"设备代码流异常: {str(e)}"}
+
+@app.get("/api/auth/device-code/poll")
+async def poll_device_code_flow(flow_id: str):
+    """轮询 Device Code Flow 认证状态"""
+    if flow_id not in _active_device_flows:
+        return {"status": "error", "message": "无效或已过期的 Flow ID"}
+    
+    record = _active_device_flows[flow_id]
+    status = record.get("status", "pending")
+    if status == "completed":
+        token = record.get("token", "")
+        return {"status": "completed", "token": token}
+    elif status == "error":
+        return {"status": "error", "message": record.get("error", "认证失败")}
+    else:
+        return {"status": "pending"}
+
+@app.post("/api/auth/device-code/cancel")
+async def cancel_device_code_flow(flow_id: str):
+    """取消 Device Code Flow"""
+    if flow_id in _active_device_flows:
+        del _active_device_flows[flow_id]
+    return {"success": True}
+
 class XMLAScanRequest(BaseModel):
     xmla_endpoint: str
     access_token: Optional[str] = None
