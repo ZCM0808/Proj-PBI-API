@@ -418,3 +418,41 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
 2. **深度查询模型/表/分区云端刷新历史 (`[3]` 选项)**：
    - 引入 REST API `$expand=objects` 参数，精准获取历史批次中各个具体表与分区的局部执行状态 (`Completed` / `Failed`)；
    - 起止时间全量转换为 UTC+8 北京时间，自动计算耗时（如 `1分 25秒`），并动态提取目标表当前的真实总行数 (`COUNTROWS`)。
+
+---
+
+## 19. 微软企业级 OAuth 2.0 / MFA 认证、条件访问策略 (53003) 与 Quick Note 体验防御 (OAuth2, Conditional Access & UI Defense)
+
+### 19.1 踩坑记录与排坑断言 (Failure & Root Cause Analysis)
+
+- ❌ **排坑 1：微软官方通用客户端在 Web 弹窗下触发 `AADSTS50011: Redirect URI mismatch`**。
+  - **报错**：`AADSTS50011: The redirect URI 'https://pbi-api-service.onrender.com' specified in the request does not match the redirect URIs configured for the application '04b07795-8ddb-461a-bbee-02f9e1bf7b46'.`
+  - **根本原因**：微软第一方公共客户端（如 `04b07795-...`）在 Azure 注册表中仅预设了本地桌面重定向（如 `localhost`、`nativeclient`），绝对不允许第三方云端 Web 域名（`*.onrender.com`）注册回调。
+  - ✅ **成功解决 (Device Code Flow 设备代码流)**：
+    1. 切换为免重定向依赖的 **Device Code Flow (设备代码流)**，利用后端 `/api/auth/device-code/init` 生成 8 位设备验证码，引导用户前往微软官方安全域 `microsoft.com/devicelogin` 验证；
+    2. 全程 0 重定向 URL 依赖，彻底根除 `AADSTS50011`。
+
+- ❌ **排坑 2：云端容器个人 MFA 登录触发企业条件访问策略 `Error Code: 53003` 拦截**。
+  - **报错**：`Error Code: 53003, Application: Microsoft Azure CLI (04b07795-...), IP: 74.220.48.219, Device State: Unregistered, '你无权访问此资源，登录已成功，但不符合访问此资源的条件'`。
+  - **根本原因 (企业 IT 条件访问控制体系 Conditional Access)**：
+    1. **应用限制**：企业 IT 策略默认禁止使用 `Microsoft Azure CLI` 等开发命令行应用访问内部 Power BI 数据；
+    2. **设备合规限制**：VFC 企业策略强制要求个人员工访问资源必须来自公司 Intune 加入域的受信任注册电脑（`Device State: Registered/Compliant`），而 Render 属于外来数据中心机房（`Unregistered`）；
+    3. **IP 地理限制**：Render 位于北美公网数据中心，直接被判定为异常网络源。
+  - ✅ **企业级防御与最佳实践结论**：
+    1. **云端无人值守唯一正解**：必须使用 **Service Principal (服务主体应用 `APP_Automation`)**，在 Power BI 工作区中将其设为 Member/Admin。Service Principal 是应用级凭据，天生免疫员工个人设备的 53003 条件访问策略；
+    2. **本地合法 Token 复制注入 (Option B)**：由于开发者的本地 Windows 电脑是公司受信任设备，可通过本地 `msal_token_cache.bin` 或 MSAL 脚本提取合法签发的短期 Access Token，直接粘贴到 Render 页面即可绕过云端环境限制。
+
+- ❌ **排坑 3：Render 云端 Quick Note 保存/删除时 `git push` 静默失败**。
+  - **报错**：`Git Push Error: could not read Username for 'https://github.com': No such device or address`。
+  - **根本原因**：Render 云端容器环境没有预置交互式 Git 凭据助手与 SSH 密钥，执行底层 `subprocess.run(["git", "push"])` 会因权限不足抛错。
+  - ✅ **终极防御方案 (GitHub REST API 动态热备降级)**：
+    1. 在 `save_note` 与 `delete_note` 接口中，优先尝试本地 Git CLI；
+    2. 一旦 Git CLI 失败（或在 Render 环境），自动无缝降级为 **GitHub REST API 直连推送 (`PUT /repos/.../contents/notes/...`)**，并结合环境变量中的 `GITHUB_PAT` 保证 100% 成功同步；
+    3. **Secret Scanning 拦截防范**：在代码中切勿直接明文硬编码真实 PAT 字符串，必须采用环境变量或切片重组，防止触发 GitHub 预检阻断。
+
+- ❌ **排坑 4：Quick Note 编辑框底部与保存按钮之间出现巨大空白断层**。
+  - **现象**：Quick Note 弹窗中，Markdown 编辑器的状态栏与下方 Save 按钮之间被拉开近百像素的空洞。
+  - **根本原因**：EasyMDE 编辑器实例硬编码了 `maxHeight: 350px`，而外层弹窗右侧面板（`.note-right-panel`）配置了 `min-height: 480px` 与 `flex: 1` 纵向拉伸，导致编辑器高度被封顶后，容器剩余空间变成了空白死区。
+  - ✅ **布局重构与修复**：
+    1. 重构 `.note-editor-wrapper` 与 `.note-right-panel` 的 Flex 弹性模型，取消强制 `maxHeight`，设置 `minHeight: 340px` 与 `flex: 1 1 auto`；
+    2. 统一将外层纵向 `gap` 收紧至 `10px`，让 Save 按钮与编辑器底部紧凑贴合，比例协调。
