@@ -305,7 +305,9 @@ window.addListRow = function(containerId, alias = "", id = "", itemType = "", it
     row.style.cssText = "display: flex; gap: 8px; align-items: center;";
     
     // Auto-infer type/state from alias or ID if not explicitly provided (e.g. historical data in localStorage)
-    if (!itemType && alias && String(alias).toLowerCase().includes('personal')) {
+    const lowerAlias = String(alias || '').trim().toLowerCase();
+    const isPersonalAlias = lowerAlias.includes('personal') || lowerAlias === 'my' || lowerAlias.includes('my workspace') || lowerAlias.includes('我的工作区') || lowerAlias.includes('my工作区');
+    if (!itemType && isPersonalAlias) {
         itemType = 'PersonalGroup';
     } else if (!itemType && id) {
         itemType = 'Workspace';
@@ -317,7 +319,7 @@ window.addListRow = function(containerId, alias = "", id = "", itemType = "", it
     // Construct badges if itemType or itemState exist
     let badgesHtml = '';
     if (itemType || itemState) {
-        const isPersonal = String(itemType).toLowerCase().includes('personal');
+        const isPersonal = String(itemType).toLowerCase().includes('personal') || (containerId === 'workspace-list' && isPersonalAlias);
         const isDeleted = String(itemState).toLowerCase().includes('delete');
         
         const typeBadgeStyle = isPersonal
