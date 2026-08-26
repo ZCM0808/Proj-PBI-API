@@ -8643,11 +8643,11 @@ window.updateWorkflowAuthBadge = async function() {
             const isPersonal = data.auth_mode === 'personal';
             if (isPersonal) {
                 const userDisplayName = data.username ? data.username : 'User';
-                badgeEl.textContent = `(Personal: ${userDisplayName})`;
+                badgeEl.textContent = `· Personal (${userDisplayName})`;
                 badgeEl.title = `当前认证: Personal Auth (个人委派用户认证) - ${data.username || ''}`;
             } else {
                 const appDisplayName = data.app_name || (data.client_id ? `App (${data.client_id.substring(0, 8)}...)` : 'App');
-                badgeEl.textContent = `(Service Principal: ${appDisplayName})`;
+                badgeEl.textContent = `· Service Principal (${appDisplayName})`;
                 badgeEl.title = `当前认证: Service Principal (Azure 应用程序认证) - ${data.client_id || ''}`;
             }
         }

@@ -1725,8 +1725,8 @@ async def get_auth_info():
         username = settings.get("PBI_USERNAME", Config.USERNAME)
         tenant_id = settings.get("PBI_TENANT_ID", Config.TENANT_ID)
         
-        app_name = "PowerBI Service App"
-        if client_id:
+        app_name = settings.get("PBI_APP_NAME") or os.getenv("PBI_APP_NAME", "APP_Automation")
+        if client_id and not app_name:
             app_name = f"App ({client_id[:8]}...)"
             
         return {
