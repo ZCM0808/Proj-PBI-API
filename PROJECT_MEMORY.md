@@ -375,3 +375,43 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
    支持全局 `[0] 主菜单` 与 `[B] 上一步` 双向层级退路；刷新后自动转换为 UTC+8 北京时间，计算起止耗时，并使用 `COUNTROWS` 提取最新的千分位格式真实总行数 (如 `154,230 行`)。
 3. **PBI API Explorer 沙盒整合**：
    后端整合了 `/api/xmla/scan-datasets`、`/api/xmla/scan-tables`、`/api/xmla/trigger-refresh` 和 `/api/xmla/refresh-status` 路由；前端增加了 `XMLA Interactive Model/Table/Partition Refresh` 工作流面板与缓存刷新硬编码（`?v=20260824_v370`）。
+
+
+## 17. Quick Note 富文本图片/附件上传与云端热同步踩坑与防御 (Notes & Attachments Sync Architecture)
+
+### 17.1 踩坑记录与排坑断言 (Failure & Root Cause Analysis)
+
+- ❌ **排坑 1：FastAPI 表单上传缺失 multipart 依赖致 Render 崩溃**。
+  - **报错**：`RuntimeError: Form data requires "python-multipart" to be installed.`
+  - **根本原因**：在新增 `/api/notes/upload` 时引入了 FastAPI 的 `UploadFile`，该模块底层强制依赖 `python-multipart`。由于旧版 `requirements.txt` 未显式声明该依赖，本地虽有缓存但在 Render 云端环境构建并启动 uvicorn 时直接阻断服务启动。
+  - ✅ **防御规范**：必须在 `requirements.txt` 中显式固化 `python-multipart>=0.0.9`，保证本地与云端生产容器依赖 100% 对齐。
+
+- ❌ **排坑 2：EasyMDE 双击文本导致整个弹窗意外关闭退出**。
+  - **现象**：用户在 Quick Note 编辑框内连续双击鼠标左键快速选中文本时，弹窗瞬间被关闭退出。
+  - **根本原因 (DOM 选区瞬时重构与游离节点)**：EasyMDE 底层的 CodeMirror 引擎在捕获双击选词时，会在毫秒级时间内重构文本节点（销毁原有的 `<span>` 元素并生成带有高亮选区的全新 DOM 节点）。当事件冒泡到全局 `document.addEventListener('mousedown')`（用于检测点击空白处关闭弹窗）时，原有的 `e.target` 已被从 DOM 树中剔除（变为 Detached / 游离节点）。执行 `noteContent.contains(e.target)` 时因游离节点脱离了树导致返回 `false`（系统误判用户点击了弹窗外部的黑色半透明遮罩背景），从而意外触发 `window.closeNoteModal()`。
+  - ✅ **终极防御方案 (三重防护)**：
+    1. **ComposedPath 溯源**：优先通过 `e.composedPath()` 捕获事件触发瞬间的原始完整层级链条，即便内部节点已被销毁重构，也能 100% 断言点击起始于弹窗内部；
+    2. **组件容器类名校验**：加入 `e.target.closest('.EasyMDEContainer')` 与 `e.target.closest('.CodeMirror')` 的选择器防御；
+    3. **游离节点拦截**：若检测到 `!document.body.contains(e.target)`（由编辑器选区瞬时脱离文档树的节点），绝对禁止触发外部点击关闭逻辑。
+
+- ❌ **排坑 3：Render 云端临时文件系统 (Ephemeral Disk) 附件丢失与同步脱节**。
+  - **现象**：本地上传的图片/附件在 Render 上访问报 `404 Not Found`。
+  - **根本原因**：Render 免费实例无持久化挂载盘，且 Render 只能拉取 GitHub 仓库的提交内容。
+  - ✅ **终极防御方案 (全自动 Git 管道与 Direct GitHub API 绕行)**：
+    1. 在 `upload_note_file` 与 `save_note` 接口中建立后台异步 Git 自动管道，将 `notes/*.md` 和 `static/uploads/notes/*` 自动执行 `git add`、`git commit` 并推送到 GitHub `main` 分支；
+    2. 当 Windows 本地 Git 客户端因 OpenSSL/SChannel 或本地代理冲突出现 `Connection was reset` 握手故障时，启用 Python 结合 GitHub REST API (`/git/refs`, `/git/trees`, `/git/blobs`) 直接推送提交，100% 绕过本地 Git 故障，稳定触发 Render 的 Webhook 自动构建与全量静态资源部署。
+
+---
+
+## 18. Power BI XMLA 桌面刷新工具升级：字段导出与对象级历史审计 (XMLA Desktop Refresh Tool Enhancement)
+
+### 18.1 架构与功能特性
+针对桌面独立版刷新工具 [`PowerBI_XMLA_Interactive_Refresh.py`](file:///C:/Users/ZCM/Desktop/XMLA_Refresh_Tool_Project/PowerBI_XMLA_Interactive_Refresh.py) 进行了两项核心升级：
+
+1. **模型/表/分区字段与度量值结构导出 (`[4]` 选项)**：
+   - 动态执行 DAX `INFO.VIEW.COLUMNS()` 与 `INFO.VIEW.MEASURES()`，兼 `COLUMNSTATISTICS()` 兜底；
+   - 提取业务表名、字段名、数据类型映射全拼 (如 `Int64 -> Whole Number`)、格式化串、描述、隐藏状态及度量值公式；
+   - 支持控制台自适应对齐表格预览，并支持导出为带 UTF-8 BOM 的 `.csv` 文件（Excel 双击打开绝不乱码）以及 `.json` 结构化文件。
+2. **深度查询模型/表/分区云端刷新历史 (`[3]` 选项)**：
+   - 引入 REST API `$expand=objects` 参数，精准获取历史批次中各个具体表与分区的局部执行状态 (`Completed` / `Failed`)；
+   - 起止时间全量转换为 UTC+8 北京时间，自动计算耗时（如 `1分 25秒`），并动态提取目标表当前的真实总行数 (`COUNTROWS`)。
