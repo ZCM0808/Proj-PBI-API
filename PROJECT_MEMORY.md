@@ -388,11 +388,14 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
 
 - ❌ **排坑 2：EasyMDE 双击文本导致整个弹窗意外关闭退出**。
   - **现象**：用户在 Quick Note 编辑框内连续双击鼠标左键快速选中文本时，弹窗瞬间被关闭退出。
-  - **根本原因 (DOM 选区瞬时重构与游离节点)**：EasyMDE 底层的 CodeMirror 引擎在捕获双击选词时，会在毫秒级时间内重构文本节点（销毁原有的 `<span>` 元素并生成带有高亮选区的全新 DOM 节点）。当事件冒泡到全局 `document.addEventListener('mousedown')`（用于检测点击空白处关闭弹窗）时，原有的 `e.target` 已被从 DOM 树中剔除（变为 Detached / 游离节点）。执行 `noteContent.contains(e.target)` 时因游离节点脱离了树导致返回 `false`（系统误判用户点击了弹窗外部的黑色半透明遮罩背景），从而意外触发 `window.closeNoteModal()`。
-  - ✅ **终极防御方案 (三重防护)**：
-    1. **ComposedPath 溯源**：优先通过 `e.composedPath()` 捕获事件触发瞬间的原始完整层级链条，即便内部节点已被销毁重构，也能 100% 断言点击起始于弹窗内部；
-    2. **组件容器类名校验**：加入 `e.target.closest('.EasyMDEContainer')` 与 `e.target.closest('.CodeMirror')` 的选择器防御；
-    3. **游离节点拦截**：若检测到 `!document.body.contains(e.target)`（由编辑器选区瞬时脱离文档树的节点），绝对禁止触发外部点击关闭逻辑。
+  - **根本原因 (DOM 选区瞬时重构与全局 Mousedown 监听冲突)**：
+    1. EasyMDE 底层的 CodeMirror 引擎在捕获双击选词时，会在毫秒级时间内重构文本节点（销毁原有的 `<span>` 元素并生成带有高亮选区的全新 DOM 节点）；
+    2. 全局遗留的 `document.addEventListener('mousedown')` 监听器执行 `noteContent.contains(e.target)` 时，因游离节点脱离了树导致误判为 `false`（误判为点击了弹窗外部），意外触发 `window.closeNoteModal()`；
+    3. 多个遮罩监听器并发冲突，导致双击或微小拖拽选区直接触发了关闭。
+  - ✅ **终极防御方案 (事件彻底物理隔离与监听清理)**：
+    1. **物理阻断传播**：在 `noteContent` 上对 `mousedown`、`mouseup`、`click`、`dblclick` 全面绑定 `e.stopPropagation()`，彻底禁止编辑框内任意鼠标动作向上冒泡；
+    2. **精准遮罩点击**：仅当用户在半透明背景上触发纯粹的 `click`（且 `e.target === noteModal`）时才允许关闭弹窗，禁止使用 `mousedown` 监听遮罩以防拖拽误触；
+    3. **清理全局脏监听**：彻底移除全局 `document.addEventListener('mousedown')` 中针对 `modal-note` 的错误判定逻辑，彻底消灭双击/多击退出的隐患。
 
 - ❌ **排坑 3：Render 云端临时文件系统 (Ephemeral Disk) 附件丢失与同步脱节**。
   - **现象**：本地上传的图片/附件在 Render 上访问报 `404 Not Found`。

@@ -4673,16 +4673,22 @@ window.openNoteModal = function() {
     }
     noteModal.style.display = 'flex';
 
-    // Explicitly bind click-outside mousedown listener to guarantee closing when overlay is clicked
+    // Explicitly stop propagation from modal-content to prevent any internal editor events (like double clicks) from reaching overlay
+    if (noteContent && !noteContent.dataset.stopBound) {
+        noteContent.addEventListener('mousedown', (e) => e.stopPropagation());
+        noteContent.addEventListener('mouseup', (e) => e.stopPropagation());
+        noteContent.addEventListener('click', (e) => e.stopPropagation());
+        noteContent.addEventListener('dblclick', (e) => e.stopPropagation());
+        noteContent.dataset.stopBound = "true";
+    }
+
+    // Only close if user explicitly clicked on the dark backdrop overlay itself
     if (!noteModal.dataset.clickBound) {
-        // Handle both mousedown and click for maximum responsiveness on the backdrop
-        const handleBackdropClose = (e) => {
+        noteModal.addEventListener('click', (e) => {
             if (e.target === noteModal) {
                 window.closeNoteModal();
             }
-        };
-        noteModal.addEventListener('mousedown', handleBackdropClose);
-        noteModal.addEventListener('click', handleBackdropClose);
+        });
         noteModal.dataset.clickBound = "true";
     }
 
@@ -5035,51 +5041,14 @@ window.saveMarkdownNote = async function() {
 
 
 
-// Global document listener to close Note window when clicking any blank area outside of it
-document.addEventListener('mousedown', (e) => {
-    window.updateHarnessStats = () => {
-        const statsSpan = document.getElementById('harness-stats');
-        if (!statsSpan) return;
-        const checkboxes = document.querySelectorAll('.harness-test-cb');
-        const total = checkboxes.length;
-        const checked = Array.from(checkboxes).filter(cb => cb.checked).length;
-        statsSpan.textContent = `Selected: ${checked} / Total: ${total}`;
-    };
-
-    const noteModal = document.getElementById('modal-note');
-    if (noteModal && noteModal.style.display === 'flex') {
-        const noteContent = noteModal.querySelector('.modal-content');
-        if (noteContent) {
-            // Defense 1: Check composedPath to catch elements re-rendered or detached during fast double-click selection
-            const path = (e.composedPath && e.composedPath()) || [];
-            if (path.includes(noteContent) || path.includes(noteModal.querySelector('.modal-content'))) {
-                return;
-            }
-            // Defense 2: Check if target is inside note modal or editor components
-            if (noteContent.contains(e.target) || (e.target.closest && (e.target.closest('#modal-note .modal-content') || e.target.closest('.EasyMDEContainer') || e.target.closest('.CodeMirror')))) {
-                return;
-            }
-            // Defense 3: If target was detached from DOM by CodeMirror during selection, do not close
-            if (!document.body.contains(e.target)) {
-                return;
-            }
-            // Do not close if clicking the custom alert/confirm dialog
-            if (e.target.closest && e.target.closest('#custom-dialog-modal')) {
-                return;
-            }
-            // Do not close if clicking the button that opens it
-            const btnNote = document.getElementById('btn-note');
-            if (btnNote && btnNote.contains(e.target)) {
-                return;
-            }
-            // Do not close if clicking any "Insert API" button in the tree or history
-            if ((e.target.closest && e.target.closest('.bookmark-btn')) || e.target.title === 'Insert API Link to Note') {
-                return;
-            }
-            window.closeNoteModal();
-        }
-    }
-});
+window.updateHarnessStats = function() {
+    const statsSpan = document.getElementById('harness-stats');
+    if (!statsSpan) return;
+    const checkboxes = document.querySelectorAll('.harness-test-cb');
+    const total = checkboxes.length;
+    const checked = Array.from(checkboxes).filter(cb => cb.checked).length;
+    statsSpan.textContent = `Selected: ${checked} / Total: ${total}`;
+};
 
 
     // Custom Dialog Modal System (Alert/Confirm) replacing native popups
