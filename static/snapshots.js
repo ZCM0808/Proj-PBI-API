@@ -136,6 +136,9 @@
                 for (let radio of authModeRadios) {
                     radio.checked = (radio.value === snap.authMode);
                 }
+                if (window.updateAuthModeVisibility) {
+                    window.updateAuthModeVisibility(snap.authMode || 'service_principal');
+                }
                 
                 // Trigger flash animation for micro-interaction feedback
                 ['set-client', 'set-secret', 'set-username', 'set-password', 'set-tenant'].forEach(id => {

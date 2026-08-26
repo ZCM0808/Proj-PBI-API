@@ -3523,15 +3523,71 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                 document.getElementById('set-tenant').value = data.TENANT_ID || '';
                 
                 const authModeRadios = document.getElementsByName('pbi_auth_mode');
+                let activeAuthMode = 'service_principal';
                 for (let radio of authModeRadios) {
                     if (radio.value === (data.AUTH_MODE || 'service_principal')) {
                         radio.checked = true;
+                        activeAuthMode = radio.value;
                         break;
                     }
                 }
+                window.updateAuthModeVisibility(activeAuthMode);
 
             } catch (err) {
                 console.error('Failed to load settings:', err);
+            }
+        };
+
+        window.updateAuthModeVisibility = function(mode) {
+            if (!mode) {
+                const checked = document.querySelector('input[name="pbi_auth_mode"]:checked');
+                mode = checked ? checked.value : 'service_principal';
+            }
+            const spFields = document.getElementById('auth-sp-fields');
+            const personalFields = document.getElementById('auth-personal-fields');
+            
+            if (mode === 'service_principal') {
+                if (spFields) {
+                    spFields.style.display = 'block';
+                    void spFields.offsetWidth;
+                    spFields.style.maxHeight = '600px';
+                    spFields.style.opacity = '1';
+                    spFields.style.pointerEvents = 'auto';
+                    spFields.style.transform = 'translateY(0)';
+                }
+                if (personalFields) {
+                    personalFields.style.maxHeight = '0px';
+                    personalFields.style.opacity = '0';
+                    personalFields.style.pointerEvents = 'none';
+                    personalFields.style.transform = 'translateY(-6px)';
+                    setTimeout(() => {
+                        const current = document.querySelector('input[name="pbi_auth_mode"]:checked');
+                        if (current && current.value === 'service_principal') {
+                            personalFields.style.display = 'none';
+                        }
+                    }, 300);
+                }
+            } else {
+                if (personalFields) {
+                    personalFields.style.display = 'block';
+                    void personalFields.offsetWidth;
+                    personalFields.style.maxHeight = '600px';
+                    personalFields.style.opacity = '1';
+                    personalFields.style.pointerEvents = 'auto';
+                    personalFields.style.transform = 'translateY(0)';
+                }
+                if (spFields) {
+                    spFields.style.maxHeight = '0px';
+                    spFields.style.opacity = '0';
+                    spFields.style.pointerEvents = 'none';
+                    spFields.style.transform = 'translateY(-6px)';
+                    setTimeout(() => {
+                        const current = document.querySelector('input[name="pbi_auth_mode"]:checked');
+                        if (current && current.value === 'personal') {
+                            spFields.style.display = 'none';
+                        }
+                    }, 300);
+                }
             }
         };
 
