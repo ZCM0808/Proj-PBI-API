@@ -4778,7 +4778,7 @@ window.openNoteModal = function() {
                     delay: 1000,
                 },
                 status: ["autosave", "lines", "words", "cursor"],
-                maxHeight: "350px",
+                minHeight: "340px",
                 placeholder: "Start typing your note here... (Markdown is supported)",
                 toolbar: ['bold', 'italic', 'heading', '|', 'quote', 'unordered-list', 'ordered-list', '|', 'link', 'image', '|', 'preview', 'side-by-side', 'fullscreen']
             });
