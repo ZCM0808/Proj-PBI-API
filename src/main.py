@@ -1745,9 +1745,9 @@ async def init_device_code_flow(req: Optional[DeviceCodeInitRequest] = None):
     """初始化 OAuth 2.0 Device Code Flow (设备代码流认证)"""
     try:
         from msal import PublicClientApplication
-        settings = load_settings()
-        client_id = (req.client_id if req and req.client_id else None) or settings.get("PBI_CLIENT_ID") or Config.CLIENT_ID or "04b07795-8ddb-461a-bbee-02f9e1bf7b46"
-        tenant_id = (req.tenant_id if req and req.tenant_id else None) or settings.get("PBI_TENANT_ID") or Config.TENANT_ID or "organizations"
+        # 个人委派认证使用微软官方跨租户通用 Power BI 客户端 (04b07795...)，支持任意企业租户账号 (如 @vfc.com, @corp 等)
+        client_id = (req.client_id if req and req.client_id else None) or "04b07795-8ddb-461a-bbee-02f9e1bf7b46"
+        tenant_id = (req.tenant_id if req and req.tenant_id else None) or "organizations"
         
         authority = f"https://login.microsoftonline.com/{tenant_id}"
         app = PublicClientApplication(client_id=client_id, authority=authority)

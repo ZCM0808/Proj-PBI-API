@@ -8705,14 +8705,9 @@ window.acquireMfaTokenWithFallback = async function(targetInputId = 'wf-xmla-tok
         try {
             if (window.showNotification) window.showNotification("🔑 正在唤起微软官方登录弹窗 (Popup)...", "info");
             
-            let clientId = "04b07795-8ddb-461a-bbee-02f9e1bf7b46";
-            let authority = "https://login.microsoftonline.com/organizations";
-            try {
-                const infoRes = await fetch('/api/auth-info');
-                const infoData = await infoRes.json();
-                if (infoData && infoData.client_id) clientId = infoData.client_id;
-                if (infoData && infoData.tenant_id) authority = `https://login.microsoftonline.com/${infoData.tenant_id}`;
-            } catch (_) {}
+            // 个人委派认证使用微软通用跨租户 Power BI Client (04b07795...) 与 organizations 通用 Authority，支持任意企业租户账号 (如 @vfc.com)
+            const clientId = "04b07795-8ddb-461a-bbee-02f9e1bf7b46";
+            const authority = "https://login.microsoftonline.com/organizations";
 
             const msalConfig = {
                 auth: {
