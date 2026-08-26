@@ -1777,9 +1777,8 @@ async def scan_xmla_datasets(req: XMLAScanRequest):
             except Exception:
                 pass
 
-        # 3. 数据集拉取分支
+        # 3. 数据集拉取分支 (严格限定于 XMLA 连接串指定的工作区，绝不跨工作区回退)
         if workspace_id:
-            # 单工作区精确拉取
             ds_url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets"
             ds_res = await asyncio.to_thread(requests.get, ds_url, headers=headers, timeout=10)
             if ds_res.status_code == 200:
@@ -1787,46 +1786,16 @@ async def scan_xmla_datasets(req: XMLAScanRequest):
                 results = [{"id": ds.get("id"), "name": ds.get("name")} for ds in datasets]
                 return {"success": True, "workspace_id": workspace_id, "datasets": results, "token": token}
             else:
-                return {"success": False, "message": f"在工作区 ({workspace_id}) 获取模型失败 ({ds_res.status_code}): {ds_res.text}"}
+                return {"success": False, "message": f"在工作区 '{ws_name}' ({workspace_id}) 获取模型失败 ({ds_res.status_code}): {ds_res.text}"}
         else:
-            # 没有匹配到指定的单个工作区 -> 避免直接调 /myorg/datasets 触发 403，自动遍历所有可见工作区聚合
-            if available_workspaces:
-                aggregated = []
-                for w in available_workspaces:
-                    w_id = w["id"]
-                    w_name = w["name"]
-                    sub_ds_url = f"https://api.powerbi.com/v1.0/myorg/groups/{w_id}/datasets"
-                    try:
-                        sub_res = await asyncio.to_thread(requests.get, sub_ds_url, headers=headers, timeout=6)
-                        if sub_res.status_code == 200:
-                            for ds in sub_res.json().get("value", []):
-                                aggregated.append({
-                                    "id": ds.get("id"),
-                                    "name": f"{ds.get('name')} ({w_name})" if len(available_workspaces) > 1 else ds.get("name"),
-                                    "rawName": ds.get("name"),
-                                    "workspace_id": w_id
-                                })
-                    except Exception:
-                        pass
-                if aggregated:
-                    return {"success": True, "workspace_id": aggregated[0].get("workspace_id"), "datasets": aggregated, "token": token}
-                else:
-                    ws_names = [w['name'] for w in available_workspaces if w.get('name')]
-                    return {
-                        "success": False,
-                        "message": f"在工作区 '{ws_name}' 未找到模型。租户内可用工作区为: {', '.join(ws_names[:5])}。请检查 XMLA 工作区连接串！"
-                    }
+            # 未找到指定工作区 -> 绝不聚合其他不相干工作区，严格反馈错误原因
+            ws_list_names = [w['name'] for w in available_workspaces if w.get('name')]
+            msg = f"未在当前认证主体下找到工作区 '{ws_name}'。"
+            if ws_list_names:
+                msg += f" 当前 Token 仅有权访问: [{', '.join(ws_list_names[:5])}]。请确认工作区名称无误，并在 Power BI 网页端 (app.powerbi.com) 将该应用或账号加入 '{ws_name}' 的工作区成员列表中！"
             else:
-                # 尝试通过 Admin 接口拉取
-                admin_ds_res = await asyncio.to_thread(requests.get, "https://api.powerbi.com/v1.0/myorg/admin/datasets?$top=5000", headers=headers, timeout=10)
-                if admin_ds_res.status_code == 200:
-                    datasets = admin_ds_res.json().get("value", [])
-                    results = [{"id": ds.get("id"), "name": ds.get("name")} for ds in datasets]
-                    return {"success": True, "workspace_id": None, "datasets": results, "token": token}
-                return {
-                    "success": False, 
-                    "message": f"未能解析到工作区 '{ws_name}'，且 Service Principal 模式无法直接访问个人默认工作区。请在 XMLA 路径后附带具体的工作区名称（例如 powerbi://api.powerbi.com/v1.0/myorg/YourWorkspaceName）。"
-                }
+                msg += " 请确认工作区名称无误，并在 Power BI 网页端为当前认证主体授予该工作区的访问权限！"
+            return {"success": False, "message": msg}
     except Exception as e:
         return {"success": False, "message": f"服务器异常: {str(e)}"}
 
