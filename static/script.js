@@ -336,9 +336,14 @@ window.addListRow = function(containerId, alias = "", id = "", itemType = "", it
         }
     }
 
+    const namePlaceholder = containerId === 'workspace-list' ? '工作区 (Workspace)' : (containerId === 'dataset-list' ? '数据集 (Dataset)' : '报表 (Report)');
+    const isReadOnly = alias ? 'readonly' : '';
+    const readOnlyStyle = alias ? 'background: var(--overlay-5); cursor: default;' : '';
+    const readOnlyTitle = alias ? ' title="资源名称为只读项 (Read-only)"' : '';
+
     row.innerHTML = `
         <input type="radio" name="${containerId}-radio" style="cursor: pointer; flex-shrink: 0;" title="选中为默认/活动 (Set as Default/Active)">
-        <input type="text" class="settings-input alias-input" placeholder="Alias (e.g. DEV)" value="${alias}" style="width: 180px; min-width: 120px; flex-shrink: 0; padding: 4px 8px; font-size: 0.75rem;">
+        <input type="text" class="settings-input alias-input" placeholder="${namePlaceholder}" value="${alias}" ${isReadOnly} ${readOnlyTitle} style="width: 180px; min-width: 120px; flex-shrink: 0; padding: 4px 8px; font-size: 0.75rem; ${readOnlyStyle}">
         <input type="text" class="settings-input id-input" placeholder="GUID" value="${id}" style="width: 320px; min-width: 200px; flex-shrink: 0; font-family: monospace; font-size: 0.75rem; padding: 4px 8px;" data-type="${itemType}" data-state="${itemState}">
         <div class="row-badges type-input" style="display: flex; gap: 4px; align-items: center; width: 160px; min-width: 140px; flex-shrink: 0; justify-content: flex-start;">${badgesHtml}</div>
         <button type="button" onclick="if(this.parentElement.parentElement.children.length > 1) { this.parentElement.remove(); } else { alert('必须保留至少一个输入框！(At least one row must be kept)'); }" style="color: var(--error-light); background: transparent; border: none; cursor: pointer; font-size: 1.2rem; line-height: 1; padding: 0 4px; opacity: 0.3; transition: opacity 0.2s; flex-shrink: 0;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'">&times;</button>
