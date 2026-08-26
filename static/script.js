@@ -3197,15 +3197,16 @@ const loadReqHistory = (searchTerm = "") => {
                 const shield = modalContent.querySelector('.drag-shield');
                 if (shield) shield.style.display = 'none';
 
-                // Restore all iframe pointer events
                 document.querySelectorAll('iframe').forEach(f => f.style.pointerEvents = '');
                 modalContent.style.backdropFilter = '';
                 modalContent.style.webkitBackdropFilter = '';
                 modalContent.style.boxShadow = '';
                 modalContent.style.transition = '';
 
+                window.removeEventListener('mousemove', onMouseMove);
+                window.removeEventListener('mouseup', onMouseUp, true);
                 document.removeEventListener('mousemove', onMouseMove);
-                document.removeEventListener('mouseup', onMouseUp);
+                document.removeEventListener('mouseup', onMouseUp, true);
             }
         };
 
@@ -3254,8 +3255,8 @@ const loadReqHistory = (searchTerm = "") => {
 
             document.body.style.userSelect = 'none';
 
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
+            window.addEventListener('mousemove', onMouseMove, { passive: true });
+            window.addEventListener('mouseup', onMouseUp, true);
         });
     }
 
@@ -4748,12 +4749,8 @@ window.openNoteModal = function() {
     }
     noteModal.style.display = 'flex';
 
-    // Explicitly stop propagation from modal-content to prevent any internal editor events (like double clicks) from reaching overlay
+    // Explicitly prevent internal clicks/dblclicks from bubble closing
     if (noteContent && !noteContent.dataset.stopBound) {
-        noteContent.addEventListener('mousedown', (e) => e.stopPropagation());
-        noteContent.addEventListener('mouseup', (e) => e.stopPropagation());
-        noteContent.addEventListener('click', (e) => e.stopPropagation());
-        noteContent.addEventListener('dblclick', (e) => e.stopPropagation());
         noteContent.dataset.stopBound = "true";
     }
 
