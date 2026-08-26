@@ -5049,9 +5049,22 @@ document.addEventListener('mousedown', (e) => {
     const noteModal = document.getElementById('modal-note');
     if (noteModal && noteModal.style.display === 'flex') {
         const noteContent = noteModal.querySelector('.modal-content');
-        if (noteContent && !noteContent.contains(e.target)) {
+        if (noteContent) {
+            // Defense 1: Check composedPath to catch elements re-rendered or detached during fast double-click selection
+            const path = (e.composedPath && e.composedPath()) || [];
+            if (path.includes(noteContent) || path.includes(noteModal.querySelector('.modal-content'))) {
+                return;
+            }
+            // Defense 2: Check if target is inside note modal or editor components
+            if (noteContent.contains(e.target) || (e.target.closest && (e.target.closest('#modal-note .modal-content') || e.target.closest('.EasyMDEContainer') || e.target.closest('.CodeMirror')))) {
+                return;
+            }
+            // Defense 3: If target was detached from DOM by CodeMirror during selection, do not close
+            if (!document.body.contains(e.target)) {
+                return;
+            }
             // Do not close if clicking the custom alert/confirm dialog
-            if (e.target.closest('#custom-dialog-modal')) {
+            if (e.target.closest && e.target.closest('#custom-dialog-modal')) {
                 return;
             }
             // Do not close if clicking the button that opens it
@@ -5060,13 +5073,12 @@ document.addEventListener('mousedown', (e) => {
                 return;
             }
             // Do not close if clicking any "Insert API" button in the tree or history
-            if (e.target.closest('.bookmark-btn') || e.target.title === 'Insert API Link to Note') {
+            if ((e.target.closest && e.target.closest('.bookmark-btn')) || e.target.title === 'Insert API Link to Note') {
                 return;
             }
             window.closeNoteModal();
         }
     }
-
 });
 
 
