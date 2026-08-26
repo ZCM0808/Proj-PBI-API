@@ -8690,54 +8690,11 @@ window.copyDeviceCode = function(btn) {
 window.acquireMfaTokenWithFallback = async function(targetInputId = 'wf-xmla-token', onTokenAcquired = null) {
     const targetInput = document.getElementById(targetInputId);
     
-    // 优先尝试【方案 2】: 微软官方前端 MSAL.js 网页交互式弹窗登录
-    if (window.msal && window.msal.PublicClientApplication) {
-        try {
-            if (window.showNotification) window.showNotification("🔑 正在唤起微软官方登录弹窗 (Popup)...", "info");
-            
-            // 个人委派认证使用微软通用跨租户 Power BI Client (04b07795...) 与 organizations 通用 Authority，支持任意企业租户账号 (如 @vfc.com)
-            const clientId = "04b07795-8ddb-461a-bbee-02f9e1bf7b46";
-            const authority = "https://login.microsoftonline.com/organizations";
-
-            const msalConfig = {
-                auth: {
-                    clientId: clientId,
-                    authority: authority,
-                    redirectUri: window.location.origin
-                },
-                cache: {
-                    cacheLocation: "sessionStorage",
-                    storeAuthStateInCookie: false
-                }
-            };
-            
-            const msalInstance = new window.msal.PublicClientApplication(msalConfig);
-            await msalInstance.initialize();
-            
-            const loginResponse = await msalInstance.loginPopup({
-                scopes: ["https://analysis.windows.net/powerbi/api/.default"],
-                prompt: "select_account"
-            });
-            
-            if (loginResponse && loginResponse.accessToken) {
-                const token = loginResponse.accessToken;
-                if (targetInput) targetInput.value = token;
-                const badge = document.getElementById('wf-xmla-token-badge');
-                if (badge) badge.style.display = 'inline-flex';
-                if (window.showNotification) window.showNotification("✅ 微软官方弹窗登录成功，已自动填入个人 Token！", "success");
-                if (onTokenAcquired) onTokenAcquired(token);
-                return token;
-            }
-        } catch (popupErr) {
-            console.warn("MSAL Popup failed, seamlessly falling back to Device Code Flow:", popupErr);
-            if (window.showNotification) {
-                window.showNotification("ℹ️ 网页弹窗受限，自动为您无缝切换至设备代码流 (Device Code Flow)...", "warning");
-            }
-        }
-    }
-    
-    // 降级轮换【方案 1】: Device Code Flow (设备代码流)
+    // 采用微软官方跨租户零重定向依赖的 Device Code Flow (设备代码流)
+    // 优势: 100% 免疫 AADSTS50011 (Redirect URI Mismatch) 与 AADSTS50020 (Tenant Mismatch)，原生支持任意企业账号
     try {
+        if (window.showNotification) window.showNotification("📱 正在初始化微软设备代码认证...", "info");
+        
         const initRes = await fetch('/api/auth/device-code/init', { method: 'POST' });
         const initData = await initRes.json();
         
@@ -8768,7 +8725,7 @@ window.acquireMfaTokenWithFallback = async function(targetInputId = 'wf-xmla-tok
         try {
             await navigator.clipboard.writeText(initData.user_code);
             if (window.showNotification) {
-                window.showNotification(`📋 已自动复制验证码 [${initData.user_code}] 到剪贴板！`, "info");
+                window.showNotification(`📋 验证码 [${initData.user_code}] 已自动复制到剪贴板！`, "success");
             }
         } catch (_) {}
         
