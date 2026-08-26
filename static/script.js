@@ -8634,9 +8634,7 @@ let _currentDeviceFlowId = null;
 
 window.updateWorkflowAuthBadge = async function() {
     const badgeEl = document.getElementById('wf-header-auth-badge');
-    const iconEl = document.getElementById('wf-header-auth-icon');
-    const textEl = document.getElementById('wf-header-auth-text');
-    if (!badgeEl || !textEl) return;
+    if (!badgeEl) return;
     
     try {
         const res = await fetch('/api/auth-info');
@@ -8644,21 +8642,13 @@ window.updateWorkflowAuthBadge = async function() {
         if (data && data.success) {
             const isPersonal = data.auth_mode === 'personal';
             if (isPersonal) {
-                if (iconEl) iconEl.textContent = '👤';
-                const userDisplayName = data.username ? data.username : 'Personal User';
-                textEl.textContent = `Personal: ${userDisplayName}`;
-                badgeEl.style.borderColor = 'rgba(56, 189, 248, 0.4)';
-                badgeEl.style.background = 'rgba(56, 189, 248, 0.12)';
-                badgeEl.style.color = '#38bdf8';
-                badgeEl.title = `当前生效认证模式: Personal Auth (个人委派用户认证)\n登录账号: ${data.username || '未配置'}`;
+                const userDisplayName = data.username ? data.username : 'User';
+                badgeEl.textContent = `(Personal: ${userDisplayName})`;
+                badgeEl.title = `当前认证: Personal Auth (个人委派用户认证) - ${data.username || ''}`;
             } else {
-                if (iconEl) iconEl.textContent = '🛡️';
-                const appDisplayName = data.app_name || (data.client_id ? `App (${data.client_id.substring(0, 8)}...)` : 'Service Principal');
-                textEl.textContent = `Service Principal: ${appDisplayName}`;
-                badgeEl.style.borderColor = 'rgba(245, 158, 11, 0.4)';
-                badgeEl.style.background = 'rgba(245, 158, 11, 0.12)';
-                badgeEl.style.color = '#fbbf24';
-                badgeEl.title = `当前生效认证模式: Service Principal (Azure 应用程序认证)\n客户端 ID: ${data.client_id || '未配置'}`;
+                const appDisplayName = data.app_name || (data.client_id ? `App (${data.client_id.substring(0, 8)}...)` : 'App');
+                badgeEl.textContent = `(Service Principal: ${appDisplayName})`;
+                badgeEl.title = `当前认证: Service Principal (Azure 应用程序认证) - ${data.client_id || ''}`;
             }
         }
     } catch (e) {
