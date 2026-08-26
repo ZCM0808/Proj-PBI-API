@@ -25,7 +25,7 @@ import base64
 import requests
 import pyotp  # type: ignore[import-untyped]
 import qrcode  # type: ignore[import-untyped]
-from src.config import Config
+from src.config import Config, load_settings
 from src.pbi_client import PBIClient
 from src.pipeline import PBIPipeline
 from contextlib import asynccontextmanager
@@ -1726,8 +1726,9 @@ class XMLARefreshRequest(BaseModel):
 
 @app.post("/api/xmla/scan-datasets")
 async def scan_xmla_datasets(req: XMLAScanRequest):
-    """扫描指定 XMLA 端点/工作区下的所有 Datasets"""
+    """扫描指定 XMLA 端点/工作区下的所有 Datasets (具备 Service Principal 403 防御与多策略工作区反查)"""
     try:
+        import urllib.parse
         token = _get_effective_xmla_token(req.access_token)
         if not token:
             return {"success": False, "message": "未能提取到有效的 Power BI Access Token，请先登录！"}
@@ -1737,30 +1738,95 @@ async def scan_xmla_datasets(req: XMLAScanRequest):
             "Content-Type": "application/json"
         }
         
-        # 解析工作区名称
+        # 解析工作区名称 / GUID (支持 URL 编码解码与前后空格清理)
         endpoint = req.xmla_endpoint.rstrip("/")
-        ws_name = endpoint.split("/")[-1] if "/" in endpoint else ""
+        ws_name_raw = endpoint.split("/")[-1] if "/" in endpoint else ""
+        ws_name = urllib.parse.unquote(ws_name_raw).strip()
         
-        # 1. 尝试通过 Workspace 名称查找 Group ID
-        groups_res = await asyncio.to_thread(requests.get, "https://api.powerbi.com/v1.0/myorg/groups", headers=headers, timeout=10)
+        # 1. 尝试通过 Workspace 列表匹配 Group ID
         workspace_id = None
-        if groups_res.status_code == 200:
-            groups = groups_res.json().get("value", [])
-            for g in groups:
-                if g.get("name", "").lower() == ws_name.lower():
-                    workspace_id = g.get("id")
-                    break
+        available_workspaces = []
         
-        # 2. 查询 Datasets
-        ds_url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets" if workspace_id else "https://api.powerbi.com/v1.0/myorg/datasets"
-            
-        ds_res = await asyncio.to_thread(requests.get, ds_url, headers=headers, timeout=10)
-        if ds_res.status_code == 200:
-            datasets = ds_res.json().get("value", [])
-            results = [{"id": ds.get("id"), "name": ds.get("name")} for ds in datasets]
-            return {"success": True, "workspace_id": workspace_id, "datasets": results, "token": token}
+        for grp_ep in ["https://api.powerbi.com/v1.0/myorg/groups?$top=5000", "https://api.powerbi.com/v1.0/myorg/admin/groups?$top=5000"]:
+            try:
+                groups_res = await asyncio.to_thread(requests.get, grp_ep, headers=headers, timeout=8)
+                if groups_res.status_code == 200:
+                    groups = groups_res.json().get("value", [])
+                    for g in groups:
+                        g_name = (g.get("name") or "").strip()
+                        g_id = g.get("id")
+                        if g_id:
+                            available_workspaces.append({"id": g_id, "name": g_name})
+                        if ws_name and (g_name.lower() == ws_name.lower() or g_name.lower() == ws_name_raw.lower() or g_id == ws_name):
+                            workspace_id = g_id
+                    if workspace_id:
+                        break
+            except Exception:
+                pass
+
+        # 2. 如果未找到，尝试从 global_settings.json 查阅本地工作区配置
+        if not workspace_id and ws_name:
+            try:
+                local_settings = load_settings()
+                for w in local_settings.get("PBI_WORKSPACES", []):
+                    w_alias = (w.get("alias") or "").strip()
+                    w_id = (w.get("id") or "").strip()
+                    if w_id and (w_alias.lower() == ws_name.lower() or w_id.lower() == ws_name.lower()):
+                        workspace_id = w_id
+                        break
+            except Exception:
+                pass
+
+        # 3. 数据集拉取分支
+        if workspace_id:
+            # 单工作区精确拉取
+            ds_url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets"
+            ds_res = await asyncio.to_thread(requests.get, ds_url, headers=headers, timeout=10)
+            if ds_res.status_code == 200:
+                datasets = ds_res.json().get("value", [])
+                results = [{"id": ds.get("id"), "name": ds.get("name")} for ds in datasets]
+                return {"success": True, "workspace_id": workspace_id, "datasets": results, "token": token}
+            else:
+                return {"success": False, "message": f"在工作区 ({workspace_id}) 获取模型失败 ({ds_res.status_code}): {ds_res.text}"}
         else:
-            return {"success": False, "message": f"获取模型失败 ({ds_res.status_code}): {ds_res.text}"}
+            # 没有匹配到指定的单个工作区 -> 避免直接调 /myorg/datasets 触发 403，自动遍历所有可见工作区聚合
+            if available_workspaces:
+                aggregated = []
+                for w in available_workspaces:
+                    w_id = w["id"]
+                    w_name = w["name"]
+                    sub_ds_url = f"https://api.powerbi.com/v1.0/myorg/groups/{w_id}/datasets"
+                    try:
+                        sub_res = await asyncio.to_thread(requests.get, sub_ds_url, headers=headers, timeout=6)
+                        if sub_res.status_code == 200:
+                            for ds in sub_res.json().get("value", []):
+                                aggregated.append({
+                                    "id": ds.get("id"),
+                                    "name": f"{ds.get('name')} ({w_name})" if len(available_workspaces) > 1 else ds.get("name"),
+                                    "rawName": ds.get("name"),
+                                    "workspace_id": w_id
+                                })
+                    except Exception:
+                        pass
+                if aggregated:
+                    return {"success": True, "workspace_id": aggregated[0].get("workspace_id"), "datasets": aggregated, "token": token}
+                else:
+                    ws_names = [w['name'] for w in available_workspaces if w.get('name')]
+                    return {
+                        "success": False,
+                        "message": f"在工作区 '{ws_name}' 未找到模型。租户内可用工作区为: {', '.join(ws_names[:5])}。请检查 XMLA 工作区连接串！"
+                    }
+            else:
+                # 尝试通过 Admin 接口拉取
+                admin_ds_res = await asyncio.to_thread(requests.get, "https://api.powerbi.com/v1.0/myorg/admin/datasets?$top=5000", headers=headers, timeout=10)
+                if admin_ds_res.status_code == 200:
+                    datasets = admin_ds_res.json().get("value", [])
+                    results = [{"id": ds.get("id"), "name": ds.get("name")} for ds in datasets]
+                    return {"success": True, "workspace_id": None, "datasets": results, "token": token}
+                return {
+                    "success": False, 
+                    "message": f"未能解析到工作区 '{ws_name}'，且 Service Principal 模式无法直接访问个人默认工作区。请在 XMLA 路径后附带具体的工作区名称（例如 powerbi://api.powerbi.com/v1.0/myorg/YourWorkspaceName）。"
+                }
     except Exception as e:
         return {"success": False, "message": f"服务器异常: {str(e)}"}
 
@@ -1834,7 +1900,7 @@ async def scan_xmla_tables(req: XMLATablesRequest):
         except Exception:
             pass
 
-        tables_dict = {}  # table_name -> {"name": str, "partitions": list, "columns": list}
+        tables_dict: Dict[str, Dict[str, Any]] = {}  # table_name -> {"name": str, "partitions": list, "columns": list}
 
         # 如果 dataset_id 为空，自动反查（多策略）
         if not req.dataset_id:
@@ -1990,7 +2056,7 @@ async def scan_xmla_tables(req: XMLATablesRequest):
 
         tables = list(tables_dict.values())
         # 排序
-        tables.sort(key=lambda x: x["name"])
+        tables.sort(key=lambda x: str(x.get("name", "")))
         return {"success": True, "restricted": len(tables) == 0, "tables": tables}
     except Exception as e:
         return {"success": False, "message": str(e)}
