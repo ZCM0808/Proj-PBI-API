@@ -2799,6 +2799,52 @@ span:hover > .wf-copy-btn,
     will-change: max-height, opacity, transform;
 }
 
+/* Settings Table Grid: Embedded Hover Copy Button inside Cells */
+.cell-with-copy {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.cell-copy-btn {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%) scale(0.85);
+    opacity: 0;
+    pointer-events: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    background: var(--input-bg);
+    border: 1px solid var(--panel-border);
+    color: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 5;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.cell-with-copy:hover .cell-copy-btn,
+.cell-with-copy:focus-within .cell-copy-btn,
+.cell-copy-btn:focus,
+.cell-copy-btn.copied {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(-50%) scale(1);
+}
+
+.cell-copy-btn:hover {
+    background: var(--accent) !important;
+    color: var(--accent-text) !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 6px var(--accent-glow);
+}
+
 
 
 

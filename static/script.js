@@ -341,10 +341,24 @@ window.addListRow = function(containerId, alias = "", id = "", itemType = "", it
     const readOnlyStyle = alias ? 'background: var(--overlay-5); cursor: default;' : '';
     const readOnlyTitle = alias ? ' title="资源名称为只读项 (Read-only)"' : '';
 
+    const isIdReadOnly = id ? 'readonly' : '';
+    const idReadOnlyStyle = id ? 'background: var(--overlay-5); cursor: default;' : '';
+    const idReadOnlyTitle = id ? ' title="GUID 标识符为只读项 (Read-only)"' : '';
+
     row.innerHTML = `
         <input type="radio" name="${containerId}-radio" style="cursor: pointer; flex-shrink: 0;" title="选中为默认/活动 (Set as Default/Active)">
-        <input type="text" class="settings-input alias-input" placeholder="${namePlaceholder}" value="${alias}" ${isReadOnly} ${readOnlyTitle} style="width: 180px; min-width: 120px; flex-shrink: 0; padding: 4px 8px; font-size: 0.75rem; ${readOnlyStyle}">
-        <input type="text" class="settings-input id-input" placeholder="GUID" value="${id}" style="width: 320px; min-width: 200px; flex-shrink: 0; font-family: monospace; font-size: 0.75rem; padding: 4px 8px;" data-type="${itemType}" data-state="${itemState}">
+        <div class="cell-with-copy alias-cell" style="width: 180px; min-width: 120px; flex-shrink: 0;">
+            <input type="text" class="settings-input alias-input" placeholder="${namePlaceholder}" value="${alias}" ${isReadOnly} ${readOnlyTitle} style="width: 100%; padding: 4px 26px 4px 8px; font-size: 0.75rem; ${readOnlyStyle}">
+            <button type="button" class="cell-copy-btn" onclick="window.handleCopyAction(this, this.previousElementSibling.value, this.parentElement)" title="复制名称 (Copy Name)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            </button>
+        </div>
+        <div class="cell-with-copy id-cell" style="width: 320px; min-width: 200px; flex-shrink: 0;">
+            <input type="text" class="settings-input id-input" placeholder="GUID" value="${id}" ${isIdReadOnly} ${idReadOnlyTitle} style="width: 100%; font-family: monospace; font-size: 0.75rem; padding: 4px 26px 4px 8px; ${idReadOnlyStyle}" data-type="${itemType}" data-state="${itemState}">
+            <button type="button" class="cell-copy-btn" onclick="window.handleCopyAction(this, this.previousElementSibling.value, this.parentElement)" title="复制 GUID (Copy GUID)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            </button>
+        </div>
         <div class="row-badges type-input" style="display: flex; gap: 4px; align-items: center; width: 160px; min-width: 140px; flex-shrink: 0; justify-content: flex-start;">${badgesHtml}</div>
         <button type="button" onclick="if(this.parentElement.parentElement.children.length > 1) { this.parentElement.remove(); } else { alert('必须保留至少一个输入框！(At least one row must be kept)'); }" style="color: var(--error-light); background: transparent; border: none; cursor: pointer; font-size: 1.2rem; line-height: 1; padding: 0 4px; opacity: 0.3; transition: opacity 0.2s; flex-shrink: 0;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'">&times;</button>
     `;
@@ -354,7 +368,7 @@ window.addListRow = function(containerId, alias = "", id = "", itemType = "", it
     ['alias', 'id', 'type'].forEach(col => {
         const hdr = document.querySelector(`.grid-header-bar[data-list-id="${containerId}"] .grid-col-header[data-col="${col}"]`);
         if (hdr && hdr.style.width) {
-            const targetEl = row.querySelector(`.${col}-input`);
+            const targetEl = row.querySelector(`.${col}-cell`) || row.querySelector(`.${col}-input`);
             if (targetEl) targetEl.style.width = hdr.style.width;
         }
     });
@@ -440,7 +454,7 @@ window.initColumnResize = function(e, listId, colKey) {
         headerCol.style.flex = 'none';
         
         // Update all corresponding row elements in real-time
-        const rowElements = container.querySelectorAll(`.${colKey}-input`);
+        const rowElements = container.querySelectorAll(`.${colKey}-cell, .${colKey}-input`);
         rowElements.forEach(el => {
             el.style.width = newWidth + 'px';
             el.style.flex = 'none';
