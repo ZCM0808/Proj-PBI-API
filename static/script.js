@@ -3842,6 +3842,11 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                 if (result.success) {
                     backendSettingsCache = { ...backendSettingsCache, ...payload };
                     saveSettingsBtn.textContent = '✅ 已保存';
+                    
+                    // Trigger UI updates for auth badges
+                    if (window.renderEnvIdentity) window.renderEnvIdentity();
+                    if (window.updateWorkflowAuthBadge) window.updateWorkflowAuthBadge();
+
                     setTimeout(() => {
                         settingsModal.classList.add('fade-out');
                         setTimeout(() => {
