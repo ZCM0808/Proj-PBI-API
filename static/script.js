@@ -3253,7 +3253,10 @@ const loadReqHistory = (searchTerm = "") => {
             const dt = modalContent.getAttribute('data-translate-y');
             const dl = modalContent.getAttribute('data-translate-x');
             if (dt) currentTranslateY = parseFloat(dt);
+            else currentTranslateY = 0;
+            
             if (dl) currentTranslateX = parseFloat(dl);
+            else currentTranslateX = 0;
 
             isDragging = true;
             dragHandle.style.cursor = 'grabbing';
