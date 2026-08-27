@@ -255,7 +255,12 @@
                     </div>
 
 <!-- Env Identity -->
-                <div id="env-identity" style="display: flex; align-items: center; gap: 16px; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 2px; flex-wrap: wrap; user-select: none;">
+                <div id="env-identity" style="display: flex; align-items: center; gap: 12px; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 2px; flex-wrap: wrap; user-select: none;">
+                    <span id="display-auth-mode" style="display: none; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 4px; height: 24px; box-sizing: border-box; transition: background 0.2s ease;" title="当前认证模式">
+                        <span id="display-auth-mode-icon" style="line-height: 1;">🛡️</span>
+                        <strong id="display-auth-mode-text" style="font-weight: 600; line-height: 1; font-size: 0.72rem;">Service Principal</strong>
+                    </span>
+                    <span class="env-sep" style="opacity: 0.25;">|</span>
                     <span id="display-tenant" style="display: none; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; transition: background 0.2s ease, color 0.2s ease; height: 24px; box-sizing: border-box;" title="Tenant ID">
                         <span style="opacity: 0.85; line-height: 1;">🏢 Tenant:</span>
                         <strong style="color: var(--text-primary); font-weight: 600; font-family: 'Fira Code', monospace; font-size: 0.72rem; line-height: 1;">Unknown</strong>
@@ -263,7 +268,7 @@
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                         </button>
                     </span>
-                    <span style="opacity: 0.25;">|</span>
+                    <span class="env-sep" style="opacity: 0.25;">|</span>
                     <span id="display-client" style="display: none; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; transition: background 0.2s ease, color 0.2s ease; height: 24px; box-sizing: border-box;" title="Client App Name">
                         <span style="opacity: 0.85; line-height: 1;">🔑 Client App:</span>
                         <strong style="color: var(--text-primary); font-weight: 600; line-height: 1;">Unknown</strong>
@@ -1527,7 +1532,7 @@
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
     <script src="/static/universal_modal.js?v=20260825_v21"></script>
-    <script src="/static/script.js?v=20260826_v515"></script>
+    <script src="/static/script.js?v=20260827_v516"></script>
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: none; z-index: 10005;">

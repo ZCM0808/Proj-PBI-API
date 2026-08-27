@@ -930,11 +930,14 @@ window.renderContextDropdowns = function() {
     window._populateDropdown('report', rData);
 };
 
-window.renderEnvIdentity = function() {
+window.renderEnvIdentity = async function() {
     const appName = localStorage.getItem('pbi_app_name');
     const tenantId = localStorage.getItem('pbi_tenant_id');
     const tenantEl = document.getElementById('display-tenant');
     const clientEl = document.getElementById('display-client');
+    const authModeEl = document.getElementById('display-auth-mode');
+    const authModeIcon = document.getElementById('display-auth-mode-icon');
+    const authModeText = document.getElementById('display-auth-mode-text');
     
     if (tenantEl) {
         if (tenantId) {
@@ -954,6 +957,39 @@ window.renderEnvIdentity = function() {
             clientEl.querySelector('strong').textContent = 'Unknown (Verify Required)';
             clientEl.querySelector('strong').style.color = 'var(--text-secondary)';
             clientEl.title = "Please go to Settings and click 'Verify Connection' to fetch the App Name";
+        }
+    }
+
+    // Fetch and render auth mode badge (same data source as Workflow title)
+    if (authModeEl) {
+        try {
+            const res = await fetch('/api/auth-info');
+            const data = await res.json();
+            if (data && data.success) {
+                const isPersonal = data.auth_mode === 'personal';
+                if (isPersonal) {
+                    const userName = data.username || 'User';
+                    if (authModeIcon) authModeIcon.textContent = '👤';
+                    if (authModeText) {
+                        authModeText.textContent = `Personal (${userName})`;
+                        authModeText.style.color = '#38bdf8';
+                    }
+                    authModeEl.title = `当前认证: Personal Auth (个人委派用户认证) - ${data.username || ''}`;
+                } else {
+                    const appDisplayName = data.app_name || (data.client_id ? `App (${data.client_id.substring(0, 8)}...)` : 'App');
+                    if (authModeIcon) authModeIcon.textContent = '🛡️';
+                    if (authModeText) {
+                        authModeText.textContent = `Service Principal (${appDisplayName})`;
+                        authModeText.style.color = 'var(--accent)';
+                    }
+                    authModeEl.title = `当前认证: Service Principal (Azure 应用程序认证) - ${data.client_id || ''}`;
+                }
+                authModeEl.style.display = 'inline-flex';
+            } else {
+                authModeEl.style.display = 'none';
+            }
+        } catch (e) {
+            authModeEl.style.display = 'none';
         }
     }
 
