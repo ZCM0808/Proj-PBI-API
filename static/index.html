@@ -432,21 +432,21 @@
             <div id="vertical-resizer" class="vertical-resizer"></div>
 
             <div class="response-container glass-panel">
-                <div class="response-header">
-                    <span>Response</span>
-                    <div style="margin-left:auto; display:flex; gap:12px; align-items:center;">
-                        <div id="tree-expand-toggles" style="display: none; align-items: center; margin-right: 8px;">
-                            <button id="tree-toggle-all-btn" class="icon-btn" title="全部折叠 / 展开 (Expand / Collapse All)" style="padding: 2px 4px; color: var(--text-secondary); background: transparent; border: 1px solid var(--panel-border); border-radius: 4px; cursor: pointer; display: flex; align-items: center;">
+                <div class="response-header" style="display: flex; align-items: center; justify-content: space-between;">
+                    <span style="flex-shrink: 0; margin-right: 12px;">Response</span>
+                    <div style="display:flex; gap:12px; align-items:center; flex: 1; min-width: 0; justify-content: flex-end;">
+                        <div id="tree-expand-toggles" style="display: none; align-items: center; margin-right: 8px; flex-shrink: 0;">
+                            <button id="tree-toggle-all-btn" class="icon-btn" title="展开 / 折叠 (Expand / Collapse All)" style="padding: 2px 4px; color: var(--text-secondary); background: transparent; border: 1px solid var(--panel-border); border-radius: 4px; cursor: pointer; display: flex; align-items: center;">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
                             </button>
                         </div>
-                        <div id="view-mode-toggles" style="display: none; gap: 2px; border: 1px solid var(--panel-border); border-radius: 6px; overflow: hidden; background: var(--input-bg); padding: 2px; align-items: center;">
-                            <button class="view-mode-btn" data-mode="table" style="border:none; background:transparent; color:var(--text-secondary); padding: 4px 10px; font-size:0.8rem; font-weight:600; cursor:pointer; border-radius:4px; transition:all 0.2s ease; display:flex; align-items:center; gap:4px;" title="Table View">📊 Table</button>
-                            <button class="view-mode-btn active" data-mode="tree" style="border:none; background:var(--accent); color:var(--accent-text); padding: 4px 10px; font-size:0.8rem; font-weight:600; cursor:pointer; border-radius:4px; transition:all 0.2s ease; display:flex; align-items:center; gap:4px;" title="Tree View">🌲 Tree</button>
-                            <button class="view-mode-btn" data-mode="raw" style="border:none; background:transparent; color:var(--text-secondary); padding: 4px 10px; font-size:0.8rem; font-weight:600; cursor:pointer; border-radius:4px; transition:all 0.2s ease; display:flex; align-items:center; gap:4px;" title="Raw JSON">📄 Raw</button>
+                        <div id="view-mode-toggles" style="display: none; gap: 2px; border: 1px solid var(--panel-border); border-radius: 6px; overflow: hidden; background: var(--input-bg); padding: 2px; align-items: center; flex-shrink: 0;">
+                            <button class="view-mode-btn" data-mode="table" style="border:none; background:transparent; color:var(--text-secondary); padding: 4px 10px; font-size:0.8rem; font-weight:600; cursor:pointer; border-radius:4px; transition:all 0.2s ease; display:flex; align-items:center; gap:4px;" title="Table View">表格 Table</button>
+                            <button class="view-mode-btn active" data-mode="tree" style="border:none; background:var(--accent); color:var(--accent-text); padding: 4px 10px; font-size:0.8rem; font-weight:600; cursor:pointer; border-radius:4px; transition:all 0.2s ease; display:flex; align-items:center; gap:4px;" title="Tree View">树状 Tree</button>
+                            <button class="view-mode-btn" data-mode="raw" style="border:none; background:transparent; color:var(--text-secondary); padding: 4px 10px; font-size:0.8rem; font-weight:600; cursor:pointer; border-radius:4px; transition:all 0.2s ease; display:flex; align-items:center; gap:4px;" title="Raw JSON">源码 Raw</button>
                         </div>
-                        <div class="response-status" id="response-status">Waiting for request...</div>
-                        <button id="copy-res-body-btn" class="icon-btn copy-btn" title="Copy Response JSON" type="button" onclick="window.handleCopyAction(this, window.currentJsonResponse ? JSON.stringify(window.currentJsonResponse, null, 2) : document.getElementById('response-output').textContent)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                        <div class="response-status" id="response-status" style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right;">Waiting for request...</div>
+                        <button id="copy-res-body-btn" class="icon-btn copy-btn" style="flex-shrink: 0;" title="Copy Response JSON" type="button" onclick="window.handleCopyAction(this, window.currentJsonResponse ? JSON.stringify(window.currentJsonResponse, null, 2) : document.getElementById('response-output').textContent)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
                     </div>
                 </div>
                 <div class="response-body">
@@ -487,11 +487,11 @@
             </div>
             
             <div class="modal-body" style="overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 12px;">
-                <div style="display: flex; gap: 12px; align-items: center;">
-                    <label style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; width: 140px; min-width: 140px; white-space: nowrap; margin-bottom: 0;">
+                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                    <label style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; width: 140px; flex-shrink: 0; white-space: nowrap; margin-bottom: 0;">
                         Workflow:
                     </label>
-                    <div class="input-with-copy" style="flex: 1;">
+                    <div class="input-with-copy" style="flex: 1; min-width: 200px;">
                         <select id="wf-selector" class="wf-input">
                             <!-- 1. Data & Visual Export -->
                             <option value="export_report">Export Report to File (PDF/Excel/etc.)</option>
@@ -559,8 +559,8 @@
                 <!-- XMLA Interactive Refresh Pane -->
                 <div id="wf-config-xmla_interactive_refresh" class="wf-config-pane" style="display: none;">
                     <div class="wf-fluid-grid">
-                        <div style="grid-column: 1 / -1; display: flex; align-items: center; gap: 12px;">
-                            <label style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600; white-space: nowrap; margin-bottom: 0; width: 140px; min-width: 140px; display: flex; flex-direction: column;">
+                        <div style="grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <label style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600; white-space: nowrap; margin-bottom: 0; width: 140px; flex-shrink: 0; display: flex; flex-direction: column;">
                                 <span>XMLA Endpoint URL:</span>
                                 <span style="font-size: 0.68rem; color: var(--info); opacity: 0.85; font-weight: normal;">*需 Read Write 权限</span>
                             </label>
@@ -1249,14 +1249,18 @@
                             </div>
                         </div>
                         <!-- Grid Column Headers with Sort & Resizable Handles -->
-                        <div class="grid-header-bar" data-list-id="workspace-list" style="display: flex; gap: 8px; align-items: center; padding: 4px 0; margin-top: 6px; border-bottom: 1px solid var(--panel-border); font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); user-select: none;">
-                            <span style="width: 18px; flex-shrink: 0;"></span>
-                            <div class="grid-col-header" data-col="alias" onclick="sortSettingsList('workspace-list', 'alias', event)" style="width: 180px; min-width: 120px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Workspace (工作区)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'workspace-list', 'alias')"></span></span></div>
-                            <div class="grid-col-header" data-col="id" onclick="sortSettingsList('workspace-list', 'id', event)" style="width: 320px; min-width: 200px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>GUID (标识符)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'workspace-list', 'id')"></span></span></div>
-                            <div class="grid-col-header" data-col="type" onclick="sortSettingsList('workspace-list', 'type', event)" style="width: 160px; min-width: 140px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Type & State (属性与状态)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'workspace-list', 'type')"></span></span></div>
-                            <span style="width: 20px; flex-shrink: 0;"></span>
+                        <div style="overflow-x: auto; padding-bottom: 8px;">
+                            <div style="min-width: fit-content;">
+                                <div class="grid-header-bar" data-list-id="workspace-list" style="display: flex; gap: 8px; align-items: center; padding: 4px 0; margin-top: 6px; border-bottom: 1px solid var(--panel-border); font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); user-select: none;">
+                                    <span style="width: 18px; flex-shrink: 0;"></span>
+                                    <div class="grid-col-header" data-col="alias" onclick="sortSettingsList('workspace-list', 'alias', event)" style="width: 180px; min-width: 120px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Workspace (工作区)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'workspace-list', 'alias')"></span></span></div>
+                                    <div class="grid-col-header" data-col="id" onclick="sortSettingsList('workspace-list', 'id', event)" style="width: 320px; min-width: 200px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>GUID (标识符)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'workspace-list', 'id')"></span></span></div>
+                                    <div class="grid-col-header" data-col="type" onclick="sortSettingsList('workspace-list', 'type', event)" style="width: 160px; min-width: 140px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Type & State (属性与状态)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'workspace-list', 'type')"></span></span></div>
+                                    <span style="width: 20px; flex-shrink: 0;"></span>
+                                </div>
+                                <div id="workspace-list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
+                            </div>
                         </div>
-                        <div id="workspace-list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
                     </div>
 
                     <div class="form-group">
@@ -1269,14 +1273,18 @@
                             </div>
                         </div>
                         <!-- Grid Column Headers with Sort & Resizable Handles -->
-                        <div class="grid-header-bar" data-list-id="dataset-list" style="display: flex; gap: 8px; align-items: center; padding: 4px 0; margin-top: 6px; border-bottom: 1px solid var(--panel-border); font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); user-select: none;">
-                            <span style="width: 18px; flex-shrink: 0;"></span>
-                            <div class="grid-col-header" data-col="alias" onclick="sortSettingsList('dataset-list', 'alias', event)" style="width: 180px; min-width: 120px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Dataset (数据集)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'dataset-list', 'alias')"></span></span></div>
-                            <div class="grid-col-header" data-col="id" onclick="sortSettingsList('dataset-list', 'id', event)" style="width: 320px; min-width: 200px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>GUID (标识符)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'dataset-list', 'id')"></span></span></div>
-                            <div class="grid-col-header" data-col="type" onclick="sortSettingsList('dataset-list', 'type', event)" style="width: 160px; min-width: 140px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Type & State (属性与状态)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'dataset-list', 'type')"></span></span></div>
-                            <span style="width: 20px; flex-shrink: 0;"></span>
+                        <div style="overflow-x: auto; padding-bottom: 8px;">
+                            <div style="min-width: fit-content;">
+                                <div class="grid-header-bar" data-list-id="dataset-list" style="display: flex; gap: 8px; align-items: center; padding: 4px 0; margin-top: 6px; border-bottom: 1px solid var(--panel-border); font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); user-select: none;">
+                                    <span style="width: 18px; flex-shrink: 0;"></span>
+                                    <div class="grid-col-header" data-col="alias" onclick="sortSettingsList('dataset-list', 'alias', event)" style="width: 180px; min-width: 120px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Dataset (语义模型)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'dataset-list', 'alias')"></span></span></div>
+                                    <div class="grid-col-header" data-col="id" onclick="sortSettingsList('dataset-list', 'id', event)" style="width: 320px; min-width: 200px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>GUID (标识符)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'dataset-list', 'id')"></span></span></div>
+                                    <div class="grid-col-header" data-col="type" onclick="sortSettingsList('dataset-list', 'type', event)" style="width: 160px; min-width: 140px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Type & State (属性与状态)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'dataset-list', 'type')"></span></span></div>
+                                    <span style="width: 20px; flex-shrink: 0;"></span>
+                                </div>
+                                <div id="dataset-list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
+                            </div>
                         </div>
-                        <div id="dataset-list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
                     </div>
 
                     <div class="form-group">
@@ -1289,14 +1297,18 @@
                             </div>
                         </div>
                         <!-- Grid Column Headers with Sort & Resizable Handles -->
-                        <div class="grid-header-bar" data-list-id="report-list" style="display: flex; gap: 8px; align-items: center; padding: 4px 0; margin-top: 6px; border-bottom: 1px solid var(--panel-border); font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); user-select: none;">
-                            <span style="width: 18px; flex-shrink: 0;"></span>
-                            <div class="grid-col-header" data-col="alias" onclick="sortSettingsList('report-list', 'alias', event)" style="width: 180px; min-width: 120px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Report (报表)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'report-list', 'alias')"></span></span></div>
-                            <div class="grid-col-header" data-col="id" onclick="sortSettingsList('report-list', 'id', event)" style="width: 320px; min-width: 200px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>GUID (标识符)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'report-list', 'id')"></span></span></div>
-                            <div class="grid-col-header" data-col="type" onclick="sortSettingsList('report-list', 'type', event)" style="width: 160px; min-width: 140px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Type & State (属性与状态)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'report-list', 'type')"></span></span></div>
-                            <span style="width: 20px; flex-shrink: 0;"></span>
+                        <div style="overflow-x: auto; padding-bottom: 8px;">
+                            <div style="min-width: fit-content;">
+                                <div class="grid-header-bar" data-list-id="report-list" style="display: flex; gap: 8px; align-items: center; padding: 4px 0; margin-top: 6px; border-bottom: 1px solid var(--panel-border); font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); user-select: none;">
+                                    <span style="width: 18px; flex-shrink: 0;"></span>
+                                    <div class="grid-col-header" data-col="alias" onclick="sortSettingsList('report-list', 'alias', event)" style="width: 180px; min-width: 120px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Report (报表)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'report-list', 'alias')"></span></span></div>
+                                    <div class="grid-col-header" data-col="id" onclick="sortSettingsList('report-list', 'id', event)" style="width: 320px; min-width: 200px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>GUID (标识符)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'report-list', 'id')"></span></span></div>
+                                    <div class="grid-col-header" data-col="type" onclick="sortSettingsList('report-list', 'type', event)" style="width: 160px; min-width: 140px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Type & State (属性与状态)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'report-list', 'type')"></span></span></div>
+                                    <span style="width: 20px; flex-shrink: 0;"></span>
+                                </div>
+                                <div id="report-list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
+                            </div>
                         </div>
-                        <div id="report-list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
                     </div>
                 </div>
                 <div class="modal-footer" style="display: flex; justify-content: flex-end; align-items: center; gap: 8px;">
