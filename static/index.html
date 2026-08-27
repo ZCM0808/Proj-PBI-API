@@ -311,12 +311,12 @@
                             <input type="hidden" id="active-dataset" value="">
                         </div>
                     </div>
-                    <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
-                        <div style="display: flex; flex-direction: column; justify-content: center; align-items: flex-start;">
+                    <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                        <div style="display: flex; flex-direction: column; justify-content: center; align-items: flex-start; width: 50px;">
                             <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0; line-height: 1.2;">Report</label>
                             <span style="font-size: 0.6rem; color: var(--text-tertiary); line-height: 1.2;">(reportId)</span>
                         </div>
-                        <div class="custom-select-wrapper" id="wrapper-report" style="position: relative; flex: 1; min-width: 0;">
+                        <div class="custom-select-wrapper" id="wrapper-report" style="position: relative; width: 409px; flex-shrink: 0;">
                             <div class="custom-select-trigger" id="trigger-report" onclick="toggleCustomSelect('report')" style="padding: 4px 8px; height: 38px; background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 4px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; user-select: none; transition: border-color 0.2s;">
                                 <span class="cs-name" style="color: var(--text-primary); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">-- None --</span>
                                 <span class="cs-id" style="color: var(--text-secondary); font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: none;"></span>
