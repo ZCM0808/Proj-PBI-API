@@ -658,6 +658,7 @@ window.scanItems = async function(type, btn) {
                 pbi_client_id: document.getElementById('set-client').value.trim(),
                 pbi_client_secret: document.getElementById('set-secret').value.trim(),
                 pbi_tenant_id: document.getElementById('set-tenant').value.trim(),
+                  pbi_tenant_name: document.getElementById('set-tenant-name') ? document.getElementById('set-tenant-name').value.trim() : '',
                 workspace_id: workspaceId
             })
         });
@@ -933,6 +934,7 @@ window.renderContextDropdowns = function() {
 window.renderEnvIdentity = async function() {
     const appName = localStorage.getItem('pbi_app_name');
     const tenantId = localStorage.getItem('pbi_tenant_id');
+    const tenantName = localStorage.getItem('pbi_tenant_name');
     const tenantEl = document.getElementById('display-tenant');
     const clientEl = document.getElementById('display-client');
     const authModeEl = document.getElementById('display-auth-mode');
@@ -942,7 +944,7 @@ window.renderEnvIdentity = async function() {
     if (tenantEl) {
         if (tenantId) {
             tenantEl.style.display = 'inline-flex';
-            tenantEl.querySelector('strong').textContent = tenantId;
+            tenantEl.querySelector('strong').textContent = tenantName || tenantId;
         } else {
             tenantEl.style.display = 'none';
         }
@@ -3747,6 +3749,8 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                             localStorage.setItem('pbi_app_name', result.app_name);
                         }
                         localStorage.setItem('pbi_tenant_id', tenantId);
+                        const tname = document.getElementById('set-tenant-name') ? document.getElementById('set-tenant-name').value.trim() : '';
+                        localStorage.setItem('pbi_tenant_name', tname);
                         window.renderEnvIdentity();
                     } else {
                         verifySettingsBtn.innerHTML = '❌ Failed';
@@ -3832,6 +3836,7 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                 USERNAME: document.getElementById('set-username').value.trim(),
                 PASSWORD: document.getElementById('set-password').value.trim(),
                 TENANT_ID: document.getElementById('set-tenant').value.trim(),
+                TENANT_NAME: document.getElementById('set-tenant-name') ? document.getElementById('set-tenant-name').value.trim() : '',
                 AUTH_MODE: authMode,
                 PBI_WORKSPACES: window.getListData('workspace-list'),
                 PBI_DATASETS: window.getListData('dataset-list'),
@@ -3903,6 +3908,7 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                 datasets: localStorage.getItem('pbi_datasets') || JSON.stringify(backendSettings.PBI_DATASETS || []),
                 reports: localStorage.getItem('pbi_reports') || JSON.stringify(backendSettings.PBI_REPORTS || []),
                 tenantId: backendSettings.TENANT_ID || localStorage.getItem('pbi_tenant_id'),
+                tenantName: backendSettings.TENANT_NAME || localStorage.getItem('pbi_tenant_name'),
                 appName: localStorage.getItem('pbi_app_name'),
                 clientId: backendSettings.CLIENT_ID,
                 clientSecret: backendSettings.CLIENT_SECRET,
@@ -3961,6 +3967,7 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                         USERNAME: data.username !== undefined ? data.username : existing.USERNAME,
                         PASSWORD: data.password !== undefined ? data.password : existing.PASSWORD,
                         TENANT_ID: data.tenantId !== undefined ? data.tenantId : existing.TENANT_ID,
+                        TENANT_NAME: data.tenantName !== undefined ? data.tenantName : existing.TENANT_NAME,
                         SQL_CONN_STR: data.sqlConnStr !== undefined ? data.sqlConnStr : existing.SQL_CONN_STR,
                         AUTH_MODE: data.authMode !== undefined ? data.authMode : existing.AUTH_MODE,
                         PBI_WORKSPACES: data.workspaces ? JSON.parse(data.workspaces) : existing.PBI_WORKSPACES,

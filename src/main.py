@@ -1852,6 +1852,7 @@ async def get_auth_info():
         client_id = settings.get("PBI_CLIENT_ID", Config.CLIENT_ID)
         username = settings.get("PBI_USERNAME", Config.USERNAME)
         tenant_id = settings.get("PBI_TENANT_ID", Config.TENANT_ID)
+        tenant_name = settings.get("PBI_TENANT_NAME", Config.TENANT_NAME)
         
         app_name = settings.get("PBI_APP_NAME") or os.getenv("PBI_APP_NAME", "APP_Automation")
         if client_id and not app_name:
@@ -1863,6 +1864,7 @@ async def get_auth_info():
             "client_id": client_id,
             "username": username,
             "tenant_id": tenant_id,
+            "tenant_name": tenant_name,
             "app_name": app_name
         }
     except Exception as e:

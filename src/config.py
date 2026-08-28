@@ -26,6 +26,7 @@ class Config:
     USERNAME: str = os.getenv("PBI_USERNAME", "")
     PASSWORD: str = os.getenv("PBI_PASSWORD", "")
     TENANT_ID: str = _settings.get("PBI_TENANT_ID", os.getenv("PBI_TENANT_ID", ""))
+    TENANT_NAME: str = _settings.get("PBI_TENANT_NAME", os.getenv("PBI_TENANT_NAME", ""))
     AUTHORITY: str = os.getenv("PBI_AUTHORITY", "https://login.microsoftonline.com/")
     SCOPE: list[str] = [
         os.getenv("PBI_SCOPE", "https://analysis.windows.net/powerbi/api/.default")
@@ -62,6 +63,7 @@ class Config:
             "USERNAME": cls.USERNAME,
             "PASSWORD": cls.PASSWORD,
             "TENANT_ID": cls.TENANT_ID,
+            "TENANT_NAME": cls.TENANT_NAME,
             "SQL_CONN_STR": cls.SQL_CONN_STR,
             "PBI_WORKSPACES": cls.PBI_WORKSPACES,
             "PBI_DATASETS": cls.PBI_DATASETS,
@@ -85,6 +87,7 @@ class Config:
         json_keys = {
             "AUTH_MODE": "PBI_AUTH_MODE",
             "TENANT_ID": "PBI_TENANT_ID",
+            "TENANT_NAME": "PBI_TENANT_NAME",
             "SQL_CONN_STR": "SQL_CONN_STR",
             "PBI_WORKSPACES": "PBI_WORKSPACES",
             "PBI_DATASETS": "PBI_DATASETS",
