@@ -233,6 +233,8 @@
             transition: all 0.3s ease;
             outline: none;
         }
+            height: 52px;
+            box-sizing: border-box;
 
         input[type="password"]:focus,
         input[type="text"]:focus {
@@ -307,13 +309,19 @@
 
         .tab-panel {
             display: none;
-            animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .tab-panel.active {
+            display: block;
+            animation: tabFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes tabFadeIn {
+            0% { opacity: 0; transform: translateY(6px); }
+            100% { opacity: 1; transform: translateY(0); }
         }
         .tab-panel.active {
             display: block;
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(6px); }
+        
             to { opacity: 1; transform: translateY(0); }
         }
     
