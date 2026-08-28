@@ -3222,7 +3222,7 @@ div:has(> .collapsed-console) > .wf-copy-btn,
     position: relative;
 }
 .pbi-action-btn {
-    background: rgba(18, 22, 31, 0.85);
+    background: var(--panel-bg);
     color: var(--text-secondary);
     border: 1px solid var(--panel-border);
     border-radius: 6px;
@@ -3235,6 +3235,7 @@ div:has(> .collapsed-console) > .wf-copy-btn,
     align-items: center;
     justify-content: center;
     backdrop-filter: blur(8px);
+    box-shadow: 0 4px 12px var(--shadow-base);
 }
 #pbi-embed-wrapper:hover .pbi-action-btn {
     opacity: 1;
