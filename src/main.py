@@ -115,6 +115,20 @@ async def auth_middleware(request: Request, call_next):
                     return JSONResponse(status_code=401, content={"success": False, "message": "Session expired or unauthorized. Please login."})
                 else:
                     return RedirectResponse(url="/login", status_code=302)
+            
+            parts = token.split(".", 2)
+            mode = parts[1] if len(parts) == 3 else "mfa"
+            if mode == "pwd1":
+                device_id = request.cookies.get("pbi_device_id")
+                if device_id:
+                    today = datetime.now().strftime("%Y-%m-%d")
+                    device_record = lockouts.get(device_id, {})
+                    usage = device_record.get("daily_usage", {})
+                    if usage.get("date") == today and usage.get("used_seconds", 0) >= 3600:
+                        if request.url.path.startswith("/api/"):
+                            return JSONResponse(status_code=403, content={"success": False, "message": "Daily 1-hour limit for password login reached. Please use MFA."})
+                        else:
+                            return RedirectResponse(url="/login", status_code=302)
     return await call_next(request)
 
 # 挂载静态文件
@@ -215,6 +229,11 @@ async def login(req: LoginRequest, request: Request, response: Response):
 
     # ===== 平行分支 2: 使用密码一 (主密码) 登录 (不限登录次数，单次/累计上限1小时) =====
     if req.password:
+        today = datetime.now().strftime("%Y-%m-%d")
+        usage = device_record.get("daily_usage", {"date": today, "used_seconds": 0})
+        if usage.get("date") == today and usage.get("used_seconds", 0) >= 3600:
+            return JSONResponse(status_code=403, content={"success": False, "message": "今日密码登录 1 小时额度已用完，请使用 MFA 登录 (Daily limit reached)."})
+            
         if req.password != Config.APP_ACCESS_PASSWORD:
             device_record["attempts"] += 1
             if device_record["attempts"] >= 3:
@@ -263,6 +282,40 @@ async def mfa_setup(request: Request):
         "provisioning_uri": provisioning_uri
     })
 
+
+@app.post("/api/ping-usage")
+async def ping_usage(request: Request):
+    token = request.cookies.get("pbi_auth_token")
+    if not token or not verify_auth_token(token):
+        return JSONResponse(status_code=401, content={"success": False})
+        
+    device_id = request.cookies.get("pbi_device_id")
+    if not device_id:
+        return JSONResponse(content={"success": True, "used_seconds": 0, "limit_reached": False})
+        
+    parts = token.split(".", 2)
+    mode = parts[1] if len(parts) == 3 else "mfa"
+    
+    if mode != "pwd1":
+        return JSONResponse(content={"success": True, "used_seconds": 0, "limit_reached": False})
+        
+    today = datetime.now().strftime("%Y-%m-%d")
+    device_record = lockouts.get(device_id, {"attempts": 0, "locked_until": 0})
+    
+    usage = device_record.get("daily_usage", {"date": today, "used_seconds": 0})
+    if usage.get("date") != today:
+        usage = {"date": today, "used_seconds": 0}
+        
+    usage["used_seconds"] += 60
+    device_record["daily_usage"] = usage
+    lockouts[device_id] = device_record
+    save_lockouts(lockouts)
+    
+    return JSONResponse(content={
+        "success": True, 
+        "used_seconds": usage["used_seconds"], 
+        "limit_reached": usage["used_seconds"] >= 3600
+    })
 
 @app.post("/api/logout")
 async def logout(response: Response):

@@ -1670,6 +1670,7 @@
     </div>
 
 
+    
     <!-- Daily Time Tracker -->
     <script>
         (function() {
@@ -1706,6 +1707,7 @@
 
             setInterval(() => {
                 if (document.visibilityState === 'visible') {
+                    // Accumulate locally
                     const today = new Date().toISOString().split('T')[0];
                     try {
                         let data = JSON.parse(localStorage.getItem('pbi-daily-time') || '{}');
@@ -1716,11 +1718,22 @@
                         localStorage.setItem('pbi-daily-time', JSON.stringify(data));
                         updateTime();
                     } catch(e) {}
+                    
+                    // Ping backend to enforce global limit
+                    fetch('/api/ping-usage', {method: 'POST'})
+                        .then(r => r.json())
+                        .then(res => {
+                            if (res.limit_reached) {
+                                alert('今日密码登录 1 小时额度已用完，请使用 MFA 登录。');
+                                window.location.href = '/login';
+                            }
+                        }).catch(e => {});
                 }
             }, 60000);
         })();
     </script>
 </body>
+
 
 </html>
 
