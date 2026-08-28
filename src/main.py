@@ -721,10 +721,9 @@ async def verify_settings(request: Request):
             except Exception:
                 pass
                 
-            return {"success": True, "message": f"Auth Success
-Auth Mode: {auth_mode}
-Client App: {app_name}
-Tenant Name: {tenant_name if 'tenant_name' in locals() and tenant_name else 'Unknown (Needs Permissions)'}", "app_name": app_name, "tenant_name": tenant_name if 'tenant_name' in locals() and tenant_name else ""}
+            tenant_name_display = tenant_name if 'tenant_name' in locals() and tenant_name else 'Unknown (Needs Permissions)'
+            tenant_name_val = tenant_name if 'tenant_name' in locals() and tenant_name else ''
+            return {"success": True, "message": f"Auth Success\nAuth Mode: {auth_mode}\nClient App: {app_name}\nTenant Name: {tenant_name_display}", "app_name": app_name, "tenant_name": tenant_name_val}
         
         error_desc = result.get('error_description', result.get('error', 'Unknown Error')) if result else "No result returned"
         return {"success": False, "message": f"Auth failed: {error_desc}"}
