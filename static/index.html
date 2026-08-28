@@ -1669,6 +1669,58 @@
         </div>
     </div>
 
+
+    <!-- Daily Time Tracker -->
+    <script>
+        (function() {
+            const tracker = document.createElement('div');
+            tracker.style.position = 'fixed';
+            tracker.style.bottom = '12px';
+            tracker.style.right = '16px';
+            tracker.style.fontSize = '0.75rem';
+            tracker.style.color = 'var(--text-secondary, #cbd5e1)';
+            tracker.style.background = 'var(--overlay-10, rgba(255, 255, 255, 0.1))';
+            tracker.style.padding = '4px 10px';
+            tracker.style.borderRadius = '12px';
+            tracker.style.backdropFilter = 'blur(4px)';
+            tracker.style.pointerEvents = 'none';
+            tracker.style.zIndex = '999999';
+            tracker.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
+            tracker.innerHTML = '⏱️ 今日累计: <span id="daily-time-val">0</span> 分钟';
+            document.body.appendChild(tracker);
+
+            function updateTime() {
+                const today = new Date().toISOString().split('T')[0];
+                try {
+                    let data = JSON.parse(localStorage.getItem('pbi-daily-time') || '{}');
+                    if (data.date !== today) {
+                        data = { date: today, seconds: 0 };
+                        localStorage.setItem('pbi-daily-time', JSON.stringify(data));
+                    }
+                    const mins = Math.floor(data.seconds / 60);
+                    document.getElementById('daily-time-val').textContent = mins;
+                } catch(e) {}
+            }
+            
+            updateTime();
+
+            setInterval(() => {
+                if (document.visibilityState === 'visible') {
+                    const today = new Date().toISOString().split('T')[0];
+                    try {
+                        let data = JSON.parse(localStorage.getItem('pbi-daily-time') || '{}');
+                        if (data.date !== today) {
+                            data = { date: today, seconds: 0 };
+                        }
+                        data.seconds += 60;
+                        localStorage.setItem('pbi-daily-time', JSON.stringify(data));
+                        updateTime();
+                    } catch(e) {}
+                }
+            }, 60000);
+        })();
+    </script>
 </body>
+
 </html>
 
