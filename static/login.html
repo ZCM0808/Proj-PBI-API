@@ -553,6 +553,15 @@
             btnText.style.display = 'block';
             btnText.textContent = 'Success!';
 
+            const currentTheme = localStorage.getItem('pbi-theme');
+            if (currentTheme) {
+                fetch('/api/db/kv/pbi-theme', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ value: currentTheme })
+                }).catch(() => {});
+            }
+
             const container = document.querySelector('.login-container');
             container.style.animation = 'zoomOutFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards';
             document.querySelectorAll('.blob').forEach(blob => {
