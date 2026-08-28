@@ -3748,6 +3748,13 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                         if (result.app_name) {
                             localStorage.setItem('pbi_app_name', result.app_name);
                         }
+                        if (result.tenant_name) {
+                            localStorage.setItem('pbi_tenant_name', result.tenant_name);
+                            const tnameInput = document.getElementById('set-tenant-name');
+                            if (tnameInput && !tnameInput.value.trim()) {
+                                tnameInput.value = result.tenant_name;
+                            }
+                        }
                         localStorage.setItem('pbi_tenant_id', tenantId);
                         const tname = document.getElementById('set-tenant-name') ? document.getElementById('set-tenant-name').value.trim() : '';
                         localStorage.setItem('pbi_tenant_name', tname);

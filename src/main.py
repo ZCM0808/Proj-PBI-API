@@ -706,10 +706,25 @@ async def verify_settings(request: Request):
                     payload += "=" * ((4 - len(payload) % 4) % 4)
                     jwt_data = json.loads(base64.b64decode(payload).decode('utf-8'))
                     app_name = jwt_data.get("app_displayname") or jwt_data.get("name") or "Service Principal"
+                    # ?_ _~s, MS Graph API Z?- Tenant Name
+                    tenant_name = ""
+                    try:
+                        import urllib.request
+                        req = urllib.request.Request("https://graph.microsoft.com/v1.0/organization", headers={"Authorization": f"Bearer {token}"})
+                        with urllib.request.urlopen(req, timeout=3) as resp:
+                            org_data = json.loads(resp.read().decode('utf-8'))
+                            if "value" in org_data and len(org_data["value"]) > 0:
+                                tenant_name = org_data["value"][0].get("displayName", "")
+                    except Exception as e:
+                        print("Failed to fetch tenant name from Graph:", e)
+
             except Exception:
                 pass
                 
-            return {"success": True, "message": f"凭证验证成功！(Auth Success)\nAuth Mode: {'Personal Auth (Delegated)' if auth_mode == 'personal' else 'Service Principal'}\nClient App: {app_name}", "app_name": app_name}
+            return {"success": True, "message": f"Auth Success
+Auth Mode: {auth_mode}
+Client App: {app_name}
+Tenant Name: {tenant_name if 'tenant_name' in locals() and tenant_name else 'Unknown (Needs Permissions)'}", "app_name": app_name, "tenant_name": tenant_name if 'tenant_name' in locals() and tenant_name else ""}
         
         error_desc = result.get('error_description', result.get('error', 'Unknown Error')) if result else "No result returned"
         return {"success": False, "message": f"Auth failed: {error_desc}"}
