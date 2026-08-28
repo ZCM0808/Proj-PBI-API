@@ -615,13 +615,15 @@
     </script>
 
     
+    
     <!-- Daily Time Tracker -->
     <script>
         (function() {
             const tracker = document.createElement('div');
             tracker.style.position = 'fixed';
             tracker.style.bottom = '12px';
-            tracker.style.right = '16px';
+            tracker.style.left = '50%';
+            tracker.style.transform = 'translateX(-50%)';
             tracker.style.fontSize = '0.75rem';
             tracker.style.color = 'var(--text-secondary, #cbd5e1)';
             tracker.style.background = 'var(--overlay-10, rgba(255, 255, 255, 0.1))';
@@ -677,6 +679,7 @@
         })();
     </script>
 </body>
+
 
 
 </html>
