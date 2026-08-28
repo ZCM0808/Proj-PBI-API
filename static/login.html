@@ -187,27 +187,7 @@
             background: var(--tab-hover);
         }
 
-        /* Info Badge */
-        .info-badge {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 12px;
-            border-radius: 10px;
-            font-size: 0.8rem;
-            line-height: 1.4;
-            margin-bottom: 20px;
-        }
-        .info-badge.pwd {
-            background: rgba(59, 130, 246, 0.08);
-            border: 1px solid rgba(59, 130, 246, 0.2);
-            color: #93c5fd;
-        }
-        .info-badge.mfa {
-            background: rgba(139, 92, 246, 0.08);
-            border: 1px solid rgba(139, 92, 246, 0.2);
-            color: #c4b5fd;
-        }
+        
 
         .input-group {
             margin-bottom: 20px;
@@ -372,7 +352,7 @@
                 </svg>
             </div>
             <h1>Power BI API Explorer <span id="dev-badge" style="display: none; font-size: 0.65rem; background: var(--dev-badge-bg, rgba(234, 179, 8, 0.2)); border: 1px solid var(--dev-badge-border, rgba(234, 179, 8, 0.4)); color: var(--dev-badge-text, #fde047); padding: 2px 8px; border-radius: 20px; vertical-align: middle; margin-left: 6px; font-weight: 600;">🛠️ DEV MODE</span></h1>
-            <p class="subtitle" id="page-subtitle">选择登录通道进入系统</p>
+            <p class="subtitle" id="page-subtitle">请验证您的身份以继续访问</p>
         </div>
 
         <!-- Mode Selector Tabs -->
@@ -387,9 +367,7 @@
 
         <!-- Panel 1: Password 1 Login Mode -->
         <div class="tab-panel active" id="panel-pwd">
-            <div class="info-badge pwd">
-                <span><strong>不限登录次数</strong>，单次/累计上限 <strong>1 小时</strong></span>
-            </div>
+            
             <div class="input-group">
                 <label for="password">Access Password (主密码)</label>
                 <input type="password" id="password" name="password" placeholder="••••••••" autofocus autocomplete="current-password">
@@ -403,9 +381,7 @@
 
         <!-- Panel 2: MFA Code Independent Login Mode -->
         <div class="tab-panel" id="panel-mfa">
-            <div class="info-badge mfa">
-                <span><strong>不限次数</strong>，单次使用上限 <strong>3 小时</strong></span>
-            </div>
+            
             <div class="input-group">
                 <label for="mfa-code">6 位 MFA 动态验证码</label>
                 <input type="text" id="mfa-code" name="mfa-code" placeholder="000000" maxlength="6" autocomplete="one-time-code" inputmode="numeric">
@@ -481,7 +457,7 @@
             tabBtnMfa.classList.remove('active');
             panelPwd.classList.add('active');
             panelMfa.classList.remove('active');
-            document.getElementById('page-subtitle').textContent = '通道一 • 主密码登录 (每天限1次/1小时)';
+            document.getElementById('page-subtitle').textContent = '请验证您的身份以继续访问';
             setTimeout(() => document.getElementById('password').focus(), 100);
         });
 
@@ -490,7 +466,7 @@
             tabBtnPwd.classList.remove('active');
             panelMfa.classList.add('active');
             panelPwd.classList.remove('active');
-            document.getElementById('page-subtitle').textContent = '通道二 • MFA 动态口令 (不限次数/3小时)';
+            document.getElementById('page-subtitle').textContent = '请验证您的身份以继续访问';
             setTimeout(() => document.getElementById('mfa-code').focus(), 100);
         });
 
