@@ -1835,6 +1835,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     } else {
                         document.documentElement.removeAttribute('data-theme');
                     }
+                    if (typeof updateThemeIcons === 'function') {
+                        updateThemeIcons();
+                    }
                 }
             }).catch(e => console.error('Backend theme sync failed', e));
     }
