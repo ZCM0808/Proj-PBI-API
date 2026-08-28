@@ -413,8 +413,31 @@
                 <div class="spinner"></div>
             </button>
             <div class="error-message" id="error-mfa"></div>
-        </div>
     </div>
+    
+    <!-- Inline Daily Time Tracker -->
+    <div class="daily-time-tracker-login" style="margin-top: 20px; font-size: 0.8rem; color: var(--text-secondary); text-align: center; user-select: none; z-index: 10;">
+        <span style="opacity: 0.85;">⏱️ 今日密码登录累计:</span> <span id="daily-time-val-login" style="font-weight: 600; color: var(--text-primary); font-family: monospace;">0</span> 分钟 / 60 分钟
+    </div>
+    <script>
+        (function() {
+            function updateLoginTracker() {
+                const today = new Date().toISOString().split('T')[0];
+                try {
+                    let data = JSON.parse(localStorage.getItem('pbi-daily-time') || '{}');
+                    if (data.date !== today) {
+                        data = { date: today, seconds: 0 };
+                        localStorage.setItem('pbi-daily-time', JSON.stringify(data));
+                    }
+                    const mins = Math.floor(data.seconds / 60);
+                    const el = document.getElementById('daily-time-val-login');
+                    if(el) el.textContent = mins;
+                } catch(e) {}
+            }
+            updateLoginTracker();
+            setInterval(updateLoginTracker, 60000);
+        })();
+    </script>
 
     <!-- Cinematic Fade Overlay -->
     <div id="fade-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: var(--fade-bg); opacity: 0; pointer-events: none; z-index: 9999; transition: opacity 0.7s ease;"></div>
@@ -616,69 +639,7 @@
 
     
     
-    <!-- Daily Time Tracker -->
-    <script>
-        (function() {
-            const tracker = document.createElement('div');
-            tracker.style.position = 'fixed';
-            tracker.style.bottom = '12px';
-            tracker.style.left = '50%';
-            tracker.style.transform = 'translateX(-50%)';
-            tracker.style.fontSize = '0.75rem';
-            tracker.style.color = 'var(--text-secondary, #cbd5e1)';
-            tracker.style.background = 'var(--overlay-10, rgba(255, 255, 255, 0.1))';
-            tracker.style.padding = '4px 10px';
-            tracker.style.borderRadius = '12px';
-            tracker.style.backdropFilter = 'blur(4px)';
-            tracker.style.pointerEvents = 'none';
-            tracker.style.zIndex = '999999';
-            tracker.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
-            tracker.innerHTML = '⏱️ 今日累计: <span id="daily-time-val">0</span> 分钟';
-            document.body.appendChild(tracker);
-
-            function updateTime() {
-                const today = new Date().toISOString().split('T')[0];
-                try {
-                    let data = JSON.parse(localStorage.getItem('pbi-daily-time') || '{}');
-                    if (data.date !== today) {
-                        data = { date: today, seconds: 0 };
-                        localStorage.setItem('pbi-daily-time', JSON.stringify(data));
-                    }
-                    const mins = Math.floor(data.seconds / 60);
-                    document.getElementById('daily-time-val').textContent = mins;
-                } catch(e) {}
-            }
-            
-            updateTime();
-
-            setInterval(() => {
-                if (document.visibilityState === 'visible') {
-                    // Accumulate locally
-                    const today = new Date().toISOString().split('T')[0];
-                    try {
-                        let data = JSON.parse(localStorage.getItem('pbi-daily-time') || '{}');
-                        if (data.date !== today) {
-                            data = { date: today, seconds: 0 };
-                        }
-                        data.seconds += 60;
-                        localStorage.setItem('pbi-daily-time', JSON.stringify(data));
-                        updateTime();
-                    } catch(e) {}
-                    
-                    // Ping backend to enforce global limit
-                    fetch('/api/ping-usage', {method: 'POST'})
-                        .then(r => r.json())
-                        .then(res => {
-                            if (res.limit_reached) {
-                                alert('今日密码登录 1 小时额度已用完，请使用 MFA 登录。');
-                                window.location.href = '/login';
-                            }
-                        }).catch(e => {});
-                }
-            }, 60000);
-        })();
-    </script>
-</body>
+    </body>
 
 
 

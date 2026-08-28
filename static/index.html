@@ -261,6 +261,11 @@
                         <strong id="display-auth-mode-text" style="font-weight: 600; line-height: 1; font-size: 0.72rem;">Service Principal</strong>
                     </span>
                     <span class="env-sep" style="opacity: 0.25;">|</span>
+                    <span id="display-daily-limit" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; height: 24px; box-sizing: border-box;" title="今日密码登录累计使用时长">
+                        <span style="opacity: 0.85; line-height: 1;">⏱️ 累计:</span>
+                        <strong id="daily-time-val-main" style="color: var(--text-primary); font-weight: 600; line-height: 1; font-family: monospace;">0</strong>
+                        <span style="opacity: 0.85; line-height: 1;">分钟</span>
+                    </span>
                     <span id="display-tenant" style="display: none; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; transition: background 0.2s ease, color 0.2s ease; height: 24px; box-sizing: border-box;" title="Tenant ID">
                         <span style="opacity: 0.85; line-height: 1;">🏢 Tenant:</span>
                         <strong style="color: var(--text-primary); font-weight: 600; font-family: 'Fira Code', monospace; font-size: 0.72rem; line-height: 1;">Unknown</strong>
@@ -1672,41 +1677,24 @@
 
     
     
-    <!-- Daily Time Tracker -->
+    
+    <!-- Background Daily Limit Pinger -->
     <script>
         (function() {
-            const tracker = document.createElement('div');
-            tracker.style.position = 'fixed';
-            tracker.style.bottom = '12px';
-            tracker.style.left = '50%';
-            tracker.style.transform = 'translateX(-50%)';
-            tracker.style.fontSize = '0.75rem';
-            tracker.style.color = 'var(--text-secondary, #cbd5e1)';
-            tracker.style.background = 'var(--overlay-10, rgba(255, 255, 255, 0.1))';
-            tracker.style.padding = '4px 10px';
-            tracker.style.borderRadius = '12px';
-            tracker.style.backdropFilter = 'blur(4px)';
-            tracker.style.pointerEvents = 'none';
-            tracker.style.zIndex = '999999';
-            tracker.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
-            tracker.innerHTML = '⏱️ 今日累计: <span id="daily-time-val">0</span> 分钟';
-            document.body.appendChild(tracker);
-
-            function updateTime() {
+            function updateMainTracker() {
                 const today = new Date().toISOString().split('T')[0];
                 try {
                     let data = JSON.parse(localStorage.getItem('pbi-daily-time') || '{}');
                     if (data.date !== today) {
                         data = { date: today, seconds: 0 };
-                        localStorage.setItem('pbi-daily-time', JSON.stringify(data));
                     }
                     const mins = Math.floor(data.seconds / 60);
-                    document.getElementById('daily-time-val').textContent = mins;
+                    const el = document.getElementById('daily-time-val-main');
+                    if (el) el.textContent = mins;
                 } catch(e) {}
             }
+            updateMainTracker();
             
-            updateTime();
-
             setInterval(() => {
                 if (document.visibilityState === 'visible') {
                     // Accumulate locally
@@ -1718,7 +1706,7 @@
                         }
                         data.seconds += 60;
                         localStorage.setItem('pbi-daily-time', JSON.stringify(data));
-                        updateTime();
+                        updateMainTracker();
                     } catch(e) {}
                     
                     // Ping backend to enforce global limit
