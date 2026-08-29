@@ -124,7 +124,7 @@ async def auth_middleware(request: Request, call_next):
                     today = datetime.now().strftime("%Y-%m-%d")
                     device_record = lockouts.get(device_id, {})
                     usage = device_record.get("daily_usage", {})
-                    if usage.get("date") == today and usage.get("used_seconds", 0) >= 3600:
+                    if not is_dev_mode() and usage.get("date") == today and usage.get("used_seconds", 0) >= 3600:
                         if request.url.path.startswith("/api/"):
                             return JSONResponse(status_code=403, content={"success": False, "message": "Daily 1-hour limit for password login reached. Please use MFA."})
                         else:
@@ -231,7 +231,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
     if req.password:
         today = datetime.now().strftime("%Y-%m-%d")
         usage = device_record.get("daily_usage", {"date": today, "used_seconds": 0})
-        if usage.get("date") == today and usage.get("used_seconds", 0) >= 3600:
+        if not is_dev_mode() and usage.get("date") == today and usage.get("used_seconds", 0) >= 3600:
             return JSONResponse(status_code=403, content={"success": False, "message": "今日密码登录 1 小时额度已用完，请使用 MFA 登录 (Daily limit reached)."})
             
         if req.password != Config.APP_ACCESS_PASSWORD:
@@ -296,7 +296,7 @@ async def ping_usage(request: Request):
     parts = token.split(".", 2)
     mode = parts[1] if len(parts) == 3 else "mfa"
     
-    if mode != "pwd1":
+    if is_dev_mode() or mode != "pwd1":
         return JSONResponse(content={"success": True, "used_seconds": 0, "limit_reached": False})
         
     today = datetime.now().strftime("%Y-%m-%d")
