@@ -9410,7 +9410,7 @@ if (btnKeepAwake) {
 
             btnKeepAwake.style.borderColor = '';
 
-            btnKeepAwake.title = 'Toggle Anti-Sleep (Keep Render Awake)';
+            btnKeepAwake.title = '保持连接防休眠 (Keep Awake: OFF)';
 
             console.log('Anti-Sleep disabled');
 
@@ -9434,7 +9434,7 @@ if (btnKeepAwake) {
 
             btnKeepAwake.style.borderColor = '';
 
-            btnKeepAwake.title = 'Anti-Sleep is ON (Pinging every 10m)';
+            btnKeepAwake.title = '防休眠运行中 (Keep Awake: ON - 每10分钟保活一次)';
 
             console.log('Anti-Sleep enabled');
 
