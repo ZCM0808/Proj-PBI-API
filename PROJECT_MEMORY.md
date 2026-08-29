@@ -456,3 +456,56 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
   - ✅ **布局重构与修复**：
     1. 重构 `.note-editor-wrapper` 与 `.note-right-panel` 的 Flex 弹性模型，取消强制 `maxHeight`，设置 `minHeight: 340px` 与 `flex: 1 1 auto`；
     2. 统一将外层纵向 `gap` 收紧至 `10px`，让 Save 按钮与编辑器底部紧凑贴合，比例协调。
+
+---
+
+## 20. 视觉对象依赖分析 (Visual Dependency Tree)、XMLA 字典提取与 JS SDK 交互全链路踩坑与防御 (Visual Dependency & XMLA Schema Architecture)
+
+### 20.1 踩坑记录与排坑断言 (Failure & Root Cause Analysis)
+
+- ❌ **排坑 1：Service Principal (服务主体) 生成 `Edit` 模式 Token 导致 JS SDK 崩溃报错 `insufficientPermissions`**。
+  - **现象**：为了获取视觉对象绑定的底层字段数据，尝试在后端 `GenerateToken` 时将 `accessLevel` 设为 `Edit`，导致前端嵌入报表 iframe 直接抛出 `insufficientPermissions` 致命错误，无法加载报表。
+  - **根本原因**：微软 Service Principal (SPN) 在 Power BI REST API 层面严禁直接进行交互式报表编辑（Authoring/Edit Mode），即便在工作区拥有 Admin 权限，嵌入 Token 也会被底层权限引擎拒绝。
+  - ✅ **成功解决**：
+    1. 坚决回退 `accessLevel: View`，保持嵌入只读稳定性；
+    2. 针对字段依赖提取，采用双轨方案：只读模式下调用 JS SDK 的 `visual.exportData({ dataViewType: 1 })` 提取 CSV 导出头，结合 XMLA 端点提取数据模型字典（Schema Map）完成字段反查与表名还原。
+
+- ❌ **排坑 2：REST API `executeQueries` 执行 DMV 架构查询被强制阻断 (Error 3239575574)**。
+  - **现象**：尝试通过 Power BI REST API 的 `/datasets/{id}/executeQueries` 执行 `$SYSTEM.TMSCHEMA_COLUMNS` 或 `INFO.TABLES()` / `INFO.COLUMNS()` 来查询模型元数据，接口报错：`DMV or System schema queries are not supported via REST API`。
+  - **根本原因**：微软官方 REST 查询接口仅支持标准业务 DAX 表达式（如 `EVALUATE ...`），严格禁止直接执行任何元数据 DMV (Dynamic Management View) 系统查询。
+  - ✅ **成功解决 (XMLA + ADOMD Direct Connection 架构突破)**：
+    1. 后端集成 `Microsoft.AnalysisServices.AdomdClient.dll`（.NET 驱动）；
+    2. 通过 `pyadomd` 直连 Power BI Premium/Fabric 工作区的 XMLA 端点（`powerbi://api.powerbi.com/v1.0/myorg/{WorkspaceName}`）；
+    3. 在 XMLA 链路下直接执行 `$SYSTEM.TMSCHEMA_TABLES`、`$SYSTEM.TMSCHEMA_COLUMNS` 和 `$SYSTEM.TMSCHEMA_MEASURES`，100% 稳定提取完整的数据模型表名、字段名与度量值映射字典。
+
+- ❌ **排坑 3：前端将 Report ID 误当成 Dataset ID 传给后端 `/api/schema` 导致 404**。
+  - **现象**：控制台输出 `> XMLA Schema Warning: Cannot find dataset.`，导致表名映射完全失效。
+  - **根本原因**：前端组件将全局 Report ID 作为参数传递给了 Schema 提取接口，而后端通过 `/datasets/{id}` 接口无法用 Report ID 找到对应的数据集。
+  - ✅ **防御方案**：后端 `/api/generate-token` 获取报表元数据时，主动将真实的 `datasetId`（及 `workspaceId`）一并随 Token 返回，前端直接缓存至 `window._currentDatasetId` 和 `window._currentWorkspaceId`，消除多层 UI 传参错位隐患。
+
+- ❌ **排坑 4：DOM 隐藏元素读取 `undefined` 引发 `Cannot read properties of null` 崩溃**。
+  - **现象**：控制台报 `Cannot read properties of null (reading 'value')` 或请求了 `groups/undefined`。
+  - **根本原因**：前端重构后，工作区 ID 与数据集输入框在非 XMLA 面板中未挂载，直接使用 `document.getElementById('...').value` 发生空指针解引用，且从 `active-workspace` 读取到的 ID 是用户在侧边栏最后点击的项，而非当前报表实际所在的工作区。
+  - ✅ **防御方案**：
+    1. 全面采用可选链式调用（`?.value`）防崩；
+    2. 废弃不可靠的 DOM 元素猜测，直接使用报表嵌入时权威锁定的 `window._currentWorkspaceId` 发起请求。
+
+- ❌ **排坑 5：CSV 导出数据回车符残留导致字段名带双引号**。
+  - **现象**：导出的字段名称出现引号乱码（如 `"Actual Sales"`、`"` 等）。
+  - **根本原因**：原生 `split(',')` 字符串拆分未能正确处理包含 `\r\n` 与嵌套引号的 CSV 结构。
+  - ✅ **成功解决**：引入 SheetJS (`XLSX.read(data, {type: 'string'})`)，使用标准的表格解析器 `XLSX.utils.sheet_to_json(ws, {header: 1})[0]` 获取干净的表头数组。
+
+- ❌ **排坑 6：报表初次加载时视觉对象下拉框显示 `-- Select Page First --` 无法选择**。
+  - **现象**：用户打开工作流后，`Visual Name` 下拉框一直处于未初始化占位状态。
+  - **根本原因**：`Page Name` 下拉框填充后默认停留在 `-- Select a Page --` 占位选项，未自动选中报表的激活页面 (Active Page)，且报表内部切页时的 `pageChanged` 事件未触发联动刷新。
+  - ✅ **成功解决**：
+    1. 报表渲染完成后自动检测激活页 (`pages.find(p => p.isActive)`) 并同步选中，立刻触发 `loadVisuals()` 异步装载当前页面的视觉对象列表；
+    2. 在 `pageChanged` 事件回调中增加联动调用，实现用户在报表内外切页时视觉对象列表 100% 实时同步。
+
+### 20.2 架构成功经验总结 (Architectural Success Takeaways)
+
+1. **表名与字段名分离展示 (Table & Field Column Separation)**：
+   - 将 XMLA 字典匹配出的 `'TableName'[ColumnName]` 结构在前端通过正则表达式 `/^'([^']+)'\[([^\]]+)\]$/` 进行标准化拆解；
+   - 在弹窗表格中分为独立的 **table (表名，紫色高亮)** 与 **field (字段名/度量值，蓝色高亮)** 两列，提升字段溯源的清晰度与可读性。
+2. **权威上下文状态锁定 (Authoritative Context State Caching)**：
+   - 复杂的多工作流 SPA 界面中，严禁依赖不可控的 DOM 节点读取动态参数，必须在请求响应的第一时间将关键标识（`workspaceId`, `datasetId`, `reportId`）挂载到全局状态（如 `window._currentWorkspaceId`），确保下游所有异步工作流参数 100% 一致。

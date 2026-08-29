@@ -1778,7 +1778,9 @@ def analyze_visual(req: AnalyzeVisualRequest):
         if res.status_code != 200:
             return {"success": False, "error": f"Failed to download report. HTTP {res.status_code}: {res.text}"}
             
-        import io, zipfile, json
+        import io
+        import json
+        import zipfile
         
         entities_used = set()
         
@@ -1790,9 +1792,11 @@ def analyze_visual(req: AnalyzeVisualRequest):
                     entities_used.add(f"'{entity}'[{prop}]")
                 elif "Entity" in obj and "Property" in obj:
                     entities_used.add(f"'{obj['Entity']}'[{obj['Property']}]")
-                for k, v in obj.items(): extract_refs(v)
+                for k, v in obj.items():
+                    extract_refs(v)
             elif isinstance(obj, list):
-                for item in obj: extract_refs(item)
+                for item in obj:
+                    extract_refs(item)
 
         try:
             with zipfile.ZipFile(io.BytesIO(res.content)) as z:
@@ -1802,13 +1806,16 @@ def analyze_visual(req: AnalyzeVisualRequest):
                         if len(parts) >= 6:
                             curr_page = parts[3]
                             curr_vis = parts[5]
-                            if page_name != 'ALL' and curr_page != page_name: continue
-                            if visual_name != 'ALL' and curr_vis != visual_name: continue
+                            if page_name != 'ALL' and curr_page != page_name:
+                                continue
+                            if visual_name != 'ALL' and curr_vis != visual_name:
+                                continue
                             try:
                                 visual_bytes = z.read(file_info.filename)
                                 visual_data = json.loads(visual_bytes.decode('utf-8'))
                                 extract_refs(visual_data.get('visual', {}))
-                            except: pass
+                            except Exception:
+                                pass
                 
                 # If PBIR parsing didn't yield anything (old PBIX format), try Layout
                 if not entities_used:
@@ -1816,14 +1823,18 @@ def analyze_visual(req: AnalyzeVisualRequest):
                         layout_bytes = z.read('Report/Layout')
                         layout_data = json.loads(layout_bytes.decode('utf-16le'))
                         for section in layout_data.get('sections', []):
-                            if page_name != 'ALL' and section.get('name') != page_name: continue
+                            if page_name != 'ALL' and section.get('name') != page_name:
+                                continue
                             for container in section.get('visualContainers', []):
                                 config_str = container.get('config', '{}')
                                 config = json.loads(config_str)
-                                if visual_name != 'ALL' and config.get('name') != visual_name: continue
+                                if visual_name != 'ALL' and config.get('name') != visual_name:
+                                    continue
                                 extract_refs(config)
-                                if 'query' in container: extract_refs(container['query'])
-                    except: pass
+                                if 'query' in container:
+                                    extract_refs(container['query'])
+                    except Exception:
+                        pass
         except Exception as z_err:
             return {"success": False, "error": f"Zip extraction error: {str(z_err)}"}
             
