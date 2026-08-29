@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260829_v2224">
+    <link rel="stylesheet" href="/static/style.css?v=20260829_v2226">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -99,20 +99,20 @@
                         <span id="main-dev-badge" style="display: none; font-size: 0.6rem; background: var(--dev-badge-bg, rgba(234, 179, 8, 0.2)); border: 1px solid var(--dev-badge-border, rgba(234, 179, 8, 0.4)); color: var(--dev-badge-text, #fde047); padding: 1px 6px; border-radius: 12px; font-weight: 600;" title="开发模式：已跳过鉴权限制 (DEV_MODE=true)">🛠️ DEV</span>
                     </div>
                     <div style="display: flex; gap: 8px;">
-                        <button id="btn-keep-awake" class="btn-action-icon" title="保持连接防休眠 (Keep Awake)">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+                        <button id="btn-keep-awake" class="btn-action-icon" title="Toggle Anti-Sleep (Keep Render Awake)">
+                            <span>☕</span>
                         </button>
-                        <button id="btn-settings" class="btn-action-icon" title="全局环境配置 (Global Settings)">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                        <button id="btn-settings" class="btn-action-icon" title="Global Settings">
+                            <span>⚙️</span>
                         </button>
-                        <button id="btn-test-harness" class="btn-action-icon" title="自动化测试工作台 (Test Harness)">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.31L4.62 18.5A2 2 0 0 0 6.35 21.5h11.3a2 2 0 0 0 1.73-3L14 9.31V2"></path><line x1="8.5" y1="2" x2="15.5" y2="2"></line><line x1="14" y1="9.3" x2="10" y2="9.3"></line></svg>
+                        <button id="btn-test-harness" class="btn-action-icon" title="Test Harness">
+                            <span>🧪</span>
                         </button>
-                        <button id="btn-workflows" class="btn-action-icon" title="自动化工作流中心 (Automated Workflows)">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                                                <button id="btn-workflows" class="btn-action-icon" title="Automated Workflows (includes Smart DataOps Pipeline)">
+                            <span>⚡</span>
                         </button>
                         <button id="btn-logout" class="btn-action-icon" title="退出登录 (Logout)" style="color: #f87171;">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                                 <polyline points="16 17 21 12 16 7"/>
                                 <line x1="21" y1="12" x2="9" y2="12"/>
@@ -243,16 +243,13 @@
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <!-- Bookmark Section (Right Panel) -->
                             <div id="right-panel-bm-section" style="display: none; align-items: center; gap: 8px;">
-                                <button id="right-panel-bm-star" class="bookmark-btn" style="margin: 0; display: flex; align-items: center; justify-content: center; height: 26px; width: 26px; padding: 0;" title="切换收藏 (Toggle Bookmark)">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                                </button>
+                                <button id="right-panel-bm-star" class="bookmark-btn" style="margin: 0;">☆</button>
                                 <div id="right-panel-bm-body" style="display: flex; align-items: center; gap: 8px;">
                                     <div id="right-panel-bm-meta" style="display: flex; align-items: center; gap: 8px;"></div>
                                 </div>
                             </div>
-                            <button id="btn-note" class="btn-action-icon" title="便签记事本 (Quick Markdown Note)" onclick="openNoteModal()" style="height: 26px; padding: 0 8px; display: flex; align-items: center; gap: 4px; font-size: 0.75rem;">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                                <span>Quick Note</span>
+                            <button id="btn-note" class="btn-action-icon" title="Quick Markdown Note" onclick="openNoteModal()" style="font-size: 0.75rem;">
+                                <span>📝 Quick Note</span>
                             </button>
                         </div>
                     </div>
@@ -580,9 +577,7 @@
                                     <span id="wf-xmla-token-badge" style="font-size: 0.85rem; display: none;" title="Access Token 已就绪">✅</span>
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 6px;">
-                                    <button type="button" id="wf-xmla-toggle-lock-btn" onclick="window.unlockXmlaTokenWithConfirm()" style="background: var(--btn-secondary-bg, rgba(255,255,255,0.06)); border: 1px solid var(--overlay-20); color: var(--text-secondary); border-radius: 6px; padding: 4px 8px; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease;" title="解锁手动编辑 Token">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                                    </button>
+                                    <button type="button" id="wf-xmla-toggle-lock-btn" onclick="window.unlockXmlaTokenWithConfirm()" style="background: var(--btn-secondary-bg, rgba(255,255,255,0.06)); border: 1px solid var(--overlay-20); color: var(--text-secondary); border-radius: 6px; padding: 4px 8px; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease;" title="解锁手动编辑 Token">🔒</button>
                                     <button type="button" id="wf-xmla-auth-btn" style="background: rgba(245, 158, 11, 0.16); border: 1px solid rgba(245, 158, 11, 0.5); color: #f59e0b; border-radius: 6px; padding: 4px 8px; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease;" title="自动获取当前 Token" onmouseover="this.style.background='rgba(245,158,11,0.28)'; this.style.borderColor='#f59e0b';" onmouseout="this.style.background='rgba(245,158,11,0.16)'; this.style.borderColor='rgba(245,158,11,0.5)';"><svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" stroke-width="1"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></button>
                                 </div>
                             </div>
@@ -824,10 +819,7 @@
                             <div class="terminal-line"><span class="info">系统已就绪。点击下方按钮开始智能扫描并自动绑定工作区、数据集和报表...</span></div>
                         </div>
                         <div style="display: flex; justify-content: flex-end;">
-                            <button id="start-pipeline-btn" class="btn-wf-md" style="display: inline-flex; align-items: center; gap: 8px;">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                <span>启动自动化流水线 (Start DataOps)</span>
-                            </button>
+                            <button id="start-pipeline-btn" class="btn-wf-md">🚀 启动自动化流水线 (Start DataOps)</button>
                         </div>
                     </div>
                 </div>
@@ -1076,10 +1068,15 @@
 <div style="position: relative;">
     <div id="wf-out-step3" class="wf-console collapsed-console">Waiting for Succeeded status from Step 2...</div>
     <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-step3').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+</div>
+                        </div>
                     </div>
                 </div>
-                <!-- Local Model Workflow -->
-                <div id="wf-container-local_model_query" class="wf-config-pane" style="display: none;">
+
+                </div>
+
+                    <!-- Local Model Workflow -->
+                    <div id="wf-container-local_model_query" class="wf-config-pane" style="display: none;">
                         <div style="padding: 0 0 15px 0; color: var(--text-secondary); font-size: 0.85rem; border-bottom: 1px solid var(--overlay-10); margin-bottom: 15px;">
                             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
                                 <label style="color: var(--text-secondary); font-weight: bold; width: 120px;">Target Instance:</label>
@@ -1144,7 +1141,7 @@
                                 </button>
                                 <span id="wf-local-result-stats" style="color: var(--accent); font-weight: normal;"></span>
                             </div>
-<div id="wf-local-result" style="white-space: normal; overflow-x: auto;"></div>
+                            <div id="wf-local-result" style="white-space: normal; overflow-x: auto;"></div>
                         </div>
                     </div>
             </div> <!-- Close modal body here! -->
@@ -1171,29 +1168,26 @@
                     <div style="background: var(--input-bg-light); padding: 8px; border-radius: 6px; border: 1px solid var(--panel-border);">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                             <h4 style="margin: 0; font-size: 0.75rem; color: var(--badge-custom-text);">Azure App Authentication</h4>
-                            <button type="button" id="verify-settings-btn" title="Verify Auth" class="btn-verify" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                            </button>
+                            <button type="button" id="verify-settings-btn" title="Verify Auth" class="btn-verify">⚡</button>
                         </div>
                         
                     <!-- Auth Snapshots UI -->
                     <div class="auth-snapshots-container" style="margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed var(--panel-border);">
-                        <div style="margin-bottom: 6px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                             <h4 style="font-weight: bold; font-size: 0.75rem; color: var(--text-primary); margin: 0;">Auth Profiles (配置快照)</h4>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 6px; width: 100%;">
-                            <div id="snapshot-dropdown-wrapper" style="position: relative; flex: 1; min-width: 0;">
-                                <div id="snapshot-dropdown-trigger" class="snapshot-dropdown-trigger">
-                                    <span id="active-snapshot-text" style="color: var(--text-secondary); font-style: italic;">Select or save a profile...</span>
-                                    <svg class="dropdown-chevron" width="16" height="16" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
-                                </div>
-                                <div id="snapshot-dropdown-menu" class="snapshot-dropdown-menu" style="display: none;">
-                                    <!-- Dropdown items dynamically populated here -->
-                                </div>
-                            </div>
-                            <button type="button" id="btn-save-snapshot" class="icon-btn" title="存为快照 (Save Current Snapshot)" style="height: 31px; width: 32px; padding: 0; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                            <button type="button" id="btn-save-snapshot" class="icon-btn" title="Save current config as new snapshot" style="padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; border: 1px solid var(--accent); color: var(--accent); display: flex; align-items: center; gap: 4px; font-weight: 500;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                                存为快照
                             </button>
+                        </div>
+                        <div id="snapshot-dropdown-wrapper" style="position: relative; width: 100%;">
+                            <div id="snapshot-dropdown-trigger" class="snapshot-dropdown-trigger">
+                                <span id="active-snapshot-text" style="color: var(--text-secondary); font-style: italic;">Select or save a profile...</span>
+                                <svg class="dropdown-chevron" width="16" height="16" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+                            </div>
+                            <div id="snapshot-dropdown-menu" class="snapshot-dropdown-menu" style="display: none;">
+                                <!-- Dropdown items dynamically populated here -->
+                            </div>
                         </div>
                     </div>
 
@@ -1263,9 +1257,7 @@
                     <div style="background: var(--input-bg-light); padding: 8px; border-radius: 6px; border: 1px solid var(--panel-border); margin-bottom: 12px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                             <h4 style="margin: 0; font-size: 0.75rem; color: var(--badge-custom-text);">SQL Database</h4>
-                            <button type="button" id="verify-sql-btn" title="验证 SQL 数据库连接 (Verify SQL)" class="btn-verify" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                            </button>
+                            <button type="button" id="verify-sql-btn" title="Verify SQL Connection" class="btn-verify">⚡</button>
                         </div>
                         <div class="form-group" style="margin-bottom: 0;">
                             <label>SQL_CONN_STR (数据库连接字符串)</label>
@@ -1277,9 +1269,9 @@
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="toggleSettingsSection('workspace-list', this)" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_WORKSPACES (工作区字典 / groupId) <span id="workspace-count" style="margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 0.7rem; background: var(--overlay-10); color: var(--accent); font-weight: 600;">(0 rows)</span></label>
                             <div style="display: flex; gap: 6px;">
-                                <button type="button" onclick="verifySelectedGuid('groups', 'workspace-list', this)" class="btn-verify" title="验证选中工作区 (Verify Selected)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></button>
-                                <button type="button" onclick="scanItems('workspaces', this)" class="btn-scan" title="从云端扫描同步工作区 (Scan Workspaces)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>
-                                <button type="button" onclick="addListRow('workspace-list')" class="btn-add-row" title="新增工作区配置 (Add Workspace)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                                <button type="button" onclick="verifySelectedGuid('groups', 'workspace-list', this)" class="btn-verify" title="Verify Selected">⚡</button>
+                                <button type="button" onclick="scanItems('workspaces', this)" class="btn-scan">🔍 Scan</button>
+                                <button type="button" onclick="addListRow('workspace-list')" class="btn-add-row">+ Add</button>
                             </div>
                         </div>
                         <!-- Grid Column Headers with Sort & Resizable Handles -->
@@ -1301,9 +1293,9 @@
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="toggleSettingsSection('dataset-list', this)" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_DATASETS (数据集字典 / datasetId) <span id="dataset-count" style="margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 0.7rem; background: var(--overlay-10); color: var(--accent); font-weight: 600;">(0 rows)</span></label>
                             <div style="display: flex; gap: 6px;">
-                                <button type="button" onclick="verifySelectedGuid('datasets', 'dataset-list', this)" class="btn-verify" title="验证选中语义模型 (Verify Selected)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></button>
-                                <button type="button" onclick="scanItems('datasets', this)" class="btn-scan" title="从云端扫描同步语义模型 (Scan Datasets)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>
-                                <button type="button" onclick="addListRow('dataset-list')" class="btn-add-row" title="新增语义模型配置 (Add Dataset)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                                <button type="button" onclick="verifySelectedGuid('datasets', 'dataset-list', this)" class="btn-verify" title="Verify Selected">⚡</button>
+                                <button type="button" onclick="scanItems('datasets', this)" class="btn-scan">🔍 Scan</button>
+                                <button type="button" onclick="addListRow('dataset-list')" class="btn-add-row">+ Add</button>
                             </div>
                         </div>
                         <!-- Grid Column Headers with Sort & Resizable Handles -->
@@ -1325,9 +1317,9 @@
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="toggleSettingsSection('report-list', this)" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_REPORTS (报表字典 / reportId) <span id="report-count" style="margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 0.7rem; background: var(--overlay-10); color: var(--accent); font-weight: 600;">(0 rows)</span></label>
                             <div style="display: flex; gap: 6px;">
-                                <button type="button" onclick="verifySelectedGuid('reports', 'report-list', this)" class="btn-verify" title="验证选中报表 (Verify Selected)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></button>
-                                <button type="button" onclick="scanItems('reports', this)" class="btn-scan" title="从云端扫描同步报表 (Scan Reports)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>
-                                <button type="button" onclick="addListRow('report-list')" class="btn-add-row" title="新增报表配置 (Add Report)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                                <button type="button" onclick="verifySelectedGuid('reports', 'report-list', this)" class="btn-verify" title="Verify Selected">⚡</button>
+                                <button type="button" onclick="scanItems('reports', this)" class="btn-scan">🔍 Scan</button>
+                                <button type="button" onclick="addListRow('report-list')" class="btn-add-row">+ Add</button>
                             </div>
                         </div>
                         <!-- Grid Column Headers with Sort & Resizable Handles -->
@@ -1346,16 +1338,10 @@
                     </div>
                 </div>
                 <div class="modal-footer" style="display: flex; justify-content: flex-end; align-items: center; gap: 8px;">
-                    <button type="button" id="export-local-btn" class="icon-btn btn-modal-footer-action" title="导出设置与历史 (Export Settings & History)" style="border: 1px solid var(--panel-border); color: var(--text-secondary);">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                    </button>
-                    <button type="button" id="import-local-btn" class="icon-btn btn-modal-footer-action" title="导入设置与历史 (Import Settings & History)" style="border: 1px solid var(--panel-border); color: var(--text-secondary);">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                    </button>
+                    <button type="button" id="export-local-btn" class="btn-cancel" title="导出所有设置、书签和历史记录 (Export All Settings, Bookmarks & History)">📤 导出 (Export)</button>
+                    <button type="button" id="import-local-btn" class="btn-cancel" title="导入所有设置、书签和历史记录 (Import All Settings, Bookmarks & History)">📥 Import</button>
                     <input type="file" id="import-local-file" style="display: none;" accept=".json">
-                    <button type="submit" id="save-settings-btn" class="btn-action-primary btn-modal-footer-action" title="保存并应用配置 (Save & Apply Settings)">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                    </button>
+                    <button type="submit" id="save-settings-btn" class="btn-action-primary">💾 保存配置 (Save & Apply)</button>
                 </div>
             </form>
         </div>
@@ -1375,14 +1361,8 @@
                 </div>
             </div>
             <div class="confirm-modal-footer">
-                <button id="confirm-cancel-btn" class="btn-cancel" style="height: 32px; padding: 0 14px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem;">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    <span>取消</span>
-                </button>
-                <button id="confirm-proceed-btn" class="btn-primary btn-warning-action" style="height: 32px; padding: 0 14px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    <span>确认发送</span>
-                </button>
+                <button id="confirm-cancel-btn" class="btn-cancel">取消</button>
+                <button id="confirm-proceed-btn" class="btn-primary btn-warning-action" style="padding: 6px 14px; border-radius: 4px; font-size: 0.8rem; cursor: pointer;">确认发送</button>
             </div>
         </div>
     </div>
@@ -1424,14 +1404,8 @@
             <div id="scan-results-container" style="max-height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; background: var(--shadow-light); border-radius: 6px; border: 1px solid var(--panel-border); padding: 8px;">
             </div>
             <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                <button type="button" class="btn-cancel" onclick="closeModalWithAnimation('scan-modal')" style="height: 32px; padding: 0 14px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem;">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    <span>取消</span>
-                </button>
-                <button type="button" class="btn-pipeline btn-scan-add" id="scan-modal-add-btn" style="height: 32px; padding: 0 14px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem;">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    <span>添加选中项</span>
-                </button>
+                <button type="button" class="btn-cancel" onclick="document.getElementById('scan-modal').querySelector('.close-modal').click()">Cancel</button>
+                <button type="button" class="btn-pipeline btn-scan-add" id="scan-modal-add-btn">✅ Add Selected</button>
             </div>
         </div>
     </div>
@@ -1440,10 +1414,7 @@
     <div id="modal-note" class="modal-overlay" style="display: none;">
         <div class="modal-content glass-panel">
             <div class="modal-header" style="margin-bottom: 12px; border-bottom: 1px solid var(--panel-border); padding-bottom: 12px;">
-                <h3 style="margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-                    <span>Markdown Note & History</span>
-                </h3>
+                <h3 style="margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">📝 Markdown Note & History</h3>
                 <button type="button" onclick="closeModalWithAnimation('modal-note')" class="close-btn" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
             </div>
             
@@ -1471,13 +1442,13 @@
                         </div>
                         <div style="display: flex; gap: 8px;">
                             <input type="file" id="note-file-upload-input" style="display: none;" onchange="window.handleNoteFileUpload(event)" multiple>
-                            <button type="button" class="btn-insert-api" onclick="document.getElementById('note-file-upload-input').click()" title="上传图片或附件到笔记中 (支持拖拽/粘贴)" style="height: 32px; padding: 0 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;">
+                            <button type="button" class="btn-insert-api" onclick="document.getElementById('note-file-upload-input').click()" title="上传图片或附件到笔记中 (支持拖拽/粘贴)">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
-                                <span>Upload File / Image</span>
+                                Upload File / Image
                             </button>
-                            <button type="button" class="btn-insert-api" onclick="insertLinkedApiIntoNote()" style="height: 32px; padding: 0 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;">
+                            <button type="button" class="btn-insert-api" onclick="insertLinkedApiIntoNote()">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"></path></svg>
-                                <span>Insert Current API Link</span>
+                                Insert Current API Link
                             </button>
                         </div>
                     </div>
@@ -1487,18 +1458,16 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
                         <div id="note-error-wrapper" style="display: none; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--error);">
                             <button type="button" id="btn-note-err-icon" class="input-with-copy" onclick="window.showNoteErrorDetail()" style="background: rgba(239,68,68,0.15); border: 1px solid var(--error); color: var(--error); border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer;" title="Click to view full error traceback & copy">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                                ❗
                             </button>
                             <span id="note-error-msg" style="font-weight: 500;">Failed to save/push</span>
                         </div>
                         <div style="display: flex; gap: 10px; margin-left: auto;">
-                            <button type="button" class="btn-action-secondary" onclick="createNewNote()" id="btn-new-note" style="height: 32px; padding: 0 12px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem;">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
-                                <span>新建笔记</span>
+                            <button type="button" class="btn-action-secondary" onclick="createNewNote()" id="btn-new-note">
+                                📝 New Note
                             </button>
-                            <button type="button" class="btn-action-primary" onclick="saveMarkdownNote()" id="btn-save-note" style="height: 32px; padding: 0 14px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem;">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                                <span>保存并同步 GitHub</span>
+                            <button type="button" class="btn-action-primary" onclick="saveMarkdownNote()" id="btn-save-note">
+                                <span id="save-note-icon">💾</span> Save & Push to GitHub
                             </button>
                         </div>
                     </div>
@@ -1602,7 +1571,7 @@
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
     <script src="/static/universal_modal.js?v=20260825_v21"></script>
-    <script src="/static/script.js?v=20260829_v2224"></script>
+    <script src="/static/script.js?v=20260829_v2226"></script>
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: none; z-index: 10005;">
@@ -1678,8 +1647,8 @@
         <div class="modal-header" style="padding: 15px; background: var(--overlay-5); border-bottom: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center; cursor: move;" id="ai-chat-header">
             <h3 style="margin: 0; font-size: 1rem; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">✨ AI Assistant</h3>
             <div style="display: flex; align-items: center; gap: 12px;">
-                <button type="button" id="ai-auto-approve-btn" title="Approval Mode (Click to auto-approve)" style="background: transparent; border: 1px solid var(--panel-border); border-radius: 6px; padding: 4px 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 0.75rem; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'" onclick="toggleAutoApprove()">
-                    <span id="auto-approve-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span>
+                <button type="button" id="ai-auto-approve-btn" title="Approval Mode (Click to auto-approve)" style="background: transparent; border: 1px solid var(--panel-border); border-radius: 6px; padding: 4px 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 0.75rem; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);" onmouseover="this.style.background=\'var(--overlay-10)\'" onmouseout="this.style.background=\'transparent\'" onclick="toggleAutoApprove()">
+                    <span id="auto-approve-icon">🔒</span>
                     <span id="auto-approve-text">Approval Mode</span>
                 </button>
                 <button type="button" class="close-btn" title="Close" onclick="toggleAIChat()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
@@ -1698,30 +1667,21 @@
         </div>
     </div>
 
-    <script src="/static/snapshots.js?v=20260829_v2215"></script>
+    <script src="/static/snapshots.js?v=20260829_v2226"></script>
 
     <!-- Test Harness Modal -->
     <div id="test-harness-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content" style="max-width: 800px; width: 90%;">
             <div class="modal-header">
-                <h3 style="display: flex; align-items: center; gap: 8px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.31L4.62 18.5A2 2 0 0 0 6.35 21.5h11.3a2 2 0 0 0 1.73-3L14 9.31V2"></path><line x1="8.5" y1="2" x2="15.5" y2="2"></line><line x1="14" y1="9.3" x2="10" y2="9.3"></line></svg>
-                    <span>QA Test Harness</span>
-                </h3>
-                <button class="close-btn close-modal" onclick="closeModalWithAnimation('test-harness-modal')" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
+                <h3>🧪 QA Test Harness</h3>
+                <button class="close-btn close-modal" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
             </div>
             <div class="modal-body" style="flex: 1; min-height: 0; overflow-y: auto; padding: 20px;">
                 <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
                     <p style="margin: 0; color: var(--text-secondary);">Select tests to run and click Execute. <span id="harness-stats" style="margin-left: 10px; font-weight: 600; color: var(--accent);">Selected: 0 / Total: 0</span></p>
                     <div style="display: flex; gap: 8px;">
-                        <button type="button" id="btn-harness-select-all" class="btn-action-primary" style="height: 30px; padding: 0 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem;">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                            <span>全选</span>
-                        </button>
-                        <button type="button" id="btn-harness-clear-all" class="btn-cancel" style="height: 30px; padding: 0 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem;">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                            <span>清空</span>
-                        </button>
+                        <button type="button" id="btn-harness-select-all" class="btn-action-primary">Select All</button>
+                        <button type="button" id="btn-harness-clear-all" class="btn-cancel">Clear All</button>
                     </div>
                 </div>
                 <div id="harness-test-list" style="display: flex; flex-direction: column; gap: 8px; background: var(--panel-bg); padding: 15px; border-radius: 6px; border: 1px solid var(--panel-border);">
@@ -1729,14 +1689,8 @@
                 </div>
             </div>
             <div class="modal-footer" style="display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
-                <button type="button" class="btn-cancel" onclick="closeModalWithAnimation('test-harness-modal')" style="height: 32px; padding: 0 14px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem;">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    <span>取消</span>
-                </button>
-                <button id="btn-harness-execute" class="btn-action-primary" style="height: 32px; padding: 0 14px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem;">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                    <span>运行测试</span>
-                </button>
+                <button type="button" class="btn-cancel" onclick="document.getElementById('test-harness-modal').querySelector('.close-modal').click()">Cancel</button>
+                <button id="btn-harness-execute" class="btn-action-primary">Run Tests</button>
             </div>
         </div>
     </div>
