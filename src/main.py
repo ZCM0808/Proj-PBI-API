@@ -1704,7 +1704,7 @@ def analyze_visual(req: AnalyzeVisualRequest):
         return {"success": False, "error": "Missing parameters"}
         
     try:
-        res = pbi_client.request('GET', f'/groups/{workspace_id}/reports/{report_id}/Export', raw_response=True)
+        res = client.request('GET', f'/groups/{workspace_id}/reports/{report_id}/Export', raw_response=True)
         if res.status_code != 200:
             return {"success": False, "error": f"Failed to download report. HTTP {res.status_code}: {res.text}"}
             
