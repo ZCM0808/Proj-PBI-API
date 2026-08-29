@@ -12591,25 +12591,18 @@ window.updateHarnessStats = function() {
 
                                                 for (let f of fields) {
 
+                                                    let fTable = f.table || '';
+                                                    let fField = '';
                                                     let fStr = JSON.stringify(f);
-
-                                                    if (f.column) fStr = `'${f.table}'[${f.column}] (Column)`;
-
-                                                    else if (f.measure) fStr = `'${f.table}'[${f.measure}] (Measure)`;
-
-                                                    else if (f.hierarchyLevel) fStr = `'${f.table}'[${f.hierarchyLevel.hierarchy}].[${f.hierarchyLevel.level}] (Hierarchy)`;
-
-                                                    
-
+                                                    if (f.column) { fStr = `'${f.table}'[${f.column}] (Column)`; fField = f.column; }
+                                                    else if (f.measure) { fStr = `'${f.table}'[${f.measure}] (Measure)`; fField = f.measure; }
+                                                    else if (f.hierarchyLevel) { fStr = `'${f.table}'[${f.hierarchyLevel.hierarchy}].[${f.hierarchyLevel.level}] (Hierarchy)`; fField = `${f.hierarchyLevel.hierarchy}.${f.hierarchyLevel.level}`; }
+                                                    else { fField = fStr; }
                                                     if (f.aggregation) {
-
                                                         fStr += ` {Agg: ${f.aggregation.Function || f.aggregation}}`;
-
                                                     }
-
                                                     out.textContent += `       - ${fStr}\n`;
-
-                                                    dataList.push({ page: page.displayName, visual: vName, type: v.type, role: role.name, field: fStr });
+                                                    dataList.push({ page: page.displayName, visual: vName, type: v.type, role: role.name, table: fTable, field: fField });
 
                                                     hasFields = true;
 
@@ -12655,7 +12648,11 @@ window.updateHarnessStats = function() {
                                                 const fieldName = String(h).trim();
                                                 const resolvedName = schemaMap[fieldName.toLowerCase()] || fieldName;
                                                 out.textContent += `       - ${resolvedName}\n`;
-                                                dataList.push({ page: page.displayName, visual: vName, type: v.type, role: '(Export Data Fallback)', field: resolvedName });
+                                                // Parse 'Table'[Column] into separate table/field
+                                                const tableMatch = resolvedName.match(/^'([^']+)'\[([^\]]+)\]$/);
+                                                const tblName = tableMatch ? tableMatch[1] : '';
+                                                const fldName = tableMatch ? tableMatch[2] : fieldName;
+                                                dataList.push({ page: page.displayName, visual: vName, type: v.type, role: '(Export Data Fallback)', table: tblName, field: fldName });
                                                 hasFields = true;
                                             }
                                         });
@@ -12674,7 +12671,7 @@ window.updateHarnessStats = function() {
 
                             if (!hasFields) {
 
-                                dataList.push({ page: page.displayName, visual: vName, type: v.type, role: '-', field: '(No bound data / Unsupported)' });
+                                dataList.push({ page: page.displayName, visual: vName, type: v.type, role: '-', table: '', field: '(No bound data / Unsupported)' });
 
                             }
 
@@ -12717,13 +12714,15 @@ window.updateHarnessStats = function() {
 
                                     data: data,
 
-                                    columns: ['page', 'visual', 'type', 'role', 'field'],
+                                    columns: ['page', 'visual', 'type', 'table', 'field'],
 
                                     enableSearch: true,
 
                                     enableColumnFilter: true,
 
                                     cellRenderer: (col, val) => {
+
+                                        if (col === 'table') return `<span style="font-family:monospace; color:#a78bfa;">${val || '-'}</span>`;
 
                                         if (col === 'field') return `<span style="font-family:monospace; color:#38bdf8;">${val}</span>`;
 
