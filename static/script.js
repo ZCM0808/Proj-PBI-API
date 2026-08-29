@@ -12507,7 +12507,7 @@ window.updateHarnessStats = function() {
                     // Fetch schema from backend
                     let schemaMap = {};
                     try {
-                        const wId = document.getElementById('wf-xmla-workspace')?.value || document.getElementById('config-workspace-id')?.value;
+                        const wId = document.getElementById('wf-xmla-workspace')?.value || document.getElementById('active-workspace')?.value;
                         const rId = document.getElementById('wf-xmla-dataset')?.value || window._currentDatasetId;
                         out.textContent += `> Fetching XMLA Schema Dictionary from Backend...\n`;
                         const schemaRes = await fetch(`/api/schema?workspace_id=${wId}&dataset_id=${rId}`);
