@@ -7650,7 +7650,11 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
             saveSettingsBtn.disabled = true;
 
-            saveSettingsBtn.textContent = '保存中...';
+            const defaultSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>`;
+            const loadingSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinning"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a10 10 0 0 1 10 10"></path></svg>`;
+            const successSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+
+            saveSettingsBtn.innerHTML = loadingSvg;
 
             
 
@@ -7724,7 +7728,7 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
                     backendSettingsCache = { ...backendSettingsCache, ...payload };
 
-                    saveSettingsBtn.textContent = '✅ 已保存';
+                    saveSettingsBtn.innerHTML = successSvg;
 
                     
 
@@ -7756,7 +7760,7 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
                             saveSettingsBtn.style.justifyContent = '';
 
-                            saveSettingsBtn.textContent = '💾 保存配置 (Save & Apply)';
+                            saveSettingsBtn.innerHTML = defaultSvg;
 
                         }, 250);
 
@@ -7776,7 +7780,7 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
                     saveSettingsBtn.style.justifyContent = '';
 
-                    saveSettingsBtn.textContent = '💾 保存配置 (Save & Apply)';
+                    saveSettingsBtn.innerHTML = defaultSvg;
 
                 }
 
@@ -7788,7 +7792,7 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
                 saveSettingsBtn.style.width = '';
 
-                saveSettingsBtn.textContent = '💾 保存配置 (Save & Apply)';
+                saveSettingsBtn.innerHTML = defaultSvg;
 
             }
 
