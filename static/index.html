@@ -39,7 +39,6 @@
             }
         })();
     </script>
-
     <style>
         @keyframes fadeOutModal {
             from { opacity: 1; transform: scale(1); }
@@ -73,7 +72,6 @@
             opacity: 1.0;
             transform: scale(1.1);
         }
-    
         @keyframes fadeOutModal {
             from { opacity: 1; transform: scale(1); }
             to { opacity: 0; transform: scale(0.95); }
@@ -121,7 +119,6 @@
                     </div>
                 </div>
             </div>
-            
             <nav class="nav-menu">
                 <div class="nav-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                     <p class="nav-title" style="margin: 0;">API 资源树</p>
@@ -150,7 +147,6 @@
                     <span class="flag-badge" data-flag="KQL">KQL</span>
                     <span class="flag-badge" data-flag="DataFactory">DF</span>
                 </div>
-                
                 <!-- URL Parameter Filter -->
                 <div style="margin-bottom: 0.8rem; position: relative;" id="param-filter-container" class="custom-select-wrapper">
                     <div id="param-filter-trigger" class="custom-select-trigger" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); cursor: pointer; font-size: 0.8rem; color: var(--text-secondary);">
@@ -169,7 +165,6 @@
                 <div id="api-tree" class="api-tree">
                     <!-- API 列表将通过 JS 动态生成 -->
                 </div>
-                
                 <!-- 当前选中 API 信息 -->
                 <style>
                     /* Custom Dropdown Hover */
@@ -179,7 +174,6 @@
                     #wf-ds-table-options li:hover {
                         background-color: var(--overlay-10) !important;
                     }
-                    
                     .info-header-row {
                         padding: 4px 6px;
                         border-radius: 4px;
@@ -196,7 +190,6 @@
                     #toggle-info-btn {
                         transition: all 0.2s;
                     }
-                
         @keyframes fadeOutModal {
             from { opacity: 1; transform: scale(1); }
             to { opacity: 0; transform: scale(0.95); }
@@ -213,8 +206,6 @@
                     <div id="selected-api-content" class="animated-collapse" style="max-height: 25vh; overflow-y: auto; overflow-x: hidden; padding-right: 4px;">
                         <div id="selected-api-name" style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.25rem; color: var(--text-primary);"></div>
                         <div id="selected-api-zh" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;"></div>
-                        
-
                         <div style="margin-top: 6px; margin-bottom: 8px;">
                             <a id="official-doc-btn" href="#" target="_blank" class="btn-doc-link">
                                 <span style="font-size: 0.8rem;">📖</span> 官方文档 (Official Doc)
@@ -224,16 +215,11 @@
                     </div>
                 </div>
             </nav>
-            
-
         </aside>
-
         <!-- Resizer for adjustable panel -->
         <div class="resizer" id="dragMe"></div>
-
         <!-- Main Content -->
         <main class="main-content">
-
             <div class="request-builder glass-panel">
                 <div class="request-builder-top" style="display: flex; flex-direction: column; gap: 8px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -256,7 +242,6 @@
                             </button>
                         </div>
                     </div>
-
 <!-- Env Identity -->
                 <div id="env-identity" style="display: flex; align-items: center; gap: 12px; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 2px; flex-wrap: wrap; user-select: none;">
                     <span id="display-auth-mode" style="display: none; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 4px; height: 24px; box-sizing: border-box; transition: background 0.2s ease;" title="当前认证模式">
@@ -280,9 +265,6 @@
                         <span style="opacity: 0.85; line-height: 1;">分钟</span>
                     </span>
                 </div>
-
-
-
                 <!-- Context Toolbar -->
                 <div id="context-toolbar" style="display: flex; flex-wrap: wrap; gap: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--panel-border);">
                     <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
@@ -329,7 +311,6 @@
                     </div>
                 </div>
                 </div> <!-- END request-builder-top -->
-
                 <div class="endpoint-section-wrapper" style="display: flex; flex-direction: column; gap: 12px;">
                     <!-- 第一排：Method Selector + Badges + 4 Buttons (统一高度 40px) -->
                     <div id="right-panel-category-container" style="display: flex; justify-content: space-between; align-items: center; min-height: 40px; flex-wrap: wrap; gap: 8px;">
@@ -347,11 +328,7 @@
                                 <span id="right-panel-category-badge" style="display: flex; align-items: center; height: 100%;"><span style="font-size: 0.75rem; padding: 3px 10px; border-radius: 12px; background: var(--overlay-8); color: var(--accent); border: none; display: inline-flex; align-items: center; gap: 5px; font-weight: 600; cursor: default;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4l2-9 5 18 3-9h6"></path></svg>Custom</span></span>
                                 <span id="request-mode-badge" style="font-size: 0.75rem; padding: 3px 10px; border-radius: 12px; font-weight: 500; color: var(--text-secondary); border: none; background: var(--overlay-5); display: inline-flex; align-items: center; gap: 4px; cursor: default;">Free Mode</span>
                             </div>
-
-
-
                         </div>
-
                         <div class="request-actions" style="display: flex; align-items: center; justify-content: space-between; width: calc((100% - 24px) / 3 - 58px); min-width: 250px; flex-shrink: 0;">
                             <div style="display: flex; gap: 8px; flex: 1; position: relative; min-width: 0;">
                                 <button id="history-request-btn" class="icon-btn" title="最近的自由请求历史 (History)" type="button" style="flex: 1; height: 40px; padding: 0 4px; justify-content: center; box-sizing: border-box; overflow: hidden; min-width: 0;">
@@ -370,9 +347,7 @@
                                     <span style="font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">New</span>
                                 </button>
                             </div>
-
                             <div style="border-left: 1px solid var(--overlay-10); height: 16px; margin: 0; width: 1px; flex-shrink: 0;"></div>
-
                             <div style="display: flex; gap: 8px; flex: 1; min-width: 0;">
                                 <button id="toggle-method-btn" class="icon-btn" title="Unlock/Lock Method Dropdown" type="button" style="flex: 1; height: 40px; padding: 0 4px; justify-content: center; box-sizing: border-box; overflow: hidden; min-width: 0;">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
@@ -385,8 +360,6 @@
                             </div>
                         </div>
                     </div>
-
-
                     <!-- 第二排：URL Box (with embedded right hover copy button) + Send Request (统一高度 46px) -->
                     <div style="display: flex; gap: 12px; align-items: center; width: 100%;">
                         <div class="endpoint-input" style="flex: 1; align-items: center; padding: 0; display: flex; border: 1px solid var(--panel-border); border-radius: 8px; background: var(--shadow-base); overflow: hidden; height: 46px; position: relative;">
@@ -410,9 +383,7 @@
                         </summary>
                         <div id="param-hint-container" style="font-size: 0.8rem; padding: 8px 12px; border-top: 1px solid var(--info-border); color: var(--text-primary);"></div>
                     </details>
-
                 </div>
-
                 <div class="body-editor-container" style="position: relative;">
                     <div class="editor-header">
                         <span>Request Body (JSON)</span>
@@ -431,9 +402,7 @@
                     </div>
                 </div>
             </div>
-
             <div id="vertical-resizer" class="vertical-resizer"></div>
-
             <div class="response-container glass-panel">
                 <div class="response-header" style="display: flex; align-items: center; justify-content: space-between;">
                     <span style="flex-shrink: 0; margin-right: 12px;">Response</span>
@@ -458,7 +427,6 @@
             </div>
         </main>
     </div>
-
     <!-- Pipeline Modal -->
     <div id="pipeline-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content glass-panel">
@@ -476,8 +444,6 @@
             </div>
         </div>
     </div>
-
-    
     <!-- Workflow Modal -->
     <div id="workflow-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content glass-panel" id="workflow-modal-content">
@@ -488,7 +454,6 @@
                 </div>
                 <button type="button" class="close-btn" id="close-workflow-btn" title="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg></button>
             </div>
-            
             <div class="modal-body" style="overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 12px;">
                 <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                     <label style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; width: 140px; flex-shrink: 0; white-space: nowrap; margin-bottom: 0;">
@@ -500,14 +465,12 @@
                             <option value="export_report">Export Report to File (PDF/Excel/etc.)</option>
                             <option value="export_visual">Export Visual Data (CSV) - Underlying/Summarized</option>
                             <option value="export_dataset_tables">Export Dataset Tables (CSV)</option>
-                            
                             <!-- 2. Power BI Platform Admin & Operations -->
                             <option value="dataset_partitions_manager">Dataset Partitions Manager & Targeted Refresh</option>
                             <option value="xmla_interactive_refresh">XMLA Interactive Model/Table/Partition Refresh</option>
                             <option value="global_user_manager">Global Workspace Permissions Manager</option>
                             <option value="report_view_count">Admin Report View Count (Activity Events)</option>
                             <option value="check_permissions">Check Current Permissions (Token/Features)</option>
-
                             <!-- 3. Advanced Automation & Diagnostics -->
                             <option value="smart_pipeline">Smart DataOps Pipeline (Auto Bind/Scan/Check)</option>
                             <option value="local_model_query">Local Model Diagnostics & Query (DAX)</option>
@@ -530,8 +493,6 @@
                     <button type="button" onclick="window.saveWfRename()" style="background:var(--accent); color:#fff; border:none; border-radius:4px; padding:3px 10px; font-size:0.78rem; cursor:pointer; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">保存</button>
                     <button type="button" onclick="window.cancelWfRename()" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:0.85rem; padding:2px 6px; transition:color 0.2s;" onmouseover="this.style.color='var(--error)'" onmouseout="this.style.color='var(--text-secondary)'">✕</button>
                 </div>
-
-                
                 <div id="wf-config-export_report" class="wf-config-pane">
                     <div class="wf-fluid-grid">
                         <div>
@@ -554,11 +515,7 @@
                         </div>
                     </div>
                 </div>
-
-                
                 <!-- Smart Pipeline Container -->
-                
-                
                 <!-- XMLA Interactive Refresh Pane -->
                 <div id="wf-config-xmla_interactive_refresh" class="wf-config-pane" style="display: none;">
                     <div class="wf-fluid-grid">
@@ -579,6 +536,7 @@
                                     <span style="font-size: 0.85rem; color: var(--text-secondary);">Access Token</span>
                                     <span id="wf-xmla-token-badge" style="font-size: 0.85rem; display: none;" title="Access Token 已就绪">✅</span>
                                 </div>
+                                <div style="display: flex; align-items: center; gap: 6px;">
                                     <button type="button" id="wf-xmla-toggle-lock-btn" onclick="window.unlockXmlaTokenWithConfirm()" style="background: var(--btn-secondary-bg, rgba(255,255,255,0.06)); border: 1px solid var(--overlay-20); color: var(--text-secondary); border-radius: 6px; padding: 4px 8px; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease;" title="解锁手动编辑 Token">
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                                     </button>
@@ -712,7 +670,6 @@
                                         <button type="button" id="wf-rvc-logs-copybtn" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-rvc-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
                                         <div id="wf-out-rvc-logs" class="wf-console collapsed-console" style="min-height: 0; padding-bottom: 20px; transition: max-height 0.3s ease, padding 0.3s ease, border-width 0.3s ease, opacity 0.3s ease; overflow-y: auto; max-height: 250px;"></div>
                                     </div>
-                                    
                                     <!-- Result header: click to open expand modal -->
                                     <div id="wf-rvc-result-wrap" style="display: none; margin-top: 14px; position: relative;">
                                         <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
@@ -728,7 +685,6 @@
                         </div>
                     </div>
                 </div>
-
                 <div id="wf-config-check_permissions" class="wf-config-pane" style="display: none;">
                     <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
                         <div class="wf-step active">
@@ -760,7 +716,6 @@
                         </div>
                     </div>
                 </div>
-
                 <!-- Global User Manager Pane -->
                 <div id="wf-config-global_user_manager" class="wf-config-pane" style="display: none;">
                     <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
@@ -778,7 +733,6 @@
                                         <button class="btn-wf-md btn-wf-secondary" onclick="if(window.openGumAddUserModal) window.openGumAddUserModal()">+ Add User</button>
                                     </div>
                                 </div>
-                                
                                 <div id="wf-gum-containers" style="display: flex; flex-direction: column; gap: 12px;">
                                     <!-- Logs Section -->
                                      <div>
@@ -799,7 +753,6 @@
                                              <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-gum-logs').innerText)" title="Copy Logs" style="top: 8px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
                                          </div>
                                      </div>
-                                    
                                     <!-- Result header: click to open expand modal -->
                                     <div id="wf-gum-result-wrap" style="display: none; margin-top: 14px; position: relative;">
                                         <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
@@ -815,9 +768,7 @@
                         </div>
                     </div>
                 </div>
-
 <div id="wf-config-smart_pipeline" class="wf-config-pane" style="display: none;">
-
                     <div style="background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 8px; padding: 12px;">
                         <div class="terminal-view" id="pipeline-terminal" style="max-height: 200px; margin-bottom: 12px;">
                             <div class="terminal-line"><span class="info">系统已就绪。点击下方按钮开始智能扫描并自动绑定工作区、数据集和报表...</span></div>
@@ -830,7 +781,6 @@
                         </div>
                     </div>
                 </div>
-
                 <div id="wf-config-export_dataset_tables" class="wf-config-pane" style="display: none;">
                     <div class="wf-fluid-grid">
                         <div>
@@ -842,7 +792,6 @@
                             <select id="wf-ds-dataset" class="wf-input"></select>
                         </div>
                     </div>
-                    
                     <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
                         <!-- Step 1 -->
                         <div class="wf-step" id="wf-ds-step-1">
@@ -858,12 +807,10 @@
 </div>
                             </div>
                         </div>
-                        
                         <!-- Step 2 -->
                         <div class="wf-step" id="wf-ds-step-2">
                             <div class="wf-step-header" style="flex-wrap: wrap; gap: 8px; position: relative; z-index: 10;">
                                   <span class="wf-step-title" style="white-space: nowrap;">Step 2: Execute Query & Download</span>
-                                
                                 <div id="wf-ds-table-container" style="display: flex; align-items: center; justify-content: flex-end; flex: 1; opacity: 0.4; transition: opacity 0.3s ease; min-width: 150px; gap: 8px;">
                                     <select id="wf-ds-export-format" class="wf-input" style="width: auto; height: 26px; padding: 0 24px 0 8px; font-size: 0.75rem; max-width: 140px; cursor: not-allowed;" disabled>
                                         <option value="XLSX">Single Excel (XLSX)</option>
@@ -879,10 +826,8 @@
                                         </ul>
                                     </div>
                                 </div>
-                                
                                 <button id="wf-ds-btn-step2" class="btn-wf-sm btn-wf-secondary wf-step-btn" style="white-space: nowrap;" onclick="window.executeDatasetStep2(this)">Run Step 2</button>
                             </div>
-                            
                             <div style="position: relative;">
                                 <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-ds-step2')"><svg id="wf-out-ds-step2-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs</div>
 <div style="position: relative;">
@@ -910,7 +855,6 @@
                                     <button type="button" id="wf-dpm-logs-copybtn" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-dpm-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
                                     <div id="wf-out-dpm-logs" class="wf-console collapsed-console" style="min-height: 0; padding-bottom: 20px; transition: max-height 0.3s ease, padding 0.3s ease, border-width 0.3s ease, opacity 0.3s ease; overflow-y: auto; max-height: 250px;">点击下方 "Run Selected Workflow" 获取所有工作区下的数据集表分区结构...</div>
                                 </div>
-                                
                                 <!-- Result header: click to open expand modal -->
                                 <div id="wf-dpm-result-wrap" style="display: none; margin-top: 14px; position: relative;">
                                     <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
@@ -992,12 +936,6 @@
                             </div>
                         </div>
                     </div>
-
-                    
-                    
-
-                    
-                    
                     <div id="pbi-embed-wrapper" style="position: relative; margin: 12px 0; display: none;">
                         <div id="pbi-embed-container" style="width: 100%; aspect-ratio: 16 / 9; border: 1px solid var(--panel-border); border-radius: 6px; background: var(--input-bg);"></div>
                         <div class="pbi-embed-actions" style="position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; z-index: 10;">
@@ -1009,7 +947,6 @@
                             </button>
                         </div>
                     </div>
-
 <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
                         <div class="wf-step active" id="wf-vis-step-1">
                             <div class="wf-step-header">
@@ -1079,9 +1016,7 @@
                         </div>
                     </div>
                 </div>
-
                 </div>
-
                     <!-- Local Model Workflow -->
                     <div id="wf-container-local_model_query" class="wf-config-pane" style="display: none;">
                         <div style="padding: 0 0 15px 0; color: var(--text-secondary); font-size: 0.85rem; border-bottom: 1px solid var(--overlay-10); margin-bottom: 15px;">
@@ -1101,10 +1036,8 @@
                                     </button>
                                 </div>
                             </div>
-
                             <div id="local-model-instance-error" style="color: var(--error-color); font-size: 0.75rem; display: none; margin-left: 132px;"></div>
                         </div>
-                        
                         <div class="wf-step active" id="wf-local-step-1">
                             <!-- DAX Editor header with collapse toggle -->
                             <div class="wf-step-header" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;" onclick="event.stopPropagation(); window.toggleLocalDaxEditor(event);" title="Click to collapse/expand">
@@ -1135,10 +1068,8 @@
                                 </div>
                             </div>
                         </div>
-
                         <!-- Status + Result (outside the collapsible DAX step) -->
                         <div id="wf-local-status" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 12px; display: none;"></div>
-
                         <!-- Result header: click to open expand modal -->
                         <div id="wf-local-result-wrap" style="display: none; margin-top: 14px; position: relative;">
                             <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
@@ -1170,7 +1101,6 @@
             <form id="settings-form" autocomplete="on">
                 <div class="modal-body" style="display: flex; flex-direction: column; gap: 8px; max-height: 65vh; overflow-y: auto;">
                     <p style="margin: 0; font-size: 0.75rem; color: var(--text-secondary);">在此配置的所有参数将立即生效，且会在整个项目 (API & Pipeline) 中共享。</p>
-
                     <!-- Authentication Configs -->
                     <div style="background: var(--input-bg-light); padding: 8px; border-radius: 6px; border: 1px solid var(--panel-border);">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -1179,7 +1109,6 @@
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
                             </button>
                         </div>
-                        
                     <!-- Auth Snapshots UI -->
                     <div class="auth-snapshots-container" style="margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed var(--panel-border);">
                         <div style="margin-bottom: 6px;">
@@ -1200,7 +1129,6 @@
                             </button>
                         </div>
                     </div>
-
                         <div class="form-group" style="margin-bottom: 12px; padding: 8px; background: var(--input-bg); border-radius: 4px;">
                             <label style="margin-bottom: 6px; display: block; font-weight: bold;">Active Auth Mode (认证模式选择)</label>
                             <div style="display: flex; flex-direction: column; gap: 6px;">
@@ -1214,7 +1142,6 @@
                                 </label>
                             </div>
                         </div>
-
                         <!-- Service Principal Auth Fields (3 Parameters) -->
                         <div id="auth-sp-fields" class="auth-mode-collapsible">
                             <div class="form-group" style="margin-bottom: 8px;">
@@ -1242,7 +1169,6 @@
                                 </div>
                             </div>
                         </div>
-
                         <!-- Personal Auth Fields (2 Parameters) -->
                         <div id="auth-personal-fields" class="auth-mode-collapsible" style="display: none; max-height: 0; opacity: 0; overflow: hidden;">
                             <div class="form-group" style="margin-bottom: 8px;">
@@ -1260,9 +1186,7 @@
                             </div>
                         </div>
                     </div>
-
                     <div style="border-top: 1px solid var(--panel-border); margin: 4px 0;"></div>
-
                     <!-- SQL Config -->
                     <div style="background: var(--input-bg-light); padding: 8px; border-radius: 6px; border: 1px solid var(--panel-border); margin-bottom: 12px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -1276,7 +1200,6 @@
                             <textarea id="set-sql" name="pbi_sql_conn" class="settings-input" rows="2" style="resize: vertical; min-height: 60px; line-height: 1.4;" placeholder="DRIVER={ODBC Driver 17 for SQL Server};SERVER=192.168.1.100;DATABASE=PBI_DWH;UID=sa;PWD=password"></textarea>
                         </div>
                     </div>
-
                     <div class="form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="toggleSettingsSection('workspace-list', this)" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_WORKSPACES (工作区字典 / groupId) <span id="workspace-count" style="margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 0.7rem; background: var(--overlay-10); color: var(--accent); font-weight: 600;">(0 rows)</span></label>
@@ -1300,7 +1223,6 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="toggleSettingsSection('dataset-list', this)" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_DATASETS (数据集字典 / datasetId) <span id="dataset-count" style="margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 0.7rem; background: var(--overlay-10); color: var(--accent); font-weight: 600;">(0 rows)</span></label>
@@ -1324,7 +1246,6 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="toggleSettingsSection('report-list', this)" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_REPORTS (报表字典 / reportId) <span id="report-count" style="margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 0.7rem; background: var(--overlay-10); color: var(--accent); font-weight: 600;">(0 rows)</span></label>
@@ -1364,7 +1285,6 @@
             </form>
         </div>
     </div>
-
     <!-- 写操作确认模态弹窗 -->
     <div id="confirm-modal" class="confirm-modal-overlay" style="display: none;">
         <div class="confirm-modal-content glass-panel">
@@ -1390,7 +1310,6 @@
             </div>
         </div>
     </div>
-
     <!-- Fullscreen Embed Modal (Top-level Body Child for viewport centering & boundary-free drag) -->
     <div id="pbi-fullscreen-modal" class="modal-overlay" style="display: none; z-index: 99999; align-items: center; justify-content: center;">
         <div id="pbi-fullscreen-modal-content" class="modal-content glass-panel" style="width: 90vw; max-width: 1400px; height: 85vh; display: flex; flex-direction: column; padding: 16px; margin: 0; position: relative;">
@@ -1414,7 +1333,6 @@
             <div id="pbi-fullscreen-container" style="flex: 1; width: 100%; border: 1px solid var(--panel-border); border-radius: 6px; background: var(--input-bg); overflow: hidden;"></div>
         </div>
     </div>
-
     <!-- Scan Results Modal -->
     <div id="scan-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content glass-panel">
@@ -1439,7 +1357,6 @@
             </div>
         </div>
     </div>
-    
     <!-- Quick Note Modal -->
     <div id="modal-note" class="modal-overlay" style="display: none;">
         <div class="modal-content glass-panel">
@@ -1450,7 +1367,6 @@
                 </h3>
                 <button type="button" onclick="closeModalWithAnimation('modal-note')" class="close-btn" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
             </div>
-            
             <div class="note-modal-body" style="display: flex; gap: 20px; align-items: stretch; min-height: 480px;">
                 <!-- Left: History & Search -->
                 <div class="note-left-panel" style="width: 260px; display: flex; flex-direction: column; gap: 12px; border-right: 1px solid var(--panel-border); padding-right: 20px;">
@@ -1465,7 +1381,6 @@
                         <div style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 20px;">Loading history...</div>
                     </div>
                 </div>
-                
                 <!-- Right: Editor -->
                 <div class="note-right-panel" style="flex: 1; display: flex; flex-direction: column; gap: 10px;">
                     <div class="note-filename-row" style="display: flex; justify-content: space-between; align-items: flex-end;">
@@ -1510,10 +1425,6 @@
             </div>
         </div>
     </div>
-
-
-
-
     <!-- Add User Permission Modal -->
     <div id="gum-add-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content glass-panel">
@@ -1528,14 +1439,12 @@
                         <option value="">Select a Workspace...</option>
                     </select>
                 </div>
-                
                 <div style="margin-bottom: 12px; position: relative;">
                     <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">User / Principal Email</label>
                     <input type="text" id="gum-add-identifier" class="wf-input" placeholder="Type name or email to search..." oninput="if(window.handleGumAddIdentifierInput) window.handleGumAddIdentifierInput(event)">
                     <div id="gum-add-autocomplete" style="display:none; position: absolute; top: 100%; left: 0; right: 0; background: var(--panel-bg); border: 1px solid var(--panel-border); border-top: none; z-index: 20001; max-height: 150px; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                     </div>
                 </div>
-                
                 <div style="margin-bottom: 12px;">
                     <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">Principal Type</label>
                     <select id="gum-add-principal-type" class="wf-input">
@@ -1544,7 +1453,6 @@
                         <option value="App">App (Service Principal)</option>
                     </select>
                 </div>
-                
                 <div style="margin-bottom: 16px;">
                     <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">Access Right (Role)</label>
                     <select id="gum-add-role" class="wf-input">
@@ -1554,7 +1462,6 @@
                         <option value="Viewer" selected>Viewer</option>
                     </select>
                 </div>
-                
                 <div style="display: flex; gap: 8px; justify-content: flex-end;">
                     <button type="button" class="btn-cancel" onclick="document.getElementById('gum-add-modal').querySelector('.close-modal').click()">Cancel</button>
                     <button type="button" class="btn-action-primary" onclick="if(window.submitGumAddUser) window.submitGumAddUser()">Add User</button>
@@ -1562,7 +1469,6 @@
             </div>
         </div>
     </div>
-
     <!-- Edit User Permission Modal -->
     <div id="gum-edit-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content glass-panel">
@@ -1573,17 +1479,14 @@
             <div class="modal-body" style="padding: 16px;">
                 <input type="hidden" id="gum-edit-ws-id">
                 <input type="hidden" id="gum-edit-principal-type">
-                
                 <div style="margin-bottom: 12px;">
                     <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">Workspace</label>
                     <input type="text" id="gum-edit-ws-name" class="wf-input" disabled style="opacity: 0.7;">
                 </div>
-                
                 <div style="margin-bottom: 12px;">
                     <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">User / Principal</label>
                     <input type="text" id="gum-edit-identifier" class="wf-input" disabled style="opacity: 0.7;">
                 </div>
-                
                 <div style="margin-bottom: 16px;">
                     <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">Access Right (Role)</label>
                     <select id="gum-edit-role" class="wf-input">
@@ -1593,7 +1496,6 @@
                         <option value="Viewer">Viewer</option>
                     </select>
                 </div>
-                
                 <div style="display: flex; gap: 8px; justify-content: flex-end;">
                     <button type="button" class="btn-cancel" onclick="document.getElementById('gum-edit-modal').querySelector('.close-modal').click()">Cancel</button>
                     <button type="button" class="btn-action-primary" onclick="if(window.submitGumEdit) window.submitGumEdit()">Save Changes</button>
@@ -1601,13 +1503,11 @@
             </div>
         </div>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
     <script src="/static/universal_modal.js?v=20260825_v21"></script>
     <script src="/static/script.js?v=20260829_v2235"></script>
-
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: none; z-index: 10005;">
         <div class="modal-content glass-panel">
@@ -1623,7 +1523,6 @@
             </div>
         </div>
     </div>
-
     <!-- Device Code Flow (MFA Fallback) Modal -->
     <div id="device-code-modal" class="modal-overlay" style="display: none; z-index: 10008;">
         <div class="modal-content glass-panel" style="max-width: 480px; width: 92%; border-radius: 14px; border: 1px solid var(--panel-border); box-shadow: 0 16px 40px var(--shadow-dark); background: var(--panel-bg);">
@@ -1648,7 +1547,6 @@
                         <span style="color: var(--accent); font-size: 0.72rem;">(支持任意企业域)</span>
                     </div>
                 </div>
-
                 <p style="font-size: 0.84rem; color: var(--text-secondary); margin: 0; line-height: 1.5;">
                     请复制下方 <strong>8 位设备验证码</strong> 并前往微软页面完成个人/MFA 验证：
                 </p>
@@ -1671,12 +1569,10 @@
             </div>
         </div>
     </div>
-
     <!-- AI Chat FAB -->
     <div id="ai-chat-fab" onclick="toggleAIChat()" style="position: fixed; bottom: 30px; right: 15px; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--info-dark) 0%, var(--info-darker) 100%); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px var(--info-bg); cursor: pointer; z-index: 9999; transition: transform 0.2s ease;">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
     </div>
-
     <!-- AI Chat Window -->
     <div id="ai-chat-window" class="glass-panel" style="position: fixed; bottom: 100px; right: 10px; width: calc(100vw - 20px); max-width: 380px; height: 500px; flex-direction: column; z-index: 10000; box-shadow: 0 10px 30px var(--shadow-dark); border-radius: 12px; overflow: hidden; transform-origin: bottom right; background: var(--panel-bg); border: 1px solid var(--panel-border); opacity: 0; transform: scale(0.9) translateY(10px); visibility: hidden; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), visibility 0.25s; display: flex;">
         <div class="modal-header" style="padding: 15px; background: var(--overlay-5); border-bottom: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center; cursor: move;" id="ai-chat-header">
@@ -1701,9 +1597,7 @@
             </button>
         </div>
     </div>
-
     <script src="/static/snapshots.js?v=20260829_v2235"></script>
-
     <!-- Test Harness Modal -->
     <div id="test-harness-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content" style="max-width: 800px; width: 90%;">
@@ -1744,11 +1638,6 @@
             </div>
         </div>
     </div>
-
-
-    
-    
-    
     <!-- Background Daily Limit Pinger -->
     <script>
         (function() {
@@ -1765,7 +1654,6 @@
                 } catch(e) {}
             }
             updateMainTracker();
-            
             setInterval(() => {
                 if (document.visibilityState === 'visible') {
                     // Accumulate locally
@@ -1779,7 +1667,6 @@
                         localStorage.setItem('pbi-daily-time', JSON.stringify(data));
                         updateMainTracker();
                     } catch(e) {}
-                    
                     // Ping backend to enforce global limit
                     fetch('/api/ping-usage', {method: 'POST'})
                         .then(r => r.json())
@@ -1794,8 +1681,4 @@
         })();
     </script>
 </body>
-
-
-
 </html>
-
