@@ -62,7 +62,13 @@ python src/main.py
 ## 4. UI / UX 极客守则 (UI/UX Geek Rules)
 - **纯血 SVG 图标与同质按钮规范 (Pure SVG Icon & Button Standardization - 方案 B 铁律)**：
   - 项目全局操作按钮（如配置保存、导入、导出、重命名、删除等）必须统一采用**纯血 SVG 矢量图标 + Tooltip 提示**，坚决禁止混杂 Emoji 或非规范中英文文字；
-  - 同一组操作按钮（如 Modal Footer 操作区）必须具备完全一致的高度与尺寸规范（如 height: 32px; border-radius: 6px;），保证像素级绝对对齐与高质感极客风体验。
+  - 同一组操作按钮（如 Modal Footer 操作区）必须具备完全一致的高度与尺寸规范（如 `height: 32px; width: 34px; border-radius: 6px;`），保证像素级绝对对齐与高质感极客风体验。
+- **全生命周期交互状态尺寸锁死铁律 (Button Lifecycle State & Size Preservation Rule)**：
+  - **核心痛点**：任何按钮在经历异步交互（如“点击 -> 加载中 (Loading) -> 成功 (Success) -> 完成重置 (Reset)”）过程中，极易因为 JS 动态改写 `innerHTML`、`textContent` 或操作行内样式（如 `style.width = ''`）导致按钮尺寸瞬间缩水变形、文字反弹或与默认态撕裂不一致；
+  - **强制编码标准**：
+    1. **CSS 维度强固化**：所有固定尺寸的图标按钮必须使用专属规范类（如 `.btn-modal-footer-action`）并通过 `!important` 强行锁死 `min-width/max-width` 与 `min-height/max-height`，彻底剥夺外部内容撑大或缩水的能力；
+    2. **纯 SVG 动效切换**：状态切换全程只能替换内部 SVG 矢量动效（如 `默认 SVG 软盘` -> `Spinner 旋转 SVG` -> `Checkmark 对勾 SVG` -> `复原默认 SVG`），严禁在中途或复原时混入任何普通文本或 Emoji；
+    3. **禁止 JS 破坏性清空样式**：严禁在异步回调中使用 `style.width = ''` 等破坏性代码清空尺寸，必须保持按钮从诞生到点击完成全生命周期的像素级物理稳定性。
 - **外观第一**：不要使用生硬的纯色。按钮要带有微弱的 rgba 背景，Hover 态必须包含流畅的 0.2s `transition` 过渡动画。
 - **空间利用**：对溢出文本（比如长 URL 或长 SQL）要进行截断加省略号（`text-overflow: ellipsis` 或者用 substring 切片），不能把弹窗和列表撑爆。
 - **FLIP 动画**：所有弹窗使用自定义的 FLIP (First, Last, Invert, Play) 动画进行缩放平滑过渡。如果新增 Modal，必须复用 `setupFLIPModal` 函数，绝不能采用简单的 display none/block 生硬切换。
