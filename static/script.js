@@ -12054,6 +12054,7 @@ window.updateHarnessStats = function() {
 
                 const tokenType = (data.tokenType === 'Aad') ? models.TokenType.Aad : models.TokenType.Embed;
                 window._currentDatasetId = data.datasetId;
+                window._currentWorkspaceId = data.workspaceId;
 
                 const config = {
                     type: 'report',
@@ -12507,8 +12508,8 @@ window.updateHarnessStats = function() {
                     // Fetch schema from backend
                     let schemaMap = {};
                     try {
-                        const wId = document.getElementById('wf-xmla-workspace')?.value || document.getElementById('active-workspace')?.value;
-                        const rId = document.getElementById('wf-xmla-dataset')?.value || window._currentDatasetId;
+                        const wId = window._currentWorkspaceId || document.getElementById('wf-xmla-workspace')?.value || document.getElementById('active-workspace')?.value;
+                        const rId = window._currentDatasetId || document.getElementById('wf-xmla-dataset')?.value;
                         out.textContent += `> Fetching XMLA Schema Dictionary from Backend...\n`;
                         const schemaRes = await fetch(`/api/schema?workspace_id=${wId}&dataset_id=${rId}`);
                         if (schemaRes.ok) {

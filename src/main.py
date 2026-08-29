@@ -789,7 +789,7 @@ async def get_embed_info(request: Request):
                 client.request, "POST", f"/groups/{w_id}/reports/{r_id}/GenerateToken", json={"accessLevel": "View"}
             )
             if token_res and token_res.get("token"):
-                return {"success": True, "embedUrl": embed_url, "embedToken": token_res.get("token"), "tokenType": "Embed", "datasetId": dataset_id}
+                return {"success": True, "embedUrl": embed_url, "embedToken": token_res.get("token"), "tokenType": "Embed", "datasetId": dataset_id, "workspaceId": w_id}
         except Exception:
             pass
 
@@ -804,7 +804,7 @@ async def get_embed_info(request: Request):
                 client.request, "POST", f"/groups/{w_id}/reports/{r_id}/GenerateToken", json={"accessLevel": "View", "identities": [rls_identity]}
             )
             if token_res and token_res.get("token"):
-                return {"success": True, "embedUrl": embed_url, "embedToken": token_res.get("token"), "tokenType": "Embed", "datasetId": dataset_id}
+                return {"success": True, "embedUrl": embed_url, "embedToken": token_res.get("token"), "tokenType": "Embed", "datasetId": dataset_id, "workspaceId": w_id}
         except Exception as rls_err:
             print(f"RLS GenerateToken notice: {rls_err}")
 
@@ -814,7 +814,7 @@ async def get_embed_info(request: Request):
             "success": True,
             "embedUrl": embed_url,
             "embedToken": aad_token,
-            "tokenType": "Aad", "datasetId": dataset_id
+            "tokenType": "Aad", "datasetId": dataset_id, "workspaceId": w_id
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
