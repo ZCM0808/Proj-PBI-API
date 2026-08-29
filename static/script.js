@@ -3183,7 +3183,7 @@ const loadReqHistory = (searchTerm = "") => {
         let initialTranslateX = 0, initialTranslateY = 0;
         let baseX = 0, baseY = 0, modalWidth = 0, modalHeight = 0;
 
-        dragHandle.style.cursor = 'grab';
+        
 
         let rafId = null;
         const SNAP_THRESHOLD = 15; // 15px snapping distance
@@ -3229,7 +3229,7 @@ const loadReqHistory = (searchTerm = "") => {
         const onMouseUp = () => {
             if (isDragging) {
                 isDragging = false;
-                dragHandle.style.cursor = 'grab';
+                document.body.style.cursor = '';
                 document.body.style.userSelect = '';
                 modalContent.setAttribute('data-translate-y', currentTranslateY);
                 modalContent.setAttribute('data-translate-x', currentTranslateX);
@@ -3251,8 +3251,9 @@ const loadReqHistory = (searchTerm = "") => {
             }
         };
 
-        dragHandle.addEventListener('mousedown', (e) => {
-            if (['INPUT', 'BUTTON', 'TEXTAREA'].includes(e.target.tagName) || e.target.closest('button, input, select, textarea')) return;
+        modalContent.addEventListener('mousedown', (e) => {
+            if (['INPUT', 'BUTTON', 'TEXTAREA', 'SELECT', 'A'].includes(e.target.tagName) || e.target.closest('button, input, select, textarea, a, td, th, table, details, summary')) return;
+            if (e.offsetX > e.target.clientWidth || e.offsetY > e.target.clientHeight) return; // Ignore scrollbar clicks
 
             // Read previous translation state to avoid jumping on subsequent drags
             const dt = modalContent.getAttribute('data-translate-y');
@@ -3264,7 +3265,7 @@ const loadReqHistory = (searchTerm = "") => {
             else currentTranslateX = 0;
 
             isDragging = true;
-            dragHandle.style.cursor = 'grabbing';
+            document.body.style.cursor = 'grabbing';
             startMouseX = e.clientX;
             startMouseY = e.clientY;
             initialTranslateX = currentTranslateX;
@@ -6335,84 +6336,37 @@ window.updateHarnessStats = function() {
                     
                     out.textContent += `\n> Task Completed. Generating table modal...\n`;
                     
-                    if (!window.showDependencyTableModal) {
-                        window.showDependencyTableModal = function(dataList) {
-                            let modal = document.getElementById('dependency-table-modal');
-                            if (!modal) {
-                                modal = document.createElement('div');
-                                modal.id = 'dependency-table-modal';
-                                modal.className = 'modal-overlay';
-                                modal.style.zIndex = '10009';
-                                modal.innerHTML = `
-                                    <div class="modal-content glass-panel" style="width: 900px; max-width: 95vw; max-height: 85vh; display: flex; flex-direction: column;">
-                                        <div class="modal-header" style="border-bottom: 1px solid var(--panel-border);">
-                                            <h3 style="font-size: 1.1rem; margin: 0; color: var(--text-primary); font-weight: 600;">🧬 Visual Dependency Tree</h3>
-                                            <button type="button" class="close-btn" onclick="document.getElementById('dependency-table-modal').style.display='none'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
-                                        </div>
-                                        <div class="modal-body" style="flex: 1; overflow: auto; padding: 0;">
-                                            <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left; color: var(--text-primary);">
-                                                <thead style="position: sticky; top: 0; background: var(--bg-dark); box-shadow: 0 1px 2px rgba(0,0,0,0.5); z-index: 2;">
-                                                    <tr>
-                                                        <th style="padding: 10px; border-bottom: 1px solid var(--panel-border);">Page</th>
-                                                        <th style="padding: 10px; border-bottom: 1px solid var(--panel-border);">Visual</th>
-                                                        <th style="padding: 10px; border-bottom: 1px solid var(--panel-border);">Type</th>
-                                                        <th style="padding: 10px; border-bottom: 1px solid var(--panel-border);">Data Role</th>
-                                                        <th style="padding: 10px; border-bottom: 1px solid var(--panel-border);">Field / Measure</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="dependency-table-body">
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        <div class="modal-footer" style="border-top: 1px solid var(--panel-border); display: flex; justify-content: flex-end; gap: 8px;">
-                                            <button class="btn-cancel" onclick="document.getElementById('dependency-table-modal').style.display='none'">Close</button>
-                                            <button class="btn-action-primary" id="dep-export-csv-btn">
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: middle;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                                                Export CSV
-                                            </button>
-                                        </div>
-                                    </div>
-                                `;
-                                document.body.appendChild(modal);
-                            }
-                            
-                            const tbody = document.getElementById('dependency-table-body');
-                            tbody.innerHTML = '';
-                            
-                            dataList.forEach((row, i) => {
-                                const tr = document.createElement('tr');
-                                tr.style.background = i % 2 === 0 ? 'transparent' : 'var(--overlay-5)';
-                                tr.innerHTML = `
-                                    <td style="padding: 8px 10px; border-bottom: 1px solid var(--overlay-10);">${row.page}</td>
-                                    <td style="padding: 8px 10px; border-bottom: 1px solid var(--overlay-10);">${row.visual}</td>
-                                    <td style="padding: 8px 10px; border-bottom: 1px solid var(--overlay-10);">${row.type}</td>
-                                    <td style="padding: 8px 10px; border-bottom: 1px solid var(--overlay-10);">${row.role}</td>
-                                    <td style="padding: 8px 10px; border-bottom: 1px solid var(--overlay-10); font-family: monospace; color: #38bdf8;">${row.field}</td>
-                                `;
-                                tbody.appendChild(tr);
-                            });
-                            
-                            document.getElementById('dep-export-csv-btn').onclick = () => {
-                                let csv = 'Page,Visual,Type,Data Role,Field / Measure\n';
-                                dataList.forEach(row => {
-                                    const escape = s => '"' + String(s).replace(/"/g, '""') + '"';
-                                    csv += [row.page, row.visual, row.type, row.role, row.field].map(escape).join(',') + '\n';
+                                        
+                    window._lastDependencyData = dataList;
+                    out.innerHTML += `\n<button onclick="window.openDependencyResultModal()" style="display:inline-flex; align-items:center; gap:5px; margin-top:10px; color:var(--accent); font-weight:bold; background:none; border:none; cursor:pointer; text-decoration:underline dotted; padding:0;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                        Visual Dependency Tree Table Results
+                    </button>\n`;
+                    
+                    if (!window.openDependencyResultModal) {
+                        window.openDependencyResultModal = function() {
+                            const data = window._lastDependencyData || [];
+                            if (window.showUniversalDataModal) {
+                                window.showUniversalDataModal({
+                                    modalId: 'dependency-tree-modal',
+                                    title: 'Visual Dependency Tree',
+                                    data: data,
+                                    columns: ['page', 'visual', 'type', 'role', 'field'],
+                                    enableSearch: true,
+                                    enableColumnFilter: true,
+                                    cellRenderer: (col, val) => {
+                                        if (col === 'field') return `<span style="font-family:monospace; color:#38bdf8;">${val}</span>`;
+                                        return undefined;
+                                    }
                                 });
-                                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                                const url = URL.createObjectURL(blob);
-                                const a = document.createElement('a');
-                                a.href = url;
-                                a.download = `Dependency_Tree.csv`;
-                                a.click();
-                                URL.revokeObjectURL(url);
-                            };
-                            
-                            modal.style.display = 'flex';
+                            }
                         };
                     }
                     
-                    window.showDependencyTableModal(dataList);
-                    if (window.showNotification) window.showNotification("Dependency Analysis Completed!", "success");
+                    // Automatically open it once for convenience (since they asked for it to pop up like other workflows, but other workflows pop up on button click OR auto if run completes)
+                    // Let's auto-open it just in case, or just leave the button. The prompt says "通过点击类似xxx弹出表格弹窗", so they WANT to click the button to pop it up.
+                    
+                    if (window.showNotification) window.showNotification("Dependency Analysis Completed! Click the link below to view table.", "success");
                 } catch (err) {
                     out.textContent += `\n❌ SDK Error: ${err.message}\n`;
                     if (window.showNotification) window.showNotification("Analysis Failed", "error");
