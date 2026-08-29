@@ -69,6 +69,9 @@ python src/main.py
     1. **CSS 维度强固化**：所有固定尺寸的图标按钮必须使用专属规范类（如 `.btn-modal-footer-action`）并通过 `!important` 强行锁死 `min-width/max-width` 与 `min-height/max-height`，彻底剥夺外部内容撑大或缩水的能力；
     2. **纯 SVG 动效切换**：状态切换全程只能替换内部 SVG 矢量动效（如 `默认 SVG 软盘` -> `Spinner 旋转 SVG` -> `Checkmark 对勾 SVG` -> `复原默认 SVG`），严禁在中途或复原时混入任何普通文本或 Emoji；
     3. **禁止 JS 破坏性清空样式**：严禁在异步回调中使用 `style.width = ''` 等破坏性代码清空尺寸，必须保持按钮从诞生到点击完成全生命周期的像素级物理稳定性。
+    4. **点击/悬浮微动效规范 (Transform vs Box-Model Distinction)**：
+       - **完全不冲突且强制推崇**：按钮点击时的微缩放（如 `:active { transform: scale(0.92); }`）、悬浮上浮（如 `:hover { transform: translateY(-1.5px); }`）或辉光扩散（`box-shadow`）是极客级 UI 体验的核心标准；
+       - **边界界定**：动效必须全部基于 GPU 硬件加速的 `transform` 渲染层进行，绝不触碰 DOM 盒模型的物理尺寸（`width/height/padding`），实现既有细腻灵动的弹性触压反馈，又零重排 (Reflow)、零尺寸漂移。
 - **外观第一**：不要使用生硬的纯色。按钮要带有微弱的 rgba 背景，Hover 态必须包含流畅的 0.2s `transition` 过渡动画。
 - **空间利用**：对溢出文本（比如长 URL 或长 SQL）要进行截断加省略号（`text-overflow: ellipsis` 或者用 substring 切片），不能把弹窗和列表撑爆。
 - **FLIP 动画**：所有弹窗使用自定义的 FLIP (First, Last, Invert, Play) 动画进行缩放平滑过渡。如果新增 Modal，必须复用 `setupFLIPModal` 函数，绝不能采用简单的 display none/block 生硬切换。
