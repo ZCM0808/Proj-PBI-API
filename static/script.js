@@ -12050,23 +12050,9 @@ window.updateHarnessStats = function() {
 
                 // 2. Embed the report
 
-                const models = window['powerbi-client'].models;
+                                const models = window['powerbi-client'].models;
 
                 const tokenType = (data.tokenType === 'Aad') ? models.TokenType.Aad : models.TokenType.Embed;
-                const viewMode = (data.accessLevel === 'Edit') ? models.ViewMode.Edit : models.ViewMode.View;
-
-                const panesSettings = { 
-                    filters: { visible: false }, 
-                    pageNavigation: { visible: true }
-                };
-                
-                if (viewMode === models.ViewMode.Edit) {
-                    panesSettings.visualizations = { visible: false, expanded: false };
-                    panesSettings.fields = { visible: false, expanded: false };
-                    panesSettings.selection = { visible: false };
-                    panesSettings.bookmarks = { visible: false };
-                    panesSettings.syncSlicers = { visible: false };
-                }
 
                 const config = {
                     type: 'report',
@@ -12074,9 +12060,8 @@ window.updateHarnessStats = function() {
                     accessToken: data.embedToken,
                     embedUrl: data.embedUrl,
                     id: rId,
-                    viewMode: viewMode,
                     settings: {
-                        panes: panesSettings,
+                        panes: { filters: { visible: false }, pageNavigation: { visible: true } },
                         layoutType: models.LayoutType.FitToPage
                     }
                 };
