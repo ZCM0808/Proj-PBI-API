@@ -6240,37 +6240,94 @@ window.updateHarnessStats = function() {
             const rows = parseInt(document.getElementById('wf-vis-rows').value) || 100000;
             
             if (mode === 'analyze') {
-                if (!wsId || !reportId) {
-                    if (window.showNotification) window.showNotification("Error: Please select Workspace and Report first.", "error");
-                    out.textContent += `[${new Date().toLocaleTimeString()}] Error: Please select workspace and report.\n`;
+                if (!currentEmbeddedReport) {
+                    if (window.showNotification) window.showNotification("Error: Please select Workspace and Report, and wait for report to render.", "error");
+                    out.textContent += `[${new Date().toLocaleTimeString()}] Error: Embedded report not ready.\n`;
                     setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                     return;
                 }
-                if (window.showNotification) window.showNotification("Analyzing Dependencies... Check console below.", "info");
                 
-                out.textContent += `[${new Date().toLocaleTimeString()}] Analyzing Visual Dependencies (Report Layer)...\n`;
-                out.textContent += `> Downloading PBIX into memory to extract Layout & Visual configurations... This might take a few seconds.\n`;
+                if (window.showNotification) window.showNotification("Analyzing Dependencies via JS SDK... Check console below.", "info");
+                out.textContent += `[${new Date().toLocaleTimeString()}] Analyzing Visual Dependencies via JS SDK (Frontend)...\n`;
                 setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                 
                 try {
-                    const res = await fetch('/api/workflow/analyze_visual', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ workspace_id: wsId, report_id: reportId, page_name: pId, visual_name: visId })
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        out.textContent += `\n[Analysis Result] 🧬 Dependency Tree:\n\n`;
-                        out.textContent += data.analysis + `\n`;
-                        out.textContent += `\n> Task Completed.\n`;
-                        if (window.showNotification) window.showNotification("Dependency Analysis Completed!", "success");
-                    } else {
-                        out.textContent += `\n❌ Error: ${data.error}\n`;
-                        if (window.showNotification) window.showNotification("Analysis Failed: " + data.error, "error");
+                    const pages = await currentEmbeddedReport.getPages();
+                    const targetPages = (pId === 'ALL') ? pages : pages.filter(p => p.name === pId);
+                    
+                    if (targetPages.length === 0) {
+                        out.textContent += `Error: Page not found.\n`;
+                        return;
                     }
-                } catch(e) {
-                    out.textContent += `\n❌ Request Failed: ${e}\n`;
-                    if (window.showNotification) window.showNotification("Network/Request Error", "error");
+                    
+                    for (let page of targetPages) {
+                        out.textContent += `\n📄 Page: [${page.displayName}]\n`;
+                        setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                        
+                        await page.setActive();
+                        await new Promise(r => setTimeout(r, 1500)); // wait for visuals to load
+                        
+                        const visuals = await page.getVisuals();
+                        const targetVisuals = (visId === 'ALL') ? visuals : visuals.filter(v => v.name === visId);
+                        
+                        for (let v of targetVisuals) {
+                            const vName = v.title || v.name || v.type;
+                            out.textContent += `  📊 Visual: [${vName}] (Type: ${v.type})\n`;
+                            
+                            try {
+                                const caps = await v.getCapabilities();
+                                if (caps && caps.dataRoles) {
+                                    for (let role of caps.dataRoles) {
+                                        try {
+                                            const fields = await v.getDataFields(role.name);
+                                            if (fields && fields.length > 0) {
+                                                out.textContent += `    🔹 Role '${role.name}':\n`;
+                                                for (let f of fields) {
+                                                    let fStr = JSON.stringify(f);
+                                                    if (f.column) fStr = `'${f.table}'[${f.column}] (Column)`;
+                                                    else if (f.measure) fStr = `'${f.table}'[${f.measure}] (Measure)`;
+                                                    else if (f.hierarchyLevel) fStr = `'${f.table}'[${f.hierarchyLevel.hierarchy}].[${f.hierarchyLevel.level}] (Hierarchy)`;
+                                                    
+                                                    // aggregation?
+                                                    if (f.aggregation) {
+                                                        fStr += ` {Agg: ${f.aggregation.Function || f.aggregation}}`;
+                                                    }
+                                                    out.textContent += `       - ${fStr}\n`;
+                                                }
+                                            }
+                                        } catch (e) {
+                                            // might fail if role is empty or not authoring mode
+                                        }
+                                    }
+                                } else {
+                                    out.textContent += `    (No data roles found)\n`;
+                                }
+                            } catch(e) {
+                                // Fallback: try exportData to at least see headers?
+                                out.textContent += `    (Capabilities inaccessible in View mode. Attempting CSV Header Fallback...)\n`;
+                                try {
+                                    const models = window['powerbi-client'].models;
+                                    const res = await v.exportData(models.ExportDataType.Summarized, 1);
+                                    if (res && res.data) {
+                                        const firstLine = res.data.split('\n')[0];
+                                        const headers = firstLine.split(',').map(h => h.replace(/^"|"$/g, ''));
+                                        out.textContent += `    🔹 Detected Fields (from Export):\n`;
+                                        headers.forEach(h => {
+                                            out.textContent += `       - ${h}\n`;
+                                        });
+                                    }
+                                } catch (e2) {
+                                    out.textContent += `    (Fallback failed: ${e2.message})\n`;
+                                }
+                            }
+                        }
+                    }
+                    
+                    out.textContent += `\n> Task Completed.\n`;
+                    if (window.showNotification) window.showNotification("Dependency Analysis Completed!", "success");
+                } catch (err) {
+                    out.textContent += `\n❌ SDK Error: ${err.message}\n`;
+                    if (window.showNotification) window.showNotification("Analysis Failed", "error");
                 }
                 setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                 return;
@@ -6294,6 +6351,11 @@ window.updateHarnessStats = function() {
                 const pages = await currentEmbeddedReport.getPages();
                 const targetPages = (pId === 'ALL') ? pages : pages.filter(p => p.name === pId);
                 
+                if (targetPages.length === 0) {
+                    out.textContent += `Error: Page not found.\n`;
+                    return;
+                }
+
                 for (let page of targetPages) {
                     out.textContent += `\n> Navigating to Page: [${page.displayName}]...\n`;
                     setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
@@ -6303,12 +6365,17 @@ window.updateHarnessStats = function() {
                     const visuals = await page.getVisuals();
                     const targetVisuals = (visId === 'ALL') ? visuals : visuals.filter(v => v.name === visId);
                     
-                    for (let visual of targetVisuals) {
-                        const vName = visual.title || visual.type || visual.name;
+                    if (targetVisuals.length === 0) {
+                        out.textContent += `  - No matching visuals found on this page.\n`;
+                        continue;
+                    }
+
+                    for (let v of targetVisuals) {
+                        const vName = v.title || v.name || v.type;
                         out.textContent += `  - Visual [${vName}]: Extracting...`;
-                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                        setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                         try {
-                            const result = await visual.exportData(exportType, rows);
+                            const result = await v.exportData(exportType, rows);
                             
                             // Parse CSV to Excel Worksheet
                             const tempWb = XLSX.read(result.data, {type: 'string'});
@@ -6330,10 +6397,10 @@ window.updateHarnessStats = function() {
                             XLSX.utils.book_append_sheet(wb, ws, sheetName);
                             fileCount++;
                             out.textContent += ` OK (Appended to Sheet: ${sheetName})\n`;
-                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                            setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                         } catch (e) {
                             out.textContent += ` SKIPPED (No data or unsupported)\n`;
-                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                            setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                         }
                     }
                 }
@@ -6351,9 +6418,9 @@ window.updateHarnessStats = function() {
                 
             } catch (err) {
                 out.textContent += `Exception during export: ${err.message || JSON.stringify(err)}\n`;
-                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
             }
-        };
+        }
 
         window.togglePbiEmbedFullscreen = function() {
             const embedWrapper = document.getElementById('pbi-embed-wrapper');
