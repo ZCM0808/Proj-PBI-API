@@ -12052,7 +12052,8 @@ window.updateHarnessStats = function() {
 
                                 const models = window['powerbi-client'].models;
 
-                const tokenType = (data.tokenType === 'Aad') ? models.TokenType.Aad : models.TokenType.Embed;\n                window._currentDatasetId = data.datasetId;
+                const tokenType = (data.tokenType === 'Aad') ? models.TokenType.Aad : models.TokenType.Embed;
+                window._currentDatasetId = data.datasetId;
 
                 const config = {
                     type: 'report',
