@@ -12643,18 +12643,16 @@ window.updateHarnessStats = function() {
                                             const ws = tempWb.Sheets[tempWb.SheetNames[0]];
                                             headers = XLSX.utils.sheet_to_json(ws, {header: 1})[0] || [];
                                         } else {
-                                            const firstLine = res.data.split('
-')[0].replace(/
-$/, '');
+                                            const firstLine = res.data.split('\n')[0].replace(/\r$/, '');
                                             headers = firstLine.split(',').map(h => h.replace(/^"|"$/g, ''));
                                         }
                                         out.textContent += `    🔹 Detected Fields (from Export):
 `;
                                         headers.forEach(h => {
                                             if (h && String(h).trim() && String(h).trim() !== '""') {
-                                                const fieldName = String(h).trim();\n                                                const resolvedName = schemaMap[fieldName.toLowerCase()] || fieldName;
-                                                out.textContent += `       - ${fieldName}
-`;
+                                                const fieldName = String(h).trim();
+                                                const resolvedName = schemaMap[fieldName.toLowerCase()] || fieldName;
+                                                out.textContent += `       - ${resolvedName}\n`;
                                                 dataList.push({ page: page.displayName, visual: vName, type: v.type, role: '(Export Data Fallback)', field: resolvedName });
                                                 hasFields = true;
                                             }
