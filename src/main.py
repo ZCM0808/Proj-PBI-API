@@ -1710,44 +1710,31 @@ def analyze_visual():
         
         def extract_refs(obj):
             if isinstance(obj, dict):
-                # Check for field ref
                 if "Expression" in obj and "SourceRef" in obj["Expression"] and "Property" in obj:
                     entity = obj["Expression"]["SourceRef"].get("Entity", "UnknownTable")
                     prop = obj["Property"]
                     entities_used.add(f"'{entity}'[{prop}]")
                 elif "Entity" in obj and "Property" in obj:
-                    # Alternative structure
                     entities_used.add(f"'{obj['Entity']}'[{obj['Property']}]")
-                
-                for k, v in obj.items():
-                    extract_refs(v)
+                for k, v in obj.items(): extract_refs(v)
             elif isinstance(obj, list):
-                for item in obj:
-                    extract_refs(item)
+                for item in obj: extract_refs(item)
 
         try:
             with zipfile.ZipFile(io.BytesIO(res.content)) as z:
-                # Iterate over files in the zip to find visual.json
                 for file_info in z.infolist():
                     if file_info.filename.endswith('visual.json'):
-                        # Report/definition/pages/{page_name}/visuals/{visual_name}/visual.json
                         parts = file_info.filename.split('/')
                         if len(parts) >= 6:
                             curr_page = parts[3]
                             curr_vis = parts[5]
-                            
-                            # Filter logic
-                            if page_name != 'ALL' and curr_page != page_name:
-                                continue
-                            if visual_name != 'ALL' and curr_vis != visual_name:
-                                continue
-                                
+                            if page_name != 'ALL' and curr_page != page_name: continue
+                            if visual_name != 'ALL' and curr_vis != visual_name: continue
                             try:
                                 visual_bytes = z.read(file_info.filename)
                                 visual_data = json.loads(visual_bytes.decode('utf-8'))
                                 extract_refs(visual_data.get('visual', {}))
-                            except:
-                                pass
+                            except: pass
                 
                 # If PBIR parsing didn't yield anything (old PBIX format), try Layout
                 if not entities_used:
@@ -1755,38 +1742,22 @@ def analyze_visual():
                         layout_bytes = z.read('Report/Layout')
                         layout_data = json.loads(layout_bytes.decode('utf-16le'))
                         for section in layout_data.get('sections', []):
-                            if page_name != 'ALL' and section.get('name') != page_name:
-                                continue
-                                
+                            if page_name != 'ALL' and section.get('name') != page_name: continue
                             for container in section.get('visualContainers', []):
                                 config_str = container.get('config', '{}')
                                 config = json.loads(config_str)
-                                
-                                if visual_name != 'ALL' and config.get('name') != visual_name:
-                                    continue
-                                    
+                                if visual_name != 'ALL' and config.get('name') != visual_name: continue
                                 extract_refs(config)
-                                if 'query' in container:
-                                    extract_refs(container['query'])
-                    except:
-                        pass
+                                if 'query' in container: extract_refs(container['query'])
+                    except: pass
         except Exception as z_err:
             return jsonify({"success": False, "error": f"Zip extraction error: {str(z_err)}"})
             
         if not entities_used:
-            analysis_text = f"Target: Page '{page_name}', Visual '{visual_name}'
-
-Result:
-No data fields or measures found (It might be a static shape or textbox)."
+            analysis_text = f"Target: Page '{page_name}', Visual '{visual_name}'\n\nResult:\nNo data fields or measures found (It might be a static shape or textbox)."
         else:
-            fields_list = '
-'.join(f"  - {f}" for f in sorted(entities_used))
-            analysis_text = f"Target: Page '{page_name}', Visual '{visual_name}'
-
-This target references the following dataset fields/measures:
-{fields_list}
-
-(Note: Deep measure lineage tracking requires Premium XMLA/TMDL parsing and is not fully expanded here)."
+            fields_list = '\n'.join(f"  - {f}" for f in sorted(entities_used))
+            analysis_text = f"Target: Page '{page_name}', Visual '{visual_name}'\n\nThis target references the following dataset fields/measures:\n{fields_list}\n\n(Note: Deep measure lineage tracking requires Premium XMLA/TMDL parsing and is not fully expanded here)."
             
         return jsonify({"success": True, "analysis": analysis_text})
         
@@ -1794,6 +1765,7 @@ This target references the following dataset fields/measures:
         return jsonify({"success": False, "error": str(e)})
 
 if __name__ == "__main__":
+
     main()
 
 
