@@ -1687,22 +1687,26 @@ def api_query_local_pbi(req: DaxQueryReq):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
-@app.route('/api/workflow/analyze_visual', methods=['POST'])
-@require_auth
-def analyze_visual():
-    data = request.json
-    workspace_id = data.get('workspace_id')
-    report_id = data.get('report_id')
-    page_name = data.get('page_name')
-    visual_name = data.get('visual_name')
+class AnalyzeVisualRequest(BaseModel):
+    workspace_id: str
+    report_id: str
+    page_name: str
+    visual_name: str
+
+@app.post('/api/workflow/analyze_visual')
+def analyze_visual(req: AnalyzeVisualRequest):
+    workspace_id = req.workspace_id
+    report_id = req.report_id
+    page_name = req.page_name
+    visual_name = req.visual_name
     
     if not all([workspace_id, report_id, page_name, visual_name]):
-        return jsonify({"success": False, "error": "Missing parameters"})
+        return {"success": False, "error": "Missing parameters"}
         
     try:
         res = pbi_client.request('GET', f'/groups/{workspace_id}/reports/{report_id}/Export', raw_response=True)
         if res.status_code != 200:
-            return jsonify({"success": False, "error": f"Failed to download report. HTTP {res.status_code}: {res.text}"})
+            return {"success": False, "error": f"Failed to download report. HTTP {res.status_code}: {res.text}"}
             
         import io, zipfile, json
         
@@ -1751,7 +1755,7 @@ def analyze_visual():
                                 if 'query' in container: extract_refs(container['query'])
                     except: pass
         except Exception as z_err:
-            return jsonify({"success": False, "error": f"Zip extraction error: {str(z_err)}"})
+            return {"success": False, "error": f"Zip extraction error: {str(z_err)}"}
             
         if not entities_used:
             analysis_text = f"Target: Page '{page_name}', Visual '{visual_name}'\n\nResult:\nNo data fields or measures found (It might be a static shape or textbox)."
@@ -1759,12 +1763,13 @@ def analyze_visual():
             fields_list = '\n'.join(f"  - {f}" for f in sorted(entities_used))
             analysis_text = f"Target: Page '{page_name}', Visual '{visual_name}'\n\nThis target references the following dataset fields/measures:\n{fields_list}\n\n(Note: Deep measure lineage tracking requires Premium XMLA/TMDL parsing and is not fully expanded here)."
             
-        return jsonify({"success": True, "analysis": analysis_text})
+        return {"success": True, "analysis": analysis_text}
         
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
+        return {"success": False, "error": str(e)}
 
 if __name__ == "__main__":
+
 
     main()
 
