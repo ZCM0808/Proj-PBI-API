@@ -12618,24 +12618,26 @@ window.updateHarnessStats = function() {
 
                                     if (res && res.data) {
 
-                                        const firstLine = res.data.split('\n')[0];
-
-                                        const headers = firstLine.split(',').map(h => h.replace(/^"|"$/g, ''));
-
-                                        out.textContent += `    🔹 Detected Fields (from Export):\n`;
-
+                                        let headers = [];
+                                        if (typeof XLSX !== 'undefined') {
+                                            const tempWb = XLSX.read(res.data, {type: 'string'});
+                                            const ws = tempWb.Sheets[tempWb.SheetNames[0]];
+                                            headers = XLSX.utils.sheet_to_json(ws, {header: 1})[0] || [];
+                                        } else {
+                                            const firstLine = res.data.split('
+')[0].replace(/$/, '');
+                                            headers = firstLine.split(',').map(h => h.replace(/^"|"$/g, ''));
+                                        }
+                                        out.textContent += `    🔹 Detected Fields (from Export):
+`;
                                         headers.forEach(h => {
-
-                                            if (h.trim() && h.trim() !== '""') {
-
-                                                out.textContent += `       - ${h}\n`;
-
-                                                dataList.push({ page: page.displayName, visual: vName, type: v.type, role: '(Export Data Fallback)', field: h });
-
+                                            if (h && String(h).trim() && String(h).trim() !== '""') {
+                                                const fieldName = String(h).trim();
+                                                out.textContent += `       - ${fieldName}
+`;
+                                                dataList.push({ page: page.displayName, visual: vName, type: v.type, role: '(Export Data Fallback)', field: fieldName });
                                                 hasFields = true;
-
                                             }
-
                                         });
 
                                     }
