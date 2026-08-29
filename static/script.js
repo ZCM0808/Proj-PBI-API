@@ -12052,7 +12052,7 @@ window.updateHarnessStats = function() {
 
                                 const models = window['powerbi-client'].models;
 
-                const tokenType = (data.tokenType === 'Aad') ? models.TokenType.Aad : models.TokenType.Embed;
+                const tokenType = (data.tokenType === 'Aad') ? models.TokenType.Aad : models.TokenType.Embed;\n                window._currentDatasetId = data.datasetId;
 
                 const config = {
                     type: 'report',
@@ -12507,7 +12507,7 @@ window.updateHarnessStats = function() {
                     let schemaMap = {};
                     try {
                         const wId = document.getElementById('wf-xmla-workspace').value || document.getElementById('config-workspace-id').value;
-                        const rId = document.getElementById('wf-xmla-dataset').value || document.getElementById('config-report-id').value;
+                        const rId = document.getElementById('wf-xmla-dataset').value || window._currentDatasetId;
                         out.textContent += `> Fetching XMLA Schema Dictionary from Backend...\n`;
                         const schemaRes = await fetch(`/api/schema?workspace_id=${wId}&dataset_id=${rId}`);
                         if (schemaRes.ok) {
