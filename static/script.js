@@ -12055,36 +12055,30 @@ window.updateHarnessStats = function() {
                 const tokenType = (data.tokenType === 'Aad') ? models.TokenType.Aad : models.TokenType.Embed;
                 const viewMode = (data.accessLevel === 'Edit') ? models.ViewMode.Edit : models.ViewMode.View;
 
+                const panesSettings = { 
+                    filters: { visible: false }, 
+                    pageNavigation: { visible: true },
+                    bookmarks: { visible: false },
+                    syncSlicers: { visible: false }
+                };
+                
+                if (viewMode === models.ViewMode.Edit) {
+                    panesSettings.visualizations = { visible: false, expanded: false };
+                    panesSettings.fields = { visible: false, expanded: false };
+                    panesSettings.selection = { visible: false };
+                }
+
                 const config = {
-
                     type: 'report',
-
                     tokenType: tokenType,
-
                     accessToken: data.embedToken,
-
                     embedUrl: data.embedUrl,
-
                     id: rId,
-                    
                     viewMode: viewMode,
-
                     settings: {
-
-                        panes: { 
-                            filters: { visible: false }, 
-                            pageNavigation: { visible: true },
-                            visualizations: { visible: false, expanded: false },
-                            fields: { visible: false, expanded: false },
-                            selection: { visible: false },
-                            syncSlicers: { visible: false },
-                            bookmarks: { visible: false }
-                        },
-
+                        panes: panesSettings,
                         layoutType: models.LayoutType.FitToPage
-
                     }
-
                 };
 
                 
