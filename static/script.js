@@ -12503,6 +12503,25 @@ window.updateHarnessStats = function() {
                 
 
                 try {
+                    // Fetch schema from backend
+                    let schemaMap = {};
+                    try {
+                        const wId = document.getElementById('wf-xmla-workspace').value || document.getElementById('config-workspace-id').value;
+                        const rId = document.getElementById('wf-xmla-dataset').value || document.getElementById('config-report-id').value;
+                        out.textContent += `> Fetching XMLA Schema Dictionary from Backend...\n`;
+                        const schemaRes = await fetch(`/api/schema?workspace_id=${wId}&dataset_id=${rId}`);
+                        if (schemaRes.ok) {
+                            const schemaData = await schemaRes.json();
+                            if (schemaData.success && schemaData.schema) {
+                                schemaMap = schemaData.schema;
+                                out.textContent += `> XMLA Schema successfully loaded (${Object.keys(schemaMap).length} fields matched).\n\n`;
+                            } else {
+                                out.textContent += `> XMLA Schema Warning: ${schemaData.error || 'Unknown error'}\n\n`;
+                            }
+                        }
+                    } catch(e) {
+                        out.textContent += `> XMLA Schema Fetch Failed: ${e.message}\n\n`;
+                    }
 
                     const pages = await currentEmbeddedReport.getPages();
 
@@ -12625,17 +12644,18 @@ window.updateHarnessStats = function() {
                                             headers = XLSX.utils.sheet_to_json(ws, {header: 1})[0] || [];
                                         } else {
                                             const firstLine = res.data.split('
-')[0].replace(/$/, '');
+')[0].replace(/
+$/, '');
                                             headers = firstLine.split(',').map(h => h.replace(/^"|"$/g, ''));
                                         }
                                         out.textContent += `    🔹 Detected Fields (from Export):
 `;
                                         headers.forEach(h => {
                                             if (h && String(h).trim() && String(h).trim() !== '""') {
-                                                const fieldName = String(h).trim();
+                                                const fieldName = String(h).trim();\n                                                const resolvedName = schemaMap[fieldName.toLowerCase()] || fieldName;
                                                 out.textContent += `       - ${fieldName}
 `;
-                                                dataList.push({ page: page.displayName, visual: vName, type: v.type, role: '(Export Data Fallback)', field: fieldName });
+                                                dataList.push({ page: page.displayName, visual: vName, type: v.type, role: '(Export Data Fallback)', field: resolvedName });
                                                 hasFields = true;
                                             }
                                         });

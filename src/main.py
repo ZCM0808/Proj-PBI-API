@@ -819,6 +819,76 @@ async def get_embed_info(request: Request):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+@app.get("/api/schema")
+async def get_xmla_schema(workspace_id: str, dataset_id: str):
+    try:
+        # Load ADOMD Client
+        import clr
+        import sys
+        import os
+        dll_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "dlls", "lib", "net45"))
+        if dll_path not in sys.path:
+            sys.path.append(dll_path)
+        
+        try:
+            clr.AddReference('Microsoft.AnalysisServices.AdomdClient')
+        except Exception:
+            return {"success": False, "error": "ADOMD DLL missing."}
+            
+        from pyadomd import Pyadomd
+        
+        # Get workspace name
+        groups = client.request('GET', f'/groups/{workspace_id}')
+        if not groups or 'name' not in groups:
+            return {"success": False, "error": "Cannot find workspace."}
+        workspace_name = groups['name']
+        
+        # Get dataset name
+        ds = client.request('GET', f'/groups/{workspace_id}/datasets/{dataset_id}')
+        if not ds or 'name' not in ds:
+            return {"success": False, "error": "Cannot find dataset."}
+        dataset_name = ds['name']
+        
+        cfg = Config()
+        conn_str = (
+            f"Data Source=powerbi://api.powerbi.com/v1.0/myorg/{workspace_name};"
+            f"Initial Catalog={dataset_name};"
+            f"User ID=app:{cfg.CLIENT_ID}@{cfg.TENANT_ID};"
+            f"Password={cfg.CLIENT_SECRET};"
+        )
+        
+        schema_map = {}
+        def process_xmla():
+            with Pyadomd(conn_str) as conn:
+                tables_dict = {}
+                with conn.cursor().execute("SELECT [ID], [Name] FROM $SYSTEM.TMSCHEMA_TABLES") as cursor:
+                    for row in cursor.fetchall():
+                        tables_dict[row[0]] = row[1]
+                        
+                with conn.cursor().execute("SELECT [TableID], [ExplicitName], [InferredName] FROM $SYSTEM.TMSCHEMA_COLUMNS") as cursor:
+                    for row in cursor.fetchall():
+                        tid = row[0]
+                        name = row[1] if row[1] else row[2]
+                        if name and tid in tables_dict:
+                            # Format: 'Table'[Column]
+                            full_name = f"'{tables_dict[tid]}'[{name}]"
+                            schema_map[name.lower()] = full_name
+                            
+                with conn.cursor().execute("SELECT [TableID], [Name] FROM $SYSTEM.TMSCHEMA_MEASURES") as cursor:
+                    for row in cursor.fetchall():
+                        tid = row[0]
+                        name = row[1]
+                        if name and tid in tables_dict:
+                            full_name = f"'{tables_dict[tid]}'[{name}]"
+                            schema_map[name.lower()] = full_name
+        
+        await asyncio.to_thread(process_xmla)
+        
+        return {"success": True, "schema": schema_map}
+        
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 @app.post("/api/download")
 async def download_proxy(request: Request):
     try:
