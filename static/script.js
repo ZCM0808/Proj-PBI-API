@@ -6251,8 +6251,7 @@ window.updateHarnessStats = function() {
                 out.textContent += `[${new Date().toLocaleTimeString()}] Analyzing Visual Dependencies via JS SDK (Frontend)...\n`;
                 setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                 
-                let analysisText = "Power BI Visual Dependency Tree\n";
-                analysisText += "================================\n\n";
+                let dataList = [];
                 
                 try {
                     const pages = await currentEmbeddedReport.getPages();
@@ -6264,9 +6263,7 @@ window.updateHarnessStats = function() {
                     }
                     
                     for (let page of targetPages) {
-                        const pageHeader = `\n📄 Page: [${page.displayName}]\n`;
-                        out.textContent += pageHeader;
-                        analysisText += pageHeader;
+                        out.textContent += `\n📄 Page: [${page.displayName}]\n`;
                         setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                         
                         await page.setActive();
@@ -6277,9 +6274,9 @@ window.updateHarnessStats = function() {
                         
                         for (let v of targetVisuals) {
                             const vName = v.title || v.name || v.type;
-                            const visHeader = `  📊 Visual: [${vName}] (Type: ${v.type})\n`;
-                            out.textContent += visHeader;
-                            analysisText += visHeader;
+                            out.textContent += `  📊 Visual: [${vName}] (Type: ${v.type})\n`;
+                            
+                            let hasFields = false;
                             
                             try {
                                 const caps = await v.getCapabilities();
@@ -6288,9 +6285,7 @@ window.updateHarnessStats = function() {
                                         try {
                                             const fields = await v.getDataFields(role.name);
                                             if (fields && fields.length > 0) {
-                                                const roleHeader = `    🔹 Role '${role.name}':\n`;
-                                                out.textContent += roleHeader;
-                                                analysisText += roleHeader;
+                                                out.textContent += `    🔹 Role '${role.name}':\n`;
                                                 for (let f of fields) {
                                                     let fStr = JSON.stringify(f);
                                                     if (f.column) fStr = `'${f.table}'[${f.column}] (Column)`;
@@ -6300,63 +6295,124 @@ window.updateHarnessStats = function() {
                                                     if (f.aggregation) {
                                                         fStr += ` {Agg: ${f.aggregation.Function || f.aggregation}}`;
                                                     }
-                                                    const fieldLine = `       - ${fStr}\n`;
-                                                    out.textContent += fieldLine;
-                                                    analysisText += fieldLine;
+                                                    out.textContent += `       - ${fStr}\n`;
+                                                    dataList.push({ page: page.displayName, visual: vName, type: v.type, role: role.name, field: fStr });
+                                                    hasFields = true;
                                                 }
                                             }
                                         } catch (e) {
                                             // skip
                                         }
                                     }
-                                } else {
-                                    const emptyRole = `    (No data roles found)\n`;
-                                    out.textContent += emptyRole;
-                                    analysisText += emptyRole;
                                 }
                             } catch(e) {
-                                const fallbackHeader = `    (Capabilities inaccessible in View mode. Attempting CSV Header Fallback...)\n`;
-                                out.textContent += fallbackHeader;
-                                analysisText += fallbackHeader;
+                                out.textContent += `    (Capabilities inaccessible in View mode. Attempting CSV Header Fallback...)\n`;
                                 try {
                                     const models = window['powerbi-client'].models;
                                     const res = await v.exportData(models.ExportDataType.Summarized, 1);
                                     if (res && res.data) {
                                         const firstLine = res.data.split('\n')[0];
                                         const headers = firstLine.split(',').map(h => h.replace(/^"|"$/g, ''));
-                                        const exportDetected = `    🔹 Detected Fields (from Export):\n`;
-                                        out.textContent += exportDetected;
-                                        analysisText += exportDetected;
+                                        out.textContent += `    🔹 Detected Fields (from Export):\n`;
                                         headers.forEach(h => {
-                                            const hLine = `       - ${h}\n`;
-                                            out.textContent += hLine;
-                                            analysisText += hLine;
+                                            if (h.trim() && h.trim() !== '""') {
+                                                out.textContent += `       - ${h}\n`;
+                                                dataList.push({ page: page.displayName, visual: vName, type: v.type, role: '(Export Data Fallback)', field: h });
+                                                hasFields = true;
+                                            }
                                         });
                                     }
                                 } catch (e2) {
-                                    const fallbackFail = `    (Fallback failed: ${e2.message})\n`;
-                                    out.textContent += fallbackFail;
-                                    analysisText += fallbackFail;
+                                    out.textContent += `    (Fallback failed: ${e2.message})\n`;
                                 }
+                            }
+                            
+                            if (!hasFields) {
+                                dataList.push({ page: page.displayName, visual: vName, type: v.type, role: '-', field: '(No bound data / Unsupported)' });
                             }
                         }
                     }
                     
-                    out.textContent += `\n> Task Completed. Generating download file...\n`;
+                    out.textContent += `\n> Task Completed. Generating table modal...\n`;
                     
-                    // Create and download the text file
-                    const blob = new Blob([analysisText], { type: 'text/plain;charset=utf-8;' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    const cleanRepName = currentEmbeddedReport.config.id || "Report";
-                    a.download = `Dependency_Tree_${cleanRepName}.txt`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
+                    if (!window.showDependencyTableModal) {
+                        window.showDependencyTableModal = function(dataList) {
+                            let modal = document.getElementById('dependency-table-modal');
+                            if (!modal) {
+                                modal = document.createElement('div');
+                                modal.id = 'dependency-table-modal';
+                                modal.className = 'modal-overlay';
+                                modal.style.zIndex = '10009';
+                                modal.innerHTML = `
+                                    <div class="modal-content glass-panel" style="width: 900px; max-width: 95vw; max-height: 85vh; display: flex; flex-direction: column;">
+                                        <div class="modal-header" style="border-bottom: 1px solid var(--panel-border);">
+                                            <h3 style="font-size: 1.1rem; margin: 0; color: var(--text-primary); font-weight: 600;">🧬 Visual Dependency Tree</h3>
+                                            <button type="button" class="close-btn" onclick="document.getElementById('dependency-table-modal').style.display='none'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
+                                        </div>
+                                        <div class="modal-body" style="flex: 1; overflow: auto; padding: 0;">
+                                            <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left; color: var(--text-primary);">
+                                                <thead style="position: sticky; top: 0; background: var(--bg-dark); box-shadow: 0 1px 2px rgba(0,0,0,0.5); z-index: 2;">
+                                                    <tr>
+                                                        <th style="padding: 10px; border-bottom: 1px solid var(--panel-border);">Page</th>
+                                                        <th style="padding: 10px; border-bottom: 1px solid var(--panel-border);">Visual</th>
+                                                        <th style="padding: 10px; border-bottom: 1px solid var(--panel-border);">Type</th>
+                                                        <th style="padding: 10px; border-bottom: 1px solid var(--panel-border);">Data Role</th>
+                                                        <th style="padding: 10px; border-bottom: 1px solid var(--panel-border);">Field / Measure</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="dependency-table-body">
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="modal-footer" style="border-top: 1px solid var(--panel-border); display: flex; justify-content: flex-end; gap: 8px;">
+                                            <button class="btn-cancel" onclick="document.getElementById('dependency-table-modal').style.display='none'">Close</button>
+                                            <button class="btn-action-primary" id="dep-export-csv-btn">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: middle;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                                Export CSV
+                                            </button>
+                                        </div>
+                                    </div>
+                                `;
+                                document.body.appendChild(modal);
+                            }
+                            
+                            const tbody = document.getElementById('dependency-table-body');
+                            tbody.innerHTML = '';
+                            
+                            dataList.forEach((row, i) => {
+                                const tr = document.createElement('tr');
+                                tr.style.background = i % 2 === 0 ? 'transparent' : 'var(--overlay-5)';
+                                tr.innerHTML = `
+                                    <td style="padding: 8px 10px; border-bottom: 1px solid var(--overlay-10);">${row.page}</td>
+                                    <td style="padding: 8px 10px; border-bottom: 1px solid var(--overlay-10);">${row.visual}</td>
+                                    <td style="padding: 8px 10px; border-bottom: 1px solid var(--overlay-10);">${row.type}</td>
+                                    <td style="padding: 8px 10px; border-bottom: 1px solid var(--overlay-10);">${row.role}</td>
+                                    <td style="padding: 8px 10px; border-bottom: 1px solid var(--overlay-10); font-family: monospace; color: #38bdf8;">${row.field}</td>
+                                `;
+                                tbody.appendChild(tr);
+                            });
+                            
+                            document.getElementById('dep-export-csv-btn').onclick = () => {
+                                let csv = 'Page,Visual,Type,Data Role,Field / Measure\n';
+                                dataList.forEach(row => {
+                                    const escape = s => '"' + String(s).replace(/"/g, '""') + '"';
+                                    csv += [row.page, row.visual, row.type, row.role, row.field].map(escape).join(',') + '\n';
+                                });
+                                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `Dependency_Tree.csv`;
+                                a.click();
+                                URL.revokeObjectURL(url);
+                            };
+                            
+                            modal.style.display = 'flex';
+                        };
+                    }
                     
-                    if (window.showNotification) window.showNotification("Dependency Analysis Completed! File downloaded.", "success");
+                    window.showDependencyTableModal(dataList);
+                    if (window.showNotification) window.showNotification("Dependency Analysis Completed!", "success");
                 } catch (err) {
                     out.textContent += `\n❌ SDK Error: ${err.message}\n`;
                     if (window.showNotification) window.showNotification("Analysis Failed", "error");
