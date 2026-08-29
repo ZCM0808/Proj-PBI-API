@@ -1338,10 +1338,16 @@
                     </div>
                 </div>
                 <div class="modal-footer" style="display: flex; justify-content: flex-end; align-items: center; gap: 8px;">
-                    <button type="button" id="export-local-btn" class="btn-cancel" title="导出所有设置、书签和历史记录 (Export All Settings, Bookmarks & History)">📤 导出 (Export)</button>
-                    <button type="button" id="import-local-btn" class="btn-cancel" title="导入所有设置、书签和历史记录 (Import All Settings, Bookmarks & History)">📥 Import</button>
+                    <button type="button" id="export-local-btn" class="icon-btn" title="导出设置与历史 (Export Settings & History)" style="height: 32px; width: 34px; padding: 0; border-radius: 6px; border: 1px solid var(--panel-border); color: var(--text-secondary); display: flex; align-items: center; justify-content: center;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    </button>
+                    <button type="button" id="import-local-btn" class="icon-btn" title="导入设置与历史 (Import Settings & History)" style="height: 32px; width: 34px; padding: 0; border-radius: 6px; border: 1px solid var(--panel-border); color: var(--text-secondary); display: flex; align-items: center; justify-content: center;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    </button>
                     <input type="file" id="import-local-file" style="display: none;" accept=".json">
-                    <button type="submit" id="save-settings-btn" class="btn-action-primary">💾 保存配置 (Save & Apply)</button>
+                    <button type="submit" id="save-settings-btn" class="btn-action-primary" title="保存并应用配置 (Save & Apply Settings)" style="height: 32px; width: 34px; padding: 0; border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                    </button>
                 </div>
             </form>
         </div>
@@ -1571,7 +1577,7 @@
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
     <script src="/static/universal_modal.js?v=20260825_v21"></script>
-    <script src="/static/script.js?v=20260829_v2005"></script>
+    <script src="/static/script.js?v=20260829_v2152"></script>
 
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: none; z-index: 10005;">
