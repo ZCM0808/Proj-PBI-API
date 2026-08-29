@@ -783,13 +783,23 @@ async def get_embed_info(request: Request):
         embed_url = report_info.get("embedUrl")
         dataset_id = report_info.get("datasetId")
         
-        # 1. Try standard GenerateToken first
+        # 1. Try standard GenerateToken with Edit access first (needed for getCapabilities & getDataFields)
+        try:
+            token_res = await asyncio.to_thread(
+                client.request, "POST", f"/groups/{w_id}/reports/{r_id}/GenerateToken", json={"accessLevel": "Edit", "allowSaveAs": True}
+            )
+            if token_res and token_res.get("token"):
+                return {"success": True, "embedUrl": embed_url, "embedToken": token_res.get("token"), "tokenType": "Embed", "accessLevel": "Edit"}
+        except Exception:
+            pass
+
+        # 1b. Fallback to View access
         try:
             token_res = await asyncio.to_thread(
                 client.request, "POST", f"/groups/{w_id}/reports/{r_id}/GenerateToken", json={"accessLevel": "View"}
             )
             if token_res and token_res.get("token"):
-                return {"success": True, "embedUrl": embed_url, "embedToken": token_res.get("token"), "tokenType": "Embed"}
+                return {"success": True, "embedUrl": embed_url, "embedToken": token_res.get("token"), "tokenType": "Embed", "accessLevel": "View"}
         except Exception:
             pass
 

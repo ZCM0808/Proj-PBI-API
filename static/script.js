@@ -12053,6 +12053,7 @@ window.updateHarnessStats = function() {
                 const models = window['powerbi-client'].models;
 
                 const tokenType = (data.tokenType === 'Aad') ? models.TokenType.Aad : models.TokenType.Embed;
+                const viewMode = (data.accessLevel === 'Edit') ? models.ViewMode.Edit : models.ViewMode.View;
 
                 const config = {
 
@@ -12065,10 +12066,20 @@ window.updateHarnessStats = function() {
                     embedUrl: data.embedUrl,
 
                     id: rId,
+                    
+                    viewMode: viewMode,
 
                     settings: {
 
-                        panes: { filters: { visible: false }, pageNavigation: { visible: true } },
+                        panes: { 
+                            filters: { visible: false }, 
+                            pageNavigation: { visible: true },
+                            visualizations: { visible: false, expanded: false },
+                            fields: { visible: false, expanded: false },
+                            selection: { visible: false },
+                            syncSlicers: { visible: false },
+                            bookmarks: { visible: false }
+                        },
 
                         layoutType: models.LayoutType.FitToPage
 
