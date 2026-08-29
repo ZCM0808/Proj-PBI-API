@@ -6239,14 +6239,55 @@ window.updateHarnessStats = function() {
             const expTypeStr = document.getElementById('wf-vis-type').value;
             const rows = parseInt(document.getElementById('wf-vis-rows').value) || 100000;
             
-            if (mode === 'analyze') {
-                out.textContent = `[${new Date().toLocaleTimeString()}] Analyzing Visual Dependencies (Report Layer)...
-`;
+                        if (mode === 'analyze') {
                 if (!wsId || !reportId) {
-                    out.textContent += `Error: Please select workspace and report.
+                    if (window.showNotification) window.showNotification("Error: Please select Workspace and Report first.", "error");
+                    out.textContent += `[${new Date().toLocaleTimeString()}] Error: Please select workspace and report.
 `;
+                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                     return;
                 }
+                if (window.showNotification) window.showNotification("Analyzing Dependencies... Check console below.", "info");
+                
+                out.textContent += `[${new Date().toLocaleTimeString()}] Analyzing Visual Dependencies (Report Layer)...
+`;
+                out.textContent += `> Downloading PBIX into memory to extract Layout & Visual configurations... This might take a few seconds.
+`;
+                setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                
+                try {
+                    const res = await fetch('/api/workflow/analyze_visual', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ workspace_id: wsId, report_id: reportId, page_name: pId, visual_name: visId })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        out.textContent += `
+[Analysis Result] 🧬 Dependency Tree:
+
+`;
+                        out.textContent += data.analysis + `
+`;
+                        out.textContent += `
+> Task Completed.
+`;
+                        if (window.showNotification) window.showNotification("Dependency Analysis Completed!", "success");
+                    } else {
+                        out.textContent += `
+❌ Error: ${data.error}
+`;
+                        if (window.showNotification) window.showNotification("Analysis Failed: " + data.error, "error");
+                    }
+                } catch(e) {
+                    out.textContent += `
+❌ Request Failed: ${e}
+`;
+                    if (window.showNotification) window.showNotification("Network/Request Error", "error");
+                }
+                setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                return;
+            }
                 
                 try {
                     out.textContent += `> Downloading PBIX into memory to extract Layout & Visual configurations... This might take a few seconds.
