@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260829_v2239">
+    <link rel="stylesheet" href="/static/style.css?v=20260829_v2244">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -258,10 +258,9 @@
                         <strong style="color: var(--text-primary); font-weight: 600; line-height: 1;">Unknown</strong>
                       </span>
                       <span class="env-sep" style="opacity: 0.25;">|</span>
-                    <span id="display-daily-limit" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; height: 24px; box-sizing: border-box;" title="今日密码登录累计使用时长">
+                    <span id="display-daily-limit" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; height: 24px; box-sizing: border-box;" title="今日密码登录累计使用时长 (Today's Accumulated Password Login Time)">
                         <span style="opacity: 0.85; line-height: 1;">⏱️ 累计:</span>
-                        <strong id="daily-time-val-main" style="color: var(--text-primary); font-weight: 600; line-height: 1; font-family: monospace;">0</strong>
-                        <span style="opacity: 0.85; line-height: 1;">分钟</span>
+                        <strong id="daily-time-val-main" style="color: var(--text-primary); font-weight: 600; line-height: 1; font-family: monospace;">0m</strong>
                     </span>
                 </div>
                 <!-- Context Toolbar -->
@@ -1506,7 +1505,7 @@
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
     <script src="/static/universal_modal.js?v=20260825_v21"></script>
-    <script src="/static/script.js?v=20260829_v2239"></script>
+    <script src="/static/script.js?v=20260829_v2244"></script>
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay" style="display: none; z-index: 10005;">
         <div class="modal-content glass-panel">
@@ -1640,6 +1639,41 @@
     <!-- Background Daily Limit Pinger -->
     <script>
         (function() {
+            window.formatTimeDuration = function(totalSeconds) {
+                if (!totalSeconds || totalSeconds < 60) {
+                    const secs = totalSeconds || 0;
+                    return secs > 0 ? `${secs}s` : '0m';
+                }
+                const mins = Math.floor(totalSeconds / 60);
+                const hours = Math.floor(mins / 60);
+                const days = Math.floor(hours / 24);
+                const weeks = Math.floor(days / 7);
+                const months = Math.floor(days / 30);
+                const years = Math.floor(days / 365);
+
+                if (years >= 1) {
+                    const remMonths = Math.floor((days % 365) / 30);
+                    return remMonths > 0 ? `${years}y ${remMonths}mo` : `${years}y`;
+                }
+                if (months >= 1) {
+                    const remDays = days % 30;
+                    return remDays > 0 ? `${months}mo ${remDays}d` : `${months}mo`;
+                }
+                if (weeks >= 1) {
+                    const remDays = days % 7;
+                    return remDays > 0 ? `${weeks}w ${remDays}d` : `${weeks}w`;
+                }
+                if (days >= 1) {
+                    const remHours = hours % 24;
+                    return remHours > 0 ? `${days}d ${remHours}h` : `${days}d`;
+                }
+                if (hours >= 1) {
+                    const remMins = mins % 60;
+                    return remMins > 0 ? `${hours}h ${remMins}m` : `${hours}h`;
+                }
+                return `${mins}m`;
+            };
+
             function updateMainTracker() {
                 const today = new Date().toISOString().split('T')[0];
                 try {
@@ -1647,9 +1681,8 @@
                     if (data.date !== today) {
                         data = { date: today, seconds: 0 };
                     }
-                    const mins = Math.floor(data.seconds / 60);
                     const el = document.getElementById('daily-time-val-main');
-                    if (el) el.textContent = mins;
+                    if (el) el.textContent = window.formatTimeDuration(data.seconds);
                 } catch(e) {}
             }
             updateMainTracker();

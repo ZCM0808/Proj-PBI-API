@@ -395,10 +395,45 @@
     
     <!-- Inline Daily Time Tracker -->
     <div class="daily-time-tracker-login" style="margin-top: 20px; font-size: 0.8rem; color: var(--text-secondary); text-align: center; user-select: none; z-index: 10;">
-        <span style="opacity: 0.85;">⏱️ 今日密码登录累计:</span> <span id="daily-time-val-login" style="font-weight: 600; color: var(--text-primary); font-family: monospace;">0</span> 分钟 / 60 分钟
+        <span style="opacity: 0.85;">⏱️ 今日密码登录累计:</span> <span id="daily-time-val-login" style="font-weight: 600; color: var(--text-primary); font-family: monospace;">0m</span> <span style="opacity: 0.65; font-size: 0.75rem;">/ 1h limit</span>
     </div>
     <script>
         (function() {
+            function formatTimeDuration(totalSeconds) {
+                if (!totalSeconds || totalSeconds < 60) {
+                    const secs = totalSeconds || 0;
+                    return secs > 0 ? `${secs}s` : '0m';
+                }
+                const mins = Math.floor(totalSeconds / 60);
+                const hours = Math.floor(mins / 60);
+                const days = Math.floor(hours / 24);
+                const weeks = Math.floor(days / 7);
+                const months = Math.floor(days / 30);
+                const years = Math.floor(days / 365);
+
+                if (years >= 1) {
+                    const remMonths = Math.floor((days % 365) / 30);
+                    return remMonths > 0 ? `${years}y ${remMonths}mo` : `${years}y`;
+                }
+                if (months >= 1) {
+                    const remDays = days % 30;
+                    return remDays > 0 ? `${months}mo ${remDays}d` : `${months}mo`;
+                }
+                if (weeks >= 1) {
+                    const remDays = days % 7;
+                    return remDays > 0 ? `${weeks}w ${remDays}d` : `${weeks}w`;
+                }
+                if (days >= 1) {
+                    const remHours = hours % 24;
+                    return remHours > 0 ? `${days}d ${remHours}h` : `${days}d`;
+                }
+                if (hours >= 1) {
+                    const remMins = mins % 60;
+                    return remMins > 0 ? `${hours}h ${remMins}m` : `${hours}h`;
+                }
+                return `${mins}m`;
+            }
+
             function updateLoginTracker() {
                 const today = new Date().toISOString().split('T')[0];
                 try {
@@ -407,9 +442,8 @@
                         data = { date: today, seconds: 0 };
                         localStorage.setItem('pbi-daily-time', JSON.stringify(data));
                     }
-                    const mins = Math.floor(data.seconds / 60);
                     const el = document.getElementById('daily-time-val-login');
-                    if(el) el.textContent = mins;
+                    if(el) el.textContent = formatTimeDuration(data.seconds);
                 } catch(e) {}
             }
             updateLoginTracker();
