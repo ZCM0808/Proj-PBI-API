@@ -6222,17 +6222,71 @@ window.updateHarnessStats = function() {
 
         const executeExportVisual = async () => {
             const out = document.getElementById('wf-out-vis');
-            window.expandConsole('wf-out-vis'); // 点击 Run 时自动展开
-            out.textContent = `[${new Date().toLocaleTimeString()}] Triggering JS SDK exportData() -> Excel...\n`;
+            window.expandConsole('wf-out-vis');
             
-            const pId = document.getElementById('wf-vis-page').value;
-            const visId = document.getElementById('wf-vis-visual').value;
+            const modeToggle = document.querySelector('input[name="wf-vis-mode"]:checked');
+            const mode = modeToggle ? modeToggle.value : 'export';
+            
+            // Allow empty selection to default to 'ALL'
+            let pId = document.getElementById('wf-vis-page').value;
+            if (!pId) pId = 'ALL';
+            
+            let visId = document.getElementById('wf-vis-visual').value;
+            if (!visId) visId = 'ALL';
+            
+            const wsId = document.getElementById('wf-vis-workspace').value;
+            const reportId = document.getElementById('wf-vis-report').value;
             const expTypeStr = document.getElementById('wf-vis-type').value;
             const rows = parseInt(document.getElementById('wf-vis-rows').value) || 100000;
             
-            if (!pId || !visId || !currentEmbeddedReport) {
-                out.textContent += `Error: Please select page and visual.\n`;
-                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+            if (mode === 'analyze') {
+                out.textContent = `[${new Date().toLocaleTimeString()}] Analyzing Visual Dependencies (Report Layer)...
+`;
+                if (!wsId || !reportId) {
+                    out.textContent += `Error: Please select workspace and report.
+`;
+                    return;
+                }
+                
+                try {
+                    out.textContent += `> Downloading PBIX into memory to extract Layout & Visual configurations... This might take a few seconds.
+`;
+                    const res = await fetch('/api/workflow/analyze_visual', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ workspace_id: wsId, report_id: reportId, page_name: pId, visual_name: visId })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        out.textContent += `
+[Analysis Result] 🧬 Dependency Tree:
+
+`;
+                        out.textContent += data.analysis + `
+`;
+                        out.textContent += `
+> Task Completed.
+`;
+                    } else {
+                        out.textContent += `
+❌ Error: ${data.error}
+`;
+                    }
+                } catch(e) {
+                    out.textContent += `
+❌ Request Failed: ${e}
+`;
+                }
+                return;
+            }
+
+            out.textContent = `[${new Date().toLocaleTimeString()}] Triggering JS SDK exportData() -> Excel...
+`;
+            
+            if (!currentEmbeddedReport) {
+                out.textContent += `Error: Embedded report not ready.
+`;
+                setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                 return;
             }
             
