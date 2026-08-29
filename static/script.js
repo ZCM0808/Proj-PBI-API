@@ -12090,7 +12090,10 @@ window.updateHarnessStats = function() {
 
                         const fsPageSelect = document.getElementById('pbi-fs-page-select');
 
-                        if (pageSelect && pageSelect.value !== newPage.name) pageSelect.value = newPage.name;
+                        if (pageSelect && pageSelect.value !== newPage.name) {
+                            pageSelect.value = newPage.name;
+                            loadVisuals();
+                        }
 
                         if (fsPageSelect && fsPageSelect.value !== newPage.name) fsPageSelect.value = newPage.name;
 
@@ -12113,6 +12116,14 @@ window.updateHarnessStats = function() {
                         const pages = await currentEmbeddedReport.getPages();
 
                         populatePagesDropdown(pages);
+                        
+                        // Automatically select and load visuals for active page if none selected
+                        const pageSelect = document.getElementById('wf-vis-page');
+                        const activeP = pages.find(p => p.isActive);
+                        if (activeP && pageSelect) {
+                            pageSelect.value = activeP.name;
+                            loadVisuals();
+                        }
 
                     } catch (e) {
 
@@ -12342,17 +12353,30 @@ window.updateHarnessStats = function() {
 
             const visSelect = document.getElementById('wf-vis-visual');
 
+            if (!visSelect) return;
+
             visSelect.innerHTML = '<option value="">Loading visuals...</option>';
 
             
 
-            if (!pId) return;
+            if (!pId) {
+                visSelect.innerHTML = '<option value="">-- Select Page First --</option>';
+                return;
+            }
 
             
 
-            if (pId === 'ALL' || !currentEmbeddedReport) {
+            if (pId === 'ALL') {
 
-                visSelect.innerHTML = '<option value="ALL">🌟 ALL VISUALS ON THIS PAGE (全部视觉对象) 🌟</option>';
+                visSelect.innerHTML = '<option value="ALL">🌟 ALL VISUALS ON ALL PAGES (全部页面视觉对象) 🌟</option>';
+
+                return;
+
+            }
+
+            if (!currentEmbeddedReport) {
+
+                visSelect.innerHTML = '<option value="ALL">🌟 ALL VISUALS (Report Initializing...) 🌟</option>';
 
                 return;
 
@@ -12378,7 +12402,7 @@ window.updateHarnessStats = function() {
 
                 } catch (e) {
 
-                    console.log("Failed to set active page", e);
+                    console.log("Notice: setActive page skipped or failed", e);
 
                 }
 
@@ -12388,7 +12412,7 @@ window.updateHarnessStats = function() {
 
                 visSelect.innerHTML = '<option value="">-- Select a Visual --</option>';
 
-                visSelect.innerHTML += '<option value="ALL">🌟 ALL VISUALS ON THIS PAGE 🌟</option>';
+                visSelect.innerHTML += '<option value="ALL">🌟 ALL VISUALS ON THIS PAGE (本页全部) 🌟</option>';
 
                 if (Array.isArray(visuals) && visuals.length > 0) {
 
@@ -12406,9 +12430,13 @@ window.updateHarnessStats = function() {
 
                     });
 
+                } else {
+                    visSelect.innerHTML = '<option value="ALL">🌟 ALL VISUALS (No individual visuals detected) 🌟</option>';
                 }
 
             } catch (err) {
+
+                console.error("loadVisuals error:", err);
 
                 visSelect.innerHTML = '<option value="ALL">🌟 ALL VISUALS ON THIS PAGE (全部视觉对象) 🌟</option>';
 
