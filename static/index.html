@@ -1172,21 +1172,22 @@
                         
                     <!-- Auth Snapshots UI -->
                     <div class="auth-snapshots-container" style="margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed var(--panel-border);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <div style="margin-bottom: 6px;">
                             <h4 style="font-weight: bold; font-size: 0.75rem; color: var(--text-primary); margin: 0;">Auth Profiles (配置快照)</h4>
-                            <button type="button" id="btn-save-snapshot" class="icon-btn" title="Save current config as new snapshot" style="padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; border: 1px solid var(--accent); color: var(--accent); display: flex; align-items: center; gap: 4px; font-weight: 500;">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                                存为快照
-                            </button>
                         </div>
-                        <div id="snapshot-dropdown-wrapper" style="position: relative; width: 100%;">
-                            <div id="snapshot-dropdown-trigger" class="snapshot-dropdown-trigger">
-                                <span id="active-snapshot-text" style="color: var(--text-secondary); font-style: italic;">Select or save a profile...</span>
-                                <svg class="dropdown-chevron" width="16" height="16" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+                        <div style="display: flex; align-items: center; gap: 6px; width: 100%;">
+                            <div id="snapshot-dropdown-wrapper" style="position: relative; flex: 1; min-width: 0;">
+                                <div id="snapshot-dropdown-trigger" class="snapshot-dropdown-trigger">
+                                    <span id="active-snapshot-text" style="color: var(--text-secondary); font-style: italic;">Select or save a profile...</span>
+                                    <svg class="dropdown-chevron" width="16" height="16" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+                                </div>
+                                <div id="snapshot-dropdown-menu" class="snapshot-dropdown-menu" style="display: none;">
+                                    <!-- Dropdown items dynamically populated here -->
+                                </div>
                             </div>
-                            <div id="snapshot-dropdown-menu" class="snapshot-dropdown-menu" style="display: none;">
-                                <!-- Dropdown items dynamically populated here -->
-                            </div>
+                            <button type="button" id="btn-save-snapshot" class="icon-btn" title="存为快照 (Save Current Snapshot)" style="height: 31px; width: 32px; padding: 0; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                            </button>
                         </div>
                     </div>
 
@@ -1666,7 +1667,7 @@
         </div>
     </div>
 
-    <script src="/static/snapshots.js?v=20260826_v46"></script>
+    <script src="/static/snapshots.js?v=20260829_v2143"></script>
 
     <!-- Test Harness Modal -->
     <div id="test-harness-modal" class="modal-overlay" style="display: none;">
