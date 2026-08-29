@@ -2819,22 +2819,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 try {
-
                     bodyInputBox.value = JSON.stringify(JSON.parse(val), null, 2);
-
-                                        
-
-                    formatBtn.innerHTML = '<span style="font-size: 12px; padding: 0 4px;">Formatted!</span>';
-
-                    formatBtn.style.color = 'var(--accent)';
+                    
+                    const successCheckSvg = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                    formatBtn.innerHTML = successCheckSvg;
+                    formatBtn.style.color = 'var(--success)';
+                    formatBtn.style.transform = 'scale(1.15)';
+                    setTimeout(() => formatBtn.style.transform = 'scale(1)', 200);
 
                     setTimeout(() => {
-
                         formatBtn.innerHTML = originalFormatHTML;
-
                         formatBtn.style.color = '';
-
-                    }, 2000);
+                    }, 1800);
 
                 } catch (e) {
 
@@ -3906,8 +3902,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         }
 
-        starBtn.innerHTML = isBookmarked ? '★' : '☆';
-
+        const starSolidSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="var(--accent)" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+        const starOutlineSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+        starBtn.innerHTML = isBookmarked ? starSolidSvg : starOutlineSvg;
         starBtn.title = isBookmarked ? "取消收藏" : "加入收藏";
 
         
@@ -4542,44 +4539,27 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 }
 
-                starBtn.innerHTML = isBookmarked ? '★' : '☆';
-
+                const starSolidSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="var(--accent)" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+                const starOutlineSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+                starBtn.innerHTML = isBookmarked ? starSolidSvg : starOutlineSvg;
                 starBtn.title = isBookmarked ? "取消收藏" : "加入收藏";
-
                 starBtn.onclick = (e) => toggleBookmark(ep, e);
 
-
-
                 const insertNoteBtn = document.createElement('button');
-
                 insertNoteBtn.className = 'bookmark-btn hover-action-btn';
-
-                insertNoteBtn.innerHTML = '📝';
-
+                insertNoteBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>`;
                 insertNoteBtn.title = "Insert API Link to Note";
-
                 insertNoteBtn.onclick = (e) => {
-
                     e.stopPropagation();
-
                     insertSpecificApiIntoNote(ep.method, ep.path);
-
                 };
 
-
-
                 let editBtn = null;
-
                 if (isBookmarked) {
-
                     editBtn = document.createElement('button');
-
                     editBtn.className = 'bookmark-btn hover-action-btn bm-edit-btn';
-
-                    editBtn.innerHTML = '✏️';
-
+                    editBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>`;
                     editBtn.title = "Edit alias & tags";
-
                 }
 
 
@@ -5591,18 +5571,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                     
 
                     window.flashCopiedElement(document.getElementById('graphql-editor-container').style.display !== 'none' ? document.getElementById('graphql-editor-container') : document.getElementById('req-body-container'));
-
-                    copyReqBodyBtn.innerHTML = '<span style="font-size: 12px; padding: 0 4px;">Copied!</span>';
-
-                    copyReqBodyBtn.style.color = 'var(--accent)';
+                    const successCheckSvg = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                    copyReqBodyBtn.innerHTML = successCheckSvg;
+                    copyReqBodyBtn.style.color = 'var(--success)';
+                    copyReqBodyBtn.style.transform = 'scale(1.15)';
+                    setTimeout(() => copyReqBodyBtn.style.transform = 'scale(1)', 200);
 
                     setTimeout(() => {
-
                         copyReqBodyBtn.innerHTML = origReqBodyBtnHTML;
-
                         copyReqBodyBtn.style.color = '';
-
-                    }, 2000);
+                    }, 1800);
 
                 } catch(e) {
 
@@ -6069,39 +6047,22 @@ const loadReqHistory = (searchTerm = "") => {
                 
 
                 const insertNoteHistoryBtn = document.createElement('span');
-
-                insertNoteHistoryBtn.innerHTML = '📝';
-
+                insertNoteHistoryBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>`;
                 insertNoteHistoryBtn.title = 'Insert API Link to Note';
-
-                insertNoteHistoryBtn.style.cssText = 'font-size: 1rem; color: var(--text-secondary); cursor: pointer; padding: 0 4px; border-radius: 4px; line-height: 1; margin-top: -1px; margin-right: 4px; transition: all 0.2s;';
-
+                insertNoteHistoryBtn.style.cssText = 'display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; color: var(--text-secondary); cursor: pointer; border-radius: 4px; transition: all 0.2s;';
                 insertNoteHistoryBtn.onmouseover = () => { insertNoteHistoryBtn.style.color = 'var(--accent)'; insertNoteHistoryBtn.style.background = 'var(--badge-custom-bg)'; };
-
                 insertNoteHistoryBtn.onmouseout = () => { insertNoteHistoryBtn.style.color = 'var(--text-secondary)'; insertNoteHistoryBtn.style.background = 'transparent'; };
-
                 insertNoteHistoryBtn.onclick = (e) => {
-
                     e.stopPropagation();
-
                     insertSpecificApiIntoNote(h.method, h.url);
-
                 };
-
                 rightCol.appendChild(insertNoteHistoryBtn);
 
-
-
                 const delBtn = document.createElement('span');
-
-                delBtn.innerHTML = '&times;';
-
+                delBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
                 delBtn.title = '删除此条记录';
-
-                delBtn.style.cssText = 'font-size: 1.1rem; color: var(--text-secondary); cursor: pointer; padding: 0 4px; border-radius: 4px; line-height: 1; margin-top: -2px; transition: all 0.2s;';
-
+                delBtn.style.cssText = 'display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; color: var(--text-secondary); cursor: pointer; border-radius: 4px; transition: all 0.2s;';
                 delBtn.onmouseover = () => { delBtn.style.color = 'var(--error)'; delBtn.style.background = 'var(--status-error-bg)'; };
-
                 delBtn.onmouseout = () => { delBtn.style.color = 'var(--text-secondary)'; delBtn.style.background = 'transparent'; };
 
                 delBtn.onclick = async (e) => {
@@ -6725,101 +6686,53 @@ const loadReqHistory = (searchTerm = "") => {
 
 
         startPipelineBtn.addEventListener('click', () => {
-
             terminal.innerHTML = '';
-
             startPipelineBtn.disabled = true;
-
-            startPipelineBtn.textContent = '运行中 (Running)...';
-
-            startPipelineBtn.style.opacity = '0.5';
-
-
+            startPipelineBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinning"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a10 10 0 0 1 10 10"></path></svg> <span>运行中 (Running)...</span>';
+            startPipelineBtn.style.opacity = '0.7';
 
             const ws = document.getElementById('active-workspace')?.value || '';
-
             const ds = document.getElementById('active-dataset')?.value || '';
-
             const rp = document.getElementById('active-report')?.value || '';
-
             const params = new URLSearchParams({ workspace_id: ws, dataset_id: ds, report_id: rp });
 
-
-
             const evtSource = new EventSource(`/api/pipeline/run?${params.toString()}`);
-
             
-
             evtSource.onmessage = function(event) {
-
                 const data = JSON.parse(event.data);
-
                 const line = document.createElement('div');
-
                 line.className = 'terminal-line';
-
                 
-
                 let cls = 'info';
-
                 if (data.status === 'success') cls = 'success';
-
                 else if (data.status === 'warning') cls = 'warning';
-
                 else if (data.status === 'error') cls = 'error';
-
                 
-
                 const timeStr = new Date().toLocaleTimeString('en-US', {hour12: false});
-
                 line.innerHTML = `<span style="color: var(--text-secondary)">[${timeStr}]</span> <span class="${cls}">${data.message}</span>`;
-
                 terminal.appendChild(line);
-
                 // 统一规则：滚到底部上方两行距离处（约40px），让用户始终能看到最新输出
-
                 terminal.scrollTop = Math.max(0, terminal.scrollHeight - terminal.clientHeight - 40);
-
                 
-
                 if (data.status === 'error' || data.status === 'success') {
-
                     evtSource.close();
-
                     startPipelineBtn.disabled = false;
-
-                    startPipelineBtn.innerHTML = '✨ 再次执行全链路扫描 (Run Again)';
-
+                    startPipelineBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> <span>再次执行全链路扫描 (Run Again)</span>';
                     startPipelineBtn.style.opacity = '1';
-
                 }
-
             };
-
-
 
             evtSource.onerror = function(err) {
-
                 console.error('SSE Error:', err);
-
                 const line = document.createElement('div');
-
                 line.className = 'terminal-line error';
-
                 line.textContent = '[系统] 与服务器的流式连接断开。';
-
                 terminal.appendChild(line);
-
                 evtSource.close();
-
                 startPipelineBtn.disabled = false;
-
-                startPipelineBtn.innerHTML = '✨ 再次执行全链路扫描 (Run Again)';
-
+                startPipelineBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> <span>再次执行全链路扫描 (Run Again)</span>';
                 startPipelineBtn.style.opacity = '1';
-
             };
-
         });
 
     }
@@ -7404,180 +7317,94 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
 
 
-                const originalText = verifySettingsBtn.textContent;
-
-                const originalWidth = verifySettingsBtn.style.width;
+                const defaultVerifySvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`;
+                const loadingVerifySvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinning"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a10 10 0 0 1 10 10"></path></svg>`;
+                const successVerifySvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                const failVerifySvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
 
                 verifySettingsBtn.disabled = true;
-
-                verifySettingsBtn.textContent = '⏳';
-
-                verifySettingsBtn.style.transition = 'all 0.3s ease';
-
-                verifySettingsBtn.style.width = 'auto';
-
-
+                verifySettingsBtn.innerHTML = loadingVerifySvg;
+                verifySettingsBtn.style.transition = 'all 0.2s ease';
 
                 const resetBtn = () => {
-
-                    verifySettingsBtn.textContent = originalText;
-
-                    verifySettingsBtn.style.width = originalWidth;
-
+                    verifySettingsBtn.innerHTML = defaultVerifySvg;
                     verifySettingsBtn.style.background = '';
-
                     verifySettingsBtn.style.color = '';
-
                     verifySettingsBtn.style.borderColor = '';
-
                     verifySettingsBtn.disabled = false;
-
                 };
 
-
-
                 try {
-
                     const res = await fetch('/api/settings/verify', {
-
                         method: 'POST',
-
                         headers: { 'Content-Type': 'application/json' },
-
                         body: JSON.stringify({
-
                             pbi_client_id: clientId,
-
                             pbi_client_secret: clientSecret,
-
                             pbi_username: username,
-
                             pbi_password: password,
-
                             pbi_tenant_id: tenantId,
-
                             pbi_auth_mode: authMode
-
                         })
-
                     });
 
                     const result = await res.json();
-
                     
-
                     if (result.success) {
-
-                        verifySettingsBtn.innerHTML = '✅ Success';
-
+                        verifySettingsBtn.innerHTML = successVerifySvg;
                         verifySettingsBtn.style.background = 'var(--status-success-bg, rgba(16, 185, 129, 0.2))';
-
-                        verifySettingsBtn.style.color = 'var(--success, var(--success))';
-
-                        verifySettingsBtn.style.borderColor = 'var(--success, var(--success))';
-
+                        verifySettingsBtn.style.color = 'var(--success)';
+                        verifySettingsBtn.style.borderColor = 'var(--success)';
                         
-
-                        // Add pop animation
-
-                        verifySettingsBtn.style.transform = 'scale(1.1)';
-
+                        // Add pop animation via transform
+                        verifySettingsBtn.style.transform = 'scale(1.15)';
                         setTimeout(() => verifySettingsBtn.style.transform = 'scale(1)', 200);
-
                         
-
-                        setTimeout(resetBtn, 2500);
-
-
+                        setTimeout(resetBtn, 2000);
 
                         if (window.saveAuthSnapshot) {
-
                             window.saveAuthSnapshot(result.app_name || "Auto-Saved Profile");
-
                         }
-
                         if (result.app_name) {
-
                             localStorage.setItem('pbi_app_name', result.app_name);
-
                         }
-
                         if (result.tenant_name) {
-
                             localStorage.setItem('pbi_tenant_name', result.tenant_name);
-
                             const tnameInput = document.getElementById('set-tenant-name');
-
                             if (tnameInput && !tnameInput.value.trim()) {
-
                                 tnameInput.value = result.tenant_name;
-
                             }
-
                         }
-
                         localStorage.setItem('pbi_tenant_id', tenantId);
-
                         const tname = document.getElementById('set-tenant-name') ? document.getElementById('set-tenant-name').value.trim() : '';
-
                         localStorage.setItem('pbi_tenant_name', tname);
-
                         window.renderEnvIdentity();
-
                     } else {
-
-                        verifySettingsBtn.innerHTML = '❌ Failed';
-
-                        verifySettingsBtn.style.background = 'var(--status-error-bg, var(--status-error-bg))';
-
-                        verifySettingsBtn.style.color = 'var(--error, var(--error))';
-
-                        verifySettingsBtn.style.borderColor = 'var(--error, var(--error))';
-
+                        verifySettingsBtn.innerHTML = failVerifySvg;
+                        verifySettingsBtn.style.background = 'var(--status-error-bg, rgba(239, 68, 68, 0.2))';
+                        verifySettingsBtn.style.color = 'var(--error)';
+                        verifySettingsBtn.style.borderColor = 'var(--error)';
                         
-
-                        // Add shake animation manually
-
-                        verifySettingsBtn.style.transform = 'translateX(-4px)';
-
-                        setTimeout(() => verifySettingsBtn.style.transform = 'translateX(4px)', 100);
-
-                        setTimeout(() => verifySettingsBtn.style.transform = 'translateX(-4px)', 200);
-
-                        setTimeout(() => verifySettingsBtn.style.transform = 'translateX(4px)', 300);
-
-                        setTimeout(() => verifySettingsBtn.style.transform = 'translateX(0)', 400);
-
-
+                        // Add shake animation via transform
+                        verifySettingsBtn.style.transform = 'translateX(-3px)';
+                        setTimeout(() => verifySettingsBtn.style.transform = 'translateX(3px)', 100);
+                        setTimeout(() => verifySettingsBtn.style.transform = 'translateX(-3px)', 200);
+                        setTimeout(() => verifySettingsBtn.style.transform = 'translateX(0)', 300);
 
                         setTimeout(() => {
-
                             resetBtn();
-
-                            alert(result.message); // Still show error detail after animation
-
-                        }, 2500);
-
+                            alert(result.message);
+                        }, 2000);
                     }
-
                 } catch (err) {
-
-                    verifySettingsBtn.innerHTML = '❌ Error';
-
-                    verifySettingsBtn.style.background = 'var(--status-error-bg, var(--status-error-bg))';
-
-                    verifySettingsBtn.style.color = 'var(--error, var(--error))';
-
-                    verifySettingsBtn.style.borderColor = 'var(--error, var(--error))';
-
+                    verifySettingsBtn.innerHTML = failVerifySvg;
+                    verifySettingsBtn.style.background = 'var(--status-error-bg, rgba(239, 68, 68, 0.2))';
+                    verifySettingsBtn.style.color = 'var(--error)';
+                    verifySettingsBtn.style.borderColor = 'var(--error)';
                     setTimeout(() => {
-
                         resetBtn();
-
                         alert('网络错误: ' + err);
-
-                    }, 2500);
-
+                    }, 2000);
                 }
 
             });
@@ -18866,36 +18693,21 @@ window.unlockXmlaTokenWithConfirm = async function() {
 
             tokenInput.style.background = '';
 
-            lockBtn.innerHTML = '🔓';
-
+            lockBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>';
             lockBtn.title = '锁定 Token';
-
             lockBtn.style.color = 'var(--accent)';
-
             lockBtn.style.borderColor = 'var(--accent)';
-
             tokenInput.focus();
-
         }
-
     } else {
-
         // 已解锁 → 直接锁定（无需确认）
-
         tokenInput.setAttribute('readonly', 'true');
-
         tokenInput.style.opacity = '0.85';
-
         tokenInput.style.borderColor = 'var(--panel-border)';
-
         tokenInput.style.background = 'var(--input-bg-readonly, rgba(255,255,255,0.03))';
-
-        lockBtn.innerHTML = '🔒';
-
+        lockBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>';
         lockBtn.title = '解锁手动编辑 Token';
-
         lockBtn.style.color = 'var(--text-secondary)';
-
         lockBtn.style.borderColor = 'var(--overlay-20)';
 
     }
