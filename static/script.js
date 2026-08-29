@@ -6239,20 +6239,17 @@ window.updateHarnessStats = function() {
             const expTypeStr = document.getElementById('wf-vis-type').value;
             const rows = parseInt(document.getElementById('wf-vis-rows').value) || 100000;
             
-                        if (mode === 'analyze') {
+            if (mode === 'analyze') {
                 if (!wsId || !reportId) {
                     if (window.showNotification) window.showNotification("Error: Please select Workspace and Report first.", "error");
-                    out.textContent += `[${new Date().toLocaleTimeString()}] Error: Please select workspace and report.
-`;
+                    out.textContent += `[${new Date().toLocaleTimeString()}] Error: Please select workspace and report.\n`;
                     setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                     return;
                 }
                 if (window.showNotification) window.showNotification("Analyzing Dependencies... Check console below.", "info");
                 
-                out.textContent += `[${new Date().toLocaleTimeString()}] Analyzing Visual Dependencies (Report Layer)...
-`;
-                out.textContent += `> Downloading PBIX into memory to extract Layout & Visual configurations... This might take a few seconds.
-`;
+                out.textContent += `[${new Date().toLocaleTimeString()}] Analyzing Visual Dependencies (Report Layer)...\n`;
+                out.textContent += `> Downloading PBIX into memory to extract Layout & Visual configurations... This might take a few seconds.\n`;
                 setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                 
                 try {
@@ -6263,70 +6260,26 @@ window.updateHarnessStats = function() {
                     });
                     const data = await res.json();
                     if (data.success) {
-                        out.textContent += `
-[Analysis Result] 🧬 Dependency Tree:
-
-`;
-                        out.textContent += data.analysis + `
-`;
-                        out.textContent += `
-> Task Completed.
-`;
+                        out.textContent += `\n[Analysis Result] 🧬 Dependency Tree:\n\n`;
+                        out.textContent += data.analysis + `\n`;
+                        out.textContent += `\n> Task Completed.\n`;
                         if (window.showNotification) window.showNotification("Dependency Analysis Completed!", "success");
                     } else {
-                        out.textContent += `
-❌ Error: ${data.error}
-`;
+                        out.textContent += `\n❌ Error: ${data.error}\n`;
                         if (window.showNotification) window.showNotification("Analysis Failed: " + data.error, "error");
                     }
                 } catch(e) {
-                    out.textContent += `
-❌ Request Failed: ${e}
-`;
+                    out.textContent += `\n❌ Request Failed: ${e}\n`;
                     if (window.showNotification) window.showNotification("Network/Request Error", "error");
                 }
                 setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                 return;
             }
-                
-                try {
-                    out.textContent += `> Downloading PBIX into memory to extract Layout & Visual configurations... This might take a few seconds.
-`;
-                    const res = await fetch('/api/workflow/analyze_visual', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ workspace_id: wsId, report_id: reportId, page_name: pId, visual_name: visId })
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        out.textContent += `
-[Analysis Result] 🧬 Dependency Tree:
 
-`;
-                        out.textContent += data.analysis + `
-`;
-                        out.textContent += `
-> Task Completed.
-`;
-                    } else {
-                        out.textContent += `
-❌ Error: ${data.error}
-`;
-                    }
-                } catch(e) {
-                    out.textContent += `
-❌ Request Failed: ${e}
-`;
-                }
-                return;
-            }
-
-            out.textContent = `[${new Date().toLocaleTimeString()}] Triggering JS SDK exportData() -> Excel...
-`;
+            out.textContent = `[${new Date().toLocaleTimeString()}] Triggering JS SDK exportData() -> Excel...\n`;
             
             if (!currentEmbeddedReport) {
-                out.textContent += `Error: Embedded report not ready.
-`;
+                out.textContent += `Error: Embedded report not ready.\n`;
                 setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                 return;
             }
