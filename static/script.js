@@ -6251,6 +6251,9 @@ window.updateHarnessStats = function() {
                 out.textContent += `[${new Date().toLocaleTimeString()}] Analyzing Visual Dependencies via JS SDK (Frontend)...\n`;
                 setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                 
+                let analysisText = "Power BI Visual Dependency Tree\n";
+                analysisText += "================================\n\n";
+                
                 try {
                     const pages = await currentEmbeddedReport.getPages();
                     const targetPages = (pId === 'ALL') ? pages : pages.filter(p => p.name === pId);
@@ -6261,7 +6264,9 @@ window.updateHarnessStats = function() {
                     }
                     
                     for (let page of targetPages) {
-                        out.textContent += `\n📄 Page: [${page.displayName}]\n`;
+                        const pageHeader = `\n📄 Page: [${page.displayName}]\n`;
+                        out.textContent += pageHeader;
+                        analysisText += pageHeader;
                         setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
                         
                         await page.setActive();
@@ -6272,7 +6277,9 @@ window.updateHarnessStats = function() {
                         
                         for (let v of targetVisuals) {
                             const vName = v.title || v.name || v.type;
-                            out.textContent += `  📊 Visual: [${vName}] (Type: ${v.type})\n`;
+                            const visHeader = `  📊 Visual: [${vName}] (Type: ${v.type})\n`;
+                            out.textContent += visHeader;
+                            analysisText += visHeader;
                             
                             try {
                                 const caps = await v.getCapabilities();
@@ -6281,50 +6288,75 @@ window.updateHarnessStats = function() {
                                         try {
                                             const fields = await v.getDataFields(role.name);
                                             if (fields && fields.length > 0) {
-                                                out.textContent += `    🔹 Role '${role.name}':\n`;
+                                                const roleHeader = `    🔹 Role '${role.name}':\n`;
+                                                out.textContent += roleHeader;
+                                                analysisText += roleHeader;
                                                 for (let f of fields) {
                                                     let fStr = JSON.stringify(f);
                                                     if (f.column) fStr = `'${f.table}'[${f.column}] (Column)`;
                                                     else if (f.measure) fStr = `'${f.table}'[${f.measure}] (Measure)`;
                                                     else if (f.hierarchyLevel) fStr = `'${f.table}'[${f.hierarchyLevel.hierarchy}].[${f.hierarchyLevel.level}] (Hierarchy)`;
                                                     
-                                                    // aggregation?
                                                     if (f.aggregation) {
                                                         fStr += ` {Agg: ${f.aggregation.Function || f.aggregation}}`;
                                                     }
-                                                    out.textContent += `       - ${fStr}\n`;
+                                                    const fieldLine = `       - ${fStr}\n`;
+                                                    out.textContent += fieldLine;
+                                                    analysisText += fieldLine;
                                                 }
                                             }
                                         } catch (e) {
-                                            // might fail if role is empty or not authoring mode
+                                            // skip
                                         }
                                     }
                                 } else {
-                                    out.textContent += `    (No data roles found)\n`;
+                                    const emptyRole = `    (No data roles found)\n`;
+                                    out.textContent += emptyRole;
+                                    analysisText += emptyRole;
                                 }
                             } catch(e) {
-                                // Fallback: try exportData to at least see headers?
-                                out.textContent += `    (Capabilities inaccessible in View mode. Attempting CSV Header Fallback...)\n`;
+                                const fallbackHeader = `    (Capabilities inaccessible in View mode. Attempting CSV Header Fallback...)\n`;
+                                out.textContent += fallbackHeader;
+                                analysisText += fallbackHeader;
                                 try {
                                     const models = window['powerbi-client'].models;
                                     const res = await v.exportData(models.ExportDataType.Summarized, 1);
                                     if (res && res.data) {
                                         const firstLine = res.data.split('\n')[0];
                                         const headers = firstLine.split(',').map(h => h.replace(/^"|"$/g, ''));
-                                        out.textContent += `    🔹 Detected Fields (from Export):\n`;
+                                        const exportDetected = `    🔹 Detected Fields (from Export):\n`;
+                                        out.textContent += exportDetected;
+                                        analysisText += exportDetected;
                                         headers.forEach(h => {
-                                            out.textContent += `       - ${h}\n`;
+                                            const hLine = `       - ${h}\n`;
+                                            out.textContent += hLine;
+                                            analysisText += hLine;
                                         });
                                     }
                                 } catch (e2) {
-                                    out.textContent += `    (Fallback failed: ${e2.message})\n`;
+                                    const fallbackFail = `    (Fallback failed: ${e2.message})\n`;
+                                    out.textContent += fallbackFail;
+                                    analysisText += fallbackFail;
                                 }
                             }
                         }
                     }
                     
-                    out.textContent += `\n> Task Completed.\n`;
-                    if (window.showNotification) window.showNotification("Dependency Analysis Completed!", "success");
+                    out.textContent += `\n> Task Completed. Generating download file...\n`;
+                    
+                    // Create and download the text file
+                    const blob = new Blob([analysisText], { type: 'text/plain;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const cleanRepName = currentEmbeddedReport.config.id || "Report";
+                    a.download = `Dependency_Tree_${cleanRepName}.txt`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    if (window.showNotification) window.showNotification("Dependency Analysis Completed! File downloaded.", "success");
                 } catch (err) {
                     out.textContent += `\n❌ SDK Error: ${err.message}\n`;
                     if (window.showNotification) window.showNotification("Analysis Failed", "error");
@@ -6420,7 +6452,7 @@ window.updateHarnessStats = function() {
                 out.textContent += `Exception during export: ${err.message || JSON.stringify(err)}\n`;
                 setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
             }
-        }
+        };
 
         window.togglePbiEmbedFullscreen = function() {
             const embedWrapper = document.getElementById('pbi-embed-wrapper');
