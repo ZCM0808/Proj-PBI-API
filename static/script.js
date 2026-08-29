@@ -12057,15 +12057,15 @@ window.updateHarnessStats = function() {
 
                 const panesSettings = { 
                     filters: { visible: false }, 
-                    pageNavigation: { visible: true },
-                    bookmarks: { visible: false },
-                    syncSlicers: { visible: false }
+                    pageNavigation: { visible: true }
                 };
                 
                 if (viewMode === models.ViewMode.Edit) {
                     panesSettings.visualizations = { visible: false, expanded: false };
                     panesSettings.fields = { visible: false, expanded: false };
                     panesSettings.selection = { visible: false };
+                    panesSettings.bookmarks = { visible: false };
+                    panesSettings.syncSlicers = { visible: false };
                 }
 
                 const config = {
