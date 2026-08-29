@@ -1736,6 +1736,23 @@ json-viewer {
     box-shadow: none;
 }
 
+/* Modal Footer Standardized Action Buttons (Option B) */
+.btn-modal-footer-action {
+    height: 32px !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
+    padding: 0 !important;
+    border-radius: 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
+}
+
 /* Modern Input Styling */
 
 .modern-input {

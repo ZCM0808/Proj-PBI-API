@@ -7638,16 +7638,6 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
             e.preventDefault(); // 阻止页面刷新，但允许浏览器捕获 submit 以保存表单历史
 
-            const rect = saveSettingsBtn.getBoundingClientRect();
-
-            saveSettingsBtn.style.width = rect.width + 'px';
-
-            saveSettingsBtn.style.height = rect.height + 'px';
-
-            saveSettingsBtn.style.boxSizing = 'border-box';
-
-            saveSettingsBtn.style.justifyContent = 'center';
-
             saveSettingsBtn.disabled = true;
 
             const defaultSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>`;
@@ -7752,14 +7742,6 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
                             saveSettingsBtn.disabled = false;
 
-                            saveSettingsBtn.style.width = '';
-
-                            saveSettingsBtn.style.height = '';
-
-                            saveSettingsBtn.style.boxSizing = '';
-
-                            saveSettingsBtn.style.justifyContent = '';
-
                             saveSettingsBtn.innerHTML = defaultSvg;
 
                         }, 250);
@@ -7772,14 +7754,6 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
                     saveSettingsBtn.disabled = false;
 
-                    saveSettingsBtn.style.width = '';
-
-                    saveSettingsBtn.style.height = '';
-
-                    saveSettingsBtn.style.boxSizing = '';
-
-                    saveSettingsBtn.style.justifyContent = '';
-
                     saveSettingsBtn.innerHTML = defaultSvg;
 
                 }
@@ -7789,8 +7763,6 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                 alert('网络错误: ' + err);
 
                 saveSettingsBtn.disabled = false;
-
-                saveSettingsBtn.style.width = '';
 
                 saveSettingsBtn.innerHTML = defaultSvg;
 
