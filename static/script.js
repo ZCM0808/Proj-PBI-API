@@ -12612,137 +12612,92 @@ window.updateHarnessStats = function() {
                     // Fetch schema from backend
                     let schemaMap = {};
                     try {
-                        const wId = document.getElementById('wf-xmla-workspace').value || document.getElementById('config-workspace-id').value;
-                        const rId = document.getElementById('wf-xmla-dataset').value || window._currentDatasetId;
-                        out.textContent += `> Fetching XMLA Schema Dictionary from Backend...\n`;
-                        const schemaRes = await fetch(`/api/schema?workspace_id=${wId}&dataset_id=${rId}`);
-                        if (schemaRes.ok) {
-                            const schemaData = await schemaRes.json();
-                            if (schemaData.success && schemaData.schema) {
-                                schemaMap = schemaData.schema;
-                                out.textContent += `> XMLA Schema successfully loaded (${Object.keys(schemaMap).length} fields matched).\n\n`;
-                            } else {
-                                out.textContent += `> XMLA Schema Warning: ${schemaData.error || 'Unknown error'}\n\n`;
+                        const targetWsId = wsId || document.getElementById('wf-vis-workspace')?.value;
+                        let targetDsId = window._currentDatasetId;
+                        if (!targetDsId && reportId) {
+                            const pbiReports = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+                            const matchedR = pbiReports.find(r => r.id === reportId);
+                            if (matchedR && matchedR.datasetId) targetDsId = matchedR.datasetId;
+                        }
+                        if (targetWsId && targetDsId) {
+                            out.textContent += `> Fetching XMLA Schema Dictionary from Backend (Dataset: ${targetDsId})...\n`;
+                            const schemaRes = await fetch(`/api/schema?workspace_id=${targetWsId}&dataset_id=${targetDsId}`);
+                            if (schemaRes.ok) {
+                                const schemaData = await schemaRes.json();
+                                if (schemaData.success && schemaData.schema) {
+                                    schemaMap = schemaData.schema;
+                                    out.textContent += `> XMLA Schema successfully loaded (${Object.keys(schemaMap).length} fields matched).\n\n`;
+                                } else {
+                                    out.textContent += `> XMLA Schema Warning: ${schemaData.error || 'Unknown error'}\n\n`;
+                                }
                             }
+                        } else {
+                            out.textContent += `> Notice: Dataset ID not available for XMLA schema lookup.\n\n`;
                         }
                     } catch(e) {
                         out.textContent += `> XMLA Schema Fetch Failed: ${e.message}\n\n`;
                     }
 
                     const pages = await activeReport.getPages();
-
                     const targetPages = (pId === 'ALL') ? pages : pages.filter(p => p.name === pId);
 
-                    
-
                     if (targetPages.length === 0) {
-
                         out.textContent += `Error: Page not found.\n`;
-
                         return;
-
                     }
 
-                    
-
                     for (let page of targetPages) {
-
                         out.textContent += `\n📄 Page: [${page.displayName}]\n`;
-
                         setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
 
-                        
-
                         await page.setActive();
-
                         await new Promise(r => setTimeout(r, 1500)); // wait for visuals to load
 
-                        
-
                         const visuals = await page.getVisuals();
-
                         const targetVisuals = (visId === 'ALL') ? visuals : visuals.filter(v => v.name === visId);
 
-                        
-
                         for (let v of targetVisuals) {
-
                             const vName = v.title || v.name || v.type;
-
                             out.textContent += `  📊 Visual: [${vName}] (Type: ${v.type})\n`;
-
-                            
 
                             let hasFields = false;
 
-                            
-
                             try {
-
                                 const caps = await v.getCapabilities();
-
                                 if (caps && caps.dataRoles) {
-
                                     for (let role of caps.dataRoles) {
-
                                         try {
-
                                             const fields = await v.getDataFields(role.name);
-
                                             if (fields && fields.length > 0) {
-
                                                 out.textContent += `    🔹 Role '${role.name}':\n`;
-
                                                 for (let f of fields) {
-
                                                     let fStr = JSON.stringify(f);
+                                                    let tableName = f.table || (f.hierarchyLevel && f.hierarchyLevel.table) || '';
+                                                    let fieldName = f.column || f.measure || (f.hierarchyLevel && f.hierarchyLevel.hierarchy) || '';
 
                                                     if (f.column) fStr = `'${f.table}'[${f.column}] (Column)`;
-
                                                     else if (f.measure) fStr = `'${f.table}'[${f.measure}] (Measure)`;
-
                                                     else if (f.hierarchyLevel) fStr = `'${f.table}'[${f.hierarchyLevel.hierarchy}].[${f.hierarchyLevel.level}] (Hierarchy)`;
 
-                                                    
-
                                                     if (f.aggregation) {
-
                                                         fStr += ` {Agg: ${f.aggregation.Function || f.aggregation}}`;
-
                                                     }
-
                                                     out.textContent += `       - ${fStr}\n`;
-
-                                                    dataList.push({ page: page.displayName, visual: vName, type: v.type, role: role.name, table: f.table || (f.hierarchyLevel && f.hierarchyLevel.table) || '', field: f.column || f.measure || (f.hierarchyLevel && f.hierarchyLevel.hierarchy) || fStr, fieldFull: fStr });
-
+                                                    dataList.push({ page: page.displayName, visual: vName, type: v.type, role: role.name, table: tableName, field: fieldName || fStr, fieldFull: fStr });
                                                     hasFields = true;
-
                                                 }
-
                                             }
-
                                         } catch (e) {
-
                                             // skip
-
                                         }
-
                                     }
-
                                 }
-
                             } catch(e) {
-
                                 out.textContent += `    (Capabilities inaccessible in View mode. Attempting CSV Header Fallback...)\n`;
-
                                 try {
-
                                     const models = window['powerbi-client'].models;
-
                                     const res = await v.exportData(models.ExportDataType.Summarized, 1);
-
                                     if (res && res.data) {
-
                                         let headers = [];
                                         if (typeof XLSX !== 'undefined') {
                                             const tempWb = XLSX.read(res.data, {type: 'string'});
@@ -12752,36 +12707,35 @@ window.updateHarnessStats = function() {
                                             const firstLine = res.data.split('\n')[0].replace(/\r$/, '');
                                             headers = firstLine.split(',').map(h => h.replace(/^"|"$/g, ''));
                                         }
-                                        out.textContent += `    🔹 Detected Fields (from Export):
-`;
+                                        out.textContent += `    🔹 Detected Fields (from Export):\n`;
                                         headers.forEach(h => {
                                             if (h && String(h).trim() && String(h).trim() !== '""') {
-                                                const fieldName = String(h).trim();
-                                                const resolvedName = schemaMap[fieldName.toLowerCase()] || fieldName;
+                                                const rawField = String(h).trim();
+                                                const resolvedName = schemaMap[rawField.toLowerCase()] || rawField;
                                                 out.textContent += `       - ${resolvedName}\n`;
-                                                dataList.push({ page: page.displayName, visual: vName, type: v.type, role: '(Export Data Fallback)', table: '', field: resolvedName, fieldFull: resolvedName });
+
+                                                let parsedTable = '';
+                                                let parsedCol = rawField;
+                                                // If resolved to 'Table'[Column], extract Table and Column
+                                                const match = resolvedName.match(/^'([^']+)'\[(.*)\]$/);
+                                                if (match) {
+                                                    parsedTable = match[1];
+                                                    parsedCol = match[2];
+                                                }
+
+                                                dataList.push({ page: page.displayName, visual: vName, type: v.type, role: '(Export Data Fallback)', table: parsedTable, field: parsedCol, fieldFull: resolvedName });
                                                 hasFields = true;
                                             }
                                         });
-
                                     }
-
                                 } catch (e2) {
-
                                     out.textContent += `    (Fallback failed: ${e2.message})\n`;
-
                                 }
-
                             }
-
-                            
 
                             if (!hasFields) {
-
                                 dataList.push({ page: page.displayName, visual: vName, type: v.type, role: '-', table: '', field: '(No bound data / Unsupported)', fieldFull: '' });
-
                             }
-
                         }
 
                     }
