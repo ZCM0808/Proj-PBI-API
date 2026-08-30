@@ -1485,12 +1485,25 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
             raw_type = item.get("type") or ("Personal" if item.get("isOnDedicatedCapacity") is False and "type" not in item else "Workspace")
             raw_state = item.get("state") or "Active"
             ws_prefix = f"[{item.get('workspaceName')}] " if item.get("workspaceName") else ""
+            item_name = f"{ws_prefix}{item.get('name') or item.get('id')}"
+            is_dedicated = bool(item.get("isOnDedicatedCapacity"))
+            capacity_id = item.get("capacityId", "")
+            
+            # Generate XMLA Endpoint for workspaces
+            xmla_endpoint = ""
+            if item_type == "workspaces":
+                raw_ws_name = item.get("name") or item.get("id")
+                xmla_endpoint = f"powerbi://api.powerbi.com/v1.0/myorg/{raw_ws_name}"
+
             result_items.append({
                 "id": item.get("id"),
-                "name": f"{ws_prefix}{item.get('name') or item.get('id')}",
+                "name": item_name,
                 "type": str(raw_type),
                 "state": str(raw_state),
-                "workspaceId": item.get("workspaceId", "")
+                "workspaceId": item.get("workspaceId", ""),
+                "isOnDedicatedCapacity": is_dedicated,
+                "capacityId": capacity_id,
+                "xmlaEndpoint": xmla_endpoint
             })
         return {"success": True, "data": result_items}
     except Exception as e:
