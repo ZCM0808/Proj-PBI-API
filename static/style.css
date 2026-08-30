@@ -2868,8 +2868,15 @@ span:hover > .wf-copy-btn,
     box-shadow: 0 0 6px var(--accent-glow);
 }
 
-
-
+.xmla-badge-copy-btn {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.xmla-badge-copy-btn:hover {
+    background: var(--accent) !important;
+    color: var(--accent-text) !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 6px var(--accent-glow);
+}
 
 .input-with-copy { position: relative; display: flex; align-items: center; flex: 1; width: 100%; }
 .input-with-copy .wf-input { padding-right: 32px !important; }

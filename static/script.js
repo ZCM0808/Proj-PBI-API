@@ -702,7 +702,7 @@ window.addListRow = function(containerId, alias = "", id = "", itemType = "", it
     if (containerId === 'workspace-list' && alias) {
         const endpointVal = `powerbi://api.powerbi.com/v1.0/myorg/${alias}`;
         xmlaRowBtn = `
-            <button type="button" class="cell-copy-btn" onclick="window.handleCopyAction(this, '${endpointVal.replace(/'/g, "\\'")}', this.parentElement)" title="复制 XMLA 端点 URL: ${endpointVal}" style="position: static; opacity: 0.75; padding: 2px 5px; font-size: 0.65rem; display: inline-flex; align-items: center; gap: 3px; background: rgba(255,255,255,0.06); border: 1px solid var(--overlay-20); border-radius: 4px; color: var(--text-secondary); cursor: pointer; flex-shrink: 0; line-height: 1;">
+            <button type="button" class="xmla-badge-copy-btn" onclick="window.handleCopyAction(this, '${endpointVal.replace(/'/g, "\\'")}', this.parentElement)" title="复制 XMLA 端点 URL: ${endpointVal}" style="position: static; opacity: 0.85; padding: 2px 6px; font-size: 0.65rem; font-weight: 500; display: inline-flex; align-items: center; gap: 3px; background: rgba(255,255,255,0.06); border: 1px solid var(--overlay-20); border-radius: 4px; color: var(--text-secondary); cursor: pointer; flex-shrink: 0; line-height: 1; height: 19px; box-sizing: border-box;">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"></path></svg>
                 <span>XMLA</span>
             </button>
@@ -1422,7 +1422,7 @@ window.scanItems = async function(type, btn) {
                 let xmlaBtnHtml = '';
                 if (type === 'workspaces' && item.xmlaEndpoint) {
                     xmlaBtnHtml = `
-                        <button type="button" class="cell-copy-btn" onclick="event.preventDefault(); event.stopPropagation(); window.handleCopyAction(this, '${item.xmlaEndpoint.replace(/'/g, "\\'")}')" title="复制 XMLA 端点 URL: ${item.xmlaEndpoint}" style="position: static; opacity: 0.8; margin-left: 4px; padding: 2px 5px; font-size: 0.68rem; display: inline-flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.06); border: 1px solid var(--overlay-20); border-radius: 4px; color: var(--text-secondary); flex-shrink: 0; line-height: 1;">
+                        <button type="button" class="xmla-badge-copy-btn" onclick="event.preventDefault(); event.stopPropagation(); window.handleCopyAction(this, '${item.xmlaEndpoint.replace(/'/g, "\\'")}')" title="复制 XMLA 端点 URL: ${item.xmlaEndpoint}" style="position: static; opacity: 0.85; margin-left: 4px; padding: 2px 6px; font-size: 0.68rem; font-weight: 500; display: inline-flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.06); border: 1px solid var(--overlay-20); border-radius: 4px; color: var(--text-secondary); flex-shrink: 0; line-height: 1; height: 20px; box-sizing: border-box;">
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"></path></svg>
                             <span>XMLA</span>
                         </button>
