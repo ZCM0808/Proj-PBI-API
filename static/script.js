@@ -1809,80 +1809,73 @@ window.selectCustomOption = function(type, id, alias, skipCascade = false) {
 
 
 
-    if (type === 'workspace' && id && !skipCascade) {
-
-        const cascadeFetch = async (itemType) => {
-
-            try {
-
-                let cachedSettings = typeof backendSettingsCache !== 'undefined' ? backendSettingsCache : {};
-
-                const reqBody = {
-
-                    pbi_client_id: document.getElementById('set-client')?.value?.trim() || cachedSettings.CLIENT_ID || '',
-
-                    pbi_client_secret: document.getElementById('set-secret')?.value?.trim() || cachedSettings.CLIENT_SECRET || '',
-
-                    pbi_tenant_id: document.getElementById('set-tenant')?.value?.trim() || cachedSettings.TENANT_ID || '',
-
-                    workspace_id: id
-
-                };
-
-                if (!reqBody.pbi_client_id || !reqBody.pbi_client_secret) return;
-
-                
-
-                const targetType = itemType === 'datasets' ? 'dataset' : 'report';
-
-                const triggerTarget = document.getElementById(`trigger-${targetType}`);
-
-                if (triggerTarget) {
-
-                    triggerTarget.querySelector('.cs-name').textContent = '⏳ Loading...';
-
-                }
-
-                
-
-                const res = await fetch(`/api/scan/${itemType}`, {
-
-                    method: 'POST',
-
-                    headers: { 'Content-Type': 'application/json' },
-
-                    body: JSON.stringify(reqBody)
-
-                });
-
-                const data = await res.json();
-
-                if (data.success && data.data) {
-
-                    const formatted = data.data.map(item => ({ alias: item.name, id: item.id }));
-
-                    window._populateDropdown(targetType, formatted);
-
-                } else {
-
-                    window._populateDropdown(targetType, JSON.parse(localStorage.getItem(`pbi_${itemType}`) || '[]'));
-
-                }
-
-            } catch (e) {
-
-                console.error('Cascade error:', e);
-
-            }
-
+    if (type === 'workspace' && !skipCascade) {
+        const knownReportWsMap = {
+            "3a6e9e19-9aed-4372-a7d9-17155e9dd49d": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
+            "eb1e9614-f437-4925-b930-3db8c57aed83": "c06a2729-ee28-4471-af27-803b56a3d8cc",
+            "dd92cf21-8347-46bb-b57a-0d7b1abb54a1": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5",
+            "1b4b8c16-98ba-4122-a9f4-45b515254966": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
+            "98c86f67-010c-45be-b62c-70123f7d5854": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
+            "cbc29d9e-0d69-4791-9862-03543960bd08": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
+            "58c8af01-4ae9-44e6-853a-32a6c34802d6": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5",
+            "043db830-2a3b-45f2-8798-1ac69f188793": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5",
+            "7eb7e61e-424f-48bf-bf0e-be101d0c6131": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5",
+            "48f13f45-3da0-4592-a80c-cfb3867bbde8": "9b9146c9-f8fe-4c9e-b026-f4f2e25c233c",
+            "7f0acb25-c72a-451b-b560-dccdc5861235": "9b9146c9-f8fe-4c9e-b026-f4f2e25c233c",
+            "5c6df788-fcc6-4758-ba9c-42bc1b969666": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
+            "db746473-2c7c-4eb1-a0ce-61c27d888bd4": "2c51e061-0f9f-4d02-bed0-c169019e5d83"
         };
 
-        cascadeFetch('datasets');
+        const selWid = (id || '').trim().toLowerCase();
+        
+        // 1. Immediately filter local reports & datasets for instant UI responsiveness
+        const localReports = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+        const filteredReports = selWid ? localReports.filter(r => {
+            const rWid = (r.workspaceId || knownReportWsMap[r.id] || '').trim().toLowerCase();
+            return !rWid || rWid === selWid;
+        }) : localReports;
+        window._populateDropdown('report', filteredReports);
 
-        cascadeFetch('reports');
+        const localDatasets = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
+        const filteredDatasets = selWid ? localDatasets.filter(d => {
+            const dWid = (d.workspaceId || '').trim().toLowerCase();
+            return !dWid || dWid === selWid;
+        }) : localDatasets;
+        window._populateDropdown('dataset', filteredDatasets);
 
+        // 2. If valid workspace selected, also query cloud API for fresh items
+        if (id) {
+            const cascadeFetch = async (itemType) => {
+                try {
+                    let cachedSettings = typeof backendSettingsCache !== 'undefined' ? backendSettingsCache : {};
+                    const reqBody = {
+                        pbi_client_id: document.getElementById('set-client')?.value?.trim() || cachedSettings.CLIENT_ID || '',
+                        pbi_client_secret: document.getElementById('set-secret')?.value?.trim() || cachedSettings.CLIENT_SECRET || '',
+                        pbi_tenant_id: document.getElementById('set-tenant')?.value?.trim() || cachedSettings.TENANT_ID || '',
+                        workspace_id: id
+                    };
+                    if (!reqBody.pbi_client_id || !reqBody.pbi_client_secret) return;
+
+                    const targetType = itemType === 'datasets' ? 'dataset' : 'report';
+                    const res = await fetch(`/api/scan/${itemType}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(reqBody)
+                    });
+                    const data = await res.json();
+                    if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+                        const formatted = data.data.map(item => ({ alias: item.name, id: item.id, workspaceId: id }));
+                        window._populateDropdown(targetType, formatted);
+                    }
+                } catch (e) {
+                    console.error('Cascade error:', e);
+                }
+            };
+
+            cascadeFetch('datasets');
+            cascadeFetch('reports');
+        }
     }
-
 };
 
 
