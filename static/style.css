@@ -373,6 +373,8 @@ body {
     align-items: flex-start;
     gap: 0.5rem;
     transition: all 0.2s;
+    border-left: 3px solid transparent;
+    box-sizing: border-box;
 }
 
 .api-item:hover {
