@@ -1401,30 +1401,30 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
         endpoints_to_try = []
         if item_type == "workspaces":
             endpoints_to_try = [
-                "https://api.powerbi.com/v1.0/myorg/admin/groups?$top=5000",
-                "https://api.powerbi.com/v1.0/myorg/groups?$top=5000"
+                "https://api.powerbi.com/v1.0/myorg/admin/groups?%24top=5000",
+                "https://api.powerbi.com/v1.0/myorg/groups"
             ]
         elif item_type == "datasets":
             if workspace_id:
                 endpoints_to_try = [
                     f"https://api.powerbi.com/v1.0/myorg/admin/groups/{workspace_id}/datasets",
                     f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets",
-                    "https://api.powerbi.com/v1.0/myorg/admin/datasets?$top=5000"
+                    "https://api.powerbi.com/v1.0/myorg/admin/datasets?%24top=5000"
                 ]
             else:
                 endpoints_to_try = [
-                    "https://api.powerbi.com/v1.0/myorg/admin/datasets?$top=5000"
+                    "https://api.powerbi.com/v1.0/myorg/admin/datasets?%24top=5000"
                 ]
         elif item_type == "reports":
             if workspace_id:
                 endpoints_to_try = [
                     f"https://api.powerbi.com/v1.0/myorg/admin/groups/{workspace_id}/reports",
                     f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/reports",
-                    "https://api.powerbi.com/v1.0/myorg/admin/reports?$top=5000"
+                    "https://api.powerbi.com/v1.0/myorg/admin/reports?%24top=5000"
                 ]
             else:
                 endpoints_to_try = [
-                    "https://api.powerbi.com/v1.0/myorg/admin/reports?$top=5000"
+                    "https://api.powerbi.com/v1.0/myorg/admin/reports?%24top=5000"
                 ]
         else:
             return {"success": False, "error": "Invalid item type"}

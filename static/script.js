@@ -631,51 +631,40 @@ window.addListRow = function(containerId, alias = "", id = "", itemType = "", it
 
 
     // Construct badges if itemType or itemState exist
-
     let badgesHtml = '';
-
     if (itemType || itemState) {
-
         const isPersonal = String(itemType).toLowerCase().includes('personal');
-
         const isDeleted = String(itemState).toLowerCase().includes('delete');
-
         const isPremium = String(itemType).toLowerCase().includes('premium') || String(itemType).toLowerCase().includes('fabric');
-
+        const isAdminWs = String(itemType).toLowerCase().includes('admin');
         
+        let typeBadgeStyle = 'background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);';
+        let displayType = itemType;
 
-        const typeBadgeStyle = isPersonal
-
-            ? 'background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);'
-
-            : (isPremium 
-
-                ? 'background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);'
-
-                : 'background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);');
-
+        if (isPremium) {
+            typeBadgeStyle = 'background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);';
+            displayType = '⚡ Premium/Fabric';
+        } else if (isPersonal) {
+            typeBadgeStyle = 'background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);';
+            displayType = 'Personal';
+        } else if (isAdminWs) {
+            typeBadgeStyle = 'background: rgba(14, 165, 233, 0.15); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.3);';
+            displayType = 'Admin';
+        } else if (containerId === 'workspace-list') {
+            typeBadgeStyle = 'background: rgba(107, 114, 128, 0.15); color: var(--text-secondary); border: 1px solid rgba(107, 114, 128, 0.3);';
+            displayType = 'Pro / Shared';
+        }
             
-
         const stateBadgeStyle = isDeleted
-
             ? 'background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);'
-
             : 'background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);';
 
-
-
         if (itemType) {
-
-            badgesHtml += `<span class="badge-type" style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 500; white-space: nowrap; ${typeBadgeStyle}">${itemType}</span>`;
-
+            badgesHtml += `<span class="badge-type" style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 500; white-space: nowrap; ${typeBadgeStyle}">${displayType}</span>`;
         }
-
         if (itemState) {
-
             badgesHtml += `<span class="badge-state" style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 500; white-space: nowrap; ${stateBadgeStyle}">${itemState}</span>`;
-
         }
-
     }
 
 
@@ -1440,6 +1429,8 @@ window.scanItems = async function(type, btn) {
                         finalType = 'Premium/Fabric';
                     } else if (isPersonal) {
                         finalType = 'PersonalGroup';
+                    } else if (typeStr.toLowerCase().includes('admin')) {
+                        finalType = 'AdminWorkspace';
                     } else {
                         finalType = 'Workspace';
                     }
