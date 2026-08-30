@@ -7787,14 +7787,12 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                     if (window.updateWorkflowAuthBadge) window.updateWorkflowAuthBadge();
 
                     setTimeout(() => {
-                        settingsModal.classList.add('fade-out');
+                        window.closeModalWithAnimation('settings-modal');
                         setTimeout(() => {
-                            settingsModal.style.display = 'none';
-                            settingsModal.classList.remove('fade-out');
                             saveSettingsBtn.disabled = false;
                             saveSettingsBtn.innerHTML = originalIconHtml;
-                        }, 250);
-                    }, 600);
+                        }, 220);
+                    }, 300);
                 } else {
                     alert('保存失败: ' + result.message);
                     saveSettingsBtn.disabled = false;
