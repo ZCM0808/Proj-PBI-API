@@ -630,6 +630,25 @@ window.addListRow = function(containerId, alias = "", id = "", itemType = "", it
 
 
 
+    // Helper to get descriptive tooltip for different Power BI resource types
+    function getTypeTooltip(t) {
+        if (!t) return '';
+        const lower = String(t).toLowerCase();
+        if (lower.includes('pbixinimportmode')) return 'PbixInImportMode: 基于 Power BI Desktop 构建的标准内存 VertiPaq 导入模式模型 (定期自动刷新)';
+        if (lower.includes('abf')) return 'ABF (Analysis Services Backup Format): 微软 SSAS 列式内存压缩存储格式 (支持高并发分析)';
+        if (lower.includes('usagemetrics')) return 'UsageMetrics: 官方租户自动生成的工作区报表访问与用户审计监控模型';
+        if (lower.includes('pushstream') || lower.includes('push')) return 'Push / Streaming: 实时数据流推送数据集 (用于大屏/看板实时刷新)';
+        if (lower.includes('directlake')) return 'DirectLake: Microsoft Fabric 湖仓直连模式 (直接挂载 OneLake Delta 表)';
+        if (lower.includes('directquery')) return 'DirectQuery: 实时穿透直连模式 (不缓存数据，直接查询底层数据库)';
+        if (lower.includes('powerbireport')) return 'PowerBIReport: 标准交互式 Power BI 报表 (支持丰富图表与多维交互)';
+        if (lower.includes('paginatedreport')) return 'PaginatedReport: 分页报表 / SSRS RDL 格式 (像素级精确打印与导出)';
+        if (lower.includes('premium') || lower.includes('fabric')) return '⚡ Premium / Fabric 容量: 独立计算资源，支持大型语义模型与 XMLA 端点读写';
+        if (lower.includes('personal')) return 'Personal Workspace: 个人专属“我的工作区”';
+        if (lower.includes('admin')) return 'Admin Workspace: 微软租户管理员监控与治理专属系统工作区';
+        if (lower.includes('pro') || lower.includes('shared')) return 'Pro / Shared: 标准 Pro 共享容量工作区';
+        return `${t} (Power BI 资源类型)`;
+    }
+
     // Construct badges if itemType or itemState exist
     let badgesHtml = '';
     if (itemType || itemState) {
@@ -638,32 +657,35 @@ window.addListRow = function(containerId, alias = "", id = "", itemType = "", it
         const isPremium = String(itemType).toLowerCase().includes('premium') || String(itemType).toLowerCase().includes('fabric');
         const isAdminWs = String(itemType).toLowerCase().includes('admin');
         
-        let typeBadgeStyle = 'background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);';
+        let typeBadgeStyle = 'background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); cursor: help;';
         let displayType = itemType;
 
         if (isPremium) {
-            typeBadgeStyle = 'background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);';
+            typeBadgeStyle = 'background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); cursor: help;';
             displayType = '⚡ Premium/Fabric';
         } else if (isPersonal) {
-            typeBadgeStyle = 'background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);';
+            typeBadgeStyle = 'background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); cursor: help;';
             displayType = 'Personal';
         } else if (isAdminWs) {
-            typeBadgeStyle = 'background: rgba(14, 165, 233, 0.15); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.3);';
+            typeBadgeStyle = 'background: rgba(14, 165, 233, 0.15); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.3); cursor: help;';
             displayType = 'Admin';
         } else if (containerId === 'workspace-list') {
-            typeBadgeStyle = 'background: rgba(107, 114, 128, 0.15); color: var(--text-secondary); border: 1px solid rgba(107, 114, 128, 0.3);';
+            typeBadgeStyle = 'background: rgba(107, 114, 128, 0.15); color: var(--text-secondary); border: 1px solid rgba(107, 114, 128, 0.3); cursor: help;';
             displayType = 'Pro / Shared';
         }
             
         const stateBadgeStyle = isDeleted
-            ? 'background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);'
-            : 'background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);';
+            ? 'background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); cursor: help;'
+            : 'background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); cursor: help;';
+
+        const typeTooltip = getTypeTooltip(displayType || itemType);
+        const stateTooltip = isDeleted ? 'Deleted: 资源已被删除或标记为不可用' : 'Active: 资源处于正常活跃可用状态';
 
         if (itemType) {
-            badgesHtml += `<span class="badge-type" style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 500; white-space: nowrap; ${typeBadgeStyle}">${displayType}</span>`;
+            badgesHtml += `<span class="badge-type" title="${typeTooltip.replace(/"/g, '&quot;')}" style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 500; white-space: nowrap; ${typeBadgeStyle}">${displayType}</span>`;
         }
         if (itemState) {
-            badgesHtml += `<span class="badge-state" style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 500; white-space: nowrap; ${stateBadgeStyle}">${itemState}</span>`;
+            badgesHtml += `<span class="badge-state" title="${stateTooltip}" style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 500; white-space: nowrap; ${stateBadgeStyle}">${itemState}</span>`;
         }
     }
 
@@ -1398,16 +1420,27 @@ window.scanItems = async function(type, btn) {
                 let capacityBadge = '';
                 if (type === 'workspaces') {
                     if (isDedicated || typeStr.toLowerCase().includes('premium') || typeStr.toLowerCase().includes('fabric')) {
-                        capacityBadge = `<span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);" title="Premium / Fabric 容量支持 XMLA 读写 (Dedicated Capacity)">⚡ Premium/Fabric</span>`;
+                        capacityBadge = `<span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); cursor: help;" title="⚡ Premium / Fabric 容量: 独立计算资源，支持大型语义模型与 XMLA 端点读写 (Dedicated Capacity)">⚡ Premium/Fabric</span>`;
                     } else if (isPersonal) {
-                        capacityBadge = `<span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);">Personal</span>`;
+                        capacityBadge = `<span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); cursor: help;" title="Personal Workspace: 个人专属“我的工作区”">Personal</span>`;
                     } else if (typeStr.toLowerCase().includes('admin')) {
-                        capacityBadge = `<span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; background: rgba(14, 165, 233, 0.15); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.3);">Admin</span>`;
+                        capacityBadge = `<span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; background: rgba(14, 165, 233, 0.15); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.3); cursor: help;" title="Admin Workspace: 微软租户管理员监控与治理专属系统工作区">Admin</span>`;
                     } else {
-                        capacityBadge = `<span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; background: rgba(107, 114, 128, 0.15); color: var(--text-secondary); border: 1px solid rgba(107, 114, 128, 0.3);" title="共享容量 (Pro 共享容量不支持 XMLA 写入)">Pro / Shared</span>`;
+                        capacityBadge = `<span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; background: rgba(107, 114, 128, 0.15); color: var(--text-secondary); border: 1px solid rgba(107, 114, 128, 0.3); cursor: help;" title="Pro / Shared: 标准 Pro 共享容量工作区 (不支持 XMLA 写入)">Pro / Shared</span>`;
                     }
                 } else {
-                    capacityBadge = `<span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; ${typeBadgeStyle}">${typeStr}</span>`;
+                    let itemTooltip = typeStr;
+                    const lower = typeStr.toLowerCase();
+                    if (lower.includes('pbixinimportmode')) itemTooltip = 'PbixInImportMode: 基于 Power BI Desktop 构建的标准内存 VertiPaq 导入模式模型 (定期自动刷新)';
+                    else if (lower.includes('abf')) itemTooltip = 'ABF (Analysis Services Backup Format): 微软 SSAS 列式内存压缩存储格式 (支持高并发分析)';
+                    else if (lower.includes('usagemetrics')) itemTooltip = 'UsageMetrics: 官方租户自动生成的工作区报表访问与用户审计监控模型';
+                    else if (lower.includes('pushstream') || lower.includes('push')) itemTooltip = 'Push / Streaming: 实时数据流推送数据集 (用于大屏/看板实时刷新)';
+                    else if (lower.includes('directlake')) itemTooltip = 'DirectLake: Microsoft Fabric 湖仓直连模式 (直接挂载 OneLake Delta 表)';
+                    else if (lower.includes('directquery')) itemTooltip = 'DirectQuery: 实时穿透直连模式 (不缓存数据，直接查询底层数据库)';
+                    else if (lower.includes('powerbireport')) itemTooltip = 'PowerBIReport: 标准交互式 Power BI 报表 (支持丰富图表与多维交互)';
+                    else if (lower.includes('paginatedreport')) itemTooltip = 'PaginatedReport: 分页报表 / SSRS RDL 格式 (像素级精确打印与导出)';
+
+                    capacityBadge = `<span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; cursor: help; ${typeBadgeStyle}" title="${itemTooltip.replace(/"/g, '&quot;')}">${typeStr}</span>`;
                 }
 
                 let xmlaBtnHtml = '';
