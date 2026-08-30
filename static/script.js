@@ -1479,6 +1479,8 @@ window.scanItems = async function(type, btn) {
 
                 const listContainer = document.getElementById(targetListId);
 
+                if (!listContainer) return;
+
                 const currentInputs = listContainer.querySelectorAll('.id-input');
 
                 if (currentInputs.length === 1 && !currentInputs[0].value) {
@@ -1487,68 +1489,68 @@ window.scanItems = async function(type, btn) {
 
                 }
 
-
-
-                const existingGuids = new Set(Array.from(listContainer.querySelectorAll('.id-input')).map(input => input.value.trim()));
-
-
-
                 checked.forEach(cb => {
 
-                    const guid = cb.value;
+                    const guid = cb.value.trim();
+
+                    const itemName = cb.getAttribute('data-name') || '';
 
                     const itemType = cb.getAttribute('data-type') || '';
 
                     const itemState = cb.getAttribute('data-state') || '';
 
-                    if (!existingGuids.has(guid)) {
+                    // Find if row with same guid already exists
+                    const existingInputs = Array.from(listContainer.querySelectorAll('.id-input'));
+                    const matchingInput = existingInputs.find(input => input.value.trim().toLowerCase() === guid.toLowerCase());
 
-                        window.addListRow(targetListId, cb.getAttribute('data-name'), guid, itemType, itemState);
+                    if (matchingInput) {
+                        // Update existing row
+                        matchingInput.setAttribute('data-type', itemType);
+                        matchingInput.setAttribute('data-state', itemState);
+                        const row = matchingInput.parentElement.parentElement; // input -> .id-cell -> row
+                        if (row) {
+                            const aliasInput = row.querySelector('.alias-input');
+                            if (aliasInput && (!aliasInput.value.trim() || aliasInput.value.trim() === guid)) {
+                                aliasInput.value = itemName;
+                            }
+                            const aliasVal = aliasInput ? aliasInput.value.trim() : itemName;
+                            
+                            const badgesContainer = row.querySelector('.row-badges');
+                            if (badgesContainer) {
+                                const isPersonal = String(itemType).toLowerCase().includes('personal');
+                                const isDeleted = String(itemState).toLowerCase().includes('delete');
+                                const isPremium = String(itemType).toLowerCase().includes('premium') || String(itemType).toLowerCase().includes('fabric');
+                                
+                                const typeBadgeStyle = isPersonal
+                                    ? 'background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);'
+                                    : (isPremium 
+                                        ? 'background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);'
+                                        : 'background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);');
+                                        
+                                const stateBadgeStyle = isDeleted
+                                    ? 'background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);'
+                                    : 'background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);';
 
-                        existingGuids.add(guid);
-
-                    } else {
-                        // If already present in list, update its data-type/state and re-render badges
-                        const matchingInput = Array.from(listContainer.querySelectorAll('.id-input')).find(input => input.value.trim() === guid);
-                        if (matchingInput) {
-                            matchingInput.setAttribute('data-type', itemType);
-                            matchingInput.setAttribute('data-state', itemState);
-                            const row = matchingInput.closest('div');
-                            if (row) {
-                                const badgesContainer = row.querySelector('.row-badges');
-                                if (badgesContainer) {
-                                    const isPersonal = String(itemType).toLowerCase().includes('personal');
-                                    const isDeleted = String(itemState).toLowerCase().includes('delete');
-                                    const isPremium = String(itemType).toLowerCase().includes('premium') || String(itemType).toLowerCase().includes('fabric');
-                                    const typeBadgeStyle = isPersonal
-                                        ? 'background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);'
-                                        : (isPremium 
-                                            ? 'background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);'
-                                            : 'background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);');
-                                    const stateBadgeStyle = isDeleted
-                                        ? 'background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);'
-                                        : 'background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);';
-
-                                    let bHtml = '';
-                                    if (itemType) bHtml += `<span class="badge-type" style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 500; white-space: nowrap; ${typeBadgeStyle}">${itemType}</span>`;
-                                    if (itemState) bHtml += `<span class="badge-state" style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 500; white-space: nowrap; ${stateBadgeStyle}">${itemState}</span>`;
-                                    
-                                    const aliasInput = row.querySelector('.alias-input');
-                                    const aliasVal = aliasInput ? aliasInput.value.trim() : '';
-                                    let xmlaRowBtn = '';
-                                    if (targetListId === 'workspace-list' && aliasVal) {
-                                        const endpointVal = `powerbi://api.powerbi.com/v1.0/myorg/${aliasVal}`;
-                                        xmlaRowBtn = `
-                                            <button type="button" class="cell-copy-btn" onclick="window.handleCopyAction(this, '${endpointVal.replace(/'/g, "\\'")}', this.parentElement)" title="复制 XMLA 端点 URL: ${endpointVal}" style="position: static; opacity: 0.75; padding: 2px 5px; font-size: 0.65rem; display: inline-flex; align-items: center; gap: 3px; background: rgba(255,255,255,0.06); border: 1px solid var(--overlay-20); border-radius: 4px; color: var(--text-secondary); cursor: pointer; flex-shrink: 0; line-height: 1;">
-                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"></path></svg>
-                                                <span>XMLA</span>
-                                            </button>
-                                        `;
-                                    }
-                                    badgesContainer.innerHTML = `${bHtml}${xmlaRowBtn}`;
+                                let bHtml = '';
+                                if (itemType) bHtml += `<span class="badge-type" style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 500; white-space: nowrap; ${typeBadgeStyle}">${itemType}</span>`;
+                                if (itemState) bHtml += `<span class="badge-state" style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 500; white-space: nowrap; ${stateBadgeStyle}">${itemState}</span>`;
+                                
+                                let xmlaRowBtn = '';
+                                if (targetListId === 'workspace-list' && aliasVal) {
+                                    const endpointVal = `powerbi://api.powerbi.com/v1.0/myorg/${aliasVal}`;
+                                    xmlaRowBtn = `
+                                        <button type="button" class="cell-copy-btn" onclick="window.handleCopyAction(this, '${endpointVal.replace(/'/g, "\\'")}', this.parentElement)" title="复制 XMLA 端点 URL: ${endpointVal}" style="position: static; opacity: 0.75; padding: 2px 5px; font-size: 0.65rem; display: inline-flex; align-items: center; gap: 3px; background: rgba(255,255,255,0.06); border: 1px solid var(--overlay-20); border-radius: 4px; color: var(--text-secondary); cursor: pointer; flex-shrink: 0; line-height: 1;">
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"></path></svg>
+                                            <span>XMLA</span>
+                                        </button>
+                                    `;
                                 }
+                                badgesContainer.innerHTML = `${bHtml}${xmlaRowBtn}`;
                             }
                         }
+                    } else {
+                        // Add new row
+                        window.addListRow(targetListId, itemName, guid, itemType, itemState);
                     }
 
                 });
