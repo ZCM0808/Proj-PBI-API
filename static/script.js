@@ -1954,7 +1954,7 @@ window.renderEnvIdentity = async function() {
 
                     }
 
-                    authModeEl.title = `当前认证: Personal Auth (个人委派用户认证) - ${userName} (点击复制)`;
+                    authModeEl.title = `当前认证: Personal Auth (个人委派用户认证) - ${userName}`;
 
                 } else {
 
@@ -1970,19 +1970,11 @@ window.renderEnvIdentity = async function() {
 
                     const appDisplayName = data.app_name || data.client_id || '';
 
-                    authModeEl.title = `当前认证: Service Principal (Azure 应用程序认证)${appDisplayName ? ' - ' + appDisplayName : ''} (点击复制)`;
+                    authModeEl.title = `当前认证: Service Principal (Azure 应用程序认证)${appDisplayName ? ' - ' + appDisplayName : ''}`;
 
                 }
 
                 authModeEl.style.display = 'inline-flex';
-
-                authModeEl.onclick = () => {
-
-                    const copyVal = isPersonal ? (data.username || 'Personal') : (data.client_id || 'Service Principal');
-
-                    window.handleCopyAction(authModeEl, copyVal);
-
-                };
 
             } else {
 
@@ -1996,20 +1988,6 @@ window.renderEnvIdentity = async function() {
 
         }
 
-    }
-
-    // Attach click-to-copy for tenant and client
-    if (tenantEl) {
-        tenantEl.onclick = () => {
-            const val = tenantId || tenantEl.querySelector('strong')?.textContent || '';
-            if (val && val !== 'Unknown') window.handleCopyAction(tenantEl, val);
-        };
-    }
-    if (clientEl) {
-        clientEl.onclick = () => {
-            const val = clientId || appName || clientEl.querySelector('strong')?.textContent || '';
-            if (val && !val.includes('Unknown')) window.handleCopyAction(clientEl, val);
-        };
     }
 
 };
