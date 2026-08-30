@@ -12111,57 +12111,39 @@ window.updateHarnessStats = function() {
                 
 
                 // Reset container
-
+                window._reportIsLoaded = false;
                 powerbi.reset(embedContainer);
-
                 currentEmbeddedReport = powerbi.embed(embedContainer, config);
-
-                
+                window.currentEmbeddedReport = currentEmbeddedReport;
 
                 currentEmbeddedReport.off("pageChanged");
-
                 currentEmbeddedReport.on("pageChanged", function (event) {
-
                     const newPage = event.detail.newPage;
-
                     if (newPage && newPage.name) {
-
                         const pageSelect = document.getElementById('wf-vis-page');
-
                         const fsPageSelect = document.getElementById('pbi-fs-page-select');
-
                         if (pageSelect && pageSelect.value !== newPage.name) pageSelect.value = newPage.name;
-
                         if (fsPageSelect && fsPageSelect.value !== newPage.name) fsPageSelect.value = newPage.name;
-
                     }
-
                 });
 
-                
-
                 currentEmbeddedReport.off("loaded");
-
                 currentEmbeddedReport.on("loaded", async function () {
-
+                    window._reportIsLoaded = true;
                     out.textContent += `Report rendered in UI! Fetching Pages via JS SDK...\n`;
-
                     setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
-
                     try {
-
                         const pages = await currentEmbeddedReport.getPages();
-
                         populatePagesDropdown(pages);
-
                     } catch (e) {
-
                         out.textContent += `JS SDK getPages failed, trying REST API fallback...\n`;
-
                         await fetchPagesViaRestApi(wId, rId);
-
                     }
+                });
 
+                currentEmbeddedReport.off("rendered");
+                currentEmbeddedReport.on("rendered", function () {
+                    window._reportIsLoaded = true;
                 });
 
                 
@@ -12573,67 +12555,54 @@ window.updateHarnessStats = function() {
 
 
 
+        // Helper: 等待嵌入报表渲染就绪（支持最多等待 15 秒）
+        const waitForReportReady = async (maxWaitMs = 15000) => {
+            if (window._reportIsLoaded && window.currentEmbeddedReport) return window.currentEmbeddedReport;
+            const start = Date.now();
+            out.textContent += `> Waiting for Power BI report iframe to finish rendering...\n`;
+            while (Date.now() - start < maxWaitMs) {
+                if (window._reportIsLoaded && window.currentEmbeddedReport) return window.currentEmbeddedReport;
+                await new Promise(r => setTimeout(r, 600));
+            }
+            return window.currentEmbeddedReport || null;
+        };
+
         const executeExportVisual = async () => {
-
             const out = document.getElementById('wf-out-vis');
-
             window.expandConsole('wf-out-vis');
 
-            
-
             const modeToggle = document.querySelector('input[name="wf-vis-mode"]:checked');
-
             const mode = modeToggle ? modeToggle.value : 'export';
 
-            
-
-            // Allow empty selection to default to 'ALL'
-
             let pId = document.getElementById('wf-vis-page').value;
-
             if (!pId) pId = 'ALL';
 
-            
-
             let visId = document.getElementById('wf-vis-visual').value;
-
             if (!visId) visId = 'ALL';
 
-            
-
             const wsId = document.getElementById('wf-vis-workspace').value;
-
             const reportId = document.getElementById('wf-vis-report').value;
-
             const expTypeStr = document.getElementById('wf-vis-type').value;
-
             const rows = parseInt(document.getElementById('wf-vis-rows').value) || 100000;
 
-            
+            if (!currentEmbeddedReport && wsId && reportId) {
+                out.textContent += `[${new Date().toLocaleTimeString()}] Initializing embedded report...\n`;
+                loadPages();
+            }
+
+            const activeReport = await waitForReportReady(15000);
+
+            if (!activeReport) {
+                if (window.showNotification) window.showNotification("Error: Embedded report not ready. Please check Workspace and Report selection.", "error");
+                out.textContent += `[${new Date().toLocaleTimeString()}] Error: Embedded report not ready after 15s timeout.\n`;
+                setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
+                return;
+            }
 
             if (mode === 'analyze') {
-
-                if (!currentEmbeddedReport) {
-
-                    if (window.showNotification) window.showNotification("Error: Please select Workspace and Report, and wait for report to render.", "error");
-
-                    out.textContent += `[${new Date().toLocaleTimeString()}] Error: Embedded report not ready.\n`;
-
-                    setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
-
-                    return;
-
-                }
-
-                
-
                 if (window.showNotification) window.showNotification("Analyzing Dependencies via JS SDK... Check console below.", "info");
-
                 out.textContent += `[${new Date().toLocaleTimeString()}] Analyzing Visual Dependencies via JS SDK (Frontend)...\n`;
-
                 setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
-
-                
 
                 let dataList = [];
 
@@ -12660,7 +12629,7 @@ window.updateHarnessStats = function() {
                         out.textContent += `> XMLA Schema Fetch Failed: ${e.message}\n\n`;
                     }
 
-                    const pages = await currentEmbeddedReport.getPages();
+                    const pages = await activeReport.getPages();
 
                     const targetPages = (pId === 'ALL') ? pages : pages.filter(p => p.name === pId);
 
@@ -12918,7 +12887,7 @@ window.updateHarnessStats = function() {
                 let fileCount = 0;
 
                 out.textContent += `> Fetching pages from report...\n`;
-                const pages = await currentEmbeddedReport.getPages();
+                const pages = await activeReport.getPages();
                 const targetPages = (pId === 'ALL') ? pages : pages.filter(p => p.name === pId);
 
                 if (targetPages.length === 0) {
