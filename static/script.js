@@ -1434,9 +1434,20 @@ window.scanItems = async function(type, btn) {
                     <span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; ${stateBadgeStyle}">${stateStr}</span>
                 `;
 
+                let finalType = typeStr;
+                if (type === 'workspaces') {
+                    if (isDedicated || typeStr.toLowerCase().includes('premium') || typeStr.toLowerCase().includes('fabric')) {
+                        finalType = 'Premium/Fabric';
+                    } else if (isPersonal) {
+                        finalType = 'PersonalGroup';
+                    } else {
+                        finalType = 'Workspace';
+                    }
+                }
+
                 row.innerHTML = `
 
-                    <input type="checkbox" value="${item.id}" data-name="${item.name.replace(/"/g, '&quot;')}" data-type="${typeStr}" data-state="${stateStr}" ${isDeleted ? '' : 'checked'}>
+                    <input type="checkbox" value="${item.id}" data-name="${item.name.replace(/"/g, '&quot;')}" data-type="${finalType}" data-state="${stateStr}" ${isDeleted ? '' : 'checked'}>
 
                     <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8rem;" title="${item.name}">${item.name}</span>
 
@@ -1716,7 +1727,24 @@ window.selectCustomOption = function(type, id, alias, skipCascade = false) {
 
     if (id) {
 
-        nameEl.textContent = alias;
+        let badgeHtml = '';
+        if (type === 'workspace') {
+            const wList = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+            const wsItem = wList.find(w => w.id === id);
+            const wsType = wsItem ? (wsItem.type || '') : '';
+            const isPersonal = String(wsType).toLowerCase().includes('personal');
+            const isPremium = String(wsType).toLowerCase().includes('premium') || String(wsType).toLowerCase().includes('fabric');
+            if (isPremium) {
+                badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); margin-left: 6px; font-weight: 500; flex-shrink: 0;">⚡ Premium</span>`;
+            } else if (isPersonal) {
+                badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); margin-left: 6px; font-weight: 500; flex-shrink: 0;">Personal</span>`;
+            }
+        }
+
+        nameEl.innerHTML = `<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${alias}</span>${badgeHtml}`;
+        nameEl.style.display = 'flex';
+        nameEl.style.alignItems = 'center';
+        nameEl.style.justifyContent = 'space-between';
 
         idEl.textContent = id;
 
@@ -1725,6 +1753,7 @@ window.selectCustomOption = function(type, id, alias, skipCascade = false) {
     } else {
 
         nameEl.textContent = '-- None --';
+        nameEl.style.display = 'block';
 
         idEl.style.display = 'none';
 
