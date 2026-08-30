@@ -11280,71 +11280,34 @@ window.updateHarnessStats = function() {
 
             
 
-            // Helper: Filter reports dropdown by selected workspace
-
-            const updateReportsForWorkspace = (wSelectId, rSelectId) => {
-
-                const wSelect = document.getElementById(wSelectId);
-
-                const rSelect = document.getElementById(rSelectId);
-
-                if (!wSelect || !rSelect) return;
-
-                
-
-                const selectedWId = wSelect.value;
-
-                const reports = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
-
-                const currentRVal = rSelect.value;
-
-                
-
-                rSelect.innerHTML = '<option value="">-- Select Report --</option>';
-
-                let matchFound = false;
-
-                
-
-                reports.forEach(item => {
-
-                    // Match report if workspace_id matches or if no workspace is explicitly specified on report item
-
-                    const opt = document.createElement('option');
-
-                    opt.value = item.id;
-
-                    opt.textContent = `${item.alias || item.name || "Unnamed"} (${item.id})`;
-
-                    rSelect.appendChild(opt);
-
-                    if (item.id === currentRVal) matchFound = true;
-
-                });
-
-                
-
-                if (matchFound) {
-
-                    rSelect.value = currentRVal;
-
-                } else if (rSelect.options.length > 1) {
-
-                    rSelect.selectedIndex = 1; // Auto select first available report
-
-                }
-
+            const knownReportWsMap = {
+                "3a6e9e19-9aed-4372-a7d9-17155e9dd49d": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
+                "eb1e9614-f437-4925-b930-3db8c57aed83": "c06a2729-ee28-4471-af27-803b56a3d8cc",
+                "dd92cf21-8347-46bb-b57a-0d7b1abb54a1": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5",
+                "1b4b8c16-98ba-4122-a9f4-45b515254966": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
+                "98c86f67-010c-45be-b62c-70123f7d5854": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
+                "cbc29d9e-0d69-4791-9862-03543960bd08": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
+                "58c8af01-4ae9-44e6-853a-32a6c34802d6": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5",
+                "043db830-2a3b-45f2-8798-1ac69f188793": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5",
+                "7eb7e61e-424f-48bf-bf0e-be101d0c6131": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5",
+                "48f13f45-3da0-4592-a80c-cfb3867bbde8": "9b9146c9-f8fe-4c9e-b026-f4f2e25c233c",
+                "7f0acb25-c72a-451b-b560-dccdc5861235": "9b9146c9-f8fe-4c9e-b026-f4f2e25c233c",
+                "5c6df788-fcc6-4758-ba9c-42bc1b969666": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
+                "db746473-2c7c-4eb1-a0ce-61c27d888bd4": "2c51e061-0f9f-4d02-bed0-c169019e5d83"
             };
-
-
 
             const updateFilteredReports = (wSelectId, rSelectId) => {
                 const wSelect = document.getElementById(wSelectId);
                 const rSelect = document.getElementById(rSelectId);
                 if (!wSelect || !rSelect) return;
-                const selWid = wSelect.value;
+                const selWid = (wSelect.value || '').trim().toLowerCase();
                 const reports = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
-                const filtered = selWid ? reports.filter(r => !r.workspaceId || r.workspaceId === selWid) : reports;
+                
+                const filtered = selWid ? reports.filter(r => {
+                    const rWid = (r.workspaceId || knownReportWsMap[r.id] || '').trim().toLowerCase();
+                    return !rWid || rWid === selWid;
+                }) : reports;
+
                 const prevVal = rSelect.value;
                 rSelect.innerHTML = '<option value="">-- Select Report --</option>';
                 filtered.forEach(item => {
@@ -11359,6 +11322,7 @@ window.updateHarnessStats = function() {
                     rSelect.value = filtered[0].id;
                 }
             };
+            window.updateFilteredReports = updateFilteredReports;
 
             const fillSelect = (selectId, storageKey) => {
                 const select = document.getElementById(selectId);
@@ -12484,9 +12448,10 @@ window.updateHarnessStats = function() {
         });
 
         document.getElementById('wf-vis-workspace').addEventListener('change', () => {
-
+            if (window.updateFilteredReports) {
+                window.updateFilteredReports('wf-vis-workspace', 'wf-vis-report');
+            }
             loadPages();
-
         });
 
         document.getElementById('wf-vis-page').addEventListener('change', loadVisuals);
