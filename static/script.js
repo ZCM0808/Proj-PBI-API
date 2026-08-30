@@ -591,8 +591,7 @@ window.toggleSettingsSection = function(listId, labelEl) {
 
 
 // Global Context Management Functions
-
-window.addListRow = function(containerId, alias = "", id = "", itemType = "", itemState = "") {
+window.addListRow = function(containerId, alias = "", id = "", itemType = "", itemState = "", workspaceId = "") {
 
     const container = document.getElementById(containerId);
 
@@ -741,7 +740,7 @@ window.addListRow = function(containerId, alias = "", id = "", itemType = "", it
 
         <div class="cell-with-copy id-cell" style="width: 320px; min-width: 200px; flex-shrink: 0;">
 
-            <input type="text" class="settings-input id-input" placeholder="GUID" value="${id}" ${isIdReadOnly} ${idReadOnlyTitle} style="width: 100%; font-family: monospace; font-size: 0.75rem; padding: 4px 26px 4px 8px; ${idReadOnlyStyle}" data-type="${itemType}" data-state="${itemState}">
+            <input type="text" class="settings-input id-input" placeholder="GUID" value="${id}" ${isIdReadOnly} ${idReadOnlyTitle} style="width: 100%; font-family: monospace; font-size: 0.75rem; padding: 4px 26px 4px 8px; ${idReadOnlyStyle}" data-type="${itemType}" data-state="${itemState}" data-workspace="${workspaceId || ''}">
 
             <button type="button" class="cell-copy-btn" onclick="window.handleCopyAction(this, this.previousElementSibling.value, this.parentElement)" title="复制 GUID (Copy GUID)">
 
@@ -1473,7 +1472,7 @@ window.scanItems = async function(type, btn) {
 
                 row.innerHTML = `
 
-                    <input type="checkbox" value="${item.id}" data-name="${item.name.replace(/"/g, '&quot;')}" data-type="${finalType}" data-state="${stateStr}" ${isDeleted ? '' : 'checked'}>
+                    <input type="checkbox" value="${item.id}" data-name="${item.name.replace(/"/g, '&quot;')}" data-type="${finalType}" data-state="${stateStr}" data-workspace="${item.workspaceId || ''}" ${isDeleted ? '' : 'checked'}>
 
                     <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8rem;" title="${item.name}">${item.name}</span>
 
@@ -1517,12 +1516,14 @@ window.scanItems = async function(type, btn) {
                     const itemName = cb.getAttribute('data-name') || '';
                     const itemType = cb.getAttribute('data-type') || '';
                     const itemState = cb.getAttribute('data-state') || '';
+                    const itemWsId = cb.getAttribute('data-workspace') || '';
 
                     const existingIdx = currentRows.findIndex(r => r.id && r.id.toLowerCase() === guid.toLowerCase());
                     if (existingIdx !== -1) {
                         // Overwrite existing row properties
                         currentRows[existingIdx].type = itemType;
                         currentRows[existingIdx].state = itemState;
+                        if (itemWsId) currentRows[existingIdx].workspaceId = itemWsId;
                         if (!currentRows[existingIdx].alias || currentRows[existingIdx].alias.toLowerCase() === guid.toLowerCase()) {
                             currentRows[existingIdx].alias = itemName;
                         }
@@ -1532,7 +1533,8 @@ window.scanItems = async function(type, btn) {
                             alias: itemName,
                             id: guid,
                             type: itemType,
-                            state: itemState
+                            state: itemState,
+                            workspaceId: itemWsId
                         });
                     }
                 });
@@ -1543,7 +1545,7 @@ window.scanItems = async function(type, btn) {
                     window.addListRow(targetListId);
                 } else {
                     currentRows.forEach(item => {
-                        window.addListRow(targetListId, item.alias || '', item.id || '', item.type || '', item.state || '');
+                        window.addListRow(targetListId, item.alias || '', item.id || '', item.type || '', item.state || '', item.workspaceId || '');
                     });
                 }
 
@@ -1605,13 +1607,12 @@ window.getListData = function(containerId) {
         const type = idInput.getAttribute('data-type') || '';
 
         const state = idInput.getAttribute('data-state') || '';
+        const workspaceId = idInput.getAttribute('data-workspace') || '';
 
-        if (alias || id) data.push({ alias, id, type, state });
-
+        if (alias || id) data.push({ alias, id, type, state, workspaceId });
     }
 
     return data;
-
 };
 
 
@@ -11407,24 +11408,33 @@ window.updateHarnessStats = function() {
 
 
             const activeW = document.getElementById('active-workspace')?.value;
-
             const activeR = document.getElementById('active-report')?.value;
-
-            if (activeW) document.getElementById('wf-exp-workspace').value = activeW;
-
-            if (activeR) document.getElementById('wf-exp-report').value = activeR;
-
-            
-
-            if (activeW) document.getElementById('wf-ds-workspace').value = activeW;
-
             const activeD = document.getElementById('active-dataset')?.value;
 
-            if (activeD) document.getElementById('wf-ds-dataset').value = activeD;
+            if (activeW) {
+                ['wf-exp-workspace', 'wf-vis-workspace', 'wf-ds-workspace', 'wf-rvc-workspace'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = activeW;
+                });
+            }
 
-            if (activeW) document.getElementById('wf-rvc-workspace').value = activeW;
+            updateFilteredReports('wf-exp-workspace', 'wf-exp-report');
+            updateFilteredReports('wf-vis-workspace', 'wf-vis-report');
+            updateFilteredReports('wf-rvc-workspace', 'wf-rvc-report');
 
-            if (activeR) document.getElementById('wf-rvc-report').value = activeR;
+            if (activeR) {
+                ['wf-exp-report', 'wf-vis-report', 'wf-rvc-report'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && Array.from(el.options).some(o => o.value === activeR)) {
+                        el.value = activeR;
+                    }
+                });
+            }
+
+            if (activeD) {
+                const el = document.getElementById('wf-ds-dataset');
+                if (el) el.value = activeD;
+            }
 
 
 
