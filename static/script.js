@@ -18036,26 +18036,27 @@ window.initXmlaWorkflow = function() {
 
 
 
-    // 1. 个人认证按钮 (支持 MSAL 网页弹窗登录 + Device Code Flow 智能轮换)
-
+    // 1. 个人认证按钮 (支持 MSAL 网页弹窗登录 + Device Code Flow 智能轮换，再次点击即刻停止)
+    let _isTokenFetching = false;
     btnAuth.addEventListener('click', async () => {
+        if (_isTokenFetching || _currentDevicePollTimer || _currentDeviceFlowId) {
+            window.stopTokenFetching();
+            _isTokenFetching = false;
+            btnAuth.innerHTML = AUTH_ICON;
+            return;
+        }
 
+        _isTokenFetching = true;
         btnAuth.innerHTML = SPIN_ICON;
 
         try {
-
             await window.acquireMfaTokenWithFallback('wf-xmla-token', (token) => {
-
                 updateTokenBadge(Boolean(token));
-
             });
-
         } finally {
-
+            _isTokenFetching = false;
             btnAuth.innerHTML = AUTH_ICON;
-
         }
-
     });
 
 
