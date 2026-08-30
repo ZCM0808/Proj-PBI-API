@@ -12329,51 +12329,61 @@ window.updateHarnessStats = function() {
 
 
         const fetchPagesViaRestApi = async (wId, rId) => {
-
             const pageSelect = document.getElementById('wf-vis-page');
-
             const out = document.getElementById('wf-out-vis');
-
             try {
-
-                const res = await fetch('/api/proxy', {
-
-                    method: 'POST',
-
-                    headers: { 'Content-Type': 'application/json' },
-
-                    body: JSON.stringify({ endpoint: `/groups/${wId}/reports/${rId}/pages`, method: 'GET' })
-
-                });
-
-                const data = await res.json();
-
-                const payload = data.data || data;
-
-                const pages = payload.value || payload;
-
-                if (Array.isArray(pages) && pages.length > 0) {
-
-                    out.textContent += `[REST API Fallback] Loaded ${pages.length} pages via Power BI REST API.\n`;
-
-                    populatePagesDropdown(pages);
-
-                } else {
-
-                    out.textContent += `[REST API Fallback] No pages returned or permission restricted.\n`;
-
-                    pageSelect.innerHTML = '<option value="">No pages found</option>';
-
+                let pages = [];
+                // 1. Try group endpoint if workspaceId is present
+                if (wId) {
+                    try {
+                        const res = await fetch('/api/proxy', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ endpoint: `/groups/${wId}/reports/${rId}/pages`, method: 'GET' })
+                        });
+                        const data = await res.json();
+                        const payload = data.data || data;
+                        if (Array.isArray(payload.value) && payload.value.length > 0) {
+                            pages = payload.value;
+                        } else if (Array.isArray(payload) && payload.length > 0) {
+                            pages = payload;
+                        }
+                    } catch (e) {
+                        console.warn("Group pages endpoint attempt failed:", e);
+                    }
                 }
 
+                // 2. If no pages yet, try admin endpoint
+                if (pages.length === 0) {
+                    try {
+                        const resAdmin = await fetch('/api/proxy', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ endpoint: `/admin/reports/${rId}/pages`, method: 'GET' })
+                        });
+                        const dataAdmin = await resAdmin.json();
+                        const payloadAdmin = dataAdmin.data || dataAdmin;
+                        if (Array.isArray(payloadAdmin.value) && payloadAdmin.value.length > 0) {
+                            pages = payloadAdmin.value;
+                        } else if (Array.isArray(payloadAdmin) && payloadAdmin.length > 0) {
+                            pages = payloadAdmin;
+                        }
+                    } catch (e) {
+                        console.warn("Admin pages endpoint attempt failed:", e);
+                    }
+                }
+
+                if (Array.isArray(pages) && pages.length > 0) {
+                    out.textContent += `[REST API Fallback] Loaded ${pages.length} pages via Power BI REST API.\n`;
+                    populatePagesDropdown(pages);
+                } else {
+                    out.textContent += `[REST API Fallback] No pages returned or permission restricted.\n`;
+                    pageSelect.innerHTML = '<option value="">No pages found</option>';
+                }
             } catch (err) {
-
                 out.textContent += `REST API fallback error: ${err.message}\n`;
-
                 pageSelect.innerHTML = '<option value="">Error loading pages</option>';
-
             }
-
         };
 
 
