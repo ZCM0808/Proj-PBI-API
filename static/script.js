@@ -12470,7 +12470,98 @@ window.updateHarnessStats = function() {
 
         window.loadExportVisualPages = loadPages;
 
+        // ── 手动刷新按钮处理函数 ──────────────────────────────
+        const spinBtn = (btn, fn) => {
+            const svg = btn.querySelector('svg');
+            if (!svg) return fn();
+            svg.style.animation = 'spin 0.8s linear infinite';
+            const done = () => { svg.style.animation = ''; };
+            Promise.resolve(fn()).finally(done);
+        };
 
+        window.wfVisRefreshWorkspace = function(btn) {
+            spinBtn(btn, async () => {
+                const items = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+                const sel = document.getElementById('wf-vis-workspace');
+                if (!sel) return;
+                const prev = sel.value;
+                sel.innerHTML = '<option value="">-- Select --</option>';
+                items.forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item.id;
+                    opt.textContent = `${item.alias || item.name || 'Unnamed'} (${item.id})`;
+                    sel.appendChild(opt);
+                });
+                if (prev && Array.from(sel.options).some(o => o.value === prev)) sel.value = prev;
+                if (window.showNotification) window.showNotification('Workspace list refreshed', 'success');
+            });
+        };
+
+        window.wfVisRefreshReport = function(btn) {
+            spinBtn(btn, async () => {
+                try {
+                    const wId = document.getElementById('wf-vis-workspace')?.value?.trim();
+                    if (wId) {
+                        let cachedSettings = typeof backendSettingsCache !== 'undefined' ? backendSettingsCache : {};
+                        const reqBody = {
+                            pbi_client_id: document.getElementById('set-client')?.value?.trim() || cachedSettings.CLIENT_ID || '',
+                            pbi_client_secret: document.getElementById('set-secret')?.value?.trim() || cachedSettings.CLIENT_SECRET || '',
+                            pbi_tenant_id: document.getElementById('set-tenant')?.value?.trim() || cachedSettings.TENANT_ID || '',
+                            workspace_id: wId
+                        };
+                        if (reqBody.pbi_client_id && reqBody.pbi_client_secret) {
+                            const res = await fetch('/api/scan/reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reqBody) });
+                            const data = await res.json();
+                            if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+                                const formatted = data.data.map(item => ({ alias: item.name, id: item.id, workspaceId: wId }));
+                                const existing = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+                                const merged = [...existing.filter(r => r.workspaceId !== wId && r.workspaceId !== wId.toLowerCase()), ...formatted];
+                                localStorage.setItem('pbi_reports', JSON.stringify(merged));
+                                if (window.showNotification) window.showNotification(`Loaded ${formatted.length} reports from API`, 'success');
+                            }
+                        }
+                    }
+                } catch (e) { console.warn('wfVisRefreshReport API error:', e); }
+                if (window.updateFilteredReports) window.updateFilteredReports('wf-vis-workspace', 'wf-vis-report');
+            });
+        };
+
+        window.wfVisRefreshPage = function(btn) {
+            spinBtn(btn, async () => {
+                await loadPages();
+                if (window.showNotification) window.showNotification('Page list refreshed', 'success');
+            });
+        };
+
+        window.wfVisRefreshVisual = function(btn) {
+            spinBtn(btn, async () => {
+                const pId = document.getElementById('wf-vis-page')?.value;
+                if (!pId) { if (window.showNotification) window.showNotification('Please select a page first', 'warning'); return; }
+                const visSelect = document.getElementById('wf-vis-visual');
+                if (!visSelect) return;
+                visSelect.innerHTML = '<option value="">Loading visuals...</option>';
+                try {
+                    if (window.currentEmbeddedReport) {
+                        const pages = await window.currentEmbeddedReport.getPages();
+                        const activePage = pages.find(p => p.name === pId);
+                        if (activePage) {
+                            const visuals = await activePage.getVisuals();
+                            visSelect.innerHTML = '<option value="">-- Select a Visual --</option><option value="ALL">🌟 ALL VISUALS ON THIS PAGE 🌟</option>';
+                            visuals.forEach(v => {
+                                const opt = document.createElement('option');
+                                opt.value = v.name;
+                                opt.textContent = (v.title || `[${v.type}]` || 'Unnamed Visual') + ` (${v.name})`;
+                                visSelect.appendChild(opt);
+                            });
+                            if (window.showNotification) window.showNotification(`Loaded ${visuals.length} visuals`, 'success');
+                            return;
+                        }
+                    }
+                } catch (e) { console.warn('wfVisRefreshVisual error:', e); }
+                visSelect.innerHTML = '<option value="ALL">🌟 ALL VISUALS ON THIS PAGE 🌟</option>';
+                if (window.showNotification) window.showNotification('Visual list refreshed (ALL mode)', 'info');
+            });
+        };
 
         document.getElementById('wf-vis-report').addEventListener('change', () => {
 
