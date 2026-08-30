@@ -11381,34 +11381,6 @@ window.updateHarnessStats = function() {
             fillSelect('wf-ds-dataset', 'pbi_datasets');
             fillSelect('wf-rvc-workspace', 'pbi_workspaces');
 
-            // Default Workspace for wf-vis-workspace
-            const visWSelect = document.getElementById('wf-vis-workspace');
-            if (visWSelect && !visWSelect.value) {
-                const workspaces = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
-                const devW = workspaces.find(w => w.alias === 'WorkSpace_DEV' || w.id === '2c51e061-0f9f-4d02-bed0-c169019e5d83') || workspaces[0];
-                if (devW) visWSelect.value = devW.id;
-            }
-
-            updateFilteredReports('wf-exp-workspace', 'wf-exp-report');
-            updateFilteredReports('wf-vis-workspace', 'wf-vis-report');
-            updateFilteredReports('wf-rvc-workspace', 'wf-rvc-report');
-
-            // Bind workspace change events to dynamically re-filter reports
-            ['wf-exp', 'wf-vis', 'wf-rvc'].forEach(prefix => {
-                const wsElem = document.getElementById(`${prefix}-workspace`);
-                if (wsElem && !wsElem._hasCascadeListener) {
-                    wsElem._hasCascadeListener = true;
-                    wsElem.addEventListener('change', () => {
-                        updateFilteredReports(`${prefix}-workspace`, `${prefix}-report`);
-                        if (prefix === 'wf-vis' && window.loadExportVisualPages) {
-                            window.loadExportVisualPages();
-                        }
-                    });
-                }
-            });
-
-
-
             const activeW = document.getElementById('active-workspace')?.value;
             const activeR = document.getElementById('active-report')?.value;
             const activeD = document.getElementById('active-dataset')?.value;
@@ -11418,6 +11390,13 @@ window.updateHarnessStats = function() {
                     const el = document.getElementById(id);
                     if (el) el.value = activeW;
                 });
+            } else {
+                const visWSelect = document.getElementById('wf-vis-workspace');
+                if (visWSelect && !visWSelect.value) {
+                    const workspaces = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+                    const devW = workspaces.find(w => w.alias === 'WorkSpace_DEV' || w.id === '2c51e061-0f9f-4d02-bed0-c169019e5d83') || workspaces[0];
+                    if (devW) visWSelect.value = devW.id;
+                }
             }
 
             updateFilteredReports('wf-exp-workspace', 'wf-exp-report');
@@ -11437,6 +11416,20 @@ window.updateHarnessStats = function() {
                 const el = document.getElementById('wf-ds-dataset');
                 if (el) el.value = activeD;
             }
+
+            // Bind workspace change events to dynamically re-filter reports
+            ['wf-exp', 'wf-vis', 'wf-rvc'].forEach(prefix => {
+                const wsElem = document.getElementById(`${prefix}-workspace`);
+                if (wsElem && !wsElem._hasCascadeListener) {
+                    wsElem._hasCascadeListener = true;
+                    wsElem.addEventListener('change', () => {
+                        updateFilteredReports(`${prefix}-workspace`, `${prefix}-report`);
+                        if (prefix === 'wf-vis' && window.loadExportVisualPages) {
+                            window.loadExportVisualPages();
+                        }
+                    });
+                }
+            });
 
 
 
@@ -12483,13 +12476,6 @@ window.updateHarnessStats = function() {
 
             loadPages();
 
-        });
-
-        document.getElementById('wf-vis-workspace').addEventListener('change', () => {
-            if (window.updateFilteredReports) {
-                window.updateFilteredReports('wf-vis-workspace', 'wf-vis-report');
-            }
-            loadPages();
         });
 
         document.getElementById('wf-vis-page').addEventListener('change', loadVisuals);
