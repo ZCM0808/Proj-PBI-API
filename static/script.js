@@ -1836,12 +1836,32 @@ window.selectCustomOption = function(type, id, alias, skipCascade = false) {
         }) : localReports;
         window._populateDropdown('report', filteredReports);
 
+        // Auto-select first matching report if active report not in filtered list
+        const activeReportId = document.getElementById('active-report')?.value;
+        if (!filteredReports.some(r => r.id === activeReportId)) {
+            if (filteredReports.length > 0) {
+                selectCustomOption('report', filteredReports[0].id, filteredReports[0].alias || filteredReports[0].name || '', true);
+            } else {
+                selectCustomOption('report', '', '', true);
+            }
+        }
+
         const localDatasets = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
         const filteredDatasets = selWid ? localDatasets.filter(d => {
             const dWid = (d.workspaceId || '').trim().toLowerCase();
             return !dWid || dWid === selWid;
         }) : localDatasets;
         window._populateDropdown('dataset', filteredDatasets);
+
+        // Auto-select first matching dataset if active dataset not in filtered list
+        const activeDatasetId = document.getElementById('active-dataset')?.value;
+        if (!filteredDatasets.some(d => d.id === activeDatasetId)) {
+            if (filteredDatasets.length > 0) {
+                selectCustomOption('dataset', filteredDatasets[0].id, filteredDatasets[0].alias || filteredDatasets[0].name || '', true);
+            } else {
+                selectCustomOption('dataset', '', '', true);
+            }
+        }
 
         // 2. If valid workspace selected, also query cloud API for fresh items
         if (id) {
@@ -1866,6 +1886,10 @@ window.selectCustomOption = function(type, id, alias, skipCascade = false) {
                     if (data.success && Array.isArray(data.data) && data.data.length > 0) {
                         const formatted = data.data.map(item => ({ alias: item.name, id: item.id, workspaceId: id }));
                         window._populateDropdown(targetType, formatted);
+                        const curId = document.getElementById(`active-${targetType}`)?.value;
+                        if (!formatted.some(f => f.id === curId)) {
+                            selectCustomOption(targetType, formatted[0].id, formatted[0].alias, true);
+                        }
                     }
                 } catch (e) {
                     console.error('Cascade error:', e);
@@ -1962,21 +1986,42 @@ window._populateDropdown = function(type, data) {
 
 
 window.renderContextDropdowns = function() {
-
     const wData = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
-
     const dData = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
-
     const rData = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
-
-
 
     window._populateDropdown('workspace', wData);
 
-    window._populateDropdown('dataset', dData);
+    const activeW = (document.getElementById('active-workspace')?.value || localStorage.getItem('pbi-active-workspace') || '').trim().toLowerCase();
+    
+    const knownReportWsMap = {
+        "3a6e9e19-9aed-4372-a7d9-17155e9dd49d": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
+        "eb1e9614-f437-4925-b930-3db8c57aed83": "c06a2729-ee28-4471-af27-803b56a3d8cc",
+        "dd92cf21-8347-46bb-b57a-0d7b1abb54a1": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5",
+        "1b4b8c16-98ba-4122-a9f4-45b515254966": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
+        "98c86f67-010c-45be-b62c-70123f7d5854": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
+        "cbc29d9e-0d69-4791-9862-03543960bd08": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
+        "58c8af01-4ae9-44e6-853a-32a6c34802d6": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5",
+        "043db830-2a3b-45f2-8798-1ac69f188793": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5",
+        "7eb7e61e-424f-48bf-bf0e-be101d0c6131": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5",
+        "48f13f45-3da0-4592-a80c-cfb3867bbde8": "9b9146c9-f8fe-4c9e-b026-f4f2e25c233c",
+        "7f0acb25-c72a-451b-b560-dccdc5861235": "9b9146c9-f8fe-4c9e-b026-f4f2e25c233c",
+        "5c6df788-fcc6-4758-ba9c-42bc1b969666": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
+        "db746473-2c7c-4eb1-a0ce-61c27d888bd4": "2c51e061-0f9f-4d02-bed0-c169019e5d83"
+    };
 
-    window._populateDropdown('report', rData);
+    const filteredReports = activeW ? rData.filter(r => {
+        const rWid = (r.workspaceId || knownReportWsMap[r.id] || '').trim().toLowerCase();
+        return !rWid || rWid === activeW;
+    }) : rData;
 
+    const filteredDatasets = activeW ? dData.filter(d => {
+        const dWid = (d.workspaceId || '').trim().toLowerCase();
+        return !dWid || dWid === activeW;
+    }) : dData;
+
+    window._populateDropdown('dataset', filteredDatasets);
+    window._populateDropdown('report', filteredReports);
 };
 
 
