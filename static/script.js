@@ -11337,79 +11337,72 @@ window.updateHarnessStats = function() {
 
 
 
-            const fillSelect = (selectId, storageKey) => {
-
-                const select = document.getElementById(selectId);
-
-                if(!select) return;
-
-                select.innerHTML = '<option value="">-- Select --</option>';
-
-                const items = JSON.parse(localStorage.getItem(storageKey) || '[]');
-
-                items.forEach(item => {
-
+            const updateFilteredReports = (wSelectId, rSelectId) => {
+                const wSelect = document.getElementById(wSelectId);
+                const rSelect = document.getElementById(rSelectId);
+                if (!wSelect || !rSelect) return;
+                const selWid = wSelect.value;
+                const reports = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+                const filtered = selWid ? reports.filter(r => !r.workspaceId || r.workspaceId === selWid) : reports;
+                const prevVal = rSelect.value;
+                rSelect.innerHTML = '<option value="">-- Select Report --</option>';
+                filtered.forEach(item => {
                     const opt = document.createElement('option');
-
                     opt.value = item.id;
-
                     opt.textContent = `${item.alias || item.name || "Unnamed"} (${item.id})`;
-
-                    select.appendChild(opt);
-
+                    rSelect.appendChild(opt);
                 });
+                if (prevVal && filtered.some(r => r.id === prevVal)) {
+                    rSelect.value = prevVal;
+                } else if (filtered.length > 0) {
+                    rSelect.value = filtered[0].id;
+                }
+            };
 
+            const fillSelect = (selectId, storageKey) => {
+                const select = document.getElementById(selectId);
+                if(!select) return;
+                select.innerHTML = '<option value="">-- Select --</option>';
+                const items = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                items.forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item.id;
+                    opt.textContent = `${item.alias || item.name || "Unnamed"} (${item.id})`;
+                    select.appendChild(opt);
+                });
             };
 
             fillSelect('wf-exp-workspace', 'pbi_workspaces');
-
-            fillSelect('wf-exp-report', 'pbi_reports');
-
             fillSelect('wf-vis-workspace', 'pbi_workspaces');
-
-            fillSelect('wf-vis-report', 'pbi_reports');
-
             fillSelect('wf-ds-workspace', 'pbi_workspaces');
-
             fillSelect('wf-ds-dataset', 'pbi_datasets');
-
             fillSelect('wf-rvc-workspace', 'pbi_workspaces');
 
-            fillSelect('wf-rvc-report', 'pbi_reports');
-
-            
-
-            // Set Default Workspace for wf-vis-workspace if empty (Default to WorkSpace_DEV or first active workspace)
-
+            // Default Workspace for wf-vis-workspace
             const visWSelect = document.getElementById('wf-vis-workspace');
-
             if (visWSelect && !visWSelect.value) {
-
                 const workspaces = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
-
                 const devW = workspaces.find(w => w.alias === 'WorkSpace_DEV' || w.id === '2c51e061-0f9f-4d02-bed0-c169019e5d83') || workspaces[0];
+                if (devW) visWSelect.value = devW.id;
+            }
 
-                if (devW) {
+            updateFilteredReports('wf-exp-workspace', 'wf-exp-report');
+            updateFilteredReports('wf-vis-workspace', 'wf-vis-report');
+            updateFilteredReports('wf-rvc-workspace', 'wf-rvc-report');
 
-                    visWSelect.value = devW.id;
-
+            // Bind workspace change events to dynamically re-filter reports
+            ['wf-exp', 'wf-vis', 'wf-rvc'].forEach(prefix => {
+                const wsElem = document.getElementById(`${prefix}-workspace`);
+                if (wsElem && !wsElem._hasCascadeListener) {
+                    wsElem._hasCascadeListener = true;
+                    wsElem.addEventListener('change', () => {
+                        updateFilteredReports(`${prefix}-workspace`, `${prefix}-report`);
+                        if (prefix === 'wf-vis' && window.loadExportVisualPages) {
+                            window.loadExportVisualPages();
+                        }
+                    });
                 }
-
-            }
-
-
-
-            const visRSelect = document.getElementById('wf-vis-report');
-
-            const reports = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
-
-            const azReport = reports.find(r => r.alias === 'AstraZeneca_SFE' || r.id === '5c6df788-fcc6-4758-ba9c-42bc1b969666') || reports[0];
-
-            if (visRSelect && !visRSelect.value && azReport) {
-
-                visRSelect.value = azReport.id;
-
-            }
+            });
 
 
 
