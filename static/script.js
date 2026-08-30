@@ -1471,94 +1471,59 @@ window.scanItems = async function(type, btn) {
 
             addBtn.onclick = () => {
 
-                const checked = container.querySelectorAll('input[type="checkbox"]:checked');
+                const checked = Array.from(container.querySelectorAll('input[type="checkbox"]:checked'));
 
                 const targetListId = type === 'workspaces' ? 'workspace-list' : (type === 'datasets' ? 'dataset-list' : 'report-list');
-
-                
 
                 const listContainer = document.getElementById(targetListId);
 
                 if (!listContainer) return;
 
-                const currentInputs = listContainer.querySelectorAll('.id-input');
+                // 1. Get all current rows from list
+                let currentRows = window.getListData(targetListId);
 
-                if (currentInputs.length === 1 && !currentInputs[0].value) {
+                // Filter out empty rows
+                currentRows = currentRows.filter(r => (r.id && r.id.trim()) || (r.alias && r.alias.trim()));
 
-                    listContainer.innerHTML = '';
-
-                }
-
+                // 2. Merge checked items into currentRows (update existing by ID or append new)
                 checked.forEach(cb => {
-
                     const guid = cb.value.trim();
-
                     const itemName = cb.getAttribute('data-name') || '';
-
                     const itemType = cb.getAttribute('data-type') || '';
-
                     const itemState = cb.getAttribute('data-state') || '';
 
-                    // Find if row with same guid already exists
-                    const existingInputs = Array.from(listContainer.querySelectorAll('.id-input'));
-                    const matchingInput = existingInputs.find(input => input.value.trim().toLowerCase() === guid.toLowerCase());
-
-                    if (matchingInput) {
-                        // Update existing row
-                        matchingInput.setAttribute('data-type', itemType);
-                        matchingInput.setAttribute('data-state', itemState);
-                        const row = matchingInput.parentElement.parentElement; // input -> .id-cell -> row
-                        if (row) {
-                            const aliasInput = row.querySelector('.alias-input');
-                            if (aliasInput && (!aliasInput.value.trim() || aliasInput.value.trim() === guid)) {
-                                aliasInput.value = itemName;
-                            }
-                            const aliasVal = aliasInput ? aliasInput.value.trim() : itemName;
-                            
-                            const badgesContainer = row.querySelector('.row-badges');
-                            if (badgesContainer) {
-                                const isPersonal = String(itemType).toLowerCase().includes('personal');
-                                const isDeleted = String(itemState).toLowerCase().includes('delete');
-                                const isPremium = String(itemType).toLowerCase().includes('premium') || String(itemType).toLowerCase().includes('fabric');
-                                
-                                const typeBadgeStyle = isPersonal
-                                    ? 'background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);'
-                                    : (isPremium 
-                                        ? 'background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);'
-                                        : 'background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);');
-                                        
-                                const stateBadgeStyle = isDeleted
-                                    ? 'background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);'
-                                    : 'background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);';
-
-                                let bHtml = '';
-                                if (itemType) bHtml += `<span class="badge-type" style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 500; white-space: nowrap; ${typeBadgeStyle}">${itemType}</span>`;
-                                if (itemState) bHtml += `<span class="badge-state" style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 500; white-space: nowrap; ${stateBadgeStyle}">${itemState}</span>`;
-                                
-                                let xmlaRowBtn = '';
-                                if (targetListId === 'workspace-list' && aliasVal) {
-                                    const endpointVal = `powerbi://api.powerbi.com/v1.0/myorg/${aliasVal}`;
-                                    xmlaRowBtn = `
-                                        <button type="button" class="cell-copy-btn" onclick="window.handleCopyAction(this, '${endpointVal.replace(/'/g, "\\'")}', this.parentElement)" title="复制 XMLA 端点 URL: ${endpointVal}" style="position: static; opacity: 0.75; padding: 2px 5px; font-size: 0.65rem; display: inline-flex; align-items: center; gap: 3px; background: rgba(255,255,255,0.06); border: 1px solid var(--overlay-20); border-radius: 4px; color: var(--text-secondary); cursor: pointer; flex-shrink: 0; line-height: 1;">
-                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"></path></svg>
-                                            <span>XMLA</span>
-                                        </button>
-                                    `;
-                                }
-                                badgesContainer.innerHTML = `${bHtml}${xmlaRowBtn}`;
-                            }
+                    const existingIdx = currentRows.findIndex(r => r.id && r.id.toLowerCase() === guid.toLowerCase());
+                    if (existingIdx !== -1) {
+                        // Overwrite existing row properties
+                        currentRows[existingIdx].type = itemType;
+                        currentRows[existingIdx].state = itemState;
+                        if (!currentRows[existingIdx].alias || currentRows[existingIdx].alias.toLowerCase() === guid.toLowerCase()) {
+                            currentRows[existingIdx].alias = itemName;
                         }
                     } else {
-                        // Add new row
-                        window.addListRow(targetListId, itemName, guid, itemType, itemState);
+                        // Append new item
+                        currentRows.push({
+                            alias: itemName,
+                            id: guid,
+                            type: itemType,
+                            state: itemState
+                        });
                     }
-
                 });
 
-                // Auto-sync newly added items to localStorage and instantly refresh main interface context dropdowns
+                // 3. Clear container and re-render every row freshly via window.addListRow
+                listContainer.innerHTML = '';
+                if (currentRows.length === 0) {
+                    window.addListRow(targetListId);
+                } else {
+                    currentRows.forEach(item => {
+                        window.addListRow(targetListId, item.alias || '', item.id || '', item.type || '', item.state || '');
+                    });
+                }
+
+                // 4. Save to localStorage & refresh main dropdowns
                 const storageKey = type === 'workspaces' ? 'pbi_workspaces' : (type === 'datasets' ? 'pbi_datasets' : 'pbi_reports');
-                const currentData = window.getListData(targetListId);
-                localStorage.setItem(storageKey, JSON.stringify(currentData));
+                localStorage.setItem(storageKey, JSON.stringify(currentRows));
                 if (typeof window.renderContextDropdowns === 'function') {
                     window.renderContextDropdowns();
                 }
