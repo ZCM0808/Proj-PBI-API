@@ -1492,10 +1492,23 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
                     raw_type = item.get("type")
                 else:
                     raw_type = "Workspace"
+            elif item_type == "datasets":
+                if item.get("contentProviderType"):
+                    raw_type = item.get("contentProviderType")
+                elif item.get("targetStorageMode"):
+                    raw_type = item.get("targetStorageMode")
+                elif item.get("type"):
+                    raw_type = item.get("type")
+                else:
+                    raw_type = "Dataset"
+            elif item_type == "reports":
+                report_type = item.get("reportType") or "PowerBIReport"
+                report_format = item.get("format")
+                raw_type = f"{report_type} ({report_format})" if report_format else report_type
             else:
                 raw_type = item.get("type") or "Item"
 
-            raw_state = item.get("state") or "Active"
+            raw_state = item.get("state") or ("Active" if item.get("isRefreshable") is not None or item.get("reportType") else "Active")
             ws_prefix = f"[{item.get('workspaceName')}] " if item.get("workspaceName") else ""
             item_name = f"{ws_prefix}{item.get('name') or item.get('id')}"
             
