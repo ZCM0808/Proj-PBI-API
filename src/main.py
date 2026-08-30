@@ -1518,12 +1518,14 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
                 raw_ws_name = item.get("name") or item.get("id")
                 xmla_endpoint = f"powerbi://api.powerbi.com/v1.0/myorg/{raw_ws_name}"
 
+            item_ws_id = item.get("workspaceId") or workspace_id or ""
+
             result_items.append({
                 "id": item.get("id"),
                 "name": item_name,
                 "type": str(raw_type),
                 "state": str(raw_state),
-                "workspaceId": item.get("workspaceId", ""),
+                "workspaceId": item_ws_id,
                 "isOnDedicatedCapacity": is_dedicated,
                 "capacityId": capacity_id,
                 "xmlaEndpoint": xmla_endpoint
