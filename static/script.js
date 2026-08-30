@@ -1777,13 +1777,13 @@ window.selectCustomOption = function(type, id, alias, skipCascade = false) {
             const isPersonal = String(wsType).toLowerCase().includes('personal');
             const isPremium = String(wsType).toLowerCase().includes('premium') || String(wsType).toLowerCase().includes('fabric');
             if (isPremium) {
-                badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); margin-left: 6px; font-weight: 500; flex-shrink: 0;">⚡ Premium</span>`;
+                badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 5px; border-radius: 3px; background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); margin-left: 6px; font-weight: 600; flex-shrink: 0;">⚡ Premium</span>`;
             } else if (isPersonal) {
-                badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); margin-left: 6px; font-weight: 500; flex-shrink: 0;">Personal</span>`;
+                badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 5px; border-radius: 3px; background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4); margin-left: 6px; font-weight: 600; flex-shrink: 0;">Personal</span>`;
             }
         }
 
-        nameEl.innerHTML = `<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${alias}</span>${badgeHtml}`;
+        nameEl.innerHTML = `<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500;">${alias}</span>${badgeHtml}`;
         nameEl.style.display = 'flex';
         nameEl.style.alignItems = 'center';
         nameEl.style.justifyContent = 'space-between';
