@@ -17745,40 +17745,38 @@ window.updateWorkflowAuthBadge = async function() {
 
 
 
+let _currentDeviceFlowResolve = null;
+
 window.closeDeviceCodeModal = function() {
-
     const modal = document.getElementById('device-code-modal');
-
     if (modal) {
-
         window.closeModalWithAnimation('device-code-modal');
-
     }
-
     if (_currentDevicePollTimer) {
-
         clearInterval(_currentDevicePollTimer);
-
         _currentDevicePollTimer = null;
-
     }
-
     if (_currentDeviceFlowId) {
-
         fetch('/api/auth/device-code/cancel', {
-
             method: 'POST',
-
             headers: { 'Content-Type': 'application/json' },
-
             body: JSON.stringify({ flow_id: _currentDeviceFlowId })
-
         }).catch(() => {});
-
         _currentDeviceFlowId = null;
-
     }
+    if (_currentDeviceFlowResolve) {
+        _currentDeviceFlowResolve(null);
+        _currentDeviceFlowResolve = null;
+    }
+};
 
+window.stopTokenFetching = function() {
+    if (_currentDevicePollTimer || _currentDeviceFlowId) {
+        window.closeDeviceCodeModal();
+        if (window.showNotification) window.showNotification("⏹️ 已停止获取 Access Token", "info");
+        return true;
+    }
+    return false;
 };
 
 
@@ -17808,157 +17806,88 @@ window.copyDeviceCode = function(btn) {
 
 
 window.acquireMfaTokenWithFallback = async function(targetInputId = 'wf-xmla-token', onTokenAcquired = null) {
-
     const targetInput = document.getElementById(targetInputId);
-
     
-
-    // 采用微软官方跨租户零重定向依赖的 Device Code Flow (设备代码流)
-
-    // 优势: 100% 免疫 AADSTS50011 (Redirect URI Mismatch) 与 AADSTS50020 (Tenant Mismatch)，原生支持任意企业账号
-
-    try {
-
-        if (window.showNotification) window.showNotification("📱 正在初始化微软设备代码认证...", "info");
-
-        
-
-        const initRes = await fetch('/api/auth/device-code/init', { method: 'POST' });
-
-        const initData = await initRes.json();
-
-        
-
-        if (!initData || !initData.success || !initData.user_code) {
-
-            alert("❌ 初始化设备代码流失败: " + (initData?.message || "网络异常"));
-
-            return null;
-
-        }
-
-        
-
-        _currentDeviceFlowId = initData.flow_id;
-
-        const codeValEl = document.getElementById('device-code-value');
-
-        const codeLinkEl = document.getElementById('device-code-link');
-
-        const modal = document.getElementById('device-code-modal');
-
-        const modalContent = modal ? modal.querySelector('.modal-content') : null;
-
-        
-
-        if (codeValEl) codeValEl.textContent = initData.user_code;
-
-        if (codeLinkEl && initData.verification_uri) {
-
-            codeLinkEl.href = initData.verification_uri;
-
-        }
-
-        
-
-        if (modal) {
-
-            modal.style.display = 'flex';
-
-            modal.style.visibility = 'visible';
-
-            modal.style.opacity = '1';
-
-            if (modalContent) window.centerModal(modalContent);
-
-        }
-
-        
-
-        // 自动复制设备码到剪贴板，极大提升用户体验
-
-        try {
-
-            await navigator.clipboard.writeText(initData.user_code);
-
-            if (window.showNotification) {
-
-                window.showNotification(`📋 验证码 [${initData.user_code}] 已自动复制到剪贴板！`, "success");
-
-            }
-
-        } catch (_) {}
-
-        
-
-        // 启动高频轮询检查
-
-        return new Promise((resolve) => {
-
-            if (_currentDevicePollTimer) clearInterval(_currentDevicePollTimer);
-
-            _currentDevicePollTimer = setInterval(async () => {
-
-                try {
-
-                    const pollRes = await fetch(`/api/auth/device-code/poll?flow_id=${_currentDeviceFlowId}`);
-
-                    const pollData = await pollRes.json();
-
-                    
-
-                    if (pollData.status === 'completed' && pollData.token) {
-
-                        clearInterval(_currentDevicePollTimer);
-
-                        _currentDevicePollTimer = null;
-
-                        window.closeDeviceCodeModal();
-
-                        
-
-                        const token = pollData.token;
-
-                        if (targetInput) targetInput.value = token;
-
-                        const badge = document.getElementById('wf-xmla-token-badge');
-
-                        if (badge) badge.style.display = 'inline-flex';
-
-                        if (window.showNotification) window.showNotification("🎉 个人 MFA 验证成功，Token 已自动填入！", "success");
-
-                        if (onTokenAcquired) onTokenAcquired(token);
-
-                        resolve(token);
-
-                    } else if (pollData.status === 'error') {
-
-                        clearInterval(_currentDevicePollTimer);
-
-                        _currentDevicePollTimer = null;
-
-                        alert("❌ 设备流认证失败: " + pollData.message);
-
-                        window.closeDeviceCodeModal();
-
-                        resolve(null);
-
-                    }
-
-                } catch (_) {}
-
-            }, 2500);
-
-        });
-
-    } catch (err) {
-
-        alert("❌ 发起认证异常: " + err.message);
-
+    // 如果当前正在获取，则停止当前获取流程（再次点击即可停止）
+    if (_currentDevicePollTimer || _currentDeviceFlowId) {
+        window.stopTokenFetching();
         return null;
-
     }
 
+    try {
+        if (window.showNotification) window.showNotification("📱 正在初始化微软设备代码认证...", "info");
+        
+        const initRes = await fetch('/api/auth/device-code/init', { method: 'POST' });
+        const initData = await initRes.json();
+        
+        if (!initData || !initData.success || !initData.user_code) {
+            alert("❌ 初始化设备代码流失败: " + (initData?.message || "网络异常"));
+            return null;
+        }
+        
+        _currentDeviceFlowId = initData.flow_id;
+        const codeValEl = document.getElementById('device-code-value');
+        const codeLinkEl = document.getElementById('device-code-link');
+        const modal = document.getElementById('device-code-modal');
+        const modalContent = modal ? modal.querySelector('.modal-content') : null;
+        
+        if (codeValEl) codeValEl.textContent = initData.user_code;
+        if (codeLinkEl && initData.verification_uri) {
+            codeLinkEl.href = initData.verification_uri;
+        }
+        
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.style.visibility = 'visible';
+            modal.style.opacity = '1';
+            if (modalContent) window.centerModal(modalContent);
+        }
+        
+        // 自动复制设备码到剪贴板，极大提升用户体验
+        try {
+            await navigator.clipboard.writeText(initData.user_code);
+            if (window.showNotification) {
+                window.showNotification(`📋 验证码 [${initData.user_code}] 已自动复制到剪贴板！`, "success");
+            }
+        } catch (_) {}
+        
+        // 启动高频轮询检查
+        return new Promise((resolve) => {
+            _currentDeviceFlowResolve = resolve;
+            if (_currentDevicePollTimer) clearInterval(_currentDevicePollTimer);
+            _currentDevicePollTimer = setInterval(async () => {
+                try {
+                    const pollRes = await fetch(`/api/auth/device-code/poll?flow_id=${_currentDeviceFlowId}`);
+                    const pollData = await pollRes.json();
+                    
+                    if (pollData.status === 'completed' && pollData.token) {
+                        clearInterval(_currentDevicePollTimer);
+                        _currentDevicePollTimer = null;
+                        _currentDeviceFlowResolve = null;
+                        window.closeDeviceCodeModal();
+                        
+                        const token = pollData.token;
+                        if (targetInput) targetInput.value = token;
+                        const badge = document.getElementById('wf-xmla-token-badge');
+                        if (badge) badge.style.display = 'inline-flex';
+                        if (window.showNotification) window.showNotification("🎉 个人 MFA 验证成功，Token 已自动填入！", "success");
+                        if (onTokenAcquired) onTokenAcquired(token);
+                        resolve(token);
+                    } else if (pollData.status === 'error') {
+                        clearInterval(_currentDevicePollTimer);
+                        _currentDevicePollTimer = null;
+                        _currentDeviceFlowResolve = null;
+                        alert("❌ 设备流认证失败: " + pollData.message);
+                        window.closeDeviceCodeModal();
+                        resolve(null);
+                    }
+                } catch (_) {}
+            }, 2500);
+        });
+    } catch (err) {
+        alert("❌ 发起认证异常: " + err.message);
+        return null;
+    }
 };
 
 
