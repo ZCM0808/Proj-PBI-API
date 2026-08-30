@@ -3299,3 +3299,31 @@ svg.spinning {
     height: 100% !important;
     transition: none !important;
 }
+
+/* ── Workflow 字段悬浮刷新按钮 (Hover-reveal refresh icon) ── */
+.wf-inline-refresh-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--accent);
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.22s ease, transform 0.22s ease;
+    transform: scale(0.8);
+    line-height: 1;
+}
+
+.wf-field-refreshable:hover .wf-inline-refresh-btn {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.wf-inline-refresh-btn:hover {
+    opacity: 0.7 !important;
+}
+
+.wf-inline-refresh-btn:active {
+    transform: scale(0.92);
+}
