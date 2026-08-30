@@ -12902,178 +12902,100 @@ window.updateHarnessStats = function() {
 
 
 
-            out.textContent = `[${new Date().toLocaleTimeString()}] Triggering JS SDK exportData() -> Excel...\n`;
-
-            
+            out.textContent += `[${new Date().toLocaleTimeString()}] Triggering JS SDK exportData() -> Excel...\n`;
 
             if (!currentEmbeddedReport) {
-
-                out.textContent += `Error: Embedded report not ready.\n`;
-
+                out.textContent += `Error: Embedded report not ready. Please make sure report is selected and loaded.\n`;
                 setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
-
                 return;
-
             }
 
-            
-
             try {
-
                 const models = window['powerbi-client'].models;
-
                 const exportType = (expTypeStr === 'Summarized') ? models.ExportDataType.Summarized : models.ExportDataType.Underlying;
 
-                
-
                 const wb = XLSX.utils.book_new();
-
                 let fileCount = 0;
 
-                
-
+                out.textContent += `> Fetching pages from report...\n`;
                 const pages = await currentEmbeddedReport.getPages();
-
                 const targetPages = (pId === 'ALL') ? pages : pages.filter(p => p.name === pId);
 
-                
-
                 if (targetPages.length === 0) {
-
-                    out.textContent += `Error: Page not found.\n`;
-
+                    out.textContent += `Error: Page '${pId}' not found.\n`;
                     return;
-
                 }
-
-
 
                 for (let page of targetPages) {
-
-                    out.textContent += `\n> Navigating to Page: [${page.displayName}]...\n`;
-
+                    out.textContent += `\n> Navigating to Page: [${page.displayName || page.name}]...\n`;
                     setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
-
-                    await page.setActive();
-
-                    await new Promise(r => setTimeout(r, 1500)); // wait for visuals to load
-
-                    
+                    try {
+                        await page.setActive();
+                        await new Promise(r => setTimeout(r, 1200)); // wait for visuals to render
+                    } catch(eNav) {
+                        out.textContent += `  (Warning: Page activation notice: ${eNav.message})\n`;
+                    }
 
                     const visuals = await page.getVisuals();
-
                     const targetVisuals = (visId === 'ALL') ? visuals : visuals.filter(v => v.name === visId);
 
-                    
-
                     if (targetVisuals.length === 0) {
-
                         out.textContent += `  - No matching visuals found on this page.\n`;
-
                         continue;
-
                     }
-
-
 
                     for (let v of targetVisuals) {
-
                         const vName = v.title || v.name || v.type;
-
                         out.textContent += `  - Visual [${vName}]: Extracting...`;
-
                         setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
-
                         try {
-
                             const result = await v.exportData(exportType, rows);
 
-                            
-
                             // Parse CSV to Excel Worksheet
-
                             const tempWb = XLSX.read(result.data, {type: 'string'});
-
                             const ws = tempWb.Sheets[tempWb.SheetNames[0]];
 
-                            
-
                             // Generate safe Sheet Name (Max 31 chars, no invalid chars)
-
                             let rawSheetName = (pId === 'ALL') ? `${page.displayName}_${vName}` : vName;
-
                             let sheetName = rawSheetName.replace(/[\\\/\*\?\:\[\]]/g, '').trim();
-
                             if (sheetName.length > 31) sheetName = sheetName.substring(0, 31).trim();
-
                             if (!sheetName) sheetName = "Sheet";
 
-                            
-
                             // Ensure uniqueness
-
                             if (wb.SheetNames.includes(sheetName)) {
-
                                 let suffix = 1;
-
                                 while(wb.SheetNames.includes(sheetName.substring(0, 27) + "_" + suffix)) suffix++;
-
                                 sheetName = sheetName.substring(0, 27) + "_" + suffix;
-
                             }
 
-                            
-
                             XLSX.utils.book_append_sheet(wb, ws, sheetName);
-
                             fileCount++;
-
                             out.textContent += ` OK (Appended to Sheet: ${sheetName})\n`;
-
                             setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
-
                         } catch (e) {
-
-                            out.textContent += ` SKIPPED (No data or unsupported)\n`;
-
+                            out.textContent += ` SKIPPED (${e.message || 'No data or unsupported'})\n`;
                             setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
-
                         }
-
                     }
-
                 }
-
-                
 
                 if (fileCount > 0) {
-
                     out.textContent += `\nData successfully extracted (${fileCount} sheets)! Generating Excel file...\n`;
-
                     setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
-
                     XLSX.writeFile(wb, `PowerBI_Export_${expTypeStr}.xlsx`);
-
                     out.textContent += `\nExcel file downloaded: PowerBI_Export_${expTypeStr}.xlsx 🎉\n`;
-
+                    if (window.showNotification) window.showNotification(`Exported ${fileCount} visual(s) to Excel!`, 'success');
                     setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
-
                 } else {
-
                     out.textContent += `\nWARNING: No exportable data found in the selected targets.\n`;
-
+                    if (window.showNotification) window.showNotification('No exportable data found in selected visuals', 'warning');
                     setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
-
                 }
 
-                
-
             } catch (err) {
-
                 out.textContent += `Exception during export: ${err.message || JSON.stringify(err)}\n`;
-
+                if (window.showNotification) window.showNotification('Export error: ' + err.message, 'error');
                 setTimeout(() => { out.scrollTop = Math.max(0, out.scrollHeight - out.clientHeight * 0.66); }, 10);
-
             }
 
         };
