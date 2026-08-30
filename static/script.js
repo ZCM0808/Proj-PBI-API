@@ -1948,33 +1948,41 @@ window.renderEnvIdentity = async function() {
 
                     if (authModeText) {
 
-                        authModeText.textContent = `Personal (${userName})`;
+                        authModeText.textContent = 'Personal';
 
                         authModeText.style.color = '#38bdf8';
 
                     }
 
-                    authModeEl.title = `当前认证: Personal Auth (个人委派用户认证) - ${data.username || ''}`;
+                    authModeEl.title = `当前认证: Personal Auth (个人委派用户认证) - ${userName} (点击复制)`;
 
                 } else {
-
-                    const appDisplayName = data.app_name || (data.client_id ? `App (${data.client_id.substring(0, 8)}...)` : 'App');
 
                     if (authModeIcon) authModeIcon.textContent = '🛡️';
 
                     if (authModeText) {
 
-                        authModeText.textContent = `Service Principal (${appDisplayName})`;
+                        authModeText.textContent = 'Service Principal';
 
                         authModeText.style.color = 'var(--accent)';
 
                     }
 
-                    authModeEl.title = `当前认证: Service Principal (Azure 应用程序认证) - ${data.client_id || ''}`;
+                    const appDisplayName = data.app_name || data.client_id || '';
+
+                    authModeEl.title = `当前认证: Service Principal (Azure 应用程序认证)${appDisplayName ? ' - ' + appDisplayName : ''} (点击复制)`;
 
                 }
 
                 authModeEl.style.display = 'inline-flex';
+
+                authModeEl.onclick = () => {
+
+                    const copyVal = isPersonal ? (data.username || 'Personal') : (data.client_id || 'Service Principal');
+
+                    window.handleCopyAction(authModeEl, copyVal);
+
+                };
 
             } else {
 
@@ -1990,7 +1998,19 @@ window.renderEnvIdentity = async function() {
 
     }
 
-
+    // Attach click-to-copy for tenant and client
+    if (tenantEl) {
+        tenantEl.onclick = () => {
+            const val = tenantId || tenantEl.querySelector('strong')?.textContent || '';
+            if (val && val !== 'Unknown') window.handleCopyAction(tenantEl, val);
+        };
+    }
+    if (clientEl) {
+        clientEl.onclick = () => {
+            const val = clientId || appName || clientEl.querySelector('strong')?.textContent || '';
+            if (val && !val.includes('Unknown')) window.handleCopyAction(clientEl, val);
+        };
+    }
 
 };
 
