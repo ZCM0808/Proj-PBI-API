@@ -521,3 +521,37 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
    - 在弹窗表格中分为独立的 **table (表名，紫色高亮)** 与 **field (字段名/度量值，蓝色高亮)** 两列，提升字段溯源的清晰度与可读性。
 2. **权威上下文状态锁定 (Authoritative Context State Caching)**：
    - 复杂的多工作流 SPA 界面中，严禁依赖不可控的 DOM 节点读取动态参数，必须在请求响应的第一时间将关键标识（`workspaceId`, `datasetId`, `reportId`）挂载到全局状态（如 `window._currentWorkspaceId`），确保下游所有异步工作流参数 100% 一致。
+
+---
+
+## 21. 交互状态机、样式防御与异步流控经验总结 (State Machine, Layout Defense & Flow Control)
+
+### 21.1 踩坑记录与排坑断言 (Failure & Root Cause Analysis)
+
+- ❌ **排坑 1：异步获取 Token 期间无法手动中断，再次点击按钮重复发起并发请求**。
+  - **现象**：在 XMLA 刷新等需要 Device Code 轮询的耗时流程中，如果用户想取消，再次点击刷新中的“正在获取 Token”按钮无效，甚至触发了多重定时器并发。
+  - **根本原因**：按钮事件处理函数内部直接执行了异步 Promise，未在前置位置设置状态锁拦截；且底层 Device Code 轮询定时器（`_currentDevicePollTimer`）没有暴露统一的 Abort/Cancel 控制器，Promise 无法被外部提前 resolve/reject。
+  - **✅ 成功解决 (Token Fetch Interrupt & Direct Interception)**：
+    1. 引入全局状态锁 `_isTokenFetching` 与 `_currentDeviceFlowResolve`；
+    2. 在按钮的 `click` 事件最顶层拦截：若检测到 `_isTokenFetching === true`，直接调用 `window.stopTokenFetching()` 中断轮询、通知后端释放资源、立即关闭弹窗并将按钮状态复原，实现 100% 可控的中断响应。
+
+- ❌ **排坑 2：点击左侧树状 API 时节点文字突然发生挤压换行 (Layout Shift Bug)**。
+  - **现象**：未点击前 API 名称单行展示，点击激活后文字瞬间换行排版错乱（如 `Datasets_GetRefreshHistoryInGroup` 变为两行）。
+  - **根本原因**：未选中的 `.api-item` 默认无左边框，而激活态 `.api-item.active` 动态添加了 `border-left: 3px solid var(--accent);`，导致卡片内部可用宽度在点击瞬间缩水了 3px，刚好触发了临界长单词的换行机制。
+  - **✅ 成功解决 (Box-Model Layout Preservation)**：
+    1. 为默认态 `.api-item` 预置 `border-left: 3px solid transparent;` 与 `box-sizing: border-box;`；
+    2. 激活态仅切换 `border-left-color`，盒模型物理尺寸全程绝对不变，彻底消除了点击瞬间的抖动与文字挤压。
+
+- ❌ **排坑 3：工作区下拉框部分类别徽标丢失及文字过长裁剪 Badge**。
+  - **现象**：部分工作区未显示分类徽标，且在长工作区名称下，右侧徽标被外层触发框物理裁剪截断。
+  - **根本原因**：原逻辑仅匹配 `Premium` 和 `Personal` 字符串，缺少对 Pro 标准工作区及专属容量字段 `isOnDedicatedCapacity` 的综合判断；触发框内部名称与 Badge 容器未配置弹性伸缩与截断保护。
+  - **✅ 成功解决 (Badge Classification & Flex Defense)**：
+    1. 完善工作区分类逻辑：`isOnDedicatedCapacity === true` 或包含 `premium/fabric` 标记为 `⚡ Premium`，`personal` 标记为 `Personal`，其余统一兜底为 `Pro`；
+    2. 名称容器设置 `flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;`，Badge 容器配置 `flex-shrink: 0; white-space: nowrap;`，长文本优先省略号，保障徽标 100% 完整呈现。
+
+### 21.2 架构成功经验总结 (Architectural Success Takeaways)
+
+1. **盒模型物理尺寸零漂移准则 (Zero Box-Model Reflow Rule)**：
+   - 任何涉及 Hover / Active / Focus 等状态切换的边框、轮廓或指示条样式，必须使用 `transparent` 边框预占位，或者采用 `box-shadow: inset` / `outline` 等不占据盒模型几何尺寸的方案，杜绝状态切换引发的父子容器重排与文字换行。
+2. **长耗时异步任务的确定性可逆性 (Guaranteed Reversibility of Long-running Async Tasks)**：
+   - 任何涉及长轮询（如 Device Code、批量扫描、状态检测）的异步流程，必须成对设计 `Start` 与 `Cancel/Abort` 机制，在 UI 上提供即时可逆的交互反馈，禁止将用户界面锁定在单向不可逆的等待状态。
