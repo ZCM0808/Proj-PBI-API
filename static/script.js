@@ -12744,7 +12744,7 @@ window.updateHarnessStats = function() {
 
                                                     out.textContent += `       - ${fStr}\n`;
 
-                                                    dataList.push({ page: page.displayName, visual: vName, type: v.type, role: role.name, field: fStr });
+                                                    dataList.push({ page: page.displayName, visual: vName, type: v.type, role: role.name, table: f.table || (f.hierarchyLevel && f.hierarchyLevel.table) || '', field: f.column || f.measure || (f.hierarchyLevel && f.hierarchyLevel.hierarchy) || fStr, fieldFull: fStr });
 
                                                     hasFields = true;
 
@@ -12790,7 +12790,7 @@ window.updateHarnessStats = function() {
                                                 const fieldName = String(h).trim();
                                                 const resolvedName = schemaMap[fieldName.toLowerCase()] || fieldName;
                                                 out.textContent += `       - ${resolvedName}\n`;
-                                                dataList.push({ page: page.displayName, visual: vName, type: v.type, role: '(Export Data Fallback)', field: resolvedName });
+                                                dataList.push({ page: page.displayName, visual: vName, type: v.type, role: '(Export Data Fallback)', table: '', field: resolvedName, fieldFull: resolvedName });
                                                 hasFields = true;
                                             }
                                         });
@@ -12809,7 +12809,7 @@ window.updateHarnessStats = function() {
 
                             if (!hasFields) {
 
-                                dataList.push({ page: page.displayName, visual: vName, type: v.type, role: '-', field: '(No bound data / Unsupported)' });
+                                dataList.push({ page: page.displayName, visual: vName, type: v.type, role: '-', table: '', field: '(No bound data / Unsupported)', fieldFull: '' });
 
                             }
 
@@ -12852,7 +12852,7 @@ window.updateHarnessStats = function() {
 
                                     data: data,
 
-                                    columns: ['page', 'visual', 'type', 'role', 'field'],
+                                    columns: ['page', 'visual', 'type', 'role', 'table', 'field'],
 
                                     enableSearch: true,
 
@@ -12861,6 +12861,8 @@ window.updateHarnessStats = function() {
                                     cellRenderer: (col, val) => {
 
                                         if (col === 'field') return `<span style="font-family:monospace; color:#38bdf8;">${val}</span>`;
+
+                                        if (col === 'table') return `<span style="font-family:monospace; color:#a78bfa; font-weight:500;">${val || '-'}</span>`;
 
                                         return undefined;
 
