@@ -640,13 +640,19 @@ window.addListRow = function(containerId, alias = "", id = "", itemType = "", it
 
         const isDeleted = String(itemState).toLowerCase().includes('delete');
 
+        const isPremium = String(itemType).toLowerCase().includes('premium') || String(itemType).toLowerCase().includes('fabric');
+
         
 
         const typeBadgeStyle = isPersonal
 
             ? 'background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);'
 
-            : 'background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);';
+            : (isPremium 
+
+                ? 'background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);'
+
+                : 'background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);');
 
             
 
@@ -692,18 +698,21 @@ window.addListRow = function(containerId, alias = "", id = "", itemType = "", it
 
 
 
-        let xmlaRowBtn = '';
-        if (containerId === 'workspace-list' && alias) {
-            const endpointVal = `powerbi://api.powerbi.com/v1.0/myorg/${alias}`;
-            xmlaRowBtn = `
-                <button type="button" class="cell-copy-btn" onclick="window.handleCopyAction(this, '${endpointVal.replace(/'/g, "\\'")}', this.parentElement)" title="复制 XMLA 端点 URL: ${endpointVal}" style="position: static; opacity: 0.75; padding: 2px 4px; font-size: 0.65rem; display: inline-flex; align-items: center; gap: 3px; background: rgba(255,255,255,0.06); border: 1px solid var(--overlay-20); border-radius: 4px; color: var(--text-secondary); cursor: pointer;">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"></path></svg>
-                    <span>XMLA</span>
-                </button>
-            `;
-        }
+    let xmlaRowBtn = '';
+    if (containerId === 'workspace-list' && alias) {
+        const endpointVal = `powerbi://api.powerbi.com/v1.0/myorg/${alias}`;
+        xmlaRowBtn = `
+            <button type="button" class="cell-copy-btn" onclick="window.handleCopyAction(this, '${endpointVal.replace(/'/g, "\\'")}', this.parentElement)" title="复制 XMLA 端点 URL: ${endpointVal}" style="position: static; opacity: 0.75; padding: 2px 5px; font-size: 0.65rem; display: inline-flex; align-items: center; gap: 3px; background: rgba(255,255,255,0.06); border: 1px solid var(--overlay-20); border-radius: 4px; color: var(--text-secondary); cursor: pointer; flex-shrink: 0; line-height: 1;">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"></path></svg>
+                <span>XMLA</span>
+            </button>
+        `;
+    }
 
-        row.innerHTML = `
+    const typeColWidth = containerId === 'workspace-list' ? '210px' : '160px';
+    const typeColMinWidth = containerId === 'workspace-list' ? '160px' : '140px';
+
+    row.innerHTML = `
 
         <input type="radio" name="${containerId}-radio" style="cursor: pointer; flex-shrink: 0;" title="选中为默认/活动 (Set as Default/Active)">
 
@@ -731,7 +740,7 @@ window.addListRow = function(containerId, alias = "", id = "", itemType = "", it
 
         </div>
 
-        <div class="row-badges type-input" style="display: flex; gap: 4px; align-items: center; width: 160px; min-width: 140px; flex-shrink: 0; justify-content: flex-start;">${badgesHtml}${xmlaRowBtn}</div>
+        <div class="row-badges type-input" style="display: flex; gap: 4px; align-items: center; width: ${typeColWidth}; min-width: ${typeColMinWidth}; flex-shrink: 0; justify-content: flex-start; flex-wrap: nowrap; overflow: hidden;">${badgesHtml}${xmlaRowBtn}</div>
 
         <button type="button" onclick="if(this.parentElement.parentElement.children.length > 1) { this.parentElement.remove(); } else { alert('必须保留至少一个输入框！(At least one row must be kept)'); }" style="color: var(--error-light); background: transparent; border: none; cursor: pointer; font-size: 1.2rem; line-height: 1; padding: 0 4px; opacity: 0.3; transition: opacity 0.2s; flex-shrink: 0;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'">&times;</button>
 
@@ -1279,15 +1288,11 @@ window.verifySelectedGuid = async function(type, containerId, btn) {
 
 window.scanItems = async function(type, btn) {
 
-    
-
-    const originalText = btn.innerHTML;
-
-    btn.innerHTML = '⏳ Scanning...';
+    const originalContent = btn.innerHTML;
 
     btn.disabled = true;
 
-    
+    btn.innerHTML = `<svg class="spinning" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation: spin 1s linear infinite;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>`;
 
     let workspaceId = document.getElementById('active-workspace')?.value || '';
 
@@ -1403,17 +1408,21 @@ window.scanItems = async function(type, btn) {
 
                 let capacityBadge = '';
                 if (type === 'workspaces') {
-                    if (isDedicated) {
+                    if (isDedicated || typeStr.toLowerCase().includes('premium') || typeStr.toLowerCase().includes('fabric')) {
                         capacityBadge = `<span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);" title="Premium / Fabric 容量支持 XMLA 读写 (Dedicated Capacity)">⚡ Premium/Fabric</span>`;
+                    } else if (isPersonal) {
+                        capacityBadge = `<span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);">Personal</span>`;
                     } else {
                         capacityBadge = `<span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; background: rgba(107, 114, 128, 0.15); color: var(--text-secondary); border: 1px solid rgba(107, 114, 128, 0.3);" title="共享容量 (Pro 共享容量不支持 XMLA 写入)">Pro / Shared</span>`;
                     }
+                } else {
+                    capacityBadge = `<span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; ${typeBadgeStyle}">${typeStr}</span>`;
                 }
 
                 let xmlaBtnHtml = '';
                 if (type === 'workspaces' && item.xmlaEndpoint) {
                     xmlaBtnHtml = `
-                        <button type="button" class="cell-copy-btn" onclick="event.preventDefault(); event.stopPropagation(); window.handleCopyAction(this, '${item.xmlaEndpoint.replace(/'/g, "\\'")}')" title="复制 XMLA 端点 URL: ${item.xmlaEndpoint}" style="position: static; opacity: 0.8; margin-left: 4px; padding: 2px 5px; font-size: 0.68rem; display: inline-flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.06); border: 1px solid var(--overlay-20); border-radius: 4px; color: var(--text-secondary);">
+                        <button type="button" class="cell-copy-btn" onclick="event.preventDefault(); event.stopPropagation(); window.handleCopyAction(this, '${item.xmlaEndpoint.replace(/'/g, "\\'")}')" title="复制 XMLA 端点 URL: ${item.xmlaEndpoint}" style="position: static; opacity: 0.8; margin-left: 4px; padding: 2px 5px; font-size: 0.68rem; display: inline-flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.06); border: 1px solid var(--overlay-20); border-radius: 4px; color: var(--text-secondary); flex-shrink: 0; line-height: 1;">
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"></path></svg>
                             <span>XMLA</span>
                         </button>
@@ -1421,16 +1430,9 @@ window.scanItems = async function(type, btn) {
                 }
 
                 const badgesHtml = `
-
-                    <span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; ${typeBadgeStyle}">${typeStr}</span>
-
-                    <span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; ${stateBadgeStyle}">${stateStr}</span>
-
                     ${capacityBadge}
-
+                    <span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; ${stateBadgeStyle}">${stateStr}</span>
                 `;
-
-
 
                 row.innerHTML = `
 
@@ -1514,7 +1516,7 @@ window.scanItems = async function(type, btn) {
 
     } finally {
 
-        btn.innerHTML = originalText;
+        btn.innerHTML = originalContent;
 
         btn.disabled = false;
 

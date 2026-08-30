@@ -1482,12 +1482,22 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
         items = response_data.get("value", [])
         result_items = []
         for item in items:
-            raw_type = item.get("type") or ("Personal" if item.get("isOnDedicatedCapacity") is False and "type" not in item else "Workspace")
+            is_dedicated = bool(item.get("isOnDedicatedCapacity"))
+            capacity_id = item.get("capacityId", "")
+            
+            if item_type == "workspaces":
+                if item.get("type"):
+                    raw_type = item.get("type")
+                elif is_dedicated:
+                    raw_type = "Premium/Fabric"
+                else:
+                    raw_type = "Workspace"
+            else:
+                raw_type = item.get("type") or "Item"
+
             raw_state = item.get("state") or "Active"
             ws_prefix = f"[{item.get('workspaceName')}] " if item.get("workspaceName") else ""
             item_name = f"{ws_prefix}{item.get('name') or item.get('id')}"
-            is_dedicated = bool(item.get("isOnDedicatedCapacity"))
-            capacity_id = item.get("capacityId", "")
             
             # Generate XMLA Endpoint for workspaces
             xmla_endpoint = ""
