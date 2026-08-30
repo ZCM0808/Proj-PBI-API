@@ -1500,6 +1500,14 @@ window.scanItems = async function(type, btn) {
 
                 });
 
+                // Auto-sync newly added items to localStorage and instantly refresh main interface context dropdowns
+                const storageKey = type === 'workspaces' ? 'pbi_workspaces' : (type === 'datasets' ? 'pbi_datasets' : 'pbi_reports');
+                const currentData = window.getListData(targetListId);
+                localStorage.setItem(storageKey, JSON.stringify(currentData));
+                if (typeof window.renderContextDropdowns === 'function') {
+                    window.renderContextDropdowns();
+                }
+
                 modal.style.display = 'none';
 
             };
@@ -1844,9 +1852,24 @@ window._populateDropdown = function(type, data) {
 
         const safeId = item.id.replace(/'/g, "\\'");
 
+        const isPersonal = String(item.type || '').toLowerCase().includes('personal');
+        const isPremium = String(item.type || '').toLowerCase().includes('premium') || String(item.type || '').toLowerCase().includes('fabric');
+
+        let badgeHtml = '';
+        if (type === 'workspace') {
+            if (isPremium) {
+                badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); margin-left: 6px; font-weight: 500;">⚡ Premium</span>`;
+            } else if (isPersonal) {
+                badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); margin-left: 6px; font-weight: 500;">Personal</span>`;
+            }
+        }
+
         html += `<div onclick="selectCustomOption('${type}', '${safeId}', '${safeAlias}')" style="padding: 6px 8px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid var(--panel-border);" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'">
 
-            <div style="color: var(--text-primary); font-size: 0.75rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.alias}</div>
+            <div style="color: var(--text-primary); font-size: 0.75rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; justify-content: space-between;">
+                <span style="overflow: hidden; text-overflow: ellipsis;">${item.alias}</span>
+                ${badgeHtml}
+            </div>
 
             <div style="color: var(--text-secondary); font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.id}</div>
 
