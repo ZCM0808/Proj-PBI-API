@@ -1401,6 +1401,8 @@ window.scanItems = async function(type, btn) {
                         capacityBadge = `<span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);" title="Premium / Fabric 容量支持 XMLA 读写 (Dedicated Capacity)">⚡ Premium/Fabric</span>`;
                     } else if (isPersonal) {
                         capacityBadge = `<span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);">Personal</span>`;
+                    } else if (typeStr.toLowerCase().includes('admin')) {
+                        capacityBadge = `<span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; background: rgba(14, 165, 233, 0.15); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.3);">Admin</span>`;
                     } else {
                         capacityBadge = `<span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; background: rgba(107, 114, 128, 0.15); color: var(--text-secondary); border: 1px solid rgba(107, 114, 128, 0.3);" title="共享容量 (Pro 共享容量不支持 XMLA 写入)">Pro / Shared</span>`;
                     }
