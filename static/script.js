@@ -1767,23 +1767,30 @@ window.selectCustomOption = function(type, id, alias, skipCascade = false) {
         if (type === 'workspace') {
             const wList = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
             const wsItem = wList.find(w => w.id === id);
-            const wsType = wsItem ? (wsItem.type || '') : '';
-            const isPersonal = String(wsType).toLowerCase().includes('personal');
-            const isPremium = String(wsType).toLowerCase().includes('premium') || String(wsType).toLowerCase().includes('fabric');
+            const wsType = (wsItem ? (wsItem.type || '') : '').toLowerCase();
+            const wsAlias = (alias || (wsItem ? wsItem.alias : '') || '').toLowerCase();
+            const isDedicated = wsItem ? Boolean(wsItem.isOnDedicatedCapacity) : false;
+            
+            const isPersonal = wsType.includes('personal') || wsAlias.includes('my workspace') || wsAlias.includes('个人工作区');
+            const isPremium = isDedicated || wsType.includes('premium') || wsType.includes('fabric') || wsType.includes('dedicated') || wsAlias.includes('premium') || wsAlias.includes('fabric') || wsAlias.includes('capac');
+
             if (isPremium) {
-                badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 5px; border-radius: 3px; background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); margin-left: 6px; font-weight: 600; flex-shrink: 0;">⚡ Premium</span>`;
+                badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 5px; border-radius: 3px; background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); margin-left: 6px; font-weight: 600; flex-shrink: 0; white-space: nowrap; line-height: 1.2;">⚡ Premium</span>`;
             } else if (isPersonal) {
-                badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 5px; border-radius: 3px; background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4); margin-left: 6px; font-weight: 600; flex-shrink: 0;">Personal</span>`;
+                badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 5px; border-radius: 3px; background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4); margin-left: 6px; font-weight: 600; flex-shrink: 0; white-space: nowrap; line-height: 1.2;">Personal</span>`;
+            } else {
+                badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 5px; border-radius: 3px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); margin-left: 6px; font-weight: 500; flex-shrink: 0; white-space: nowrap; line-height: 1.2;">Pro</span>`;
             }
         }
 
-        nameEl.innerHTML = `<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500;">${alias}</span>${badgeHtml}`;
+        nameEl.innerHTML = `<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; flex: 1; min-width: 0;">${alias}</span>${badgeHtml}`;
         nameEl.style.display = 'flex';
         nameEl.style.alignItems = 'center';
         nameEl.style.justifyContent = 'space-between';
+        nameEl.style.width = '100%';
+        nameEl.style.gap = '4px';
 
         idEl.textContent = id;
-
         idEl.style.display = 'block';
 
     } else {
@@ -1934,22 +1941,28 @@ window._populateDropdown = function(type, data) {
 
         const safeId = item.id.replace(/'/g, "\\'");
 
-        const isPersonal = String(item.type || '').toLowerCase().includes('personal');
-        const isPremium = String(item.type || '').toLowerCase().includes('premium') || String(item.type || '').toLowerCase().includes('fabric');
+        const wsType = String(item.type || '').toLowerCase();
+        const wsAlias = String(item.alias || '').toLowerCase();
+        const isDedicated = Boolean(item.isOnDedicatedCapacity);
+
+        const isPersonal = wsType.includes('personal') || wsAlias.includes('my workspace') || wsAlias.includes('个人工作区');
+        const isPremium = isDedicated || wsType.includes('premium') || wsType.includes('fabric') || wsType.includes('dedicated') || wsAlias.includes('premium') || wsAlias.includes('fabric') || wsAlias.includes('capac');
 
         let badgeHtml = '';
         if (type === 'workspace') {
             if (isPremium) {
-                badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); margin-left: 6px; font-weight: 500;">⚡ Premium</span>`;
+                badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); margin-left: 6px; font-weight: 500; flex-shrink: 0; white-space: nowrap; line-height: 1.2;">⚡ Premium</span>`;
             } else if (isPersonal) {
-                badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); margin-left: 6px; font-weight: 500;">Personal</span>`;
+                badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); margin-left: 6px; font-weight: 500; flex-shrink: 0; white-space: nowrap; line-height: 1.2;">Personal</span>`;
+            } else {
+                badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); margin-left: 6px; font-weight: 500; flex-shrink: 0; white-space: nowrap; line-height: 1.2;">Pro</span>`;
             }
         }
 
         html += `<div onclick="selectCustomOption('${type}', '${safeId}', '${safeAlias}')" style="padding: 6px 8px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid var(--panel-border);" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'">
 
-            <div style="color: var(--text-primary); font-size: 0.75rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; justify-content: space-between;">
-                <span style="overflow: hidden; text-overflow: ellipsis;">${item.alias}</span>
+            <div style="color: var(--text-primary); font-size: 0.75rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                <span style="overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0;">${item.alias}</span>
                 ${badgeHtml}
             </div>
 
