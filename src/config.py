@@ -56,6 +56,22 @@ class Config:
 
     @classmethod
     def get_all(cls) -> dict:
+        settings = load_settings()
+        if settings.get("PBI_WORKSPACES"):
+            cls.PBI_WORKSPACES = settings["PBI_WORKSPACES"]
+        if settings.get("PBI_DATASETS"):
+            cls.PBI_DATASETS = settings["PBI_DATASETS"]
+        if settings.get("PBI_REPORTS"):
+            cls.PBI_REPORTS = settings["PBI_REPORTS"]
+        if settings.get("PBI_AUTH_MODE"):
+            cls.AUTH_MODE = settings["PBI_AUTH_MODE"]
+        if settings.get("PBI_TENANT_ID"):
+            cls.TENANT_ID = settings["PBI_TENANT_ID"]
+        if settings.get("PBI_TENANT_NAME"):
+            cls.TENANT_NAME = settings["PBI_TENANT_NAME"]
+        if settings.get("SQL_CONN_STR"):
+            cls.SQL_CONN_STR = settings["SQL_CONN_STR"]
+
         return {
             "CLIENT_ID": cls.CLIENT_ID,
             "CLIENT_SECRET": cls.CLIENT_SECRET,
