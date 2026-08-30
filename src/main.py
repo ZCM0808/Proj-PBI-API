@@ -1486,10 +1486,10 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
             capacity_id = item.get("capacityId", "")
             
             if item_type == "workspaces":
-                if item.get("type"):
-                    raw_type = item.get("type")
-                elif is_dedicated:
+                if is_dedicated:
                     raw_type = "Premium/Fabric"
+                elif item.get("type"):
+                    raw_type = item.get("type")
                 else:
                     raw_type = "Workspace"
             else:
