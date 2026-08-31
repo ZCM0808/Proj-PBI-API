@@ -555,3 +555,25 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
    - 任何涉及 Hover / Active / Focus 等状态切换的边框、轮廓或指示条样式，必须使用 `transparent` 边框预占位，或者采用 `box-shadow: inset` / `outline` 等不占据盒模型几何尺寸的方案，杜绝状态切换引发的父子容器重排与文字换行。
 2. **长耗时异步任务的确定性可逆性 (Guaranteed Reversibility of Long-running Async Tasks)**：
    - 任何涉及长轮询（如 Device Code、批量扫描、状态检测）的异步流程，必须成对设计 `Start` 与 `Cancel/Abort` 机制，在 UI 上提供即时可逆的交互反馈，禁止将用户界面锁定在单向不可逆的等待状态。
+
+---
+
+## 22. 报表与数据源全景穿透引擎实战 (Datasource, M Query & Native SQL Inspector)
+
+
+### 22.1 业务背景与架构痛点
+在复杂 Power BI / Fabric 资产运维中，需要一键排查指定报表/模型的底层连接模式（`Direct Live` / `Import` / `DirectQuery` / `Composite`）、底层数据库服务器连接串、用户在 Power Query 中手工嵌入的原生 SQL (`Value.NativeQuery` / `Sql.Database`) 以及各表的完整 M 表达式 (`let ... in`)。
+
+### 22.2 双轨高鲁棒性架构与防线
+1. **第一重防线 (Primary: Admin Scanner API)**：
+   - 优先通过 `POST /admin/workspaces/getInfo?datasetExpressions=True&datasetSchema=True&datasourceDetails=True` 发起官方级扫描；
+   - 异步轮询 `scanStatus`，成功后直接从 `scanResult` 中提取完整的 `datasources` 连接明细与各物理表的 `source.expression` (M 源码)。
+2. **第二重防线 (Fallback A: XMLA / TMSL SOAP Direct)**：
+   - 若用户无全局 Fabric Admin 权限，引擎自动静默无感降级为直连底层 XMLA 端点 (`powerbi://...`)；
+   - 执行 `DISCOVER_TMSL_METADATA` SOAP 请求，100% 绕过 REST 接口权限，直接解析 Analysis Services 模型底层的分区表达式。
+3. **第三重防线 (Fallback B: REST API Tables & Regular Expression)**：
+   - 若处于 Pro 工作区（未启用 XMLA 读写），引擎自动降级为 REST API `/datasources` + `/tables` 组合推导模式，并利用正则引擎精准提取 `Sql.Database`、`Value.NativeQuery` 中的 SQL 语句与服务器/数据库。
+4. **前端交互与呈现**：
+   - 在 Workflow Modal 中新增 `datasource_inspector` 面板，支持 Workspace / Report / Dataset 三级联动；
+   - 结果由 `static/universal_modal.js`（Universal Modal 引擎）全景呈现，并支持一键语法高亮预览与一键复制 M 查询/原生 SQL。
+>>>>>>> 87f3a33 (feat: add Report & Dataset Datasource Inspector with dual-engine fallback)

@@ -22,8 +22,9 @@ import asyncio
 import subprocess
 import io
 import base64
-import requests
+import requests  # type: ignore[import-untyped]
 import pyotp  # type: ignore[import-untyped]
+
 import qrcode  # type: ignore[import-untyped]
 from src.config import Config, load_settings
 from src.pbi_client import PBIClient
@@ -823,7 +824,7 @@ async def get_embed_info(request: Request):
 async def get_xmla_schema(workspace_id: str, dataset_id: str):
     try:
         # Load ADOMD Client
-        import clr
+        import clr  # type: ignore[import-untyped]
         import sys
         import os
         dll_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "dlls", "lib", "net45"))
@@ -835,7 +836,8 @@ async def get_xmla_schema(workspace_id: str, dataset_id: str):
         except Exception:
             return {"success": False, "error": "ADOMD DLL missing."}
             
-        from pyadomd import Pyadomd
+        from pyadomd import Pyadomd  # type: ignore[import-untyped]
+
         
         # Get workspace name
         groups = client.request('GET', f'/groups/{workspace_id}')
@@ -2649,3 +2651,24 @@ def get_xmla_cached_token():
     if token:
         return {"success": True, "token": token}
     return {"success": False, "message": "No cache file or valid token found"}
+
+class DatasourceInspectRequest(BaseModel):
+    workspace_id: str
+    report_id: Optional[str] = None
+    dataset_id: Optional[str] = None
+    access_token: Optional[str] = None
+
+@app.post("/api/datasource/inspect")
+async def api_inspect_datasource(req: DatasourceInspectRequest):
+    """报表与语义模型数据源全景穿透检测接口 (双轨融合架构)"""
+    from src.datasource_inspector import inspect_datasource_full
+    try:
+        res = await inspect_datasource_full(
+            workspace_id=req.workspace_id,
+            report_id=req.report_id,
+            dataset_id=req.dataset_id,
+            access_token=req.access_token
+        )
+        return res
+    except Exception as e:
+        return {"success": False, "message": str(e)}
