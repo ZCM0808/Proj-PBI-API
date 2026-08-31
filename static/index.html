@@ -11,10 +11,11 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260830_v1920">
+    <link rel="stylesheet" href="/static/style.css?v=20260831_v2230">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
+        // 同时提前定义 toggleAppRail 函数，保证 script.js(564KB) 加载完成前 Rail 就可交互。
         (function() {
             // Theme initialization: Follow local storage if available, otherwise fallback to OS preference
             var theme = localStorage.getItem('pbi-theme');
@@ -27,6 +28,7 @@
             }
             const sidebarWidth = localStorage.getItem('pbi-sidebar-width');
             const requestHeight = localStorage.getItem('pbi-request-height');
+            const railExpanded = localStorage.getItem('pbi-rail-expanded');
             let styleStr = '';
             if (sidebarWidth) {
                 styleStr += `:root { --sidebar-width: ${sidebarWidth}; } `;
@@ -34,9 +36,27 @@
             if (requestHeight) {
                 styleStr += `.body-editor-container { height: ${requestHeight}; flex: none; } `;
             }
+            // 恢复 App Rail 展开态 CSS，避免刷新时从 60px 闪烁到 175px
+            if (railExpanded === 'true') {
+                styleStr += `#app-rail { width: 175px !important; min-width: 175px !important; max-width: 175px !important; align-items: stretch; } `;
+                styleStr += `#app-rail .rail-logo-title, #app-rail .rail-item-text { display: block !important; } `;
+                styleStr += `#app-rail .rail-logo-wrap { justify-content: flex-start; padding-left: 8px; } `;
+                styleStr += `#app-rail .rail-item { justify-content: flex-start; padding: 9px 12px; } `;
+                styleStr += `#app-rail .rail-toggle-btn { display: flex !important; align-items: center; justify-content: center; } `;
+            }
             if (styleStr) {
                 document.write('<style>' + styleStr + '</style>');
             }
+
+            // ★ 提前定义 toggleAppRail，确保 DOM 渲染后即可响应点击 ★
+            // script.js 加载后会用更完整的版本覆盖此定义
+            window.toggleAppRail = function() {
+                var rail = document.getElementById('app-rail');
+                if (!rail) return;
+                rail.classList.toggle('expanded');
+                var isExpanded = rail.classList.contains('expanded');
+                try { localStorage.setItem('pbi-rail-expanded', isExpanded ? 'true' : 'false'); } catch(e) {}
+            };
         })();
     </script>
     <style>
@@ -83,51 +103,139 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Sidebar -->
-        <aside class="sidebar glass-panel">
-            <div class="logo">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="3" y="12" width="5" height="9" fill="#F2C811"/>
-                    <rect x="9" y="7" width="5" height="14" fill="#F2C811"/>
-                    <rect x="15" y="2" width="5" height="19" fill="#F2C811"/>
-                </svg>
-                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <h2>PBI Explorer</h2>
-                        <span id="main-dev-badge" style="display: none; font-size: 0.6rem; background: var(--dev-badge-bg, rgba(234, 179, 8, 0.2)); border: 1px solid var(--dev-badge-border, rgba(234, 179, 8, 0.4)); color: var(--dev-badge-text, #fde047); padding: 1px 6px; border-radius: 12px; font-weight: 600;" title="开发模式：已跳过鉴权限制 (DEV_MODE=true)">🛠️ DEV</span>
-                    </div>
-                    <div style="display: flex; gap: 8px;">
-                        <button id="btn-keep-awake" class="btn-action-icon" title="保持连接防休眠 (Keep Awake)">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
-                        </button>
-                        <button id="btn-settings" class="btn-action-icon" title="全局环境配置 (Global Settings)">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                        </button>
-                        <button id="btn-test-harness" class="btn-action-icon" title="自动化测试工作台 (Test Harness)">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.31L4.62 18.5A2 2 0 0 0 6.35 21.5h11.3a2 2 0 0 0 1.73-3L14 9.31V2"></path><line x1="8.5" y1="2" x2="15.5" y2="2"></line><line x1="14" y1="9.3" x2="10" y2="9.3"></line></svg>
-                        </button>
-                        <button id="btn-workflows" class="btn-action-icon" title="自动化工作流中心 (Automated Workflows)">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                        </button>
-                        <button id="btn-logout" class="btn-action-icon" title="退出登录 (Logout)" style="color: #f87171;">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                                <polyline points="16 17 21 12 16 7"/>
-                                <line x1="21" y1="12" x2="9" y2="12"/>
-                            </svg>
-                        </button>
-                    </div>
+        <!-- 1. Leftmost Navigation Rail (Expandable/Collapsible) -->
+        <aside id="app-rail" class="app-rail glass-panel">
+            <div class="rail-top">
+                <div class="rail-logo-wrap" id="rail-logo-toggle" title="点击折叠/展开侧边栏菜单 (Toggle Sidebar Rail)">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0;">
+                        <rect x="3" y="12" width="5" height="9" fill="#F2C811"/>
+                        <rect x="9" y="7" width="5" height="14" fill="#F2C811"/>
+                        <rect x="15" y="2" width="5" height="19" fill="#F2C811"/>
+                    </svg>
+                    <span class="rail-logo-title">PBI Studio</span>
+                    <button type="button" class="rail-toggle-btn" title="Toggle Rail" style="background: none; border: none; padding: 0; color: var(--text-secondary); cursor: pointer; margin-left: auto; display: none;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11 17 6 12 11 7"></polyline><polyline points="18 17 13 12 18 7"></polyline></svg>
+                    </button>
                 </div>
+                <ul class="rail-menu-list">
+                    <li class="rail-item active" id="rail-nav-workflows" data-module="workflows" title="⚡ 自动化工作流 (Workflows)">
+                        <div class="rail-item-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                        </div>
+                        <span class="rail-item-text">Workflows</span>
+                    </li>
+                    <li class="rail-item" id="rail-nav-api_tree" data-module="api_tree" title="🌲 API 资源树 (API Explorer)">
+                        <div class="rail-item-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                        </div>
+                        <span class="rail-item-text">API Explorer</span>
+                    </li>
+                </ul>
             </div>
-            <nav class="nav-menu">
+            <div class="rail-bottom">
+                <button id="btn-keep-awake" class="rail-item" style="border:none;" title="保持连接防休眠 (Keep Awake)">
+                    <div class="rail-item-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+                    </div>
+                    <span class="rail-item-text">Keep Awake</span>
+                </button>
+                <button id="btn-settings" class="rail-item" style="border:none;" title="全局环境配置 (Global Settings)">
+                    <div class="rail-item-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    </div>
+                    <span class="rail-item-text">Settings</span>
+                </button>
+                <button id="btn-test-harness" class="rail-item" style="border:none;" title="自动化测试工作台 (Test Harness)">
+                    <div class="rail-item-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.31L4.62 18.5A2 2 0 0 0 6.35 21.5h11.3a2 2 0 0 0 1.73-3L14 9.31V2"></path><line x1="8.5" y1="2" x2="15.5" y2="2"></line><line x1="14" y1="9.3" x2="10" y2="9.3"></line></svg>
+                    </div>
+                    <span class="rail-item-text">QA Harness</span>
+                </button>
+                <button id="theme-toggle-btn" class="rail-item" style="border:none;" title="切换主题 (Toggle Theme)">
+                    <div class="rail-item-icon">
+                        <svg id="theme-icon-sun" style="display: none;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                        <svg id="theme-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                    </div>
+                    <span class="rail-item-text">Theme</span>
+                </button>
+                <button id="btn-logout" class="rail-item" style="border:none; color: #f87171;" title="退出登录 (Logout)">
+                    <div class="rail-item-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                            <polyline points="16 17 21 12 16 7"/>
+                            <line x1="21" y1="12" x2="9" y2="12"/>
+                        </svg>
+                    </div>
+                    <span class="rail-item-text">Logout</span>
+                </button>
+            </div>
+        </aside>
+        <script>
+            // ★ 关键修复：用 addEventListener + 事件委托彻底替代 onclick 属性 ★
+            // onclick 内联属性在某些场景下会静默失败（CSP/事件吞噬/脚本加载时序）。
+            // addEventListener 直接绑定到已解析的 DOM 元素上，100% 可靠。
+            (function() {
+                var rail = document.getElementById('app-rail');
+                if (!rail) return;
+
+                // 1. 恢复展开状态
+                if (localStorage.getItem('pbi-rail-expanded') === 'true') {
+                    rail.classList.add('expanded');
+                }
+
+                // 2. Logo 区域点击 → 折叠/展开 Rail
+                var logoToggle = document.getElementById('rail-logo-toggle');
+                if (logoToggle) {
+                    logoToggle.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        rail.classList.toggle('expanded');
+                        var isExp = rail.classList.contains('expanded');
+                        try { localStorage.setItem('pbi-rail-expanded', isExp ? 'true' : 'false'); } catch(ex) {}
+                        console.log('[App Rail] Toggle →', isExp ? 'EXPANDED' : 'COLLAPSED');
+                    });
+                }
+
+                // 3. 菜单项点击 → 切换模块（事件委托）
+                rail.addEventListener('click', function(e) {
+                    var menuItem = e.target.closest('[data-module]');
+                    if (!menuItem) return;
+                    var moduleName = menuItem.getAttribute('data-module');
+                    if (!moduleName) return;
+                    // switchAppModule 可能尚未定义（script.js 还没加载），先缓存到 window
+                    if (typeof window.switchAppModule === 'function') {
+                        window.switchAppModule(moduleName);
+                    } else {
+                        // 降级处理：缓存选择，等 script.js 加载后执行
+                        window._pendingModule = moduleName;
+                    }
+                    console.log('[App Rail] Switch module →', moduleName);
+                });
+            })();
+        </script>
+
+        <!-- 2. Secondary Sidebar (Tree / Workflow List) -->
+        <aside class="sidebar glass-panel">
+            <!-- Sidebar Pane A: Workflow List -->
+            <div id="sidebar-pane-workflows" class="sidebar-pane" style="display: flex;">
+                <div class="nav-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <p class="nav-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">⚡ 工作流中心</p>
+                    <span class="api-count-badge" id="wf-total-badge">11 个任务</span>
+                </div>
+                <div style="margin-bottom: 0.75rem;">
+                    <input type="search" id="wf-search-input" placeholder="搜索工作流..." class="modern-input" style="width: 100%; border-radius: 6px;" oninput="window.filterWorkflowsList(this.value)">
+                </div>
+                <ul id="wf-sidebar-list-container" class="wf-sidebar-list">
+                    <!-- Workflow Items dynamically populated or listed -->
+                </ul>
+            </div>
+
+            <!-- Sidebar Pane B: API Tree -->
+            <div id="sidebar-pane-api_tree" class="sidebar-pane" style="display: none;">
                 <div class="nav-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                    <p class="nav-title" style="margin: 0;">API 资源树</p>
+                    <p class="nav-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">🌲 API 资源树</p>
                     <div style="display: flex; gap: 8px; align-items: center;">
                         <span class="api-count-badge" title="Total APIs">共 <span id="total-api-count">0</span> 个</span>
-                        <button id="theme-toggle-btn" class="icon-btn" title="切换主题 (Toggle Theme)" type="button" style="padding: 0 6px; height: 26px; min-width: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--overlay-15); background: var(--overlay-10);">
-                            <svg id="theme-icon-sun" style="display: none;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-                            <svg id="theme-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-                        </button>
                     </div>
                 </div>
                 <div style="display: flex; gap: 8px; margin-bottom: 0.5rem;">
@@ -159,1010 +267,1823 @@
                         </div>
                     </div>
                     <div id="param-filter-options" class="custom-select-options" style="display: none; position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px; background: var(--dropdown-bg); border: 1px solid var(--panel-border); border-radius: 6px; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 12px var(--shadow-dark);">
-                        <!-- Dynamically populated checkboxes -->
                     </div>
                 </div>
                 <div id="api-tree" class="api-tree">
-                    <!-- API 列表将通过 JS 动态生成 -->
                 </div>
-                <!-- 当前选中 API 信息 -->
-                <style>
-                    /* Custom Dropdown Hover */
-                    #wf-ds-table-options li {
-                        transition: background-color 0.2s, color 0.2s;
-                    }
-                    #wf-ds-table-options li:hover {
-                        background-color: var(--overlay-10) !important;
-                    }
-                    .info-header-row {
-                        padding: 4px 6px;
-                        border-radius: 4px;
-                        transition: background-color 0.2s;
-                        margin: -4px -6px 0.25rem -6px; /* Offset padding to align text */
-                    }
-                    .info-header-row:hover {
-                        background-color: var(--overlay-10);
-                    }
-                    .info-header-row:hover #toggle-info-btn {
-                        color: var(--accent) !important;
-                        transform: scale(1.1);
-                    }
-                    #toggle-info-btn {
-                        transition: all 0.2s;
-                    }
-        @keyframes fadeOutModal {
-            from { opacity: 1; transform: scale(1); }
-            to { opacity: 0; transform: scale(0.95); }
-        }
-        .modal-overlay.fade-out {
-            animation: fadeOutModal 0.25s forwards ease-in-out;
-        }
-    </style>
-                <div id="selected-api-info" class="selected-api-info glass-panel" style="display: none; padding: 1rem; margin-top: 0.5rem; flex-shrink: 0; background: var(--input-bg); border-radius: 8px; word-break: break-word; overflow-wrap: anywhere;">
+                <!-- Selected API Card in API Explorer -->
+                <div id="selected-api-info" class="selected-api-info glass-panel" style="display: none; padding: 0.9rem; margin-top: 0.5rem; flex-shrink: 0; background: var(--input-bg); border-radius: 8px; word-break: break-word; overflow-wrap: anywhere;">
                     <div id="info-header-row" class="info-header-row" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.25rem; cursor: pointer; user-select: none;" title="点击最小化/最大化 (Click to toggle)">
                         <div style="font-size: 0.75rem; color: var(--accent);">CURRENT SELECTION</div>
                         <button id="toggle-info-btn" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 0 4px; font-size: 1.2rem; line-height: 1;">&minus;</button>
                     </div>
                     <div id="selected-api-content" class="animated-collapse" style="max-height: 25vh; overflow-y: auto; overflow-x: hidden; padding-right: 4px;">
-                        <div id="selected-api-name" style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.25rem; color: var(--text-primary);"></div>
-                        <div id="selected-api-zh" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;"></div>
-                        <div style="margin-top: 6px; margin-bottom: 8px;">
+                        <div id="selected-api-name" style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.25rem; color: var(--text-primary);"></div>
+                        <div id="selected-api-zh" style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;"></div>
+                        <div style="margin-top: 4px; margin-bottom: 6px;">
                             <a id="official-doc-btn" href="#" target="_blank" class="btn-doc-link">
-                                <span style="font-size: 0.8rem;">📖</span> 官方文档 (Official Doc)
+                                <span style="font-size: 0.75rem;">📖</span> 官方文档 (Official Doc)
                             </a>
                         </div>
-                        <div id="selected-api-desc" style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4; padding-right: 4px;"></div>
+                        <div id="selected-api-desc" style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.4; padding-right: 4px;"></div>
                     </div>
                 </div>
-            </nav>
+            </div>
         </aside>
+
         <!-- Resizer for adjustable panel -->
         <div class="resizer" id="dragMe"></div>
-        <!-- Main Content -->
-        <main class="main-content">
-            <div class="request-builder glass-panel">
-                <div class="request-builder-top" style="display: flex; flex-direction: column; gap: 8px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <h2 style="font-size: 0.95rem; color: var(--text-primary); font-weight: 600; margin: 0; display: flex; align-items: center; letter-spacing: -0.01em;">
-                            Request Configuration
-                        </h2>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <!-- Bookmark Section (Right Panel) -->
-                            <div id="right-panel-bm-section" style="display: none; align-items: center; gap: 8px;">
-                                <button id="right-panel-bm-star" class="bookmark-btn" style="margin: 0; display: flex; align-items: center; justify-content: center; height: 26px; width: 26px; padding: 0;" title="切换收藏 (Toggle Bookmark)">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                                </button>
-                                <div id="right-panel-bm-body" style="display: flex; align-items: center; gap: 8px;">
-                                    <div id="right-panel-bm-meta" style="display: flex; align-items: center; gap: 8px;"></div>
-                                </div>
-                            </div>
-                            <button id="btn-note" class="btn-action-icon" title="便签记事本 (Quick Markdown Note)" onclick="openNoteModal()" style="height: 26px; width: 26px; min-width: 26px; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                            </button>
-                        </div>
-                    </div>
-<!-- Env Identity -->
-                <div id="env-identity" style="display: flex; align-items: center; gap: 12px; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 2px; flex-wrap: wrap;">
-                    <span id="display-auth-mode" style="display: none; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 4px; height: 24px; box-sizing: border-box; transition: background 0.2s ease;" title="当前认证模式">
-                        <span id="display-auth-mode-icon" style="line-height: 1;">🛡️</span>
-                        <strong id="display-auth-mode-text" style="font-weight: 600; line-height: 1; font-size: 0.72rem;">Service Principal</strong>
-                    </span>
-                      <span class="env-sep" style="opacity: 0.25;">|</span>
-                      <span id="display-tenant" style="display: none; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; transition: background 0.2s ease, color 0.2s ease; height: 24px; box-sizing: border-box;" title="Tenant ID">
-                        <span style="opacity: 0.85; line-height: 1;">🏢 Tenant:</span>
-                        <strong style="color: var(--text-primary); font-weight: 600; font-family: 'Fira Code', monospace; font-size: 0.72rem; line-height: 1;">Unknown</strong>
-                      </span>
-                    <span class="env-sep" style="opacity: 0.25;">|</span>
-                    <span id="display-client" style="display: none; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; transition: background 0.2s ease, color 0.2s ease; height: 24px; box-sizing: border-box;" title="Client App Name">
-                        <span style="opacity: 0.85; line-height: 1;">🔑 Client App:</span>
-                        <strong style="color: var(--text-primary); font-weight: 600; line-height: 1;">Unknown</strong>
-                      </span>
-                      <span class="env-sep" style="opacity: 0.25;">|</span>
-                    <span id="display-daily-limit" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; height: 24px; box-sizing: border-box;" title="Today's Accumulated Password Login Time">
-                        <span style="opacity: 0.85; line-height: 1;">⏱️ Total Time:</span>
-                        <strong id="daily-time-val-main" style="color: var(--text-primary); font-weight: 600; line-height: 1; font-family: monospace;">0m</strong>
-                    </span>
-                </div>
-                <!-- Context Toolbar -->
-                <div id="context-toolbar" style="display: flex; flex-wrap: wrap; gap: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--panel-border);">
-                    <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
-                        <div style="display: flex; flex-direction: column; justify-content: center; align-items: flex-start;">
-                            <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0; line-height: 1.2;">Workspace</label>
-                            <span style="font-size: 0.6rem; color: var(--text-tertiary); line-height: 1.2;">(groupId)</span>
-                        </div>
-                        <div class="custom-select-wrapper" id="wrapper-workspace" style="position: relative; flex: 1; min-width: 0;">
-                            <div class="custom-select-trigger" id="trigger-workspace" onclick="toggleCustomSelect('workspace')" style="padding: 4px 8px; height: 38px; background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 4px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; user-select: none; transition: border-color 0.2s;">
-                                <span class="cs-name" style="color: var(--text-primary); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">-- None --</span>
-                                <span class="cs-id" style="color: var(--text-secondary); font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: none;"></span>
-                            </div>
-                            <div class="custom-select-options" id="options-workspace" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--dropdown-bg); border: 1px solid var(--panel-border); border-radius: 4px; z-index: 1000; max-height: 300px; overflow-y: auto; box-shadow: 0 4px 12px var(--shadow-dark); margin-top: 4px;"></div>
-                            <input type="hidden" id="active-workspace" value="">
-                        </div>
-                    </div>
-                    <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
-                        <div style="display: flex; flex-direction: column; justify-content: center; align-items: flex-start;">
-                            <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0; line-height: 1.2;">Dataset</label>
-                            <span style="font-size: 0.6rem; color: var(--text-tertiary); line-height: 1.2;">(datasetId)</span>
-                        </div>
-                        <div class="custom-select-wrapper" id="wrapper-dataset" style="position: relative; flex: 1; min-width: 0;">
-                            <div class="custom-select-trigger" id="trigger-dataset" onclick="toggleCustomSelect('dataset')" style="padding: 4px 8px; height: 38px; background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 4px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; user-select: none; transition: border-color 0.2s;">
-                                <span class="cs-name" style="color: var(--text-primary); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">-- None --</span>
-                                <span class="cs-id" style="color: var(--text-secondary); font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: none;"></span>
-                            </div>
-                            <div class="custom-select-options" id="options-dataset" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--dropdown-bg); border: 1px solid var(--panel-border); border-radius: 4px; z-index: 1000; max-height: 300px; overflow-y: auto; box-shadow: 0 4px 12px var(--shadow-dark); margin-top: 4px;"></div>
-                            <input type="hidden" id="active-dataset" value="">
-                        </div>
-                    </div>
-                    <div style="flex: 1; display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
-                        <div style="display: flex; flex-direction: column; justify-content: center; align-items: flex-start; width: 50px; flex-shrink: 0;">
-                            <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0; line-height: 1.2;">Report</label>
-                            <span style="font-size: 0.6rem; color: var(--text-tertiary); line-height: 1.2;">(reportId)</span>
-                        </div>
-                        <div class="custom-select-wrapper" id="wrapper-report" style="position: relative; flex: 1; min-width: 0;">
-                            <div class="custom-select-trigger" id="trigger-report" onclick="toggleCustomSelect('report')" style="padding: 4px 8px; height: 38px; background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 4px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; user-select: none; transition: border-color 0.2s;">
-                                <span class="cs-name" style="color: var(--text-primary); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">-- None --</span>
-                                <span class="cs-id" style="color: var(--text-secondary); font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: none;"></span>
-                            </div>
-                            <div class="custom-select-options" id="options-report" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--dropdown-bg); border: 1px solid var(--panel-border); border-radius: 4px; z-index: 1000; max-height: 300px; overflow-y: auto; box-shadow: 0 4px 12px var(--shadow-dark); margin-top: 4px;"></div>
-                            <input type="hidden" id="active-report" value="">
-                        </div>
-                    </div>
-                </div>
-                </div> <!-- END request-builder-top -->
-                <div class="endpoint-section-wrapper" style="display: flex; flex-direction: column; gap: 12px;">
-                    <!-- 第一排：Method Selector + Badges + 4 Buttons (统一高度 40px) -->
-                    <div id="right-panel-category-container" style="display: flex; justify-content: space-between; align-items: center; min-height: 40px; flex-wrap: wrap; gap: 8px;">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <div class="method-selector">
-                                <select id="http-method" style="height: 40px; padding: 0 1rem; border: 1px solid var(--panel-border); border-radius: 8px; background: var(--shadow-base); color: var(--text-primary); font-size: 1rem; outline: none; width: 120px; font-weight: 600; cursor: pointer;">
-                                    <option value="GET">GET</option>
-                                    <option value="POST">POST</option>
-                                    <option value="PUT">PUT</option>
-                                    <option value="PATCH">PATCH</option>
-                                    <option value="DELETE">DELETE</option>
-                                </select>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 8px; height: 40px; user-select: none;">
-                                <span id="right-panel-category-badge" style="display: flex; align-items: center; height: 100%;"><span style="font-size: 0.75rem; padding: 3px 10px; border-radius: 12px; background: var(--overlay-8); color: var(--accent); border: none; display: inline-flex; align-items: center; gap: 5px; font-weight: 600; cursor: default;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4l2-9 5 18 3-9h6"></path></svg>Custom</span></span>
-                                <span id="request-mode-badge" style="font-size: 0.75rem; padding: 3px 10px; border-radius: 12px; font-weight: 500; color: var(--text-secondary); border: none; background: var(--overlay-5); display: inline-flex; align-items: center; gap: 4px; cursor: default;">Free Mode</span>
-                            </div>
-                        </div>
-                        <div class="request-actions" style="display: flex; align-items: center; justify-content: space-between; width: calc((100% - 24px) / 3 - 58px); min-width: 250px; flex-shrink: 0;">
-                            <div style="display: flex; gap: 8px; flex: 1; position: relative; min-width: 0;">
-                                <button id="history-request-btn" class="icon-btn" title="最近的自由请求历史 (History)" type="button" style="flex: 1; height: 40px; padding: 0 4px; justify-content: center; box-sizing: border-box; overflow: hidden; min-width: 0;">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                                    <span style="font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Hist.</span>
-                                </button>
-                                <div id="request-history-dropdown" class="animated-dropdown" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: var(--dropdown-bg); border: 1px solid var(--panel-border); border-radius: 6px; z-index: 1000; width: min(90vw, 450px); max-height: min(70vh, 400px); overflow-y: auto; box-shadow: 0 4px 12px var(--shadow-dark); flex-direction: column;">
-                                    <div style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); position: sticky; top: 0; background: var(--dropdown-bg); z-index: 2;">
-                                        <input type="search" id="history-search-input" placeholder="Fuzzy search URL, Method, or Body..." class="modern-input">
-                                    </div>
-                                    <div id="history-list-container" style="display: flex; flex-direction: column;"></div>
-                                    <div id="history-clear-all" style="padding: 10px 12px; color: var(--error); cursor: pointer; font-size: 0.8rem; text-align: center; transition: background 0.2s; border-top: 1px solid var(--panel-border); position: sticky; bottom: 0; background: var(--dropdown-bg);">❌ Clear All History</div>
-                                </div>
-                                <button id="new-request-btn" class="icon-btn" title="新建空白请求 (New Blank Request)" type="button" style="color: var(--info); border-color: var(--info-border); flex: 1; height: 40px; padding: 0 4px; justify-content: center; box-sizing: border-box; overflow: hidden; min-width: 0;">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                                    <span style="font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">New</span>
-                                </button>
-                            </div>
-                            <div style="border-left: 1px solid var(--overlay-10); height: 16px; margin: 0; width: 1px; flex-shrink: 0;"></div>
-                            <div style="display: flex; gap: 8px; flex: 1; min-width: 0;">
-                                <button id="toggle-method-btn" class="icon-btn" title="Unlock/Lock Method Dropdown" type="button" style="flex: 1; height: 40px; padding: 0 4px; justify-content: center; box-sizing: border-box; overflow: hidden; min-width: 0;">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                                    <span style="font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Unlock</span>
-                                </button>
-                                <button id="reset-request-btn" class="icon-btn" title="Undo / Reset to Original Selected API" type="button" style="flex: 1; height: 40px; padding: 0 4px; justify-content: center; box-sizing: border-box; overflow: hidden; min-width: 0;">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
-                                    <span style="font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Undo</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- 第二排：URL Box (with embedded right hover copy button) + Send Request (统一高度 46px) -->
-                    <div style="display: flex; gap: 12px; align-items: center; width: 100%;">
-                        <div class="endpoint-input" style="flex: 1; align-items: center; padding: 0; display: flex; border: 1px solid var(--panel-border); border-radius: 8px; background: var(--shadow-base); overflow: hidden; height: 46px; position: relative;">
-                            <span class="base-url-hint" id="base-url-hint" style="font-size: 0.9rem; padding: 0 1rem; border-right: 1px solid var(--panel-border); border-bottom: none; display: flex; align-items: center; background: var(--input-bg-light); height: 100%; white-space: nowrap;">https://api.powerbi.com/v1.0/myorg</span>
-                            <input type="text" id="api-endpoint" placeholder="例如: /groups/{workspaceId}/datasets" style="flex: 1; border: none; background: transparent; padding: 0 46px 0 12px; font-family: inherit; font-size: 1rem; color: var(--text-primary); outline: none; height: 100%; width: 100%;">
-                            <button id="copy-btn" type="button" class="icon-btn copy-btn endpoint-copy-btn" title="复制完整 cURL 格式请求">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                            </button>
-                        </div>
-                        <div style="display: flex; gap: 8px; width: calc(((100% - 24px) / 3 - 75px) / 2); min-width: 121px; flex-shrink: 0;">
-                            <button id="send-btn" class="btn-primary" style="height: 46px; border-radius: 8px; width: 100%; justify-content: center;">
-                                <span>Send Request</span>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-                            </button>
-                        </div>
-                    </div>
-                    <details id="param-hint-wrapper" style="display: none; width: 100%; border: 1px solid var(--info-border); border-radius: 6px; background: var(--info-bg); overflow: hidden;">
-                        <summary style="font-size: 0.78rem; font-weight: 600; padding: 6px 10px; color: var(--info-dark); cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between;">
-                            <span>💡 参数获取提示 (Parameter Hints)</span>
-                            <span style="font-size: 0.7rem; font-weight: normal; opacity: 0.8;">展开/折叠</span>
-                        </summary>
-                        <div id="param-hint-container" style="font-size: 0.8rem; padding: 8px 12px; border-top: 1px solid var(--info-border); color: var(--text-primary);"></div>
-                    </details>
-                </div>
-                <div class="body-editor-container" style="position: relative;">
-                    <div class="editor-header">
-                        <span>Request Body (JSON)</span>
-                        <div style="margin-left:auto; display:flex; gap:12px; align-items:center;">
-                            <span class="hint">仅适用于 POST/PUT/PATCH 等包含请求体的方法</span>
-                            <button id="format-req-body-btn" class="icon-btn" title="Format JSON" type="button" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer;">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="body-textarea-wrapper" style="position: relative; flex: 1; display: flex; min-height: 0;">
-                        <textarea id="request-body" placeholder="[当前 API 接口无需提供 Request Body 请求体]"></textarea>
-                        <button id="copy-req-body-btn" class="icon-btn copy-btn body-corner-copy-btn" title="Copy Request Body" type="button" onclick="window.handleCopyAction(this, document.getElementById('request-body').value || document.getElementById('request-body').placeholder)">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-            <div id="vertical-resizer" class="vertical-resizer"></div>
-            <div class="response-container glass-panel">
-                <div class="response-header" style="display: flex; align-items: center; justify-content: space-between;">
-                    <span style="flex-shrink: 0; margin-right: 12px;">Response</span>
-                    <div style="display:flex; gap:12px; align-items:center; flex: 1; min-width: 0; justify-content: flex-end;">
-                        <div id="tree-expand-toggles" style="display: none; align-items: center; margin-right: 8px; flex-shrink: 0;">
-                            <button id="tree-toggle-all-btn" class="icon-btn" title="展开 / 折叠 (Expand / Collapse All)" style="padding: 2px 4px; color: var(--text-secondary); background: transparent; border: 1px solid var(--panel-border); border-radius: 4px; cursor: pointer; display: flex; align-items: center;">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
-                            </button>
-                        </div>
-                        <div id="view-mode-toggles" style="display: none; gap: 2px; border: 1px solid var(--panel-border); border-radius: 6px; overflow: hidden; background: var(--input-bg); padding: 2px; align-items: center; flex-shrink: 0;">
-                            <button class="view-mode-btn" data-mode="table" style="border:none; background:transparent; color:var(--text-secondary); padding: 4px 10px; font-size:0.8rem; font-weight:600; cursor:pointer; border-radius:4px; transition:all 0.2s ease; display:flex; align-items:center; gap:4px;" title="Table View">表格 Table</button>
-                            <button class="view-mode-btn active" data-mode="tree" style="border:none; background:var(--accent); color:var(--accent-text); padding: 4px 10px; font-size:0.8rem; font-weight:600; cursor:pointer; border-radius:4px; transition:all 0.2s ease; display:flex; align-items:center; gap:4px;" title="Tree View">树状 Tree</button>
-                            <button class="view-mode-btn" data-mode="raw" style="border:none; background:transparent; color:var(--text-secondary); padding: 4px 10px; font-size:0.8rem; font-weight:600; cursor:pointer; border-radius:4px; transition:all 0.2s ease; display:flex; align-items:center; gap:4px;" title="Raw JSON">源码 Raw</button>
-                        </div>
-                        <div class="response-status" id="response-status" style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Waiting for request...</div>
-                        <button id="copy-res-body-btn" class="icon-btn copy-btn" style="flex-shrink: 0;" title="Copy Response JSON" type="button" onclick="window.handleCopyAction(this, window.currentJsonResponse ? JSON.stringify(window.currentJsonResponse, null, 2) : document.getElementById('response-output').textContent)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
-                    </div>
-                </div>
-                <div class="response-body">
-                    <pre><code id="response-output">API 响应结果将在这里显示...</code></div>
-                </div>
-            </div>
-        </main>
-    </div>
-    <!-- Pipeline Modal -->
-    <div id="pipeline-modal" class="modal-overlay" style="display: none;">
-        <div class="modal-content glass-panel">
-            <div class="modal-header">
-                <h3>🚀 智能数据流水线 (Smart DataOps)</h3>
-                <button id="close-modal-btn" class="close-btn" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
-            </div>
-            <div class="modal-body">
-                <div class="terminal-view" id="pipeline-terminal">
-                    <div class="terminal-line"><span class="info">准备就绪。点击下方按钮开始执行全链路检测...</span></div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <!-- removed redundant start-pipeline-btn -->
-            </div>
-        </div>
-    </div>
-    <!-- Workflow Modal -->
-    <div id="workflow-modal" class="modal-overlay" style="display: none;">
-        <div class="modal-content glass-panel" id="workflow-modal-content">
-            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: baseline; gap: 8px; flex: 1; min-width: 0; overflow: hidden;">
-                    <h3 style="font-size: 1.05rem; margin: 0; white-space: nowrap;">⚡ Workflows</h3>
-                    <span id="wf-header-auth-badge" style="font-size: 0.78rem; color: var(--text-secondary); font-weight: normal; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">· Service Principal (APP_Automation)</span>
-                </div>
-                <button type="button" class="close-btn" id="close-workflow-btn" title="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg></button>
-            </div>
-            <div class="modal-body" style="overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 12px;">
-                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                    <label style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; width: 140px; flex-shrink: 0; white-space: nowrap; margin-bottom: 0;">
-                        Workflow:
-                    </label>
-                    <div class="input-with-copy" style="flex: 1; min-width: 200px;">
-                        <select id="wf-selector" class="wf-input">
-                            <!-- 1. Data & Visual Export -->
-                            <option value="export_report">Export Report to File (PDF/Excel/etc.)</option>
-                            <option value="export_visual">Export Visual Data (CSV) - Underlying/Summarized</option>
-                            <option value="export_dataset_tables">Export Dataset Tables (CSV)</option>
-                            <!-- 2. Power BI Platform Admin & Operations -->
-                            <option value="datasource_inspector">Report &amp; Dataset Datasource Inspector (M Query / SQL / Mode)</option>
-                            <option value="dataset_partitions_manager">Dataset Partitions Manager &amp; Targeted Refresh</option>
-                            <option value="xmla_interactive_refresh">XMLA Interactive Model/Table/Partition Refresh</option>
-                            <option value="global_user_manager">Global Workspace Permissions Manager</option>
-                            <option value="report_view_count">Admin Report View Count (Activity Events)</option>
-                            <option value="check_permissions">Check Current Permissions (Token/Features)</option>
-                            <!-- 3. Advanced Automation & Diagnostics -->
-                            <option value="smart_pipeline">Smart DataOps Pipeline (Auto Bind/Scan/Check)</option>
-                            <option value="local_model_query">Local Model Diagnostics &amp; Query (DAX)</option>
-                        </select>
-                        <!-- 复制按钮 (居右 34px) -->
-                        <button type="button" class="wf-copy-btn" title="Copy Workflow Name" onclick="window.handleCopyAction(this, document.getElementById('wf-selector').options[document.getElementById('wf-selector').selectedIndex].text)" style="right: 34px;">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                        </button>
-                        <!-- ✏️ 重命名按钮 (最右侧 6px) -->
 
-                        <button type="button" id="wf-rename-btn" class="wf-copy-btn" title="重命名当前 Workflow（自定义显示名称）" onclick="window.startWfRename()" style="right: 6px; color: var(--accent);">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        </button>
+        <!-- 3. Main Workspace Area -->
+        <div id="workspace-container" style="flex: 1; display: flex; flex-direction: column; height: 100%; min-width: 0; overflow: hidden;">
+            <!-- View A: Workflow Workspace Board -->
+            <select id="wf-selector" style="display: none;">
+
+                            <!-- 1. Data & Visual Export -->
+
+                            <option value="export_report">Export Report to File (PDF/Excel/etc.)</option>
+
+                            <option value="export_visual">Export Visual Data (CSV) - Underlying/Summarized</option>
+
+                            <option value="export_dataset_tables">Export Dataset Tables (CSV)</option>
+
+                            <!-- 2. Power BI Platform Admin & Operations -->
+
+                            <option value="datasource_inspector">Report &amp; Dataset Datasource Inspector (M Query / SQL / Mode)</option>
+
+                            <option value="dataset_partitions_manager">Dataset Partitions Manager &amp; Targeted Refresh</option>
+
+                            <option value="xmla_interactive_refresh">XMLA Interactive Model/Table/Partition Refresh</option>
+
+                            <option value="global_user_manager">Global Workspace Permissions Manager</option>
+
+                            <option value="report_view_count">Admin Report View Count (Activity Events)</option>
+
+                            <option value="check_permissions">Check Current Permissions (Token/Features)</option>
+
+                            <!-- 3. Advanced Automation & Diagnostics -->
+
+                            <option value="smart_pipeline">Smart DataOps Pipeline (Auto Bind/Scan/Check)</option>
+
+                            <option value="local_model_query">Local Model Diagnostics &amp; Query (DAX)</option>
+
+                        </select>
+<div id="view-workflows" class="workspace-view" style="display: flex;">
+                <div class="wf-detail-board glass-panel">
+                    <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0 0 14px 0; border-bottom: 1px solid var(--overlay-10); margin-bottom: 14px;">
+                        <div style="display: flex; align-items: baseline; gap: 10px; flex: 1; min-width: 0; overflow: hidden;">
+                            <h3 id="wf-board-title" style="font-size: 1.15rem; margin: 0; white-space: nowrap; color: var(--text-primary); font-weight: 700;">⚡ Report &amp; Dataset Datasource Inspector</h3>
+                            <span id="wf-header-auth-badge" style="font-size: 0.78rem; color: var(--text-secondary); font-weight: normal; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">· Service Principal (APP_Automation)</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <!-- Run Workflow Primary Action Button -->
+                            <button id="wf-btn-runall" class="btn-wf-lg" type="button" onclick="window.triggerWorkflowRun()" title="Run Selected Workflow" style="height: 36px; padding: 0 16px; display: inline-flex; align-items: center; gap: 8px; border-radius: 6px; font-weight: 600;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>
+                                <span>Run Workflow</span>
+                            </button>
+                        </div>
                     </div>
-                </div>
-                <!-- 行内重命名输入框（默认隐藏，点击✏️后显示） -->
-                <div id="wf-rename-bar" style="display:none; align-items:center; gap:8px; padding: 6px 10px; background: var(--overlay-5); border: 1px solid var(--accent); border-radius: 6px; transition: all 0.2s;">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    <span style="font-size:0.8rem; color:var(--text-secondary); white-space:nowrap;">重命名为：</span>
-                    <input id="wf-rename-input" type="text" placeholder="输入自定义名称，回车保存..." style="flex:1; background:transparent; border:none; outline:none; font-size:0.85rem; color:var(--text-primary); font-family:inherit;" />
-                    <button type="button" onclick="window.saveWfRename()" style="background:var(--accent); color:#fff; border:none; border-radius:4px; padding:3px 10px; font-size:0.78rem; cursor:pointer; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">保存</button>
-                    <button type="button" onclick="window.cancelWfRename()" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:0.85rem; padding:2px 6px; transition:color 0.2s;" onmouseover="this.style.color='var(--error)'" onmouseout="this.style.color='var(--text-secondary)'">✕</button>
-                </div>
-                <div id="wf-config-export_report" class="wf-config-pane">
+
+                    <!-- Workflow Parameter & Property Panes Container -->
+                    <div id="wf-board-panes" style="flex: 1; display: flex; flex-direction: column; gap: 12px; overflow-y: auto;">
+<div id="wf-config-export_report" class="wf-config-pane">
+
                     <div class="wf-fluid-grid">
+
                         <div>
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary);">Workspace ID</label>
+
                             <select id="wf-exp-workspace" class="wf-input"></select>
+
                         </div>
+
                         <div>
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary);">Report ID</label>
+
                             <select id="wf-exp-report" class="wf-input"></select>
+
                         </div>
+
                         <div style="grid-column: 1 / -1;">
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary);">Export Format</label>
+
                             <select id="wf-exp-format" class="wf-input">
+
                                 <option value="PDF">PDF</option>
+
                                 <option value="XLSX">Excel (XLSX) - *Paginated only</option>
+
                                 <option value="CSV">CSV - *Paginated only</option>
+
                                 <option value="PPTX">PowerPoint (PPTX)</option>
+
                                 <option value="PNG">Image (PNG)</option>
+
                             </select>
+
                         </div>
+
                     </div>
+
                 </div>
+
                 <!-- Datasource Inspector Pane -->
+
                 <div id="wf-config-datasource_inspector" class="wf-config-pane" style="display: none;">
 
+
+
                     <div class="wf-fluid-grid">
+
                         <div class="wf-field-refreshable">
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">Workspace ID
+
                                 <button type="button" onclick="window.wfInspectRefreshWorkspace(this)" title="Refresh Workspace List" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+
                             </label>
+
                             <div class="input-with-copy">
+
                                 <select id="wf-inspect-workspace" class="wf-input"></select>
+
                                 <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Workspace ID"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                             </div>
+
                         </div>
+
                         <div class="wf-field-refreshable">
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">Report ID (Optional)
+
                                 <button type="button" onclick="window.wfInspectRefreshReport(this)" title="Refresh Report List" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+
                             </label>
+
                             <div class="input-with-copy">
+
                                 <select id="wf-inspect-report" class="wf-input">
+
                                     <option value="">-- All / Direct Select Model Below --</option>
+
                                 </select>
+
                                 <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Report ID"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                             </div>
+
                         </div>
+
                         <div class="wf-field-refreshable" style="grid-column: 1 / -1;">
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">Dataset (Semantic Model)
+
                                 <button type="button" onclick="window.wfInspectRefreshDataset(this)" title="Refresh Dataset List" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+
                             </label>
+
                             <div class="input-with-copy">
+
                                 <select id="wf-inspect-dataset" class="wf-input"></select>
+
                                 <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Dataset ID"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                             </div>
+
                         </div>
+
                     </div>
+
                     <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+
                         <div class="wf-step active">
+
                             <div class="wf-step-header" style="display: flex; justify-content: space-between; align-items: center;">
+
                                 <span class="wf-step-title">🔍 数据源与 M 表达式全景穿透 (Inspect Datasources, Modes &amp; M Queries)</span>
+
                                 <span id="wf-inspect-stats" style="font-size: 0.8rem; color: var(--accent); font-weight: 500;"></span>
+
                             </div>
+
                             <div class="wf-step-content" style="display: block; margin-top: 8px;">
+
                                 <!-- Logs Section -->
+
                                 <div style="position: relative;">
+
                                     <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-inspect-logs')">
+
                                         <svg id="wf-out-inspect-logs-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>
+
                                         Execution Logs
+
                                     </div>
+
                                     <button type="button" id="wf-inspect-logs-copybtn" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-inspect-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                                     <div id="wf-out-inspect-logs" class="wf-console collapsed-console" style="min-height: 0; padding-bottom: 20px; transition: max-height 0.3s ease, padding 0.3s ease, border-width 0.3s ease, opacity 0.3s ease; overflow-y: auto; max-height: 250px;">准备就绪。点击下方 "Run Selected Workflow" 启动多引擎全景穿透...</div>
+
                                 </div>
+
                                 <!-- Result header: click to open expand modal -->
+
                                 <div id="wf-inspect-result-wrap" style="display: none; margin-top: 14px; position: relative;">
+
                                     <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
+
                                         <button type="button" onclick="window.openInspectResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="Click to view full datasource &amp; M queries modal">
+
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+
                                             View Full Datasource &amp; M Query Inspector Table
+
                                         </button>
+
                                         <span id="wf-inspect-badge-stats" style="color: var(--success); font-weight: 500;"></span>
+
                                     </div>
+
                                 </div>
+
                             </div>
+
                         </div>
+
                     </div>
+
                 </div>
+
                 <!-- Smart Pipeline Container -->
+
                 <!-- XMLA Interactive Refresh Pane -->
+
                 <div id="wf-config-xmla_interactive_refresh" class="wf-config-pane" style="display: none;">
+
                     <div class="wf-fluid-grid">
+
                         <div style="grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600; white-space: nowrap; margin-bottom: 0; width: 140px; flex-shrink: 0; display: flex; flex-direction: column;">
+
                                 <span>XMLA Endpoint URL:</span>
+
                                 <span style="font-size: 0.68rem; color: var(--info); opacity: 0.85; font-weight: normal;">*需 Read Write 权限</span>
+
                             </label>
+
                             <div class="input-with-copy" style="flex: 1;">
+
                                 <input type="text" id="wf-xmla-endpoint" class="wf-input" value="powerbi://api.powerbi.com/v1.0/myorg/DA_APAC_BI_QA" placeholder="powerbi://api.powerbi.com/v1.0/myorg/WorkspaceName">
+
                                 <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy XMLA Endpoint"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                             </div>
+
                         </div>
+
                         <div style="grid-column: 1 / -1;">
+
                             <div style="display: flex; justify-content: space-between; align-items: center; padding: 2px 0;">
+
                                 <div onclick="window.toggleXmlaTokenVisibility()" style="cursor: pointer; display: flex; align-items: center; gap: 8px; user-select: none;" title="展开/折叠 Token 输入框">
+
                                     <svg id="wf-xmla-token-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition: transform 0.2s ease; transform: rotate(0deg); color: var(--text-secondary);"><polyline points="9 18 15 12 9 6"></polyline></svg>
+
                                     <span style="font-size: 0.85rem; color: var(--text-secondary);">Access Token</span>
+
                                     <span id="wf-xmla-token-badge" style="font-size: 0.85rem; display: none;" title="Access Token 已就绪">✅</span>
+
                                 </div>
+
                                 <div style="display: flex; align-items: center; gap: 6px;">
+
                                     <button type="button" id="wf-xmla-toggle-lock-btn" onclick="window.unlockXmlaTokenWithConfirm()" style="background: var(--btn-secondary-bg, rgba(255,255,255,0.06)); border: 1px solid var(--overlay-20); color: var(--text-secondary); border-radius: 6px; padding: 4px 8px; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease;" title="解锁手动编辑 Token">
+
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+
                                     </button>
+
                                     <button type="button" id="wf-xmla-auth-btn" style="background: rgba(245, 158, 11, 0.16); border: 1px solid rgba(245, 158, 11, 0.5); color: #f59e0b; border-radius: 6px; padding: 4px 8px; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease;" title="自动获取当前 Token" onmouseover="this.style.background='rgba(245,158,11,0.28)'; this.style.borderColor='#f59e0b';" onmouseout="this.style.background='rgba(245,158,11,0.16)'; this.style.borderColor='rgba(245,158,11,0.5)';"><svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" stroke-width="1"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></button>
+
                                 </div>
+
                             </div>
+
                             <div id="wf-xmla-token-container" style="display: none; margin-top: 6px; transition: all 0.3s ease;">
+
                                 <div class="input-with-copy" style="position: relative;">
+
                                     <textarea id="wf-xmla-token" class="wf-input" readonly style="height: 60px; font-family: monospace; font-size: 0.75rem; opacity: 0.85; background: var(--input-bg-readonly, rgba(255,255,255,0.03)); border-color: var(--panel-border);" placeholder="默认安全锁定，点击【⚡】自动提取，或点击【🔒】解锁手输..."></textarea>
+
                                     <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Access Token" style="top: 8px; right: 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                                 </div>
+
                             </div>
+
                         </div>
+
                         <div style="grid-column: 1 / -1;">
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+
                                 <span style="display: flex; align-items: center; gap: 4px;"><span style="color: var(--accent); font-size: 0.7rem; opacity: 0.7;">▸</span> Dataset (Model)</span>
+
                                 <div style="display: flex; align-items: center; gap: 4px;">
+
                                     <button type="button" id="wf-xmla-btn-history-ds" onclick="window.queryXmlaRefreshHistory('model')" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 2px 4px; display: inline-flex; align-items: center; opacity: 0.8; transition: all 0.2s;" title="查询模型历史刷新记录" onmouseover="this.style.opacity='1'; this.style.color='var(--accent)';" onmouseout="this.style.opacity='0.8'; this.style.color='var(--text-secondary)';"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><polyline points="12 7 12 12 15 15"></polyline></svg></button>
+
                                     <button type="button" id="wf-xmla-btn-export-model-fields" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 2px 4px; display: inline-flex; align-items: center; opacity: 0.8; transition: all 0.2s;" title="导出当前模型所有表与字段元数据" onmouseover="this.style.opacity='1'; this.style.color='var(--accent)';" onmouseout="this.style.opacity='0.8'; this.style.color='var(--text-secondary)';"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></button>
+
                                     <button type="button" id="wf-xmla-btn-scan-ds" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 2px 4px; display: inline-flex; align-items: center; opacity: 0.8; transition: all 0.2s;" title="扫描/刷新模型列表" onmouseover="this.style.opacity='1'; this.style.color='var(--accent)';" onmouseout="this.style.opacity='0.8'; this.style.color='var(--text-secondary)';"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+
                                 </div>
+
                             </label>
+
                             <div class="input-with-copy">
+
                                 <select id="wf-xmla-dataset" class="wf-input">
+
                                     <option value="">-- 请选择模型 --</option>
+
                                 </select>
+
                                 <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Dataset Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                             </div>
+
                         </div>
+
                         <div style="grid-column: 1 / -1;">
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+
                                 <span style="display: flex; align-items: center; gap: 4px;"><span style="color: var(--accent); font-size: 0.7rem; opacity: 0.7;">▸▸</span> Table</span>
+
                                 <div style="display: flex; align-items: center; gap: 4px;">
+
                                     <button type="button" id="wf-xmla-btn-history-tbl" onclick="window.queryXmlaRefreshHistory('table')" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 2px 4px; display: inline-flex; align-items: center; opacity: 0.8; transition: all 0.2s;" title="查询当前表历史刷新记录与行数" onmouseover="this.style.opacity='1'; this.style.color='var(--accent)';" onmouseout="this.style.opacity='0.8'; this.style.color='var(--text-secondary)';"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><polyline points="12 7 12 12 15 15"></polyline></svg></button>
+
                                     <button type="button" id="wf-xmla-btn-export-fields" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 2px 4px; display: inline-flex; align-items: center; opacity: 0.8; transition: all 0.2s;" title="导出当前选中表的字段/列信息" onmouseover="this.style.opacity='1'; this.style.color='var(--accent)';" onmouseout="this.style.opacity='0.8'; this.style.color='var(--text-secondary)';"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></button>
+
                                     <button type="button" id="wf-xmla-btn-scan-tbl" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 2px 4px; display: inline-flex; align-items: center; opacity: 0.8; transition: all 0.2s;" title="扫描/刷新数据表列表" onmouseover="this.style.opacity='1'; this.style.color='var(--accent)';" onmouseout="this.style.opacity='0.8'; this.style.color='var(--text-secondary)';"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+
                                 </div>
+
                             </label>
+
                             <div class="input-with-copy">
+
                                 <select id="wf-xmla-table" class="wf-input">
+
                                     <option value="">-- 请先选择模型 --</option>
+
                                 </select>
+
                                 <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Table Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                             </div>
+
                         </div>
+
                         <div style="grid-column: 1 / -1;">
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+
                                 <span style="display: flex; align-items: center; gap: 4px;"><span style="color: var(--accent); font-size: 0.7rem; opacity: 0.7;">▸▸▸</span> Partition <span style="font-size: 0.7rem; opacity: 0.6;">(Optional)</span></span>
+
                                 <div style="display: flex; align-items: center; gap: 4px;">
+
                                     <button type="button" id="wf-xmla-btn-history-part" onclick="window.queryXmlaRefreshHistory('partition')" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 2px 4px; display: inline-flex; align-items: center; opacity: 0.8; transition: all 0.2s;" title="查询分区历史刷新记录与模式" onmouseover="this.style.opacity='1'; this.style.color='var(--accent)';" onmouseout="this.style.opacity='0.8'; this.style.color='var(--text-secondary)';"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><polyline points="12 7 12 12 15 15"></polyline></svg></button>
+
                                 </div>
+
                             </label>
+
                             <div class="input-with-copy">
+
                                 <select id="wf-xmla-partition" class="wf-input">
+
                                     <option value="">-- 全表刷新 (包含所有分区) --</option>
+
                                 </select>
+
                                 <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Partition Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                             </div>
+
                         </div>
+
                         <div style="grid-column: 1 / -1;">
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px; display: block;">Refresh Type</label>
+
                             <div class="input-with-copy">
+
                                 <select id="wf-xmla-type" class="wf-input">
+
                                     <option value="full">full (完全刷新 - 默认)</option>
+
                                     <option value="dataOnly">dataOnly (仅刷新数据)</option>
+
                                     <option value="calculate">calculate (仅重新计算)</option>
+
                                     <option value="clearValues">clearValues (清空数据)</option>
+
                                 </select>
+
                                 <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Refresh Type"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                             </div>
+
                         </div>
+
                         <div style="grid-column: 1 / -1; display: none;" id="wf-xmla-manual-box">
+
                             <label style="font-size: 0.85rem; color: var(--warning); margin-bottom: 4px; display: block;">⚠️ 手动指定表名/分区名 (当模型受限无法自动枚举时使用):</label>
+
                             <div style="display: flex; gap: 8px;">
+
                                 <div class="input-with-copy" style="flex: 1;">
+
                                     <input type="text" id="wf-xmla-manual-table" class="wf-input" placeholder="输入表名, 如 FactSales">
+
                                     <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Table Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                                 </div>
+
                                 <div class="input-with-copy" style="flex: 1;">
+
                                     <input type="text" id="wf-xmla-manual-partition" class="wf-input" placeholder="可选输入特定分区名">
+
                                     <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Partition Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                                 </div>
+
                             </div>
+
                         </div>
+
                     </div>
+
                     <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+
                         <div style="position: relative;">
+
                             <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none;" onclick="window.toggleConsole('wf-out-xmla-logs')">
+
                                 <svg id="wf-out-xmla-logs-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(90deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>
+
                                 Execution Logs & Status History
+
                             </div>
+
                             <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-xmla-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                             <div id="wf-out-xmla-logs" class="wf-console collapsed-console" style="min-height: 0; padding-bottom: 20px; transition: max-height 0.3s ease, padding 0.3s ease; overflow-y: auto; max-height: 250px;"></div>
+
                         </div>
+
                     </div>
+
                 </div>
+
                 <div id="wf-config-report_view_count" class="wf-config-pane" style="display: none;">
+
                     <div class="wf-fluid-grid">
+
                         <div>
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary);">Workspace ID</label>
+
                             <select id="wf-rvc-workspace" class="wf-input"></select>
+
                         </div>
+
                         <div>
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary);">Report ID</label>
+
                             <select id="wf-rvc-report" class="wf-input"></select>
+
                         </div>
+
                         <div>
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary);">Start Date</label>
+
                             <input type="date" id="wf-rvc-start" class="wf-input" value="">
+
                         </div>
+
                         <div>
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary);">End Date</label>
+
                             <input type="date" id="wf-rvc-end" class="wf-input" value="">
+
                         </div>
+
                     </div>
+
                     <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+
                         <div class="wf-step active" id="wf-rvc-step-1">
+
                             <div class="wf-step-header">
+
                                 <span class="wf-step-title">Get View Count (Activity Events)</span>
+
                                 <!-- removed redundant Run Analysis -->
+
                             </div>
+
                             <div class="wf-step-content" style="display: block; margin-top: 8px;">
+
                                 <div id="wf-rvc-status" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px;">Ready. Select date range (max 30 days recommended).</div>
+
                                 <div id="wf-rvc-containers" style="display: none; flex-direction: column; gap: 12px;">
+
                                     <!-- Logs Section -->
+
                                     <div style="position: relative;">
+
                                         <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-rvc-logs')">
+
                                             <svg id="wf-out-rvc-logs-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(90deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>
+
                                             Execution Logs
+
                                         </div>
+
                                         <button type="button" id="wf-rvc-logs-copybtn" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-rvc-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                                         <div id="wf-out-rvc-logs" class="wf-console collapsed-console" style="min-height: 0; padding-bottom: 20px; transition: max-height 0.3s ease, padding 0.3s ease, border-width 0.3s ease, opacity 0.3s ease; overflow-y: auto; max-height: 250px;"></div>
+
                                     </div>
+
                                     <!-- Result header: click to open expand modal -->
+
                                     <div id="wf-rvc-result-wrap" style="display: none; margin-top: 14px; position: relative;">
+
                                         <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
+
                                             <button type="button" onclick="window.openRvcResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="Click to expand results in a large resizable panel">
+
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+
                                                 View Detailed Table
+
                                             </button>
+
                                             <span id="wf-rvc-stats" style="color: var(--success); font-weight: 500;"></span>
+
                                         </div>
+
                                     </div>
+
                                 </div>
+
                             </div>
+
                         </div>
+
                     </div>
+
                 </div>
+
                 <div id="wf-config-check_permissions" class="wf-config-pane" style="display: none;">
+
                     <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+
                         <div class="wf-step active">
+
                             <div class="wf-step-header">
+
                                 <span class="wf-step-title">Fetch Available Features & Token Info</span>
+
                                 <!-- removed redundant Run Check -->
+
                             </div>
+
                             <div class="wf-step-content" style="display: block; margin-top: 8px;">
+
                                 <div id="wf-perms-status" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px;">Ready. Click "Run Check" to fetch /availableFeatures.</div>
+
                                 <div id="wf-perms-containers" style="display: flex; flex-direction: column; gap: 12px;">
+
                                     <!-- Logs Section -->
+
                                     <div style="position: relative;">
+
                                         <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-perms-logs')"><svg id="wf-out-perms-logs-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs</div>
+
                                         <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-perms-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                                         <div id="wf-out-perms-logs" class="wf-console collapsed-console" style="min-height: 100px; padding-bottom: 20px;">Ready...</div>
+
                                     </div>
+
                                     <!-- Result header: click to open expand modal -->
+
                                     <div id="wf-perms-result-wrap" style="display: none; margin-top: 14px; position: relative;">
+
                                         <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
+
                                             <button type="button" onclick="window.openPermsResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="Click to expand results in a large resizable panel">
+
                                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+
                                                 Permissions & Features Table Results
+
                                             </button>
+
                                             <span id="wf-perms-stats" style="color: var(--accent); font-weight: normal;"></span>
+
                                         </div>
+
                                     </div>
+
                                 </div>
+
                             </div>
+
                         </div>
+
                     </div>
+
                 </div>
+
                 <!-- Global User Manager Pane -->
+
                 <div id="wf-config-global_user_manager" class="wf-config-pane" style="display: none;">
+
                     <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+
                         <div class="wf-step active">
+
                             <div class="wf-step-header">
+
                                 <span class="wf-step-title">Scan Workspaces & Manage Permissions</span>
+
                             </div>
+
                             <div class="wf-step-content" style="display: block; margin-top: 8px;">
+
                                 <div style="display: flex; gap: 8px; margin-bottom: 12px; align-items: flex-end;">
+
                                     <div style="flex: 1;">
+
                                         <label style="font-size: 0.85rem; color: var(--text-secondary);">搜索 (Search) / Filter</label>
+
                                         <input type="text" id="wf-gum-search" class="wf-input" placeholder="Search by user email, name or workspace..." onkeyup="if(window.filterGumTable) window.filterGumTable()">
+
                                     </div>
+
                                     <div style="padding-bottom: 2px;">
+
                                         <button class="btn-wf-md btn-wf-secondary" onclick="if(window.openGumAddUserModal) window.openGumAddUserModal()">+ Add User</button>
+
                                     </div>
+
                                 </div>
+
                                 <div id="wf-gum-containers" style="display: flex; flex-direction: column; gap: 12px;">
+
                                     <!-- Logs Section -->
+
                                      <div>
+
                                          <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; user-select: none;">
+
                                              <div style="display: flex; align-items: center; cursor: pointer; width: fit-content;" onclick="window.toggleConsole('wf-out-gum-logs')">
+
                                                  <svg id="wf-out-gum-logs-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs
+
                                              </div>
+
                                              <div style="display: flex; align-items: center; gap: 12px;">
+
                                                  <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; color: var(--text-secondary); font-size: 0.75rem; font-weight: normal;">
+
                                                      <input type="checkbox" id="gum-admin-mode" class="wf-input" style="width: auto; margin: 0; cursor: pointer;">
+
                                                      Admin Mode (All Workspaces)
+
                                                  </label>
+
                                                  <!-- removed redundant Run Scan -->
+
                                              </div>
+
                                          </div>
+
                                          <div class="input-with-copy" style="position: relative;">
+
                                              <div id="wf-out-gum-logs" class="wf-console collapsed-console" style="width: 100%; min-height: 100px; padding-bottom: 20px;">Ready to scan all workspaces...</div>
+
                                              <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-gum-logs').innerText)" title="Copy Logs" style="top: 8px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                                          </div>
+
                                      </div>
+
                                     <!-- Result header: click to open expand modal -->
+
                                     <div id="wf-gum-result-wrap" style="display: none; margin-top: 14px; position: relative;">
+
                                         <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
+
                                             <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="window.openGumResultModal()" title="Click to expand results in a large resizable panel">
+
                                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+
                                                 Global Permissions Table Results
+
                                             </button>
+
                                             <span id="wf-gum-stats" style="color: var(--accent); font-weight: normal;"></span>
+
                                         </div>
+
                                     </div>
+
                                 </div>
+
                             </div>
+
                         </div>
+
                     </div>
+
                 </div>
+
 <div id="wf-config-smart_pipeline" class="wf-config-pane" style="display: none;">
+
                     <div style="background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 8px; padding: 12px;">
+
                         <div class="terminal-view" id="pipeline-terminal" style="max-height: 200px; margin-bottom: 12px;">
+
                             <div class="terminal-line"><span class="info">系统已就绪。点击下方按钮开始智能扫描并自动绑定工作区、数据集和报表...</span></div>
+
                         </div>
+
                         <div style="display: flex; justify-content: flex-end;">
+
                             <button id="start-pipeline-btn" class="btn-wf-md" style="display: inline-flex; align-items: center; gap: 8px;">
+
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+
                                 <span>启动自动化流水线 (Start DataOps)</span>
+
                             </button>
+
                         </div>
+
                     </div>
+
                 </div>
+
                 <div id="wf-config-export_dataset_tables" class="wf-config-pane" style="display: none;">
+
                     <div class="wf-fluid-grid">
+
                         <div>
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary);">Workspace ID</label>
+
                             <select id="wf-ds-workspace" class="wf-input"></select>
+
                         </div>
+
                         <div>
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary);">Dataset ID</label>
+
                             <select id="wf-ds-dataset" class="wf-input"></select>
+
                         </div>
+
                     </div>
+
                     <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+
                         <!-- Step 1 -->
+
                         <div class="wf-step" id="wf-ds-step-1">
+
                             <div class="wf-step-header">
+
                                 <span class="wf-step-title">Step 1: Fetch Available Tables</span>
+
                                 <button id="wf-ds-btn-step1" class="btn-wf-sm btn-wf-secondary wf-step-btn" onclick="window.loadDatasetTablesStep1(this)">Run Step 1</button>
+
                             </div>
+
                             <div style="position: relative;">
+
                                 <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-ds-step1')"><svg id="wf-out-ds-step1-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs</div>
+
 <div style="position: relative;">
+
     <div id="wf-out-ds-step1" class="wf-console collapsed-console">Input: Ready to fetch tables...</div>
+
     <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-ds-step1').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
 </div>
+
                             </div>
+
                         </div>
+
                         <!-- Step 2 -->
+
                         <div class="wf-step" id="wf-ds-step-2">
+
                             <div class="wf-step-header" style="flex-wrap: wrap; gap: 8px; position: relative; z-index: 10;">
+
                                   <span class="wf-step-title" style="white-space: nowrap;">Step 2: Execute Query & Download</span>
+
                                 <div id="wf-ds-table-container" style="display: flex; align-items: center; justify-content: flex-end; flex: 1; opacity: 0.4; transition: opacity 0.3s ease; min-width: 150px; gap: 8px;">
+
                                     <select id="wf-ds-export-format" class="wf-input" style="width: auto; height: 26px; padding: 0 24px 0 8px; font-size: 0.75rem; max-width: 140px; cursor: not-allowed;" disabled>
+
                                         <option value="XLSX">Single Excel (XLSX)</option>
+
                                         <option value="CSV">Multiple CSVs (ZIP)</option>
+
                                     </select>
+
                                     <div class="custom-select-wrapper" style="position: relative; flex: 1; max-width: 350px;" id="wf-ds-table-wrapper" onclick="window.toggleDsTableDropdown(event)">
+
                                         <div class="wf-input" id="wf-ds-table-trigger" style="height: 26px; display: flex; align-items: center; justify-content: space-between; cursor: not-allowed; padding: 0 8px; font-size: 0.75rem; border-radius: 4px; user-select: none; background: var(--shadow-light);">
+
                                             <span id="wf-ds-table-display" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary);">-- Run Step 1 First --</span>
+
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.2s ease; margin-left: 6px;"><path d="M6 9l6 6 6-6"></path></svg>
+
                                         </div>
+
                                         <ul id="wf-ds-table-options" class="wf-input custom-select-dropdown" style="position: absolute; bottom: calc(100% + 4px); top: auto; left: 0; width: 100%; max-height: 200px; overflow-y: auto; background: var(--dropdown-bg); border: 1px solid var(--panel-border); border-radius: 4px; padding: 4px 0; margin: 0; list-style: none; z-index: 1000; opacity: 0; visibility: hidden; transform: translateY(8px); transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 4px 16px var(--shadow-dark);">
+
                                             <li style="padding: 6px 10px; font-size: 0.75rem; cursor: not-allowed; color: var(--text-secondary);">-- Run Step 1 First --</li>
+
                                         </ul>
+
                                     </div>
+
                                 </div>
+
                                 <button id="wf-ds-btn-step2" class="btn-wf-sm btn-wf-secondary wf-step-btn" style="white-space: nowrap;" onclick="window.executeDatasetStep2(this)">Run Step 2</button>
+
                             </div>
+
                             <div style="position: relative;">
+
                                 <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-ds-step2')"><svg id="wf-out-ds-step2-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs</div>
+
 <div style="position: relative;">
+
     <div id="wf-out-ds-step2" class="wf-console collapsed-console" style="border-top-left-radius: 0; border-top-right-radius: 0; border-top: none;">Waiting for Step 1...</div>
+
     <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-ds-step2').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
 </div>
+
                             </div>
+
                         </div>
+
                     </div>
+
                 </div>
+
                 <div id="wf-config-dataset_partitions_manager" class="wf-config-pane" style="display: none;">
+
                     <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+
                         <div class="wf-step active">
+
                             <div class="wf-step-header" style="display: flex; justify-content: space-between; align-items: center;">
+
                                 <span class="wf-step-title">🔍 全工作区数据集表与分区扫描 (Scan Dataset Partitions)</span>
+
                                 <span id="wf-dpm-stats" style="font-size: 0.8rem; color: var(--accent); font-weight: 500;"></span>
+
                             </div>
+
                             <div class="wf-step-content" style="display: block; margin-top: 8px;">
+
                                 <!-- Logs Section -->
+
                                 <div style="position: relative;">
+
                                     <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-dpm-logs')">
+
                                         <svg id="wf-out-dpm-logs-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>
+
                                         Execution Logs
+
                                     </div>
+
                                     <button type="button" id="wf-dpm-logs-copybtn" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-dpm-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                                     <div id="wf-out-dpm-logs" class="wf-console collapsed-console" style="min-height: 0; padding-bottom: 20px; transition: max-height 0.3s ease, padding 0.3s ease, border-width 0.3s ease, opacity 0.3s ease; overflow-y: auto; max-height: 250px;">点击下方 "Run Selected Workflow" 获取所有工作区下的数据集表分区结构...</div>
+
                                 </div>
+
                                 <!-- Result header: click to open expand modal -->
+
                                 <div id="wf-dpm-result-wrap" style="display: none; margin-top: 14px; position: relative;">
+
                                     <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
+
                                         <button type="button" onclick="window.openDpmResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="Click to expand partitions in a large resizable table modal">
+
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+
                                             View Detailed Table & Refresh Partitions
+
                                         </button>
+
                                         <span id="wf-dpm-badge-stats" style="color: var(--success); font-weight: 500;"></span>
+
                                     </div>
+
                                 </div>
+
                             </div>
+
                         </div>
+
                     </div>
+
                 </div>
+
                 <div id="wf-config-export_visual" class="wf-config-pane" style="display: none;">
+
                     <div class="wf-fluid-grid">
+
                         <div class="wf-field-refreshable">
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">Workspace ID
+
                                 <button type="button" id="btn-refresh-vis-workspace" onclick="window.wfVisRefreshWorkspace(this)" title="Refresh Workspace List" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+
                             </label>
+
                             <div class="input-with-copy">
+
                                 <select id="wf-vis-workspace" class="wf-input"></select>
+
                                 <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Workspace ID"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                             </div>
+
                         </div>
+
                         <div class="wf-field-refreshable">
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">Report ID
+
                                 <button type="button" id="btn-refresh-vis-report" onclick="window.wfVisRefreshReport(this)" title="Refresh Report List" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+
                             </label>
+
                             <div class="input-with-copy">
+
                                 <select id="wf-vis-report" class="wf-input"></select>
+
                                 <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Report ID"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                             </div>
+
                         </div>
+
                         <div class="wf-field-refreshable">
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">Page Name
+
                                 <button type="button" id="btn-refresh-vis-page" onclick="window.wfVisRefreshPage(this)" title="Refresh Page List" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+
                             </label>
+
                             <div class="input-with-copy">
+
                                 <select id="wf-vis-page" class="wf-input">
+
                                     <option value="">-- Select Report First --</option>
+
                                 </select>
+
                                 <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Page Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                             </div>
+
                         </div>
+
                         <div class="wf-field-refreshable">
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">Visual Name
+
                                 <button type="button" id="btn-refresh-vis-visual" onclick="window.wfVisRefreshVisual(this)" title="Refresh Visual List" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+
                             </label>
+
                             <div class="input-with-copy">
+
                                 <select id="wf-vis-visual" class="wf-input">
+
                                     <option value="">-- Select Page First --</option>
+
                                 </select>
+
                                 <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Visual Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                             </div>
+
                         </div>
+
                         <div>
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary);">Export Type</label>
+
                             <div class="input-with-copy">
+
                                 <select id="wf-vis-type" class="wf-input">
+
                                     <option value="Summarized">Summarized (聚合)</option>
+
                                     <option value="Underlying">Underlying (底层)</option>
+
                                 </select>
+
                                 <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Export Type"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                             </div>
+
                         </div>
+
                         <div>
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary);">Max Rows</label>
+
                             <div class="input-with-copy">
+
                                 <input type="number" id="wf-vis-rows" class="wf-input" value="100000">
+
                                 <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Max Rows"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                             </div>
+
                         </div>
+
                     </div>
+
                     <div class="wf-fluid-grid">
+
                         <div style="grid-column: 1 / -1; margin-top: 10px;">
+
                             <label style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px; display: block;">Execution Mode</label>
+
                             <div style="display: flex; gap: 16px; background: var(--input-bg-light); padding: 10px; border-radius: 8px; border: 1px solid var(--panel-border);">
+
                                 <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.85rem;">
+
                                     <input type="radio" name="wf-vis-mode" value="export" checked style="accent-color: var(--accent);">
+
                                     📊 Export CSV Data
+
                                 </label>
+
                                 <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.85rem;">
+
                                     <input type="radio" name="wf-vis-mode" value="analyze" style="accent-color: var(--accent);">
+
                                     🧬 Analyze Dependencies (Visual -> Fields)
+
                                 </label>
+
                             </div>
+
                         </div>
+
                     </div>
+
                     <div id="pbi-embed-wrapper" style="position: relative; margin: 12px 0; display: none;">
+
                         <div id="pbi-embed-container" style="width: 100%; aspect-ratio: 16 / 9; border: 1px solid var(--panel-border); border-radius: 6px; background: var(--input-bg);"></div>
+
                         <div class="pbi-embed-actions" style="position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; z-index: 10;">
+
                             <button type="button" class="pbi-action-btn" onclick="window.refreshEmbeddedReport(this)" title="Refresh Report Data">
+
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+
                             </button>
+
                             <button type="button" id="pbi-embed-max-btn" class="pbi-action-btn" onclick="window.togglePbiEmbedFullscreen()" title="Maximize / Fullscreen Preview">
+
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+
                             </button>
+
                         </div>
+
                     </div>
+
 <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+
                         <div class="wf-step active" id="wf-vis-step-1">
+
                             <div class="wf-step-header">
+
                                 <span class="wf-step-title">Execute exportData API (Sync)</span>
+
                             </div>
+
                             <div style="position: relative;">
+
                                 <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-vis')"><svg id="wf-out-vis-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs</div>
+
 <div style="position: relative;">
+
     <div id="wf-out-vis" class="wf-console collapsed-console">Ready to export visual data...</div>
+
     <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-vis').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
 </div>
+
                                 <div id="wf-vis-result-wrap" style="display: none; margin-top: 14px; position: relative;">
+
                                     <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
+
                                         <button type="button" onclick="window.openDependencyResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="Click to expand results in a large resizable panel">
+
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+
                                             Visual Dependency Tree Table Results
+
                                         </button>
+
                                         <span id="wf-vis-stats" style="color: var(--accent); font-weight: normal;"></span>
+
                                     </div>
+
                                 </div>
+
                             </div>
+
                         </div>
+
                     </div>
+
                 </div>
+
                 <div id="wf-export-wrapper">
+
                 <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+
                     <!-- Step 1 -->
+
                     <div class="wf-step" id="wf-step-1">
+
                         <div class="wf-step-header">
+
                             <span class="wf-step-title">Step 1: Trigger Export (POST)</span>
+
                             <button id="wf-btn-step1" class="btn-wf-sm btn-wf-secondary wf-step-btn">Run Step 1</button>
+
                         </div>
+
                         <div style="position: relative;">
+
                             <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-step1')"><svg id="wf-out-step1-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs</div>
+
 <div style="position: relative;">
+
     <div id="wf-out-step1" class="wf-console collapsed-console">Input: Ready to start...</div>
+
     <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-step1').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
 </div>
+
                         </div>
+
                     </div>
+
                     <!-- Step 2 -->
+
                     <div class="wf-step" id="wf-step-2">
+
                         <div class="wf-step-header">
+
                             <span class="wf-step-title">Step 2: Poll Status (GET)</span>
+
                             <button id="wf-btn-step2" class="btn-wf-sm btn-wf-secondary wf-step-btn" disabled>Run Step 2</button>
+
                         </div>
+
                         <div style="position: relative;">
+
                             <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-step2')"><svg id="wf-out-step2-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs</div>
+
 <div style="position: relative;">
+
     <div id="wf-out-step2" class="wf-console collapsed-console">Waiting for exportId from Step 1...</div>
+
     <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-step2').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
 </div>
+
                         </div>
+
                     </div>
+
                     <!-- Step 3 -->
+
                     <div class="wf-step" id="wf-step-3">
+
                         <div class="wf-step-header">
+
                             <span class="wf-step-title">Step 3: Download File (GET)</span>
+
                             <button id="wf-btn-step3" class="btn-wf-sm btn-wf-secondary wf-step-btn" disabled>Run Step 3</button>
+
                         </div>
+
                         <div style="position: relative;">
+
                             <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-step3')"><svg id="wf-out-step3-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs</div>
+
 <div style="position: relative;">
+
     <div id="wf-out-step3" class="wf-console collapsed-console">Waiting for Succeeded status from Step 2...</div>
+
     <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-step3').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
 </div>
+
                         </div>
+
                     </div>
+
                 </div>
+
                 </div>
+
                     <!-- Local Model Workflow -->
+
                     <div id="wf-container-local_model_query" class="wf-config-pane" style="display: none;">
+
                         <div style="padding: 0 0 15px 0; color: var(--text-secondary); font-size: 0.85rem; border-bottom: 1px solid var(--overlay-10); margin-bottom: 15px;">
+
                             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+
                                 <label style="color: var(--text-secondary); font-weight: bold; width: 120px;">Target Instance:</label>
+
                                 <div class="input-with-copy" style="flex: 1;">
+
                                     <select id="local-model-instance" class="wf-input" style="padding-right: 64px !important;">
+
                                         <option value="">-- Select Target Model --</option>
+
                                     </select>
+
                                     <!-- 复制按钮 (居右 34px) -->
+
                                     <button type="button" class="wf-copy-btn" title="Copy Target Model Name" onclick="window.handleCopyAction(this)" style="right: 34px;">
+
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+
                                     </button>
+
                                     <!-- 🔄 刷新按钮 (最右侧 6px，悬浮浮现，带动态旋转反馈) -->
+
                                     <button type="button" id="wf-local-instance-refresh-btn" class="wf-copy-btn" title="Refresh Local &amp; Cloud Models" onclick="window.fetchLocalModelInstances()" style="right: 6px; color: var(--accent);">
+
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+
                                     </button>
+
                                 </div>
+
                             </div>
+
                             <div id="local-model-instance-error" style="color: var(--error-color); font-size: 0.75rem; display: none; margin-left: 132px;"></div>
+
                         </div>
+
                         <div class="wf-step active" id="wf-local-step-1">
+
                             <!-- DAX Editor header with collapse toggle -->
+
                             <div class="wf-step-header" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;" onclick="event.stopPropagation(); window.toggleLocalDaxEditor(event);" title="Click to collapse/expand">
+
                                 <span class="wf-step-title">Execute Predefined DAX Templates</span>
+
                                 <div style="display:flex;align-items:center;gap:6px;">
+
                                     <svg id="wf-local-dax-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition:transform 0.25s;flex-shrink:0;"><path d="M6 9l6 6 6-6"/></svg>
+
                                 </div>
+
                             </div>
+
                             <div id="wf-local-dax-body" class="wf-step-content" style="display: block; margin-top: 12px;">
+
                                 <div style="display: flex; flex-direction: column; gap: 12px;">
+
                                     <div style="display: flex; align-items: center; gap: 12px;">
+
                                         <label style="color: var(--text-secondary); font-weight: bold; width: 120px; font-size: 0.85rem;">Template:</label>
+
                                         <select id="local-dax-template" class="wf-input" style="flex: 1; font-size: 0.85rem;" onchange="window.updateLocalDaxTemplate()">
+
                                             <option value="tables">1. List All Tables (INFO.TABLES)</option>
+
                                             <option value="measures">2. List All Measures (INFO.MEASURES)</option>
+
                                             <option value="columns">3. List All Columns (INFO.COLUMNS)</option>
+
                                             <option value="partitions">4. List All Partitions (INFO.PARTITIONS)</option>
+
                                             <option value="custom">5. Custom DAX Query</option>
+
                                         </select>
+
                                     </div>
+
                                     <div style="display: flex; flex-direction: column; gap: 8px;">
+
                                         <label style="color: var(--text-secondary); font-weight: bold;">DAX Query:</label>
+
                                         <div class="input-with-copy">
+
                                             <textarea id="local-dax-editor" class="wf-input" style="width: 100%; height: 100px; font-family: monospace; font-size: 0.85rem; padding: 8px; resize: vertical;" placeholder="Enter DAX EVALUATE statement...">EVALUATE INFO.TABLES()</textarea>
+
                                             <button type="button" id="wf-local-dax-copy-btn" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('local-dax-editor').value || document.getElementById('local-dax-editor').placeholder)" title="Copy DAX Query"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
                                         </div>
+
                                     </div>
+
                                 </div>
+
                             </div>
+
                         </div>
+
                         <!-- Status + Result (outside the collapsible DAX step) -->
+
                         <div id="wf-local-status" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 12px; display: none;"></div>
+
                         <!-- Result header: click to open expand modal -->
+
                         <div id="wf-local-result-wrap" style="display: none; margin-top: 14px; position: relative;">
+
                             <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
+
                                 <button type="button" onclick="window.openDaxResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="Click to expand results in a large resizable panel">
+
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+
                                     DAX Query Results
+
                                 </button>
+
                                 <span id="wf-local-result-stats" style="color: var(--accent); font-weight: normal;"></span>
+
                             </div>
+
 <div id="wf-local-result" style="white-space: normal; overflow-x: auto;"></div>
+
                         </div>
+
                     </div>
-            </div> <!-- Close modal body here! -->
-            <div class="modal-footer" style="padding: 12px 1.5rem 10px 1.5rem; border-top: 1px solid var(--overlay-10); display: flex; justify-content: flex-end; align-items: center;">
-                <button id="wf-btn-runall" class="btn-wf-lg" type="button" onclick="window.triggerWorkflowRun()" title="Run Selected Workflow" style="height: 38px; padding: 0 18px; display: inline-flex; align-items: center; gap: 8px; border-radius: 6px; font-weight: 600;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>
-                    <span>Run Workflow</span>
-                </button>
+                    </div> <!-- End wf-board-panes -->
+                </div> <!-- End wf-detail-board -->
+            </div> <!-- End view-workflows -->
+
+            <!-- View B: API Explorer Workspace -->
+<main id="view-api_tree" class="main-content workspace-view" style="display: none;">
+<div class="request-builder glass-panel">
+
+                <div class="request-builder-top" style="display: flex; flex-direction: column; gap: 8px;">
+
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+
+                        <h2 style="font-size: 0.95rem; color: var(--text-primary); font-weight: 600; margin: 0; display: flex; align-items: center; letter-spacing: -0.01em;">
+
+                            Request Configuration
+
+                        </h2>
+
+                        <div style="display: flex; align-items: center; gap: 8px;">
+
+                            <!-- Bookmark Section (Right Panel) -->
+
+                            <div id="right-panel-bm-section" style="display: none; align-items: center; gap: 8px;">
+
+                                <button id="right-panel-bm-star" class="bookmark-btn" style="margin: 0; display: flex; align-items: center; justify-content: center; height: 26px; width: 26px; padding: 0;" title="切换收藏 (Toggle Bookmark)">
+
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+
+                                </button>
+
+                                <div id="right-panel-bm-body" style="display: flex; align-items: center; gap: 8px;">
+
+                                    <div id="right-panel-bm-meta" style="display: flex; align-items: center; gap: 8px;"></div>
+
+                                </div>
+
+                            </div>
+
+                            <button id="btn-note" class="btn-action-icon" title="便签记事本 (Quick Markdown Note)" onclick="openNoteModal()" style="height: 26px; width: 26px; min-width: 26px; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
+
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+<!-- Env Identity -->
+
+                <div id="env-identity" style="display: flex; align-items: center; gap: 12px; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 2px; flex-wrap: wrap;">
+
+                    <span id="display-auth-mode" style="display: none; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 4px; height: 24px; box-sizing: border-box; transition: background 0.2s ease;" title="当前认证模式">
+
+                        <span id="display-auth-mode-icon" style="line-height: 1;">🛡️</span>
+
+                        <strong id="display-auth-mode-text" style="font-weight: 600; line-height: 1; font-size: 0.72rem;">Service Principal</strong>
+
+                    </span>
+
+                      <span class="env-sep" style="opacity: 0.25;">|</span>
+
+                      <span id="display-tenant" style="display: none; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; transition: background 0.2s ease, color 0.2s ease; height: 24px; box-sizing: border-box;" title="Tenant ID">
+
+                        <span style="opacity: 0.85; line-height: 1;">🏢 Tenant:</span>
+
+                        <strong style="color: var(--text-primary); font-weight: 600; font-family: 'Fira Code', monospace; font-size: 0.72rem; line-height: 1;">Unknown</strong>
+
+                      </span>
+
+                    <span class="env-sep" style="opacity: 0.25;">|</span>
+
+                    <span id="display-client" style="display: none; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; transition: background 0.2s ease, color 0.2s ease; height: 24px; box-sizing: border-box;" title="Client App Name">
+
+                        <span style="opacity: 0.85; line-height: 1;">🔑 Client App:</span>
+
+                        <strong style="color: var(--text-primary); font-weight: 600; line-height: 1;">Unknown</strong>
+
+                      </span>
+
+                      <span class="env-sep" style="opacity: 0.25;">|</span>
+
+                    <span id="display-daily-limit" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; height: 24px; box-sizing: border-box;" title="Today's Accumulated Password Login Time">
+
+                        <span style="opacity: 0.85; line-height: 1;">⏱️ Total Time:</span>
+
+                        <strong id="daily-time-val-main" style="color: var(--text-primary); font-weight: 600; line-height: 1; font-family: monospace;">0m</strong>
+
+                    </span>
+
+                </div>
+
+                <!-- Context Toolbar -->
+
+                <div id="context-toolbar" style="display: flex; flex-wrap: wrap; gap: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--panel-border);">
+
+                    <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
+
+                        <div style="display: flex; flex-direction: column; justify-content: center; align-items: flex-start;">
+
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0; line-height: 1.2;">Workspace</label>
+
+                            <span style="font-size: 0.6rem; color: var(--text-tertiary); line-height: 1.2;">(groupId)</span>
+
+                        </div>
+
+                        <div class="custom-select-wrapper" id="wrapper-workspace" style="position: relative; flex: 1; min-width: 0;">
+
+                            <div class="custom-select-trigger" id="trigger-workspace" onclick="toggleCustomSelect('workspace')" style="padding: 4px 8px; height: 38px; background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 4px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; user-select: none; transition: border-color 0.2s;">
+
+                                <span class="cs-name" style="color: var(--text-primary); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">-- None --</span>
+
+                                <span class="cs-id" style="color: var(--text-secondary); font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: none;"></span>
+
+                            </div>
+
+                            <div class="custom-select-options" id="options-workspace" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--dropdown-bg); border: 1px solid var(--panel-border); border-radius: 4px; z-index: 1000; max-height: 300px; overflow-y: auto; box-shadow: 0 4px 12px var(--shadow-dark); margin-top: 4px;"></div>
+
+                            <input type="hidden" id="active-workspace" value="">
+
+                        </div>
+
+                    </div>
+
+                    <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
+
+                        <div style="display: flex; flex-direction: column; justify-content: center; align-items: flex-start;">
+
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0; line-height: 1.2;">Dataset</label>
+
+                            <span style="font-size: 0.6rem; color: var(--text-tertiary); line-height: 1.2;">(datasetId)</span>
+
+                        </div>
+
+                        <div class="custom-select-wrapper" id="wrapper-dataset" style="position: relative; flex: 1; min-width: 0;">
+
+                            <div class="custom-select-trigger" id="trigger-dataset" onclick="toggleCustomSelect('dataset')" style="padding: 4px 8px; height: 38px; background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 4px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; user-select: none; transition: border-color 0.2s;">
+
+                                <span class="cs-name" style="color: var(--text-primary); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">-- None --</span>
+
+                                <span class="cs-id" style="color: var(--text-secondary); font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: none;"></span>
+
+                            </div>
+
+                            <div class="custom-select-options" id="options-dataset" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--dropdown-bg); border: 1px solid var(--panel-border); border-radius: 4px; z-index: 1000; max-height: 300px; overflow-y: auto; box-shadow: 0 4px 12px var(--shadow-dark); margin-top: 4px;"></div>
+
+                            <input type="hidden" id="active-dataset" value="">
+
+                        </div>
+
+                    </div>
+
+                    <div style="flex: 1; display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+
+                        <div style="display: flex; flex-direction: column; justify-content: center; align-items: flex-start; width: 50px; flex-shrink: 0;">
+
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0; line-height: 1.2;">Report</label>
+
+                            <span style="font-size: 0.6rem; color: var(--text-tertiary); line-height: 1.2;">(reportId)</span>
+
+                        </div>
+
+                        <div class="custom-select-wrapper" id="wrapper-report" style="position: relative; flex: 1; min-width: 0;">
+
+                            <div class="custom-select-trigger" id="trigger-report" onclick="toggleCustomSelect('report')" style="padding: 4px 8px; height: 38px; background: var(--input-bg-light); border: 1px solid var(--panel-border); border-radius: 4px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; user-select: none; transition: border-color 0.2s;">
+
+                                <span class="cs-name" style="color: var(--text-primary); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">-- None --</span>
+
+                                <span class="cs-id" style="color: var(--text-secondary); font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: none;"></span>
+
+                            </div>
+
+                            <div class="custom-select-options" id="options-report" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--dropdown-bg); border: 1px solid var(--panel-border); border-radius: 4px; z-index: 1000; max-height: 300px; overflow-y: auto; box-shadow: 0 4px 12px var(--shadow-dark); margin-top: 4px;"></div>
+
+                            <input type="hidden" id="active-report" value="">
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                </div> <!-- END request-builder-top -->
+
+                <div class="endpoint-section-wrapper" style="display: flex; flex-direction: column; gap: 12px;">
+
+                    <!-- 第一排：Method Selector + Badges + 4 Buttons (统一高度 40px) -->
+
+                    <div id="right-panel-category-container" style="display: flex; justify-content: space-between; align-items: center; min-height: 40px; flex-wrap: wrap; gap: 8px;">
+
+                        <div style="display: flex; align-items: center; gap: 12px;">
+
+                            <div class="method-selector">
+
+                                <select id="http-method" style="height: 40px; padding: 0 1rem; border: 1px solid var(--panel-border); border-radius: 8px; background: var(--shadow-base); color: var(--text-primary); font-size: 1rem; outline: none; width: 120px; font-weight: 600; cursor: pointer;">
+
+                                    <option value="GET">GET</option>
+
+                                    <option value="POST">POST</option>
+
+                                    <option value="PUT">PUT</option>
+
+                                    <option value="PATCH">PATCH</option>
+
+                                    <option value="DELETE">DELETE</option>
+
+                                </select>
+
+                            </div>
+
+                            <div style="display: flex; align-items: center; gap: 8px; height: 40px; user-select: none;">
+
+                                <span id="right-panel-category-badge" style="display: flex; align-items: center; height: 100%;"><span style="font-size: 0.75rem; padding: 3px 10px; border-radius: 12px; background: var(--overlay-8); color: var(--accent); border: none; display: inline-flex; align-items: center; gap: 5px; font-weight: 600; cursor: default;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4l2-9 5 18 3-9h6"></path></svg>Custom</span></span>
+
+                                <span id="request-mode-badge" style="font-size: 0.75rem; padding: 3px 10px; border-radius: 12px; font-weight: 500; color: var(--text-secondary); border: none; background: var(--overlay-5); display: inline-flex; align-items: center; gap: 4px; cursor: default;">Free Mode</span>
+
+                            </div>
+
+                        </div>
+
+                        <div class="request-actions" style="display: flex; align-items: center; justify-content: space-between; width: calc((100% - 24px) / 3 - 58px); min-width: 250px; flex-shrink: 0;">
+
+                            <div style="display: flex; gap: 8px; flex: 1; position: relative; min-width: 0;">
+
+                                <button id="history-request-btn" class="icon-btn" title="最近的自由请求历史 (History)" type="button" style="flex: 1; height: 40px; padding: 0 4px; justify-content: center; box-sizing: border-box; overflow: hidden; min-width: 0;">
+
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+
+                                    <span style="font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Hist.</span>
+
+                                </button>
+
+                                <div id="request-history-dropdown" class="animated-dropdown" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: var(--dropdown-bg); border: 1px solid var(--panel-border); border-radius: 6px; z-index: 1000; width: min(90vw, 450px); max-height: min(70vh, 400px); overflow-y: auto; box-shadow: 0 4px 12px var(--shadow-dark); flex-direction: column;">
+
+                                    <div style="padding: 8px 12px; border-bottom: 1px solid var(--panel-border); position: sticky; top: 0; background: var(--dropdown-bg); z-index: 2;">
+
+                                        <input type="search" id="history-search-input" placeholder="Fuzzy search URL, Method, or Body..." class="modern-input">
+
+                                    </div>
+
+                                    <div id="history-list-container" style="display: flex; flex-direction: column;"></div>
+
+                                    <div id="history-clear-all" style="padding: 10px 12px; color: var(--error); cursor: pointer; font-size: 0.8rem; text-align: center; transition: background 0.2s; border-top: 1px solid var(--panel-border); position: sticky; bottom: 0; background: var(--dropdown-bg);">❌ Clear All History</div>
+
+                                </div>
+
+                                <button id="new-request-btn" class="icon-btn" title="新建空白请求 (New Blank Request)" type="button" style="color: var(--info); border-color: var(--info-border); flex: 1; height: 40px; padding: 0 4px; justify-content: center; box-sizing: border-box; overflow: hidden; min-width: 0;">
+
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+
+                                    <span style="font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">New</span>
+
+                                </button>
+
+                            </div>
+
+                            <div style="border-left: 1px solid var(--overlay-10); height: 16px; margin: 0; width: 1px; flex-shrink: 0;"></div>
+
+                            <div style="display: flex; gap: 8px; flex: 1; min-width: 0;">
+
+                                <button id="toggle-method-btn" class="icon-btn" title="Unlock/Lock Method Dropdown" type="button" style="flex: 1; height: 40px; padding: 0 4px; justify-content: center; box-sizing: border-box; overflow: hidden; min-width: 0;">
+
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+
+                                    <span style="font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Unlock</span>
+
+                                </button>
+
+                                <button id="reset-request-btn" class="icon-btn" title="Undo / Reset to Original Selected API" type="button" style="flex: 1; height: 40px; padding: 0 4px; justify-content: center; box-sizing: border-box; overflow: hidden; min-width: 0;">
+
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+
+                                    <span style="font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Undo</span>
+
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- 第二排：URL Box (with embedded right hover copy button) + Send Request (统一高度 46px) -->
+
+                    <div style="display: flex; gap: 12px; align-items: center; width: 100%;">
+
+                        <div class="endpoint-input" style="flex: 1; align-items: center; padding: 0; display: flex; border: 1px solid var(--panel-border); border-radius: 8px; background: var(--shadow-base); overflow: hidden; height: 46px; position: relative;">
+
+                            <span class="base-url-hint" id="base-url-hint" style="font-size: 0.9rem; padding: 0 1rem; border-right: 1px solid var(--panel-border); border-bottom: none; display: flex; align-items: center; background: var(--input-bg-light); height: 100%; white-space: nowrap;">https://api.powerbi.com/v1.0/myorg</span>
+
+                            <input type="text" id="api-endpoint" placeholder="例如: /groups/{workspaceId}/datasets" style="flex: 1; border: none; background: transparent; padding: 0 46px 0 12px; font-family: inherit; font-size: 1rem; color: var(--text-primary); outline: none; height: 100%; width: 100%;">
+
+                            <button id="copy-btn" type="button" class="icon-btn copy-btn endpoint-copy-btn" title="复制完整 cURL 格式请求">
+
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+
+                            </button>
+
+                        </div>
+
+                        <div style="display: flex; gap: 8px; width: calc(((100% - 24px) / 3 - 75px) / 2); min-width: 121px; flex-shrink: 0;">
+
+                            <button id="send-btn" class="btn-primary" style="height: 46px; border-radius: 8px; width: 100%; justify-content: center;">
+
+                                <span>Send Request</span>
+
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                    <details id="param-hint-wrapper" style="display: none; width: 100%; border: 1px solid var(--info-border); border-radius: 6px; background: var(--info-bg); overflow: hidden;">
+
+                        <summary style="font-size: 0.78rem; font-weight: 600; padding: 6px 10px; color: var(--info-dark); cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between;">
+
+                            <span>💡 参数获取提示 (Parameter Hints)</span>
+
+                            <span style="font-size: 0.7rem; font-weight: normal; opacity: 0.8;">展开/折叠</span>
+
+                        </summary>
+
+                        <div id="param-hint-container" style="font-size: 0.8rem; padding: 8px 12px; border-top: 1px solid var(--info-border); color: var(--text-primary);"></div>
+
+                    </details>
+
+                </div>
+
+                <div class="body-editor-container" style="position: relative;">
+
+                    <div class="editor-header">
+
+                        <span>Request Body (JSON)</span>
+
+                        <div style="margin-left:auto; display:flex; gap:12px; align-items:center;">
+
+                            <span class="hint">仅适用于 POST/PUT/PATCH 等包含请求体的方法</span>
+
+                            <button id="format-req-body-btn" class="icon-btn" title="Format JSON" type="button" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer;">
+
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                    <div class="body-textarea-wrapper" style="position: relative; flex: 1; display: flex; min-height: 0;">
+
+                        <textarea id="request-body" placeholder="[当前 API 接口无需提供 Request Body 请求体]"></textarea>
+
+                        <button id="copy-req-body-btn" class="icon-btn copy-btn body-corner-copy-btn" title="Copy Request Body" type="button" onclick="window.handleCopyAction(this, document.getElementById('request-body').value || document.getElementById('request-body').placeholder)">
+
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+
+                        </button>
+
+                    </div>
+
+                </div>
+
             </div>
-        </div>
-    </div>
+
+            <div id="vertical-resizer" class="vertical-resizer"></div>
+
+            <div class="response-container glass-panel">
+
+                <div class="response-header" style="display: flex; align-items: center; justify-content: space-between;">
+
+                    <span style="flex-shrink: 0; margin-right: 12px;">Response</span>
+
+                    <div style="display:flex; gap:12px; align-items:center; flex: 1; min-width: 0; justify-content: flex-end;">
+
+                        <div id="tree-expand-toggles" style="display: none; align-items: center; margin-right: 8px; flex-shrink: 0;">
+
+                            <button id="tree-toggle-all-btn" class="icon-btn" title="展开 / 折叠 (Expand / Collapse All)" style="padding: 2px 4px; color: var(--text-secondary); background: transparent; border: 1px solid var(--panel-border); border-radius: 4px; cursor: pointer; display: flex; align-items: center;">
+
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+
+                            </button>
+
+                        </div>
+
+                        <div id="view-mode-toggles" style="display: none; gap: 2px; border: 1px solid var(--panel-border); border-radius: 6px; overflow: hidden; background: var(--input-bg); padding: 2px; align-items: center; flex-shrink: 0;">
+
+                            <button class="view-mode-btn" data-mode="table" style="border:none; background:transparent; color:var(--text-secondary); padding: 4px 10px; font-size:0.8rem; font-weight:600; cursor:pointer; border-radius:4px; transition:all 0.2s ease; display:flex; align-items:center; gap:4px;" title="Table View">表格 Table</button>
+
+                            <button class="view-mode-btn active" data-mode="tree" style="border:none; background:var(--accent); color:var(--accent-text); padding: 4px 10px; font-size:0.8rem; font-weight:600; cursor:pointer; border-radius:4px; transition:all 0.2s ease; display:flex; align-items:center; gap:4px;" title="Tree View">树状 Tree</button>
+
+                            <button class="view-mode-btn" data-mode="raw" style="border:none; background:transparent; color:var(--text-secondary); padding: 4px 10px; font-size:0.8rem; font-weight:600; cursor:pointer; border-radius:4px; transition:all 0.2s ease; display:flex; align-items:center; gap:4px;" title="Raw JSON">源码 Raw</button>
+
+                        </div>
+
+                        <div class="response-status" id="response-status" style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Waiting for request...</div>
+
+                        <button id="copy-res-body-btn" class="icon-btn copy-btn" style="flex-shrink: 0;" title="Copy Response JSON" type="button" onclick="window.handleCopyAction(this, window.currentJsonResponse ? JSON.stringify(window.currentJsonResponse, null, 2) : document.getElementById('response-output').textContent)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
+                    </div>
+
+                </div>
+
+                <div class="response-body">
+
+                    <pre><code id="response-output">API 响应结果将在这里显示...</code></div>
+
+                </div>
+
+            </div>
+
+        
+            </main>
+    </div> <!-- End workspace-container -->
+</div> <!-- End app-container -->
+
     <!-- Settings Modal -->
     <div id="settings-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content glass-panel">
@@ -1371,11 +2292,11 @@
                 </div>
             </div>
             <div class="confirm-modal-footer">
-                <button id="confirm-cancel-btn" class="btn-cancel" style="height: 32px; padding: 0 14px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem;">
+                <button id="confirm-cancel-btn" class="btn-cancel">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     <span>取消</span>
                 </button>
-                <button id="confirm-proceed-btn" class="btn-primary btn-warning-action" style="height: 32px; padding: 0 14px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                <button id="confirm-proceed-btn" class="btn-primary btn-warning-action">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     <span>确认发送</span>
                 </button>
@@ -1418,11 +2339,11 @@
             <div id="scan-results-container" style="max-height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; background: var(--input-bg); border-radius: 6px; border: 1px solid var(--panel-border); padding: 8px;">
             </div>
             <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                <button type="button" class="btn-cancel" onclick="closeModalWithAnimation('scan-modal')" style="height: 32px; padding: 0 14px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem;">
+                <button type="button" class="btn-cancel" onclick="closeModalWithAnimation('scan-modal')">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     <span>取消</span>
                 </button>
-                <button type="button" class="btn-pipeline btn-scan-add" id="scan-modal-add-btn" style="height: 32px; padding: 0 14px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem;">
+                <button type="button" class="btn-pipeline btn-scan-add" id="scan-modal-add-btn">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     <span>添加选中项</span>
                 </button>
@@ -1483,11 +2404,11 @@
                             <span id="note-error-msg" style="font-weight: 500;">Failed to save/push</span>
                         </div>
                         <div style="display: flex; gap: 10px; margin-left: auto;">
-                            <button type="button" class="btn-action-secondary" onclick="createNewNote()" id="btn-new-note" style="height: 32px; padding: 0 12px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem;">
+                            <button type="button" class="btn-action-secondary" onclick="createNewNote()" id="btn-new-note">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
                                 <span>新建笔记</span>
                             </button>
-                            <button type="button" class="btn-action-primary" onclick="saveMarkdownNote()" id="btn-save-note" style="height: 32px; padding: 0 14px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem;">
+                            <button type="button" class="btn-action-primary" onclick="saveMarkdownNote()" id="btn-save-note">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                                 <span>保存并同步 GitHub</span>
                             </button>
@@ -1579,7 +2500,7 @@
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
     <script src="/static/universal_modal.js?v=20260825_v21"></script>
-    <script src="/static/script.js?v=20260831_v2108"></script>
+    <script src="/static/script.js?v=20260831_v2230"></script>
 
 
 
@@ -1672,7 +2593,7 @@
             </button>
         </div>
     </div>
-    <script src="/static/snapshots.js?v=20260829_v2235"></script>
+    <script src="/static/snapshots.js?v=20260831_v2230"></script>
     <!-- Test Harness Modal -->
     <div id="test-harness-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content" style="max-width: 800px; width: 90%;">
@@ -1687,11 +2608,11 @@
                 <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
                     <p style="margin: 0; color: var(--text-secondary);">Select tests to run and click Execute. <span id="harness-stats" style="margin-left: 10px; font-weight: 600; color: var(--accent);">Selected: 0 / Total: 0</span></p>
                     <div style="display: flex; gap: 8px;">
-                        <button type="button" id="btn-harness-select-all" class="btn-action-primary" style="height: 30px; padding: 0 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem;">
+                        <button type="button" id="btn-harness-select-all" class="btn-action-primary">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                             <span>全选</span>
                         </button>
-                        <button type="button" id="btn-harness-clear-all" class="btn-cancel" style="height: 30px; padding: 0 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem;">
+                        <button type="button" id="btn-harness-clear-all" class="btn-cancel">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                             <span>清空</span>
                         </button>
@@ -1702,11 +2623,11 @@
                 </div>
             </div>
             <div class="modal-footer" style="display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
-                <button type="button" class="btn-cancel" onclick="closeModalWithAnimation('test-harness-modal')" style="height: 32px; padding: 0 14px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem;">
+                <button type="button" class="btn-cancel" onclick="closeModalWithAnimation('test-harness-modal')">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     <span>取消</span>
                 </button>
-                <button id="btn-harness-execute" class="btn-action-primary" style="height: 32px; padding: 0 14px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem;">
+                <button id="btn-harness-execute" class="btn-action-primary">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                     <span>运行测试</span>
                 </button>

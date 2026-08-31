@@ -146,7 +146,149 @@ body {
     height: 100vh;
     padding: var(--app-padding, 16px);
     box-sizing: border-box;
-    /* remove gap so resizer sits flush, or adjust padding */
+    gap: 0;
+    overflow: hidden;
+}
+
+/* Primary Navigation Rail (Leftmost) */
+.app-rail {
+    width: 60px;
+    min-width: 60px;
+    max-width: 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 8px;
+    margin-right: 12px;
+    flex-shrink: 0;
+    z-index: 25;
+    transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    box-sizing: border-box;
+}
+
+.app-rail.expanded {
+    width: 175px !important;
+    min-width: 175px !important;
+    max-width: 175px !important;
+    align-items: stretch;
+}
+
+
+.rail-top {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.rail-logo-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 6px 4px 12px 4px;
+    border-bottom: 1px solid var(--overlay-10);
+    margin-bottom: 6px;
+    cursor: pointer;
+    user-select: none;
+    overflow: hidden;
+}
+
+.app-rail.expanded .rail-logo-wrap {
+    justify-content: flex-start;
+    padding-left: 8px;
+}
+
+.rail-logo-title {
+    display: none;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    letter-spacing: -0.01em;
+}
+
+.app-rail.expanded .rail-logo-title {
+    display: block;
+}
+
+.app-rail.expanded .rail-toggle-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+.rail-menu-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    list-style: none;
+}
+
+.rail-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 10px;
+    border-radius: 10px;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.app-rail.expanded .rail-item {
+    justify-content: flex-start;
+    padding: 9px 12px;
+}
+
+.rail-item:hover {
+    background: var(--overlay-10);
+    color: var(--text-primary);
+}
+
+.rail-item.active {
+    background: var(--accent-glow);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 600;
+    box-shadow: 0 0 12px rgba(242, 200, 17, 0.15);
+}
+
+.rail-item-icon {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.rail-item-text {
+    display: none;
+    font-size: 0.84rem;
+    white-space: nowrap;
+}
+
+.app-rail.expanded .rail-item-text {
+    display: block !important;
+}
+
+
+.rail-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    padding-top: 10px;
+    border-top: 1px solid var(--overlay-10);
 }
 
 /* Glassmorphism utility */
@@ -160,21 +302,136 @@ body {
     box-shadow: 0 4px 20px -2px var(--shadow-base), 0 0 1px var(--panel-border);
 }
 
-
-
-/* Sidebar */
+/* Sidebar (Secondary List Container) */
 
 .sidebar {
     width: var(--sidebar-width, 280px);
-    min-width: 200px;
+    min-width: 220px;
     max-width: 600px;
     display: flex;
     flex-direction: column;
-    padding: 1.5rem;
+    padding: 1.25rem 1.25rem 1rem 1.25rem;
     height: 100%;
     position: relative;
     z-index: 10;
     flex-shrink: 0;
+}
+
+/* Secondary Sidebar Panes */
+.sidebar-pane {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+/* Workflow Secondary Sidebar Item Styling */
+.wf-sidebar-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    padding-right: 4px;
+}
+
+.wf-sidebar-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border-left: 3px solid transparent;
+    background: var(--overlay-5);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-sizing: border-box;
+}
+
+.wf-sidebar-item:hover {
+    background: var(--overlay-10);
+    border-left-color: var(--accent);
+    transform: translateX(2px);
+}
+
+.wf-sidebar-item.active {
+    background: var(--overlay-15);
+    border-left-color: var(--accent);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.wf-item-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+}
+
+.wf-item-icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+    line-height: 1.3;
+    margin-top: -1px;
+}
+
+.wf-item-title {
+    font-size: 0.83rem;
+    color: var(--text-primary);
+    font-weight: 600;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.3;
+    flex: 1;
+}
+
+.wf-sidebar-item.active .wf-item-title {
+    color: var(--accent);
+}
+
+.wf-item-zh {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    padding-left: 24px;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.3;
+}
+
+.wf-item-desc {
+    font-size: 0.7rem;
+    color: var(--text-tertiary, var(--text-secondary));
+    opacity: 0.75;
+    padding-left: 24px;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+
+/* Workspace Panels */
+.workspace-view {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-width: 0;
+    gap: 14px;
+}
+
+.wf-detail-board {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-width: 0;
+    padding: 1.5rem;
+    overflow-y: auto;
+    position: relative;
 }
 
 .resizer {
@@ -187,6 +444,7 @@ body {
     z-index: 10;
     background: transparent;
 }
+
 
 .resizer::after {
     content: '';

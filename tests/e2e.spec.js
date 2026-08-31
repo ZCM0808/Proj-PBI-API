@@ -8,6 +8,7 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     // 清空缓存并注入稳定的 Mock 环境变量以保证测试环境（本地和CI）绝对一致
     await page.evaluate(() => {
         localStorage.clear();
+        localStorage.setItem('pbi-active-module', 'api_tree');
         localStorage.setItem('pbi_tenant_id', 'mock-tenant-1234');
         localStorage.setItem('pbi_app_name', 'Mock App');
     });

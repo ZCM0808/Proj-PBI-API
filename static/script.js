@@ -118,39 +118,146 @@ function saveWfNames(names) {
 
 
 
-// 将自定义名称应用到 <select> 所有 <option>
+// ─── IDE App Rail & Workspace Navigation Controller ─────────────────
+window.toggleAppRail = function() {
+    const rail = document.getElementById('app-rail');
+    if (!rail) return;
+    rail.classList.toggle('expanded');
+    const isExpanded = rail.classList.contains('expanded');
+    try { localStorage.setItem('pbi-rail-expanded', isExpanded ? 'true' : 'false'); } catch(e) {}
+};
 
-window.applyWfNames = function() {
+// 切换一级模块 (Workflows vs API Tree)
+window.switchAppModule = function(moduleName) {
+    // 1. Update Rail active item
+    document.querySelectorAll('.rail-item').forEach(el => el.classList.remove('active'));
+    const navItem = document.getElementById(`rail-nav-${moduleName}`);
+    if (navItem) navItem.classList.add('active');
 
+    // 2. Switch Secondary Sidebar Panes
+    const sideWorkflows = document.getElementById('sidebar-pane-workflows');
+    const sideApiTree = document.getElementById('sidebar-pane-api_tree');
+    if (sideWorkflows && sideApiTree) {
+        if (moduleName === 'workflows') {
+            sideWorkflows.style.display = 'flex';
+            sideApiTree.style.display = 'none';
+        } else {
+            sideWorkflows.style.display = 'none';
+            sideApiTree.style.display = 'flex';
+        }
+    }
+
+    // 3. Switch Main Workspace Views
+    const viewWorkflows = document.getElementById('view-workflows');
+    const viewApiTree = document.getElementById('view-api_tree');
+    if (viewWorkflows && viewApiTree) {
+        if (moduleName === 'workflows') {
+            viewWorkflows.style.display = 'flex';
+            viewApiTree.style.display = 'none';
+        } else {
+            viewWorkflows.style.display = 'none';
+            viewApiTree.style.display = 'flex';
+        }
+    }
+
+    // 4. Save state
+    try { localStorage.setItem('pbi-active-module', moduleName); } catch(e) {}
+};
+
+// Workflow 列表元数据
+const WORKFLOW_METADATA = [
+    { key: 'datasource_inspector', icon: '🔍', title: 'Report & Dataset Datasource Inspector', zh: '数据源与 M 表达式穿透', desc: '穿透报表底层连接模式 (Direct Query / Import)、SQL 语句及表级 M 表达式' },
+    { key: 'export_report', icon: '📄', title: 'Export Report to File', zh: '导出报表为文件', desc: '支持异步导出 PDF, XLSX, PPTX, PNG' },
+    { key: 'export_visual', icon: '📊', title: 'Export Visual Data', zh: '导出视觉对象数据', desc: '导出前端图表底层 Underlying 或汇总 Summarized CSV 数据' },
+    { key: 'export_dataset_tables', icon: '🗄️', title: 'Export Dataset Tables', zh: '批量导出数据集表', desc: '批量将数据集物理表数据导出为 CSV' },
+    { key: 'dataset_partitions_manager', icon: '🧩', title: 'Dataset Partitions Manager', zh: '数据集分区管理与定向刷新', desc: '穿透 Analysis Services 引擎，检测并执行单分区定向刷新' },
+    { key: 'xmla_interactive_refresh', icon: '⚡', title: 'XMLA Interactive Refresh', zh: 'XMLA 交互式模型/表/分区刷新', desc: '基于 XMLA Endpoint 执行模型级/表级细粒度 TMSL 刷新' },
+    { key: 'global_user_manager', icon: '👥', title: 'Global Permissions Manager', zh: '全局工作区权限矩阵', desc: '跨工作区批量检索用户权限、分配角色及批量剥离离职用户' },
+    { key: 'report_view_count', icon: '📈', title: 'Admin Report View Count', zh: '报表访问热度统计', desc: '基于 Activity Events 审计日志统计报表访问频次与用户数' },
+    { key: 'check_permissions', icon: '🛡️', title: 'Check Current Permissions', zh: 'Token 与权限全景体检', desc: '解包当前 Token Payload 并探测 API 权限范围' },
+    { key: 'smart_pipeline', icon: '🚀', title: 'Smart DataOps Pipeline', zh: '智能数据流水线', desc: '自动绑定 Gateway、扫描元数据与数据集健康度巡检' },
+    { key: 'local_model_query', icon: '💻', title: 'Local Model Diagnostics & Query', zh: '本地模型诊断与 DAX 查询', desc: '连接本地 Power BI Desktop 实例并执行 DAX 语句' }
+];
+
+window.renderWorkflowSidebarList = function() {
+    const listContainer = document.getElementById('wf-sidebar-list-container');
+    if (!listContainer) return;
+    const currentWf = document.getElementById('wf-selector')?.value || 'datasource_inspector';
     const names = getWfNames();
 
+    listContainer.innerHTML = WORKFLOW_METADATA.map(item => {
+        const displayName = names[item.key] || item.title;
+        const isActive = item.key === currentWf ? 'active' : '';
+        return `
+            <li class="wf-sidebar-item ${isActive}" data-wf="${item.key}" onclick="window.selectWorkflow('${item.key}')">
+                <div class="wf-item-header">
+                    <span class="wf-item-icon">${item.icon}</span>
+                    <span class="wf-item-title">${displayName}</span>
+                </div>
+                <div class="wf-item-zh">${item.zh}</div>
+                <div class="wf-item-desc">${item.desc}</div>
+            </li>
+        `;
+    }).join('');
+};
+
+window.selectWorkflow = function(wfKey) {
     const sel = document.getElementById('wf-selector');
-
     if (!sel) return;
+    sel.value = wfKey;
+    sel.dispatchEvent(new Event('change'));
 
-    sel.querySelectorAll('option').forEach(opt => {
-
-        const custom = names[opt.value];
-
-        if (custom && custom.trim()) {
-
-            // 保留原始内置名（存在 dataset-default 属性里），显示自定义名
-
-            if (!opt.dataset.defaultName) opt.dataset.defaultName = opt.textContent;
-
-            opt.textContent = custom;
-
-        } else if (opt.dataset.defaultName) {
-
-            // 无自定义名时恢复原始内置名
-
-            opt.textContent = opt.dataset.defaultName;
-
+    // Highlight sidebar item
+    document.querySelectorAll('.wf-sidebar-item').forEach(el => {
+        if (el.getAttribute('data-wf') === wfKey) {
+            el.classList.add('active');
+        } else {
+            el.classList.remove('active');
         }
-
     });
 
+    // Update board header title
+    const boardTitle = document.getElementById('wf-board-title');
+    if (boardTitle) {
+        const item = WORKFLOW_METADATA.find(w => w.key === wfKey);
+        const names = getWfNames();
+        if (item) {
+            const titleText = names[wfKey] || item.title;
+            boardTitle.innerHTML = `${item.icon} ${titleText}`;
+        }
+    }
 };
+
+window.filterWorkflowsList = function(query) {
+    const q = (query || '').toLowerCase().trim();
+    document.querySelectorAll('.wf-sidebar-item').forEach(item => {
+        const text = item.textContent.toLowerCase();
+        if (!q || text.includes(q)) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+};
+
+// 将自定义名称应用到 <select> 所有 <option> 及工作流侧边栏
+window.applyWfNames = function() {
+    const names = getWfNames();
+    const sel = document.getElementById('wf-selector');
+    if (sel) {
+        sel.querySelectorAll('option').forEach(opt => {
+            const custom = names[opt.value];
+            if (custom && custom.trim()) {
+                if (!opt.dataset.defaultName) opt.dataset.defaultName = opt.textContent;
+                opt.textContent = custom;
+            } else if (opt.dataset.defaultName) {
+                opt.textContent = opt.dataset.defaultName;
+            }
+        });
+    }
+    if (window.renderWorkflowSidebarList) window.renderWorkflowSidebarList();
+};
+
 
 
 
@@ -8197,9 +8304,8 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
         if (isResizing) {
 
-            const containerOffsetLeft = document.querySelector('.app-container').offsetLeft;
-
-            let newWidth = e.clientX - containerOffsetLeft - 16;
+            const sidebarLeft = sidebar.getBoundingClientRect().left;
+            let newWidth = e.clientX - sidebarLeft;
 
             if (newWidth < 200) newWidth = 200;
 
@@ -11299,180 +11405,123 @@ window.updateHarnessStats = function() {
 
 
 
-    if (btnWorkflows && workflowModal) {
+    const populateWorkflowSelectors = () => {
+        const knownReportWsMap = {
+            "3a6e9e19-9aed-4372-a7d9-17155e9dd49d": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
+            "eb1e9614-f437-4925-b930-3db8c57aed83": "c06a2729-ee28-4471-af27-803b56a3d8cc",
+            "dd92cf21-8347-46bb-b57a-0d7b1abb54a1": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5",
+            "1b4b8c16-98ba-4122-a9f4-45b515254966": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
+            "98c86f67-010c-45be-b62c-70123f7d5854": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
+            "cbc29d9e-0d69-4791-9862-03543960bd08": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
+            "58c8af01-4ae9-44e6-853a-32a6c34802d6": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5",
+            "043db830-2a3b-45f2-8798-1ac69f188793": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5",
+            "7eb7e61e-424f-48bf-bf0e-be101d0c6131": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5",
+            "48f13f45-3da0-4592-a80c-cfb3867bbde8": "9b9146c9-f8fe-4c9e-b026-f4f2e25c233c",
+            "7f0acb25-c72a-451b-b560-dccdc5861235": "9b9146c9-f8fe-4c9e-b026-f4f2e25c233c",
+            "5c6df788-fcc6-4758-ba9c-42bc1b969666": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
+            "db746473-2c7c-4eb1-a0ce-61c27d888bd4": "2c51e061-0f9f-4d02-bed0-c169019e5d83"
+        };
 
-
-
-
-
-        btnWorkflows.addEventListener('click', () => {
-
-            if (window.makeDraggable && !wfContent.hasAttribute('data-drag-init')) {
-
-                window.makeDraggable(wfContent, wfContent.querySelector('.modal-header'));
-
-                wfContent.setAttribute('data-drag-init', 'true');
-
-            }
-
+        const updateFilteredReports = (wSelectId, rSelectId) => {
+            const wSelect = document.getElementById(wSelectId);
+            const rSelect = document.getElementById(rSelectId);
+            if (!wSelect || !rSelect) return;
+            const selWid = (wSelect.value || '').trim().toLowerCase();
+            const reports = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
             
+            const filtered = selWid ? reports.filter(r => {
+                const rWid = (r.workspaceId || knownReportWsMap[r.id] || '').trim().toLowerCase();
+                return !rWid || rWid === selWid;
+            }) : reports;
 
-            window.centerModal(wfContent);
-
-            workflowModal.style.visibility = 'visible';
-
-            workflowModal.style.opacity = '1';
-
-            workflowModal.style.display = 'flex';
-
-            if (window.updateWorkflowAuthBadge) window.updateWorkflowAuthBadge();
-
-
-
-            
-
-            const knownReportWsMap = {
-                "3a6e9e19-9aed-4372-a7d9-17155e9dd49d": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
-                "eb1e9614-f437-4925-b930-3db8c57aed83": "c06a2729-ee28-4471-af27-803b56a3d8cc",
-                "dd92cf21-8347-46bb-b57a-0d7b1abb54a1": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5",
-                "1b4b8c16-98ba-4122-a9f4-45b515254966": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
-                "98c86f67-010c-45be-b62c-70123f7d5854": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
-                "cbc29d9e-0d69-4791-9862-03543960bd08": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
-                "58c8af01-4ae9-44e6-853a-32a6c34802d6": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5",
-                "043db830-2a3b-45f2-8798-1ac69f188793": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5",
-                "7eb7e61e-424f-48bf-bf0e-be101d0c6131": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5",
-                "48f13f45-3da0-4592-a80c-cfb3867bbde8": "9b9146c9-f8fe-4c9e-b026-f4f2e25c233c",
-                "7f0acb25-c72a-451b-b560-dccdc5861235": "9b9146c9-f8fe-4c9e-b026-f4f2e25c233c",
-                "5c6df788-fcc6-4758-ba9c-42bc1b969666": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
-                "db746473-2c7c-4eb1-a0ce-61c27d888bd4": "2c51e061-0f9f-4d02-bed0-c169019e5d83"
-            };
-
-            const updateFilteredReports = (wSelectId, rSelectId) => {
-                const wSelect = document.getElementById(wSelectId);
-                const rSelect = document.getElementById(rSelectId);
-                if (!wSelect || !rSelect) return;
-                const selWid = (wSelect.value || '').trim().toLowerCase();
-                const reports = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
-                
-                const filtered = selWid ? reports.filter(r => {
-                    const rWid = (r.workspaceId || knownReportWsMap[r.id] || '').trim().toLowerCase();
-                    return !rWid || rWid === selWid;
-                }) : reports;
-
-                const prevVal = rSelect.value;
-                rSelect.innerHTML = '<option value="">-- Select Report --</option>';
-                filtered.forEach(item => {
-                    const opt = document.createElement('option');
-                    opt.value = item.id;
-                    opt.textContent = `${item.alias || item.name || "Unnamed"} (${item.id})`;
-                    rSelect.appendChild(opt);
-                });
-                if (prevVal && filtered.some(r => r.id === prevVal)) {
-                    rSelect.value = prevVal;
-                } else if (filtered.length > 0) {
-                    rSelect.value = filtered[0].id;
-                }
-            };
-            window.updateFilteredReports = updateFilteredReports;
-
-            const fillSelect = (selectId, storageKey) => {
-                const select = document.getElementById(selectId);
-                if(!select) return;
-                select.innerHTML = '<option value="">-- Select --</option>';
-                const items = JSON.parse(localStorage.getItem(storageKey) || '[]');
-                items.forEach(item => {
-                    const opt = document.createElement('option');
-                    opt.value = item.id;
-                    opt.textContent = `${item.alias || item.name || "Unnamed"} (${item.id})`;
-                    select.appendChild(opt);
-                });
-            };
-
-            fillSelect('wf-exp-workspace', 'pbi_workspaces');
-            fillSelect('wf-vis-workspace', 'pbi_workspaces');
-            fillSelect('wf-ds-workspace', 'pbi_workspaces');
-            fillSelect('wf-ds-dataset', 'pbi_datasets');
-            fillSelect('wf-rvc-workspace', 'pbi_workspaces');
-
-            const activeW = document.getElementById('active-workspace')?.value;
-            const activeR = document.getElementById('active-report')?.value;
-            const activeD = document.getElementById('active-dataset')?.value;
-
-            if (activeW) {
-                ['wf-exp-workspace', 'wf-vis-workspace', 'wf-ds-workspace', 'wf-rvc-workspace'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) el.value = activeW;
-                });
-            } else {
-                const visWSelect = document.getElementById('wf-vis-workspace');
-                if (visWSelect && !visWSelect.value) {
-                    const workspaces = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
-                    const devW = workspaces.find(w => w.alias === 'WorkSpace_DEV' || w.id === '2c51e061-0f9f-4d02-bed0-c169019e5d83') || workspaces[0];
-                    if (devW) visWSelect.value = devW.id;
-                }
+            const prevVal = rSelect.value;
+            rSelect.innerHTML = '<option value="">-- Select Report --</option>';
+            filtered.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.id;
+                opt.textContent = `${item.alias || item.name || "Unnamed"} (${item.id})`;
+                rSelect.appendChild(opt);
+            });
+            if (prevVal && filtered.some(r => r.id === prevVal)) {
+                rSelect.value = prevVal;
+            } else if (filtered.length > 0) {
+                rSelect.value = filtered[0].id;
             }
+        };
+        window.updateFilteredReports = updateFilteredReports;
 
-            updateFilteredReports('wf-exp-workspace', 'wf-exp-report');
-            updateFilteredReports('wf-vis-workspace', 'wf-vis-report');
-            updateFilteredReports('wf-rvc-workspace', 'wf-rvc-report');
+        const fillSelect = (selectId, storageKey) => {
+            const select = document.getElementById(selectId);
+            if(!select) return;
+            select.innerHTML = '<option value="">-- Select --</option>';
+            const items = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            items.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.id;
+                opt.textContent = `${item.alias || item.name || "Unnamed"} (${item.id})`;
+                select.appendChild(opt);
+            });
+        };
 
-            if (activeR) {
-                ['wf-exp-report', 'wf-vis-report', 'wf-rvc-report'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el && Array.from(el.options).some(o => o.value === activeR)) {
-                        el.value = activeR;
+        fillSelect('wf-exp-workspace', 'pbi_workspaces');
+        fillSelect('wf-vis-workspace', 'pbi_workspaces');
+        fillSelect('wf-ds-workspace', 'pbi_workspaces');
+        fillSelect('wf-ds-dataset', 'pbi_datasets');
+        fillSelect('wf-rvc-workspace', 'pbi_workspaces');
+
+        const activeW = document.getElementById('active-workspace')?.value;
+        const activeR = document.getElementById('active-report')?.value;
+        const activeD = document.getElementById('active-dataset')?.value;
+
+        if (activeW) {
+            ['wf-exp-workspace', 'wf-vis-workspace', 'wf-ds-workspace', 'wf-rvc-workspace'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = activeW;
+            });
+        } else {
+            const visWSelect = document.getElementById('wf-vis-workspace');
+            if (visWSelect && !visWSelect.value) {
+                const workspaces = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+                const devW = workspaces.find(w => w.alias === 'WorkSpace_DEV' || w.id === '2c51e061-0f9f-4d02-bed0-c169019e5d83') || workspaces[0];
+                if (devW) visWSelect.value = devW.id;
+            }
+        }
+
+        updateFilteredReports('wf-exp-workspace', 'wf-exp-report');
+        updateFilteredReports('wf-vis-workspace', 'wf-vis-report');
+        updateFilteredReports('wf-rvc-workspace', 'wf-rvc-report');
+
+        if (activeR) {
+            ['wf-exp-report', 'wf-vis-report', 'wf-rvc-report'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && Array.from(el.options).some(o => o.value === activeR)) {
+                    el.value = activeR;
+                }
+            });
+        }
+
+        if (activeD) {
+            const el = document.getElementById('wf-ds-dataset');
+            if (el) el.value = activeD;
+        }
+
+        // Bind workspace change events to dynamically re-filter reports
+        ['wf-exp', 'wf-vis', 'wf-rvc'].forEach(prefix => {
+            const wsElem = document.getElementById(`${prefix}-workspace`);
+            if (wsElem && !wsElem._hasCascadeListener) {
+                wsElem._hasCascadeListener = true;
+                wsElem.addEventListener('change', () => {
+                    updateFilteredReports(`${prefix}-workspace`, `${prefix}-report`);
+                    if (prefix === 'wf-vis' && window.loadExportVisualPages) {
+                        window.loadExportVisualPages();
                     }
                 });
             }
-
-            if (activeD) {
-                const el = document.getElementById('wf-ds-dataset');
-                if (el) el.value = activeD;
-            }
-
-            // Bind workspace change events to dynamically re-filter reports
-            ['wf-exp', 'wf-vis', 'wf-rvc'].forEach(prefix => {
-                const wsElem = document.getElementById(`${prefix}-workspace`);
-                if (wsElem && !wsElem._hasCascadeListener) {
-                    wsElem._hasCascadeListener = true;
-                    wsElem.addEventListener('change', () => {
-                        updateFilteredReports(`${prefix}-workspace`, `${prefix}-report`);
-                        if (prefix === 'wf-vis' && window.loadExportVisualPages) {
-                            window.loadExportVisualPages();
-                        }
-                    });
-                }
-            });
-
-
-
-            if (document.getElementById('wf-selector')?.value === 'export_visual') {
-
-                setTimeout(() => {
-
-                    if (window.loadExportVisualPages) window.loadExportVisualPages();
-
-                }, 300);
-
-            }
-
         });
+    };
+    window.populateWorkflowSelectors = populateWorkflowSelectors;
+    populateWorkflowSelectors();
 
-
-
-        closeWorkflowBtn.addEventListener('click', () => {
-
-            if(window.closeModalWithAnimation) {
-
-                window.closeModalWithAnimation('workflow-modal');
-
-            } else {
-
-                workflowModal.style.display = 'none';
-
-            }
-
-        });
 
 
 
@@ -11988,24 +12037,34 @@ window.updateHarnessStats = function() {
         
 
         // 应用自定义 WF 名称（需在 selector 初始化之后立即执行）
-
         window.applyWfNames && window.applyWfNames();
 
-        
+        // 渲染工作流侧边栏列表
+        if (window.renderWorkflowSidebarList) window.renderWorkflowSidebarList();
+
+        // 恢复 App Rail 折叠/展开状态（已由内联 <script> 提前处理，此处仅保险）
+        const railEl = document.getElementById('app-rail');
+        if (railEl && localStorage.getItem('pbi-rail-expanded') === 'true') {
+            railEl.classList.add('expanded');
+        }
+
+        // 恢复上次激活的模块 (Workflows vs API Tree)
+        // 如果用户在 script.js 加载前就点了菜单项，优先使用缓存的 _pendingModule
+        const savedModule = window._pendingModule || localStorage.getItem('pbi-active-module') || 'workflows';
+        delete window._pendingModule;
+        window.switchAppModule(savedModule);
 
         // 恢复上次选中的 workflow（跨刷新持久化）
-
-        const savedWf = localStorage.getItem('pbi-last-workflow');
-
+        const savedWf = localStorage.getItem('pbi-last-workflow') || 'datasource_inspector';
         if (savedWf && wfSelector.querySelector(`option[value="${savedWf}"]`)) {
-
             wfSelector.value = savedWf;
-
             wfSelector.dataset.prevVal = savedWf;
-
-            wfSelector.dispatchEvent(new Event('change')); // 触发 change 以渲染对应面板
-
+            wfSelector.dispatchEvent(new Event('change'));
+            if (window.selectWorkflow) window.selectWorkflow(savedWf);
+        } else {
+            if (window.selectWorkflow) window.selectWorkflow('datasource_inspector');
         }
+
 
 
 
@@ -13097,7 +13156,6 @@ window.updateHarnessStats = function() {
 
         if (runAllBtn) runAllBtn.onclick = window.triggerWorkflowRun;
 
-    }
 
     // --- End Workflow Modal Logic ---
 
