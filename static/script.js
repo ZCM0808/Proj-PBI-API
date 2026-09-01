@@ -19787,3 +19787,26 @@ window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded)
 };
 
 
+
+
+// Zen Mode / Focus Mode
+window.toggleZenMode = function() {
+    document.body.classList.add('is-toggling-zen');
+    document.body.classList.toggle('zen-mode');
+    setTimeout(() => {
+        document.body.classList.remove('is-toggling-zen');
+    }, 400);
+    
+    // Save state
+    const isZen = document.body.classList.contains('zen-mode');
+    try { localStorage.setItem('pbi-zen-mode', isZen ? '1' : '0'); } catch(e) {}
+};
+
+// Restore Zen Mode on load
+document.addEventListener('DOMContentLoaded', () => {
+    try {
+        if (localStorage.getItem('pbi-zen-mode') === '1') {
+            document.body.classList.add('zen-mode');
+        }
+    } catch(e) {}
+});

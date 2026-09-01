@@ -3587,3 +3587,42 @@ svg.spinning {
 .wf-inline-refresh-btn:active {
     transform: scale(0.92);
 }
+
+
+/* --- Zen Mode (Focus Mode) --- */
+body.zen-mode #app-rail {
+    width: 0 !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    opacity: 0 !important;
+    overflow: hidden !important;
+}
+
+body.zen-mode .sidebar {
+    width: 0 !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    opacity: 0 !important;
+    overflow: hidden !important;
+}
+
+body.zen-mode #dragMe {
+    display: none !important;
+}
+
+.zen-mode-btn:hover {
+    background: var(--overlay-10) !important;
+    color: var(--text-primary) !important;
+}
+
+body.zen-mode .zen-icon-expand { display: none; }
+body.zen-mode .zen-icon-collapse { display: inline-block !important; }
+
+.sidebar {
+    transition: width 0.35s cubic-bezier(0.2, 0, 0, 1), min-width 0.35s cubic-bezier(0.2, 0, 0, 1), opacity 0.25s, padding 0.35s !important;
+}
+#app-rail {
+    transition: width 0.35s cubic-bezier(0.2, 0, 0, 1), min-width 0.35s cubic-bezier(0.2, 0, 0, 1), opacity 0.25s, padding 0.35s !important;
+}
