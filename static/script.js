@@ -119,33 +119,12 @@ function saveWfNames(names) {
 
 
 // ─── IDE App Rail & Workspace Navigation Controller ─────────────────
-window.toggleAppRail = function(action) {
+window.toggleAppRail = function() {
     const rail = document.getElementById('app-rail');
     if (!rail) return;
-    
-    if (action === 'collapse') {
-        // 保留此功能路径供外部调用（《按钮不再走此路径）
-        document.body.classList.toggle('rail-collapsed');
-        return;
-    }
-    
-    // 若处于完全隐藏态，先唤出到图标模式
-    if (document.body.classList.contains('rail-collapsed')) {
-        document.body.classList.remove('rail-collapsed');
-    }
-
-    // 60px ↔ 175px 展开态切换
     rail.classList.toggle('expanded');
     const isExpanded = rail.classList.contains('expanded');
     try { localStorage.setItem('pbi-rail-expanded', isExpanded ? 'true' : 'false'); } catch(e) {}
-};
-
-// 独立折叠 / 展开左侧二级菜单侧边栏 (Secondary Sidebar)
-window.toggleSidebar = function() {
-    const isCollapsed = document.body.classList.toggle('sidebar-collapsed');
-    try {
-        localStorage.setItem('pbi-sidebar-collapsed', isCollapsed ? 'true' : 'false');
-    } catch(e) {}
 };
 
 // 切换一级模块 (Workflows vs API Tree)
@@ -193,7 +172,7 @@ const WORKFLOW_METADATA = [
     { key: 'export_dataset_tables', icon: '🗄️', title: 'Export Dataset Tables', zh: '批量导出数据集表', desc: '批量将数据集物理表数据导出为 CSV' },
     { key: 'dataset_partitions_manager', icon: '🧩', title: 'Dataset Partitions Manager', zh: '数据集分区管理与定向刷新', desc: '穿透 Analysis Services 引擎，检测并执行单分区定向刷新' },
     { key: 'xmla_interactive_refresh', icon: '⚡', title: 'XMLA Interactive Refresh', zh: 'XMLA 交互式模型/表/分区刷新', desc: '基于 XMLA Endpoint 执行模型级/表级细粒度 TMSL 刷新' },
-    { key: 'global_user_manager', icon: '👥', title: 'Global User & Permissions Manager', zh: '全局用户管理与权限穿透审计 (Global User Manager)', desc: '跨工作区批量穿透检索用户权限、提权偏离诊断与全景可视化图表' },
+    { key: 'global_user_manager', icon: '👥', title: 'Global Permissions Manager', zh: '全局工作区权限矩阵', desc: '跨工作区批量检索用户权限、分配角色及批量剥离离职用户' },
     { key: 'report_view_count', icon: '📈', title: 'Admin Report View Count', zh: '报表访问热度统计', desc: '基于 Activity Events 审计日志统计报表访问频次与用户数' },
     { key: 'check_permissions', icon: '🛡️', title: 'Check Current Permissions', zh: 'Token 与权限全景体检', desc: '解包当前 Token Payload 并探测 API 权限范围' },
     { key: 'smart_pipeline', icon: '🚀', title: 'Smart DataOps Pipeline', zh: '智能数据流水线', desc: '自动绑定 Gateway、扫描元数据与数据集健康度巡检' },
@@ -2311,49 +2290,26 @@ window.renderGlobalTopbar = async function() {
     const topbar = document.getElementById('global-topbar');
     if (!topbar) return;
 
-    // 1. 初始化并回显认证模式 (Auth Mode) 及具体应用名称 / 用户名
+    // 1. 初始化并回显认证模式 (Auth Mode)
     try {
-        let authMode = 'service_principal';
-        let appName = localStorage.getItem('pbi_app_name') || '';
-        let clientId = '';
-        let username = '';
-
-        const setRes = await fetch('/api/settings');
-        const settings = await setRes.json();
-        if (settings) {
-            authMode = settings.AUTH_MODE || 'service_principal';
-            clientId = settings.CLIENT_ID || '';
-            username = settings.USERNAME || '';
-        }
-
-        const authInfoRes = await fetch('/api/auth-info');
-        const authInfo = await authInfoRes.json();
-        if (authInfo && authInfo.success) {
-            if (authInfo.app_name) appName = authInfo.app_name;
-            if (authInfo.username) username = authInfo.username;
-        }
-
-        const authSelect = document.getElementById('gtb-select-auth-mode');
-        const authIcon = document.getElementById('gtb-auth-icon');
-        if (authSelect) {
-            const spLabel = appName ? `Service Principal (${appName})` : (clientId ? `Service Principal (${clientId.slice(0, 8)}...)` : 'Service Principal');
-            const personalLabel = username ? `Personal (${username})` : 'Personal (Delegated User)';
-
-            authSelect.innerHTML = `
-                <option value="service_principal">${spLabel}</option>
-                <option value="personal">${personalLabel}</option>
-            `;
-            authSelect.value = authMode;
-            authSelect.className = `gtb-auth-select mode-${authMode === 'personal' ? 'personal' : 'sp'}`;
-        }
-        if (authIcon) {
-            authIcon.textContent = authMode === 'personal' ? '👤' : '🛡️';
+        const res = await fetch('/api/settings');
+        const settings = await res.json();
+        if (settings && settings.AUTH_MODE) {
+            const authSelect = document.getElementById('gtb-select-auth-mode');
+            const authIcon = document.getElementById('gtb-auth-icon');
+            if (authSelect) {
+                authSelect.value = settings.AUTH_MODE;
+                authSelect.className = `gtb-auth-select mode-${settings.AUTH_MODE === 'personal' ? 'personal' : 'sp'}`;
+            }
+            if (authIcon) {
+                authIcon.textContent = settings.AUTH_MODE === 'personal' ? '👤' : '🛡️';
+            }
         }
     } catch(e) {
         console.warn('Failed to fetch auth mode for topbar:', e);
     }
 
-    // 2. 加载工作区、模型和报表列表 (带 GUID 显示)
+    // 2. 加载工作区、模型和报表列表
     window.updateGlobalTopbarDropdowns();
 };
 
@@ -2373,15 +2329,13 @@ window.updateGlobalTopbarDropdowns = function() {
     const curDsId = document.getElementById('active-dataset')?.value || localStorage.getItem('pbi-active-dataset') || '';
     const curRpId = document.getElementById('active-report')?.value || localStorage.getItem('pbi-active-report') || '';
 
-    // 填充工作区下拉框 (同时显示名称与 GUID)
+    // 填充工作区下拉框
     let wsHtml = `<option value="">-- 选择工作区 (${wsData.length}) --</option>`;
     let activeWsName = '';
     wsData.forEach(w => {
         const isSel = (w.id === curWsId);
-        const name = w.alias || w.name || w.id;
-        if (isSel) activeWsName = name;
-        const displayLabel = `${name} (${w.id})`;
-        wsHtml += `<option value="${w.id}" ${isSel ? 'selected' : ''} title="${displayLabel}">${displayLabel}</option>`;
+        if (isSel) activeWsName = w.alias || w.name || w.id;
+        wsHtml += `<option value="${w.id}" ${isSel ? 'selected' : ''}>${w.alias || w.name || w.id}</option>`;
     });
     wsSelect.innerHTML = wsHtml;
 
@@ -2396,23 +2350,19 @@ window.updateGlobalTopbarDropdowns = function() {
         return !rWid || rWid === curWsId.toLowerCase();
     }) : rpData;
 
-    // 填充数据模型下拉框 (同时显示名称与 GUID)
+    // 填充数据模型下拉框
     let dsHtml = `<option value="">-- 选择模型 (${filteredDs.length}) --</option>`;
     filteredDs.forEach(d => {
         const isSel = (d.id === curDsId);
-        const name = d.alias || d.name || d.id;
-        const displayLabel = `${name} (${d.id})`;
-        dsHtml += `<option value="${d.id}" ${isSel ? 'selected' : ''} title="${displayLabel}">${displayLabel}</option>`;
+        dsHtml += `<option value="${d.id}" ${isSel ? 'selected' : ''}>${d.alias || d.name || d.id}</option>`;
     });
     dsSelect.innerHTML = dsHtml;
 
-    // 填充报表下拉框 (同时显示名称与 GUID)
+    // 填充报表下拉框
     let rpHtml = `<option value="">-- 选择报表 (${filteredRp.length}) --</option>`;
     filteredRp.forEach(r => {
         const isSel = (r.id === curRpId);
-        const name = r.alias || r.name || r.id;
-        const displayLabel = `${name} (${r.id})`;
-        rpHtml += `<option value="${r.id}" ${isSel ? 'selected' : ''} title="${displayLabel}">${displayLabel}</option>`;
+        rpHtml += `<option value="${r.id}" ${isSel ? 'selected' : ''}>${r.alias || r.name || r.id}</option>`;
     });
     rpSelect.innerHTML = rpHtml;
 
@@ -2425,10 +2375,6 @@ window.updateGlobalTopbarDropdowns = function() {
         } else {
             xmlaInput.value = '';
         }
-    }
-
-    if (window.initGumWorkspaceSelector) {
-        window.initGumWorkspaceSelector();
     }
 };
 
@@ -2577,18 +2523,6 @@ window.refreshGlobalContext = async function(btn) {
     }
 };
 
-// 向上折叠 / 展开全局功能控制栏
-window.toggleGlobalTopbarCollapse = function() {
-    const isCollapsed = document.body.classList.toggle('topbar-collapsed');
-    const handle = document.getElementById('gtb-expand-handle');
-    if (handle) {
-        handle.setAttribute('title', isCollapsed ? '展开全局功能栏 (Expand Global Topbar)' : '折叠全局功能栏 (Collapse Global Topbar)');
-    }
-    try {
-        localStorage.setItem('pbi-topbar-collapsed', isCollapsed ? 'true' : 'false');
-    } catch(e) {}
-};
-
 // 贯通所有工作流卡片内 Workspace / Dataset / Report 下拉框的即时自动继承与同步
 window.syncAllWorkflowSelectors = function() {
     const curWsId = document.getElementById('active-workspace')?.value || localStorage.getItem('pbi-active-workspace') || '';
@@ -2639,31 +2573,6 @@ window.syncAllWorkflowSelectors = function() {
     const xmlaInput = document.getElementById('gtb-input-xmla');
     if (xmlaWsInput && xmlaInput && xmlaInput.value) {
         xmlaWsInput.value = xmlaInput.value;
-    }
-
-    // 5. Datasource Inspector Workflow
-    const insWs = document.getElementById('wf-inspect-workspace');
-    const insRp = document.getElementById('wf-inspect-report');
-    const insDs = document.getElementById('wf-inspect-dataset');
-    if (insWs && curWsId && insWs.value !== curWsId) {
-        if (Array.from(insWs.options).some(o => o.value === curWsId)) {
-            insWs.value = curWsId;
-            if (window.wfInspectRefreshReport) window.wfInspectRefreshReport();
-            if (window.wfInspectRefreshDataset) window.wfInspectRefreshDataset();
-        } else {
-            if (window.initDatasourceInspectorWorkflow) window.initDatasourceInspectorWorkflow(true);
-        }
-    }
-    if (insRp && curRpId && insRp.value !== curRpId) {
-        if (Array.from(insRp.options).some(o => o.value === curRpId)) insRp.value = curRpId;
-    }
-    if (insDs && curDsId && insDs.value !== curDsId) {
-        if (Array.from(insDs.options).some(o => o.value === curDsId)) insDs.value = curDsId;
-    }
-
-    // 6. Global User Manager Workflow
-    if (window.initGumWorkspaceSelector) {
-        window.initGumWorkspaceSelector();
     }
 };
 
@@ -3165,46 +3074,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     }
 
-    window.updateRequestBodyCollapseState = function(hasBody = null) {
-        const container = document.getElementById('req-body-container') || document.querySelector('.body-editor-container');
-        const badge = document.getElementById('req-body-status-badge');
-        const toggleBtn = document.getElementById('toggle-req-body-btn');
-        const bodyInput = document.getElementById('request-body');
-        const methodSelect = document.getElementById('http-method');
 
-        if (!container) return;
-
-        if (hasBody === null) {
-            const val = (bodyInput?.value || '').trim();
-            const method = (methodSelect?.value || 'GET').toUpperCase();
-            hasBody = Boolean(val && val.length > 0 && !['GET', 'DELETE', 'HEAD'].includes(method));
-        }
-
-        if (!hasBody) {
-            container.classList.add('is-collapsed');
-            if (badge) badge.style.display = 'inline-block';
-            if (toggleBtn) {
-                const sp = toggleBtn.querySelector('span');
-                if (sp) sp.textContent = '展开';
-                else toggleBtn.textContent = '展开';
-            }
-        } else {
-            container.classList.remove('is-collapsed');
-            if (badge) badge.style.display = 'none';
-            if (toggleBtn) {
-                const sp = toggleBtn.querySelector('span');
-                if (sp) sp.textContent = '折叠';
-                else toggleBtn.textContent = '折叠';
-            }
-        }
-    };
-
-    window.toggleRequestBodyCollapse = function() {
-        const container = document.getElementById('req-body-container') || document.querySelector('.body-editor-container');
-        if (!container) return;
-        const isCurrentlyCollapsed = container.classList.contains('is-collapsed');
-        window.updateRequestBodyCollapseState(isCurrentlyCollapsed);
-    };
 
     function getOfficialDocUrl(ep) {
 
@@ -3556,18 +3426,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             });
 
-        }
-
-        if (methodSelect) {
-            methodSelect.addEventListener('change', () => {
-                const m = (methodSelect.value || '').toUpperCase();
-                if (['POST', 'PUT', 'PATCH'].includes(m)) {
-                    window.updateRequestBodyCollapseState(true);
-                } else {
-                    const val = (bodyInput?.value || '').trim();
-                    window.updateRequestBodyCollapseState(Boolean(val));
-                }
-            });
         }
 
 
@@ -5575,8 +5433,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     methodSelect.disabled = true; // 锁定 Method
 
                     bodyInput.value = ep.body;
-                    if (window.updateRequestBodyCollapseState) window.updateRequestBodyCollapseState(Boolean(ep.body && ep.body.trim()));
-                }
+
+                                    }
 
 
 
@@ -5671,7 +5529,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     methodSelect.disabled = true; // 锁定 Method
 
                     bodyInput.value = originalBody;
-                    if (window.updateRequestBodyCollapseState) window.updateRequestBodyCollapseState(Boolean(originalBody && originalBody.trim()));
 
                                         
 
@@ -6390,9 +6247,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateParamHints(originalPath);
 
         bodyInput.value = originalBody;
-        if (window.updateRequestBodyCollapseState) {
-            window.updateRequestBodyCollapseState(Boolean(originalBody && originalBody.trim()));
-        }
 
         
 
@@ -6623,9 +6477,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             endpointInput.dispatchEvent(new Event('input'));
 
             bodyInput.value = '';
-            if (window.updateRequestBodyCollapseState) {
-                window.updateRequestBodyCollapseState(false);
-            }
 
             toggleMethodBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span>Unlock</span>';
 
@@ -6948,9 +6799,6 @@ const loadReqHistory = (searchTerm = "") => {
                     updateParamHints(h.url);
 
                     bodyInput.value = h.body || '';
-                    if (window.updateRequestBodyCollapseState) {
-                        window.updateRequestBodyCollapseState(Boolean(h.body && h.body.trim()));
-                    }
 
                                         methodSelect.disabled = true;
 
@@ -7355,7 +7203,8 @@ const loadReqHistory = (searchTerm = "") => {
         });
 
     }
-    window.makeDraggable = makeDraggable;
+
+
 
     window.setupFLIPModal = function setupFLIPModal(btnOpen, btnClose, modalOverlay, onLoadCallback = null) {
 
@@ -8688,9 +8537,15 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
 
     // --- 恢复布局状态 ---
+
     const savedSidebarWidth = localStorage.getItem('pbi-sidebar-width');
+
     if (savedSidebarWidth) {
-        document.documentElement.style.setProperty('--sidebar-width', savedSidebarWidth);
+
+        sidebar.style.width = savedSidebarWidth;
+
+        sidebar.style.minWidth = savedSidebarWidth; document.documentElement.style.setProperty('--sidebar-width', savedSidebarWidth);
+
     }
 
     const bodyEditorContainer = document.querySelector('.body-editor-container');
@@ -8755,8 +8610,15 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
             let newWidth = e.clientX - sidebarLeft;
 
             if (newWidth < 200) newWidth = 200;
+
             if (newWidth > 600) newWidth = 600;
+
+            sidebar.style.width = `${newWidth}px`;
+
+            sidebar.style.minWidth = `${newWidth}px`;
+
             document.documentElement.style.setProperty('--sidebar-width', `${newWidth}px`);
+
         }
 
         
@@ -8817,7 +8679,10 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
             document.body.style.cursor = 'default';
 
-            localStorage.setItem('pbi-sidebar-width', getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width') || '280px');
+            document.body.style.userSelect = 'auto';
+
+            localStorage.setItem('pbi-sidebar-width', sidebar.style.width);
+
         }
 
         if (isVerticalResizing) {
@@ -11850,462 +11715,6 @@ window.updateHarnessStats = function() {
 
 
 
-// =========================================================================
-// Report & Dataset Datasource Inspector Workflow Client Controller
-// =========================================================================
-window._inspectResultCache = null;
-
-window.initDatasourceInspectorWorkflow = function(force = false) {
-    const wsSel = document.getElementById('wf-inspect-workspace');
-    const repSel = document.getElementById('wf-inspect-report');
-    const dsSel = document.getElementById('wf-inspect-dataset');
-    if (!wsSel) return;
-
-    // 绑定联动事件（保证仅首次初始化绑定一次）
-    if (!wsSel.dataset.hasInspectorHandler) {
-        wsSel.dataset.hasInspectorHandler = 'true';
-        wsSel.addEventListener('change', () => {
-            window.wfInspectRefreshReport();
-            window.wfInspectRefreshDataset();
-        });
-    }
-
-    if (repSel && !repSel.dataset.hasInspectorHandler) {
-        repSel.dataset.hasInspectorHandler = 'true';
-        repSel.addEventListener('change', () => {
-            const selectedOpt = repSel.options[repSel.selectedIndex];
-            const boundDsId = selectedOpt ? selectedOpt.getAttribute('data-dataset-id') : '';
-            if (boundDsId && dsSel) {
-                for (let i = 0; i < dsSel.options.length; i++) {
-                    if (dsSel.options[i].value === boundDsId) {
-                        dsSel.selectedIndex = i;
-                        break;
-                    }
-                }
-            }
-        });
-    }
-
-    // 自动刷新：如果尚未加载工作区或要求强制刷新，主动向后台拉取并驱动下级报表与模型刷新
-    if (force || wsSel.options.length <= 1) {
-        window.wfInspectRefreshWorkspace();
-    } else {
-        if (repSel && repSel.options.length <= 1) window.wfInspectRefreshReport();
-        if (dsSel && dsSel.options.length <= 1) window.wfInspectRefreshDataset();
-    }
-};
-
-window.wfInspectRefreshWorkspace = async function(btn) {
-    const wsSel = document.getElementById('wf-inspect-workspace');
-    const btnEl = btn || document.getElementById('wf-inspect-refresh-ws-btn');
-    if (!wsSel) return;
-    if (btnEl) btnEl.classList.add('spinning');
-
-    // 视觉过渡反馈
-    if (wsSel.options.length <= 1) {
-        wsSel.innerHTML = '<option value="">⏳ 正在获取工作区列表...</option>';
-    }
-
-    try {
-        // 1. 读取本地已配置/缓存的工作区全集
-        const savedWorkspaces = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
-        
-        // 2. 同时向后端 /groups 探查最新在线工作区
-        let liveGroups = [];
-        try {
-            const res = await fetch('/api/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ endpoint: '/groups', method: 'GET' })
-            });
-            const json = await res.json();
-            liveGroups = (json.data && json.data.value) ? json.data.value : [];
-        } catch (netErr) {
-            console.warn('Probe /groups failed, fallback to local settings:', netErr);
-        }
-
-        // 3. 智能全集去重合并 (保证已配置的全部工作区与远端新工作区均完整呈现)
-        const map = new Map();
-        savedWorkspaces.forEach(w => {
-            if (w && w.id) {
-                map.set(w.id.toLowerCase(), { id: w.id, name: w.alias || w.name || w.id });
-            }
-        });
-        liveGroups.forEach(w => {
-            if (w && w.id) {
-                const existing = map.get(w.id.toLowerCase());
-                map.set(w.id.toLowerCase(), { id: w.id, name: existing?.name || w.name || w.id });
-            }
-        });
-
-        const list = Array.from(map.values());
-        wsSel.innerHTML = '<option value="">-- 请选择 Workspace --</option>';
-        list.forEach(w => {
-            const opt = document.createElement('option');
-            opt.value = w.id;
-            opt.textContent = `${w.name} (${w.id.slice(0, 8)}...)`;
-            opt.title = `${w.name} (${w.id})`;
-            wsSel.appendChild(opt);
-        });
-
-        // 优先继承全局工作区，否则默认选中第一个有效工作区
-        const globalWs = document.getElementById('active-workspace')?.value || localStorage.getItem('pbi-active-workspace');
-        if (globalWs && list.some(w => w.id.toLowerCase() === globalWs.toLowerCase())) {
-            wsSel.value = list.find(w => w.id.toLowerCase() === globalWs.toLowerCase()).id;
-        } else if (list.length > 0) {
-            wsSel.selectedIndex = 1;
-        }
-
-        // 联动自动刷新下属的 Report 和 Dataset（带旋转动效）
-        await Promise.all([
-            window.wfInspectRefreshReport(),
-            window.wfInspectRefreshDataset()
-        ]);
-
-        if (window.showNotification && btn) window.showNotification(`成功刷新 ${list.length} 个工作区`, 'success');
-    } catch (e) {
-        wsSel.innerHTML = '<option value="">-- 获取失败，请点击右侧重试 --</option>';
-        if (window.showNotification) window.showNotification(`刷新工作区失败: ${e.message}`, 'error');
-    } finally {
-        if (btnEl) btnEl.classList.remove('spinning');
-    }
-};
-
-window.wfInspectRefreshReport = async function(btn) {
-    const wsSel = document.getElementById('wf-inspect-workspace');
-    const repSel = document.getElementById('wf-inspect-report');
-    const btnEl = btn || document.getElementById('wf-inspect-refresh-rep-btn');
-    if (!wsSel || !repSel) return;
-    const wsId = wsSel.value;
-    if (!wsId) {
-        repSel.innerHTML = '<option value="">-- All / Direct Select Model Below --</option>';
-        return;
-    }
-    if (btnEl) btnEl.classList.add('spinning');
-    repSel.innerHTML = '<option value="">⏳ 正在获取报表列表...</option>';
-
-    try {
-        // 1. 读取本地配置的报表集合中匹配此工作区的项
-        const savedReports = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
-        const localMatches = savedReports.filter(r => (r.workspaceId || '').trim().toLowerCase() === wsId.toLowerCase());
-
-        // 2. 在线拉取 /groups/${wsId}/reports
-        let liveReports = [];
-        try {
-            const res = await fetch('/api/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ endpoint: `/groups/${wsId}/reports`, method: 'GET' })
-            });
-            const json = await res.json();
-            liveReports = (json.data && json.data.value) ? json.data.value : [];
-        } catch (netErr) {
-            console.warn('Fetch live reports failed:', netErr);
-        }
-
-        // 3. 智能合并去重
-        const repMap = new Map();
-        localMatches.forEach(r => {
-            if (r && r.id) repMap.set(r.id.toLowerCase(), { id: r.id, name: r.alias || r.name || r.id, datasetId: r.datasetId });
-        });
-        liveReports.forEach(r => {
-            if (r && r.id) {
-                const existing = repMap.get(r.id.toLowerCase());
-                repMap.set(r.id.toLowerCase(), { id: r.id, name: existing?.name || r.name || r.id, datasetId: r.datasetId || existing?.datasetId });
-            }
-        });
-
-        const list = Array.from(repMap.values());
-        repSel.innerHTML = '<option value="">-- All / Direct Select Model Below --</option>';
-        list.forEach(r => {
-            const opt = document.createElement('option');
-            opt.value = r.id;
-            opt.textContent = r.name;
-            if (r.datasetId) opt.setAttribute('data-dataset-id', r.datasetId);
-            repSel.appendChild(opt);
-        });
-
-        const globalRp = document.getElementById('active-report')?.value || localStorage.getItem('pbi-active-report');
-        if (globalRp && list.some(r => r.id.toLowerCase() === globalRp.toLowerCase())) {
-            repSel.value = list.find(r => r.id.toLowerCase() === globalRp.toLowerCase()).id;
-        }
-
-        if (window.showNotification && btn) window.showNotification(`成功获取 ${list.length} 个报表`, 'success');
-    } catch (e) {
-        repSel.innerHTML = '<option value="">-- 获取失败，请点击右侧重试 --</option>';
-        if (window.showNotification && btn) window.showNotification(`获取报表失败: ${e.message}`, 'error');
-    } finally {
-        if (btnEl) btnEl.classList.remove('spinning');
-    }
-};
-
-window.wfInspectRefreshDataset = async function(btn) {
-    const wsSel = document.getElementById('wf-inspect-workspace');
-    const dsSel = document.getElementById('wf-inspect-dataset');
-    const btnEl = btn || document.getElementById('wf-inspect-refresh-ds-btn');
-    if (!wsSel || !dsSel) return;
-    const wsId = wsSel.value;
-    if (!wsId) {
-        dsSel.innerHTML = '<option value="">-- 请先选择 Workspace --</option>';
-        return;
-    }
-    if (btnEl) btnEl.classList.add('spinning');
-    dsSel.innerHTML = '<option value="">⏳ 正在获取语义模型列表...</option>';
-
-    try {
-        // 1. 读取本地配置的语义模型集合中匹配此工作区的项
-        const savedDatasets = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
-        const localMatches = savedDatasets.filter(d => (d.workspaceId || '').trim().toLowerCase() === wsId.toLowerCase());
-
-        // 2. 在线拉取 /groups/${wsId}/datasets
-        let liveDatasets = [];
-        try {
-            const res = await fetch('/api/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ endpoint: `/groups/${wsId}/datasets`, method: 'GET' })
-            });
-            const json = await res.json();
-            liveDatasets = (json.data && json.data.value) ? json.data.value : [];
-        } catch (netErr) {
-            console.warn('Fetch live datasets failed:', netErr);
-        }
-
-        // 3. 智能合并去重
-        const dsMap = new Map();
-        localMatches.forEach(d => {
-            if (d && d.id) dsMap.set(d.id.toLowerCase(), { id: d.id, name: d.alias || d.name || d.id });
-        });
-        liveDatasets.forEach(d => {
-            if (d && d.id) {
-                const existing = dsMap.get(d.id.toLowerCase());
-                dsMap.set(d.id.toLowerCase(), { id: d.id, name: existing?.name || d.name || d.id });
-            }
-        });
-
-        const list = Array.from(dsMap.values());
-        dsSel.innerHTML = '<option value="">-- 选择目标语义模型 (Dataset) --</option>';
-        list.forEach(d => {
-            const opt = document.createElement('option');
-            opt.value = d.id;
-            opt.textContent = d.name;
-            dsSel.appendChild(opt);
-        });
-
-        const globalDs = document.getElementById('active-dataset')?.value || localStorage.getItem('pbi-active-dataset');
-        if (globalDs && list.some(d => d.id.toLowerCase() === globalDs.toLowerCase())) {
-            dsSel.value = list.find(d => d.id.toLowerCase() === globalDs.toLowerCase()).id;
-        } else if (list.length > 0) {
-            dsSel.selectedIndex = 1;
-        }
-
-        if (window.showNotification && btn) window.showNotification(`成功获取 ${list.length} 个语义模型`, 'success');
-    } catch (e) {
-        dsSel.innerHTML = '<option value="">-- 获取失败，请点击右侧重试 --</option>';
-        if (window.showNotification && btn) window.showNotification(`获取语义模型失败: ${e.message}`, 'error');
-    } finally {
-        if (btnEl) btnEl.classList.remove('spinning');
-    }
-};
-
-window.runDatasourceInspectorWorkflow = async function() {
-    const wsId = document.getElementById('wf-inspect-workspace')?.value?.trim();
-    const repId = document.getElementById('wf-inspect-report')?.value?.trim();
-    const dsId = document.getElementById('wf-inspect-dataset')?.value?.trim();
-    const logsEl = document.getElementById('wf-out-inspect-logs');
-    const wrapEl = document.getElementById('wf-inspect-result-wrap');
-    const badgeEl = document.getElementById('wf-inspect-badge-stats');
-
-    if (!wsId) {
-        if (window.showNotification) window.showNotification('❌ 请先选择 Workspace！', 'error');
-        return;
-    }
-
-    if (logsEl) {
-        logsEl.innerHTML = '';
-        window.expandConsole('wf-out-inspect-logs');
-    }
-    if (wrapEl) wrapEl.style.display = 'none';
-
-    const appendLog = (msg) => {
-        if (logsEl) {
-            logsEl.innerText += msg + '\n';
-            logsEl.scrollTop = logsEl.scrollHeight;
-        }
-    };
-
-    appendLog(`[START] 发起数据源全景穿透分析 (Workspace: ${wsId}, Dataset: ${dsId || 'Auto'}, Report: ${repId || 'None'})...`);
-
-    try {
-        const payload = {
-            workspace_id: wsId,
-            report_id: repId || null,
-            dataset_id: dsId || null
-        };
-
-        const res = await fetch('/api/datasource/inspect', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        const data = await res.json();
-        if (data.logs && Array.isArray(data.logs)) {
-            data.logs.forEach(l => appendLog(l));
-        }
-
-        if (data.success) {
-            window._inspectResultCache = data;
-            appendLog(`\n🎉 穿透检测圆满成功！`);
-            appendLog(`  • 总体连接模式: ${data.overall_mode}`);
-            appendLog(`  • 执行引擎: ${data.engine_used}`);
-            appendLog(`  • 提取到物理表: ${data.tables ? data.tables.length : 0} 张`);
-            appendLog(`  • 数据源连接配置: ${data.datasources ? data.datasources.length : 0} 项\n`);
-
-            if (wrapEl) wrapEl.style.display = 'block';
-            if (badgeEl) {
-                badgeEl.textContent = `⚡ 模式: ${data.overall_mode} | 引擎: ${data.engine_used} | ${data.tables.length} 表`;
-            }
-
-            if (window.showNotification) {
-                window.showNotification(`✅ 数据源穿透分析完成: 【${data.overall_mode}】`, 'success');
-            }
-
-            // 自动弹窗呈现
-            window.openInspectResultModal();
-        } else {
-            appendLog(`❌ 穿透失败: ${data.message}`);
-            if (window.showNotification) window.showNotification(`❌ 分析失败: ${data.message}`, 'error');
-        }
-    } catch (e) {
-        appendLog(`❌ 网络/服务异常: ${e.message}`);
-        if (window.showNotification) window.showNotification(`❌ 请求异常: ${e.message}`, 'error');
-    }
-};
-
-window.openInspectResultModal = function() {
-    const data = window._inspectResultCache;
-    if (!data || !data.tables) {
-        if (window.showNotification) window.showNotification('暂无数据源穿透结果，请先运行工作流！', 'warning');
-        return;
-    }
-
-    const tableRows = data.tables.map((t, idx) => ({
-        '#': idx + 1,
-        tableName: t.tableName,
-        mode: t.mode,
-        sourceType: t.sourceType,
-        server: t.server || (data.datasources[0]?.server || '-'),
-        database: t.database || (data.datasources[0]?.database || '-'),
-        nativeSql: t.nativeSql ? t.nativeSql : '无嵌入原生SQL (纯M查询/表引用)',
-        mExpression: t.mExpression || '-',
-        columnsCount: t.columnsCount || 0,
-        actions: t
-    }));
-
-    if (window.showUniversalDataModal) {
-        window.showUniversalDataModal({
-            title: data.dataset_name || 'Dataset',
-            data: tableRows,
-            columns: ['#', 'tableName', 'mode', 'sourceType', 'server', 'database', 'nativeSql', 'actions'],
-            displayNames: ['#', 'Table Name (表名)', 'Mode (模式)', 'Source Type (源类型)', 'Server (服务器)', 'Database (数据库)', 'Native SQL (SQL语句)', 'Actions (操作)'],
-            enableSearch: true,
-            enableColumnFilter: true,
-            headerActions: [
-                {
-                    label: '🕸️ 全景血缘 DAG 图',
-                    title: '一键生成并查看该报表/模型的全景数据血缘拓扑 DAG 图',
-                    style: 'background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2)); border: 1px solid var(--accent); color: var(--accent); font-weight: 600;',
-                    onClick: () => {
-                        if (window.LineageExplorer) {
-                            window.LineageExplorer.openModal(data);
-                        }
-                    }
-                }
-            ],
-            cellRenderer: function(col, val, row) {
-                if (col === 'mode') {
-                    const m = String(val || '').toLowerCase();
-                    const color = m.includes('directquery') ? 'var(--warning)' : (m.includes('live') ? 'var(--info)' : 'var(--success)');
-                    return `<span class="badge" style="border: 1px solid ${color}; color: ${color}; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;">${val}</span>`;
-                }
-                if (col === 'nativeSql') {
-                    if (!val || val.includes('无嵌入原生SQL')) {
-                        return `<span style="color: var(--text-secondary); opacity: 0.6; font-size: 0.75rem;">${val}</span>`;
-                    }
-                    const cleanSql = String(val).replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                    return `<div style="font-family: monospace; font-size: 0.75rem; color: var(--accent); max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${cleanSql}">${cleanSql}</div>`;
-                }
-                if (col === 'actions') {
-                    const mExprEscaped = encodeURIComponent(row.mExpression || '');
-                    const sqlEscaped = encodeURIComponent(row.nativeSql || '');
-                    const tblNameEscaped = encodeURIComponent(row.tableName || '');
-                    return `
-                        <div style="display: flex; gap: 4px; align-items: center;">
-                            <button type="button" class="btn-wf-sm btn-wf-secondary" style="padding: 2px 6px; font-size: 0.72rem; color: var(--accent);" onclick="window.viewTableMExpression('${tblNameEscaped}', '${mExprEscaped}', '${sqlEscaped}')" title="查看完整 M 表达式与 SQL">
-                                📜 查看 M/SQL
-                            </button>
-                            <button type="button" class="btn-wf-sm btn-wf-secondary" style="padding: 2px 6px; font-size: 0.72rem;" onclick="navigator.clipboard.writeText(decodeURIComponent('${mExprEscaped}')); if(window.showNotification) window.showNotification('📋 M 表达式已复制到剪贴板！', 'success')" title="一键复制 M 查询">
-                                📋 复制 M
-                            </button>
-                        </div>
-                    `;
-                }
-                return undefined;
-            }
-        });
-    }
-};
-
-window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded) {
-    const tblName = decodeURIComponent(tblNameEncoded || '');
-    const mExpr = decodeURIComponent(mExprEncoded || '');
-    const sql = decodeURIComponent(sqlEncoded || '');
-
-    const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay';
-    overlay.style.display = 'flex';
-    overlay.style.zIndex = '25000';
-
-    overlay.innerHTML = `
-        <div class="modal-content glass-panel" style="width: min(90vw, 850px); max-height: min(88vh, 750px); display: flex; flex-direction: column;">
-            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--panel-border); padding: 12px 16px;">
-                <h3 style="margin: 0; font-size: 1rem; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
-                    <span>📜 表 [${tblName}] 数据源 M 表达式与 SQL 源码</span>
-                </h3>
-                <button type="button" class="close-btn" onclick="this.closest('.modal-overlay').remove()" title="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
-            </div>
-            <div class="modal-body" style="padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px;">
-                ${sql && !sql.includes('无嵌入原生SQL') ? `
-                    <div>
-                        <div style="font-size: 0.8rem; font-weight: bold; color: var(--accent); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
-                            <span>⚡ 原生 SQL 查询语句 (Native Query):</span>
-                            <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="navigator.clipboard.writeText(decodeURIComponent('${sqlEncoded}')); if(window.showNotification) window.showNotification('SQL 已复制！', 'success');">📋 复制 SQL</button>
-                        </div>
-                        <pre style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; padding: 10px; font-family: monospace; font-size: 0.78rem; color: var(--text-primary); white-space: pre-wrap; word-break: break-all; max-height: 180px; overflow-y: auto;">${sql.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
-                    </div>
-                ` : ''}
-                <div>
-                    <div style="font-size: 0.8rem; font-weight: bold; color: var(--text-secondary); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
-                        <span>🌿 Power Query M 完整表达式 (M Query):</span>
-                        <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="navigator.clipboard.writeText(decodeURIComponent('${mExprEncoded}')); if(window.showNotification) window.showNotification('M 表达式已复制！', 'success');">📋 复制 M 表达式</button>
-                    </div>
-                    <pre style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; padding: 12px; font-family: Consolas, monospace; font-size: 0.8rem; color: #4ec9b0; white-space: pre-wrap; word-break: break-all; max-height: 380px; overflow-y: auto; line-height: 1.45;">${(mExpr || '暂无 M 表达式').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
-                </div>
-            </div>
-            <div class="modal-footer" style="padding: 10px 16px; border-top: 1px solid var(--panel-border); display: flex; justify-content: flex-end;">
-                <button type="button" class="btn-wf-md btn-wf-secondary" onclick="this.closest('.modal-overlay').remove()">关闭 (Close)</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-};
-
-
-
-
-// Zen Mode / Focus Mode
-
     const populateWorkflowSelectors = () => {
         const knownReportWsMap = {
             "3a6e9e19-9aed-4372-a7d9-17155e9dd49d": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
@@ -12369,15 +11778,13 @@ window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded)
         fillSelect('wf-ds-workspace', 'pbi_workspaces');
         fillSelect('wf-ds-dataset', 'pbi_datasets');
         fillSelect('wf-rvc-workspace', 'pbi_workspaces');
-        fillSelect('wf-inspect-workspace', 'pbi_workspaces');
-        if (window.initGumWorkspaceSelector) window.initGumWorkspaceSelector();
 
         const activeW = document.getElementById('active-workspace')?.value;
         const activeR = document.getElementById('active-report')?.value;
         const activeD = document.getElementById('active-dataset')?.value;
 
         if (activeW) {
-            ['wf-exp-workspace', 'wf-vis-workspace', 'wf-ds-workspace', 'wf-rvc-workspace', 'wf-inspect-workspace'].forEach(id => {
+            ['wf-exp-workspace', 'wf-vis-workspace', 'wf-ds-workspace', 'wf-rvc-workspace'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = activeW;
             });
@@ -12393,10 +11800,9 @@ window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded)
         updateFilteredReports('wf-exp-workspace', 'wf-exp-report');
         updateFilteredReports('wf-vis-workspace', 'wf-vis-report');
         updateFilteredReports('wf-rvc-workspace', 'wf-rvc-report');
-        updateFilteredReports('wf-inspect-workspace', 'wf-inspect-report');
 
         if (activeR) {
-            ['wf-exp-report', 'wf-vis-report', 'wf-rvc-report', 'wf-inspect-report'].forEach(id => {
+            ['wf-exp-report', 'wf-vis-report', 'wf-rvc-report'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el && Array.from(el.options).some(o => o.value === activeR)) {
                     el.value = activeR;
@@ -12407,14 +11813,10 @@ window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded)
         if (activeD) {
             const el = document.getElementById('wf-ds-dataset');
             if (el) el.value = activeD;
-            const insDs = document.getElementById('wf-inspect-dataset');
-            if (insDs && Array.from(insDs.options).some(o => o.value === activeD)) {
-                insDs.value = activeD;
-            }
         }
 
-        // Bind workspace change events to dynamically re-filter reports and cascade refresh
-        ['wf-exp', 'wf-vis', 'wf-rvc', 'wf-inspect'].forEach(prefix => {
+        // Bind workspace change events to dynamically re-filter reports
+        ['wf-exp', 'wf-vis', 'wf-rvc'].forEach(prefix => {
             const wsElem = document.getElementById(`${prefix}-workspace`);
             if (wsElem && !wsElem._hasCascadeListener) {
                 wsElem._hasCascadeListener = true;
@@ -12423,22 +11825,12 @@ window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded)
                     if (prefix === 'wf-vis' && window.loadExportVisualPages) {
                         window.loadExportVisualPages();
                     }
-                    if (prefix === 'wf-inspect') {
-                        if (window.wfInspectRefreshReport) window.wfInspectRefreshReport();
-                        if (window.wfInspectRefreshDataset) window.wfInspectRefreshDataset();
-                    }
                 });
             }
         });
     };
     window.populateWorkflowSelectors = populateWorkflowSelectors;
     populateWorkflowSelectors();
-
-    // 页面初始化时，若当前工作流为 datasource_inspector，立即自动执行远端与本地工作区/报表/模型级联自动刷新
-    const curInitWf = document.getElementById('wf-selector')?.value || localStorage.getItem('pbi-last-workflow') || 'datasource_inspector';
-    if (curInitWf === 'datasource_inspector' && window.initDatasourceInspectorWorkflow) {
-        window.initDatasourceInspectorWorkflow(true);
-    }
 
 
 
@@ -12856,7 +12248,7 @@ window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded)
             if (val === 'datasource_inspector') {
                 if (inspectPane) inspectPane.style.display = 'block';
                 document.getElementById('wf-btn-runall').style.display = 'flex';
-                if (window.initDatasourceInspectorWorkflow) window.initDatasourceInspectorWorkflow(true);
+                if (window.initDatasourceInspectorWorkflow) window.initDatasourceInspectorWorkflow();
             } else if (val === 'smart_pipeline') {
                 document.getElementById('wf-config-smart_pipeline').style.display = 'block';
                 document.getElementById('wf-btn-runall').style.display = 'flex';
@@ -12877,10 +12269,12 @@ window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded)
                 document.getElementById('wf-btn-runall').style.display = 'flex';
 
             } else if (val === 'global_user_manager') {
-                document.getElementById('wf-config-global_user_manager').style.display = 'block';
-                document.getElementById('wf-btn-runall').style.display = 'flex';
-                if (window.initGumWorkspaceSelector) window.initGumWorkspaceSelector();
-            } else if (val === 'check_permissions') {
+
+                  document.getElementById('wf-config-global_user_manager').style.display = 'block';
+
+                  document.getElementById('wf-btn-runall').style.display = 'flex';
+
+              } else if (val === 'check_permissions') {
 
                 document.getElementById('wf-config-check_permissions').style.display = 'block';
 
@@ -16182,1044 +15576,368 @@ window.sortTable = function(thElement, event, colIndex) {
 // --- Global User Manager Logic ---
 
 window.gumData = [];
+
 window.gumWorkspaces = [];
-window.gumCandidateUsers = []; // Array of { identifier, displayName, principalType, role, workspaceId, workspaceName }
-window.gumWorkspaceUsersCache = new Map(); // wsId -> candidates array
-window.gumTargetUsers = new Map(); // identifier.toLowerCase() -> { identifier, displayName }
 
-window.initGumWorkspaceSelector = function() {
-    const sel = document.getElementById('wf-gum-workspace-select');
-    if (!sel) return;
-    const curVal = sel.value;
-    
-    // 汇聚所有来源的工作区列表 (localStorage, workspace-list UI, gumWorkspaces, allWorkspaces)
-    const rawList = [];
-    try {
-        const stored = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
-        if (Array.isArray(stored)) rawList.push(...stored);
-    } catch(e) {}
-    
-    if (typeof window.getListData === 'function') {
-        const liveList = window.getListData('workspace-list');
-        if (Array.isArray(liveList)) rawList.push(...liveList);
-    }
-    
-    if (Array.isArray(window.gumWorkspaces)) {
-        rawList.push(...window.gumWorkspaces);
-    }
-    if (Array.isArray(window.allWorkspaces)) {
-        rawList.push(...window.allWorkspaces);
-    }
-
-    // 按 ID 去重并解析展示名称
-    const uniqueMap = new Map();
-    rawList.forEach(ws => {
-        if (!ws) return;
-        const wsId = (ws.id || ws.workspaceId || '').trim();
-        if (!wsId) return;
-        const wsName = (ws.alias || ws.name || ws.displayName || wsId).trim();
-        if (!uniqueMap.has(wsId.toLowerCase())) {
-            uniqueMap.set(wsId.toLowerCase(), { id: wsId, name: wsName });
-        }
-    });
-
-    let html = '<option value="">全部已配置工作区 (All Configured Workspaces / 全局穿透审计)</option>';
-    uniqueMap.forEach(item => {
-        html += `<option value="${item.id}">${item.name} (${item.id})</option>`;
-    });
-    sel.innerHTML = html;
-
-    // 优先保留之前的选择，或同步当前顶栏活动工作区
-    const topWs = document.getElementById('active-workspace')?.value || localStorage.getItem('pbi-active-workspace') || '';
-    if (curVal && Array.from(sel.options).some(o => o.value.toLowerCase() === curVal.toLowerCase())) {
-        sel.value = curVal;
-    } else if (topWs && Array.from(sel.options).some(o => o.value.toLowerCase() === topWs.toLowerCase())) {
-        sel.value = topWs;
-    }
-
-    // 自动拉取当前选中工作区的候选用户列表
-    if (window.fetchGumWorkspaceUsers) {
-        window.fetchGumWorkspaceUsers(false);
-    }
-};
-
-window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
-    const wsSelect = document.getElementById('wf-gum-workspace-select');
-    const wsId = wsSelect?.value || '';
-    const candidateList = document.getElementById('wf-gum-candidate-list');
-    const candidateCount = document.getElementById('wf-gum-candidate-count');
-    if (!candidateList) return;
-
-    if (!wsId) {
-        window.gumCandidateUsers = [];
-        if (candidateCount) {
-            candidateCount.innerHTML = '<span style="color:var(--text-secondary); font-size:0.72rem;">(全局模式：点击右上角 Run 全量审计，或在上方搜索栏直接输入邮箱)</span>';
-        }
-        candidateList.innerHTML = '<div style="font-size: 0.75rem; color: var(--text-secondary); padding: 4px 0;">💡 当前为全部工作区模式，可直接在搜索栏输入定向邮箱（如 user@domain.com），或切换具体工作区拉取直属用户列表。点击右上角【Run】将全景扫描全部工作区。</div>';
-        return;
-    }
-
-    const wsName = wsSelect?.options[wsSelect.selectedIndex]?.text?.split(' (')[0] || wsId;
-
-    if (!forceRefresh && window.gumWorkspaceUsersCache && window.gumWorkspaceUsersCache.has(wsId)) {
-        window.gumCandidateUsers = window.gumWorkspaceUsersCache.get(wsId) || [];
-        window.renderGumCandidateUsers();
-        return;
-    }
-
-    if (candidateCount) {
-        candidateCount.innerHTML = '<span style="color:var(--accent); font-size:0.72rem;">⏳ 正在拉取工作区用户...</span>';
-    }
-    candidateList.innerHTML = '<div style="font-size: 0.75rem; color: var(--text-secondary); padding: 4px 0;">⏳ 正在连接 Power BI API 获取工作区用户列表...</div>';
-
-    try {
-        const res = await fetch('/api/proxy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                endpoint: `/groups/${wsId}/users`,
-                method: 'GET'
-            })
-        });
-        const rawData = await res.json();
-        const data = rawData.data || rawData;
-        const usersList = Array.isArray(data) ? data : (data.value || []);
-
-        const candidates = usersList.map(u => ({
-            identifier: (u.identifier || u.emailAddress || u.userPrincipalName || '').trim(),
-            displayName: (u.displayName || u.identifier || u.emailAddress || '').trim(),
-            principalType: u.principalType || 'User',
-            role: u.groupUserAccessRight || 'Viewer',
-            workspaceId: wsId,
-            workspaceName: wsName
-        })).filter(u => u.identifier);
-
-        window.gumCandidateUsers = candidates;
-        if (!window.gumWorkspaceUsersCache) window.gumWorkspaceUsersCache = new Map();
-        window.gumWorkspaceUsersCache.set(wsId, candidates);
-
-        window.renderGumCandidateUsers();
-    } catch(e) {
-        console.error('Failed to fetch workspace users:', e);
-        if (candidateCount) {
-            candidateCount.innerHTML = `<span style="color:var(--warning); font-size:0.72rem;">⚠️ 获取失败: ${e.message}</span>`;
-        }
-        candidateList.innerHTML = `<div style="font-size:0.75rem; color:var(--warning); padding:4px 0;">拉取失败，请检查网络或 Token 权限。您仍可在上方搜索栏直接输入目标邮箱。</div>`;
-    }
-};
-
-window.renderGumCandidateUsers = function(searchTerm = '') {
-    const candidateList = document.getElementById('wf-gum-candidate-list');
-    const candidateCount = document.getElementById('wf-gum-candidate-count');
-    if (!candidateList) return;
-
-    const term = (searchTerm || document.getElementById('wf-gum-search')?.value || '').toLowerCase().trim();
-    const allCandidates = window.gumCandidateUsers || [];
-
-    if (allCandidates.length === 0) {
-        const wsSelect = document.getElementById('wf-gum-workspace-select');
-        const wsId = wsSelect?.value || '';
-        if (wsId) {
-            if (candidateCount) candidateCount.innerHTML = '<span style="color:var(--text-secondary); font-size:0.72rem;">(0 位用户)</span>';
-            candidateList.innerHTML = '<div style="font-size: 0.75rem; color: var(--text-secondary); padding: 4px 0;">当前工作区暂无直接授权用户，可点击【🔄 刷新列表】重试。</div>';
-        }
-        return;
-    }
-
-    const filtered = term ? allCandidates.filter(u => 
-        u.identifier.toLowerCase().includes(term) ||
-        u.displayName.toLowerCase().includes(term) ||
-        u.role.toLowerCase().includes(term) ||
-        u.principalType.toLowerCase().includes(term)
-    ) : allCandidates;
-
-    const lockedInThisWs = allCandidates.filter(u => window.gumTargetUsers.has(u.identifier.toLowerCase())).length;
-
-    if (candidateCount) {
-        candidateCount.innerHTML = `(共 <b>${allCandidates.length}</b> 人${term ? `，匹配 <b>${filtered.length}</b> 人` : ''}，已锁定 <b style="color:var(--accent);">${lockedInThisWs}</b> 人)`;
-    }
-
-    if (filtered.length === 0) {
-        candidateList.innerHTML = `<div style="font-size: 0.75rem; color: var(--text-secondary); padding: 4px 0;">未找到与 "<b>${term}</b>" 匹配的候选用户。按 Enter 可将该关键词直接加入审计目标。</div>`;
-        return;
-    }
-
-    const typeIcons = {
-        'User': '👤',
-        'Group': '🛡️',
-        'App': '🤖'
-    };
-
-    candidateList.innerHTML = filtered.map(u => {
-        const isSelected = window.gumTargetUsers.has(u.identifier.toLowerCase());
-        const icon = typeIcons[u.principalType] || '👤';
-        const dispName = u.displayName || u.identifier;
-        const titleText = `${dispName} (${u.identifier})\n类型: ${u.principalType}\n直属角色: ${u.role}\n点击快速${isSelected ? '取消锁定' : '锁定为定向审计目标'}`;
-
-        return `
-            <div class="gum-candidate-chip ${isSelected ? 'selected' : ''}" onclick="window.toggleGumTargetUser('${u.identifier.replace(/'/g, "\\'")}', '${dispName.replace(/'/g, "\\'")}')" title="${titleText}">
-                <span class="gum-chip-check">✓</span>
-                <span>${icon}</span>
-                <span style="font-weight: 500;">${dispName}</span>
-                <span class="gum-chip-role">${u.role}</span>
-            </div>
-        `;
-    }).join('');
-};
-
-window.filterGumCandidateUsers = function() {
-    const searchInput = document.getElementById('wf-gum-search');
-    window.renderGumCandidateUsers(searchInput?.value || '');
-};
-
-window.toggleGumSelectAllCandidates = function() {
-    const candidates = window.gumCandidateUsers || [];
-    if (candidates.length === 0) {
-        if (window.showNotification) {
-            window.showNotification('当前没有可供全选的工作区候选用户', 'info');
-        }
-        return;
-    }
-
-    const allSelected = candidates.every(u => window.gumTargetUsers.has(u.identifier.toLowerCase()));
-
-    if (allSelected) {
-        candidates.forEach(u => {
-            window.gumTargetUsers.delete(u.identifier.toLowerCase());
-        });
-        if (window.showNotification) {
-            window.showNotification(`已取消锁定本工作区全部 ${candidates.length} 位候选用户`, 'info');
-        }
-    } else {
-        candidates.forEach(u => {
-            window.gumTargetUsers.set(u.identifier.toLowerCase(), {
-                identifier: u.identifier,
-                displayName: u.displayName || u.identifier
-            });
-        });
-        if (window.showNotification) {
-            window.showNotification(`已锁定本工作区全部 ${candidates.length} 位用户为审计目标`, 'success');
-        }
-    }
-
-    window.renderGumTargetTags();
-    window.renderGumCandidateUsers();
-    window.filterGumTable();
-};
 
 
 window.runGlobalUserManager = async function() {
+
     const logsDiv = document.getElementById('wf-out-gum-logs');
+
+    const tableDiv = document.getElementById('wf-out-gum-table');
+
     const statsSpan = document.getElementById('wf-gum-stats');
-    const resultWrap = document.getElementById('wf-gum-result-wrap');
+
     
+
     if (logsDiv) {
+
         logsDiv.innerHTML = '';
-        window.expandConsole('wf-out-gum-logs'); // 点击 Run 时自动展开
+
+        window.expandConsole('wf-out-gum-logs'); // 点击 Run 时自动展开（只展开，不折叠）
+
     }
+
+    if (tableDiv) tableDiv.innerHTML = 'Scanning workspaces...';
+
     if (statsSpan) statsSpan.textContent = '';
-    if (resultWrap) resultWrap.style.display = 'none';
-    
+
     window.gumData = [];
-    window.gumKpis = null;
-    window.gumChartData = null;
+
+    window.gumWorkspaces = [];
+
+
+
+    
 
     const appendLog = (msg) => {
-        if (!logsDiv) return;
+
         const div = document.createElement('div');
+
         div.style.marginBottom = '2px';
+
         div.style.paddingLeft = '10px';
+
         div.style.borderLeft = '2px solid var(--accent)';
+
         div.textContent = msg;
+
         logsDiv.appendChild(div);
+
         logsDiv.scrollTop = Math.max(0, logsDiv.scrollHeight - logsDiv.clientHeight * 0.66);
+
     };
 
-    try {
-        const isDeepAudit = document.getElementById('gum-deep-audit-mode')?.checked ?? true;
-        const selWorkspace = document.getElementById('wf-gum-workspace-select')?.value || '';
-        const isAdminMode = document.getElementById('gum-admin-mode')?.checked ?? false;
-        const onlyTargets = document.getElementById('wf-gum-only-targets-toggle')?.checked ?? true;
 
-        // 获取定向用户列表
-        let targetUsersList = [];
-        if (window.gumTargetUsers && window.gumTargetUsers.size > 0 && onlyTargets) {
-            targetUsersList = Array.from(window.gumTargetUsers.values()).map(u => u.identifier);
+
+    try {
+
+        const isAdminMode = document.getElementById('gum-admin-mode')?.checked;
+
+        
+
+        appendLog(`[1] Fetching workspaces (${isAdminMode ? 'Admin Mode: All Workspaces' : 'Standard Mode: Assigned Only'})...`);
+
+        
+
+        const wsEndpoint = isAdminMode ? '/admin/groups?$top=5000&$expand=users' : '/groups?$top=100';
+
+        
+
+        const wsRes = await fetch('/api/proxy', {
+
+            method: 'POST',
+
+            headers: { 'Content-Type': 'application/json' },
+
+            body: JSON.stringify({ endpoint: wsEndpoint, method: 'GET' })
+
+        });
+
+        
+
+        const wsData = await wsRes.json();
+
+        
+
+        if (!wsRes.ok || (wsData && wsData.success === false)) {
+
+            const errDetail = (wsData && (wsData.error || wsData.message)) ? (wsData.error || wsData.message) : wsRes.statusText;
+
+            if (isAdminMode) {
+
+                appendLog(`[ERROR] Admin Scan failed: ${errDetail}. Ensure Service Principal has Tenant.Read.All and is enabled in Power BI Admin Portal.`);
+
+            } else {
+
+                appendLog(`[ERROR] Fetch Workspaces failed: ${errDetail}`);
+
+            }
+
+            return;
+
         }
 
-        const targetScopeDesc = targetUsersList.length > 0 ? `定向锁定 [${targetUsersList.join(', ')}]` : '全部授权用户';
-        appendLog(`[1] 正在启动全景权限治理审计 (Deep: ${isDeepAudit ? '开启' : '关闭'}, 工作区: ${selWorkspace || '全部工作区'}, 范围: ${targetScopeDesc})...`);
+        
 
-        if (isDeepAudit) {
-            appendLog(`[2] 正在调用后端高性能并发扫描引擎 (/api/workflow/deep-permissions-scan)...`);
-            if (targetUsersList.length > 0) {
-                appendLog(`   -> 🎯 定向穿透模式激活：仅对 ${targetUsersList.length} 位选定用户执行生效碰撞与模型读写分析`);
-            } else {
-                appendLog(`   -> 穿透检索工作区直属角色 (Direct Workspace Roles)`);
-                appendLog(`   -> 穿透检索各语义模型细粒度读写底表 (Dataset Item Rights)`);
-                appendLog(`   -> 并发调用 Admin API /artifactAccess 获取最终生效权限并检测安全组提权偏离...`);
-            }
+        const wsPayload = wsData.data || wsData;
 
-            const payload = {
-                workspace_id: selWorkspace || null,
-                deep_scan: true
-            };
-            if (targetUsersList.length > 0) {
-                payload.target_users = targetUsersList;
-            }
+        const workspaces = Array.isArray(wsPayload) ? wsPayload : (wsPayload.value || []);
 
-            const res = await fetch('/api/workflow/deep-permissions-scan', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+        window.gumWorkspaces = workspaces;
 
-            const data = await res.json();
-            if (!res.ok || (data && data.success === false)) {
-                throw new Error(data.message || res.statusText || 'Deep Scan Failed');
-            }
+        appendLog(`[OK] Found ${workspaces.length} workspaces. Starting user processing...`);
 
-            window.gumData = data.records || [];
-            window.gumKpis = data.kpis || {};
-            window.gumChartData = data.chart_data || {};
 
-            appendLog(`\n[OK] 穿透审计完成！成功扫描 ${window.gumData.length} 个授权主体，覆盖 ${window.gumKpis.total_models || 0} 个语义模型。`);
-            if (window.gumKpis.elevated_count > 0) {
-                appendLog(`[⚠️ 警告] 发现 ${window.gumKpis.elevated_count} 处隐式继承提权异常（直属 Viewer 但通过安全组/管理员角色获得了读写权）！`);
-            } else {
-                appendLog(`[🟢 安全] 未发现异常隐式提权偏离，所有角色配置与生效状态严格一致。`);
-            }
 
-            // 渲染可视化仪表盘与图表
-            window.renderGumDashboardCharts();
-            window.filterGumTable();
+        
 
-        } else {
-            // 基础极速模式 (Legacy Standard Mode)
-            appendLog(`[2] 执行工作区直接角色极速扫描...`);
-            const wsEndpoint = isAdminMode ? '/admin/groups?$top=5000&$expand=users' : '/groups?$top=100';
-            const wsRes = await fetch('/api/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ endpoint: wsEndpoint, method: 'GET' })
-            });
-            const wsData = await wsRes.json();
-            const wsPayload = wsData.data || wsData;
-            const workspaces = Array.isArray(wsPayload) ? wsPayload : (wsPayload.value || []);
-            window.gumWorkspaces = workspaces;
+        let processed = 0;
+
+        let totalUsers = 0;
+
+        
+
+        if (isAdminMode) {
+
+            // In Admin mode, $expand=users provides all users immediately! No need to loop requests.
+
+            appendLog(`[2] Extracting users from Admin API response (Instant Mode)...`);
 
             for (const ws of workspaces) {
+
                 const users = ws.users || [];
+
                 for (const u of users) {
-                    const ident = u.identifier || u.emailAddress;
-                    if (targetUsersList.length > 0) {
-                        const matchesTarget = targetUsersList.some(t => t.toLowerCase() === (ident || '').toLowerCase());
-                        if (!matchesTarget) continue;
-                    }
+
                     window.gumData.push({
-                        workspaceId: ws.id,
-                        workspaceName: ws.name,
-                        identifier: ident,
-                        displayName: u.displayName || ident,
-                        graphId: u.graphId,
-                        principalType: u.principalType || 'User',
-                        directRole: u.groupUserAccessRight || 'Viewer',
-                        effectiveRole: u.groupUserAccessRight || 'Viewer',
-                        isElevated: false,
-                        canEditModels: ['Admin', 'Member', 'Contributor'].includes(u.groupUserAccessRight),
-                        securityStatus: `🟢 正常 (${u.groupUserAccessRight})`,
-                        datasetsDetail: []
+
+                        wsId: ws.id,
+
+                        wsName: ws.name,
+
+                        identifier: u.identifier,
+
+                        principalType: u.principalType,
+
+                        role: u.groupUserAccessRight
+
                     });
+
+                    totalUsers++;
+
                 }
+
             }
-            appendLog(`\n[DONE] 基础扫描完成，共获取 ${window.gumData.length} 条直属记录。`);
-            window.renderGumDashboardCharts();
-            window.filterGumTable();
+
+        } else {
+
+            // Standard mode requires looping over each workspace
+
+            for (const ws of workspaces) {
+
+                processed++;
+
+                appendLog(`[${processed}/${workspaces.length}] Scanning users for: ${ws.name}`);
+
+                try {
+
+                    const uRes = await fetch('/api/proxy', {
+
+                        method: 'POST',
+
+                        headers: { 'Content-Type': 'application/json' },
+
+                        body: JSON.stringify({ endpoint: `/groups/${ws.id}/users`, method: 'GET' })
+
+                    });
+
+                    if (uRes.ok) {
+
+                        const uData = await uRes.json();
+
+                        const uPayload = uData.data || uData;
+
+                        const users = uPayload.value || [];
+
+                        for (const u of users) {
+
+                            window.gumData.push({
+
+                                wsId: ws.id,
+
+                                wsName: ws.name,
+
+                                identifier: u.identifier,
+
+                                principalType: u.principalType,
+
+                                role: u.groupUserAccessRight
+
+                            });
+
+                            totalUsers++;
+
+                        }
+
+                    } else {
+
+                        appendLog(`   -> Failed: HTTP ${uRes.status}`);
+
+                    }
+
+                } catch (err) {
+
+                    appendLog(`   -> Error: ${err.message}`);
+
+                }
+
+                // Add a slight delay to avoid rate limiting
+
+                await new Promise(r => setTimeout(r, 100));
+
+            }
+
         }
+
+        
+
+        appendLog(`\n[DONE] Scan complete! Found ${totalUsers} user permission records across ${workspaces.length} workspaces.`);
+
+        window.filterGumTable();
+
+        
 
     } catch (e) {
-        appendLog(`[EXCEPTION] 扫描出错: ${e.message || e}`);
-    }
-};
 
-window.renderGumDashboardCharts = function() {
-    const container = document.getElementById('wf-gum-dashboard-charts');
-    if (!container) return;
+        appendLog(`[EXCEPTION] ${e.message || e}`);
 
-    const kpis = window.gumKpis || {};
-    const chartData = window.gumChartData || {};
-    const records = window.gumData || [];
-
-    const totalPrincipals = kpis.total_principals ?? records.length;
-    const directAdmins = kpis.direct_admins ?? records.filter(r => r.directRole === 'Admin').length;
-    const effectiveAdmins = kpis.effective_admins ?? records.filter(r => r.effectiveRole === 'Admin').length;
-    const elevatedCount = kpis.elevated_count ?? records.filter(r => r.isElevated).length;
-    const totalModels = kpis.total_models ?? 0;
-
-    // 1. KPI Cards HTML
-    const kpiHtml = `
-        <div class="gum-kpi-grid">
-            <div class="gum-kpi-card">
-                <div class="gum-kpi-label">👥 授权主体总数 (Total Principals)</div>
-                <div class="gum-kpi-val">${totalPrincipals}</div>
-                <div class="gum-kpi-sub">覆盖 ${kpis.workspaces_count || 1} 个工作区</div>
-            </div>
-            <div class="gum-kpi-card">
-                <div class="gum-kpi-label">🛡️ 最终生效管理员 (Effective Admins)</div>
-                <div class="gum-kpi-val" style="color: var(--accent);">${effectiveAdmins}</div>
-                <div class="gum-kpi-sub">直属配置管理员: ${directAdmins}</div>
-            </div>
-            <div class="gum-kpi-card ${elevatedCount > 0 ? 'warning-card' : ''}">
-                <div class="gum-kpi-label">⚠️ 隐式继承提权 (Elevation Drift)</div>
-                <div class="gum-kpi-val">${elevatedCount}</div>
-                <div class="gum-kpi-sub">${elevatedCount > 0 ? '检测到通过组继承获得模型写权限' : '未发现隐式提权风险'}</div>
-            </div>
-            <div class="gum-kpi-card">
-                <div class="gum-kpi-label">🗄️ 涉及语义模型 (Semantic Models)</div>
-                <div class="gum-kpi-val" style="color: var(--info, #0284c7);">${totalModels}</div>
-                <div class="gum-kpi-sub">细粒度读写权限穿透</div>
-            </div>
-        </div>
-    `;
-
-    // 2. Bar Chart (Direct vs Effective Role Distribution)
-    const roleComp = chartData.role_comparison || [
-        { role: 'Admin', direct: directAdmins, effective: effectiveAdmins },
-        { role: 'Member', direct: records.filter(r => r.directRole === 'Member').length, effective: records.filter(r => r.effectiveRole === 'Member').length },
-        { role: 'Viewer', direct: records.filter(r => r.directRole === 'Viewer').length, effective: records.filter(r => r.effectiveRole === 'Viewer').length }
-    ];
-
-    const maxVal = Math.max(1, ...roleComp.map(c => Math.max(c.direct || 0, c.effective || 0)));
-
-    let barRowsHtml = '';
-    roleComp.forEach(item => {
-        const dPct = ((item.direct || 0) / maxVal * 100).toFixed(1);
-        const ePct = ((item.effective || 0) / maxVal * 100).toFixed(1);
-        barRowsHtml += `
-            <div class="gum-bar-row">
-                <div class="gum-bar-labels">
-                    <span style="font-weight: 600; color: var(--text-primary);">${item.role} 角色</span>
-                    <span>直属: <b style="color:var(--info);">${item.direct || 0}</b> | 生效: <b style="color:var(--accent);">${item.effective || 0}</b></span>
-                </div>
-                <div class="gum-bar-track" title="直属 vs 生效占比">
-                    <div class="gum-bar-fill-direct" style="width: ${dPct}%;" title="直属配置: ${item.direct}"></div>
-                </div>
-                <div class="gum-bar-track" style="height: 6px; margin-top: -2px; background: transparent;">
-                    <div class="gum-bar-fill-effective" style="width: ${ePct}%;" title="最终生效: ${item.effective}"></div>
-                </div>
-            </div>
-        `;
-    });
-
-    // 3. Donut Chart (Pure SVG)
-    const donutBreakdown = chartData.donut_breakdown || [
-        { label: '直属管理员', count: directAdmins, color: '#6366f1' },
-        { label: '直属成员', count: records.filter(r => r.directRole === 'Member').length, color: '#0284c7' },
-        { label: '继承提权', count: elevatedCount, color: '#eab308' },
-        { label: '纯只读查看者', count: Math.max(0, records.filter(r => r.directRole === 'Viewer').length - elevatedCount), color: '#94a3b8' }
-    ];
-
-    const donutTotal = donutBreakdown.reduce((sum, item) => sum + (item.count || 0), 0) || 1;
-    let accumulatedAngle = 0;
-    const cx = 50, cy = 50, r = 38, strokeWidth = 14;
-    const circumference = 2 * Math.PI * r;
-
-    let svgDonutPaths = '';
-    donutBreakdown.forEach(slice => {
-        const sliceVal = slice.count || 0;
-        if (sliceVal <= 0) return;
-        const sliceLength = (sliceVal / donutTotal) * circumference;
-        const offset = circumference - accumulatedAngle;
-        svgDonutPaths += `
-            <circle cx="${cx}" cy="${cy}" r="${r}" fill="transparent"
-                stroke="${slice.color}" stroke-width="${strokeWidth}"
-                stroke-dasharray="${sliceLength} ${circumference}"
-                stroke-dashoffset="${-accumulatedAngle}"
-                style="transition: stroke-dasharray 0.6s ease, stroke-dashoffset 0.6s ease;">
-                <title>${slice.label}: ${sliceVal}</title>
-            </circle>
-        `;
-        accumulatedAngle += sliceLength;
-    });
-
-    let donutLegendHtml = '<div style="display: flex; flex-direction: column; gap: 6px; justify-content: center;">';
-    donutBreakdown.forEach(slice => {
-        donutLegendHtml += `
-            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.72rem; gap: 12px;">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                    <span style="width: 8px; height: 8px; border-radius: 50%; background: ${slice.color}; display: inline-block;"></span>
-                    <span style="color: var(--text-secondary);">${slice.label}</span>
-                </div>
-                <span style="font-weight: 700; color: var(--text-primary);">${slice.count || 0}</span>
-            </div>
-        `;
-    });
-    donutLegendHtml += '</div>';
-
-    // 4. Model Coverage Cards
-    const modelCoverage = chartData.model_coverage || [];
-    let modelCoverageHtml = '<div style="display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto;">';
-    if (modelCoverage.length > 0) {
-        modelCoverage.forEach(m => {
-            const wRatio = m.totalUsers > 0 ? ((m.writersCount / m.totalUsers) * 100).toFixed(0) : 0;
-            modelCoverageHtml += `
-                <div class="gum-model-card">
-                    <div style="display: flex; justify-content: space-between; font-size: 0.72rem;">
-                        <span style="font-weight: 600; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 140px;">${m.datasetName}</span>
-                        <span style="color: var(--text-secondary);">${m.writersCount} 读写 / ${m.readersCount} 只读</span>
-                    </div>
-                    <div class="gum-bar-track" style="height: 5px;">
-                        <div style="width: ${wRatio}%; background: var(--accent); height: 100%;"></div>
-                    </div>
-                </div>
-            `;
-        });
-    } else {
-        modelCoverageHtml += `<div style="font-size: 0.75rem; color: var(--text-secondary); padding: 8px;">无可用模型覆盖度数据</div>`;
-    }
-    modelCoverageHtml += '</div>';
-
-    // Combine All Dashboard
-    container.innerHTML = `
-        ${kpiHtml}
-        <div class="gum-charts-grid">
-            <!-- Left Chart: Direct vs Effective Role Distribution -->
-            <div class="gum-chart-card">
-                <div class="gum-chart-title">
-                    <span>📊 直属角色 vs 生效权限分布对比 (Direct vs Effective)</span>
-                    <span style="font-size: 0.7rem; font-weight: normal; color: var(--text-secondary);">条形进度图</span>
-                </div>
-                <div>${barRowsHtml}</div>
-            </div>
-
-            <!-- Right Chart: Donut Composition -->
-            <div class="gum-chart-card">
-                <div class="gum-chart-title">
-                    <span>🍩 权限构成与风险分布 (Composition & Risk)</span>
-                    <span style="font-size: 0.7rem; font-weight: normal; color: var(--text-secondary);">环形比例</span>
-                </div>
-                <div style="display: flex; align-items: center; justify-content: space-around; gap: 10px;">
-                    <svg width="100" height="100" viewBox="0 0 100 100" style="transform: rotate(-90deg); flex-shrink: 0;">
-                        ${svgDonutPaths || `<circle cx="50" cy="50" r="38" fill="transparent" stroke="var(--overlay-15)" stroke-width="14" />`}
-                    </svg>
-                    ${donutLegendHtml}
-                </div>
-            </div>
-        </div>
-    `;
-};
-
-window.setGumPillFilter = function(filterType, btn) {
-    window._gumPillFilter = filterType;
-    document.querySelectorAll('#wf-gum-filter-pills .gum-filter-pill').forEach(el => el.classList.remove('active'));
-    if (btn) btn.classList.add('active');
-    window.filterGumTable();
-};
-
-// --- Targeted Principals (定向用户审计与级联筛选) ---
-
-window.addGumTargetUser = function(identifier, displayName) {
-    if (!identifier) return;
-    const cleanId = identifier.trim();
-    if (!cleanId) return;
-    window.gumTargetUsers.set(cleanId.toLowerCase(), {
-        identifier: cleanId,
-        displayName: displayName || cleanId
-    });
-    window.renderGumTargetTags();
-    if (window.renderGumCandidateUsers) window.renderGumCandidateUsers();
-    window.filterGumTable();
-    if (window.showNotification) {
-        window.showNotification(`已将 "${displayName || cleanId}" 锁定为定向审计目标`, 'success');
-    }
-};
-
-window.removeGumTargetUser = function(identifier) {
-    if (!identifier) return;
-    window.gumTargetUsers.delete(identifier.trim().toLowerCase());
-    window.renderGumTargetTags();
-    if (window.renderGumCandidateUsers) window.renderGumCandidateUsers();
-    window.filterGumTable();
-};
-
-window.clearGumTargetUsers = function() {
-    window.gumTargetUsers.clear();
-    window.renderGumTargetTags();
-    if (window.renderGumCandidateUsers) window.renderGumCandidateUsers();
-    window.filterGumTable();
-    if (window.showNotification) {
-        window.showNotification('已清空定向审计目标用户', 'info');
-    }
-};
-
-window.toggleGumTargetUser = function(identifier, displayName) {
-    if (!identifier) return;
-    const key = identifier.trim().toLowerCase();
-    if (window.gumTargetUsers.has(key)) {
-        window.removeGumTargetUser(key);
-    } else {
-        window.addGumTargetUser(identifier, displayName);
-    }
-};
-
-window.renderGumTargetTags = function() {
-    const bar = document.getElementById('wf-gum-target-tags-bar');
-    const container = document.getElementById('wf-gum-target-tags-container');
-    const countSpan = document.getElementById('wf-gum-target-count');
-    if (!bar || !container) return;
-
-    const count = window.gumTargetUsers.size;
-    if (countSpan) countSpan.textContent = count;
-
-    if (count === 0) {
-        bar.style.display = 'none';
-        container.innerHTML = '<span style="font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 4px;">🎯 定向审计目标用户 (<span id="wf-gum-target-count">0</span>):</span>';
-        return;
     }
 
-    bar.style.display = 'flex';
-    let html = `<span style="font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 4px;">🎯 定向审计目标用户 (<span id="wf-gum-target-count">${count}</span>):</span>`;
-    
-    window.gumTargetUsers.forEach((userObj) => {
-        const disp = (userObj.displayName && userObj.displayName !== userObj.identifier) ? `${userObj.displayName} (${userObj.identifier})` : userObj.identifier;
-        html += `
-            <span class="gum-target-tag" style="display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; background: var(--accent); color: #fff; border-radius: 12px; font-size: 0.73rem; font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.15);">
-                <span>${disp}</span>
-                <span onclick="window.removeGumTargetUser('${userObj.identifier}')" style="cursor: pointer; font-weight: bold; opacity: 0.85; font-size: 0.8rem; margin-left: 2px;" title="移除该目标">✕</span>
-            </span>
-        `;
-    });
-    container.innerHTML = html;
 };
 
-window.toggleGumUserSelect = function(identifier, displayName, isChecked) {
-    if (!identifier) return;
-    const key = identifier.trim().toLowerCase();
-    if (isChecked) {
-        window.gumTargetUsers.set(key, { identifier, displayName: displayName || identifier });
-    } else {
-        window.gumTargetUsers.delete(key);
-    }
-    window.renderGumTargetTags();
-    if (window.renderGumCandidateUsers) window.renderGumCandidateUsers();
-    window.updateGumSelectAllStatus();
-    window.filterGumTable();
-};
 
-window.toggleGumSelectAll = function(isChecked) {
-    const dataset = window._lastGumFiltered || window.gumData || [];
-    if (!dataset || dataset.length === 0) return;
-
-    if (isChecked) {
-        dataset.forEach(d => {
-            if (d.identifier) {
-                window.gumTargetUsers.set(d.identifier.trim().toLowerCase(), {
-                    identifier: d.identifier,
-                    displayName: d.displayName || d.identifier
-                });
-            }
-        });
-    } else {
-        dataset.forEach(d => {
-            if (d.identifier) {
-                window.gumTargetUsers.delete(d.identifier.trim().toLowerCase());
-            }
-        });
-    }
-
-    window.renderGumTargetTags();
-    if (window.renderGumCandidateUsers) window.renderGumCandidateUsers();
-    window.renderGumInlineTable(dataset);
-};
-
-window.updateGumSelectAllStatus = function() {
-    const selectAllBox = document.getElementById('wf-gum-select-all');
-    if (!selectAllBox) return;
-    const dataset = window._lastGumFiltered || window.gumData || [];
-    if (!dataset || dataset.length === 0) {
-        selectAllBox.checked = false;
-        return;
-    }
-    const allSelected = dataset.length > 0 && dataset.every(d => window.gumTargetUsers.has((d.identifier || '').trim().toLowerCase()));
-    selectAllBox.checked = allSelected;
-};
-
-window.handleGumSearchEnter = function(val) {
-    const cleanVal = (val || '').trim();
-    if (!cleanVal) return;
-
-    // 解析逗号/分号/空格分隔的多个用户邮箱或标识
-    const tokens = cleanVal.split(/[,;\s]+/).filter(Boolean);
-    let addedCount = 0;
-    tokens.forEach(t => {
-        if (t.includes('@') || t.length >= 2) {
-            window.gumTargetUsers.set(t.toLowerCase(), { identifier: t, displayName: t });
-            addedCount++;
-        }
-    });
-
-    if (addedCount > 0) {
-        const searchInput = document.getElementById('wf-gum-search');
-        if (searchInput) searchInput.value = '';
-        window.renderGumTargetTags();
-        if (window.renderGumCandidateUsers) window.renderGumCandidateUsers();
-        if (window.showNotification) {
-            window.showNotification(`已锁定 ${addedCount} 个目标用户，点击右上角【Run】即可启动定向穿透审计！`, 'success');
-        }
-        if (window.gumData && window.gumData.length > 0) {
-            window.filterGumTable();
-        }
-    }
-};
-
-window.renderGumInlineTable = function(filtered) {
-    const tbody = document.getElementById('wf-gum-inline-tbody');
-    const emptyDiv = document.getElementById('wf-gum-inline-empty');
-    if (!tbody) return;
-
-    if (!filtered || filtered.length === 0) {
-        tbody.innerHTML = '';
-        if (emptyDiv) emptyDiv.style.display = 'block';
-        return;
-    }
-
-    if (emptyDiv) emptyDiv.style.display = 'none';
-
-    tbody.innerHTML = filtered.map((d, idx) => {
-        const wsName = d.workspaceName || d.wsName || '未知工作区';
-        const userTitle = d.displayName ? `${d.displayName} <span style="color:var(--text-secondary);font-size:0.7rem;">(${d.identifier})</span>` : d.identifier;
-        const pType = d.principalType || 'User';
-        const dRole = d.directRole || d.role || '-';
-        const eRole = d.effectiveRole || d.role || '-';
-        const isAdm = eRole === 'Admin';
-        const roleColor = isAdm ? 'var(--accent)' : (eRole === 'Member' ? 'var(--info, #0284c7)' : 'var(--text-primary)');
-        const canWrite = d.canEditModels;
-        const writeBadge = canWrite ? `<span style="color:var(--success, #10b981);font-weight:600;">✅ 全部可读写</span>` : `<span style="color:var(--text-secondary);">❌ 纯只读</span>`;
-        
-        let secStatus = `<span style="color:var(--success, #10b981);">🟢 正常</span>`;
-        if (d.isElevated) {
-            secStatus = `<span style="padding:2px 6px;border-radius:6px;background:rgba(234,179,8,0.15);color:var(--warning,#eab308);font-weight:600;font-size:0.7rem;border:1px solid rgba(234,179,8,0.3);cursor:pointer;" onclick="window.showGumUserDetailModal(${idx})" title="点击查看提权成因">⚠️ 继承提权</span>`;
-        } else if (d.securityStatus && d.securityStatus.includes('⚠️')) {
-            secStatus = `<span style="color:var(--warning,#eab308);font-weight:600;">${d.securityStatus}</span>`;
-        }
-
-        const wsId = d.workspaceId || d.wsId;
-        const identifier = d.identifier;
-        const isTarget = window.gumTargetUsers.has((identifier || '').trim().toLowerCase());
-        const lockBtnText = isTarget ? '🎯 已锁定' : '🎯 设为目标';
-        const lockBtnClass = isTarget ? 'btn-wf-primary' : 'btn-wf-secondary';
-
-        return `
-            <tr style="border-bottom: 1px solid var(--overlay-5); transition: background 0.15s; ${isTarget ? 'background: rgba(99,102,241,0.06);' : ''}">
-                <td style="padding: 7px 10px; text-align: center;">
-                    <input type="checkbox" class="gum-row-select" data-identifier="${identifier}" ${isTarget ? 'checked' : ''} onchange="window.toggleGumUserSelect('${identifier}', '${d.displayName || identifier}', this.checked)" style="cursor: pointer; margin: 0;">
-                </td>
-                <td style="padding: 7px 10px; max-width: 140px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="${wsName}"><b>${wsName}</b></td>
-                <td style="padding: 7px 10px; max-width: 180px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="${d.identifier}">${userTitle}</td>
-                <td style="padding: 7px 10px;"><span style="padding:2px 6px;border-radius:4px;background:var(--overlay-10);font-size:0.72rem;">${pType}</span></td>
-                <td style="padding: 7px 10px;"><span style="padding:2px 6px;border-radius:4px;background:var(--overlay-8);font-size:0.72rem;color:var(--text-secondary);">${dRole}</span></td>
-                <td style="padding: 7px 10px;"><span style="font-weight:700;color:${roleColor};">${eRole}</span></td>
-                <td style="padding: 7px 10px;">${writeBadge}</td>
-                <td style="padding: 7px 10px;">${secStatus}</td>
-                <td style="padding: 7px 10px; text-align: center;">
-                    <div style="display:flex;gap:4px;align-items:center;justify-content:center;">
-                        <button class="btn-wf-sm ${lockBtnClass}" style="padding:2px 6px;font-size:0.7rem;height:22px;" onclick="window.toggleGumTargetUser('${identifier}', '${d.displayName || identifier}')" title="${isTarget ? '点击取消该定向目标' : '勾选此用户作为下一次定向穿透审计的条件'}">${lockBtnText}</button>
-                        <button class="btn-wf-sm btn-wf-secondary" style="padding:2px 6px;font-size:0.7rem;height:22px;" onclick="window.showGumUserDetailModal(${idx})" title="查看该用户针对所有语义模型的细粒度权限拓扑">🔍 画像</button>
-                        <button class="btn-action-danger" style="padding:2px 6px;font-size:0.7rem;height:22px;" onclick="if(window.deleteGumUser) window.deleteGumUser('${wsId}', '${identifier}', '${wsName}')" title="从工作区移除该用户">移除</button>
-                    </div>
-                </td>
-            </tr>
-        `;
-    }).join('');
-};
 
 window.filterGumTable = function() {
-    const searchInput = document.getElementById('wf-gum-search');
-    const rawTerm = searchInput?.value || '';
-    const term = rawTerm.toLowerCase().trim();
+
+    const term = (document.getElementById('wf-gum-search').value || '').toLowerCase();
+
     const statsSpan = document.getElementById('wf-gum-stats');
+
     const resultWrap = document.getElementById('wf-gum-result-wrap');
-    const placeholder = document.getElementById('wf-gum-empty-placeholder');
-    const emptyText = document.getElementById('wf-gum-empty-text');
-    const clearBtn = document.getElementById('wf-gum-search-clear');
-    const pillFilter = window._gumPillFilter || 'all';
-    const selectedWs = document.getElementById('wf-gum-workspace-select')?.value || '';
-    const onlyTargets = document.getElementById('wf-gum-only-targets-toggle')?.checked ?? true;
 
-    // Update clear button visibility
-    if (clearBtn) {
-        clearBtn.style.display = rawTerm ? 'block' : 'none';
-    }
+    
 
-    if (!window.gumData || window.gumData.length === 0) {
-        if (placeholder) placeholder.style.display = 'block';
-        if (resultWrap) resultWrap.style.display = 'none';
-        if (emptyText) {
-            if (term) {
-                emptyText.innerHTML = `🔍 正在检索关键词 "<b>${rawTerm}</b>"... 当前尚未执行全景权限扫描，请点击右上角【Run】启动审计获取完整结果。`;
-            } else if (window.gumTargetUsers.size > 0) {
-                emptyText.innerHTML = `🎯 已锁定 <b>${window.gumTargetUsers.size}</b> 个定向审计目标用户。请点击右上角【Run】按钮启动精准穿透审计。`;
-            } else {
-                emptyText.innerHTML = `👥 尚未执行全景权限扫描。请在上方选择/勾选用户后，点击右上角【Run】启动审计。`;
-            }
-        }
-        return;
-    }
+    const filtered = (window.gumData || []).filter(d => 
 
-    if (placeholder) placeholder.style.display = 'none';
-    if (resultWrap) resultWrap.style.display = 'block';
+        (d.wsName || '').toLowerCase().includes(term) ||
 
-    const tokens = term ? term.split(/\s+/).filter(Boolean) : [];
+        (d.identifier || '').toLowerCase().includes(term) ||
 
-    let filtered = (window.gumData || []).filter(d => {
-        // Workspace Dropdown Filter
-        if (selectedWs && d.workspaceId !== selectedWs && d.wsId !== selectedWs) {
-            return false;
-        }
+        (d.role || '').toLowerCase().includes(term) ||
 
-        // Targeted Users Filter (when toggle is on and targets are selected)
-        if (onlyTargets && window.gumTargetUsers.size > 0) {
-            const userKey = (d.identifier || '').trim().toLowerCase();
-            if (!window.gumTargetUsers.has(userKey)) {
-                return false;
-            }
-        }
+        (d.principalType || '').toLowerCase().includes(term)
 
-        // Pill Match
-        if (pillFilter === 'elevated' && !d.isElevated) return false;
-        if (pillFilter === 'admin' && d.effectiveRole !== 'Admin' && d.directRole !== 'Admin') return false;
-        if (pillFilter === 'viewer' && (d.effectiveRole !== 'Viewer' || d.isElevated)) return false;
+    );
 
-        // Multi-Token Text Match
-        if (tokens.length > 0) {
-            const wsName = (d.workspaceName || d.wsName || '').toLowerCase();
-            const identifier = (d.identifier || '').toLowerCase();
-            const displayName = (d.displayName || '').toLowerCase();
-            const principalType = (d.principalType || '').toLowerCase();
-            const directRole = (d.directRole || d.role || '').toLowerCase();
-            const effectiveRole = (d.effectiveRole || d.role || '').toLowerCase();
-            const securityStatus = (d.securityStatus || '').toLowerCase();
-            const datasetNames = (d.datasetsDetail || []).map(ds => (ds.name || '').toLowerCase()).join(' ');
-
-            const compositeString = `${wsName} ${identifier} ${displayName} ${principalType} ${directRole} ${effectiveRole} ${securityStatus} ${datasetNames}`;
-
-            for (const t of tokens) {
-                if (!compositeString.includes(t)) {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    });
+    
 
     window._lastGumFiltered = filtered;
-    if (statsSpan) {
-        const total = window.gumData.length;
-        statsSpan.textContent = `筛选结果: ${filtered.length} / ${total} 条记录`;
+
+    if (statsSpan) statsSpan.textContent = `${filtered.length} records`;
+
+    if (resultWrap) resultWrap.style.display = 'block';
+
+    
+
+    // If modal is currently open, refresh it live
+
+    if (document.getElementById('gum-result-expand-overlay')) {
+
+        window.renderGumModalTable();
+
     }
 
-    // 渲染实时内嵌表格
-    window.renderGumInlineTable(filtered);
-    window.updateGumSelectAllStatus();
-
-    // If modal is open, re-render
-    if (document.getElementById('universal-modal-overlay') && document.getElementById('universal-modal-title')?.textContent?.includes('Global Workspace Permissions')) {
-        window.openGumResultModal();
-    }
 };
 
-window.handleGumWorkspaceChange = function(wsId) {
-    if (window.fetchGumWorkspaceUsers) {
-        window.fetchGumWorkspaceUsers(false);
-    }
-    if (window.gumData && window.gumData.length > 0) {
-        window.filterGumTable();
-    }
-};
 
 
 window.openGumResultModal = function() {
-    const term = (document.getElementById('wf-gum-search')?.value || '');
+
     const data = window._lastGumFiltered || window.gumData || [];
+
     if (!data || data.length === 0) {
-        if (window.showNotification) window.showNotification('暂无匹配的权限记录，请先执行扫描。', 'info');
+
+        window.showNotification('No permissions records to display. Run scan first.', 'info');
+
         return;
+
     }
 
-    const mappedData = data.map((d, idx) => ({
-        'Workspace': d.workspaceName || d.wsName,
-        'User / Principal': `${d.displayName || d.identifier} (${d.identifier})`,
-                'Type': d.principalType,
-        'Direct Role': d.directRole || d.role,
-        'Effective Access': d.effectiveRole || d.role,
-        'Model Write Access': d.canEditModels ? '✅ 全部可读写' : '❌ 纯只读',
-        'Security Status': d.securityStatus || (d.isElevated ? '⚠️ 继承提权' : '🟢 正常'),
-        'Actions': '', // rendered dynamically
 
-        _raw: d,
-        _idx: idx,
-        _wsId: d.workspaceId || d.wsId,
-        _identifier: d.identifier,
-        _wsName: d.workspaceName || d.wsName
+
+    const mappedData = data.map(d => ({
+
+        'Workspace': d.wsName,
+
+        'User / Principal': d.identifier,
+
+        'Type': d.principalType,
+
+        'Role': d.role,
+
+        'Actions': '', // placeholder
+
+        
+
+        _wsId: d.wsId,
+
+        _identifier: d.identifier
+
     }));
 
+
+
     if (window.showUniversalDataModal) {
+
         window.showUniversalDataModal({
-            title: 'Global Workspace Permissions & Effective Access Matrix',
+
+            title: 'Global Workspace Permissions',
+
             data: mappedData,
-            initialSearch: term,
-            columns: ['Workspace', 'User / Principal', 'Type', 'Direct Role', 'Effective Access', 'Model Write Access', 'Security Status', 'Actions'],
+
+            columns: ['Workspace', 'User / Principal', 'Type', 'Role', 'Actions'],
+
             cellRenderer: (col, val, row) => {
+
                 if (col === 'Type') {
-                    return `<span style="padding:2px 6px;border-radius:4px;background:var(--overlay-10);font-size:0.75rem;">${val}</span>`;
+
+                    return '<span style="padding:2px 6px;border-radius:4px;background:var(--overlay-10);font-size:0.75rem;">' + val + '</span>';
+
                 }
-                if (col === 'Direct Role') {
-                    return `<span style="padding:2px 6px;border-radius:4px;background:var(--overlay-8);font-size:0.75rem;color:var(--text-secondary);">${val}</span>`;
+
+                if (col === 'Role') {
+
+                    return '<span style="font-weight:bold;color:var(--accent);">' + val + '</span>';
+
                 }
-                if (col === 'Effective Access') {
-                    const isAdm = val === 'Admin';
-                    const color = isAdm ? 'var(--accent)' : (val === 'Member' ? 'var(--info)' : 'var(--text-primary)');
-                    return `<span style="font-weight:700;color:${color};">${val}</span>`;
-                }
-                if (col === 'Model Write Access') {
-                    const isWrite = val.includes('✅');
-                    return `<span style="font-size:0.75rem;font-weight:600;color:${isWrite ? 'var(--success, #10b981)' : 'var(--text-secondary)'};">${val}</span>`;
-                }
-                if (col === 'Security Status') {
-                    if (val.includes('⚠️')) {
-                        return `<span style="padding:2px 8px;border-radius:10px;background:rgba(234,179,8,0.15);color:var(--warning,#eab308);font-weight:600;font-size:0.72rem;border:1px solid rgba(234,179,8,0.3);cursor:pointer;" onclick="window.showGumUserDetailModal(${row._idx})" title="点击查看提权成因">${val}</span>`;
-                    }
-                    return `<span style="font-size:0.75rem;color:var(--success,#10b981);">${val}</span>`;
-                }
+
                 if (col === 'Actions') {
-                    const isTarget = window.gumTargetUsers && window.gumTargetUsers.has((row._identifier || '').trim().toLowerCase());
-                    const lockBtnText = isTarget ? '🎯 已锁定' : '🎯 锁定';
-                    const lockBtnClass = isTarget ? 'btn-wf-primary' : 'btn-wf-secondary';
-                    return `
-                        <div style="display:flex;gap:4px;align-items:center;">
-                            <button class="btn-wf-sm ${lockBtnClass}" style="padding:2px 6px;font-size:0.7rem;height:24px;" onclick="window.toggleGumTargetUser('${row._identifier}', '${row._raw?.displayName || row._identifier}')" title="${isTarget ? '点击取消该定向目标' : '勾选此用户作为下一次定向穿透审计的条件'}">${lockBtnText}</button>
-                            <button class="btn-wf-sm btn-wf-secondary" style="padding:2px 8px;font-size:0.7rem;height:24px;" onclick="window.showGumUserDetailModal(${row._idx})" title="查看该用户针对所有语义模型的细粒度权限拓扑">🔍 画像</button>
-                            <button class="btn-action-danger" style="padding:2px 6px;font-size:0.7rem;height:24px;" onclick="if(window.deleteGumUser) window.deleteGumUser('${row._wsId}', '${row._identifier}', '${row._wsName}')" title="从工作区剥离用户">移除</button>
-                        </div>
-                    `;
+
+                    return '<button class="btn-action-danger" style="padding: 2px 6px; font-size: 0.7rem;" onclick="if(window.removeGumUser) window.removeGumUser(\'' + row._wsId + '\', \'' + row._identifier + '\')">Remove</button>';
+
                 }
+
                 return undefined;
+
             }
+
         });
+
     }
+
 };
-
-window.showGumUserDetailModal = function(recOrIdx) {
-    let rec = null;
-    if (typeof recOrIdx === 'number') {
-        const dataset = window._lastGumFiltered || window.gumData || [];
-        rec = dataset[recOrIdx];
-    } else if (typeof recOrIdx === 'object') {
-        rec = recOrIdx;
-    }
-
-    if (!rec) {
-        if (window.showNotification) window.showNotification('未找到该用户的详细记录', 'error');
-        return;
-    }
-
-    const modal = document.getElementById('gum-user-detail-modal');
-    if (!modal) return;
-
-    // Set title
-    const titleEl = document.getElementById('gum-detail-title');
-    if (titleEl) titleEl.textContent = `用户权限全景画像: ${rec.displayName || rec.identifier}`;
-
-    // User Summary Card
-    const userCard = document.getElementById('gum-detail-user-card');
-    if (userCard) {
-        const isElev = rec.isElevated;
-        const isTarget = window.gumTargetUsers && window.gumTargetUsers.has((rec.identifier || '').trim().toLowerCase());
-        const lockBtnText = isTarget ? '🎯 已锁定为目标' : '🎯 设为定向审计目标';
-        const lockBtnClass = isTarget ? 'btn-wf-primary' : 'btn-wf-secondary';
-        userCard.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-                <div>
-                    <div style="font-size:1.05rem;font-weight:700;color:var(--text-primary);">${rec.displayName || rec.identifier}</div>
-                    <div style="font-size:0.75rem;color:var(--text-secondary);font-family:'Fira Code',monospace;">${rec.identifier}</div>
-                </div>
-                <div style="display:flex;gap:6px;align-items:center;">
-                    <button type="button" class="btn-wf-sm ${lockBtnClass}" style="padding:2px 8px;font-size:0.72rem;height:24px;" onclick="window.toggleGumTargetUser('${rec.identifier}', '${rec.displayName || rec.identifier}'); window.showGumUserDetailModal(window.gumData.find(d => d.identifier === '${rec.identifier}') || '${rec.identifier}');">${lockBtnText}</button>
-                    <span style="padding:2px 8px;border-radius:4px;background:var(--overlay-10);font-size:0.75rem;">${rec.principalType}</span>
-                    <span style="padding:2px 8px;border-radius:4px;background:var(--accent);color:var(--accent-text,#0b0d12);font-weight:700;font-size:0.75rem;">生效: ${rec.effectiveRole}</span>
-                </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.78rem;padding-top:8px;border-top:1px solid var(--overlay-10);">
-                <div>工作区: <b style="color:var(--text-primary);">${rec.workspaceName}</b></div>
-                <div>直属分配角色: <b style="color:var(--info);">${rec.directRole}</b></div>
-            </div>
-            ${isElev ? `
-                <div style="margin-top:10px;padding:8px 12px;background:rgba(234,179,8,0.1);border:1px solid rgba(234,179,8,0.3);border-radius:6px;font-size:0.75rem;color:var(--warning);">
-                    <b>⚠️ 继承提权偏离诊断：</b> ${rec.elevationReason || '该用户个人直属角色为只读，但通过所在安全组获得了工作区管理员及数据集完整读写权限。'}
-                </div>
-            ` : ''}
-        `;
-    }
-
-    // Semantic Models Detail Table
-    const countSpan = document.getElementById('gum-detail-model-count');
-    const tableWrap = document.getElementById('gum-detail-models-table-wrap');
-    const models = rec.datasetsDetail || [];
-
-    if (countSpan) countSpan.textContent = `共 ${models.length} 个模型`;
-
-    if (tableWrap) {
-        if (models.length === 0) {
-            tableWrap.innerHTML = `<div style="padding:14px;font-size:0.75rem;color:var(--text-secondary);text-align:center;">该工作区下无语义模型，或未探测到细粒度模型权限。</div>`;
-        } else {
-            let trsHtml = '';
-            models.forEach(m => {
-                trsHtml += `
-                    <tr style="border-bottom: 1px solid var(--overlay-10);">
-                        <td style="padding:8px 12px;font-weight:600;color:var(--text-primary);">${m.datasetName}</td>
-                        <td style="padding:8px 12px;color:var(--text-secondary);font-size:0.75rem;">${m.directRight}</td>
-                        <td style="padding:8px 12px;font-weight:700;color:var(--accent);font-size:0.75rem;">${m.effectiveRight}</td>
-                        <td style="padding:8px 12px;font-size:0.75rem;color:${m.canEdit ? 'var(--success,#10b981)' : 'var(--text-secondary)'};font-weight:600;">
-                            ${m.canEdit ? '✅ 可编辑 (Write/Build)' : '❌ 只读 (Read Only)'}
-                        </td>
-                    </tr>
-                `;
-            });
-
-            tableWrap.innerHTML = `
-                <table style="width:100%;border-collapse:collapse;font-size:0.8rem;">
-                    <thead>
-                        <tr style="background:var(--overlay-8);text-align:left;border-bottom:1px solid var(--overlay-10);color:var(--text-secondary);font-size:0.72rem;">
-                            <th style="padding:8px 12px;">语义模型 (Dataset Name)</th>
-                            <th style="padding:8px 12px;">直接模型权限 (Direct)</th>
-                            <th style="padding:8px 12px;">最终生效权限 (Effective)</th>
-                            <th style="padding:8px 12px;">模型编辑权 (Can Edit)</th>
-                        </tr>
-                    </thead>
-                    <tbody>${trsHtml}</tbody>
-                </table>
-            `;
-        }
-    }
-
-    const modalContent = modal.querySelector('.modal-content');
-    const modalHeader = modal.querySelector('.modal-header');
-    if (modalContent && modalHeader && !modal._draggableInit && typeof window.makeDraggable === 'function') {
-        window.makeDraggable(modalContent, modalHeader);
-        modal._draggableInit = true;
-    }
-    if (modalContent && typeof window.centerModal === 'function') {
-        window.centerModal(modalContent);
-    } else if (modalContent) {
-        modalContent.style.transform = 'translate3d(0px, 0px, 0px)';
-        modalContent.setAttribute('data-translate-x', '0');
-        modalContent.setAttribute('data-translate-y', '0');
-    }
-
-    modal.style.display = 'flex';
-};
-
 
 window.editGumUser = function(wsId, wsName, identifier, principalType, currentRole) {
 
@@ -17336,47 +16054,388 @@ window.submitGumEdit = async function() {
 
 
 window.deleteGumUser = async function(wsId, identifier, wsName) {
-    const proceed = await window.showCustomConfirm(`Are you sure you want to completely REMOVE access for:
-${identifier}
-from workspace [${wsName}]?`);
+
+    const proceed = await window.showCustomConfirm(`Are you sure you want to completely REMOVE access for:\n${identifier}\nfrom workspace [${wsName}]?`);
+
     if (!proceed) return;
 
+    
+
     const logsDiv = document.getElementById('wf-out-gum-logs');
+
+    
+
     const div = document.createElement('div');
+
     div.style.paddingLeft = '10px';
+
     div.style.borderLeft = '2px solid var(--error)';
+
     div.textContent = `[DELETE] Removing ${identifier} from ${wsName} ...`;
-    if (logsDiv) logsDiv.appendChild(div);
+
+    logsDiv.appendChild(div);
+
+    
 
     try {
+
         const res = await fetch('/api/proxy', {
+
             method: 'POST',
+
             headers: { 'Content-Type': 'application/json' },
+
             body: JSON.stringify({ endpoint: `/groups/${wsId}/users/${encodeURIComponent(identifier)}`, method: 'DELETE' })
+
         });
 
+        
+
         if (res.ok) {
+
             div.textContent += " OK (Removed)";
-            if (window.showNotification) window.showNotification(`已成功从工作区移除用户 ${identifier}`, 'success');
 
             // Remove from local state
-            window.gumData = (window.gumData || []).filter(d => !((d.wsId === wsId || d.workspaceId === wsId) && d.identifier === identifier));
+
+            window.gumData = window.gumData.filter(d => !(d.wsId === wsId && d.identifier === identifier));
+
             window.filterGumTable();
+
         } else {
+
             div.textContent += ` FAILED: ${res.status}`;
-            if (window.showNotification) window.showNotification(`移除用户失败: ${res.status}`, 'error');
+
         }
+
     } catch(err) {
+
         div.textContent += ` EXCEPTION: ${err.message}`;
-        div.style.borderLeft = '2px solid var(--error)';
+
     }
 
-    if (logsDiv) logsDiv.scrollTop = Math.max(0, logsDiv.scrollHeight - logsDiv.clientHeight * 0.66);
+    logsDiv.scrollTop = Math.max(0, logsDiv.scrollHeight - logsDiv.clientHeight * 0.66);
+
 };
 
-window.removeGumUser = window.deleteGumUser;
 
 
+window.openGumAddUserModal = function() {
+
+    const sel = document.getElementById('gum-add-ws-id');
+
+    sel.innerHTML = '<option value="">Select a Workspace...</option>';
+
+    
+
+    if (!window.gumWorkspaces || window.gumWorkspaces.length === 0) {
+
+        alert('Please run the "Scan" first to populate the workspaces list!');
+
+        return;
+
+    }
+
+    
+
+    // Populate workspaces sorted by name
+
+    const wses = [...window.gumWorkspaces].sort((a,b) => (a.name||'').localeCompare(b.name||''));
+
+    for(const ws of wses) {
+
+        const opt = document.createElement('option');
+
+        opt.value = ws.id;
+
+        opt.textContent = ws.name;
+
+        sel.appendChild(opt);
+
+    }
+
+    
+
+    document.getElementById('gum-add-identifier').value = '';
+
+    document.getElementById('gum-add-role').value = 'Viewer';
+
+    document.getElementById('gum-add-modal').style.display = 'flex';
+
+};
+
+
+
+window.submitGumAddUser = async function() {
+
+    const wsId = document.getElementById('gum-add-ws-id').value;
+
+    const identifier = document.getElementById('gum-add-identifier').value.trim();
+
+    const principalType = document.getElementById('gum-add-principal-type').value;
+
+    const newRole = document.getElementById('gum-add-role').value;
+
+    
+
+    if(!wsId) { alert('Please select a workspace!'); return; }
+
+    if(!identifier) { alert('Please enter an email/identifier!'); return; }
+
+    
+
+    document.getElementById('gum-add-modal').style.display = 'none';
+
+    
+
+    const logsDiv = document.getElementById('wf-out-gum-logs');
+
+    window.expandConsole('wf-out-gum-logs'); // ensure logs are visible
+
+    
+
+    const div = document.createElement('div');
+
+    div.style.paddingLeft = '10px';
+
+    div.style.borderLeft = '2px solid var(--accent)';
+
+    div.textContent = `[ADD] Adding ${identifier} to workspace [${wsId}] as ${newRole}...`;
+
+    logsDiv.appendChild(div);
+
+    
+
+    try {
+
+        const body = {
+
+            identifier: identifier,
+
+            groupUserAccessRight: newRole,
+
+            principalType: principalType
+
+        };
+
+        
+
+        // Use POST to add a user
+
+        const res = await fetch('/api/proxy', {
+
+            method: 'POST',
+
+            headers: { 'Content-Type': 'application/json' },
+
+            body: JSON.stringify({ endpoint: `/groups/${wsId}/users`, method: 'POST', body: body })
+
+        });
+
+        
+
+        if (res.ok) {
+
+            div.textContent += " OK (Added)";
+
+            div.style.borderLeft = '2px solid var(--success)';
+
+            
+
+            // Re-fetch that specific workspace's users to update the table immediately!
+
+            try {
+
+                const uRes = await fetch('/api/proxy', {
+
+                    method: 'POST',
+
+                    headers: { 'Content-Type': 'application/json' },
+
+                    body: JSON.stringify({ endpoint: `/groups/${wsId}/users`, method: 'GET' })
+
+                });
+
+                if(uRes.ok) {
+
+                    const uData = await uRes.json();
+
+                    const uPayload = uData.data || uData;
+
+                    const users = uPayload.value || [];
+
+                    
+
+                    // Remove old records for this workspace
+
+                    window.gumData = window.gumData.filter(d => d.wsId !== wsId);
+
+                    
+
+                    // Add fresh records
+
+                    const wsName = window.gumWorkspaces.find(w => w.id === wsId)?.name || 'Unknown';
+
+                    for(const u of users) {
+
+                        window.gumData.push({
+
+                            wsId: wsId,
+
+                            wsName: wsName,
+
+                            identifier: u.identifier,
+
+                            principalType: u.principalType,
+
+                            role: u.groupUserAccessRight
+
+                        });
+
+                    }
+
+                    window.filterGumTable();
+
+                }
+
+            } catch(e) {}
+
+            
+
+        } else {
+
+            const errJson = await res.json().catch(()=>({}));
+
+            div.textContent += ` FAILED: ${res.status} ${JSON.stringify(errJson)}`;
+
+            div.style.borderLeft = '2px solid var(--error)';
+
+        }
+
+    } catch(err) {
+
+        div.textContent += ` EXCEPTION: ${err.message}`;
+
+        div.style.borderLeft = '2px solid var(--error)';
+
+    }
+
+    setTimeout(() => { logsDiv.scrollTop = Math.max(0, logsDiv.scrollHeight - logsDiv.clientHeight * 0.66); }, 50);
+
+};
+
+
+
+window.gumAutocompleteTimer = null;
+
+window.handleGumAddIdentifierInput = function(e) {
+
+    const val = e.target.value.trim();
+
+    const dropdown = document.getElementById('gum-add-autocomplete');
+
+    
+
+    if (val.length < 2) {
+
+        dropdown.style.display = 'none';
+
+        return;
+
+    }
+
+    
+
+    if (window.gumAutocompleteTimer) clearTimeout(window.gumAutocompleteTimer);
+
+    
+
+    window.gumAutocompleteTimer = setTimeout(async () => {
+
+        dropdown.innerHTML = '<div style="padding: 8px; font-size: 0.8rem; color: var(--text-secondary);">Searching...</div>';
+
+        dropdown.style.display = 'block';
+
+        
+
+        try {
+
+            const res = await fetch(`/api/graph_users?query=${encodeURIComponent(val)}`);
+
+            const data = await res.json();
+
+            
+
+            if (data.success && data.users && data.users.length > 0) {
+
+                dropdown.innerHTML = '';
+
+                for (const u of data.users) {
+
+                    const div = document.createElement('div');
+
+                    div.style.padding = '8px';
+
+                    div.style.borderBottom = '1px solid var(--overlay-10)';
+
+                    div.style.cursor = 'pointer';
+
+                    div.style.fontSize = '0.8rem';
+
+                    div.innerHTML = `<strong>${u.displayName}</strong> <span style="color: var(--text-secondary); font-size: 0.75rem;">(${u.userPrincipalName})</span>`;
+
+                    div.onmouseover = () => div.style.background = 'var(--overlay-10)';
+
+                    div.onmouseout = () => div.style.background = 'transparent';
+
+                    div.onclick = () => {
+
+                        document.getElementById('gum-add-identifier').value = u.userPrincipalName;
+
+                        dropdown.style.display = 'none';
+
+                    };
+
+                    dropdown.appendChild(div);
+
+                }
+
+            } else if (data.success) {
+
+                dropdown.innerHTML = '<div style="padding: 8px; font-size: 0.8rem; color: var(--text-secondary);">No matching users found</div>';
+
+            } else {
+
+                dropdown.innerHTML = `<div style="padding: 8px; font-size: 0.8rem; color: var(--error);">Error: ${data.error || 'Check Graph API permissions'}</div>`;
+
+            }
+
+        } catch(err) {
+
+            dropdown.innerHTML = `<div style="padding: 8px; font-size: 0.8rem; color: var(--error);">Network Error</div>`;
+
+        }
+
+    }, 500); // 500ms debounce
+
+};
+
+
+
+// Close autocomplete when clicking outside
+
+document.addEventListener('click', function(e) {
+
+    const ac = document.getElementById('gum-add-autocomplete');
+
+    const input = document.getElementById('gum-add-identifier');
+
+    if (ac && input && !ac.contains(e.target) && e.target !== input) {
+
+        ac.style.display = 'none';
+
+    }
+
+});
 
 
 
@@ -20705,6 +19764,342 @@ window.queryXmlaRefreshHistory = async function(scope = 'model') {
     }
 };
 
+// =========================================================================
+// Report & Dataset Datasource Inspector Workflow Client Controller
+// =========================================================================
+window._inspectResultCache = null;
+
+window.initDatasourceInspectorWorkflow = function() {
+    const wsSel = document.getElementById('wf-inspect-workspace');
+    const repSel = document.getElementById('wf-inspect-report');
+    const dsSel = document.getElementById('wf-inspect-dataset');
+
+    if (!wsSel) return;
+
+    // 联动填充 Workspace
+    if (wsSel.options.length === 0 || wsSel.innerHTML === '') {
+        const savedWorkspaces = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+        wsSel.innerHTML = '<option value="">-- 请选择 Workspace --</option>';
+        savedWorkspaces.forEach(w => {
+            const opt = document.createElement('option');
+            opt.value = w.id || w.name;
+            opt.textContent = w.alias || w.name || w.id;
+            wsSel.appendChild(opt);
+        });
+        if (savedWorkspaces.length > 0) {
+            wsSel.selectedIndex = 1;
+        }
+    }
+
+    if (wsSel.value) {
+        window.wfInspectRefreshReport();
+        window.wfInspectRefreshDataset();
+    }
+
+    wsSel.onchange = () => {
+        window.wfInspectRefreshReport();
+        window.wfInspectRefreshDataset();
+    };
+
+    if (repSel) {
+        repSel.onchange = () => {
+            const selectedOpt = repSel.options[repSel.selectedIndex];
+            const boundDsId = selectedOpt ? selectedOpt.getAttribute('data-dataset-id') : '';
+            if (boundDsId && dsSel) {
+                for (let i = 0; i < dsSel.options.length; i++) {
+                    if (dsSel.options[i].value === boundDsId) {
+                        dsSel.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+        };
+    }
+};
+
+window.wfInspectRefreshWorkspace = async function(btn) {
+    const wsSel = document.getElementById('wf-inspect-workspace');
+    if (!wsSel) return;
+    if (btn) btn.classList.add('spinning');
+    try {
+        const res = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint: '/groups', method: 'GET' })
+        });
+        const json = await res.json();
+        const list = (json.data && json.data.value) ? json.data.value : [];
+        wsSel.innerHTML = '<option value="">-- 请选择 Workspace --</option>';
+        list.forEach(w => {
+            const opt = document.createElement('option');
+            opt.value = w.id;
+            opt.textContent = w.name;
+            wsSel.appendChild(opt);
+        });
+        if (list.length > 0) wsSel.selectedIndex = 1;
+        window.wfInspectRefreshReport();
+        window.wfInspectRefreshDataset();
+        if (window.showNotification) window.showNotification(`成功刷新 ${list.length} 个工作区`, 'success');
+    } catch (e) {
+        if (window.showNotification) window.showNotification(`刷新工作区失败: ${e.message}`, 'error');
+    } finally {
+        if (btn) btn.classList.remove('spinning');
+    }
+};
+
+window.wfInspectRefreshReport = async function(btn) {
+    const wsSel = document.getElementById('wf-inspect-workspace');
+    const repSel = document.getElementById('wf-inspect-report');
+    if (!wsSel || !repSel) return;
+    const wsId = wsSel.value;
+    if (!wsId) {
+        repSel.innerHTML = '<option value="">-- All / Direct Select Model Below --</option>';
+        return;
+    }
+    if (btn) btn.classList.add('spinning');
+    try {
+        const res = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint: `/groups/${wsId}/reports`, method: 'GET' })
+        });
+        const json = await res.json();
+        const list = (json.data && json.data.value) ? json.data.value : [];
+        repSel.innerHTML = '<option value="">-- All / Direct Select Model Below --</option>';
+        list.forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = r.id;
+            opt.textContent = r.name;
+            if (r.datasetId) opt.setAttribute('data-dataset-id', r.datasetId);
+            repSel.appendChild(opt);
+        });
+        if (window.showNotification && btn) window.showNotification(`成功获取 ${list.length} 个报表`, 'success');
+    } catch (e) {
+        if (window.showNotification && btn) window.showNotification(`获取报表失败: ${e.message}`, 'error');
+    } finally {
+        if (btn) btn.classList.remove('spinning');
+    }
+};
+
+window.wfInspectRefreshDataset = async function(btn) {
+    const wsSel = document.getElementById('wf-inspect-workspace');
+    const dsSel = document.getElementById('wf-inspect-dataset');
+    if (!wsSel || !dsSel) return;
+    const wsId = wsSel.value;
+    if (!wsId) {
+        dsSel.innerHTML = '<option value="">-- 请先选择 Workspace --</option>';
+        return;
+    }
+    if (btn) btn.classList.add('spinning');
+    try {
+        const res = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint: `/groups/${wsId}/datasets`, method: 'GET' })
+        });
+        const json = await res.json();
+        const list = (json.data && json.data.value) ? json.data.value : [];
+        dsSel.innerHTML = '<option value="">-- 选择目标语义模型 (Dataset) --</option>';
+        list.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.id;
+            opt.textContent = d.name;
+            dsSel.appendChild(opt);
+        });
+        if (list.length > 0) dsSel.selectedIndex = 1;
+        if (window.showNotification && btn) window.showNotification(`成功获取 ${list.length} 个语义模型`, 'success');
+    } catch (e) {
+        if (window.showNotification && btn) window.showNotification(`获取语义模型失败: ${e.message}`, 'error');
+    } finally {
+        if (btn) btn.classList.remove('spinning');
+    }
+};
+
+window.runDatasourceInspectorWorkflow = async function() {
+    const wsId = document.getElementById('wf-inspect-workspace')?.value?.trim();
+    const repId = document.getElementById('wf-inspect-report')?.value?.trim();
+    const dsId = document.getElementById('wf-inspect-dataset')?.value?.trim();
+    const logsEl = document.getElementById('wf-out-inspect-logs');
+    const wrapEl = document.getElementById('wf-inspect-result-wrap');
+    const badgeEl = document.getElementById('wf-inspect-badge-stats');
+
+    if (!wsId) {
+        if (window.showNotification) window.showNotification('❌ 请先选择 Workspace！', 'error');
+        return;
+    }
+
+    if (logsEl) {
+        logsEl.innerHTML = '';
+        window.expandConsole('wf-out-inspect-logs');
+    }
+    if (wrapEl) wrapEl.style.display = 'none';
+
+    const appendLog = (msg) => {
+        if (logsEl) {
+            logsEl.innerText += msg + '\n';
+            logsEl.scrollTop = logsEl.scrollHeight;
+        }
+    };
+
+    appendLog(`[START] 发起数据源全景穿透分析 (Workspace: ${wsId}, Dataset: ${dsId || 'Auto'}, Report: ${repId || 'None'})...`);
+
+    try {
+        const payload = {
+            workspace_id: wsId,
+            report_id: repId || null,
+            dataset_id: dsId || null
+        };
+
+        const res = await fetch('/api/datasource/inspect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (data.logs && Array.isArray(data.logs)) {
+            data.logs.forEach(l => appendLog(l));
+        }
+
+        if (data.success) {
+            window._inspectResultCache = data;
+            appendLog(`\n🎉 穿透检测圆满成功！`);
+            appendLog(`  • 总体连接模式: ${data.overall_mode}`);
+            appendLog(`  • 执行引擎: ${data.engine_used}`);
+            appendLog(`  • 提取到物理表: ${data.tables ? data.tables.length : 0} 张`);
+            appendLog(`  • 数据源连接配置: ${data.datasources ? data.datasources.length : 0} 项\n`);
+
+            if (wrapEl) wrapEl.style.display = 'block';
+            if (badgeEl) {
+                badgeEl.textContent = `⚡ 模式: ${data.overall_mode} | 引擎: ${data.engine_used} | ${data.tables.length} 表`;
+            }
+
+            if (window.showNotification) {
+                window.showNotification(`✅ 数据源穿透分析完成: 【${data.overall_mode}】`, 'success');
+            }
+
+            // 自动弹窗呈现
+            window.openInspectResultModal();
+        } else {
+            appendLog(`❌ 穿透失败: ${data.message}`);
+            if (window.showNotification) window.showNotification(`❌ 分析失败: ${data.message}`, 'error');
+        }
+    } catch (e) {
+        appendLog(`❌ 网络/服务异常: ${e.message}`);
+        if (window.showNotification) window.showNotification(`❌ 请求异常: ${e.message}`, 'error');
+    }
+};
+
+window.openInspectResultModal = function() {
+    const data = window._inspectResultCache;
+    if (!data || !data.tables) {
+        if (window.showNotification) window.showNotification('暂无数据源穿透结果，请先运行工作流！', 'warning');
+        return;
+    }
+
+    const tableRows = data.tables.map((t, idx) => ({
+        '#': idx + 1,
+        tableName: t.tableName,
+        mode: t.mode,
+        sourceType: t.sourceType,
+        server: t.server || (data.datasources[0]?.server || '-'),
+        database: t.database || (data.datasources[0]?.database || '-'),
+        nativeSql: t.nativeSql ? t.nativeSql : '无嵌入原生SQL (纯M查询/表引用)',
+        mExpression: t.mExpression || '-',
+        columnsCount: t.columnsCount || 0,
+        actions: t
+    }));
+
+    if (window.showUniversalDataModal) {
+        window.showUniversalDataModal({
+            title: `🔍 数据源与 M 表达式全景穿透看板 — [${data.dataset_name || 'Dataset'}] (模式: ${data.overall_mode})`,
+            data: tableRows,
+            columns: ['#', 'tableName', 'mode', 'sourceType', 'server', 'database', 'nativeSql', 'actions'],
+            displayNames: ['#', 'Table Name (表名)', 'Mode (模式)', 'Source Type (源类型)', 'Server (服务器)', 'Database (数据库)', 'Native SQL (SQL语句)', 'Actions (操作)'],
+            enableSearch: true,
+            enableColumnFilter: true,
+            cellRenderer: function(col, val, row) {
+                if (col === 'mode') {
+                    const m = String(val || '').toLowerCase();
+                    const color = m.includes('directquery') ? 'var(--warning)' : (m.includes('live') ? 'var(--info)' : 'var(--success)');
+                    return `<span class="badge" style="border: 1px solid ${color}; color: ${color}; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;">${val}</span>`;
+                }
+                if (col === 'nativeSql') {
+                    if (!val || val.includes('无嵌入原生SQL')) {
+                        return `<span style="color: var(--text-secondary); opacity: 0.6; font-size: 0.75rem;">${val}</span>`;
+                    }
+                    const cleanSql = String(val).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    return `<div style="font-family: monospace; font-size: 0.75rem; color: var(--accent); max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${cleanSql}">${cleanSql}</div>`;
+                }
+                if (col === 'actions') {
+                    const mExprEscaped = encodeURIComponent(row.mExpression || '');
+                    const sqlEscaped = encodeURIComponent(row.nativeSql || '');
+                    const tblNameEscaped = encodeURIComponent(row.tableName || '');
+                    return `
+                        <div style="display: flex; gap: 4px; align-items: center;">
+                            <button type="button" class="btn-wf-sm btn-wf-secondary" style="padding: 2px 6px; font-size: 0.72rem; color: var(--accent);" onclick="window.viewTableMExpression('${tblNameEscaped}', '${mExprEscaped}', '${sqlEscaped}')" title="查看完整 M 表达式与 SQL">
+                                📜 查看 M/SQL
+                            </button>
+                            <button type="button" class="btn-wf-sm btn-wf-secondary" style="padding: 2px 6px; font-size: 0.72rem;" onclick="navigator.clipboard.writeText(decodeURIComponent('${mExprEscaped}')); if(window.showNotification) window.showNotification('📋 M 表达式已复制到剪贴板！', 'success')" title="一键复制 M 查询">
+                                📋 复制 M
+                            </button>
+                        </div>
+                    `;
+                }
+                return undefined;
+            }
+        });
+    }
+};
+
+window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded) {
+    const tblName = decodeURIComponent(tblNameEncoded || '');
+    const mExpr = decodeURIComponent(mExprEncoded || '');
+    const sql = decodeURIComponent(sqlEncoded || '');
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.display = 'flex';
+    overlay.style.zIndex = '10050';
+
+    overlay.innerHTML = `
+        <div class="modal-content glass-panel" style="width: min(90vw, 850px); max-height: min(88vh, 750px); display: flex; flex-direction: column;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--panel-border); padding: 12px 16px;">
+                <h3 style="margin: 0; font-size: 1rem; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                    <span>📜 表 [${tblName}] 数据源 M 表达式与 SQL 源码</span>
+                </h3>
+                <button type="button" class="close-btn" onclick="this.closest('.modal-overlay').remove()" title="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
+            </div>
+            <div class="modal-body" style="padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px;">
+                ${sql && !sql.includes('无嵌入原生SQL') ? `
+                    <div>
+                        <div style="font-size: 0.8rem; font-weight: bold; color: var(--accent); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                            <span>⚡ 原生 SQL 查询语句 (Native Query):</span>
+                            <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="navigator.clipboard.writeText(decodeURIComponent('${sqlEncoded}')); if(window.showNotification) window.showNotification('SQL 已复制！', 'success');">📋 复制 SQL</button>
+                        </div>
+                        <pre style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; padding: 10px; font-family: monospace; font-size: 0.78rem; color: var(--text-primary); white-space: pre-wrap; word-break: break-all; max-height: 180px; overflow-y: auto;">${sql.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+                    </div>
+                ` : ''}
+                <div>
+                    <div style="font-size: 0.8rem; font-weight: bold; color: var(--text-secondary); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                        <span>🌿 Power Query M 完整表达式 (M Query):</span>
+                        <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="navigator.clipboard.writeText(decodeURIComponent('${mExprEncoded}')); if(window.showNotification) window.showNotification('M 表达式已复制！', 'success');">📋 复制 M 表达式</button>
+                    </div>
+                    <pre style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; padding: 12px; font-family: Consolas, monospace; font-size: 0.8rem; color: #4ec9b0; white-space: pre-wrap; word-break: break-all; max-height: 380px; overflow-y: auto; line-height: 1.45;">${(mExpr || '暂无 M 表达式').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 10px 16px; border-top: 1px solid var(--panel-border); display: flex; justify-content: flex-end;">
+                <button type="button" class="btn-wf-md btn-wf-secondary" onclick="this.closest('.modal-overlay').remove()">关闭 (Close)</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+};
+
+
+
+
+// Zen Mode / Focus Mode
 window.toggleZenMode = function() {
     document.body.classList.add('is-toggling-zen');
     document.body.classList.toggle('zen-mode');

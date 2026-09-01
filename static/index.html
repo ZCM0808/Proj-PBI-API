@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260905_v1005">
+    <link rel="stylesheet" href="/static/style.css?v=20260901_v2200">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -36,78 +36,26 @@
             if (requestHeight) {
                 styleStr += `.body-editor-container { height: ${requestHeight}; flex: none; } `;
             }
-            // 恢复 App Rail 展开态：直接在元素上预设 expanded 类，避免刷新时从 60px 闪烁到 175px
-            // 注意：必须在 DOMContentLoaded 后才能访问 DOM 元素，此处用 documentWrite 注入提前样式
+            // 恢复 App Rail 展开态 CSS，避免刷新时从 60px 闪烁到 175px
             if (railExpanded === 'true') {
-                styleStr += `#app-rail { width: 175px !important; min-width: 175px !important; max-width: 175px !important; } `;
-                styleStr += `#app-rail .rail-logo-title { max-width: 120px !important; opacity: 1 !important; } `;
-                styleStr += `#app-rail .rail-item-text { max-width: 110px !important; opacity: 1 !important; } `;
-                // 在 DOMContentLoaded 后补加 expanded 类，这样 JS 切换时只操作类而不受内联 style 锁死
-                window.addEventListener('DOMContentLoaded', function() {
-                    var r = document.getElementById('app-rail');
-                    if (r) r.classList.add('expanded');
-                    // 移除注入的内联样式（已由 expanded 类接管）
-                    var injected = document.getElementById('fouc-rail-style');
-                    if (injected) injected.remove();
-                });
+                styleStr += `#app-rail { width: 175px !important; min-width: 175px !important; max-width: 175px !important; align-items: stretch; } `;
+                styleStr += `#app-rail .rail-logo-title, #app-rail .rail-item-text { display: block !important; } `;
+                styleStr += `#app-rail .rail-logo-wrap { justify-content: flex-start; padding-left: 8px; } `;
+                styleStr += `#app-rail .rail-item { justify-content: flex-start; padding: 9px 12px; } `;
+                styleStr += `#app-rail .rail-toggle-btn { display: flex !important; align-items: center; justify-content: center; } `;
             }
             if (styleStr) {
-                document.write('<style id="fouc-rail-style">' + styleStr + '</style>');
+                document.write('<style>' + styleStr + '</style>');
             }
 
-            // 提前恢复顶栏折叠态
-            if (localStorage.getItem('pbi-topbar-collapsed') === 'true') {
-                document.documentElement.classList.add('topbar-collapsed-init');
-                window.addEventListener('DOMContentLoaded', function() {
-                    document.body.classList.add('topbar-collapsed');
-                    var handle = document.getElementById('gtb-expand-handle');
-                    if (handle) handle.setAttribute('title', '展开全局功能栏 (Expand Global Topbar)');
-                });
-            }
-
-            // 提前恢复侧边栏折叠态
-            if (localStorage.getItem('pbi-sidebar-collapsed') === 'true') {
-                document.documentElement.classList.add('sidebar-collapsed-init');
-                window.addEventListener('DOMContentLoaded', function() {
-                    document.body.classList.add('sidebar-collapsed');
-                });
-            }
-
-            // ★ 提前定义 toggleAppRail、toggleSidebar 与 toggleGlobalTopbarCollapse ★
-            window.toggleAppRail = function(action) {
+            // ★ 提前定义 toggleAppRail，确保 DOM 渲染后即可响应点击 ★
+            // script.js 加载后会用更完整的版本覆盖此定义
+            window.toggleAppRail = function() {
                 var rail = document.getElementById('app-rail');
                 if (!rail) return;
-                
-                if (action === 'collapse') {
-                    // 完全隐藏收起一级导航轨
-                    var isRailCollapsed = document.body.classList.toggle('rail-collapsed');
-                    return;
-                }
-                
-                if (document.body.classList.contains('rail-collapsed')) {
-                    // 如果处于完全隐藏态，点击把手先唤出
-                    document.body.classList.remove('rail-collapsed');
-                    return;
-                }
-
-                // 60px 与 175px 展开态切换
                 rail.classList.toggle('expanded');
                 var isExpanded = rail.classList.contains('expanded');
                 try { localStorage.setItem('pbi-rail-expanded', isExpanded ? 'true' : 'false'); } catch(e) {}
-            };
-
-            window.toggleSidebar = function() {
-                var isCollapsed = document.body.classList.toggle('sidebar-collapsed');
-                try { localStorage.setItem('pbi-sidebar-collapsed', isCollapsed ? 'true' : 'false'); } catch(e) {}
-            };
-
-            window.toggleGlobalTopbarCollapse = function() {
-                var isCollapsed = document.body.classList.toggle('topbar-collapsed');
-                var handle = document.getElementById('gtb-expand-handle');
-                if (handle) {
-                    handle.setAttribute('title', isCollapsed ? '展开全局功能栏 (Expand Global Topbar)' : '折叠全局功能栏 (Collapse Global Topbar)');
-                }
-                try { localStorage.setItem('pbi-topbar-collapsed', isCollapsed ? 'true' : 'false'); } catch(e) {}
             };
         })();
     </script>
@@ -155,107 +103,20 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- ⚡ 全局顶部上下文控制台功能栏 (Global Top Context Control Bar - Borderless & Collapsible) -->
-        <header id="global-topbar">
-            <div class="gtb-group">
-                <!-- 1. 认证模式切换 -->
-                <div class="gtb-auth-mode-pill" title="切换全局认证主体模式 (Service Principal / Personal Delegated)">
-                    <span id="gtb-auth-icon" style="font-size: 0.9rem; line-height: 1;">🛡️</span>
-                    <select id="gtb-select-auth-mode" class="gtb-auth-select mode-sp" onchange="window.handleGlobalAuthModeChange(this.value)">
-                        <option value="service_principal">Service Principal (APP_Automation)</option>
-                        <option value="personal">Personal User (个人委派)</option>
-                    </select>
-                </div>
-
-                <!-- 2. 工作区选择 (Workspace) -->
-                <div class="gtb-item" title="全局活动工作区 (Workspace / groupId)">
-                    <div class="gtb-label">
-                        <span>🏢</span>
-                        <span>工作区</span>
-                    </div>
-                    <select id="gtb-select-workspace" class="gtb-select" onchange="window.handleGlobalWorkspaceChange(this.value)">
-                        <option value="">-- 选择工作区 --</option>
-                    </select>
-                </div>
-
-                <!-- 3. 数据模型选择 (Dataset / Model) -->
-                <div class="gtb-item" title="全局活动数据模型 (Dataset / Semantic Model)">
-                    <div class="gtb-label">
-                        <span>🗄️</span>
-                        <span>模型</span>
-                    </div>
-                    <select id="gtb-select-dataset" class="gtb-select" onchange="window.handleGlobalDatasetChange(this.value)">
-                        <option value="">-- 选择模型 --</option>
-                    </select>
-                </div>
-
-                <!-- 4. 报表选择 (Report) -->
-                <div class="gtb-item" title="全局活动报表 (Report / reportId)">
-                    <div class="gtb-label">
-                        <span>📊</span>
-                        <span>报表</span>
-                    </div>
-                    <select id="gtb-select-report" class="gtb-select" onchange="window.handleGlobalReportChange(this.value)">
-                        <option value="">-- 选择报表 --</option>
-                    </select>
-                </div>
-
-                <!-- 5. XMLA 终结点 (XMLA Endpoint) -->
-                <div class="gtb-item gtb-xmla-box" title="当前工作区 XMLA 连接串 (点击一键复制)">
-                    <div class="gtb-label">
-                        <span>⚡</span>
-                        <span>XMLA</span>
-                    </div>
-                    <input type="text" id="gtb-input-xmla" class="gtb-xmla-input" readonly placeholder="powerbi://api.powerbi.com/v1.0/myorg/WorkspaceName" value="" title="XMLA Endpoint (Click copy button to use)">
-                    <button type="button" class="icon-btn" onclick="window.copyGlobalXmlaEndpoint(this)" title="复制 XMLA 连接串" style="height: 24px; width: 24px; padding: 0; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+        <!-- 1. Leftmost Navigation Rail (Expandable/Collapsible) -->
+        <aside id="app-rail" class="app-rail glass-panel">
+            <div class="rail-top">
+                <div class="rail-logo-wrap" id="rail-logo-toggle" title="点击折叠/展开侧边栏菜单 (Toggle Sidebar Rail)">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0;">
+                        <rect x="3" y="12" width="5" height="9" fill="#F2C811"/>
+                        <rect x="9" y="7" width="5" height="14" fill="#F2C811"/>
+                        <rect x="15" y="2" width="5" height="19" fill="#F2C811"/>
+                    </svg>
+                    <span class="rail-logo-title">PBI Studio</span>
+                    <button type="button" class="rail-toggle-btn" title="Toggle Rail" style="background: none; border: none; padding: 0; color: var(--text-secondary); cursor: pointer; margin-left: auto; display: none;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11 17 6 12 11 7"></polyline><polyline points="18 17 13 12 18 7"></polyline></svg>
                     </button>
                 </div>
-            </div>
-
-            <!-- 右侧全局快捷动作区 -->
-            <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
-                <!-- ⏱️ 每日密码登录累积计时 -->
-                <div id="gtb-daily-limit" class="gtb-item" style="height: 32px; padding: 2px 10px; display: inline-flex; align-items: center; gap: 6px; flex: none; border-color: var(--overlay-10); background: var(--input-bg);" title="Daily Accumulated Password Login Time">
-                    <span style="font-size: 0.78rem; line-height: 1;">⏱️</span>
-                    <span class="gtb-label" style="font-size: 0.72rem; opacity: 0.85;">Total:</span>
-                    <strong id="daily-time-val-main" style="color: var(--accent); font-weight: 700; line-height: 1; font-family: 'Fira Code', monospace; font-size: 0.76rem;">0m</strong>
-                </div>
-
-                <!-- 🔄 一键刷新租户/工作区元数据 -->
-                <button type="button" id="gtb-btn-refresh" class="gtb-icon-btn" onclick="window.refreshGlobalContext(this)" title="刷新全局工作区与资产列表 (Sync Context)">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-                </button>
-            </div>
-        </header>
-
-        <!-- 🔽 顶栏折叠后悬浮在顶部的展开把手 (Expand Handle Bar) -->
-        <div id="gtb-expand-handle" onclick="window.toggleGlobalTopbarCollapse()" title="折叠全局功能栏 (Collapse Global Topbar)">
-            <svg class="gtb-handle-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-        </div>
-
-
-        <!-- ◀ 一级导航轨折叠后悬浮在页面左侧的展开把手 (Expand Handle for Rail) -->
-        <div id="rail-expand-handle" onclick="window.toggleAppRail('expand')" title="展开一级导航栏 (Expand Primary Rail)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </div>
-
-        <!-- 主体布局容器 (下半部: Rail + Sidebar + Resizer + Workspace) -->
-        <div class="app-main-layout" style="display: flex; flex: 1; min-height: 0; min-width: 0; width: 100%; gap: 0; overflow: hidden;">
-            <!-- 1. Leftmost Navigation Rail (Expandable/Collapsible) -->
-            <aside id="app-rail" class="app-rail glass-panel">
-                <div class="rail-top">
-                    <div class="rail-logo-wrap" id="rail-logo-toggle" onclick="window.toggleAppRail()" title="点击展开/折叠一级导航菜单 (Toggle 60px/175px)">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0;">
-                            <rect x="3" y="12" width="5" height="9" fill="#F2C811"/>
-                            <rect x="9" y="7" width="5" height="14" fill="#F2C811"/>
-                            <rect x="15" y="2" width="5" height="19" fill="#F2C811"/>
-                        </svg>
-                        <span class="rail-logo-title">PBI Studio</span>
-                        <button type="button" class="rail-toggle-btn" onclick="event.stopPropagation(); window.toggleAppRail();" title="折回图标模式 (Collapse to Icon Mode)" style="background: none; border: none; padding: 0; color: var(--text-secondary); cursor: pointer; margin-left: auto; display: none;">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11 17 6 12 11 7"></polyline><polyline points="18 17 13 12 18 7"></polyline></svg>
-                        </button>
-                    </div>
                 <ul class="rail-menu-list">
                     <li class="rail-item active" id="rail-nav-workflows" data-module="workflows" title="⚡ 自动化工作流 (Workflows)">
                         <div class="rail-item-icon">
@@ -310,6 +171,9 @@
             </div>
         </aside>
         <script>
+            // ★ 关键修复：用 addEventListener + 事件委托彻底替代 onclick 属性 ★
+            // onclick 内联属性在某些场景下会静默失败（CSP/事件吞噬/脚本加载时序）。
+            // addEventListener 直接绑定到已解析的 DOM 元素上，100% 可靠。
             (function() {
                 var rail = document.getElementById('app-rail');
                 if (!rail) return;
@@ -319,15 +183,30 @@
                     rail.classList.add('expanded');
                 }
 
-                // 2. 菜单项点击 → 切换模块（事件委托）
+                // 2. Logo 区域点击 → 折叠/展开 Rail
+                var logoToggle = document.getElementById('rail-logo-toggle');
+                if (logoToggle) {
+                    logoToggle.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        rail.classList.toggle('expanded');
+                        var isExp = rail.classList.contains('expanded');
+                        try { localStorage.setItem('pbi-rail-expanded', isExp ? 'true' : 'false'); } catch(ex) {}
+                        console.log('[App Rail] Toggle →', isExp ? 'EXPANDED' : 'COLLAPSED');
+                    });
+                }
+
+                // 3. 菜单项点击 → 切换模块（事件委托）
                 rail.addEventListener('click', function(e) {
                     var menuItem = e.target.closest('[data-module]');
                     if (!menuItem) return;
                     var moduleName = menuItem.getAttribute('data-module');
                     if (!moduleName) return;
+                    // switchAppModule 可能尚未定义（script.js 还没加载），先缓存到 window
                     if (typeof window.switchAppModule === 'function') {
                         window.switchAppModule(moduleName);
                     } else {
+                        // 降级处理：缓存选择，等 script.js 加载后执行
                         window._pendingModule = moduleName;
                     }
                     console.log('[App Rail] Switch module →', moduleName);
@@ -337,11 +216,6 @@
 
         <!-- 2. Secondary Sidebar (Tree / Workflow List) -->
         <aside class="sidebar glass-panel">
-            <!-- 窄条模式：折叠时仅显示此竖排展开把手 (Narrow Strip shown when sidebar is collapsed) -->
-            <div id="sidebar-narrow-strip" onclick="window.toggleSidebar()" title="展开侧边栏 (Expand Sidebar)">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                <span>菜单</span>
-            </div>
             <!-- Sidebar Pane A: Workflow List -->
             <div id="sidebar-pane-workflows" class="sidebar-pane" style="display: flex;">
                 <div class="nav-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
@@ -360,7 +234,9 @@
             <div id="sidebar-pane-api_tree" class="sidebar-pane" style="display: none;">
                 <div class="nav-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                     <p class="nav-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">🌲 API 资源树</p>
-                    <span class="api-count-badge" title="Total APIs">共 <span id="total-api-count">0</span> 个</span>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span class="api-count-badge" title="Total APIs">共 <span id="total-api-count">0</span> 个</span>
+                    </div>
                 </div>
                 <div style="display: flex; gap: 8px; margin-bottom: 0.5rem;">
                     <input type="search" id="api-search-input" placeholder="搜索 API... (支持拼音/英文)" class="modern-input" style="flex: 1; border-radius: 6px; min-width: 0;">
@@ -419,7 +295,74 @@
         <div class="resizer" id="dragMe"></div>
 
         <!-- 3. Main Workspace Area -->
-        <div id="workspace-container" style="flex: 1; display: flex; flex-direction: column; height: 100%; min-width: 0; overflow: hidden; padding-top: 2px; position: relative;">
+        <div id="workspace-container" style="flex: 1; display: flex; flex-direction: column; height: 100%; min-width: 0; overflow: hidden; padding-top: 2px;">
+            
+            <!-- ⚡ 全局顶部上下文控制台功能栏 (Global Top Context Control Bar) -->
+            <header id="global-topbar">
+                <div class="gtb-group">
+                    <!-- 1. 认证模式切换 -->
+                    <div class="gtb-auth-mode-pill" title="切换全局认证主体模式 (Service Principal / Personal Delegated)">
+                        <span id="gtb-auth-icon" style="font-size: 0.9rem; line-height: 1;">🛡️</span>
+                        <select id="gtb-select-auth-mode" class="gtb-auth-select mode-sp" onchange="window.handleGlobalAuthModeChange(this.value)">
+                            <option value="service_principal">Service Principal (服务主体)</option>
+                            <option value="personal">Personal User (个人委派)</option>
+                        </select>
+                    </div>
+
+                    <!-- 2. 工作区选择 (Workspace) -->
+                    <div class="gtb-item" title="全局活动工作区 (Workspace / groupId)">
+                        <div class="gtb-label">
+                            <span>🏢</span>
+                            <span>工作区</span>
+                        </div>
+                        <select id="gtb-select-workspace" class="gtb-select" onchange="window.handleGlobalWorkspaceChange(this.value)">
+                            <option value="">-- 选择工作区 --</option>
+                        </select>
+                    </div>
+
+                    <!-- 3. 数据模型选择 (Dataset / Model) -->
+                    <div class="gtb-item" title="全局活动数据模型 (Dataset / Semantic Model)">
+                        <div class="gtb-label">
+                            <span>🗄️</span>
+                            <span>模型</span>
+                        </div>
+                        <select id="gtb-select-dataset" class="gtb-select" onchange="window.handleGlobalDatasetChange(this.value)">
+                            <option value="">-- 选择模型 --</option>
+                        </select>
+                    </div>
+
+                    <!-- 4. 报表选择 (Report) -->
+                    <div class="gtb-item" title="全局活动报表 (Report / reportId)">
+                        <div class="gtb-label">
+                            <span>📊</span>
+                            <span>报表</span>
+                        </div>
+                        <select id="gtb-select-report" class="gtb-select" onchange="window.handleGlobalReportChange(this.value)">
+                            <option value="">-- 选择报表 --</option>
+                        </select>
+                    </div>
+
+                    <!-- 5. XMLA 终结点 (XMLA Endpoint) -->
+                    <div class="gtb-item gtb-xmla-box" title="当前工作区 XMLA 连接串 (点击一键复制)">
+                        <div class="gtb-label">
+                            <span>⚡</span>
+                            <span>XMLA</span>
+                        </div>
+                        <input type="text" id="gtb-input-xmla" class="gtb-xmla-input" readonly placeholder="powerbi://api.powerbi.com/v1.0/myorg/WorkspaceName" value="" title="XMLA Endpoint (Click copy button to use)">
+                        <button type="button" class="icon-btn" onclick="window.copyGlobalXmlaEndpoint(this)" title="复制 XMLA 连接串" style="height: 24px; width: 24px; padding: 0; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 右侧全局快捷动作区 -->
+                <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                    <!-- 🔄 一键刷新租户/工作区元数据 -->
+                    <button type="button" id="gtb-btn-refresh" class="gtb-icon-btn" onclick="window.refreshGlobalContext(this)" title="刷新全局工作区与资产列表 (Sync Context)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                    </button>
+                </div>
+            </header>
 
             <!-- View A: Workflow Workspace Board -->
             <select id="wf-selector" style="display: none;">
@@ -440,7 +383,7 @@
 
                             <option value="xmla_interactive_refresh">XMLA Interactive Model/Table/Partition Refresh</option>
 
-                            <option value="global_user_manager">Global User &amp; Permissions Manager (全局用户与权限穿透审计)</option>
+                            <option value="global_user_manager">Global Workspace Permissions Manager</option>
 
                             <option value="report_view_count">Admin Report View Count (Activity Events)</option>
 
@@ -458,7 +401,7 @@
                     <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0 0 14px 0; border-bottom: 1px solid var(--overlay-10); margin-bottom: 14px;">
                         <div style="display: flex; align-items: baseline; gap: 10px; flex: 1; min-width: 0; overflow: hidden;">
                             <h3 id="wf-board-title" style="font-size: 1.15rem; margin: 0; white-space: nowrap; color: var(--text-primary); font-weight: 700;">⚡ Report &amp; Dataset Datasource Inspector</h3>
-                            
+                            <span id="wf-header-auth-badge" style="font-size: 0.78rem; color: var(--text-secondary); font-weight: normal; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">· Service Principal (APP_Automation)</span>
                         </div>
                         <div style="display: flex; align-items: center; gap: 8px;">
                             
@@ -532,7 +475,7 @@
 
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">Workspace ID
 
-                                <button type="button" id="wf-inspect-refresh-ws-btn" onclick="window.wfInspectRefreshWorkspace(this)" title="刷新工作区列表 (Refresh Workspace List)" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+                                <button type="button" onclick="window.wfInspectRefreshWorkspace(this)" title="Refresh Workspace List" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
 
                             </label>
 
@@ -550,7 +493,7 @@
 
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">Report ID (Optional)
 
-                                <button type="button" id="wf-inspect-refresh-rep-btn" onclick="window.wfInspectRefreshReport(this)" title="刷新报表列表 (Refresh Report List)" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+                                <button type="button" onclick="window.wfInspectRefreshReport(this)" title="Refresh Report List" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
 
                             </label>
 
@@ -568,11 +511,11 @@
 
                         </div>
 
-                        <div class="wf-field-refreshable">
+                        <div class="wf-field-refreshable" style="grid-column: 1 / -1;">
 
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">Dataset (Semantic Model)
 
-                                <button type="button" id="wf-inspect-refresh-ds-btn" onclick="window.wfInspectRefreshDataset(this)" title="刷新语义模型列表 (Refresh Dataset List)" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+                                <button type="button" onclick="window.wfInspectRefreshDataset(this)" title="Refresh Dataset List" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
 
                             </label>
 
@@ -624,18 +567,18 @@
 
                                 <div id="wf-inspect-result-wrap" style="display: none; margin-top: 14px; position: relative;">
 
-                                    <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 6px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                                        <div style="display: flex; align-items: center; gap: 10px;">
-                                            <button type="button" onclick="window.openInspectResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="Click to view full datasource &amp; M queries modal">
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-                                                View Datasource Inspector Table
-                                            </button>
-                                            <button type="button" onclick="window.LineageExplorer.openModal()" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2)); border: 1px solid var(--accent); border-radius: 6px; padding: 4px 10px; color: var(--accent); font-size: 0.76rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all 0.2s ease;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='none'" title="基于每个表的 M 表达式与模型关系，生成报表全景血缘 DAG 图并高亮追溯上下游关系">
-                                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-                                                🕸️ 查看全景血缘 DAG 图 (Lineage DAG)
-                                            </button>
-                                        </div>
+                                    <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
+
+                                        <button type="button" onclick="window.openInspectResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="Click to view full datasource &amp; M queries modal">
+
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+
+                                            View Full Datasource &amp; M Query Inspector Table
+
+                                        </button>
+
                                         <span id="wf-inspect-badge-stats" style="color: var(--success); font-weight: 500;"></span>
+
                                     </div>
 
                                 </div>
@@ -1053,166 +996,106 @@
                 <!-- Global User Manager Pane -->
 
                 <div id="wf-config-global_user_manager" class="wf-config-pane" style="display: none;">
+
                     <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+
                         <div class="wf-step active">
-                            <div class="wf-step-header" style="display: flex; justify-content: space-between; align-items: center;">
-                                <span class="wf-step-title">全景权限与生效治理矩阵 (Global Permission & Security Governance)</span>
-                                <span style="font-size: 0.75rem; color: var(--text-secondary);">直属角色 + 安全组穿透 + 语义模型细粒度读写</span>
+
+                            <div class="wf-step-header">
+
+                                <span class="wf-step-title">Scan Workspaces & Manage Permissions</span>
+
                             </div>
+
                             <div class="wf-step-content" style="display: block; margin-top: 8px;">
-                                <!-- Top Controls: Workspace Selector & User Picker -->
-                                <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
-                                    <div style="display: grid; grid-template-columns: minmax(200px, 1fr) minmax(280px, 1.5fr); gap: 12px; align-items: flex-end;">
-                                        <div>
-                                            <label style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500; display: block; margin-bottom: 4px;">🎯 目标工作区 (Target Workspace)</label>
-                                            <select id="wf-gum-workspace-select" class="wf-input" style="width: 100%; height: 36px;" onchange="if(window.handleGumWorkspaceChange) window.handleGumWorkspaceChange(this.value)">
-                                                <option value="">全部已配置工作区 (All Workspaces / 全局穿透审计)</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500; display: flex; justify-content: space-between; margin-bottom: 4px;">
-                                                <span>🔍 搜索与定向用户过滤 (Search &amp; Target Principals)</span>
-                                                <span id="gum-search-hint" style="font-size: 0.72rem; color: var(--accent); font-weight: normal;">从候选列表勾选或输入邮箱定向筛选</span>
-                                            </label>
-                                            <div style="position: relative; display: flex; align-items: center;">
-                                                <input type="text" id="wf-gum-search" class="wf-input" style="height: 36px; padding-right: 28px; width: 100%;" placeholder="输入邮箱/姓名筛选工作区用户，或按 Enter 加入目标..." oninput="if(window.filterGumTable) window.filterGumTable(); if(window.filterGumCandidateUsers) window.filterGumCandidateUsers();" onkeydown="if(event.key==='Enter'){ if(window.handleGumSearchEnter) window.handleGumSearchEnter(this.value); } if(event.key==='Escape'){ this.value=''; if(window.filterGumTable) window.filterGumTable(); if(window.filterGumCandidateUsers) window.filterGumCandidateUsers(); }">
-                                                <button type="button" id="wf-gum-search-clear" onclick="document.getElementById('wf-gum-search').value=''; if(window.filterGumTable) window.filterGumTable(); if(window.filterGumCandidateUsers) window.filterGumCandidateUsers();" title="清空搜索" style="position: absolute; right: 6px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: none; padding: 2px 6px; font-size: 0.85rem; line-height: 1;">✕</button>
-                                            </div>
-                                        </div>
+
+                                <div style="display: flex; gap: 8px; margin-bottom: 12px; align-items: flex-end;">
+
+                                    <div style="flex: 1;">
+
+                                        <label style="font-size: 0.85rem; color: var(--text-secondary);">搜索 (Search) / Filter</label>
+
+                                        <input type="text" id="wf-gum-search" class="wf-input" placeholder="Search by user email, name or workspace..." onkeyup="if(window.filterGumTable) window.filterGumTable()">
+
                                     </div>
 
-                                    <!-- Candidate Users Selection Panel for Current Workspace -->
-                                    <div id="wf-gum-user-picker-panel" style="background: var(--input-bg-light); border: 1px solid var(--overlay-10); border-radius: 6px; padding: 8px 12px;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                            <div style="font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
-                                                <span>👥 工作区授权用户候选池 (Workspace Users):</span>
-                                                <span id="wf-gum-candidate-count" style="color: var(--accent); font-weight: normal; font-size: 0.72rem;">(请选择工作区拉取用户)</span>
-                                            </div>
-                                            <div style="display: flex; align-items: center; gap: 8px;">
-                                                <button type="button" class="btn-wf-sm btn-wf-secondary" style="height: 22px; font-size: 0.7rem; padding: 0 6px;" onclick="if(window.fetchGumWorkspaceUsers) window.fetchGumWorkspaceUsers(true)" title="重新拉取当前工作区用户列表">🔄 刷新列表</button>
-                                                <button type="button" class="btn-wf-sm btn-wf-secondary" style="height: 22px; font-size: 0.7rem; padding: 0 6px;" onclick="if(window.toggleGumSelectAllCandidates) window.toggleGumSelectAllCandidates()" title="全选/全不选当前工作区所有候选用户">全选本工作区</button>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Candidate Chips / List Container -->
-                                        <div id="wf-gum-candidate-list" style="display: flex; flex-wrap: wrap; gap: 6px; max-height: 96px; overflow-y: auto; padding: 2px 0;">
-                                            <div style="font-size: 0.75rem; color: var(--text-secondary); padding: 4px 0;">💡 切换上方工作区即可自动拉取该工作区全部用户供选择，亦可直接在搜索栏输入定向邮箱。</div>
-                                        </div>
+                                    <div style="padding-bottom: 2px;">
+
+                                        <button class="btn-wf-md btn-wf-secondary" onclick="if(window.openGumAddUserModal) window.openGumAddUserModal()">+ Add User</button>
+
                                     </div>
 
-                                    <!-- Target Users Tags Bar (when users are selected as target criteria) -->
-                                    <div id="wf-gum-target-tags-bar" style="display: none; align-items: center; justify-content: space-between; padding: 6px 12px; background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 6px; font-size: 0.8rem; transition: all 0.2s ease;">
-                                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;" id="wf-gum-target-tags-container">
-                                            <span style="font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 4px;">
-                                                🎯 定向审计目标用户 (<span id="wf-gum-target-count">0</span>):
-                                            </span>
-                                            <!-- chips dynamically rendered by window.renderGumTargetTags() -->
-                                        </div>
-                                        <div style="display: flex; align-items: center; gap: 8px;">
-                                            <label style="display: flex; align-items: center; gap: 4px; font-size: 0.75rem; color: var(--text-secondary); cursor: pointer; user-select: none;">
-                                                <input type="checkbox" id="wf-gum-only-targets-toggle" checked onchange="if(window.filterGumTable) window.filterGumTable()" style="margin: 0; cursor: pointer;">
-                                                仅看/仅扫所选用户
-                                            </label>
-                                            <button type="button" class="btn-wf-sm btn-wf-secondary" style="height: 22px; font-size: 0.7rem; padding: 0 6px;" onclick="if(window.clearGumTargetUsers) window.clearGumTargetUsers()" title="清空所有已选目标用户">清空锁定</button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Options Row: Deep Audit Toggle & Admin Mode -->
-                                <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--overlay-5); border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--overlay-10);">
-                                    <div style="display: flex; align-items: center; gap: 16px;">
-                                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--accent); font-size: 0.8rem; font-weight: 600;">
-                                            <input type="checkbox" id="gum-deep-audit-mode" class="wf-input" checked style="width: auto; margin: 0; cursor: pointer;">
-                                            🛡️ 穿透生效与模型读写审计 (Deep Effective & Model Audit)
-                                        </label>
-                                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-secondary); font-size: 0.8rem; font-weight: normal;">
-                                            <input type="checkbox" id="gum-admin-mode" class="wf-input" style="width: auto; margin: 0; cursor: pointer;">
-                                            管理员全量扫描 (Admin Mode: All Workspaces)
-                                        </label>
-                                    </div>
-                                    <div style="font-size: 0.75rem; color: var(--text-secondary);">
-                                        自动识别 <span style="color: var(--warning); font-weight: 600;">⚠️ 组继承提权</span> 偏离
-                                    </div>
                                 </div>
 
                                 <div id="wf-gum-containers" style="display: flex; flex-direction: column; gap: 12px;">
+
                                     <!-- Logs Section -->
-                                    <div>
-                                        <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; user-select: none;">
-                                            <div style="display: flex; align-items: center; cursor: pointer; width: fit-content;" onclick="window.toggleConsole('wf-out-gum-logs')">
-                                                <svg id="wf-out-gum-logs-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs
-                                            </div>
+
+                                     <div>
+
+                                         <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; user-select: none;">
+
+                                             <div style="display: flex; align-items: center; cursor: pointer; width: fit-content;" onclick="window.toggleConsole('wf-out-gum-logs')">
+
+                                                 <svg id="wf-out-gum-logs-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs
+
+                                             </div>
+
+                                             <div style="display: flex; align-items: center; gap: 12px;">
+
+                                                 <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; color: var(--text-secondary); font-size: 0.75rem; font-weight: normal;">
+
+                                                     <input type="checkbox" id="gum-admin-mode" class="wf-input" style="width: auto; margin: 0; cursor: pointer;">
+
+                                                     Admin Mode (All Workspaces)
+
+                                                 </label>
+
+                                                 <!-- removed redundant Run Scan -->
+
+                                             </div>
+
+                                         </div>
+
+                                         <div class="input-with-copy" style="position: relative;">
+
+                                             <div id="wf-out-gum-logs" class="wf-console collapsed-console" style="width: 100%; min-height: 100px; padding-bottom: 20px;">Ready to scan all workspaces...</div>
+
+                                             <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-gum-logs').innerText)" title="Copy Logs" style="top: 8px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+
+                                         </div>
+
+                                     </div>
+
+                                    <!-- Result header: click to open expand modal -->
+
+                                    <div id="wf-gum-result-wrap" style="display: none; margin-top: 14px; position: relative;">
+
+                                        <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
+
+                                            <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="window.openGumResultModal()" title="Click to expand results in a large resizable panel">
+
+                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+
+                                                Global Permissions Table Results
+
+                                            </button>
+
+                                            <span id="wf-gum-stats" style="color: var(--accent); font-weight: normal;"></span>
+
                                         </div>
-                                        <div class="input-with-copy" style="position: relative;">
-                                            <div id="wf-out-gum-logs" class="wf-console collapsed-console" style="width: 100%; min-height: 100px; padding-bottom: 20px;">Ready to scan permissions with deep effective audit...</div>
-                                            <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-gum-logs').innerText)" title="Copy Logs" style="top: 8px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
-                                        </div>
+
                                     </div>
 
-                                    <!-- Empty Placeholder before Scan -->
-                                    <div id="wf-gum-empty-placeholder" style="padding: 24px; text-align: center; background: var(--overlay-5); border: 1px dashed var(--overlay-15); border-radius: 8px; color: var(--text-secondary); font-size: 0.85rem; margin-top: 6px;">
-                                        <div id="wf-gum-empty-text" style="margin-bottom: 12px;">👥 尚未执行全景权限扫描。请点击下方按钮启动审计，或在上方搜索栏直接检索目标。</div>
-                                        <button type="button" class="btn-wf-md btn-wf-primary" onclick="if(window.runGlobalUserManager) window.runGlobalUserManager()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem;">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>
-                                            立即启动全景权限扫描 (Start Audit Scan)
-                                        </button>
-                                    </div>
+                                </div>
 
-                                    <!-- Visual Dashboard & Result Wrap -->
-                                    <div id="wf-gum-result-wrap" style="display: none; margin-top: 10px; position: relative;">
-                                        <!-- Visual Charts & Dashboard Container -->
-                                        <div id="wf-gum-dashboard-charts" style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px;"></div>
-
-                                        <!-- Result Table Trigger & Quick Filter Pills -->
-                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--overlay-5); border-radius: 6px; border: 1px solid var(--overlay-10);">
-                                            <div style="display: flex; align-items: center; gap: 8px;">
-                                                <button type="button" class="btn-wf-sm btn-wf-primary" onclick="window.openGumResultModal()" title="以全屏/大弹窗打开全局权限矩阵表格" style="display: flex; align-items: center; gap: 6px;">
-                                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-                                                    全屏弹窗矩阵 (Universal Modal)
-                                                </button>
-                                                <span id="wf-gum-stats" style="color: var(--accent); font-size: 0.8rem; font-weight: 500;"></span>
-                                            </div>
-                                            <!-- Filter Pills -->
-                                            <div id="wf-gum-filter-pills" style="display: flex; align-items: center; gap: 6px;">
-                                                <button type="button" class="gum-filter-pill active" onclick="window.setGumPillFilter('all', this)">全部 (All)</button>
-                                                <button type="button" class="gum-filter-pill warning" onclick="window.setGumPillFilter('elevated', this)">⚠️ 提权异常</button>
-                                                <button type="button" class="gum-filter-pill" onclick="window.setGumPillFilter('admin', this)">🛡️ 管理员</button>
-                                                <button type="button" class="gum-filter-pill" onclick="window.setGumPillFilter('viewer', this)">👁️ 纯只读</button>
-                                            </div>
-                                        </div>
-
-                                        <!-- Live Inline Permissions Matrix Table -->
-                                        <div id="wf-gum-inline-table-container" style="margin-top: 10px; border-radius: 8px; border: 1px solid var(--overlay-10); background: var(--input-bg-light); overflow: hidden;">
-                                            <div style="max-height: 420px; overflow-y: auto; overflow-x: auto;">
-                                                <table class="data-table uni-modal-table" style="width: 100%; border-collapse: collapse; font-size: 0.78rem;">
-                                                    <thead style="position: sticky; top: 0; background: var(--table-header-bg, #1e293b); z-index: 2;">
-                                                        <tr>
-                                                            <th style="padding: 8px 10px; width: 36px; text-align: center;"><input type="checkbox" id="wf-gum-select-all" title="全选/全不选当前结果" onchange="if(window.toggleGumSelectAll) window.toggleGumSelectAll(this.checked)" style="cursor: pointer; margin: 0;"></th>
-                                                            <th style="padding: 8px 10px; text-align: left; white-space: nowrap;">工作区 Workspace</th>
-                                                            <th style="padding: 8px 10px; text-align: left; white-space: nowrap;">用户 / 授权主体 Principal</th>
-                                                            <th style="padding: 8px 10px; text-align: left; white-space: nowrap;">类型 Type</th>
-                                                            <th style="padding: 8px 10px; text-align: left; white-space: nowrap;">直属角色 Direct</th>
-                                                            <th style="padding: 8px 10px; text-align: left; white-space: nowrap;">最终生效 Effective</th>
-                                                            <th style="padding: 8px 10px; text-align: left; white-space: nowrap;">模型读写权 Model Access</th>
-                                                            <th style="padding: 8px 10px; text-align: left; white-space: nowrap;">安全状态 Security Status</th>
-                                                            <th style="padding: 8px 10px; text-align: center; white-space: nowrap;">操作 Actions</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody id="wf-gum-inline-tbody">
-                                                        <!-- Rendered dynamically by window.filterGumTable() -->
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                            <div id="wf-gum-inline-empty" style="display: none; padding: 24px; text-align: center; color: var(--text-secondary); font-size: 0.8rem;">
-                                                🔍 未找到匹配的权限记录
-                                            </div>
-                                        </div>
-                                    </div>
                             </div>
+
                         </div>
+
                     </div>
+
                 </div>
-            </div>
 
 <div id="wf-config-smart_pipeline" class="wf-config-pane" style="display: none;">
 
@@ -1910,7 +1793,49 @@
 
                     </div>
 
+<!-- Env Identity -->
 
+                <div id="env-identity" style="display: flex; align-items: center; gap: 12px; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 2px; flex-wrap: wrap;">
+
+                    <span id="display-auth-mode" style="display: none; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 4px; height: 24px; box-sizing: border-box; transition: background 0.2s ease;" title="当前认证模式">
+
+                        <span id="display-auth-mode-icon" style="line-height: 1;">🛡️</span>
+
+                        <strong id="display-auth-mode-text" style="font-weight: 600; line-height: 1; font-size: 0.72rem;">Service Principal</strong>
+
+                    </span>
+
+                      <span class="env-sep" style="opacity: 0.25;">|</span>
+
+                      <span id="display-tenant" style="display: none; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; transition: background 0.2s ease, color 0.2s ease; height: 24px; box-sizing: border-box;" title="Tenant ID">
+
+                        <span style="opacity: 0.85; line-height: 1;">🏢 Tenant:</span>
+
+                        <strong style="color: var(--text-primary); font-weight: 600; font-family: 'Fira Code', monospace; font-size: 0.72rem; line-height: 1;">Unknown</strong>
+
+                      </span>
+
+                    <span class="env-sep" style="opacity: 0.25;">|</span>
+
+                    <span id="display-client" style="display: none; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; transition: background 0.2s ease, color 0.2s ease; height: 24px; box-sizing: border-box;" title="Client App Name">
+
+                        <span style="opacity: 0.85; line-height: 1;">🔑 Client App:</span>
+
+                        <strong style="color: var(--text-primary); font-weight: 600; line-height: 1;">Unknown</strong>
+
+                      </span>
+
+                      <span class="env-sep" style="opacity: 0.25;">|</span>
+
+                    <span id="display-daily-limit" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; height: 24px; box-sizing: border-box;" title="Today's Accumulated Password Login Time">
+
+                        <span style="opacity: 0.85; line-height: 1;">⏱️ Total Time:</span>
+
+                        <strong id="daily-time-val-main" style="color: var(--text-primary); font-weight: 600; line-height: 1; font-family: monospace;">0m</strong>
+
+                    </span>
+
+                </div>
 
                 <!-- Context Toolbar -->
 
@@ -2150,19 +2075,15 @@
 
                 </div>
 
-                <div class="body-editor-container is-collapsed" id="req-body-container" style="position: relative;">
+                <div class="body-editor-container" style="position: relative;">
 
-                    <div class="editor-header" id="req-body-header" style="cursor: pointer; user-select: none;" onclick="window.toggleRequestBodyCollapse()" title="点击展开/折叠 Request Body (Click to toggle)">
+                    <div class="editor-header">
 
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <svg id="req-body-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                            <span style="font-weight: 600;">Request Body (JSON)</span>
-                            <span id="req-body-status-badge" style="display: inline-block; font-size: 0.7rem; padding: 1px 6px; border-radius: 4px; background: rgba(255,255,255,0.06); color: var(--text-secondary); border: 1px solid var(--overlay-10);">无需请求体</span>
-                        </div>
+                        <span>Request Body (JSON)</span>
 
-                        <div style="margin-left:auto; display:flex; gap:10px; align-items:center;" onclick="event.stopPropagation()">
+                        <div style="margin-left:auto; display:flex; gap:12px; align-items:center;">
 
-                            <span class="hint" id="req-body-hint">仅适用于 POST/PUT/PATCH 等包含请求体的方法</span>
+                            <span class="hint">仅适用于 POST/PUT/PATCH 等包含请求体的方法</span>
 
                             <button id="format-req-body-btn" class="icon-btn" title="Format JSON" type="button" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer;">
 
@@ -2170,17 +2091,13 @@
 
                             </button>
 
-                            <button id="toggle-req-body-btn" class="icon-btn" title="展开 / 折叠 (Toggle Request Body)" type="button" onclick="window.toggleRequestBodyCollapse()" style="padding: 2px 8px; font-size: 0.72rem; color: var(--text-secondary); border: 1px solid var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer;">
-                                <span>展开</span>
-                            </button>
-
                         </div>
 
                     </div>
 
-                    <div class="body-textarea-wrapper" id="req-body-wrapper" style="position: relative; flex: 1; display: flex; min-height: 0;">
+                    <div class="body-textarea-wrapper" style="position: relative; flex: 1; display: flex; min-height: 0;">
 
-                        <textarea id="request-body" placeholder="[当前 API 接口无需提供 Request Body 请求体]" oninput="if(this.value.trim()){ window.updateRequestBodyCollapseState(true); }"></textarea>
+                        <textarea id="request-body" placeholder="[当前 API 接口无需提供 Request Body 请求体]"></textarea>
 
                         <button id="copy-req-body-btn" class="icon-btn copy-btn body-corner-copy-btn" title="Copy Request Body" type="button" onclick="window.handleCopyAction(this, document.getElementById('request-body').value || document.getElementById('request-body').placeholder)">
 
@@ -2234,7 +2151,7 @@
 
                 <div class="response-body">
 
-                    <pre><code id="response-output">API 响应结果将在这里显示...</code></pre>
+                    <pre><code id="response-output">API 响应结果将在这里显示...</code></div>
 
                 </div>
 
@@ -2242,8 +2159,7 @@
 
         
             </main>
-        </div> <!-- End workspace-container -->
-    </div> <!-- End app-main-layout -->
+    </div> <!-- End workspace-container -->
 </div> <!-- End app-container -->
 
     <!-- Settings Modal -->
@@ -2580,12 +2496,56 @@
             </div>
         </div>
     </div>
+    <!-- Add User Permission Modal -->
+    <div id="gum-add-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content glass-panel">
+            <div class="modal-header">
+                <h3 style="font-size: 1.05rem;">Add User to Workspace</h3>
+                <button type="button" class="close-btn" onclick="document.getElementById('gum-add-modal').querySelector('.close-modal').click()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
+            </div>
+            <div class="modal-body" style="padding: 16px;">
+                <div style="margin-bottom: 12px;">
+                    <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">Workspace</label>
+                    <select id="gum-add-ws-id" class="wf-input">
+                        <option value="">Select a Workspace...</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 12px; position: relative;">
+                    <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">User / Principal Email</label>
+                    <input type="text" id="gum-add-identifier" class="wf-input" placeholder="Type name or email to search..." oninput="if(window.handleGumAddIdentifierInput) window.handleGumAddIdentifierInput(event)">
+                    <div id="gum-add-autocomplete" style="display:none; position: absolute; top: 100%; left: 0; right: 0; background: var(--panel-bg); border: 1px solid var(--panel-border); border-top: none; z-index: 20001; max-height: 150px; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    </div>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">Principal Type</label>
+                    <select id="gum-add-principal-type" class="wf-input">
+                        <option value="User">User</option>
+                        <option value="Group">Group</option>
+                        <option value="App">App (Service Principal)</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">Access Right (Role)</label>
+                    <select id="gum-add-role" class="wf-input">
+                        <option value="Admin">Admin</option>
+                        <option value="Member">Member</option>
+                        <option value="Contributor">Contributor</option>
+                        <option value="Viewer" selected>Viewer</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                    <button type="button" class="btn-cancel" onclick="document.getElementById('gum-add-modal').querySelector('.close-modal').click()">Cancel</button>
+                    <button type="button" class="btn-action-primary" onclick="if(window.submitGumAddUser) window.submitGumAddUser()">Add User</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- Edit User Permission Modal -->
-    <div id="gum-edit-modal" class="modal-overlay" style="display: none; z-index: 25000;">
+    <div id="gum-edit-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content glass-panel">
             <div class="modal-header">
                 <h3 style="font-size: 1.05rem;">Edit Workspace Access</h3>
-                <button type="button" class="close-btn" onclick="document.getElementById('gum-edit-modal').style.display='none'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
+                <button type="button" class="close-btn" onclick="document.getElementById('gum-edit-modal').querySelector('.close-modal').click()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
             </div>
             <div class="modal-body" style="padding: 16px;">
                 <input type="hidden" id="gum-edit-ws-id">
@@ -2608,49 +2568,17 @@
                     </select>
                 </div>
                 <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                    <button type="button" class="btn-cancel" onclick="document.getElementById('gum-edit-modal').style.display='none'">Cancel</button>
+                    <button type="button" class="btn-cancel" onclick="document.getElementById('gum-edit-modal').querySelector('.close-modal').click()">Cancel</button>
                     <button type="button" class="btn-action-primary" onclick="if(window.submitGumEdit) window.submitGumEdit()">Save Changes</button>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- User Deep Profile & Permission Topology Modal -->
-    <div id="gum-user-detail-modal" class="modal-overlay" style="display: none; z-index: 25000;">
-        <div class="modal-content glass-panel" style="max-width: 780px; width: 90%; max-height: 85vh; display: flex; flex-direction: column;">
-            <div class="modal-header" style="border-bottom: 1px solid var(--overlay-10); padding: 12px 18px; display: flex; align-items: center; justify-content: space-between;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 1.2rem;">🔍</span>
-                    <h3 id="gum-detail-title" style="margin: 0; font-size: 1.05rem; color: var(--text-primary); font-weight: 600;">User Permission Profile</h3>
-                </div>
-                <button type="button" class="close-btn" onclick="document.getElementById('gum-user-detail-modal').style.display='none'" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
-            </div>
-            <div class="modal-body" style="padding: 16px 18px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 14px;">
-                <!-- User Summary Card -->
-                <div id="gum-detail-user-card" style="background: var(--overlay-5); border: 1px solid var(--overlay-10); border-radius: 8px; padding: 12px 14px;"></div>
-                
-                <!-- Semantic Models Access Table -->
-                <div style="display: flex; flex-direction: column; gap: 6px;">
-                    <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between;">
-                        <span>🗄️ 语义模型细粒度授权构成 (Semantic Models Access & Write Rights)</span>
-                        <span id="gum-detail-model-count" style="font-size: 0.75rem; color: var(--text-secondary);"></span>
-                    </div>
-                    <div id="gum-detail-models-table-wrap" style="border: 1px solid var(--overlay-10); border-radius: 6px; overflow: hidden;"></div>
-                </div>
-            </div>
-            <div class="modal-footer" style="padding: 10px 18px; border-top: 1px solid var(--overlay-10); display: flex; justify-content: flex-end;">
-                <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="document.getElementById('gum-user-detail-modal').style.display='none'">关闭 (Close)</button>
-            </div>
-        </div>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
-    <script src="/static/vis-network.min.js"></script>
-    <script src="/static/lineage_graph.js?v=20260904_v2245"></script>
-    <script src="/static/universal_modal.js?v=20260904_v2245"></script>
-    <script src="/static/script.js?v=20260905_v1005"></script>
+    <script src="/static/universal_modal.js?v=20260825_v21"></script>
+    <script src="/static/script.js?v=20260901_v2200"></script>
 
 
 
@@ -2716,11 +2644,11 @@
         </div>
     </div>
     <!-- AI Chat FAB -->
-    <div id="ai-chat-fab" onclick="toggleAIChat()" style="position: fixed; bottom: 12px; right: 12px; width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, var(--info-dark) 0%, var(--info-darker) 100%); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px var(--shadow-dark); cursor: pointer; z-index: 9999; transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+    <div id="ai-chat-fab" onclick="toggleAIChat()" style="position: fixed; bottom: 30px; right: 15px; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--info-dark) 0%, var(--info-darker) 100%); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px var(--info-bg); cursor: pointer; z-index: 9999; transition: transform 0.2s ease;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
     </div>
     <!-- AI Chat Window -->
-    <div id="ai-chat-window" class="glass-panel" style="position: fixed; bottom: 68px; right: 12px; width: calc(100vw - 20px); max-width: 380px; height: 500px; flex-direction: column; z-index: 10000; box-shadow: 0 10px 30px var(--shadow-dark); border-radius: 12px; overflow: hidden; transform-origin: bottom right; background: var(--panel-bg); border: 1px solid var(--panel-border); opacity: 0; transform: scale(0.9) translateY(10px); visibility: hidden; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), visibility 0.25s; display: flex;">
+    <div id="ai-chat-window" class="glass-panel" style="position: fixed; bottom: 100px; right: 10px; width: calc(100vw - 20px); max-width: 380px; height: 500px; flex-direction: column; z-index: 10000; box-shadow: 0 10px 30px var(--shadow-dark); border-radius: 12px; overflow: hidden; transform-origin: bottom right; background: var(--panel-bg); border: 1px solid var(--panel-border); opacity: 0; transform: scale(0.9) translateY(10px); visibility: hidden; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), visibility 0.25s; display: flex;">
         <div class="modal-header" style="padding: 15px; background: var(--overlay-5); border-bottom: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center; cursor: move;" id="ai-chat-header">
             <h3 style="margin: 0; font-size: 1rem; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">✨ AI Assistant</h3>
             <div style="display: flex; align-items: center; gap: 12px;">
