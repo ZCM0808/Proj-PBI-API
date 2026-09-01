@@ -575,7 +575,8 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
    - 若处于 Pro 工作区（未启用 XMLA 读写），引擎自动降级为 REST API `/datasources` + `/tables` 组合推导模式，并利用正则引擎精准提取 `Sql.Database`、`Value.NativeQuery` 中的 SQL 语句与服务器/数据库。
 4. **前端交互与呈现**：
    - 在 Workflow Modal 中新增 `datasource_inspector` 面板，支持 Workspace / Report / Dataset 三级联动；
-   - 结果由 `static/universal_modal.js`（Universal Modal 引擎）全景呈现，并支持一键语法高亮预览与一键复制 M 查询/原生 SQL。
+   - 结果由 `static/universal_modal.js`（Universal Modal 引擎）全景呈现，并支持一键语法高亮预览与一键复制 M 查询/原生 SQL。
+
 >>>>>>> 87f3a33 (feat: add Report & Dataset Datasource Inspector with dual-engine fallback)
 ## 23. 页面布局深度重构与沉浸模式 (Layout Refactoring, Workflow Panes & Zen Mode)
 
@@ -605,4 +606,22 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
    - **微动效与拖拽冲突防御 (Animation vs. Drag Performance Defense)**：
      - 若直接对宽度应用 transition: width 0.35s，会导致用户在使用拖拽滑块时，每一像素的移动都附带 0.35s 延迟，从而产生令人抓狂的跟手延迟粘滞感。
      - **状态隔离策略**：在 JS 切换状态时，动态注入一个短暂的 .is-toggling-zen CSS 临时控制类，并在 400ms 后通过 setTimeout 自动剥离。配合 body.is-toggling-zen .sidebar { transition: width 0.35s } 语法，完美实现了“仅在点击按钮触发全屏动画时具有丝滑阻尼动效，但在人工拖拽边缘调整大小时维持 0 毫秒的绝对实时响应”。这是平衡视觉动效与极限交互性能的极佳实践。
+
+## 24. 云端文件持久化与异步同步防灾 (Cloud Persistence & Async Sync Defense)
+
+### 24.1 故障与根因分析 (Failures & Root Cause Analysis)
+
+- **故障 1：Quick Note 附件上传后出现 404 Not Found (Ephemeral Disk Loss)**
+  - **现象**：用户在 Quick Note 中上传 Markdown 附件后，文档文本中成功生成了超链接。但在后续点击下载该链接时，API 抛出 {"detail": "Not Found"} 错误，且在本地静态目录 static/uploads/notes 下完全找不到该文件，文件彻底丢失。
+  - **根因 (Root Cause)**：
+    1. **云环境的临时磁盘缺陷**：项目后端部署在 Render 等云平台上，其容器的文件系统是短暂的（Ephemeral），应用重启或休眠后，未经版本控制持久化的本地新增文件会被全部擦除。
+    2. **容灾策略不对等**：后端在保存 Note 纯文本时拥有完备的双保险机制——若 git push 因并发锁或 TLS 阻断失败，会静默降级调用 _sync_note_to_github_rest（GitHub REST API）直接将文件写入远端仓库。然而，附件上传接口 (upload_note_file) **严重缺失了 API 降级机制**，仅仅傻瓜式地依赖 subprocess.run(["git", "push"])。
+    3. **并发碰撞**：当用户在极短时间内上传附件并保存笔记时，并发的 git push 进程引发了 Index Lock 冲突或由于网络环境触发 Connection Reset，导致附件的 Push 被中断。附件仅仅留在了 Render 的临时磁盘里，最终随着容器重启而灰飞烟灭。
+
+### 24.2 成功经验与架构提升 (Architectural Success Takeaways)
+
+1. **REST API 作为云端持久化最终防线 (GitHub REST API as Ultimate Fallback)**
+   - **防御策略**：绝不完全信任云服务容器内的 Git CLI 进程（其易受进程锁、凭据丢失、SSH/TLS 网络劫持的影响）。
+   - **重构方案**：为所有附件上传接口补齐了 _sync_upload_to_github_rest 降级兜底方案。
+   - **技术细节**：当探测到 Git Push 失败（`returncode != 0`）时，后端会立即捕获该文件的原始二进制字节流 (`bytes`)，在内存中进行 `base64.b64encode`，封装为 JSON Payload，通过高可靠的 `requests.put` 直连 GitHub Contents API (https://api.github.com/repos/...)。此举彻底消灭了云端存储丢失的死角，实现了附件与笔记 100% 同级别的持久化保障。
 
