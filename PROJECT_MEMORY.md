@@ -577,3 +577,32 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
    - 在 Workflow Modal 中新增 `datasource_inspector` 面板，支持 Workspace / Report / Dataset 三级联动；
    - 结果由 `static/universal_modal.js`（Universal Modal 引擎）全景呈现，并支持一键语法高亮预览与一键复制 M 查询/原生 SQL。
 >>>>>>> 87f3a33 (feat: add Report & Dataset Datasource Inspector with dual-engine fallback)
+## 23. 页面布局深度重构与沉浸模式 (Layout Refactoring, Workflow Panes & Zen Mode)
+
+### 23.1 故障与根因分析 (Failures & Root Cause Analysis)
+
+- **故障 1：HTML 截断导致核心组件丢失与 JS 崩溃 (Truncation & Null Pointer)**
+  - **现象**：在将 Workflow 从居中弹窗重构为三栏式右侧面板时，AI 因输出长度限制（或幻觉），粗暴截断了 HTML 代码（如生成 ... 占位符）。这不仅导致 XMLA Interactive Refresh、智能流水线 等一半以上的工作流面板不翼而飞，甚至直接删除了用于存储当前选中状态的 <select id="wf-selector"> 组件。
+  - **连锁崩溃**：由于 wf-selector 丢失，底层 script.js 在执行 document.getElementById('wf-selector').addEventListener(...) 时抛出致命的 Cannot read properties of null 异常。由于这是发生在页面加载阶段的全局异常，导致后续所有侧边栏渲染、面板切换逻辑全部中断，最终体现为用户看到的“所有工作流消失”、“点击无反应”。
+  - **解决方案与防御 (Resilience)**：
+    1. 坚决摒弃让 AI “凭空默写”被截断代码的做法。编写 Python 脚本直接执行 git show HEAD:static/index.html，从上一个安全的 Commit 历史中精准提取丢失的数万字节无损 HTML 节点。
+    2. 利用原生 Python 脚本将恢复出的面板组件精准缝合回当前工作区容器内，彻底避免二次破坏。
+
+- **故障 2：三栏布局下滑块拖拽极度偏移 (Layout Offset in Resizer)**
+  - **现象**：在拖拽调整第二栏（工作流/API 列表）宽度时，垂直滑块移动的速度和位置远远超前于鼠标，完全不跟手。
+  - **根因**：原先两栏布局时代的拖拽公式计算方式为 newWidth = e.clientX - containerOffsetLeft（默认左侧无遮挡）。但在重构为“三栏布局”后，最左侧新增了一个宽度为 60px/175px 的 App Rail 导航栏，导致侧边栏的真实起点发生了向右的物理偏移，而 JS 仍以全屏 X 坐标计算宽度。
+  - **解决方案 (Position Defense)**：放弃硬编码依赖，改用 sidebar.getBoundingClientRect().left 动态获取目标面板当前的绝对屏幕物理起点的 X 坐标。新公式 newWidth = e.clientX - sidebarLeft 保证了无论最左侧导航栏如何折叠，鼠标指针始终与滑块边缘保持 0 误差同步。
+
+### 23.2 成功经验与功能提升 (Architectural Success Takeaways)
+
+1. **工作流列表多行优雅排版 (Graceful Wrapping in Narrow Panels)**
+   - **痛点**：由于 CSS 使用了 white-space: nowrap 和 text-overflow: ellipsis，当侧边栏被拖窄时，长名称的工作流标题会被生硬截断，导致信息不完整。
+   - **重构策略**：移除 nowrap 限制，开启 white-space: normal 与 word-break: break-word。
+   - **排版防御**：为了确保换行后的 UI 依然精致，必须将顶部 Flex 容器的对齐方式从 align-items: center 修正为 align-items: flex-start，并配合 -1px 的微调 Margin，确保左侧 Icon 始终与换行后的第一段首行文本在视觉上保持顶端对齐，避免发生怪异的居中撕裂感。
+
+2. **零干扰沉浸/专注模式 (Zen Mode / Focus Mode Implementation)**
+   - **设计理念**：为了满足用户彻底隐藏左侧菜单栏以释放屏幕横向空间的需求，放弃了在各个面板边缘增加繁琐“抽屉折叠把手”的方案，转而在主工作区右上角植入了一个全局“专注模式 ⛶” 悬浮按钮。
+   - **微动效与拖拽冲突防御 (Animation vs. Drag Performance Defense)**：
+     - 若直接对宽度应用 transition: width 0.35s，会导致用户在使用拖拽滑块时，每一像素的移动都附带 0.35s 延迟，从而产生令人抓狂的跟手延迟粘滞感。
+     - **状态隔离策略**：在 JS 切换状态时，动态注入一个短暂的 .is-toggling-zen CSS 临时控制类，并在 400ms 后通过 setTimeout 自动剥离。配合 body.is-toggling-zen .sidebar { transition: width 0.35s } 语法，完美实现了“仅在点击按钮触发全屏动画时具有丝滑阻尼动效，但在人工拖拽边缘调整大小时维持 0 毫秒的绝对实时响应”。这是平衡视觉动效与极限交互性能的极佳实践。
+
