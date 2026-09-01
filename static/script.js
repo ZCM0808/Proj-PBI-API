@@ -2290,26 +2290,49 @@ window.renderGlobalTopbar = async function() {
     const topbar = document.getElementById('global-topbar');
     if (!topbar) return;
 
-    // 1. 初始化并回显认证模式 (Auth Mode)
+    // 1. 初始化并回显认证模式 (Auth Mode) 及具体应用名称 / 用户名
     try {
-        const res = await fetch('/api/settings');
-        const settings = await res.json();
-        if (settings && settings.AUTH_MODE) {
-            const authSelect = document.getElementById('gtb-select-auth-mode');
-            const authIcon = document.getElementById('gtb-auth-icon');
-            if (authSelect) {
-                authSelect.value = settings.AUTH_MODE;
-                authSelect.className = `gtb-auth-select mode-${settings.AUTH_MODE === 'personal' ? 'personal' : 'sp'}`;
-            }
-            if (authIcon) {
-                authIcon.textContent = settings.AUTH_MODE === 'personal' ? '👤' : '🛡️';
-            }
+        let authMode = 'service_principal';
+        let appName = localStorage.getItem('pbi_app_name') || '';
+        let clientId = '';
+        let username = '';
+
+        const setRes = await fetch('/api/settings');
+        const settings = await setRes.json();
+        if (settings) {
+            authMode = settings.AUTH_MODE || 'service_principal';
+            clientId = settings.CLIENT_ID || '';
+            username = settings.USERNAME || '';
+        }
+
+        const authInfoRes = await fetch('/api/auth-info');
+        const authInfo = await authInfoRes.json();
+        if (authInfo && authInfo.success) {
+            if (authInfo.app_name) appName = authInfo.app_name;
+            if (authInfo.username) username = authInfo.username;
+        }
+
+        const authSelect = document.getElementById('gtb-select-auth-mode');
+        const authIcon = document.getElementById('gtb-auth-icon');
+        if (authSelect) {
+            const spLabel = appName ? `Service Principal (${appName})` : (clientId ? `Service Principal (${clientId.slice(0, 8)}...)` : 'Service Principal');
+            const personalLabel = username ? `Personal (${username})` : 'Personal (Delegated User)';
+
+            authSelect.innerHTML = `
+                <option value="service_principal">${spLabel}</option>
+                <option value="personal">${personalLabel}</option>
+            `;
+            authSelect.value = authMode;
+            authSelect.className = `gtb-auth-select mode-${authMode === 'personal' ? 'personal' : 'sp'}`;
+        }
+        if (authIcon) {
+            authIcon.textContent = authMode === 'personal' ? '👤' : '🛡️';
         }
     } catch(e) {
         console.warn('Failed to fetch auth mode for topbar:', e);
     }
 
-    // 2. 加载工作区、模型和报表列表
+    // 2. 加载工作区、模型和报表列表 (带 GUID 显示)
     window.updateGlobalTopbarDropdowns();
 };
 
@@ -2329,13 +2352,15 @@ window.updateGlobalTopbarDropdowns = function() {
     const curDsId = document.getElementById('active-dataset')?.value || localStorage.getItem('pbi-active-dataset') || '';
     const curRpId = document.getElementById('active-report')?.value || localStorage.getItem('pbi-active-report') || '';
 
-    // 填充工作区下拉框
+    // 填充工作区下拉框 (同时显示名称与 GUID)
     let wsHtml = `<option value="">-- 选择工作区 (${wsData.length}) --</option>`;
     let activeWsName = '';
     wsData.forEach(w => {
         const isSel = (w.id === curWsId);
-        if (isSel) activeWsName = w.alias || w.name || w.id;
-        wsHtml += `<option value="${w.id}" ${isSel ? 'selected' : ''}>${w.alias || w.name || w.id}</option>`;
+        const name = w.alias || w.name || w.id;
+        if (isSel) activeWsName = name;
+        const displayLabel = `${name} (${w.id})`;
+        wsHtml += `<option value="${w.id}" ${isSel ? 'selected' : ''} title="${displayLabel}">${displayLabel}</option>`;
     });
     wsSelect.innerHTML = wsHtml;
 
@@ -2350,19 +2375,23 @@ window.updateGlobalTopbarDropdowns = function() {
         return !rWid || rWid === curWsId.toLowerCase();
     }) : rpData;
 
-    // 填充数据模型下拉框
+    // 填充数据模型下拉框 (同时显示名称与 GUID)
     let dsHtml = `<option value="">-- 选择模型 (${filteredDs.length}) --</option>`;
     filteredDs.forEach(d => {
         const isSel = (d.id === curDsId);
-        dsHtml += `<option value="${d.id}" ${isSel ? 'selected' : ''}>${d.alias || d.name || d.id}</option>`;
+        const name = d.alias || d.name || d.id;
+        const displayLabel = `${name} (${d.id})`;
+        dsHtml += `<option value="${d.id}" ${isSel ? 'selected' : ''} title="${displayLabel}">${displayLabel}</option>`;
     });
     dsSelect.innerHTML = dsHtml;
 
-    // 填充报表下拉框
+    // 填充报表下拉框 (同时显示名称与 GUID)
     let rpHtml = `<option value="">-- 选择报表 (${filteredRp.length}) --</option>`;
     filteredRp.forEach(r => {
         const isSel = (r.id === curRpId);
-        rpHtml += `<option value="${r.id}" ${isSel ? 'selected' : ''}>${r.alias || r.name || r.id}</option>`;
+        const name = r.alias || r.name || r.id;
+        const displayLabel = `${name} (${r.id})`;
+        rpHtml += `<option value="${r.id}" ${isSel ? 'selected' : ''} title="${displayLabel}">${displayLabel}</option>`;
     });
     rpSelect.innerHTML = rpHtml;
 
