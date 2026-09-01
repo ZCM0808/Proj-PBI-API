@@ -143,19 +143,9 @@ body {
 
 .app-container {
     display: flex;
-    flex-direction: column;
     height: 100vh;
-    padding: var(--app-padding, 12px 16px 16px 16px);
+    padding: var(--app-padding, 16px);
     box-sizing: border-box;
-    overflow: hidden;
-}
-
-.app-main-layout {
-    display: flex;
-    flex: 1;
-    min-height: 0;
-    min-width: 0;
-    width: 100%;
     gap: 0;
     overflow: hidden;
 }
@@ -168,14 +158,13 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    align-items: stretch;
+    align-items: center;
     padding: 14px 8px;
     margin-right: 12px;
     flex-shrink: 0;
     z-index: 25;
-    transition: width 0.3s cubic-bezier(0.2, 0, 0, 1), min-width 0.3s cubic-bezier(0.2, 0, 0, 1), max-width 0.3s cubic-bezier(0.2, 0, 0, 1), opacity 0.22s ease, margin 0.3s cubic-bezier(0.2, 0, 0, 1), padding 0.3s cubic-bezier(0.2, 0, 0, 1) !important;
+    transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
     box-sizing: border-box;
-    overflow: hidden;
 }
 
 .app-rail.expanded {
@@ -196,44 +185,32 @@ body {
 .rail-logo-wrap {
     display: flex;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: center;
     gap: 10px;
-    padding: 6px 11px 12px 11px;
+    padding: 6px 4px 12px 4px;
     border-bottom: 1px solid var(--overlay-10);
     margin-bottom: 6px;
     cursor: pointer;
     user-select: none;
     overflow: hidden;
-    white-space: nowrap;
-    box-sizing: border-box;
-    transition: padding 0.3s cubic-bezier(0.2, 0, 0, 1);
 }
 
 .app-rail.expanded .rail-logo-wrap {
-    padding: 6px 11px 12px 11px;
+    justify-content: flex-start;
+    padding-left: 8px;
 }
 
 .rail-logo-title {
-    max-width: 0;
-    opacity: 0;
+    display: none;
     font-size: 0.95rem;
     font-weight: 700;
     color: var(--text-primary);
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
     letter-spacing: -0.01em;
-    transition: max-width 0.28s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease;
-    display: inline-block;
 }
 
 .app-rail.expanded .rail-logo-title {
-    max-width: 120px;
-    opacity: 1;
-}
-
-.rail-toggle-btn {
-    display: none;
+    display: block;
 }
 
 .app-rail.expanded .rail-toggle-btn {
@@ -253,25 +230,23 @@ body {
 .rail-item {
     display: flex;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: center;
     gap: 12px;
-    padding: 9px 11px;
+    padding: 10px;
     border-radius: 10px;
     color: var(--text-secondary);
     background: transparent;
     border: 1px solid transparent;
     cursor: pointer;
-    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, padding 0.3s cubic-bezier(0.2, 0, 0, 1);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     user-select: none;
     white-space: nowrap;
-    overflow: hidden;
-    box-sizing: border-box;
-    width: 100%;
 }
 
 .app-rail.expanded .rail-item {
-    padding: 9px 11px;
+    justify-content: flex-start;
+    padding: 9px 12px;
 }
 
 .rail-item:hover {
@@ -288,8 +263,8 @@ body {
 }
 
 .rail-item-icon {
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -297,19 +272,13 @@ body {
 }
 
 .rail-item-text {
-    max-width: 0;
-    opacity: 0;
+    display: none;
     font-size: 0.84rem;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    transition: max-width 0.28s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease;
-    display: inline-block;
 }
 
 .app-rail.expanded .rail-item-text {
-    max-width: 110px;
-    opacity: 1;
+    display: block !important;
 }
 
 
@@ -346,8 +315,6 @@ body {
     position: relative;
     z-index: 10;
     flex-shrink: 0;
-    overflow: hidden;
-    box-sizing: border-box;
 }
 
 /* Secondary Sidebar Panes */
@@ -356,9 +323,6 @@ body {
     flex-direction: column;
     height: 100%;
     min-height: 0;
-    min-width: 0;
-    width: 100%;
-    overflow: hidden;
 }
 
 /* Workflow Secondary Sidebar Item Styling */
@@ -967,26 +931,6 @@ body {
     flex-direction: column;
     gap: 0.5rem;
     flex: 1;
-    min-height: 0;
-    transition: flex 0.25s ease, height 0.25s ease;
-}
-
-.body-editor-container.is-collapsed {
-    flex: none !important;
-    height: auto !important;
-}
-
-.body-editor-container.is-collapsed .body-textarea-wrapper {
-    display: none !important;
-}
-
-#req-body-chevron {
-    transition: transform 0.2s ease;
-    transform: rotate(0deg);
-}
-
-.body-editor-container.is-collapsed #req-body-chevron {
-    transform: rotate(-90deg) !important;
 }
 
 .editor-header {
@@ -1358,7 +1302,7 @@ textarea:focus {
 #workflow-modal .modal-content { width: min(92vw, 840px); max-height: min(88vh, 850px); }
 #scan-modal .modal-content { width: min(94vw, 1080px); max-height: min(88vh, 850px); }
 #custom-dialog-modal .modal-content { width: min(90vw, 420px); max-width: 420px; }
-#gum-edit-modal .modal-content { width: min(90vw, 460px); max-width: 460px; }
+#gum-edit-modal .modal-content, #gum-add-modal .modal-content { width: min(90vw, 460px); max-width: 460px; }
 #pipeline-modal .modal-content { width: min(92vw, 840px); max-height: min(88vh, 850px); }
 #settings-modal .modal-content { width: min(94vw, 960px); max-height: min(90vh, 900px); }
 #modal-note .modal-content { width: min(94vw, 960px); max-height: min(90vh, 900px); }
@@ -3625,10 +3569,9 @@ svg.spinning {
     padding: 0;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    opacity: 0.65;
-    transition: opacity 0.22s ease, transform 0.22s ease, color 0.2s ease;
-    transform: scale(0.95);
+    opacity: 0;
+    transition: opacity 0.22s ease, transform 0.22s ease;
+    transform: scale(0.8);
     line-height: 1;
 }
 
@@ -3638,29 +3581,17 @@ svg.spinning {
 }
 
 .wf-inline-refresh-btn:hover {
-    opacity: 1 !important;
-    color: var(--accent-hover, #6366f1);
+    opacity: 0.7 !important;
 }
 
 .wf-inline-refresh-btn:active {
-    transform: scale(0.9);
-}
-
-.wf-inline-refresh-btn.spinning {
-    opacity: 1 !important;
-    pointer-events: none;
-}
-
-.wf-inline-refresh-btn.spinning svg {
-    animation: spin 0.8s linear infinite !important;
-    transform-origin: center center !important;
+    transform: scale(0.92);
 }
 
 
 /* --- Zen Mode (Focus Mode) --- */
 body.zen-mode #app-rail {
     width: 0 !important;
-    margin: 0 !important;
     min-width: 0 !important;
     padding: 0 !important;
     border: none !important;
@@ -3670,7 +3601,6 @@ body.zen-mode #app-rail {
 
 body.zen-mode .sidebar {
     width: 0 !important;
-    margin: 0 !important;
     min-width: 0 !important;
     padding: 0 !important;
     border: none !important;
@@ -3687,209 +3617,35 @@ body.zen-mode #dragMe {
     color: var(--text-primary) !important;
 }
 
-/* --- Rail Collapsed State (独立折叠最左侧一级导航轨) --- */
-body.rail-collapsed #app-rail {
-    width: 0 !important;
-    min-width: 0 !important;
-    max-width: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: none !important;
-    opacity: 0 !important;
-    overflow: hidden !important;
-    pointer-events: none !important;
-}
-
-/* 一级导航轨折叠后悬浮在页面左侧的展开把手 */
-#rail-expand-handle {
-    display: none;
-    position: fixed;
-    top: 52px;
-    left: 4px;
-    z-index: 45;
-    background: var(--panel-bg);
-    border: 1px solid var(--overlay-10);
-    border-radius: 6px;
-    padding: 6px 6px;
-    font-size: 0.76rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    cursor: pointer;
-    backdrop-filter: blur(12px);
-    box-shadow: 0 2px 10px var(--shadow-base);
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-body.rail-collapsed #rail-expand-handle {
-    display: inline-flex !important;
-}
-
-#rail-expand-handle:hover {
-    color: var(--accent);
-    background: var(--input-bg-light);
-    border-color: var(--accent-glow);
-    transform: scale(1.08);
-}
-
-/* --- Sidebar Collapsed State: 窄条图标模式 (48px narrow icon strip) --- */
-body.sidebar-collapsed .sidebar {
-    width: 48px !important;
-    min-width: 48px !important;
-    max-width: 48px !important;
-    padding: 12px 0 !important;
-    overflow: hidden !important;
-}
-
-body.sidebar-collapsed #dragMe {
-    display: none !important;
-}
-
-/* 折叠态隐藏所有面板内容 */
-body.sidebar-collapsed .sidebar .sidebar-pane {
-    display: none !important;
-}
-
-/* 折叠态显示窄条 */
-body.sidebar-collapsed #sidebar-narrow-strip {
-    display: flex !important;
-}
-
-/* --- 侧边栏窄条 (Sidebar Narrow Strip) --- */
-#sidebar-narrow-strip {
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    width: 100%;
-    gap: 8px;
-    cursor: pointer;
-    color: var(--text-secondary);
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    user-select: none;
-    transition: color 0.2s ease;
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    border-radius: 0;
-    padding: 0;
-}
-
-#sidebar-narrow-strip:hover {
-    color: var(--accent);
-}
-
-.btn-collapse-sidebar:hover {
-    color: var(--accent) !important;
-    border-color: var(--accent-glow) !important;
-    background: var(--input-bg-light) !important;
-}
+body.zen-mode .zen-icon-expand { display: none; }
+body.zen-mode .zen-icon-collapse { display: inline-block !important; }
 
 .sidebar {
-    transition: width 0.3s cubic-bezier(0.2, 0, 0, 1), min-width 0.3s cubic-bezier(0.2, 0, 0, 1), max-width 0.3s cubic-bezier(0.2, 0, 0, 1), opacity 0.22s ease, padding 0.3s cubic-bezier(0.2, 0, 0, 1), margin 0.3s cubic-bezier(0.2, 0, 0, 1) !important;
+    transition: width 0.35s cubic-bezier(0.2, 0, 0, 1), min-width 0.35s cubic-bezier(0.2, 0, 0, 1), opacity 0.25s, padding 0.35s !important;
 }
 #app-rail {
-    transition: width 0.3s cubic-bezier(0.2, 0, 0, 1), min-width 0.3s cubic-bezier(0.2, 0, 0, 1), max-width 0.3s cubic-bezier(0.2, 0, 0, 1), opacity 0.22s ease, padding 0.3s cubic-bezier(0.2, 0, 0, 1), margin 0.3s cubic-bezier(0.2, 0, 0, 1) !important;
+    transition: width 0.35s cubic-bezier(0.2, 0, 0, 1), min-width 0.35s cubic-bezier(0.2, 0, 0, 1), opacity 0.25s, padding 0.35s !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   ⚡ 全局顶部控制台功能栏 (Global Top Context Control Bar - Borderless)
+   ⚡ 全局顶部控制台功能栏 (Global Top Context Control Bar)
    ═══════════════════════════════════════════════════════════════════ */
 #global-topbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 2px 4px;
-    margin: 0 0 16px 0;
-    width: 100%;
-    background: transparent;
-    border: none;
-    box-shadow: none;
+    padding: 6px 12px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 2px 8px var(--shadow-base);
     flex-shrink: 0;
     z-index: 40;
     box-sizing: border-box;
-    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, margin 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    max-height: 50px;
-    overflow: hidden;
-    opacity: 1;
-    transform: translateY(0);
-}
-
-/* 折叠收起态 (Collapsed State) */
-body.topbar-collapsed #global-topbar {
-    max-height: 0 !important;
-    opacity: 0 !important;
-    margin: 0 !important;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-    pointer-events: none !important;
-    transform: translateY(-10px) !important;
-}
-
-/* 顶部展开小把手 (Floating Expand Handle) */
-#gtb-expand-handle {
-    display: inline-flex;
-    position: fixed;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%) translateY(calc(-100% + 15px));
-    opacity: 0.7;
-    background: var(--panel-bg);
-    border: 1px solid var(--overlay-10);
-    border-top: none;
-    border-bottom-left-radius: 10px;
-    border-bottom-right-radius: 10px;
-    padding: 4px 32px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    cursor: pointer;
-    z-index: 1000;
-    backdrop-filter: blur(14px);
-    box-shadow: 0 2px 8px var(--shadow-base);
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* default expanded mode: arrow points up to indicate collapse */
-#gtb-expand-handle svg,
-#gtb-expand-handle .gtb-handle-icon {
-    transform: rotate(180deg);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    transform-origin: center center;
-}
-
-/* collapsed mode: arrow points down to indicate expand */
-body.topbar-collapsed #gtb-expand-handle svg,
-body.topbar-collapsed #gtb-expand-handle .gtb-handle-icon {
-    transform: rotate(0deg);
-}
-
-/* 磁吸触发感应区域 (更大磁吸感应范围) */
-#gtb-expand-handle::before {
-    content: '';
-    position: absolute;
-    top: -10px;
-    left: -80px;
-    right: -80px;
-    bottom: -22px;
-    z-index: -1;
-}
-
-#gtb-expand-handle:hover {
-    color: var(--accent);
-    background: var(--input-bg-light);
-    border-color: var(--accent-glow);
-    transform: translateX(-50%) translateY(0);
-    opacity: 1;
-    padding: 6px 42px;
-    box-shadow: 0 6px 20px var(--shadow-dark);
+    transition: all 0.25s ease;
 }
 
 .gtb-group {
@@ -3960,11 +3716,10 @@ body.topbar-collapsed #gtb-expand-handle .gtb-handle-icon {
     background: var(--input-bg);
     border: 1px solid var(--overlay-10);
     border-radius: 6px;
-    padding: 2px 8px;
+    padding: 2px 6px;
     height: 32px;
     box-sizing: border-box;
     flex-shrink: 0;
-    min-width: 220px;
     transition: all 0.2s ease;
 }
 
@@ -3979,8 +3734,6 @@ body.topbar-collapsed #gtb-expand-handle .gtb-handle-icon {
     font-size: 0.75rem;
     font-weight: 600;
     cursor: pointer;
-    flex: 1;
-    width: 100%;
 }
 
 .gtb-auth-select.mode-sp {
@@ -3994,28 +3747,6 @@ body.topbar-collapsed #gtb-expand-handle .gtb-handle-icon {
 .gtb-auth-select option {
     background: var(--dropdown-bg);
     color: var(--text-primary);
-}
-
-/* AI Chat FAB - 紧贴右下角画布边缘 */
-#ai-chat-fab {
-    position: fixed !important;
-    bottom: 12px !important;
-    right: 12px !important;
-    width: 48px !important;
-    height: 48px !important;
-    border-radius: 50% !important;
-    box-shadow: 0 4px 14px var(--shadow-dark) !important;
-    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease !important;
-}
-
-#ai-chat-fab:hover {
-    transform: scale(1.08) !important;
-    box-shadow: 0 6px 20px var(--accent-glow) !important;
-}
-
-#ai-chat-window {
-    bottom: 68px !important;
-    right: 12px !important;
 }
 
 .gtb-xmla-box {
@@ -4074,181 +3805,3 @@ body.topbar-collapsed #gtb-expand-handle .gtb-handle-icon {
     flex-shrink: 0;
     white-space: nowrap;
 }
-
-/* ==========================================================================
-   Global Permissions Manager (GUM) Visual Dashboard & Charts
-   ========================================================================== */
-.gum-filter-pill {
-    background: var(--overlay-5);
-    border: 1px solid var(--overlay-10);
-    color: var(--text-secondary);
-    padding: 3px 10px;
-    border-radius: 12px;
-    font-size: 0.72rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-weight: 500;
-}
-.gum-filter-pill:hover {
-    background: var(--overlay-15);
-    color: var(--text-primary);
-    transform: translateY(-1px);
-}
-.gum-filter-pill.active {
-    background: var(--accent);
-    color: var(--accent-text, #0b0d12);
-    border-color: var(--accent);
-    font-weight: 600;
-    box-shadow: 0 0 10px var(--accent-glow);
-}
-.gum-filter-pill.warning.active {
-    background: var(--warning, #eab308);
-    color: #0b0d12;
-    border-color: var(--warning, #eab308);
-    box-shadow: 0 0 10px rgba(234, 179, 8, 0.4);
-}
-
-.gum-kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 10px;
-}
-.gum-kpi-card {
-    background: var(--overlay-5);
-    border: 1px solid var(--overlay-10);
-    border-radius: 8px;
-    padding: 12px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    position: relative;
-    overflow: hidden;
-    transition: transform 0.2s ease, border-color 0.2s ease;
-}
-.gum-kpi-card:hover {
-    transform: translateY(-2px);
-    border-color: var(--accent-glow);
-}
-.gum-kpi-card.warning-card {
-    border-color: rgba(234, 179, 8, 0.4);
-    background: rgba(234, 179, 8, 0.05);
-}
-.gum-kpi-card.warning-card .gum-kpi-val {
-    color: var(--warning, #eab308);
-    animation: gumPulse 2s infinite ease-in-out;
-}
-.gum-kpi-label {
-    font-size: 0.72rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-.gum-kpi-val {
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    line-height: 1.2;
-}
-.gum-kpi-sub {
-    font-size: 0.68rem;
-    color: var(--text-secondary);
-    opacity: 0.8;
-}
-
-@keyframes gumPulse {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.04); opacity: 0.85; }
-}
-
-.gum-charts-grid {
-    display: grid;
-    grid-template-columns: 1.2fr 1fr;
-    gap: 12px;
-}
-@media (max-width: 900px) {
-    .gum-charts-grid {
-        grid-template-columns: 1fr;
-    }
-}
-.gum-chart-card {
-    background: var(--overlay-5);
-    border: 1px solid var(--overlay-10);
-    border-radius: 8px;
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-.gum-chart-title {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-.gum-bar-row {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    margin-bottom: 8px;
-}
-.gum-bar-labels {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.72rem;
-    color: var(--text-secondary);
-}
-.gum-bar-track {
-    height: 10px;
-    background: var(--overlay-10);
-    border-radius: 5px;
-    overflow: hidden;
-    position: relative;
-    display: flex;
-}
-.gum-bar-fill-direct {
-    height: 100%;
-    background: var(--info, #0284c7);
-    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.gum-bar-fill-effective {
-    height: 100%;
-    background: var(--accent, #F2C811);
-    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.gum-bar-fill-elevated {
-    height: 100%;
-    background: var(--warning, #eab308);
-    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.gum-model-card {
-    background: var(--overlay-8);
-    border: 1px solid var(--overlay-10);
-    border-radius: 6px;
-    padding: 8px 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-/* GUM Targeted Principals Tags */
-.gum-target-tag {
-    animation: gumTagPop 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    transition: transform 0.15s ease, background 0.15s ease;
-}
-.gum-target-tag:hover {
-    transform: translateY(-1px);
-    filter: brightness(1.1);
-}
-@keyframes gumTagPop {
-    from {
-        opacity: 0;
-        transform: scale(0.85);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-

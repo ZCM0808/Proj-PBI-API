@@ -1561,9 +1561,8 @@ class NotePayload(BaseModel):
 
 
 def _sync_upload_to_github_rest(final_filename: str, content_bytes: bytes) -> tuple[bool, str]:
-    import base64
-    import os
-    import requests
+    """Fallback: upload attachment to GitHub via REST API when Git CLI fails"""
+    import os, base64, requests
     from src.config import load_settings
     token = os.getenv("GITHUB_PAT") or os.getenv("GITHUB_TOKEN") or load_settings().get("GITHUB_PAT", "")
     if not token:
@@ -1817,7 +1816,7 @@ async def upload_note_file(file: UploadFile = File(...)):
                 r = subprocess.run(["git", "push", "origin", "main"], cwd=root_dir, capture_output=True, text=True)
                 if r.returncode == 0:
                     git_pushed = True
-            except Exception:
+            except Exception as e:
                 pass
             
             if not git_pushed:
@@ -2743,29 +2742,3 @@ async def api_inspect_datasource(req: DatasourceInspectRequest):
         return res
     except Exception as e:
         return {"success": False, "message": str(e)}
-
-class DeepPermissionScanRequest(BaseModel):
-    workspace_id: Optional[str] = None
-    deep_scan: bool = True
-    access_token: Optional[str] = None
-    target_users: Optional[List[str]] = None
-
-@app.post("/api/workflow/deep-permissions-scan")
-async def api_deep_permissions_scan(req: DeepPermissionScanRequest):
-    """全景权限与穿透生效治理扫描接口 (直属角色 + 安全组生效穿透 + 语义模型读写判定 + 提权偏离检测 + 定向用户过滤)"""
-    from src.permission_scanner import scan_permissions_deep
-    try:
-        cfg = Config()
-        cli = PBIClient(cfg)
-        res = await scan_permissions_deep(
-            workspace_id=req.workspace_id,
-            deep_scan=req.deep_scan,
-            config=cfg,
-            client=cli,
-            target_users=req.target_users
-        )
-        return res
-    except Exception as e:
-        return {"success": False, "message": str(e)}
-
-
