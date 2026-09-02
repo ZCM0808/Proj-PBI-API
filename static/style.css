@@ -3639,25 +3639,74 @@ body.zen-mode .zen-icon-collapse { display: inline-block !important; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   ⚡ 全局顶部控制台功能栏 (Global Top Context Control Bar)
+   ⚡ 全局顶部控制台功能栏 (Global Top Context Control Bar - Borderless)
    ═══════════════════════════════════════════════════════════════════ */
 #global-topbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 6px 14px;
-    margin: 0;
+    padding: 0 4px;
+    margin: 0 0 6px 0;
     width: 100%;
-    border-radius: 10px;
-    background: var(--panel-bg);
-    border: 1px solid var(--panel-border);
-    backdrop-filter: blur(14px);
-    box-shadow: 0 4px 16px var(--shadow-base);
+    background: transparent;
+    border: none;
+    box-shadow: none;
     flex-shrink: 0;
     z-index: 40;
     box-sizing: border-box;
-    transition: all 0.25s ease;
+    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, margin 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    max-height: 50px;
+    overflow: hidden;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* 折叠收起态 (Collapsed State) */
+body.topbar-collapsed #global-topbar {
+    max-height: 0 !important;
+    opacity: 0 !important;
+    margin: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    pointer-events: none !important;
+    transform: translateY(-10px) !important;
+}
+
+/* 顶部展开小把手 (Floating Expand Handle) */
+#gtb-expand-handle {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--panel-bg);
+    border: 1px solid var(--overlay-10);
+    border-top: none;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    padding: 2px 14px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    z-index: 1000;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 2px 8px var(--shadow-base);
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.topbar-collapsed #gtb-expand-handle {
+    display: inline-flex !important;
+}
+
+#gtb-expand-handle:hover {
+    color: var(--accent);
+    background: var(--input-bg-light);
+    border-color: var(--accent-glow);
+    transform: translateX(-50%) translateY(2px);
 }
 
 .gtb-group {

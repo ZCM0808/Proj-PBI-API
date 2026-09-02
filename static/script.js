@@ -2552,6 +2552,14 @@ window.refreshGlobalContext = async function(btn) {
     }
 };
 
+// 向上折叠 / 展开全局功能控制栏
+window.toggleGlobalTopbarCollapse = function() {
+    const isCollapsed = document.body.classList.toggle('topbar-collapsed');
+    try {
+        localStorage.setItem('pbi-topbar-collapsed', isCollapsed ? 'true' : 'false');
+    } catch(e) {}
+};
+
 // 贯通所有工作流卡片内 Workspace / Dataset / Report 下拉框的即时自动继承与同步
 window.syncAllWorkflowSelectors = function() {
     const curWsId = document.getElementById('active-workspace')?.value || localStorage.getItem('pbi-active-workspace') || '';
