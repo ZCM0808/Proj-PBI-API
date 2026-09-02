@@ -3700,60 +3700,53 @@ body.rail-collapsed #rail-expand-handle {
     transform: scale(1.08);
 }
 
-/* --- Sidebar Collapsed State (独立折叠左侧二级菜单) --- */
+/* --- Sidebar Collapsed State: 窄条图标模式 (48px narrow icon strip) --- */
 body.sidebar-collapsed .sidebar {
-    width: 0 !important;
-    min-width: 0 !important;
-    max-width: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: none !important;
-    opacity: 0 !important;
+    width: 48px !important;
+    min-width: 48px !important;
+    max-width: 48px !important;
+    padding: 12px 0 !important;
     overflow: hidden !important;
-    pointer-events: none !important;
 }
 
 body.sidebar-collapsed #dragMe {
     display: none !important;
 }
 
-/* 侧边栏折叠后悬浮在主工作区左上方的展开把手 */
-#sidebar-expand-handle {
+/* 折叠态隐藏所有面板内容 */
+body.sidebar-collapsed .sidebar .sidebar-pane {
+    display: none !important;
+}
+
+/* 折叠态显示窄条 */
+body.sidebar-collapsed #sidebar-narrow-strip {
+    display: flex !important;
+}
+
+/* --- 侧边栏窄条 (Sidebar Narrow Strip) --- */
+#sidebar-narrow-strip {
     display: none;
-    position: fixed;
-    top: 50%;
-    left: 4px;
-    transform: translateY(-50%);
-    z-index: 46;
-    background: var(--panel-bg);
-    border: 1px solid var(--overlay-10);
-    border-radius: 6px;
-    padding: 10px 5px;
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    cursor: pointer;
-    backdrop-filter: blur(12px);
-    box-shadow: 0 2px 10px var(--shadow-base);
-    align-items: center;
     flex-direction: column;
-    gap: 4px;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    gap: 8px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    user-select: none;
+    transition: color 0.2s ease;
     writing-mode: vertical-rl;
     text-orientation: mixed;
-    transition: color 0.2s, background 0.2s, border-color 0.2s, box-shadow 0.2s;
-    letter-spacing: 0.04em;
+    border-radius: 0;
+    padding: 0;
 }
 
-body.sidebar-collapsed #sidebar-expand-handle {
-    display: inline-flex !important;
-}
-
-#sidebar-expand-handle:hover {
+#sidebar-narrow-strip:hover {
     color: var(--accent);
-    background: var(--input-bg-light);
-    border-color: var(--accent-glow);
-    box-shadow: 0 0 12px var(--accent-glow), 0 2px 10px var(--shadow-base);
-    transform: translateY(-50%) translateX(2px);
 }
 
 .btn-collapse-sidebar:hover {
