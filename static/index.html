@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260902_v2212">
+    <link rel="stylesheet" href="/static/style.css?v=20260902_v2213">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -65,14 +65,6 @@
                 });
             }
 
-            // 提前恢复一级导航轨完全折叠隐藏态
-            if (localStorage.getItem('pbi-rail-collapsed') === 'true') {
-                document.documentElement.classList.add('rail-collapsed-init');
-                window.addEventListener('DOMContentLoaded', function() {
-                    document.body.classList.add('rail-collapsed');
-                });
-            }
-
             // ★ 提前定义 toggleAppRail、toggleSidebar 与 toggleGlobalTopbarCollapse ★
             window.toggleAppRail = function(action) {
                 var rail = document.getElementById('app-rail');
@@ -81,14 +73,12 @@
                 if (action === 'collapse') {
                     // 完全隐藏收起一级导航轨
                     var isRailCollapsed = document.body.classList.toggle('rail-collapsed');
-                    try { localStorage.setItem('pbi-rail-collapsed', isRailCollapsed ? 'true' : 'false'); } catch(e) {}
                     return;
                 }
                 
                 if (document.body.classList.contains('rail-collapsed')) {
                     // 如果处于完全隐藏态，点击把手先唤出
                     document.body.classList.remove('rail-collapsed');
-                    try { localStorage.setItem('pbi-rail-collapsed', 'false'); } catch(e) {}
                     return;
                 }
 
@@ -256,7 +246,7 @@
                             <rect x="15" y="2" width="5" height="19" fill="#F2C811"/>
                         </svg>
                         <span class="rail-logo-title">PBI Studio</span>
-                        <button type="button" class="rail-toggle-btn" onclick="event.stopPropagation(); window.toggleAppRail('collapse');" title="完全隐藏/收起一级导航栏 (Hide Primary Rail)" style="background: none; border: none; padding: 0; color: var(--text-secondary); cursor: pointer; margin-left: auto; display: none;">
+                        <button type="button" class="rail-toggle-btn" onclick="event.stopPropagation(); window.toggleAppRail();" title="折回图标模式 (Collapse to Icon Mode)" style="background: none; border: none; padding: 0; color: var(--text-secondary); cursor: pointer; margin-left: auto; display: none;">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11 17 6 12 11 7"></polyline><polyline points="18 17 13 12 18 7"></polyline></svg>
                         </button>
                     </div>
