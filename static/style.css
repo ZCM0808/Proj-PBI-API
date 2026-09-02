@@ -169,12 +169,12 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    align-items: center;
+    align-items: stretch;
     padding: 14px 8px;
     margin-right: 12px;
     flex-shrink: 0;
     z-index: 25;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: width 0.3s cubic-bezier(0.2, 0, 0, 1), min-width 0.3s cubic-bezier(0.2, 0, 0, 1), max-width 0.3s cubic-bezier(0.2, 0, 0, 1), opacity 0.22s ease, margin 0.3s cubic-bezier(0.2, 0, 0, 1), padding 0.3s cubic-bezier(0.2, 0, 0, 1) !important;
     box-sizing: border-box;
     overflow: hidden;
 }
@@ -197,20 +197,20 @@ body {
 .rail-logo-wrap {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 10px;
-    padding: 6px 4px 12px 4px;
+    padding: 6px 10px 12px 10px;
     border-bottom: 1px solid var(--overlay-10);
     margin-bottom: 6px;
     cursor: pointer;
     user-select: none;
     overflow: hidden;
     white-space: nowrap;
+    box-sizing: border-box;
 }
 
 .app-rail.expanded .rail-logo-wrap {
-    justify-content: flex-start;
-    padding-left: 8px;
+    padding: 6px 10px 12px 10px;
 }
 
 .rail-logo-title {
@@ -223,7 +223,7 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     letter-spacing: -0.01em;
-    transition: max-width 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease;
+    transition: max-width 0.28s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease;
     display: inline-block;
 }
 
@@ -253,25 +253,25 @@ body {
 .rail-item {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 12px;
-    padding: 10px;
+    padding: 9px 11px;
     border-radius: 10px;
     color: var(--text-secondary);
     background: transparent;
     border: 1px solid transparent;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
     position: relative;
     user-select: none;
     white-space: nowrap;
     overflow: hidden;
     box-sizing: border-box;
+    width: 100%;
 }
 
 .app-rail.expanded .rail-item {
-    justify-content: flex-start;
-    padding: 9px 12px;
+    padding: 9px 11px;
 }
 
 .rail-item:hover {
@@ -288,8 +288,8 @@ body {
 }
 
 .rail-item-icon {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -303,7 +303,7 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    transition: max-width 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease;
+    transition: max-width 0.28s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease;
     display: inline-block;
 }
 
@@ -3756,10 +3756,10 @@ body.sidebar-collapsed #sidebar-expand-handle {
 }
 
 .sidebar {
-    transition: width 0.32s cubic-bezier(0.2, 0, 0, 1), min-width 0.32s cubic-bezier(0.2, 0, 0, 1), max-width 0.32s cubic-bezier(0.2, 0, 0, 1), opacity 0.22s ease, padding 0.32s cubic-bezier(0.2, 0, 0, 1), margin 0.32s cubic-bezier(0.2, 0, 0, 1) !important;
+    transition: width 0.3s cubic-bezier(0.2, 0, 0, 1), min-width 0.3s cubic-bezier(0.2, 0, 0, 1), max-width 0.3s cubic-bezier(0.2, 0, 0, 1), opacity 0.22s ease, padding 0.3s cubic-bezier(0.2, 0, 0, 1), margin 0.3s cubic-bezier(0.2, 0, 0, 1) !important;
 }
 #app-rail {
-    transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.28s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease, padding 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition: width 0.3s cubic-bezier(0.2, 0, 0, 1), min-width 0.3s cubic-bezier(0.2, 0, 0, 1), max-width 0.3s cubic-bezier(0.2, 0, 0, 1), opacity 0.22s ease, padding 0.3s cubic-bezier(0.2, 0, 0, 1), margin 0.3s cubic-bezier(0.2, 0, 0, 1) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
