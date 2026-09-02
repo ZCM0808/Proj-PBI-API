@@ -3628,14 +3628,65 @@ body.zen-mode #dragMe {
     color: var(--text-primary) !important;
 }
 
-body.zen-mode .zen-icon-expand { display: none; }
-body.zen-mode .zen-icon-collapse { display: inline-block !important; }
+/* --- Sidebar Collapsed State (独立折叠左侧二级菜单) --- */
+body.sidebar-collapsed .sidebar {
+    width: 0 !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    opacity: 0 !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+}
+
+body.sidebar-collapsed #dragMe {
+    display: none !important;
+}
+
+/* 侧边栏折叠后悬浮在主工作区左上方的展开把手 */
+#sidebar-expand-handle {
+    display: none;
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    z-index: 35;
+    background: var(--panel-bg);
+    border: 1px solid var(--overlay-10);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 2px 8px var(--shadow-base);
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.sidebar-collapsed #sidebar-expand-handle {
+    display: inline-flex !important;
+}
+
+#sidebar-expand-handle:hover {
+    color: var(--accent);
+    background: var(--input-bg-light);
+    border-color: var(--accent-glow);
+    transform: translateX(2px);
+}
+
+.btn-collapse-sidebar:hover {
+    color: var(--accent) !important;
+    border-color: var(--accent-glow) !important;
+    background: var(--input-bg-light) !important;
+}
 
 .sidebar {
-    transition: width 0.35s cubic-bezier(0.2, 0, 0, 1), min-width 0.35s cubic-bezier(0.2, 0, 0, 1), opacity 0.25s, padding 0.35s !important;
+    transition: width 0.32s cubic-bezier(0.2, 0, 0, 1), min-width 0.32s cubic-bezier(0.2, 0, 0, 1), opacity 0.22s ease, padding 0.32s cubic-bezier(0.2, 0, 0, 1) !important;
 }
 #app-rail {
-    transition: width 0.35s cubic-bezier(0.2, 0, 0, 1), min-width 0.35s cubic-bezier(0.2, 0, 0, 1), opacity 0.25s, padding 0.35s !important;
+    transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease, padding 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════

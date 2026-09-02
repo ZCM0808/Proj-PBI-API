@@ -127,6 +127,14 @@ window.toggleAppRail = function() {
     try { localStorage.setItem('pbi-rail-expanded', isExpanded ? 'true' : 'false'); } catch(e) {}
 };
 
+// 独立折叠 / 展开左侧二级菜单侧边栏 (Secondary Sidebar)
+window.toggleSidebar = function() {
+    const isCollapsed = document.body.classList.toggle('sidebar-collapsed');
+    try {
+        localStorage.setItem('pbi-sidebar-collapsed', isCollapsed ? 'true' : 'false');
+    } catch(e) {}
+};
+
 // 切换一级模块 (Workflows vs API Tree)
 window.switchAppModule = function(moduleName) {
     // 1. Update Rail active item
