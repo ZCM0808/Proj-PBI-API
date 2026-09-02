@@ -143,9 +143,20 @@ body {
 
 .app-container {
     display: flex;
+    flex-direction: column;
     height: 100vh;
-    padding: var(--app-padding, 16px);
+    padding: var(--app-padding, 12px 16px 16px 16px);
     box-sizing: border-box;
+    gap: 10px;
+    overflow: hidden;
+}
+
+.app-main-layout {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    width: 100%;
     gap: 0;
     overflow: hidden;
 }
@@ -3635,13 +3646,14 @@ body.zen-mode .zen-icon-collapse { display: inline-block !important; }
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 6px 12px;
-    margin-bottom: 8px;
-    border-radius: 8px;
+    padding: 6px 14px;
+    margin: 0;
+    width: 100%;
+    border-radius: 10px;
     background: var(--panel-bg);
     border: 1px solid var(--panel-border);
-    backdrop-filter: blur(12px);
-    box-shadow: 0 2px 8px var(--shadow-base);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 4px 16px var(--shadow-base);
     flex-shrink: 0;
     z-index: 40;
     box-sizing: border-box;
