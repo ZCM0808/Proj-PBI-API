@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260902_v2206">
+    <link rel="stylesheet" href="/static/style.css?v=20260902_v2207">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -39,7 +39,8 @@
             // 恢复 App Rail 展开态 CSS，避免刷新时从 60px 闪烁到 175px
             if (railExpanded === 'true') {
                 styleStr += `#app-rail { width: 175px !important; min-width: 175px !important; max-width: 175px !important; align-items: stretch; } `;
-                styleStr += `#app-rail .rail-logo-title, #app-rail .rail-item-text { display: block !important; } `;
+                styleStr += `#app-rail .rail-logo-title { max-width: 120px !important; opacity: 1 !important; } `;
+                styleStr += `#app-rail .rail-item-text { max-width: 110px !important; opacity: 1 !important; } `;
                 styleStr += `#app-rail .rail-logo-wrap { justify-content: flex-start; padding-left: 8px; } `;
                 styleStr += `#app-rail .rail-item { justify-content: flex-start; padding: 9px 12px; } `;
                 styleStr += `#app-rail .rail-toggle-btn { display: flex !important; align-items: center; justify-content: center; } `;
@@ -2591,7 +2592,7 @@
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
     <script src="/static/universal_modal.js?v=20260825_v21"></script>
-    <script src="/static/script.js?v=20260902_v2206"></script>
+    <script src="/static/script.js?v=20260902_v2207"></script>
 
 
 
