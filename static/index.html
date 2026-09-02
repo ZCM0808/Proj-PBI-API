@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260902_v2213">
+    <link rel="stylesheet" href="/static/style.css?v=20260902_v2214">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -36,17 +36,23 @@
             if (requestHeight) {
                 styleStr += `.body-editor-container { height: ${requestHeight}; flex: none; } `;
             }
-            // 恢复 App Rail 展开态 CSS，避免刷新时从 60px 闪烁到 175px
+            // 恢复 App Rail 展开态：直接在元素上预设 expanded 类，避免刷新时从 60px 闪烁到 175px
+            // 注意：必须在 DOMContentLoaded 后才能访问 DOM 元素，此处用 documentWrite 注入提前样式
             if (railExpanded === 'true') {
-                styleStr += `#app-rail { width: 175px !important; min-width: 175px !important; max-width: 175px !important; align-items: stretch; } `;
+                styleStr += `#app-rail { width: 175px !important; min-width: 175px !important; max-width: 175px !important; } `;
                 styleStr += `#app-rail .rail-logo-title { max-width: 120px !important; opacity: 1 !important; } `;
                 styleStr += `#app-rail .rail-item-text { max-width: 110px !important; opacity: 1 !important; } `;
-                styleStr += `#app-rail .rail-logo-wrap { justify-content: flex-start; padding-left: 8px; } `;
-                styleStr += `#app-rail .rail-item { justify-content: flex-start; padding: 9px 12px; } `;
-                styleStr += `#app-rail .rail-toggle-btn { display: flex !important; align-items: center; justify-content: center; } `;
+                // 在 DOMContentLoaded 后补加 expanded 类，这样 JS 切换时只操作类而不受内联 style 锁死
+                window.addEventListener('DOMContentLoaded', function() {
+                    var r = document.getElementById('app-rail');
+                    if (r) r.classList.add('expanded');
+                    // 移除注入的内联样式（已由 expanded 类接管）
+                    var injected = document.getElementById('fouc-rail-style');
+                    if (injected) injected.remove();
+                });
             }
             if (styleStr) {
-                document.write('<style>' + styleStr + '</style>');
+                document.write('<style id="fouc-rail-style">' + styleStr + '</style>');
             }
 
             // 提前恢复顶栏折叠态
