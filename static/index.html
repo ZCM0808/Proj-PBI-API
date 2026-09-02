@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260902_v2203">
+    <link rel="stylesheet" href="/static/style.css?v=20260902_v2205">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -56,13 +56,26 @@
                 });
             }
 
-            // ★ 提前定义 toggleAppRail 与 toggleGlobalTopbarCollapse ★
+            // 提前恢复侧边栏折叠态
+            if (localStorage.getItem('pbi-sidebar-collapsed') === 'true') {
+                document.documentElement.classList.add('sidebar-collapsed-init');
+                window.addEventListener('DOMContentLoaded', function() {
+                    document.body.classList.add('sidebar-collapsed');
+                });
+            }
+
+            // ★ 提前定义 toggleAppRail、toggleSidebar 与 toggleGlobalTopbarCollapse ★
             window.toggleAppRail = function() {
                 var rail = document.getElementById('app-rail');
                 if (!rail) return;
                 rail.classList.toggle('expanded');
                 var isExpanded = rail.classList.contains('expanded');
                 try { localStorage.setItem('pbi-rail-expanded', isExpanded ? 'true' : 'false'); } catch(e) {}
+            };
+
+            window.toggleSidebar = function() {
+                var isCollapsed = document.body.classList.toggle('sidebar-collapsed');
+                try { localStorage.setItem('pbi-sidebar-collapsed', isCollapsed ? 'true' : 'false'); } catch(e) {}
             };
 
             window.toggleGlobalTopbarCollapse = function() {
@@ -206,17 +219,17 @@
             <!-- 1. Leftmost Navigation Rail (Expandable/Collapsible) -->
             <aside id="app-rail" class="app-rail glass-panel">
                 <div class="rail-top">
-                    <div class="rail-logo-wrap" id="rail-logo-toggle" title="点击折叠/展开侧边栏菜单 (Toggle Sidebar Rail)">
+                    <div class="rail-logo-wrap" id="rail-logo-toggle" onclick="window.toggleAppRail()" title="点击折叠/展开一级导航菜单 (Toggle Primary Rail)">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0;">
                             <rect x="3" y="12" width="5" height="9" fill="#F2C811"/>
                             <rect x="9" y="7" width="5" height="14" fill="#F2C811"/>
                             <rect x="15" y="2" width="5" height="19" fill="#F2C811"/>
                         </svg>
                         <span class="rail-logo-title">PBI Studio</span>
-                    <button type="button" class="rail-toggle-btn" title="Toggle Rail" style="background: none; border: none; padding: 0; color: var(--text-secondary); cursor: pointer; margin-left: auto; display: none;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11 17 6 12 11 7"></polyline><polyline points="18 17 13 12 18 7"></polyline></svg>
-                    </button>
-                </div>
+                        <button type="button" class="rail-toggle-btn" title="收起导航轨 (Collapse Rail)" style="background: none; border: none; padding: 0; color: var(--text-secondary); cursor: pointer; margin-left: auto; display: none;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11 17 6 12 11 7"></polyline><polyline points="18 17 13 12 18 7"></polyline></svg>
+                        </button>
+                    </div>
                 <ul class="rail-menu-list">
                     <li class="rail-item active" id="rail-nav-workflows" data-module="workflows" title="⚡ 自动化工作流 (Workflows)">
                         <div class="rail-item-icon">
@@ -271,9 +284,6 @@
             </div>
         </aside>
         <script>
-            // ★ 关键修复：用 addEventListener + 事件委托彻底替代 onclick 属性 ★
-            // onclick 内联属性在某些场景下会静默失败（CSP/事件吞噬/脚本加载时序）。
-            // addEventListener 直接绑定到已解析的 DOM 元素上，100% 可靠。
             (function() {
                 var rail = document.getElementById('app-rail');
                 if (!rail) return;
@@ -283,30 +293,15 @@
                     rail.classList.add('expanded');
                 }
 
-                // 2. Logo 区域点击 → 折叠/展开 Rail
-                var logoToggle = document.getElementById('rail-logo-toggle');
-                if (logoToggle) {
-                    logoToggle.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        rail.classList.toggle('expanded');
-                        var isExp = rail.classList.contains('expanded');
-                        try { localStorage.setItem('pbi-rail-expanded', isExp ? 'true' : 'false'); } catch(ex) {}
-                        console.log('[App Rail] Toggle →', isExp ? 'EXPANDED' : 'COLLAPSED');
-                    });
-                }
-
-                // 3. 菜单项点击 → 切换模块（事件委托）
+                // 2. 菜单项点击 → 切换模块（事件委托）
                 rail.addEventListener('click', function(e) {
                     var menuItem = e.target.closest('[data-module]');
                     if (!menuItem) return;
                     var moduleName = menuItem.getAttribute('data-module');
                     if (!moduleName) return;
-                    // switchAppModule 可能尚未定义（script.js 还没加载），先缓存到 window
                     if (typeof window.switchAppModule === 'function') {
                         window.switchAppModule(moduleName);
                     } else {
-                        // 降级处理：缓存选择，等 script.js 加载后执行
                         window._pendingModule = moduleName;
                     }
                     console.log('[App Rail] Switch module →', moduleName);
@@ -320,7 +315,12 @@
             <div id="sidebar-pane-workflows" class="sidebar-pane" style="display: flex;">
                 <div class="nav-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                     <p class="nav-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">⚡ 工作流中心</p>
-                    <span class="api-count-badge" id="wf-total-badge">11 个任务</span>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span class="api-count-badge" id="wf-total-badge">11 个任务</span>
+                        <button type="button" class="icon-btn btn-collapse-sidebar" onclick="window.toggleSidebar()" title="折叠左侧侧边栏 (Collapse Sidebar)" style="height: 24px; width: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-secondary); cursor: pointer; transition: all 0.2s;">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"></polyline><polyline points="18 17 13 12 18 7"></polyline></svg>
+                        </button>
+                    </div>
                 </div>
                 <div style="margin-bottom: 0.75rem;">
                     <input type="search" id="wf-search-input" placeholder="搜索工作流..." class="modern-input" style="width: 100%; border-radius: 6px;" oninput="window.filterWorkflowsList(this.value)">
@@ -334,8 +334,11 @@
             <div id="sidebar-pane-api_tree" class="sidebar-pane" style="display: none;">
                 <div class="nav-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                     <p class="nav-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">🌲 API 资源树</p>
-                    <div style="display: flex; gap: 8px; align-items: center;">
+                    <div style="display: flex; gap: 6px; align-items: center;">
                         <span class="api-count-badge" title="Total APIs">共 <span id="total-api-count">0</span> 个</span>
+                        <button type="button" class="icon-btn btn-collapse-sidebar" onclick="window.toggleSidebar()" title="折叠左侧侧边栏 (Collapse Sidebar)" style="height: 24px; width: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-secondary); cursor: pointer; transition: all 0.2s;">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"></polyline><polyline points="18 17 13 12 18 7"></polyline></svg>
+                        </button>
                     </div>
                 </div>
                 <div style="display: flex; gap: 8px; margin-bottom: 0.5rem;">
@@ -395,7 +398,13 @@
         <div class="resizer" id="dragMe"></div>
 
         <!-- 3. Main Workspace Area -->
-        <div id="workspace-container" style="flex: 1; display: flex; flex-direction: column; height: 100%; min-width: 0; overflow: hidden; padding-top: 2px;">
+        <div id="workspace-container" style="flex: 1; display: flex; flex-direction: column; height: 100%; min-width: 0; overflow: hidden; padding-top: 2px; position: relative;">
+            <!-- ◀ 侧边栏折叠后悬浮在主区左侧边缘的快速展开把手 (Sidebar Expand Handle) -->
+            <button type="button" id="sidebar-expand-handle" onclick="window.toggleSidebar()" title="展开侧边栏 (Expand Sidebar)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"></polyline><polyline points="6 17 11 12 6 7"></polyline></svg>
+                <span>菜单</span>
+            </button>
+
             <!-- View A: Workflow Workspace Board -->
             <select id="wf-selector" style="display: none;">
 
@@ -2582,7 +2591,7 @@
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
     <script src="/static/universal_modal.js?v=20260825_v21"></script>
-    <script src="/static/script.js?v=20260902_v2204"></script>
+    <script src="/static/script.js?v=20260902_v2205"></script>
 
 
 
