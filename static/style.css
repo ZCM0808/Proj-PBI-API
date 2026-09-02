@@ -3632,6 +3632,8 @@ body.zen-mode #dragMe {
 body.sidebar-collapsed .sidebar {
     width: 0 !important;
     min-width: 0 !important;
+    max-width: 0 !important;
+    margin: 0 !important;
     padding: 0 !important;
     border: none !important;
     opacity: 0 !important;
@@ -3683,10 +3685,10 @@ body.sidebar-collapsed #sidebar-expand-handle {
 }
 
 .sidebar {
-    transition: width 0.32s cubic-bezier(0.2, 0, 0, 1), min-width 0.32s cubic-bezier(0.2, 0, 0, 1), opacity 0.22s ease, padding 0.32s cubic-bezier(0.2, 0, 0, 1) !important;
+    transition: width 0.32s cubic-bezier(0.2, 0, 0, 1), min-width 0.32s cubic-bezier(0.2, 0, 0, 1), max-width 0.32s cubic-bezier(0.2, 0, 0, 1), opacity 0.22s ease, padding 0.32s cubic-bezier(0.2, 0, 0, 1), margin 0.32s cubic-bezier(0.2, 0, 0, 1) !important;
 }
 #app-rail {
-    transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease, padding 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.28s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease, padding 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════

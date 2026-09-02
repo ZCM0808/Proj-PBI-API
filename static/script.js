@@ -8582,15 +8582,9 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
 
     // --- 恢复布局状态 ---
-
     const savedSidebarWidth = localStorage.getItem('pbi-sidebar-width');
-
     if (savedSidebarWidth) {
-
-        sidebar.style.width = savedSidebarWidth;
-
-        sidebar.style.minWidth = savedSidebarWidth; document.documentElement.style.setProperty('--sidebar-width', savedSidebarWidth);
-
+        document.documentElement.style.setProperty('--sidebar-width', savedSidebarWidth);
     }
 
     const bodyEditorContainer = document.querySelector('.body-editor-container');
@@ -8655,15 +8649,8 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
             let newWidth = e.clientX - sidebarLeft;
 
             if (newWidth < 200) newWidth = 200;
-
             if (newWidth > 600) newWidth = 600;
-
-            sidebar.style.width = `${newWidth}px`;
-
-            sidebar.style.minWidth = `${newWidth}px`;
-
             document.documentElement.style.setProperty('--sidebar-width', `${newWidth}px`);
-
         }
 
         
@@ -8724,10 +8711,7 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
             document.body.style.cursor = 'default';
 
-            document.body.style.userSelect = 'auto';
-
-            localStorage.setItem('pbi-sidebar-width', sidebar.style.width);
-
+            localStorage.setItem('pbi-sidebar-width', getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width') || '280px');
         }
 
         if (isVerticalResizing) {
