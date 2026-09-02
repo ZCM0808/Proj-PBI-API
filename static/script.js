@@ -119,9 +119,22 @@ function saveWfNames(names) {
 
 
 // ─── IDE App Rail & Workspace Navigation Controller ─────────────────
-window.toggleAppRail = function() {
+window.toggleAppRail = function(action) {
     const rail = document.getElementById('app-rail');
     if (!rail) return;
+    
+    if (action === 'collapse') {
+        const isRailCollapsed = document.body.classList.toggle('rail-collapsed');
+        try { localStorage.setItem('pbi-rail-collapsed', isRailCollapsed ? 'true' : 'false'); } catch(e) {}
+        return;
+    }
+    
+    if (document.body.classList.contains('rail-collapsed')) {
+        document.body.classList.remove('rail-collapsed');
+        try { localStorage.setItem('pbi-rail-collapsed', 'false'); } catch(e) {}
+        return;
+    }
+
     rail.classList.toggle('expanded');
     const isExpanded = rail.classList.contains('expanded');
     try { localStorage.setItem('pbi-rail-expanded', isExpanded ? 'true' : 'false'); } catch(e) {}
