@@ -3653,6 +3653,52 @@ body.zen-mode #dragMe {
     color: var(--text-primary) !important;
 }
 
+/* --- Rail Collapsed State (独立折叠最左侧一级导航轨) --- */
+body.rail-collapsed #app-rail {
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    opacity: 0 !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+}
+
+/* 一级导航轨折叠后悬浮在页面左侧的展开把手 */
+#rail-expand-handle {
+    display: none;
+    position: fixed;
+    top: 52px;
+    left: 4px;
+    z-index: 45;
+    background: var(--panel-bg);
+    border: 1px solid var(--overlay-10);
+    border-radius: 6px;
+    padding: 6px 6px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 2px 10px var(--shadow-base);
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.rail-collapsed #rail-expand-handle {
+    display: inline-flex !important;
+}
+
+#rail-expand-handle:hover {
+    color: var(--accent);
+    background: var(--input-bg-light);
+    border-color: var(--accent-glow);
+    transform: scale(1.08);
+}
+
 /* --- Sidebar Collapsed State (独立折叠左侧二级菜单) --- */
 body.sidebar-collapsed .sidebar {
     width: 0 !important;
