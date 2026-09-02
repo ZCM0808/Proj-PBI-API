@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260901_v2111">
+    <link rel="stylesheet" href="/static/style.css?v=20260902_v2203">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -48,14 +48,26 @@
                 document.write('<style>' + styleStr + '</style>');
             }
 
-            // ★ 提前定义 toggleAppRail，确保 DOM 渲染后即可响应点击 ★
-            // script.js 加载后会用更完整的版本覆盖此定义
+            // 提前恢复顶栏折叠态
+            if (localStorage.getItem('pbi-topbar-collapsed') === 'true') {
+                document.documentElement.classList.add('topbar-collapsed-init');
+                window.addEventListener('DOMContentLoaded', function() {
+                    document.body.classList.add('topbar-collapsed');
+                });
+            }
+
+            // ★ 提前定义 toggleAppRail 与 toggleGlobalTopbarCollapse ★
             window.toggleAppRail = function() {
                 var rail = document.getElementById('app-rail');
                 if (!rail) return;
                 rail.classList.toggle('expanded');
                 var isExpanded = rail.classList.contains('expanded');
                 try { localStorage.setItem('pbi-rail-expanded', isExpanded ? 'true' : 'false'); } catch(e) {}
+            };
+
+            window.toggleGlobalTopbarCollapse = function() {
+                var isCollapsed = document.body.classList.toggle('topbar-collapsed');
+                try { localStorage.setItem('pbi-topbar-collapsed', isCollapsed ? 'true' : 'false'); } catch(e) {}
             };
         })();
     </script>
@@ -103,16 +115,104 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- 1. Leftmost Navigation Rail (Expandable/Collapsible) -->
-        <aside id="app-rail" class="app-rail glass-panel">
-            <div class="rail-top">
-                <div class="rail-logo-wrap" id="rail-logo-toggle" title="点击折叠/展开侧边栏菜单 (Toggle Sidebar Rail)">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0;">
-                        <rect x="3" y="12" width="5" height="9" fill="#F2C811"/>
-                        <rect x="9" y="7" width="5" height="14" fill="#F2C811"/>
-                        <rect x="15" y="2" width="5" height="19" fill="#F2C811"/>
-                    </svg>
-                    <span class="rail-logo-title">PBI Studio</span>
+        <!-- ⚡ 全局顶部上下文控制台功能栏 (Global Top Context Control Bar - Borderless & Collapsible) -->
+        <header id="global-topbar">
+            <div class="gtb-group">
+                <!-- 1. 认证模式切换 -->
+                <div class="gtb-auth-mode-pill" title="切换全局认证主体模式 (Service Principal / Personal Delegated)">
+                    <span id="gtb-auth-icon" style="font-size: 0.9rem; line-height: 1;">🛡️</span>
+                    <select id="gtb-select-auth-mode" class="gtb-auth-select mode-sp" onchange="window.handleGlobalAuthModeChange(this.value)">
+                        <option value="service_principal">Service Principal (服务主体)</option>
+                        <option value="personal">Personal User (个人委派)</option>
+                    </select>
+                </div>
+
+                <!-- 2. 工作区选择 (Workspace) -->
+                <div class="gtb-item" title="全局活动工作区 (Workspace / groupId)">
+                    <div class="gtb-label">
+                        <span>🏢</span>
+                        <span>工作区</span>
+                    </div>
+                    <select id="gtb-select-workspace" class="gtb-select" onchange="window.handleGlobalWorkspaceChange(this.value)">
+                        <option value="">-- 选择工作区 --</option>
+                    </select>
+                </div>
+
+                <!-- 3. 数据模型选择 (Dataset / Model) -->
+                <div class="gtb-item" title="全局活动数据模型 (Dataset / Semantic Model)">
+                    <div class="gtb-label">
+                        <span>🗄️</span>
+                        <span>模型</span>
+                    </div>
+                    <select id="gtb-select-dataset" class="gtb-select" onchange="window.handleGlobalDatasetChange(this.value)">
+                        <option value="">-- 选择模型 --</option>
+                    </select>
+                </div>
+
+                <!-- 4. 报表选择 (Report) -->
+                <div class="gtb-item" title="全局活动报表 (Report / reportId)">
+                    <div class="gtb-label">
+                        <span>📊</span>
+                        <span>报表</span>
+                    </div>
+                    <select id="gtb-select-report" class="gtb-select" onchange="window.handleGlobalReportChange(this.value)">
+                        <option value="">-- 选择报表 --</option>
+                    </select>
+                </div>
+
+                <!-- 5. XMLA 终结点 (XMLA Endpoint) -->
+                <div class="gtb-item gtb-xmla-box" title="当前工作区 XMLA 连接串 (点击一键复制)">
+                    <div class="gtb-label">
+                        <span>⚡</span>
+                        <span>XMLA</span>
+                    </div>
+                    <input type="text" id="gtb-input-xmla" class="gtb-xmla-input" readonly placeholder="powerbi://api.powerbi.com/v1.0/myorg/WorkspaceName" value="" title="XMLA Endpoint (Click copy button to use)">
+                    <button type="button" class="icon-btn" onclick="window.copyGlobalXmlaEndpoint(this)" title="复制 XMLA 连接串" style="height: 24px; width: 24px; padding: 0; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 右侧全局快捷动作区 -->
+            <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                <!-- ⏱️ 每日密码登录累积计时 -->
+                <div id="gtb-daily-limit" class="gtb-item" style="height: 32px; padding: 2px 10px; display: inline-flex; align-items: center; gap: 6px; flex: none; border-color: var(--overlay-10); background: var(--input-bg);" title="Daily Accumulated Password Login Time">
+                    <span style="font-size: 0.78rem; line-height: 1;">⏱️</span>
+                    <span class="gtb-label" style="font-size: 0.72rem; opacity: 0.85;">Total:</span>
+                    <strong id="daily-time-val-main" style="color: var(--accent); font-weight: 700; line-height: 1; font-family: 'Fira Code', monospace; font-size: 0.76rem;">0m</strong>
+                </div>
+
+                <!-- 🔄 一键刷新租户/工作区元数据 -->
+                <button type="button" id="gtb-btn-refresh" class="gtb-icon-btn" onclick="window.refreshGlobalContext(this)" title="刷新全局工作区与资产列表 (Sync Context)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                </button>
+
+                <!-- 🔼 向上折叠顶栏按钮 -->
+                <button type="button" id="gtb-btn-toggle-collapse" class="gtb-icon-btn" onclick="window.toggleGlobalTopbarCollapse()" title="向上折叠全局功能栏 (Collapse Topbar)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- 🔽 顶栏折叠后悬浮在顶部的展开把手 (Expand Handle Bar) -->
+        <div id="gtb-expand-handle" onclick="window.toggleGlobalTopbarCollapse()" title="展开全局功能栏 (Expand Global Topbar)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            <span>全局控制台</span>
+        </div>
+
+
+        <!-- 主体布局容器 (下半部: Rail + Sidebar + Resizer + Workspace) -->
+        <div class="app-main-layout" style="display: flex; flex: 1; min-height: 0; min-width: 0; width: 100%; gap: 0; overflow: hidden;">
+            <!-- 1. Leftmost Navigation Rail (Expandable/Collapsible) -->
+            <aside id="app-rail" class="app-rail glass-panel">
+                <div class="rail-top">
+                    <div class="rail-logo-wrap" id="rail-logo-toggle" title="点击折叠/展开侧边栏菜单 (Toggle Sidebar Rail)">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0;">
+                            <rect x="3" y="12" width="5" height="9" fill="#F2C811"/>
+                            <rect x="9" y="7" width="5" height="14" fill="#F2C811"/>
+                            <rect x="15" y="2" width="5" height="19" fill="#F2C811"/>
+                        </svg>
+                        <span class="rail-logo-title">PBI Studio</span>
                     <button type="button" class="rail-toggle-btn" title="Toggle Rail" style="background: none; border: none; padding: 0; color: var(--text-secondary); cursor: pointer; margin-left: auto; display: none;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11 17 6 12 11 7"></polyline><polyline points="18 17 13 12 18 7"></polyline></svg>
                     </button>
@@ -295,7 +395,7 @@
         <div class="resizer" id="dragMe"></div>
 
         <!-- 3. Main Workspace Area -->
-        <div id="workspace-container" style="flex: 1; display: flex; flex-direction: column; height: 100%; min-width: 0; overflow: hidden;">
+        <div id="workspace-container" style="flex: 1; display: flex; flex-direction: column; height: 100%; min-width: 0; overflow: hidden; padding-top: 2px;">
             <!-- View A: Workflow Workspace Board -->
             <select id="wf-selector" style="display: none;">
 
@@ -1726,47 +1826,18 @@
                     </div>
 
 <!-- Env Identity -->
-
                 <div id="env-identity" style="display: flex; align-items: center; gap: 12px; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 2px; flex-wrap: wrap;">
-
-                    <span id="display-auth-mode" style="display: none; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 4px; height: 24px; box-sizing: border-box; transition: background 0.2s ease;" title="当前认证模式">
-
-                        <span id="display-auth-mode-icon" style="line-height: 1;">🛡️</span>
-
-                        <strong id="display-auth-mode-text" style="font-weight: 600; line-height: 1; font-size: 0.72rem;">Service Principal</strong>
-
-                    </span>
-
-                      <span class="env-sep" style="opacity: 0.25;">|</span>
-
-                      <span id="display-tenant" style="display: none; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; transition: background 0.2s ease, color 0.2s ease; height: 24px; box-sizing: border-box;" title="Tenant ID">
-
+                    <span id="display-tenant" style="display: none; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; transition: background 0.2s ease, color 0.2s ease; height: 24px; box-sizing: border-box;" title="Tenant ID">
                         <span style="opacity: 0.85; line-height: 1;">🏢 Tenant:</span>
-
                         <strong style="color: var(--text-primary); font-weight: 600; font-family: 'Fira Code', monospace; font-size: 0.72rem; line-height: 1;">Unknown</strong>
-
-                      </span>
+                    </span>
 
                     <span class="env-sep" style="opacity: 0.25;">|</span>
 
                     <span id="display-client" style="display: none; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; transition: background 0.2s ease, color 0.2s ease; height: 24px; box-sizing: border-box;" title="Client App Name">
-
                         <span style="opacity: 0.85; line-height: 1;">🔑 Client App:</span>
-
                         <strong style="color: var(--text-primary); font-weight: 600; line-height: 1;">Unknown</strong>
-
-                      </span>
-
-                      <span class="env-sep" style="opacity: 0.25;">|</span>
-
-                    <span id="display-daily-limit" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; height: 24px; box-sizing: border-box;" title="Today's Accumulated Password Login Time">
-
-                        <span style="opacity: 0.85; line-height: 1;">⏱️ Total Time:</span>
-
-                        <strong id="daily-time-val-main" style="color: var(--text-primary); font-weight: 600; line-height: 1; font-family: monospace;">0m</strong>
-
                     </span>
-
                 </div>
 
                 <!-- Context Toolbar -->
@@ -2091,7 +2162,8 @@
 
         
             </main>
-    </div> <!-- End workspace-container -->
+        </div> <!-- End workspace-container -->
+    </div> <!-- End app-main-layout -->
 </div> <!-- End app-container -->
 
     <!-- Settings Modal -->
@@ -2510,7 +2582,7 @@
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
     <script src="/static/universal_modal.js?v=20260825_v21"></script>
-    <script src="/static/script.js?v=20260901_v2111"></script>
+    <script src="/static/script.js?v=20260902_v2204"></script>
 
 
 

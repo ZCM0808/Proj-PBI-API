@@ -647,6 +647,22 @@ async def update_settings(request: Request):
         return {"success": False, "message": str(e)}
 
 
+@app.post("/api/auth-mode")
+async def set_auth_mode(request: Request):
+    """快速切换全局认证模式 (service_principal / personal)"""
+    try:
+        data = await request.json()
+        mode = data.get("auth_mode", "service_principal")
+        if mode not in ["service_principal", "personal"]:
+            return {"success": False, "message": "无效的认证模式"}
+        Config.update_config({"AUTH_MODE": mode})
+        global client
+        client = PBIClient(Config())
+        return {"success": True, "auth_mode": mode, "message": f"已切换至 {mode} 认证模式"}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+
 @app.post("/api/settings/verify")
 async def verify_settings(request: Request):
     """验证客户端凭证"""

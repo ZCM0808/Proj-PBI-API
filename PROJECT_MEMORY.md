@@ -625,3 +625,26 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
    - **重构方案**：为所有附件上传接口补齐了 _sync_upload_to_github_rest 降级兜底方案。
    - **技术细节**：当探测到 Git Push 失败（`returncode != 0`）时，后端会立即捕获该文件的原始二进制字节流 (`bytes`)，在内存中进行 `base64.b64encode`，封装为 JSON Payload，通过高可靠的 `requests.put` 直连 GitHub Contents API (https://api.github.com/repos/...)。此举彻底消灭了云端存储丢失的死角，实现了附件与笔记 100% 同级别的持久化保障。
 
+---
+
+## 25. 全局顶部上下文控制台功能栏 (Global Topbar Context Control Bar & Reactive State Machine)
+
+### 25.1 业务背景与架构痛点
+在此前的设计中，认证模式（服务主体 / 个人委派）、工作区 ID、数据模型 ID、报表 ID 及 XMLA 端点分散于设置弹窗、API 调试器及各个独立的工作流中。用户在不同模块之间切换时需重复选择或输入，缺乏统一的全局状态管理中心。
+
+### 25.2 核心设计与状态机实现
+1. **全局顶部控制台 (Global Top Bar)**：
+   - 布局位置：位于主工作区容器最顶层（`#workspace-container` 头部），采用极客风单行流式排版（高度 `38px`），与下方工作区无缝融合。
+   - **认证模式切换**：支持即时切换 `Service Principal (服务主体)` / `Personal User (个人委派)`，联动调用后端 `/api/auth-mode` 更新全局 `Config` 单例及 MSAL 客户端。
+   - **工作区 (Workspace)**：动态下拉呈现所有已配置工作区，切换时自动重置下游模型与报表，防止跨工作区脏数据污染。
+   - **数据模型 (Dataset / Semantic Model)**：随选中的工作区动态级联过滤展示。
+   - **报表 (Report)**：随选中的工作区动态级联过滤展示。
+   - **XMLA 终结点 (XMLA Endpoint)**：根据当前工作区名称或 GUID 自动组装标准的 `powerbi://api.powerbi.com/v1.0/myorg/...` 连接串，并提供原生一键复制能力与成功反馈动效。
+   - **一键同步/刷新按钮 (Sync Context)**：实时刷新全局租户身份与各资产列表。
+2. **全局状态机联动与双向即时生效 (Reactive Context Binding)**：
+   - **在 API Explorer 下**：通过 `window.getInjectedEndpoint` 自动将 URL 中的 `{groupId}`、`{datasetId}`、`{reportId}` 动态替换为全局选中的实体 ID。
+   - **在 Workflow 各工作流卡片下**：通过 `window.syncAllWorkflowSelectors` 自动将全局顶部栏的选择即时同步渗透至 `Export Report`、`Export Visual`、`Export Dataset Tables`、`XMLA Refresh` 等各工作流面板的下拉选择器与 XMLA 输入框中。
+3. **质量防线与测试闭环 (QA Testing)**：
+   - 后端新增 `/api/auth-mode` API 契约与单元测试用例，通过 `pytest` 5/5 全部断言通过；
+   - 前端通过 `node -c` 进行全语法校验，严格保持 CSS 版本号（Cache Busting）与 UTF-8 编码安全。
+

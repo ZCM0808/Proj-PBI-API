@@ -2014,6 +2014,14 @@ window.selectCustomOption = function(type, id, alias, skipCascade = false) {
             cascadeFetch('reports');
         }
     }
+
+    // ⚡ 联动更新全局顶部控制台与工作流选择器
+    if (window.updateGlobalTopbarDropdowns) {
+        window.updateGlobalTopbarDropdowns();
+    }
+    if (window.syncAllWorkflowSelectors) {
+        window.syncAllWorkflowSelectors();
+    }
 };
 
 
@@ -2272,6 +2280,337 @@ window.renderEnvIdentity = async function() {
 
     }
 
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// ⚡ 全局顶部控制台状态机 (Global Topbar Context State Machine)
+// ═══════════════════════════════════════════════════════════════════
+
+window.renderGlobalTopbar = async function() {
+    const topbar = document.getElementById('global-topbar');
+    if (!topbar) return;
+
+    // 1. 初始化并回显认证模式 (Auth Mode) 及具体应用名称 / 用户名
+    try {
+        let authMode = 'service_principal';
+        let appName = localStorage.getItem('pbi_app_name') || '';
+        let clientId = '';
+        let username = '';
+
+        const setRes = await fetch('/api/settings');
+        const settings = await setRes.json();
+        if (settings) {
+            authMode = settings.AUTH_MODE || 'service_principal';
+            clientId = settings.CLIENT_ID || '';
+            username = settings.USERNAME || '';
+        }
+
+        const authInfoRes = await fetch('/api/auth-info');
+        const authInfo = await authInfoRes.json();
+        if (authInfo && authInfo.success) {
+            if (authInfo.app_name) appName = authInfo.app_name;
+            if (authInfo.username) username = authInfo.username;
+        }
+
+        const authSelect = document.getElementById('gtb-select-auth-mode');
+        const authIcon = document.getElementById('gtb-auth-icon');
+        if (authSelect) {
+            const spLabel = appName ? `Service Principal (${appName})` : (clientId ? `Service Principal (${clientId.slice(0, 8)}...)` : 'Service Principal');
+            const personalLabel = username ? `Personal (${username})` : 'Personal (Delegated User)';
+
+            authSelect.innerHTML = `
+                <option value="service_principal">${spLabel}</option>
+                <option value="personal">${personalLabel}</option>
+            `;
+            authSelect.value = authMode;
+            authSelect.className = `gtb-auth-select mode-${authMode === 'personal' ? 'personal' : 'sp'}`;
+        }
+        if (authIcon) {
+            authIcon.textContent = authMode === 'personal' ? '👤' : '🛡️';
+        }
+    } catch(e) {
+        console.warn('Failed to fetch auth mode for topbar:', e);
+    }
+
+    // 2. 加载工作区、模型和报表列表 (带 GUID 显示)
+    window.updateGlobalTopbarDropdowns();
+};
+
+window.updateGlobalTopbarDropdowns = function() {
+    const wsData = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+    const dsData = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
+    const rpData = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+
+    const wsSelect = document.getElementById('gtb-select-workspace');
+    const dsSelect = document.getElementById('gtb-select-dataset');
+    const rpSelect = document.getElementById('gtb-select-report');
+    const xmlaInput = document.getElementById('gtb-input-xmla');
+
+    if (!wsSelect || !dsSelect || !rpSelect) return;
+
+    const curWsId = document.getElementById('active-workspace')?.value || localStorage.getItem('pbi-active-workspace') || '';
+    const curDsId = document.getElementById('active-dataset')?.value || localStorage.getItem('pbi-active-dataset') || '';
+    const curRpId = document.getElementById('active-report')?.value || localStorage.getItem('pbi-active-report') || '';
+
+    // 填充工作区下拉框 (同时显示名称与 GUID)
+    let wsHtml = `<option value="">-- 选择工作区 (${wsData.length}) --</option>`;
+    let activeWsName = '';
+    wsData.forEach(w => {
+        const isSel = (w.id === curWsId);
+        const name = w.alias || w.name || w.id;
+        if (isSel) activeWsName = name;
+        const displayLabel = `${name} (${w.id})`;
+        wsHtml += `<option value="${w.id}" ${isSel ? 'selected' : ''} title="${displayLabel}">${displayLabel}</option>`;
+    });
+    wsSelect.innerHTML = wsHtml;
+
+    // 根据当前工作区过滤 Datasets 和 Reports
+    const filteredDs = curWsId ? dsData.filter(d => {
+        const dWid = (d.workspaceId || '').trim().toLowerCase();
+        return !dWid || dWid === curWsId.toLowerCase();
+    }) : dsData;
+
+    const filteredRp = curWsId ? rpData.filter(r => {
+        const rWid = (r.workspaceId || '').trim().toLowerCase();
+        return !rWid || rWid === curWsId.toLowerCase();
+    }) : rpData;
+
+    // 填充数据模型下拉框 (同时显示名称与 GUID)
+    let dsHtml = `<option value="">-- 选择模型 (${filteredDs.length}) --</option>`;
+    filteredDs.forEach(d => {
+        const isSel = (d.id === curDsId);
+        const name = d.alias || d.name || d.id;
+        const displayLabel = `${name} (${d.id})`;
+        dsHtml += `<option value="${d.id}" ${isSel ? 'selected' : ''} title="${displayLabel}">${displayLabel}</option>`;
+    });
+    dsSelect.innerHTML = dsHtml;
+
+    // 填充报表下拉框 (同时显示名称与 GUID)
+    let rpHtml = `<option value="">-- 选择报表 (${filteredRp.length}) --</option>`;
+    filteredRp.forEach(r => {
+        const isSel = (r.id === curRpId);
+        const name = r.alias || r.name || r.id;
+        const displayLabel = `${name} (${r.id})`;
+        rpHtml += `<option value="${r.id}" ${isSel ? 'selected' : ''} title="${displayLabel}">${displayLabel}</option>`;
+    });
+    rpSelect.innerHTML = rpHtml;
+
+    // 计算并更新 XMLA 终结点连接串
+    if (xmlaInput) {
+        if (activeWsName) {
+            xmlaInput.value = `powerbi://api.powerbi.com/v1.0/myorg/${activeWsName}`;
+        } else if (curWsId) {
+            xmlaInput.value = `powerbi://api.powerbi.com/v1.0/myorg/${curWsId}`;
+        } else {
+            xmlaInput.value = '';
+        }
+    }
+};
+
+// 切换全局认证模式 (Service Principal / Personal)
+window.handleGlobalAuthModeChange = async function(mode) {
+    const authSelect = document.getElementById('gtb-select-auth-mode');
+    const authIcon = document.getElementById('gtb-auth-icon');
+    if (authSelect) {
+        authSelect.className = `gtb-auth-select mode-${mode === 'personal' ? 'personal' : 'sp'}`;
+    }
+    if (authIcon) {
+        authIcon.textContent = mode === 'personal' ? '👤' : '🛡️';
+    }
+
+    try {
+        const res = await fetch('/api/auth-mode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ auth_mode: mode })
+        });
+        const data = await res.json();
+        if (data.success) {
+            if (window.showNotification) {
+                window.showNotification(`已切换为全局 ${mode === 'personal' ? '个人委派 (Personal User)' : '服务主体 (Service Principal)'} 认证模式`, 'success');
+            }
+            // 刷新环境变量指示与工作流卡片顶部徽章
+            if (window.renderEnvIdentity) window.renderEnvIdentity();
+            const wfAuthBadge = document.getElementById('wf-header-auth-badge');
+            if (wfAuthBadge) {
+                wfAuthBadge.textContent = mode === 'personal' ? '· Personal User (Delegated)' : '· Service Principal (APP_Automation)';
+            }
+        } else {
+            alert('认证模式切换失败: ' + (data.message || '未知错误'));
+        }
+    } catch(e) {
+        console.error('Error switching auth mode:', e);
+        alert('切换认证模式发生网络异常');
+    }
+};
+
+// 切换全局工作区
+window.handleGlobalWorkspaceChange = function(wsId) {
+    const wsData = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+    const targetWs = wsData.find(w => w.id === wsId);
+    const wsName = targetWs ? (targetWs.alias || targetWs.name || '') : '';
+
+    // 1. 同步到底层 selectCustomOption
+    if (typeof selectCustomOption === 'function') {
+        selectCustomOption('workspace', wsId, wsName);
+    } else {
+        const hiddenWs = document.getElementById('active-workspace');
+        if (hiddenWs) hiddenWs.value = wsId;
+        try { localStorage.setItem('pbi-active-workspace', wsId); } catch(e) {}
+    }
+
+    // 2. 级联重置已选模型和报表 (防止带着旧工作区的资源跨区操作)
+    if (typeof selectCustomOption === 'function') {
+        selectCustomOption('dataset', '', '');
+        selectCustomOption('report', '', '');
+    }
+
+    // 3. 更新全局顶部栏与各工作流卡片内部表单
+    window.updateGlobalTopbarDropdowns();
+    window.syncAllWorkflowSelectors();
+
+    if (window.showNotification && wsName) {
+        window.showNotification(`已全局切换工作区: ${wsName}`, 'info');
+    }
+};
+
+// 切换全局数据模型
+window.handleGlobalDatasetChange = function(dsId) {
+    const dsData = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
+    const targetDs = dsData.find(d => d.id === dsId);
+    const dsName = targetDs ? (targetDs.alias || targetDs.name || '') : '';
+
+    if (typeof selectCustomOption === 'function') {
+        selectCustomOption('dataset', dsId, dsName);
+    } else {
+        const hiddenDs = document.getElementById('active-dataset');
+        if (hiddenDs) hiddenDs.value = dsId;
+        try { localStorage.setItem('pbi-active-dataset', dsId); } catch(e) {}
+    }
+
+    window.updateGlobalTopbarDropdowns();
+    window.syncAllWorkflowSelectors();
+};
+
+// 切换全局报表
+window.handleGlobalReportChange = function(rpId) {
+    const rpData = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+    const targetRp = rpData.find(r => r.id === rpId);
+    const rpName = targetRp ? (targetRp.alias || targetRp.name || '') : '';
+
+    if (typeof selectCustomOption === 'function') {
+        selectCustomOption('report', rpId, rpName);
+    } else {
+        const hiddenRp = document.getElementById('active-report');
+        if (hiddenRp) hiddenRp.value = rpId;
+        try { localStorage.setItem('pbi-active-report', rpId); } catch(e) {}
+    }
+
+    window.updateGlobalTopbarDropdowns();
+    window.syncAllWorkflowSelectors();
+};
+
+// 复制全局 XMLA 终结点连接串
+window.copyGlobalXmlaEndpoint = function(btn) {
+    const xmlaInput = document.getElementById('gtb-input-xmla');
+    if (!xmlaInput || !xmlaInput.value) {
+        if (window.showNotification) window.showNotification('当前暂未选择具备 XMLA 终结点的工作区', 'warning');
+        return;
+    }
+    const val = xmlaInput.value;
+    navigator.clipboard.writeText(val).then(() => {
+        if (btn) {
+            const orig = btn.innerHTML;
+            btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+            setTimeout(() => { btn.innerHTML = orig; }, 1800);
+        }
+        if (window.showNotification) window.showNotification(`已复制 XMLA 端点: ${val}`, 'success');
+    }).catch(e => {
+        alert('复制失败: ' + e);
+    });
+};
+
+// 刷新全局上下文与工作区数据
+window.refreshGlobalContext = async function(btn) {
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<svg class="spinning" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation: spin 1s linear infinite;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>`;
+    }
+    try {
+        if (window.renderEnvIdentity) await window.renderEnvIdentity();
+        if (window.renderContextDropdowns) window.renderContextDropdowns();
+        window.updateGlobalTopbarDropdowns();
+        window.syncAllWorkflowSelectors();
+        if (window.showNotification) window.showNotification('全局上下文状态已成功同步刷新！', 'success');
+    } catch(e) {
+        console.error('Refresh context failed:', e);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>`;
+        }
+    }
+};
+
+// 向上折叠 / 展开全局功能控制栏
+window.toggleGlobalTopbarCollapse = function() {
+    const isCollapsed = document.body.classList.toggle('topbar-collapsed');
+    try {
+        localStorage.setItem('pbi-topbar-collapsed', isCollapsed ? 'true' : 'false');
+    } catch(e) {}
+};
+
+// 贯通所有工作流卡片内 Workspace / Dataset / Report 下拉框的即时自动继承与同步
+window.syncAllWorkflowSelectors = function() {
+    const curWsId = document.getElementById('active-workspace')?.value || localStorage.getItem('pbi-active-workspace') || '';
+    const curDsId = document.getElementById('active-dataset')?.value || localStorage.getItem('pbi-active-dataset') || '';
+    const curRpId = document.getElementById('active-report')?.value || localStorage.getItem('pbi-active-report') || '';
+
+    // 1. Export Report Workflow
+    const expWs = document.getElementById('wf-exp-workspace');
+    const expRp = document.getElementById('wf-exp-report');
+    if (expWs && curWsId && expWs.value !== curWsId) {
+        if (Array.from(expWs.options).some(o => o.value === curWsId)) {
+            expWs.value = curWsId;
+            expWs.dispatchEvent(new Event('change'));
+        }
+    }
+    if (expRp && curRpId && expRp.value !== curRpId) {
+        if (Array.from(expRp.options).some(o => o.value === curRpId)) expRp.value = curRpId;
+    }
+
+    // 2. Export Visual Workflow
+    const visWs = document.getElementById('wf-vis-workspace');
+    const visRp = document.getElementById('wf-vis-report');
+    if (visWs && curWsId && visWs.value !== curWsId) {
+        if (Array.from(visWs.options).some(o => o.value === curWsId)) {
+            visWs.value = curWsId;
+            visWs.dispatchEvent(new Event('change'));
+        }
+    }
+    if (visRp && curRpId && visRp.value !== curRpId) {
+        if (Array.from(visRp.options).some(o => o.value === curRpId)) visRp.value = curRpId;
+    }
+
+    // 3. Export Dataset Tables Workflow
+    const dsWs = document.getElementById('wf-ds-workspace');
+    const dsDs = document.getElementById('wf-ds-dataset');
+    if (dsWs && curWsId && dsWs.value !== curWsId) {
+        if (Array.from(dsWs.options).some(o => o.value === curWsId)) {
+            dsWs.value = curWsId;
+            dsWs.dispatchEvent(new Event('change'));
+        }
+    }
+    if (dsDs && curDsId && dsDs.value !== curDsId) {
+        if (Array.from(dsDs.options).some(o => o.value === curDsId)) dsDs.value = curDsId;
+    }
+
+    // 4. XMLA Refresh & XMLA Inspector Workflows
+    const xmlaWsInput = document.getElementById('wf-xmla-endpoint');
+    const xmlaInput = document.getElementById('gtb-input-xmla');
+    if (xmlaWsInput && xmlaInput && xmlaInput.value) {
+        xmlaWsInput.value = xmlaInput.value;
+    }
 };
 
 
@@ -8398,6 +8737,14 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
         }
 
     });
+
+    // ⚡ 首次加载时初始化全局顶部控制台功能栏 (Global Topbar)
+    if (window.renderGlobalTopbar) {
+        window.renderGlobalTopbar();
+    }
+    if (window.syncAllWorkflowSelectors) {
+        window.syncAllWorkflowSelectors();
+    }
 
 });
 

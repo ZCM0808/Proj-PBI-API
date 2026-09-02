@@ -39,3 +39,25 @@ def test_api_settings_contract():
     assert isinstance(data, dict), "返回格式必须是 JSON Object"
     assert "TENANT_ID" in data
     assert "CLIENT_ID" in data
+
+
+def test_api_auth_mode_contract():
+    """契约测试：确保全局认证模式切换接口 /api/auth-mode 能够正确切换并响应"""
+    # 1. 切换至 personal
+    resp_personal = client.post("/api/auth-mode", json={"auth_mode": "personal"})
+    assert resp_personal.status_code == 200
+    res_p = resp_personal.json()
+    assert res_p.get("success") is True
+    assert res_p.get("auth_mode") == "personal"
+
+    # 2. 切换回 service_principal
+    resp_sp = client.post("/api/auth-mode", json={"auth_mode": "service_principal"})
+    assert resp_sp.status_code == 200
+    res_sp = resp_sp.json()
+    assert res_sp.get("success") is True
+    assert res_sp.get("auth_mode") == "service_principal"
+
+    # 3. 非法参数防御
+    resp_err = client.post("/api/auth-mode", json={"auth_mode": "invalid_mode"})
+    assert resp_err.status_code == 200
+    assert resp_err.json().get("success") is False
