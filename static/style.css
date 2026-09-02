@@ -197,9 +197,9 @@ body {
 .rail-logo-wrap {
     display: flex;
     align-items: center;
-    justify-content: flex-start;
-    gap: 10px;
-    padding: 6px 10px 12px 10px;
+    justify-content: center;
+    gap: 0;
+    padding: 6px 0 12px 0;
     border-bottom: 1px solid var(--overlay-10);
     margin-bottom: 6px;
     cursor: pointer;
@@ -210,6 +210,8 @@ body {
 }
 
 .app-rail.expanded .rail-logo-wrap {
+    justify-content: flex-start;
+    gap: 10px;
     padding: 6px 10px 12px 10px;
 }
 
@@ -254,7 +256,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px;
+    gap: 0;
     padding: 9px 0;
     border-radius: 10px;
     color: var(--text-secondary);
@@ -272,6 +274,7 @@ body {
 
 .app-rail.expanded .rail-item {
     justify-content: flex-start;
+    gap: 12px;
     padding: 9px 11px;
 }
 
