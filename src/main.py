@@ -1561,8 +1561,9 @@ class NotePayload(BaseModel):
 
 
 def _sync_upload_to_github_rest(final_filename: str, content_bytes: bytes) -> tuple[bool, str]:
-    """Fallback: upload attachment to GitHub via REST API when Git CLI fails"""
-    import os, base64, requests
+    import base64
+    import os
+    import requests
     from src.config import load_settings
     token = os.getenv("GITHUB_PAT") or os.getenv("GITHUB_TOKEN") or load_settings().get("GITHUB_PAT", "")
     if not token:
@@ -1816,7 +1817,7 @@ async def upload_note_file(file: UploadFile = File(...)):
                 r = subprocess.run(["git", "push", "origin", "main"], cwd=root_dir, capture_output=True, text=True)
                 if r.returncode == 0:
                     git_pushed = True
-            except Exception as e:
+            except Exception:
                 pass
             
             if not git_pushed:
