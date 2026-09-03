@@ -87,6 +87,8 @@ global.window = {
                 };
             }
             on(evt, fn) { this.events[evt] = fn; }
+            once(evt, fn) { this.events[evt] = fn; }
+            storePositions() {}
             fit() {}
             redraw() {}
             setOptions(opts) { this.options = Object.assign(this.options, opts); }
