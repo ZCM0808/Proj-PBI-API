@@ -3771,7 +3771,7 @@ body.sidebar-collapsed #sidebar-narrow-strip {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 0 4px;
+    padding: 2px 4px;
     margin: 0 0 16px 0;
     width: 100%;
     background: transparent;
