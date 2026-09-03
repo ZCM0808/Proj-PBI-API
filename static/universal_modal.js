@@ -184,16 +184,7 @@ hdr.className = 'modal-header';
             let startL = rect.left;
             let startT = rect.top;
             
-            // Read any existing transform translates and bake them into left/top so resizing doesn't jump
-            const translateMatch = panel.style.transform.match(/translate3d\(([-\d.]+)px,\s*([-\d.]+)px/);
-            if (translateMatch) {
-                const tx = parseFloat(translateMatch[1]);
-                const ty = parseFloat(translateMatch[2]);
-                panel.style.left = (rect.left - tx) + 'px';
-                panel.style.top = (rect.top - ty) + 'px';
-                startL = rect.left - tx;
-                startT = rect.top - ty;
-            }
+            // getBoundingClientRect already includes transform offsets, so just assigning it to left/top and clearing transform works perfectly!
             
             // Remove transform completely to avoid coordinate complex math during resize
             panel.style.transform = 'none';
