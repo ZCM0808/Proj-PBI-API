@@ -1,4 +1,4 @@
-﻿
+
 
 // Global Fetch Interceptor for 401 Unauthorized
 
@@ -2576,6 +2576,10 @@ window.refreshGlobalContext = async function(btn) {
 // 向上折叠 / 展开全局功能控制栏
 window.toggleGlobalTopbarCollapse = function() {
     const isCollapsed = document.body.classList.toggle('topbar-collapsed');
+    const handle = document.getElementById('gtb-expand-handle');
+    if (handle) {
+        handle.setAttribute('title', isCollapsed ? '展开全局功能栏 (Expand Global Topbar)' : '折叠全局功能栏 (Collapse Global Topbar)');
+    }
     try {
         localStorage.setItem('pbi-topbar-collapsed', isCollapsed ? 'true' : 'false');
     } catch(e) {}
@@ -2631,6 +2635,24 @@ window.syncAllWorkflowSelectors = function() {
     const xmlaInput = document.getElementById('gtb-input-xmla');
     if (xmlaWsInput && xmlaInput && xmlaInput.value) {
         xmlaWsInput.value = xmlaInput.value;
+    }
+
+    // 5. Datasource Inspector Workflow
+    const insWs = document.getElementById('wf-inspect-workspace');
+    const insRp = document.getElementById('wf-inspect-report');
+    const insDs = document.getElementById('wf-inspect-dataset');
+    if (insWs && curWsId && insWs.value !== curWsId) {
+        if (Array.from(insWs.options).some(o => o.value === curWsId)) {
+            insWs.value = curWsId;
+            window.wfInspectRefreshReport();
+            window.wfInspectRefreshDataset();
+        }
+    }
+    if (insRp && curRpId && insRp.value !== curRpId) {
+        if (Array.from(insRp.options).some(o => o.value === curRpId)) insRp.value = curRpId;
+    }
+    if (insDs && curDsId && insDs.value !== curDsId) {
+        if (Array.from(insDs.options).some(o => o.value === curDsId)) insDs.value = curDsId;
     }
 };
 
@@ -19811,19 +19833,57 @@ window.queryXmlaRefreshHistory = async function(scope = 'model') {
 // =========================================================================
 window._inspectResultCache = null;
 
-window.initDatasourceInspectorWorkflow = function() {
+window.initDatasourceInspectorWorkflow = function(force = false) {
     const wsSel = document.getElementById('wf-inspect-workspace');
+    const repSel = document.getElementById('wf-inspect-report');
+    const dsSel = document.getElementById('wf-inspect-dataset');
     if (!wsSel) return;
 
-    if (wsSel.options.length <= 1) {
+    // 绑定联动事件（保证仅首次初始化绑定一次）
+    if (!wsSel.dataset.hasInspectorHandler) {
+        wsSel.dataset.hasInspectorHandler = 'true';
+        wsSel.addEventListener('change', () => {
+            window.wfInspectRefreshReport();
+            window.wfInspectRefreshDataset();
+        });
+    }
+
+    if (repSel && !repSel.dataset.hasInspectorHandler) {
+        repSel.dataset.hasInspectorHandler = 'true';
+        repSel.addEventListener('change', () => {
+            const selectedOpt = repSel.options[repSel.selectedIndex];
+            const boundDsId = selectedOpt ? selectedOpt.getAttribute('data-dataset-id') : '';
+            if (boundDsId && dsSel) {
+                for (let i = 0; i < dsSel.options.length; i++) {
+                    if (dsSel.options[i].value === boundDsId) {
+                        dsSel.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+        });
+    }
+
+    // 自动刷新：如果尚未加载工作区或要求强制刷新，主动向后台拉取并驱动下级报表与模型刷新
+    if (force || wsSel.options.length <= 1) {
         window.wfInspectRefreshWorkspace();
+    } else {
+        if (repSel && repSel.options.length <= 1) window.wfInspectRefreshReport();
+        if (dsSel && dsSel.options.length <= 1) window.wfInspectRefreshDataset();
     }
 };
 
 window.wfInspectRefreshWorkspace = async function(btn) {
     const wsSel = document.getElementById('wf-inspect-workspace');
+    const btnEl = btn || document.getElementById('wf-inspect-refresh-ws-btn');
     if (!wsSel) return;
-    if (btn) btn.classList.add('spinning');
+    if (btnEl) btnEl.classList.add('spinning');
+
+    // 视觉过渡反馈
+    if (wsSel.options.length <= 1) {
+        wsSel.innerHTML = '<option value="">⏳ 正在获取工作区列表...</option>';
+    }
+
     try {
         const res = await fetch('/api/proxy', {
             method: 'POST',
@@ -19839,27 +19899,43 @@ window.wfInspectRefreshWorkspace = async function(btn) {
             opt.textContent = w.name;
             wsSel.appendChild(opt);
         });
-        if (list.length > 0) wsSel.selectedIndex = 1;
-        window.wfInspectRefreshReport();
-        window.wfInspectRefreshDataset();
-        if (window.showNotification) window.showNotification(`成功刷新 ${list.length} 个工作区`, 'success');
+
+        // 优先继承全局工作区
+        const globalWs = document.getElementById('active-workspace')?.value || localStorage.getItem('pbi-active-workspace');
+        if (globalWs && list.some(w => w.id === globalWs)) {
+            wsSel.value = globalWs;
+        } else if (list.length > 0) {
+            wsSel.selectedIndex = 1;
+        }
+
+        // 联动自动刷新下属的 Report 和 Dataset（带旋转动效）
+        await Promise.all([
+            window.wfInspectRefreshReport(),
+            window.wfInspectRefreshDataset()
+        ]);
+
+        if (window.showNotification && btn) window.showNotification(`成功刷新 ${list.length} 个工作区`, 'success');
     } catch (e) {
+        wsSel.innerHTML = '<option value="">-- 获取失败，请点击右侧重试 --</option>';
         if (window.showNotification) window.showNotification(`刷新工作区失败: ${e.message}`, 'error');
     } finally {
-        if (btn) btn.classList.remove('spinning');
+        if (btnEl) btnEl.classList.remove('spinning');
     }
 };
 
 window.wfInspectRefreshReport = async function(btn) {
     const wsSel = document.getElementById('wf-inspect-workspace');
     const repSel = document.getElementById('wf-inspect-report');
+    const btnEl = btn || document.getElementById('wf-inspect-refresh-rep-btn');
     if (!wsSel || !repSel) return;
     const wsId = wsSel.value;
     if (!wsId) {
         repSel.innerHTML = '<option value="">-- All / Direct Select Model Below --</option>';
         return;
     }
-    if (btn) btn.classList.add('spinning');
+    if (btnEl) btnEl.classList.add('spinning');
+    repSel.innerHTML = '<option value="">⏳ 正在获取报表列表...</option>';
+
     try {
         const res = await fetch('/api/proxy', {
             method: 'POST',
@@ -19876,24 +19952,34 @@ window.wfInspectRefreshReport = async function(btn) {
             if (r.datasetId) opt.setAttribute('data-dataset-id', r.datasetId);
             repSel.appendChild(opt);
         });
+
+        const globalRp = document.getElementById('active-report')?.value || localStorage.getItem('pbi-active-report');
+        if (globalRp && list.some(r => r.id === globalRp)) {
+            repSel.value = globalRp;
+        }
+
         if (window.showNotification && btn) window.showNotification(`成功获取 ${list.length} 个报表`, 'success');
     } catch (e) {
+        repSel.innerHTML = '<option value="">-- 获取失败，请点击右侧重试 --</option>';
         if (window.showNotification && btn) window.showNotification(`获取报表失败: ${e.message}`, 'error');
     } finally {
-        if (btn) btn.classList.remove('spinning');
+        if (btnEl) btnEl.classList.remove('spinning');
     }
 };
 
 window.wfInspectRefreshDataset = async function(btn) {
     const wsSel = document.getElementById('wf-inspect-workspace');
     const dsSel = document.getElementById('wf-inspect-dataset');
+    const btnEl = btn || document.getElementById('wf-inspect-refresh-ds-btn');
     if (!wsSel || !dsSel) return;
     const wsId = wsSel.value;
     if (!wsId) {
         dsSel.innerHTML = '<option value="">-- 请先选择 Workspace --</option>';
         return;
     }
-    if (btn) btn.classList.add('spinning');
+    if (btnEl) btnEl.classList.add('spinning');
+    dsSel.innerHTML = '<option value="">⏳ 正在获取语义模型列表...</option>';
+
     try {
         const res = await fetch('/api/proxy', {
             method: 'POST',
@@ -19909,12 +19995,20 @@ window.wfInspectRefreshDataset = async function(btn) {
             opt.textContent = d.name;
             dsSel.appendChild(opt);
         });
-        if (list.length > 0) dsSel.selectedIndex = 1;
+
+        const globalDs = document.getElementById('active-dataset')?.value || localStorage.getItem('pbi-active-dataset');
+        if (globalDs && list.some(d => d.id === globalDs)) {
+            dsSel.value = globalDs;
+        } else if (list.length > 0) {
+            dsSel.selectedIndex = 1;
+        }
+
         if (window.showNotification && btn) window.showNotification(`成功获取 ${list.length} 个语义模型`, 'success');
     } catch (e) {
+        dsSel.innerHTML = '<option value="">-- 获取失败，请点击右侧重试 --</option>';
         if (window.showNotification && btn) window.showNotification(`获取语义模型失败: ${e.message}`, 'error');
     } finally {
-        if (btn) btn.classList.remove('spinning');
+        if (btnEl) btnEl.classList.remove('spinning');
     }
 };
 
