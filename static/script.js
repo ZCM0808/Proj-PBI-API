@@ -19830,6 +19830,8 @@ window.initDatasourceInspectorWorkflow = function() {
         });
         if (savedWorkspaces.length > 0) {
             wsSel.selectedIndex = 1;
+        } else {
+            window.wfInspectRefreshWorkspace();
         }
     }
 
