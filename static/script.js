@@ -1,4 +1,4 @@
-
+﻿
 
 // Global Fetch Interceptor for 401 Unauthorized
 
@@ -20102,7 +20102,7 @@ window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded)
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.style.display = 'flex';
-    overlay.style.zIndex = '10050';
+    overlay.style.zIndex = '25000';
 
     overlay.innerHTML = `
         <div class="modal-content glass-panel" style="width: min(90vw, 850px); max-height: min(88vh, 750px); display: flex; flex-direction: column;">
