@@ -2644,8 +2644,10 @@ window.syncAllWorkflowSelectors = function() {
     if (insWs && curWsId && insWs.value !== curWsId) {
         if (Array.from(insWs.options).some(o => o.value === curWsId)) {
             insWs.value = curWsId;
-            window.wfInspectRefreshReport();
-            window.wfInspectRefreshDataset();
+            if (window.wfInspectRefreshReport) window.wfInspectRefreshReport();
+            if (window.wfInspectRefreshDataset) window.wfInspectRefreshDataset();
+        } else {
+            if (window.initDatasourceInspectorWorkflow) window.initDatasourceInspectorWorkflow(true);
         }
     }
     if (insRp && curRpId && insRp.value !== curRpId) {
@@ -11779,6 +11781,462 @@ window.updateHarnessStats = function() {
 
 
 
+// =========================================================================
+// Report & Dataset Datasource Inspector Workflow Client Controller
+// =========================================================================
+window._inspectResultCache = null;
+
+window.initDatasourceInspectorWorkflow = function(force = false) {
+    const wsSel = document.getElementById('wf-inspect-workspace');
+    const repSel = document.getElementById('wf-inspect-report');
+    const dsSel = document.getElementById('wf-inspect-dataset');
+    if (!wsSel) return;
+
+    // 绑定联动事件（保证仅首次初始化绑定一次）
+    if (!wsSel.dataset.hasInspectorHandler) {
+        wsSel.dataset.hasInspectorHandler = 'true';
+        wsSel.addEventListener('change', () => {
+            window.wfInspectRefreshReport();
+            window.wfInspectRefreshDataset();
+        });
+    }
+
+    if (repSel && !repSel.dataset.hasInspectorHandler) {
+        repSel.dataset.hasInspectorHandler = 'true';
+        repSel.addEventListener('change', () => {
+            const selectedOpt = repSel.options[repSel.selectedIndex];
+            const boundDsId = selectedOpt ? selectedOpt.getAttribute('data-dataset-id') : '';
+            if (boundDsId && dsSel) {
+                for (let i = 0; i < dsSel.options.length; i++) {
+                    if (dsSel.options[i].value === boundDsId) {
+                        dsSel.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+        });
+    }
+
+    // 自动刷新：如果尚未加载工作区或要求强制刷新，主动向后台拉取并驱动下级报表与模型刷新
+    if (force || wsSel.options.length <= 1) {
+        window.wfInspectRefreshWorkspace();
+    } else {
+        if (repSel && repSel.options.length <= 1) window.wfInspectRefreshReport();
+        if (dsSel && dsSel.options.length <= 1) window.wfInspectRefreshDataset();
+    }
+};
+
+window.wfInspectRefreshWorkspace = async function(btn) {
+    const wsSel = document.getElementById('wf-inspect-workspace');
+    const btnEl = btn || document.getElementById('wf-inspect-refresh-ws-btn');
+    if (!wsSel) return;
+    if (btnEl) btnEl.classList.add('spinning');
+
+    // 视觉过渡反馈
+    if (wsSel.options.length <= 1) {
+        wsSel.innerHTML = '<option value="">⏳ 正在获取工作区列表...</option>';
+    }
+
+    try {
+        // 1. 读取本地已配置/缓存的工作区全集
+        const savedWorkspaces = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+        
+        // 2. 同时向后端 /groups 探查最新在线工作区
+        let liveGroups = [];
+        try {
+            const res = await fetch('/api/proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint: '/groups', method: 'GET' })
+            });
+            const json = await res.json();
+            liveGroups = (json.data && json.data.value) ? json.data.value : [];
+        } catch (netErr) {
+            console.warn('Probe /groups failed, fallback to local settings:', netErr);
+        }
+
+        // 3. 智能全集去重合并 (保证已配置的全部工作区与远端新工作区均完整呈现)
+        const map = new Map();
+        savedWorkspaces.forEach(w => {
+            if (w && w.id) {
+                map.set(w.id.toLowerCase(), { id: w.id, name: w.alias || w.name || w.id });
+            }
+        });
+        liveGroups.forEach(w => {
+            if (w && w.id) {
+                const existing = map.get(w.id.toLowerCase());
+                map.set(w.id.toLowerCase(), { id: w.id, name: existing?.name || w.name || w.id });
+            }
+        });
+
+        const list = Array.from(map.values());
+        wsSel.innerHTML = '<option value="">-- 请选择 Workspace --</option>';
+        list.forEach(w => {
+            const opt = document.createElement('option');
+            opt.value = w.id;
+            opt.textContent = `${w.name} (${w.id.slice(0, 8)}...)`;
+            opt.title = `${w.name} (${w.id})`;
+            wsSel.appendChild(opt);
+        });
+
+        // 优先继承全局工作区，否则默认选中第一个有效工作区
+        const globalWs = document.getElementById('active-workspace')?.value || localStorage.getItem('pbi-active-workspace');
+        if (globalWs && list.some(w => w.id.toLowerCase() === globalWs.toLowerCase())) {
+            wsSel.value = list.find(w => w.id.toLowerCase() === globalWs.toLowerCase()).id;
+        } else if (list.length > 0) {
+            wsSel.selectedIndex = 1;
+        }
+
+        // 联动自动刷新下属的 Report 和 Dataset（带旋转动效）
+        await Promise.all([
+            window.wfInspectRefreshReport(),
+            window.wfInspectRefreshDataset()
+        ]);
+
+        if (window.showNotification && btn) window.showNotification(`成功刷新 ${list.length} 个工作区`, 'success');
+    } catch (e) {
+        wsSel.innerHTML = '<option value="">-- 获取失败，请点击右侧重试 --</option>';
+        if (window.showNotification) window.showNotification(`刷新工作区失败: ${e.message}`, 'error');
+    } finally {
+        if (btnEl) btnEl.classList.remove('spinning');
+    }
+};
+
+window.wfInspectRefreshReport = async function(btn) {
+    const wsSel = document.getElementById('wf-inspect-workspace');
+    const repSel = document.getElementById('wf-inspect-report');
+    const btnEl = btn || document.getElementById('wf-inspect-refresh-rep-btn');
+    if (!wsSel || !repSel) return;
+    const wsId = wsSel.value;
+    if (!wsId) {
+        repSel.innerHTML = '<option value="">-- All / Direct Select Model Below --</option>';
+        return;
+    }
+    if (btnEl) btnEl.classList.add('spinning');
+    repSel.innerHTML = '<option value="">⏳ 正在获取报表列表...</option>';
+
+    try {
+        // 1. 读取本地配置的报表集合中匹配此工作区的项
+        const savedReports = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+        const localMatches = savedReports.filter(r => (r.workspaceId || '').trim().toLowerCase() === wsId.toLowerCase());
+
+        // 2. 在线拉取 /groups/${wsId}/reports
+        let liveReports = [];
+        try {
+            const res = await fetch('/api/proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint: `/groups/${wsId}/reports`, method: 'GET' })
+            });
+            const json = await res.json();
+            liveReports = (json.data && json.data.value) ? json.data.value : [];
+        } catch (netErr) {
+            console.warn('Fetch live reports failed:', netErr);
+        }
+
+        // 3. 智能合并去重
+        const repMap = new Map();
+        localMatches.forEach(r => {
+            if (r && r.id) repMap.set(r.id.toLowerCase(), { id: r.id, name: r.alias || r.name || r.id, datasetId: r.datasetId });
+        });
+        liveReports.forEach(r => {
+            if (r && r.id) {
+                const existing = repMap.get(r.id.toLowerCase());
+                repMap.set(r.id.toLowerCase(), { id: r.id, name: existing?.name || r.name || r.id, datasetId: r.datasetId || existing?.datasetId });
+            }
+        });
+
+        const list = Array.from(repMap.values());
+        repSel.innerHTML = '<option value="">-- All / Direct Select Model Below --</option>';
+        list.forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = r.id;
+            opt.textContent = r.name;
+            if (r.datasetId) opt.setAttribute('data-dataset-id', r.datasetId);
+            repSel.appendChild(opt);
+        });
+
+        const globalRp = document.getElementById('active-report')?.value || localStorage.getItem('pbi-active-report');
+        if (globalRp && list.some(r => r.id.toLowerCase() === globalRp.toLowerCase())) {
+            repSel.value = list.find(r => r.id.toLowerCase() === globalRp.toLowerCase()).id;
+        }
+
+        if (window.showNotification && btn) window.showNotification(`成功获取 ${list.length} 个报表`, 'success');
+    } catch (e) {
+        repSel.innerHTML = '<option value="">-- 获取失败，请点击右侧重试 --</option>';
+        if (window.showNotification && btn) window.showNotification(`获取报表失败: ${e.message}`, 'error');
+    } finally {
+        if (btnEl) btnEl.classList.remove('spinning');
+    }
+};
+
+window.wfInspectRefreshDataset = async function(btn) {
+    const wsSel = document.getElementById('wf-inspect-workspace');
+    const dsSel = document.getElementById('wf-inspect-dataset');
+    const btnEl = btn || document.getElementById('wf-inspect-refresh-ds-btn');
+    if (!wsSel || !dsSel) return;
+    const wsId = wsSel.value;
+    if (!wsId) {
+        dsSel.innerHTML = '<option value="">-- 请先选择 Workspace --</option>';
+        return;
+    }
+    if (btnEl) btnEl.classList.add('spinning');
+    dsSel.innerHTML = '<option value="">⏳ 正在获取语义模型列表...</option>';
+
+    try {
+        // 1. 读取本地配置的语义模型集合中匹配此工作区的项
+        const savedDatasets = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
+        const localMatches = savedDatasets.filter(d => (d.workspaceId || '').trim().toLowerCase() === wsId.toLowerCase());
+
+        // 2. 在线拉取 /groups/${wsId}/datasets
+        let liveDatasets = [];
+        try {
+            const res = await fetch('/api/proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint: `/groups/${wsId}/datasets`, method: 'GET' })
+            });
+            const json = await res.json();
+            liveDatasets = (json.data && json.data.value) ? json.data.value : [];
+        } catch (netErr) {
+            console.warn('Fetch live datasets failed:', netErr);
+        }
+
+        // 3. 智能合并去重
+        const dsMap = new Map();
+        localMatches.forEach(d => {
+            if (d && d.id) dsMap.set(d.id.toLowerCase(), { id: d.id, name: d.alias || d.name || d.id });
+        });
+        liveDatasets.forEach(d => {
+            if (d && d.id) {
+                const existing = dsMap.get(d.id.toLowerCase());
+                dsMap.set(d.id.toLowerCase(), { id: d.id, name: existing?.name || d.name || d.id });
+            }
+        });
+
+        const list = Array.from(dsMap.values());
+        dsSel.innerHTML = '<option value="">-- 选择目标语义模型 (Dataset) --</option>';
+        list.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.id;
+            opt.textContent = d.name;
+            dsSel.appendChild(opt);
+        });
+
+        const globalDs = document.getElementById('active-dataset')?.value || localStorage.getItem('pbi-active-dataset');
+        if (globalDs && list.some(d => d.id.toLowerCase() === globalDs.toLowerCase())) {
+            dsSel.value = list.find(d => d.id.toLowerCase() === globalDs.toLowerCase()).id;
+        } else if (list.length > 0) {
+            dsSel.selectedIndex = 1;
+        }
+
+        if (window.showNotification && btn) window.showNotification(`成功获取 ${list.length} 个语义模型`, 'success');
+    } catch (e) {
+        dsSel.innerHTML = '<option value="">-- 获取失败，请点击右侧重试 --</option>';
+        if (window.showNotification && btn) window.showNotification(`获取语义模型失败: ${e.message}`, 'error');
+    } finally {
+        if (btnEl) btnEl.classList.remove('spinning');
+    }
+};
+
+window.runDatasourceInspectorWorkflow = async function() {
+    const wsId = document.getElementById('wf-inspect-workspace')?.value?.trim();
+    const repId = document.getElementById('wf-inspect-report')?.value?.trim();
+    const dsId = document.getElementById('wf-inspect-dataset')?.value?.trim();
+    const logsEl = document.getElementById('wf-out-inspect-logs');
+    const wrapEl = document.getElementById('wf-inspect-result-wrap');
+    const badgeEl = document.getElementById('wf-inspect-badge-stats');
+
+    if (!wsId) {
+        if (window.showNotification) window.showNotification('❌ 请先选择 Workspace！', 'error');
+        return;
+    }
+
+    if (logsEl) {
+        logsEl.innerHTML = '';
+        window.expandConsole('wf-out-inspect-logs');
+    }
+    if (wrapEl) wrapEl.style.display = 'none';
+
+    const appendLog = (msg) => {
+        if (logsEl) {
+            logsEl.innerText += msg + '\n';
+            logsEl.scrollTop = logsEl.scrollHeight;
+        }
+    };
+
+    appendLog(`[START] 发起数据源全景穿透分析 (Workspace: ${wsId}, Dataset: ${dsId || 'Auto'}, Report: ${repId || 'None'})...`);
+
+    try {
+        const payload = {
+            workspace_id: wsId,
+            report_id: repId || null,
+            dataset_id: dsId || null
+        };
+
+        const res = await fetch('/api/datasource/inspect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (data.logs && Array.isArray(data.logs)) {
+            data.logs.forEach(l => appendLog(l));
+        }
+
+        if (data.success) {
+            window._inspectResultCache = data;
+            appendLog(`\n🎉 穿透检测圆满成功！`);
+            appendLog(`  • 总体连接模式: ${data.overall_mode}`);
+            appendLog(`  • 执行引擎: ${data.engine_used}`);
+            appendLog(`  • 提取到物理表: ${data.tables ? data.tables.length : 0} 张`);
+            appendLog(`  • 数据源连接配置: ${data.datasources ? data.datasources.length : 0} 项\n`);
+
+            if (wrapEl) wrapEl.style.display = 'block';
+            if (badgeEl) {
+                badgeEl.textContent = `⚡ 模式: ${data.overall_mode} | 引擎: ${data.engine_used} | ${data.tables.length} 表`;
+            }
+
+            if (window.showNotification) {
+                window.showNotification(`✅ 数据源穿透分析完成: 【${data.overall_mode}】`, 'success');
+            }
+
+            // 自动弹窗呈现
+            window.openInspectResultModal();
+        } else {
+            appendLog(`❌ 穿透失败: ${data.message}`);
+            if (window.showNotification) window.showNotification(`❌ 分析失败: ${data.message}`, 'error');
+        }
+    } catch (e) {
+        appendLog(`❌ 网络/服务异常: ${e.message}`);
+        if (window.showNotification) window.showNotification(`❌ 请求异常: ${e.message}`, 'error');
+    }
+};
+
+window.openInspectResultModal = function() {
+    const data = window._inspectResultCache;
+    if (!data || !data.tables) {
+        if (window.showNotification) window.showNotification('暂无数据源穿透结果，请先运行工作流！', 'warning');
+        return;
+    }
+
+    const tableRows = data.tables.map((t, idx) => ({
+        '#': idx + 1,
+        tableName: t.tableName,
+        mode: t.mode,
+        sourceType: t.sourceType,
+        server: t.server || (data.datasources[0]?.server || '-'),
+        database: t.database || (data.datasources[0]?.database || '-'),
+        nativeSql: t.nativeSql ? t.nativeSql : '无嵌入原生SQL (纯M查询/表引用)',
+        mExpression: t.mExpression || '-',
+        columnsCount: t.columnsCount || 0,
+        actions: t
+    }));
+
+    if (window.showUniversalDataModal) {
+        window.showUniversalDataModal({
+            title: `🔍 数据源与 M 表达式全景穿透看板 — [${data.dataset_name || 'Dataset'}] (模式: ${data.overall_mode})`,
+            data: tableRows,
+            columns: ['#', 'tableName', 'mode', 'sourceType', 'server', 'database', 'nativeSql', 'actions'],
+            displayNames: ['#', 'Table Name (表名)', 'Mode (模式)', 'Source Type (源类型)', 'Server (服务器)', 'Database (数据库)', 'Native SQL (SQL语句)', 'Actions (操作)'],
+            enableSearch: true,
+            enableColumnFilter: true,
+            headerActions: [
+                {
+                    label: '🕸️ 全景血缘 DAG 图',
+                    title: '一键生成并查看该报表/模型的全景数据血缘拓扑 DAG 图',
+                    style: 'background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2)); border: 1px solid var(--accent); color: var(--accent); font-weight: 600;',
+                    onClick: () => {
+                        if (window.LineageExplorer) {
+                            window.LineageExplorer.openModal(data);
+                        }
+                    }
+                }
+            ],
+            cellRenderer: function(col, val, row) {
+                if (col === 'mode') {
+                    const m = String(val || '').toLowerCase();
+                    const color = m.includes('directquery') ? 'var(--warning)' : (m.includes('live') ? 'var(--info)' : 'var(--success)');
+                    return `<span class="badge" style="border: 1px solid ${color}; color: ${color}; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;">${val}</span>`;
+                }
+                if (col === 'nativeSql') {
+                    if (!val || val.includes('无嵌入原生SQL')) {
+                        return `<span style="color: var(--text-secondary); opacity: 0.6; font-size: 0.75rem;">${val}</span>`;
+                    }
+                    const cleanSql = String(val).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    return `<div style="font-family: monospace; font-size: 0.75rem; color: var(--accent); max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${cleanSql}">${cleanSql}</div>`;
+                }
+                if (col === 'actions') {
+                    const mExprEscaped = encodeURIComponent(row.mExpression || '');
+                    const sqlEscaped = encodeURIComponent(row.nativeSql || '');
+                    const tblNameEscaped = encodeURIComponent(row.tableName || '');
+                    return `
+                        <div style="display: flex; gap: 4px; align-items: center;">
+                            <button type="button" class="btn-wf-sm btn-wf-secondary" style="padding: 2px 6px; font-size: 0.72rem; color: var(--accent);" onclick="window.viewTableMExpression('${tblNameEscaped}', '${mExprEscaped}', '${sqlEscaped}')" title="查看完整 M 表达式与 SQL">
+                                📜 查看 M/SQL
+                            </button>
+                            <button type="button" class="btn-wf-sm btn-wf-secondary" style="padding: 2px 6px; font-size: 0.72rem;" onclick="navigator.clipboard.writeText(decodeURIComponent('${mExprEscaped}')); if(window.showNotification) window.showNotification('📋 M 表达式已复制到剪贴板！', 'success')" title="一键复制 M 查询">
+                                📋 复制 M
+                            </button>
+                        </div>
+                    `;
+                }
+                return undefined;
+            }
+        });
+    }
+};
+
+window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded) {
+    const tblName = decodeURIComponent(tblNameEncoded || '');
+    const mExpr = decodeURIComponent(mExprEncoded || '');
+    const sql = decodeURIComponent(sqlEncoded || '');
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.display = 'flex';
+    overlay.style.zIndex = '25000';
+
+    overlay.innerHTML = `
+        <div class="modal-content glass-panel" style="width: min(90vw, 850px); max-height: min(88vh, 750px); display: flex; flex-direction: column;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--panel-border); padding: 12px 16px;">
+                <h3 style="margin: 0; font-size: 1rem; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                    <span>📜 表 [${tblName}] 数据源 M 表达式与 SQL 源码</span>
+                </h3>
+                <button type="button" class="close-btn" onclick="this.closest('.modal-overlay').remove()" title="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
+            </div>
+            <div class="modal-body" style="padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px;">
+                ${sql && !sql.includes('无嵌入原生SQL') ? `
+                    <div>
+                        <div style="font-size: 0.8rem; font-weight: bold; color: var(--accent); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                            <span>⚡ 原生 SQL 查询语句 (Native Query):</span>
+                            <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="navigator.clipboard.writeText(decodeURIComponent('${sqlEncoded}')); if(window.showNotification) window.showNotification('SQL 已复制！', 'success');">📋 复制 SQL</button>
+                        </div>
+                        <pre style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; padding: 10px; font-family: monospace; font-size: 0.78rem; color: var(--text-primary); white-space: pre-wrap; word-break: break-all; max-height: 180px; overflow-y: auto;">${sql.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+                    </div>
+                ` : ''}
+                <div>
+                    <div style="font-size: 0.8rem; font-weight: bold; color: var(--text-secondary); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                        <span>🌿 Power Query M 完整表达式 (M Query):</span>
+                        <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="navigator.clipboard.writeText(decodeURIComponent('${mExprEncoded}')); if(window.showNotification) window.showNotification('M 表达式已复制！', 'success');">📋 复制 M 表达式</button>
+                    </div>
+                    <pre style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; padding: 12px; font-family: Consolas, monospace; font-size: 0.8rem; color: #4ec9b0; white-space: pre-wrap; word-break: break-all; max-height: 380px; overflow-y: auto; line-height: 1.45;">${(mExpr || '暂无 M 表达式').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 10px 16px; border-top: 1px solid var(--panel-border); display: flex; justify-content: flex-end;">
+                <button type="button" class="btn-wf-md btn-wf-secondary" onclick="this.closest('.modal-overlay').remove()">关闭 (Close)</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+};
+
+
+
+
+// Zen Mode / Focus Mode
+
     const populateWorkflowSelectors = () => {
         const knownReportWsMap = {
             "3a6e9e19-9aed-4372-a7d9-17155e9dd49d": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
@@ -11842,13 +12300,14 @@ window.updateHarnessStats = function() {
         fillSelect('wf-ds-workspace', 'pbi_workspaces');
         fillSelect('wf-ds-dataset', 'pbi_datasets');
         fillSelect('wf-rvc-workspace', 'pbi_workspaces');
+        fillSelect('wf-inspect-workspace', 'pbi_workspaces');
 
         const activeW = document.getElementById('active-workspace')?.value;
         const activeR = document.getElementById('active-report')?.value;
         const activeD = document.getElementById('active-dataset')?.value;
 
         if (activeW) {
-            ['wf-exp-workspace', 'wf-vis-workspace', 'wf-ds-workspace', 'wf-rvc-workspace'].forEach(id => {
+            ['wf-exp-workspace', 'wf-vis-workspace', 'wf-ds-workspace', 'wf-rvc-workspace', 'wf-inspect-workspace'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = activeW;
             });
@@ -11864,9 +12323,10 @@ window.updateHarnessStats = function() {
         updateFilteredReports('wf-exp-workspace', 'wf-exp-report');
         updateFilteredReports('wf-vis-workspace', 'wf-vis-report');
         updateFilteredReports('wf-rvc-workspace', 'wf-rvc-report');
+        updateFilteredReports('wf-inspect-workspace', 'wf-inspect-report');
 
         if (activeR) {
-            ['wf-exp-report', 'wf-vis-report', 'wf-rvc-report'].forEach(id => {
+            ['wf-exp-report', 'wf-vis-report', 'wf-rvc-report', 'wf-inspect-report'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el && Array.from(el.options).some(o => o.value === activeR)) {
                     el.value = activeR;
@@ -11877,10 +12337,14 @@ window.updateHarnessStats = function() {
         if (activeD) {
             const el = document.getElementById('wf-ds-dataset');
             if (el) el.value = activeD;
+            const insDs = document.getElementById('wf-inspect-dataset');
+            if (insDs && Array.from(insDs.options).some(o => o.value === activeD)) {
+                insDs.value = activeD;
+            }
         }
 
-        // Bind workspace change events to dynamically re-filter reports
-        ['wf-exp', 'wf-vis', 'wf-rvc'].forEach(prefix => {
+        // Bind workspace change events to dynamically re-filter reports and cascade refresh
+        ['wf-exp', 'wf-vis', 'wf-rvc', 'wf-inspect'].forEach(prefix => {
             const wsElem = document.getElementById(`${prefix}-workspace`);
             if (wsElem && !wsElem._hasCascadeListener) {
                 wsElem._hasCascadeListener = true;
@@ -11889,12 +12353,22 @@ window.updateHarnessStats = function() {
                     if (prefix === 'wf-vis' && window.loadExportVisualPages) {
                         window.loadExportVisualPages();
                     }
+                    if (prefix === 'wf-inspect') {
+                        if (window.wfInspectRefreshReport) window.wfInspectRefreshReport();
+                        if (window.wfInspectRefreshDataset) window.wfInspectRefreshDataset();
+                    }
                 });
             }
         });
     };
     window.populateWorkflowSelectors = populateWorkflowSelectors;
     populateWorkflowSelectors();
+
+    // 页面初始化时，若当前工作流为 datasource_inspector，立即自动执行远端与本地工作区/报表/模型级联自动刷新
+    const curInitWf = document.getElementById('wf-selector')?.value || localStorage.getItem('pbi-last-workflow') || 'datasource_inspector';
+    if (curInitWf === 'datasource_inspector' && window.initDatasourceInspectorWorkflow) {
+        window.initDatasourceInspectorWorkflow(true);
+    }
 
 
 
@@ -12312,7 +12786,7 @@ window.updateHarnessStats = function() {
             if (val === 'datasource_inspector') {
                 if (inspectPane) inspectPane.style.display = 'block';
                 document.getElementById('wf-btn-runall').style.display = 'flex';
-                if (window.initDatasourceInspectorWorkflow) window.initDatasourceInspectorWorkflow();
+                if (window.initDatasourceInspectorWorkflow) window.initDatasourceInspectorWorkflow(true);
             } else if (val === 'smart_pipeline') {
                 document.getElementById('wf-config-smart_pipeline').style.display = 'block';
                 document.getElementById('wf-btn-runall').style.display = 'flex';
@@ -19828,461 +20302,6 @@ window.queryXmlaRefreshHistory = async function(scope = 'model') {
     }
 };
 
-// =========================================================================
-// Report & Dataset Datasource Inspector Workflow Client Controller
-// =========================================================================
-window._inspectResultCache = null;
-
-window.initDatasourceInspectorWorkflow = function(force = false) {
-    const wsSel = document.getElementById('wf-inspect-workspace');
-    const repSel = document.getElementById('wf-inspect-report');
-    const dsSel = document.getElementById('wf-inspect-dataset');
-    if (!wsSel) return;
-
-    // 绑定联动事件（保证仅首次初始化绑定一次）
-    if (!wsSel.dataset.hasInspectorHandler) {
-        wsSel.dataset.hasInspectorHandler = 'true';
-        wsSel.addEventListener('change', () => {
-            window.wfInspectRefreshReport();
-            window.wfInspectRefreshDataset();
-        });
-    }
-
-    if (repSel && !repSel.dataset.hasInspectorHandler) {
-        repSel.dataset.hasInspectorHandler = 'true';
-        repSel.addEventListener('change', () => {
-            const selectedOpt = repSel.options[repSel.selectedIndex];
-            const boundDsId = selectedOpt ? selectedOpt.getAttribute('data-dataset-id') : '';
-            if (boundDsId && dsSel) {
-                for (let i = 0; i < dsSel.options.length; i++) {
-                    if (dsSel.options[i].value === boundDsId) {
-                        dsSel.selectedIndex = i;
-                        break;
-                    }
-                }
-            }
-        });
-    }
-
-    // 自动刷新：如果尚未加载工作区或要求强制刷新，主动向后台拉取并驱动下级报表与模型刷新
-    if (force || wsSel.options.length <= 1) {
-        window.wfInspectRefreshWorkspace();
-    } else {
-        if (repSel && repSel.options.length <= 1) window.wfInspectRefreshReport();
-        if (dsSel && dsSel.options.length <= 1) window.wfInspectRefreshDataset();
-    }
-};
-
-window.wfInspectRefreshWorkspace = async function(btn) {
-    const wsSel = document.getElementById('wf-inspect-workspace');
-    const btnEl = btn || document.getElementById('wf-inspect-refresh-ws-btn');
-    if (!wsSel) return;
-    if (btnEl) btnEl.classList.add('spinning');
-
-    // 视觉过渡反馈
-    if (wsSel.options.length <= 1) {
-        wsSel.innerHTML = '<option value="">⏳ 正在获取工作区列表...</option>';
-    }
-
-    try {
-        // 1. 读取本地已配置/缓存的工作区全集
-        const savedWorkspaces = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
-        
-        // 2. 同时向后端 /groups 探查最新在线工作区
-        let liveGroups = [];
-        try {
-            const res = await fetch('/api/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ endpoint: '/groups', method: 'GET' })
-            });
-            const json = await res.json();
-            liveGroups = (json.data && json.data.value) ? json.data.value : [];
-        } catch (netErr) {
-            console.warn('Probe /groups failed, fallback to local settings:', netErr);
-        }
-
-        // 3. 智能全集去重合并 (保证已配置的全部工作区与远端新工作区均完整呈现)
-        const map = new Map();
-        savedWorkspaces.forEach(w => {
-            if (w && w.id) {
-                map.set(w.id.toLowerCase(), { id: w.id, name: w.alias || w.name || w.id });
-            }
-        });
-        liveGroups.forEach(w => {
-            if (w && w.id) {
-                const existing = map.get(w.id.toLowerCase());
-                map.set(w.id.toLowerCase(), { id: w.id, name: existing?.name || w.name || w.id });
-            }
-        });
-
-        const list = Array.from(map.values());
-        wsSel.innerHTML = '<option value="">-- 请选择 Workspace --</option>';
-        list.forEach(w => {
-            const opt = document.createElement('option');
-            opt.value = w.id;
-            opt.textContent = `${w.name} (${w.id.slice(0, 8)}...)`;
-            opt.title = `${w.name} (${w.id})`;
-            wsSel.appendChild(opt);
-        });
-
-        // 优先继承全局工作区，否则默认选中第一个有效工作区
-        const globalWs = document.getElementById('active-workspace')?.value || localStorage.getItem('pbi-active-workspace');
-        if (globalWs && list.some(w => w.id.toLowerCase() === globalWs.toLowerCase())) {
-            wsSel.value = list.find(w => w.id.toLowerCase() === globalWs.toLowerCase()).id;
-        } else if (list.length > 0) {
-            wsSel.selectedIndex = 1;
-        }
-
-        // 联动自动刷新下属的 Report 和 Dataset（带旋转动效）
-        await Promise.all([
-            window.wfInspectRefreshReport(),
-            window.wfInspectRefreshDataset()
-        ]);
-
-        if (window.showNotification && btn) window.showNotification(`成功刷新 ${list.length} 个工作区`, 'success');
-    } catch (e) {
-        wsSel.innerHTML = '<option value="">-- 获取失败，请点击右侧重试 --</option>';
-        if (window.showNotification) window.showNotification(`刷新工作区失败: ${e.message}`, 'error');
-    } finally {
-        if (btnEl) btnEl.classList.remove('spinning');
-    }
-};
-
-window.wfInspectRefreshReport = async function(btn) {
-    const wsSel = document.getElementById('wf-inspect-workspace');
-    const repSel = document.getElementById('wf-inspect-report');
-    const btnEl = btn || document.getElementById('wf-inspect-refresh-rep-btn');
-    if (!wsSel || !repSel) return;
-    const wsId = wsSel.value;
-    if (!wsId) {
-        repSel.innerHTML = '<option value="">-- All / Direct Select Model Below --</option>';
-        return;
-    }
-    if (btnEl) btnEl.classList.add('spinning');
-    repSel.innerHTML = '<option value="">⏳ 正在获取报表列表...</option>';
-
-    try {
-        // 1. 读取本地配置的报表集合中匹配此工作区的项
-        const savedReports = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
-        const localMatches = savedReports.filter(r => (r.workspaceId || '').trim().toLowerCase() === wsId.toLowerCase());
-
-        // 2. 在线拉取 /groups/${wsId}/reports
-        let liveReports = [];
-        try {
-            const res = await fetch('/api/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ endpoint: `/groups/${wsId}/reports`, method: 'GET' })
-            });
-            const json = await res.json();
-            liveReports = (json.data && json.data.value) ? json.data.value : [];
-        } catch (netErr) {
-            console.warn('Fetch live reports failed:', netErr);
-        }
-
-        // 3. 智能合并去重
-        const repMap = new Map();
-        localMatches.forEach(r => {
-            if (r && r.id) repMap.set(r.id.toLowerCase(), { id: r.id, name: r.alias || r.name || r.id, datasetId: r.datasetId });
-        });
-        liveReports.forEach(r => {
-            if (r && r.id) {
-                const existing = repMap.get(r.id.toLowerCase());
-                repMap.set(r.id.toLowerCase(), { id: r.id, name: existing?.name || r.name || r.id, datasetId: r.datasetId || existing?.datasetId });
-            }
-        });
-
-        const list = Array.from(repMap.values());
-        repSel.innerHTML = '<option value="">-- All / Direct Select Model Below --</option>';
-        list.forEach(r => {
-            const opt = document.createElement('option');
-            opt.value = r.id;
-            opt.textContent = r.name;
-            if (r.datasetId) opt.setAttribute('data-dataset-id', r.datasetId);
-            repSel.appendChild(opt);
-        });
-
-        const globalRp = document.getElementById('active-report')?.value || localStorage.getItem('pbi-active-report');
-        if (globalRp && list.some(r => r.id.toLowerCase() === globalRp.toLowerCase())) {
-            repSel.value = list.find(r => r.id.toLowerCase() === globalRp.toLowerCase()).id;
-        }
-
-        if (window.showNotification && btn) window.showNotification(`成功获取 ${list.length} 个报表`, 'success');
-    } catch (e) {
-        repSel.innerHTML = '<option value="">-- 获取失败，请点击右侧重试 --</option>';
-        if (window.showNotification && btn) window.showNotification(`获取报表失败: ${e.message}`, 'error');
-    } finally {
-        if (btnEl) btnEl.classList.remove('spinning');
-    }
-};
-
-window.wfInspectRefreshDataset = async function(btn) {
-    const wsSel = document.getElementById('wf-inspect-workspace');
-    const dsSel = document.getElementById('wf-inspect-dataset');
-    const btnEl = btn || document.getElementById('wf-inspect-refresh-ds-btn');
-    if (!wsSel || !dsSel) return;
-    const wsId = wsSel.value;
-    if (!wsId) {
-        dsSel.innerHTML = '<option value="">-- 请先选择 Workspace --</option>';
-        return;
-    }
-    if (btnEl) btnEl.classList.add('spinning');
-    dsSel.innerHTML = '<option value="">⏳ 正在获取语义模型列表...</option>';
-
-    try {
-        // 1. 读取本地配置的语义模型集合中匹配此工作区的项
-        const savedDatasets = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
-        const localMatches = savedDatasets.filter(d => (d.workspaceId || '').trim().toLowerCase() === wsId.toLowerCase());
-
-        // 2. 在线拉取 /groups/${wsId}/datasets
-        let liveDatasets = [];
-        try {
-            const res = await fetch('/api/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ endpoint: `/groups/${wsId}/datasets`, method: 'GET' })
-            });
-            const json = await res.json();
-            liveDatasets = (json.data && json.data.value) ? json.data.value : [];
-        } catch (netErr) {
-            console.warn('Fetch live datasets failed:', netErr);
-        }
-
-        // 3. 智能合并去重
-        const dsMap = new Map();
-        localMatches.forEach(d => {
-            if (d && d.id) dsMap.set(d.id.toLowerCase(), { id: d.id, name: d.alias || d.name || d.id });
-        });
-        liveDatasets.forEach(d => {
-            if (d && d.id) {
-                const existing = dsMap.get(d.id.toLowerCase());
-                dsMap.set(d.id.toLowerCase(), { id: d.id, name: existing?.name || d.name || d.id });
-            }
-        });
-
-        const list = Array.from(dsMap.values());
-        dsSel.innerHTML = '<option value="">-- 选择目标语义模型 (Dataset) --</option>';
-        list.forEach(d => {
-            const opt = document.createElement('option');
-            opt.value = d.id;
-            opt.textContent = d.name;
-            dsSel.appendChild(opt);
-        });
-
-        const globalDs = document.getElementById('active-dataset')?.value || localStorage.getItem('pbi-active-dataset');
-        if (globalDs && list.some(d => d.id.toLowerCase() === globalDs.toLowerCase())) {
-            dsSel.value = list.find(d => d.id.toLowerCase() === globalDs.toLowerCase()).id;
-        } else if (list.length > 0) {
-            dsSel.selectedIndex = 1;
-        }
-
-        if (window.showNotification && btn) window.showNotification(`成功获取 ${list.length} 个语义模型`, 'success');
-    } catch (e) {
-        dsSel.innerHTML = '<option value="">-- 获取失败，请点击右侧重试 --</option>';
-        if (window.showNotification && btn) window.showNotification(`获取语义模型失败: ${e.message}`, 'error');
-    } finally {
-        if (btnEl) btnEl.classList.remove('spinning');
-    }
-};
-
-window.runDatasourceInspectorWorkflow = async function() {
-    const wsId = document.getElementById('wf-inspect-workspace')?.value?.trim();
-    const repId = document.getElementById('wf-inspect-report')?.value?.trim();
-    const dsId = document.getElementById('wf-inspect-dataset')?.value?.trim();
-    const logsEl = document.getElementById('wf-out-inspect-logs');
-    const wrapEl = document.getElementById('wf-inspect-result-wrap');
-    const badgeEl = document.getElementById('wf-inspect-badge-stats');
-
-    if (!wsId) {
-        if (window.showNotification) window.showNotification('❌ 请先选择 Workspace！', 'error');
-        return;
-    }
-
-    if (logsEl) {
-        logsEl.innerHTML = '';
-        window.expandConsole('wf-out-inspect-logs');
-    }
-    if (wrapEl) wrapEl.style.display = 'none';
-
-    const appendLog = (msg) => {
-        if (logsEl) {
-            logsEl.innerText += msg + '\n';
-            logsEl.scrollTop = logsEl.scrollHeight;
-        }
-    };
-
-    appendLog(`[START] 发起数据源全景穿透分析 (Workspace: ${wsId}, Dataset: ${dsId || 'Auto'}, Report: ${repId || 'None'})...`);
-
-    try {
-        const payload = {
-            workspace_id: wsId,
-            report_id: repId || null,
-            dataset_id: dsId || null
-        };
-
-        const res = await fetch('/api/datasource/inspect', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        const data = await res.json();
-        if (data.logs && Array.isArray(data.logs)) {
-            data.logs.forEach(l => appendLog(l));
-        }
-
-        if (data.success) {
-            window._inspectResultCache = data;
-            appendLog(`\n🎉 穿透检测圆满成功！`);
-            appendLog(`  • 总体连接模式: ${data.overall_mode}`);
-            appendLog(`  • 执行引擎: ${data.engine_used}`);
-            appendLog(`  • 提取到物理表: ${data.tables ? data.tables.length : 0} 张`);
-            appendLog(`  • 数据源连接配置: ${data.datasources ? data.datasources.length : 0} 项\n`);
-
-            if (wrapEl) wrapEl.style.display = 'block';
-            if (badgeEl) {
-                badgeEl.textContent = `⚡ 模式: ${data.overall_mode} | 引擎: ${data.engine_used} | ${data.tables.length} 表`;
-            }
-
-            if (window.showNotification) {
-                window.showNotification(`✅ 数据源穿透分析完成: 【${data.overall_mode}】`, 'success');
-            }
-
-            // 自动弹窗呈现
-            window.openInspectResultModal();
-        } else {
-            appendLog(`❌ 穿透失败: ${data.message}`);
-            if (window.showNotification) window.showNotification(`❌ 分析失败: ${data.message}`, 'error');
-        }
-    } catch (e) {
-        appendLog(`❌ 网络/服务异常: ${e.message}`);
-        if (window.showNotification) window.showNotification(`❌ 请求异常: ${e.message}`, 'error');
-    }
-};
-
-window.openInspectResultModal = function() {
-    const data = window._inspectResultCache;
-    if (!data || !data.tables) {
-        if (window.showNotification) window.showNotification('暂无数据源穿透结果，请先运行工作流！', 'warning');
-        return;
-    }
-
-    const tableRows = data.tables.map((t, idx) => ({
-        '#': idx + 1,
-        tableName: t.tableName,
-        mode: t.mode,
-        sourceType: t.sourceType,
-        server: t.server || (data.datasources[0]?.server || '-'),
-        database: t.database || (data.datasources[0]?.database || '-'),
-        nativeSql: t.nativeSql ? t.nativeSql : '无嵌入原生SQL (纯M查询/表引用)',
-        mExpression: t.mExpression || '-',
-        columnsCount: t.columnsCount || 0,
-        actions: t
-    }));
-
-    if (window.showUniversalDataModal) {
-        window.showUniversalDataModal({
-            title: `🔍 数据源与 M 表达式全景穿透看板 — [${data.dataset_name || 'Dataset'}] (模式: ${data.overall_mode})`,
-            data: tableRows,
-            columns: ['#', 'tableName', 'mode', 'sourceType', 'server', 'database', 'nativeSql', 'actions'],
-            displayNames: ['#', 'Table Name (表名)', 'Mode (模式)', 'Source Type (源类型)', 'Server (服务器)', 'Database (数据库)', 'Native SQL (SQL语句)', 'Actions (操作)'],
-            enableSearch: true,
-            enableColumnFilter: true,
-            headerActions: [
-                {
-                    label: '🕸️ 全景血缘 DAG 图',
-                    title: '一键生成并查看该报表/模型的全景数据血缘拓扑 DAG 图',
-                    style: 'background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2)); border: 1px solid var(--accent); color: var(--accent); font-weight: 600;',
-                    onClick: () => {
-                        if (window.LineageExplorer) {
-                            window.LineageExplorer.openModal(data);
-                        }
-                    }
-                }
-            ],
-            cellRenderer: function(col, val, row) {
-                if (col === 'mode') {
-                    const m = String(val || '').toLowerCase();
-                    const color = m.includes('directquery') ? 'var(--warning)' : (m.includes('live') ? 'var(--info)' : 'var(--success)');
-                    return `<span class="badge" style="border: 1px solid ${color}; color: ${color}; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;">${val}</span>`;
-                }
-                if (col === 'nativeSql') {
-                    if (!val || val.includes('无嵌入原生SQL')) {
-                        return `<span style="color: var(--text-secondary); opacity: 0.6; font-size: 0.75rem;">${val}</span>`;
-                    }
-                    const cleanSql = String(val).replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                    return `<div style="font-family: monospace; font-size: 0.75rem; color: var(--accent); max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${cleanSql}">${cleanSql}</div>`;
-                }
-                if (col === 'actions') {
-                    const mExprEscaped = encodeURIComponent(row.mExpression || '');
-                    const sqlEscaped = encodeURIComponent(row.nativeSql || '');
-                    const tblNameEscaped = encodeURIComponent(row.tableName || '');
-                    return `
-                        <div style="display: flex; gap: 4px; align-items: center;">
-                            <button type="button" class="btn-wf-sm btn-wf-secondary" style="padding: 2px 6px; font-size: 0.72rem; color: var(--accent);" onclick="window.viewTableMExpression('${tblNameEscaped}', '${mExprEscaped}', '${sqlEscaped}')" title="查看完整 M 表达式与 SQL">
-                                📜 查看 M/SQL
-                            </button>
-                            <button type="button" class="btn-wf-sm btn-wf-secondary" style="padding: 2px 6px; font-size: 0.72rem;" onclick="navigator.clipboard.writeText(decodeURIComponent('${mExprEscaped}')); if(window.showNotification) window.showNotification('📋 M 表达式已复制到剪贴板！', 'success')" title="一键复制 M 查询">
-                                📋 复制 M
-                            </button>
-                        </div>
-                    `;
-                }
-                return undefined;
-            }
-        });
-    }
-};
-
-window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded) {
-    const tblName = decodeURIComponent(tblNameEncoded || '');
-    const mExpr = decodeURIComponent(mExprEncoded || '');
-    const sql = decodeURIComponent(sqlEncoded || '');
-
-    const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay';
-    overlay.style.display = 'flex';
-    overlay.style.zIndex = '25000';
-
-    overlay.innerHTML = `
-        <div class="modal-content glass-panel" style="width: min(90vw, 850px); max-height: min(88vh, 750px); display: flex; flex-direction: column;">
-            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--panel-border); padding: 12px 16px;">
-                <h3 style="margin: 0; font-size: 1rem; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
-                    <span>📜 表 [${tblName}] 数据源 M 表达式与 SQL 源码</span>
-                </h3>
-                <button type="button" class="close-btn" onclick="this.closest('.modal-overlay').remove()" title="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
-            </div>
-            <div class="modal-body" style="padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px;">
-                ${sql && !sql.includes('无嵌入原生SQL') ? `
-                    <div>
-                        <div style="font-size: 0.8rem; font-weight: bold; color: var(--accent); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
-                            <span>⚡ 原生 SQL 查询语句 (Native Query):</span>
-                            <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="navigator.clipboard.writeText(decodeURIComponent('${sqlEncoded}')); if(window.showNotification) window.showNotification('SQL 已复制！', 'success');">📋 复制 SQL</button>
-                        </div>
-                        <pre style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; padding: 10px; font-family: monospace; font-size: 0.78rem; color: var(--text-primary); white-space: pre-wrap; word-break: break-all; max-height: 180px; overflow-y: auto;">${sql.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
-                    </div>
-                ` : ''}
-                <div>
-                    <div style="font-size: 0.8rem; font-weight: bold; color: var(--text-secondary); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
-                        <span>🌿 Power Query M 完整表达式 (M Query):</span>
-                        <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="navigator.clipboard.writeText(decodeURIComponent('${mExprEncoded}')); if(window.showNotification) window.showNotification('M 表达式已复制！', 'success');">📋 复制 M 表达式</button>
-                    </div>
-                    <pre style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; padding: 12px; font-family: Consolas, monospace; font-size: 0.8rem; color: #4ec9b0; white-space: pre-wrap; word-break: break-all; max-height: 380px; overflow-y: auto; line-height: 1.45;">${(mExpr || '暂无 M 表达式').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
-                </div>
-            </div>
-            <div class="modal-footer" style="padding: 10px 16px; border-top: 1px solid var(--panel-border); display: flex; justify-content: flex-end;">
-                <button type="button" class="btn-wf-md btn-wf-secondary" onclick="this.closest('.modal-overlay').remove()">关闭 (Close)</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-};
-
-
-
-
-// Zen Mode / Focus Mode
 window.toggleZenMode = function() {
     document.body.classList.add('is-toggling-zen');
     document.body.classList.toggle('zen-mode');
