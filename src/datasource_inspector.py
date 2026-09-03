@@ -28,21 +28,33 @@ def extract_native_sql_and_server_info(m_expression: str) -> Dict[str, Any]:
     if not m_expression:
         return result
 
-    # 1. 匹配 Sql.Database("server", "db", [Query="SELECT..."])
-    sql_match = re.search(
-        r'Sql\.Database\s*\(\s*["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']\s*(?:,\s*\[([^\]]+)\])?',
+    # 1. 匹配 PostgreSQL.Database("server", "db", ...)
+    pg_match = re.search(
+        r'\bPostgreSQL\.Database\s*\(\s*["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']',
         m_expression,
-        re.IGNORECASE | re.DOTALL
+        re.IGNORECASE
     )
-    if sql_match:
-        result["source_type"] = "SQL Server / Azure SQL"
-        result["server"] = sql_match.group(1).strip()
-        result["database"] = sql_match.group(2).strip()
-        opt_block = sql_match.group(3) or ""
-        # 提取 Query="SELECT ..."
-        query_match = re.search(r'Query\s*=\s*["\'](.*?)["\']\s*(?:,|\)|$)', opt_block, re.IGNORECASE | re.DOTALL)
-        if query_match:
-            result["native_sql"] = query_match.group(1).replace('""', '"').strip()
+    if pg_match:
+        result["source_type"] = "PostgreSQL"
+        result["server"] = pg_match.group(1).strip()
+        result["database"] = pg_match.group(2).strip()
+
+    # 2. 匹配 Sql.Database("server", "db", [Query="SELECT..."])
+    if not result["source_type"]:
+        sql_match = re.search(
+            r'\bSql\.Database\s*\(\s*["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']\s*(?:,\s*\[([^\]]+)\])?',
+            m_expression,
+            re.IGNORECASE | re.DOTALL
+        )
+        if sql_match:
+            result["source_type"] = "SQL Server / Azure SQL"
+            result["server"] = sql_match.group(1).strip()
+            result["database"] = sql_match.group(2).strip()
+            opt_block = sql_match.group(3) or ""
+            # 提取 Query="SELECT ..."
+            query_match = re.search(r'Query\s*=\s*["\'](.*?)["\']\s*(?:,|\)|$)', opt_block, re.IGNORECASE | re.DOTALL)
+            if query_match:
+                result["native_sql"] = query_match.group(1).replace('""', '"').strip()
 
     # 2. 匹配 Value.NativeQuery(..., "SELECT...")
     if not result["native_sql"]:
@@ -146,6 +158,7 @@ async def inspect_datasource_full(
 
     dataset_name = ""
     dataset_datasources: List[Dict[str, Any]] = []
+    dataset_relationships: List[Dict[str, Any]] = []
     tables_result: List[Dict[str, Any]] = []
     engine_used = ""
     overall_mode = "Import"
@@ -218,6 +231,17 @@ async def inspect_datasource_full(
                                     "datasourceId": ds_item.get("datasourceId", "-")
                                 })
                             
+                            # 提取表间模型关系 (Model Relationships)
+                            for rel in target_ds.get("relationships", []):
+                                dataset_relationships.append({
+                                    "fromTable": rel.get("fromTable", ""),
+                                    "fromColumn": rel.get("fromColumn", ""),
+                                    "toTable": rel.get("toTable", ""),
+                                    "toColumn": rel.get("toColumn", ""),
+                                    "isActive": rel.get("isActive", True),
+                                    "crossFilteringBehavior": rel.get("crossFilteringBehavior", "OneDirection")
+                                })
+
                             # 提取表、分区模式、M 表达式、SQL
                             all_modes = set()
                             for t in target_ds.get("tables", []):
@@ -427,6 +451,7 @@ async def inspect_datasource_full(
         "dataset_name": dataset_name,
         "datasources": dataset_datasources,
         "tables": tables_result,
+        "relationships": dataset_relationships,
         "logs": logs
     }
 
