@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Universal Data Modal Component
  * Dynamically generates a premium data grid modal with search, column selection, sorting, and export.
  */
@@ -133,6 +133,22 @@ hdr.className = 'modal-header';
             renderTable();
         };
         hdrActions.appendChild(searchInput);
+    }
+
+    // Custom Header Actions (e.g. Switch to Lineage DAG)
+    if (options.headerActions && Array.isArray(options.headerActions)) {
+        options.headerActions.forEach(act => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn-wf-sm btn-wf-secondary';
+            btn.innerHTML = act.label;
+            btn.title = act.title || '';
+            btn.style.cssText = 'padding:4px 10px;font-size:0.75rem;cursor:pointer;display:inline-flex;align-items:center;gap:5px;' + (act.style || '');
+            btn.onclick = (e) => {
+                if (act.onClick) act.onClick(e);
+            };
+            hdrActions.appendChild(btn);
+        });
     }
 
     // Close Button
