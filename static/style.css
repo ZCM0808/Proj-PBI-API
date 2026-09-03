@@ -3803,14 +3803,14 @@ body.topbar-collapsed #global-topbar {
     position: fixed;
     top: 0;
     left: 50%;
-    transform: translateX(-50%) translateY(calc(-100% + 6px));
-    opacity: 0.4;
+    transform: translateX(-50%) translateY(calc(-100% + 14px));
+    opacity: 0.6;
     background: var(--panel-bg);
     border: 1px solid var(--overlay-10);
     border-top: none;
     border-bottom-left-radius: 8px;
     border-bottom-right-radius: 8px;
-    padding: 2px 14px;
+    padding: 3px 24px;
     font-size: 0.72rem;
     font-weight: 600;
     color: var(--text-secondary);
@@ -3832,6 +3832,17 @@ body.topbar-collapsed #global-topbar {
 /* collapsed mode: arrow points down to indicate expand */
 body.topbar-collapsed #gtb-expand-handle .gtb-handle-icon {
     transform: rotate(0deg);
+}
+
+
+#gtb-expand-handle::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -50px;
+    right: -50px;
+    bottom: -10px;
+    z-index: -1;
 }
 
 #gtb-expand-handle:hover {
