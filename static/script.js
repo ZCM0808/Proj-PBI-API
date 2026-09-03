@@ -124,17 +124,17 @@ window.toggleAppRail = function(action) {
     if (!rail) return;
     
     if (action === 'collapse') {
-        const isRailCollapsed = document.body.classList.toggle('rail-collapsed');
-        try { localStorage.setItem('pbi-rail-collapsed', isRailCollapsed ? 'true' : 'false'); } catch(e) {}
+        // 保留此功能路径供外部调用（《按钮不再走此路径）
+        document.body.classList.toggle('rail-collapsed');
         return;
     }
     
+    // 若处于完全隐藏态，先唤出到图标模式
     if (document.body.classList.contains('rail-collapsed')) {
         document.body.classList.remove('rail-collapsed');
-        try { localStorage.setItem('pbi-rail-collapsed', 'false'); } catch(e) {}
-        return;
     }
 
+    // 60px ↔ 175px 展开态切换
     rail.classList.toggle('expanded');
     const isExpanded = rail.classList.contains('expanded');
     try { localStorage.setItem('pbi-rail-expanded', isExpanded ? 'true' : 'false'); } catch(e) {}
