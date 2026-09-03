@@ -104,7 +104,7 @@ window.showUniversalDataModal = function(options) {
         'border-radius:10px','box-shadow:0 24px 80px rgba(0,0,0,0.5)',
         'width:min(94vw, 1200px)','max-height:min(88vh, 900px)','max-width:1200px','min-width:min(100%, 300px)',
         'display:flex','flex-direction:column','overflow:hidden',
-        'resize:both','transform:scale(0.96)','transition:transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+        'transform:scale(0.96)','transition:transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
     ].join(';');
 
     // Header
@@ -185,68 +185,80 @@ hdr.className = 'modal-header';
             e.preventDefault();
             e.stopPropagation();
             
-            // Fix positioning to absolute pixels to avoid margin:auto flex conflicts
+            // 核心修复：必须将 position 设为 fixed，因为 getBoundingClientRect() 返回的是视口绝对像素！
+            // 原先保持 position: relative 时，设置 left: rect.left 会在当前已居中定位的基础上再次向右累加偏移，导致弹窗瞬间向右飞走！
             const rect = panel.getBoundingClientRect();
+            panel.style.position = 'fixed';
             panel.style.margin = '0';
             panel.style.left = rect.left + 'px';
             panel.style.top = rect.top + 'px';
+            panel.style.width = rect.width + 'px';
+            panel.style.height = rect.height + 'px';
+            panel.style.maxWidth = 'none';
+            panel.style.maxHeight = 'none';
             panel.style.right = 'auto';
             panel.style.bottom = 'auto';
-            
-            let startX = e.clientX;
-            let startY = e.clientY;
-            let startW = rect.width;
-            let startH = rect.height;
-            let startL = rect.left;
-            let startT = rect.top;
-            
-            // getBoundingClientRect already includes transform offsets, so just assigning it to left/top and clearing transform works perfectly!
-            
-            // Remove transform completely to avoid coordinate complex math during resize
             panel.style.transform = 'none';
+            panel.style.transition = 'none';
             panel.removeAttribute('data-translate-x');
             panel.removeAttribute('data-translate-y');
+            
+            document.body.style.cursor = cursor;
+            document.body.style.userSelect = 'none';
+            
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const startW = rect.width;
+            const startH = rect.height;
+            const startL = rect.left;
+            const startT = rect.top;
             
             const onMouseMove = (me) => {
                 const dx = me.clientX - startX;
                 const dy = me.clientY - startY;
                 
-                if (cls.includes('resizer-r') || cls.includes('br')) {
-                    panel.style.width = Math.max(300, startW + dx) + 'px';
+                // 水平右侧调整 (E / SE / NE)
+                if (cls.includes('resizer-r') || cls.includes('resizer-br') || cls.includes('resizer-tr')) {
+                    panel.style.width = Math.max(360, startW + dx) + 'px';
                 }
-                if (cls.includes('resizer-b') || cls.includes('br')) {
-                    panel.style.height = Math.max(200, startH + dy) + 'px';
+                // 水平左侧调整 (W / SW / NW)
+                if (cls.includes('resizer-l') || cls.includes('resizer-bl') || cls.includes('resizer-tl')) {
+                    const newW = Math.max(360, startW - dx);
+                    panel.style.width = newW + 'px';
+                    panel.style.left = (startL + (startW - newW)) + 'px';
                 }
-                if (cls.includes('resizer-l')) {
-                    const w = Math.max(300, startW - dx);
-                    if (w > 300) {
-                        panel.style.width = w + 'px';
-                        panel.style.left = (startL + dx) + 'px';
-                    }
+                // 垂直底部调整 (S / SE / SW)
+                if (cls.includes('resizer-b') || cls.includes('resizer-br') || cls.includes('resizer-bl')) {
+                    panel.style.height = Math.max(220, startH + dy) + 'px';
                 }
-                if (cls.includes('resizer-t')) {
-                    const h = Math.max(200, startH - dy);
-                    if (h > 200) {
-                        panel.style.height = h + 'px';
-                        panel.style.top = (startT + dy) + 'px';
-                    }
+                // 垂直顶部调整 (N / NE / NW)
+                if (cls.includes('resizer-t') || cls.includes('resizer-tr') || cls.includes('resizer-tl')) {
+                    const newH = Math.max(220, startH - dy);
+                    panel.style.height = newH + 'px';
+                    panel.style.top = (startT + (startH - newH)) + 'px';
                 }
             };
             
             const onMouseUp = () => {
                 document.removeEventListener('mousemove', onMouseMove);
                 document.removeEventListener('mouseup', onMouseUp);
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
             };
             document.addEventListener('mousemove', onMouseMove);
             document.addEventListener('mouseup', onMouseUp);
         });
     };
 
-    addResizer('resizer-r', 'e-resize', 'right: -3px; top: 0; width: 6px; height: 100%;');
-    addResizer('resizer-b', 's-resize', 'bottom: -3px; left: 0; height: 6px; width: 100%;');
-    addResizer('resizer-br', 'se-resize', 'bottom: -3px; right: -3px; width: 12px; height: 12px; cursor: se-resize; z-index: 101;');
-    addResizer('resizer-l', 'w-resize', 'left: -3px; top: 0; width: 6px; height: 100%;');
-    addResizer('resizer-t', 'n-resize', 'top: -3px; left: 0; height: 6px; width: 100%;');
+    // 8 个方向完整缩放把手配置（覆盖四边与四角）
+    addResizer('resizer-r', 'e-resize', 'right: -4px; top: 0; width: 8px; height: 100%;');
+    addResizer('resizer-b', 's-resize', 'bottom: -4px; left: 0; height: 8px; width: 100%;');
+    addResizer('resizer-l', 'w-resize', 'left: -4px; top: 0; width: 8px; height: 100%;');
+    addResizer('resizer-t', 'n-resize', 'top: -4px; left: 0; height: 8px; width: 100%;');
+    addResizer('resizer-br', 'se-resize', 'bottom: -4px; right: -4px; width: 14px; height: 14px; z-index: 102;');
+    addResizer('resizer-bl', 'sw-resize', 'bottom: -4px; left: -4px; width: 14px; height: 14px; z-index: 102;');
+    addResizer('resizer-tr', 'ne-resize', 'top: -4px; right: -4px; width: 14px; height: 14px; z-index: 102;');
+    addResizer('resizer-tl', 'nw-resize', 'top: -4px; left: -4px; width: 14px; height: 14px; z-index: 102;');
 
 
     // Filter Bar (Column Selector & Copy Toolbar)
