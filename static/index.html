@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260903_v2222">
+    <link rel="stylesheet" href="/static/style.css?v=20260903_v2223">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -202,7 +202,7 @@
                     </div>
                     <input type="text" id="gtb-input-xmla" class="gtb-xmla-input" readonly placeholder="powerbi://api.powerbi.com/v1.0/myorg/WorkspaceName" value="" title="XMLA Endpoint (Click copy button to use)">
                     <button type="button" class="icon-btn" onclick="window.copyGlobalXmlaEndpoint(this)" title="复制 XMLA 连接串" style="height: 24px; width: 24px; padding: 0; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                     </button>
                 </div>
             </div>
@@ -220,12 +220,18 @@
                 <button type="button" id="gtb-btn-refresh" class="gtb-icon-btn" onclick="window.refreshGlobalContext(this)" title="刷新全局工作区与资产列表 (Sync Context)">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
                 </button>
+
+                <!-- 🔼 向上折叠顶栏按钮 -->
+                <button type="button" id="gtb-btn-toggle-collapse" class="gtb-icon-btn" onclick="window.toggleGlobalTopbarCollapse()" title="向上折叠全局功能栏 (Collapse Topbar)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                </button>
             </div>
         </header>
 
-        <!-- 🔽 全局功能栏居中折叠/展开悬浮把手 -->
-        <div id="gtb-expand-handle" onclick="window.toggleGlobalTopbarCollapse()" title="折叠/展开全局功能栏 (Toggle Global Topbar)">
-            <svg class="gtb-handle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        <!-- 🔽 顶栏折叠后悬浮在顶部的展开把手 (Expand Handle Bar) -->
+        <div id="gtb-expand-handle" onclick="window.toggleGlobalTopbarCollapse()" title="展开全局功能栏 (Expand Global Topbar)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            <span>全局控制台</span>
         </div>
 
 
@@ -333,7 +339,7 @@
         <aside class="sidebar glass-panel">
             <!-- 窄条模式：折叠时仅显示此竖排展开把手 (Narrow Strip shown when sidebar is collapsed) -->
             <div id="sidebar-narrow-strip" onclick="window.toggleSidebar()" title="展开侧边栏 (Expand Sidebar)">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 <span>菜单</span>
             </div>
             <!-- Sidebar Pane A: Workflow List -->
@@ -457,8 +463,7 @@
                         <div style="display: flex; align-items: center; gap: 8px;">
                             
                             <button type="button" class="zen-mode-btn" onclick="window.toggleZenMode()" title="开启沉浸模式 (Focus Mode)" style="width: 36px; height: 36px; padding: 0; border-radius: 6px; border: 1px solid var(--overlay-10); background: transparent; transition: all 0.2s; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-expand"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-collapse" style="display: none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-expand"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-collapse" style="display: none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
                             </button>
                             <!-- Run Workflow Primary Action Button -->
                             <button id="wf-btn-runall" class="btn-wf-lg" type="button" onclick="window.triggerWorkflowRun()" title="Run Selected Workflow" style="height: 36px; padding: 0 16px; display: inline-flex; align-items: center; gap: 8px; border-radius: 6px; font-weight: 600;">
@@ -526,7 +531,7 @@
 
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">Workspace ID
 
-                                <button type="button" onclick="window.wfInspectRefreshWorkspace(this)" title="Refresh Workspace List" class="wf-inline-refresh-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+                                <button type="button" onclick="window.wfInspectRefreshWorkspace(this)" title="Refresh Workspace List" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
 
                             </label>
 
@@ -534,7 +539,7 @@
 
                                 <select id="wf-inspect-workspace" class="wf-input"></select>
 
-                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Workspace ID"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Workspace ID"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                             </div>
 
@@ -544,7 +549,7 @@
 
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">Report ID (Optional)
 
-                                <button type="button" onclick="window.wfInspectRefreshReport(this)" title="Refresh Report List" class="wf-inline-refresh-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+                                <button type="button" onclick="window.wfInspectRefreshReport(this)" title="Refresh Report List" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
 
                             </label>
 
@@ -556,7 +561,7 @@
 
                                 </select>
 
-                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Report ID"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Report ID"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                             </div>
 
@@ -566,7 +571,7 @@
 
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">Dataset (Semantic Model)
 
-                                <button type="button" onclick="window.wfInspectRefreshDataset(this)" title="Refresh Dataset List" class="wf-inline-refresh-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+                                <button type="button" onclick="window.wfInspectRefreshDataset(this)" title="Refresh Dataset List" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
 
                             </label>
 
@@ -574,7 +579,7 @@
 
                                 <select id="wf-inspect-dataset" class="wf-input"></select>
 
-                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Dataset ID"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Dataset ID"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                             </div>
 
@@ -608,7 +613,7 @@
 
                                     </div>
 
-                                    <button type="button" id="wf-inspect-logs-copybtn" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-inspect-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                    <button type="button" id="wf-inspect-logs-copybtn" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-inspect-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                                     <div id="wf-out-inspect-logs" class="wf-console collapsed-console" style="min-height: 0; padding-bottom: 20px; transition: max-height 0.3s ease, padding 0.3s ease, border-width 0.3s ease, opacity 0.3s ease; overflow-y: auto; max-height: 250px;">准备就绪。点击下方 "Run Selected Workflow" 启动多引擎全景穿透...</div>
 
@@ -664,7 +669,7 @@
 
                                 <input type="text" id="wf-xmla-endpoint" class="wf-input" value="powerbi://api.powerbi.com/v1.0/myorg/DA_APAC_BI_QA" placeholder="powerbi://api.powerbi.com/v1.0/myorg/WorkspaceName">
 
-                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy XMLA Endpoint"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy XMLA Endpoint"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                             </div>
 
@@ -704,7 +709,7 @@
 
                                     <textarea id="wf-xmla-token" class="wf-input" readonly style="height: 60px; font-family: monospace; font-size: 0.75rem; opacity: 0.85; background: var(--input-bg-readonly, rgba(255,255,255,0.03)); border-color: var(--panel-border);" placeholder="默认安全锁定，点击【⚡】自动提取，或点击【🔒】解锁手输..."></textarea>
 
-                                    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Access Token" style="top: 8px; right: 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Access Token" style="top: 8px; right: 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                                 </div>
 
@@ -738,7 +743,7 @@
 
                                 </select>
 
-                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Dataset Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Dataset Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                             </div>
 
@@ -770,7 +775,7 @@
 
                                 </select>
 
-                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Table Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Table Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                             </div>
 
@@ -798,7 +803,7 @@
 
                                 </select>
 
-                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Partition Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Partition Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                             </div>
 
@@ -822,7 +827,7 @@
 
                                 </select>
 
-                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Refresh Type"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Refresh Type"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                             </div>
 
@@ -838,7 +843,7 @@
 
                                     <input type="text" id="wf-xmla-manual-table" class="wf-input" placeholder="输入表名, 如 FactSales">
 
-                                    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Table Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Table Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                                 </div>
 
@@ -846,7 +851,7 @@
 
                                     <input type="text" id="wf-xmla-manual-partition" class="wf-input" placeholder="可选输入特定分区名">
 
-                                    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Partition Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Partition Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                                 </div>
 
@@ -868,7 +873,7 @@
 
                             </div>
 
-                            <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-xmla-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                            <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-xmla-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                             <div id="wf-out-xmla-logs" class="wf-console collapsed-console" style="min-height: 0; padding-bottom: 20px; transition: max-height 0.3s ease, padding 0.3s ease; overflow-y: auto; max-height: 250px;"></div>
 
@@ -946,7 +951,7 @@
 
                                         </div>
 
-                                        <button type="button" id="wf-rvc-logs-copybtn" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-rvc-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                        <button type="button" id="wf-rvc-logs-copybtn" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-rvc-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                                         <div id="wf-out-rvc-logs" class="wf-console collapsed-console" style="min-height: 0; padding-bottom: 20px; transition: max-height 0.3s ease, padding 0.3s ease, border-width 0.3s ease, opacity 0.3s ease; overflow-y: auto; max-height: 250px;"></div>
 
@@ -1008,7 +1013,7 @@
 
                                         <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; cursor: pointer; user-select: none; width: fit-content;" onclick="window.toggleConsole('wf-out-perms-logs')"><svg id="wf-out-perms-logs-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>Execution Logs</div>
 
-                                        <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-perms-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                        <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-perms-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                                         <div id="wf-out-perms-logs" class="wf-console collapsed-console" style="min-height: 100px; padding-bottom: 20px;">Ready...</div>
 
@@ -1112,7 +1117,7 @@
 
                                              <div id="wf-out-gum-logs" class="wf-console collapsed-console" style="width: 100%; min-height: 100px; padding-bottom: 20px;">Ready to scan all workspaces...</div>
 
-                                             <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-gum-logs').innerText)" title="Copy Logs" style="top: 8px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                             <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-gum-logs').innerText)" title="Copy Logs" style="top: 8px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                                          </div>
 
@@ -1218,7 +1223,7 @@
 
     <div id="wf-out-ds-step1" class="wf-console collapsed-console">Input: Ready to fetch tables...</div>
 
-    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-ds-step1').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-ds-step1').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
 </div>
 
@@ -1276,7 +1281,7 @@
 
     <div id="wf-out-ds-step2" class="wf-console collapsed-console" style="border-top-left-radius: 0; border-top-right-radius: 0; border-top: none;">Waiting for Step 1...</div>
 
-    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-ds-step2').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-ds-step2').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
 </div>
 
@@ -1316,7 +1321,7 @@
 
                                     </div>
 
-                                    <button type="button" id="wf-dpm-logs-copybtn" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-dpm-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                    <button type="button" id="wf-dpm-logs-copybtn" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-dpm-logs').innerText)" title="Copy Logs" style="top: 24px; right: 8px; z-index: 10;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                                     <div id="wf-out-dpm-logs" class="wf-console collapsed-console" style="min-height: 0; padding-bottom: 20px; transition: max-height 0.3s ease, padding 0.3s ease, border-width 0.3s ease, opacity 0.3s ease; overflow-y: auto; max-height: 250px;">点击下方 "Run Selected Workflow" 获取所有工作区下的数据集表分区结构...</div>
 
@@ -1358,7 +1363,7 @@
 
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">Workspace ID
 
-                                <button type="button" id="btn-refresh-vis-workspace" onclick="window.wfVisRefreshWorkspace(this)" title="Refresh Workspace List" class="wf-inline-refresh-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+                                <button type="button" id="btn-refresh-vis-workspace" onclick="window.wfVisRefreshWorkspace(this)" title="Refresh Workspace List" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
 
                             </label>
 
@@ -1366,7 +1371,7 @@
 
                                 <select id="wf-vis-workspace" class="wf-input"></select>
 
-                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Workspace ID"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Workspace ID"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                             </div>
 
@@ -1376,7 +1381,7 @@
 
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">Report ID
 
-                                <button type="button" id="btn-refresh-vis-report" onclick="window.wfVisRefreshReport(this)" title="Refresh Report List" class="wf-inline-refresh-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+                                <button type="button" id="btn-refresh-vis-report" onclick="window.wfVisRefreshReport(this)" title="Refresh Report List" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
 
                             </label>
 
@@ -1384,7 +1389,7 @@
 
                                 <select id="wf-vis-report" class="wf-input"></select>
 
-                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Report ID"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Report ID"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                             </div>
 
@@ -1394,7 +1399,7 @@
 
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">Page Name
 
-                                <button type="button" id="btn-refresh-vis-page" onclick="window.wfVisRefreshPage(this)" title="Refresh Page List" class="wf-inline-refresh-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+                                <button type="button" id="btn-refresh-vis-page" onclick="window.wfVisRefreshPage(this)" title="Refresh Page List" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
 
                             </label>
 
@@ -1406,7 +1411,7 @@
 
                                 </select>
 
-                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Page Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Page Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                             </div>
 
@@ -1416,7 +1421,7 @@
 
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">Visual Name
 
-                                <button type="button" id="btn-refresh-vis-visual" onclick="window.wfVisRefreshVisual(this)" title="Refresh Visual List" class="wf-inline-refresh-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+                                <button type="button" id="btn-refresh-vis-visual" onclick="window.wfVisRefreshVisual(this)" title="Refresh Visual List" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
 
                             </label>
 
@@ -1428,7 +1433,7 @@
 
                                 </select>
 
-                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Visual Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Visual Name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                             </div>
 
@@ -1448,7 +1453,7 @@
 
                                 </select>
 
-                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Export Type"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Export Type"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                             </div>
 
@@ -1462,7 +1467,7 @@
 
                                 <input type="number" id="wf-vis-rows" class="wf-input" value="100000">
 
-                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Max Rows"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this)" title="Copy Max Rows"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                             </div>
 
@@ -1540,7 +1545,7 @@
 
     <div id="wf-out-vis" class="wf-console collapsed-console">Ready to export visual data...</div>
 
-    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-vis').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-vis').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
 </div>
 
@@ -1594,7 +1599,7 @@
 
     <div id="wf-out-step1" class="wf-console collapsed-console">Input: Ready to start...</div>
 
-    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-step1').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-step1').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
 </div>
 
@@ -1622,7 +1627,7 @@
 
     <div id="wf-out-step2" class="wf-console collapsed-console">Waiting for exportId from Step 1...</div>
 
-    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-step2').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-step2').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
 </div>
 
@@ -1650,7 +1655,7 @@
 
     <div id="wf-out-step3" class="wf-console collapsed-console">Waiting for Succeeded status from Step 2...</div>
 
-    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-step3').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+    <button type="button" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('wf-out-step3').textContent)" title="Copy Output"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
 </div>
 
@@ -1684,7 +1689,7 @@
 
                                     <button type="button" class="wf-copy-btn" title="Copy Target Model Name" onclick="window.handleCopyAction(this)" style="right: 34px;">
 
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
 
                                     </button>
 
@@ -1752,7 +1757,7 @@
 
                                             <textarea id="local-dax-editor" class="wf-input" style="width: 100%; height: 100px; font-family: monospace; font-size: 0.85rem; padding: 8px; resize: vertical;" placeholder="Enter DAX EVALUATE statement...">EVALUATE INFO.TABLES()</textarea>
 
-                                            <button type="button" id="wf-local-dax-copy-btn" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('local-dax-editor').value || document.getElementById('local-dax-editor').placeholder)" title="Copy DAX Query"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                            <button type="button" id="wf-local-dax-copy-btn" class="wf-copy-btn" onclick="window.handleCopyAction(this, document.getElementById('local-dax-editor').value || document.getElementById('local-dax-editor').placeholder)" title="Copy DAX Query"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                                         </div>
 
@@ -1813,8 +1818,7 @@
 
                             
                             <button type="button" class="zen-mode-btn" onclick="window.toggleZenMode()" title="开启沉浸模式 (Focus Mode)" style="width: 26px; height: 26px; padding: 0; border-radius: 6px; border: 1px solid var(--overlay-10); background: transparent; transition: all 0.2s; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-expand"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-collapse" style="display: none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-expand"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-collapse" style="display: none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
                             </button>
                             <!-- Bookmark Section (Right Panel) -->
 
@@ -2061,7 +2065,7 @@
 
                             <button id="copy-btn" type="button" class="icon-btn copy-btn endpoint-copy-btn" title="复制完整 cURL 格式请求">
 
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
 
                             </button>
 
@@ -2123,7 +2127,7 @@
 
                         <button id="copy-req-body-btn" class="icon-btn copy-btn body-corner-copy-btn" title="Copy Request Body" type="button" onclick="window.handleCopyAction(this, document.getElementById('request-body').value || document.getElementById('request-body').placeholder)">
 
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
 
                         </button>
 
@@ -2165,7 +2169,7 @@
 
                         <div class="response-status" id="response-status" style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Waiting for request...</div>
 
-                        <button id="copy-res-body-btn" class="icon-btn copy-btn" style="flex-shrink: 0;" title="Copy Response JSON" type="button" onclick="window.handleCopyAction(this, window.currentJsonResponse ? JSON.stringify(window.currentJsonResponse, null, 2) : document.getElementById('response-output').textContent)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="16" height="16" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                        <button id="copy-res-body-btn" class="icon-btn copy-btn" style="flex-shrink: 0;" title="Copy Response JSON" type="button" onclick="window.handleCopyAction(this, window.currentJsonResponse ? JSON.stringify(window.currentJsonResponse, null, 2) : document.getElementById('response-output').textContent)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
                     </div>
 
@@ -2394,11 +2398,11 @@
             </div>
             <div class="confirm-modal-footer">
                 <button id="confirm-cancel-btn" class="btn-cancel">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     <span>取消</span>
                 </button>
                 <button id="confirm-proceed-btn" class="btn-primary btn-warning-action">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     <span>确认发送</span>
                 </button>
             </div>
@@ -2441,11 +2445,11 @@
             </div>
             <div style="display: flex; justify-content: flex-end; gap: 8px;">
                 <button type="button" class="btn-cancel" onclick="closeModalWithAnimation('scan-modal')">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     <span>取消</span>
                 </button>
                 <button type="button" class="btn-pipeline btn-scan-add" id="scan-modal-add-btn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     <span>添加选中项</span>
                 </button>
             </div>
@@ -2506,11 +2510,11 @@
                         </div>
                         <div style="display: flex; gap: 10px; margin-left: auto;">
                             <button type="button" class="btn-action-secondary" onclick="createNewNote()" id="btn-new-note">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
                                 <span>新建笔记</span>
                             </button>
                             <button type="button" class="btn-action-primary" onclick="saveMarkdownNote()" id="btn-save-note">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                                 <span>保存并同步 GitHub</span>
                             </button>
                         </div>
@@ -2676,7 +2680,7 @@
             <h3 style="margin: 0; font-size: 1rem; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">✨ AI Assistant</h3>
             <div style="display: flex; align-items: center; gap: 12px;">
                 <button type="button" id="ai-auto-approve-btn" title="Approval Mode (Click to auto-approve)" style="background: transparent; border: 1px solid var(--panel-border); border-radius: 6px; padding: 4px 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 0.75rem; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'" onclick="toggleAutoApprove()">
-                    <span id="auto-approve-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span>
+                    <span id="auto-approve-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span>
                     <span id="auto-approve-text">Approval Mode</span>
                 </button>
                 <button type="button" class="close-btn" title="Close" onclick="toggleAIChat()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
@@ -2725,11 +2729,11 @@
             </div>
             <div class="modal-footer" style="display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
                 <button type="button" class="btn-cancel" onclick="closeModalWithAnimation('test-harness-modal')">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     <span>取消</span>
                 </button>
                 <button id="btn-harness-execute" class="btn-action-primary">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                     <span>运行测试</span>
                 </button>
             </div>
