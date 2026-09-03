@@ -199,7 +199,7 @@ body {
     align-items: center;
     justify-content: flex-start;
     gap: 10px;
-    padding: 6px 10px 12px 10px;
+    padding: 6px 11px 12px 11px;
     border-bottom: 1px solid var(--overlay-10);
     margin-bottom: 6px;
     cursor: pointer;
@@ -207,10 +207,11 @@ body {
     overflow: hidden;
     white-space: nowrap;
     box-sizing: border-box;
+    transition: padding 0.3s cubic-bezier(0.2, 0, 0, 1);
 }
 
 .app-rail.expanded .rail-logo-wrap {
-    padding: 6px 10px 12px 10px;
+    padding: 6px 11px 12px 11px;
 }
 
 .rail-logo-title {
@@ -261,7 +262,7 @@ body {
     background: transparent;
     border: 1px solid transparent;
     cursor: pointer;
-    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, padding 0.3s cubic-bezier(0.2, 0, 0, 1);
     position: relative;
     user-select: none;
     white-space: nowrap;
@@ -3699,54 +3700,53 @@ body.rail-collapsed #rail-expand-handle {
     transform: scale(1.08);
 }
 
-/* --- Sidebar Collapsed State (独立折叠左侧二级菜单) --- */
+/* --- Sidebar Collapsed State: 窄条图标模式 (48px narrow icon strip) --- */
 body.sidebar-collapsed .sidebar {
-    width: 0 !important;
-    min-width: 0 !important;
-    max-width: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: none !important;
-    opacity: 0 !important;
+    width: 48px !important;
+    min-width: 48px !important;
+    max-width: 48px !important;
+    padding: 12px 0 !important;
     overflow: hidden !important;
-    pointer-events: none !important;
 }
 
 body.sidebar-collapsed #dragMe {
     display: none !important;
 }
 
-/* 侧边栏折叠后悬浮在主工作区左上方的展开把手 */
-#sidebar-expand-handle {
+/* 折叠态隐藏所有面板内容 */
+body.sidebar-collapsed .sidebar .sidebar-pane {
+    display: none !important;
+}
+
+/* 折叠态显示窄条 */
+body.sidebar-collapsed #sidebar-narrow-strip {
+    display: flex !important;
+}
+
+/* --- 侧边栏窄条 (Sidebar Narrow Strip) --- */
+#sidebar-narrow-strip {
     display: none;
-    position: absolute;
-    top: 6px;
-    left: 6px;
-    z-index: 35;
-    background: var(--panel-bg);
-    border: 1px solid var(--overlay-10);
-    border-radius: 6px;
-    padding: 4px 10px;
-    font-size: 0.76rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    cursor: pointer;
-    backdrop-filter: blur(12px);
-    box-shadow: 0 2px 8px var(--shadow-base);
+    flex-direction: column;
     align-items: center;
-    gap: 5px;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    gap: 8px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    user-select: none;
+    transition: color 0.2s ease;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    border-radius: 0;
+    padding: 0;
 }
 
-body.sidebar-collapsed #sidebar-expand-handle {
-    display: inline-flex !important;
-}
-
-#sidebar-expand-handle:hover {
+#sidebar-narrow-strip:hover {
     color: var(--accent);
-    background: var(--input-bg-light);
-    border-color: var(--accent-glow);
-    transform: translateX(2px);
 }
 
 .btn-collapse-sidebar:hover {

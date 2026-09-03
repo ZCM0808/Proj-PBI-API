@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260902_v2210">
+    <link rel="stylesheet" href="/static/style.css?v=20260903_v2216">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -36,17 +36,23 @@
             if (requestHeight) {
                 styleStr += `.body-editor-container { height: ${requestHeight}; flex: none; } `;
             }
-            // 恢复 App Rail 展开态 CSS，避免刷新时从 60px 闪烁到 175px
+            // 恢复 App Rail 展开态：直接在元素上预设 expanded 类，避免刷新时从 60px 闪烁到 175px
+            // 注意：必须在 DOMContentLoaded 后才能访问 DOM 元素，此处用 documentWrite 注入提前样式
             if (railExpanded === 'true') {
-                styleStr += `#app-rail { width: 175px !important; min-width: 175px !important; max-width: 175px !important; align-items: stretch; } `;
+                styleStr += `#app-rail { width: 175px !important; min-width: 175px !important; max-width: 175px !important; } `;
                 styleStr += `#app-rail .rail-logo-title { max-width: 120px !important; opacity: 1 !important; } `;
                 styleStr += `#app-rail .rail-item-text { max-width: 110px !important; opacity: 1 !important; } `;
-                styleStr += `#app-rail .rail-logo-wrap { justify-content: flex-start; padding-left: 8px; } `;
-                styleStr += `#app-rail .rail-item { justify-content: flex-start; padding: 9px 12px; } `;
-                styleStr += `#app-rail .rail-toggle-btn { display: flex !important; align-items: center; justify-content: center; } `;
+                // 在 DOMContentLoaded 后补加 expanded 类，这样 JS 切换时只操作类而不受内联 style 锁死
+                window.addEventListener('DOMContentLoaded', function() {
+                    var r = document.getElementById('app-rail');
+                    if (r) r.classList.add('expanded');
+                    // 移除注入的内联样式（已由 expanded 类接管）
+                    var injected = document.getElementById('fouc-rail-style');
+                    if (injected) injected.remove();
+                });
             }
             if (styleStr) {
-                document.write('<style>' + styleStr + '</style>');
+                document.write('<style id="fouc-rail-style">' + styleStr + '</style>');
             }
 
             // 提前恢复顶栏折叠态
@@ -65,14 +71,6 @@
                 });
             }
 
-            // 提前恢复一级导航轨完全折叠隐藏态
-            if (localStorage.getItem('pbi-rail-collapsed') === 'true') {
-                document.documentElement.classList.add('rail-collapsed-init');
-                window.addEventListener('DOMContentLoaded', function() {
-                    document.body.classList.add('rail-collapsed');
-                });
-            }
-
             // ★ 提前定义 toggleAppRail、toggleSidebar 与 toggleGlobalTopbarCollapse ★
             window.toggleAppRail = function(action) {
                 var rail = document.getElementById('app-rail');
@@ -81,14 +79,12 @@
                 if (action === 'collapse') {
                     // 完全隐藏收起一级导航轨
                     var isRailCollapsed = document.body.classList.toggle('rail-collapsed');
-                    try { localStorage.setItem('pbi-rail-collapsed', isRailCollapsed ? 'true' : 'false'); } catch(e) {}
                     return;
                 }
                 
                 if (document.body.classList.contains('rail-collapsed')) {
                     // 如果处于完全隐藏态，点击把手先唤出
                     document.body.classList.remove('rail-collapsed');
-                    try { localStorage.setItem('pbi-rail-collapsed', 'false'); } catch(e) {}
                     return;
                 }
 
@@ -256,7 +252,7 @@
                             <rect x="15" y="2" width="5" height="19" fill="#F2C811"/>
                         </svg>
                         <span class="rail-logo-title">PBI Studio</span>
-                        <button type="button" class="rail-toggle-btn" onclick="event.stopPropagation(); window.toggleAppRail('collapse');" title="完全隐藏/收起一级导航栏 (Hide Primary Rail)" style="background: none; border: none; padding: 0; color: var(--text-secondary); cursor: pointer; margin-left: auto; display: none;">
+                        <button type="button" class="rail-toggle-btn" onclick="event.stopPropagation(); window.toggleAppRail();" title="折回图标模式 (Collapse to Icon Mode)" style="background: none; border: none; padding: 0; color: var(--text-secondary); cursor: pointer; margin-left: auto; display: none;">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11 17 6 12 11 7"></polyline><polyline points="18 17 13 12 18 7"></polyline></svg>
                         </button>
                     </div>
@@ -341,16 +337,16 @@
 
         <!-- 2. Secondary Sidebar (Tree / Workflow List) -->
         <aside class="sidebar glass-panel">
+            <!-- 窄条模式：折叠时仅显示此竖排展开把手 (Narrow Strip shown when sidebar is collapsed) -->
+            <div id="sidebar-narrow-strip" onclick="window.toggleSidebar()" title="展开侧边栏 (Expand Sidebar)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                <span>菜单</span>
+            </div>
             <!-- Sidebar Pane A: Workflow List -->
             <div id="sidebar-pane-workflows" class="sidebar-pane" style="display: flex;">
                 <div class="nav-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                     <p class="nav-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">⚡ 工作流中心</p>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span class="api-count-badge" id="wf-total-badge">11 个任务</span>
-                        <button type="button" class="icon-btn btn-collapse-sidebar" onclick="window.toggleSidebar()" title="折叠左侧侧边栏 (Collapse Sidebar)" style="height: 24px; width: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-secondary); cursor: pointer; transition: all 0.2s;">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"></polyline><polyline points="18 17 13 12 18 7"></polyline></svg>
-                        </button>
-                    </div>
+                    <span class="api-count-badge" id="wf-total-badge">11 个任务</span>
                 </div>
                 <div style="margin-bottom: 0.75rem;">
                     <input type="search" id="wf-search-input" placeholder="搜索工作流..." class="modern-input" style="width: 100%; border-radius: 6px;" oninput="window.filterWorkflowsList(this.value)">
@@ -364,12 +360,7 @@
             <div id="sidebar-pane-api_tree" class="sidebar-pane" style="display: none;">
                 <div class="nav-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                     <p class="nav-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">🌲 API 资源树</p>
-                    <div style="display: flex; gap: 6px; align-items: center;">
-                        <span class="api-count-badge" title="Total APIs">共 <span id="total-api-count">0</span> 个</span>
-                        <button type="button" class="icon-btn btn-collapse-sidebar" onclick="window.toggleSidebar()" title="折叠左侧侧边栏 (Collapse Sidebar)" style="height: 24px; width: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-secondary); cursor: pointer; transition: all 0.2s;">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"></polyline><polyline points="18 17 13 12 18 7"></polyline></svg>
-                        </button>
-                    </div>
+                    <span class="api-count-badge" title="Total APIs">共 <span id="total-api-count">0</span> 个</span>
                 </div>
                 <div style="display: flex; gap: 8px; margin-bottom: 0.5rem;">
                     <input type="search" id="api-search-input" placeholder="搜索 API... (支持拼音/英文)" class="modern-input" style="flex: 1; border-radius: 6px; min-width: 0;">
@@ -429,11 +420,6 @@
 
         <!-- 3. Main Workspace Area -->
         <div id="workspace-container" style="flex: 1; display: flex; flex-direction: column; height: 100%; min-width: 0; overflow: hidden; padding-top: 2px; position: relative;">
-            <!-- ◀ 侧边栏折叠后悬浮在主区左侧边缘的快速展开把手 (Sidebar Expand Handle) -->
-            <button type="button" id="sidebar-expand-handle" onclick="window.toggleSidebar()" title="展开侧边栏 (Expand Sidebar)">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"></polyline><polyline points="6 17 11 12 6 7"></polyline></svg>
-                <span>菜单</span>
-            </button>
 
             <!-- View A: Workflow Workspace Board -->
             <select id="wf-selector" style="display: none;">
