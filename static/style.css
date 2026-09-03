@@ -3605,9 +3605,10 @@ svg.spinning {
     padding: 0;
     display: inline-flex;
     align-items: center;
-    opacity: 0;
-    transition: opacity 0.22s ease, transform 0.22s ease;
-    transform: scale(0.8);
+    justify-content: center;
+    opacity: 0.65;
+    transition: opacity 0.22s ease, transform 0.22s ease, color 0.2s ease;
+    transform: scale(0.95);
     line-height: 1;
 }
 
@@ -3617,11 +3618,22 @@ svg.spinning {
 }
 
 .wf-inline-refresh-btn:hover {
-    opacity: 0.7 !important;
+    opacity: 1 !important;
+    color: var(--accent-hover, #6366f1);
 }
 
 .wf-inline-refresh-btn:active {
-    transform: scale(0.92);
+    transform: scale(0.9);
+}
+
+.wf-inline-refresh-btn.spinning {
+    opacity: 1 !important;
+    pointer-events: none;
+}
+
+.wf-inline-refresh-btn.spinning svg {
+    animation: spin 0.8s linear infinite !important;
+    transform-origin: center center !important;
 }
 
 
@@ -3825,12 +3837,15 @@ body.topbar-collapsed #global-topbar {
 }
 
 /* default expanded mode: arrow points up to indicate collapse */
+#gtb-expand-handle svg,
 #gtb-expand-handle .gtb-handle-icon {
     transform: rotate(180deg);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: center center;
 }
 
 /* collapsed mode: arrow points down to indicate expand */
+body.topbar-collapsed #gtb-expand-handle svg,
 body.topbar-collapsed #gtb-expand-handle .gtb-handle-icon {
     transform: rotate(0deg);
 }
