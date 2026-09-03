@@ -20189,6 +20189,18 @@ window.openInspectResultModal = function() {
             displayNames: ['#', 'Table Name (表名)', 'Mode (模式)', 'Source Type (源类型)', 'Server (服务器)', 'Database (数据库)', 'Native SQL (SQL语句)', 'Actions (操作)'],
             enableSearch: true,
             enableColumnFilter: true,
+            headerActions: [
+                {
+                    label: '🕸️ 全景血缘 DAG 图',
+                    title: '一键生成并查看该报表/模型的全景数据血缘拓扑 DAG 图',
+                    style: 'background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2)); border: 1px solid var(--accent); color: var(--accent); font-weight: 600;',
+                    onClick: () => {
+                        if (window.LineageExplorer) {
+                            window.LineageExplorer.openModal(data);
+                        }
+                    }
+                }
+            ],
             cellRenderer: function(col, val, row) {
                 if (col === 'mode') {
                     const m = String(val || '').toLowerCase();

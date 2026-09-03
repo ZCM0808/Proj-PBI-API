@@ -15,7 +15,6 @@ window.LineageExplorer = (function() {
     let currentParsedData = null;
     let activeHighlightNodeId = null;
     let currentViewMode = 'dag'; // 'dag' | 'table'
-    let isPhysicsActive = false; // 当前力导向物理引擎激活状态
 
     // =========================================================================
     // 1. M 语言与模型关系血缘抽取核心算法 (M Lineage Parser)
@@ -289,7 +288,7 @@ window.LineageExplorer = (function() {
                 dragNodes: true,
                 zoomView: true,
                 dragView: true,
-                navigationButtons: false,
+                navigationButtons: true,
                 keyboard: true
             },
             physics: {
@@ -298,30 +297,6 @@ window.LineageExplorer = (function() {
         };
 
         currentNetwork = new visLib.Network(containerEl, data, options);
-
-        // 核心拖拽优化：首帧层级布局计算完成后固化各节点 (x, y) 坐标，并解除层级轴向限制，
-        // 使得节点不仅保持优美的自左向右 (LR) 树状排布，更允许用户 360° 任意方向自由拖拽调整位置！
-        const onFirstDraw = function() {
-            setTimeout(() => {
-                try {
-                    if (typeof currentNetwork.storePositions === 'function') {
-                        currentNetwork.storePositions();
-                    }
-                    currentNetwork.setOptions({
-                        layout: { hierarchical: { enabled: false } },
-                        physics: { enabled: false }
-                    });
-                } catch(e) {
-                    console.warn('Store initial positions failed:', e);
-                }
-            }, 60);
-        };
-
-        if (typeof currentNetwork.once === 'function') {
-            currentNetwork.once('afterDrawing', onFirstDraw);
-        } else if (typeof currentNetwork.on === 'function') {
-            currentNetwork.on('afterDrawing', onFirstDraw);
-        }
 
         // 监听节点点击事件：高亮上下游血缘
         currentNetwork.on('click', function(params) {
@@ -595,319 +570,92 @@ window.LineageExplorer = (function() {
     }
 
     // =========================================================================
-    // 3. 通用结构化血缘明细数据表格引擎 (Universal Lineage Data Grid)
-    //    支持：字段筛选显示/隐藏、表头点击升降序、全局模糊检索、单行徽章不折行、行悬浮
+    // 3. 结构化血缘明细表格渲染 (Lineage Table View)
     // =========================================================================
-    const LINEAGE_COLUMNS = [
-        { key: 'index', label: '#', sortable: true, defaultWidth: 48, align: 'center' },
-        { key: 'srcName', label: '源节点 (Source Node)', sortable: true, defaultWidth: 170 },
-        { key: 'srcType', label: '源类别', sortable: true, defaultWidth: 110 },
-        { key: 'direction', label: '流向', sortable: false, defaultWidth: 42, align: 'center' },
-        { key: 'dstName', label: '目标节点 (Target Node)', sortable: true, defaultWidth: 170 },
-        { key: 'dstType', label: '目标类别', sortable: true, defaultWidth: 110 },
-        { key: 'type', label: '血缘关联类型', sortable: true, defaultWidth: 180 },
-        { key: 'joinKeys', label: '关联字段/键 (Join Keys)', sortable: true, defaultWidth: 260 },
-        { key: 'detail', label: '转换细节 / 步骤', sortable: true, defaultWidth: 260 }
-    ];
+    function renderLineageTable(containerEl, parsedData, searchFilter = '') {
+        const edges = parsedData.edges;
+        const nodes = parsedData.nodes;
+        const q = (searchFilter || '').toLowerCase().trim();
 
-    let lineageTableState = {
-        searchQuery: '',
-        sortKey: null,
-        sortAsc: true,
-        visibleCols: new Set(['index', 'srcName', 'direction', 'dstName', 'type', 'joinKeys', 'detail']),
-        colWidths: {}
-    };
-
-    function sortLineageTable(colKey) {
-        if (lineageTableState.sortKey === colKey) {
-            if (lineageTableState.sortAsc) {
-                lineageTableState.sortAsc = false;
-            } else {
-                lineageTableState.sortKey = null;
-                lineageTableState.sortAsc = true;
-            }
-        } else {
-            lineageTableState.sortKey = colKey;
-            lineageTableState.sortAsc = true;
-        }
-
-        const resetBtn = document.getElementById('lineage-table-sort-reset');
-        if (resetBtn) {
-            resetBtn.style.display = lineageTableState.sortKey ? 'inline-flex' : 'none';
-        }
-
-        const container = document.getElementById('lineage-table-content');
-        if (container && currentParsedData) {
-            renderLineageTable(container, currentParsedData);
-        }
-    }
-
-    function resetTableSort() {
-        lineageTableState.sortKey = null;
-        lineageTableState.sortAsc = true;
-        const resetBtn = document.getElementById('lineage-table-sort-reset');
-        if (resetBtn) resetBtn.style.display = 'none';
-
-        const container = document.getElementById('lineage-table-content');
-        if (container && currentParsedData) {
-            renderLineageTable(container, currentParsedData);
-        }
-    }
-
-    function toggleColDropdown(event) {
-        if (event) event.stopPropagation();
-        const menu = document.getElementById('lineage-col-dropdown-menu');
-        if (!menu) return;
-        const isHidden = menu.style.display === 'none' || !menu.style.display;
-        menu.style.display = isHidden ? 'block' : 'none';
-        if (isHidden) {
-            updateColCheckboxes();
-        }
-    }
-
-    function updateColCheckboxes() {
-        const list = document.getElementById('lineage-col-checkbox-list');
-        if (!list) return;
-        list.innerHTML = LINEAGE_COLUMNS.map(col => {
-            const isChecked = lineageTableState.visibleCols.has(col.key);
-            return `
-                <label style="display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; user-select: none;" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'">
-                    <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="window.LineageExplorer.toggleColumnVisibility('${col.key}', this.checked)" style="cursor: pointer; accent-color: var(--accent);">
-                    <span style="color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${col.label}</span>
-                </label>
-            `;
-        }).join('');
-    }
-
-    function toggleColumnVisibility(colKey, isVisible) {
-        if (isVisible) {
-            lineageTableState.visibleCols.add(colKey);
-        } else {
-            if (lineageTableState.visibleCols.size <= 1) {
-                if (window.showNotification) window.showNotification('⚠️ 至少需要保留一列显示', 'warning');
-                updateColCheckboxes();
-                return;
-            }
-            lineageTableState.visibleCols.delete(colKey);
-        }
-        updateColBtnText();
-        const container = document.getElementById('lineage-table-content');
-        if (container && currentParsedData) {
-            renderLineageTable(container, currentParsedData);
-        }
-    }
-
-    function toggleAllColumns(selectAll) {
-        if (selectAll) {
-            LINEAGE_COLUMNS.forEach(col => lineageTableState.visibleCols.add(col.key));
-        } else {
-            lineageTableState.visibleCols.clear();
-            lineageTableState.visibleCols.add('index');
-            lineageTableState.visibleCols.add('srcName');
-            lineageTableState.visibleCols.add('dstName');
-        }
-        updateColCheckboxes();
-        updateColBtnText();
-        const container = document.getElementById('lineage-table-content');
-        if (container && currentParsedData) {
-            renderLineageTable(container, currentParsedData);
-        }
-    }
-
-    function updateColBtnText() {
-        const btn = document.getElementById('lineage-col-dropdown-btn');
-        if (btn) {
-            const labelSpan = btn.querySelector('span');
-            if (labelSpan) {
-                labelSpan.textContent = `👁️ 显示字段 (${lineageTableState.visibleCols.size}/${LINEAGE_COLUMNS.length})`;
-            }
-        }
-    }
-
-    if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
-        document.addEventListener('click', (e) => {
-            const wrap = document.getElementById('lineage-col-dropdown-wrap');
-            const menu = document.getElementById('lineage-col-dropdown-menu');
-            if (wrap && menu && !wrap.contains(e.target)) {
-                menu.style.display = 'none';
-            }
-        });
-    }
-
-    function renderLineageTable(containerEl, parsedData, searchFilter) {
-        if (typeof searchFilter === 'string') {
-            lineageTableState.searchQuery = searchFilter;
-        }
-        const q = (lineageTableState.searchQuery || '').toLowerCase().trim();
-        const clearBtn = document.getElementById('lineage-search-clear');
-        if (clearBtn) clearBtn.style.display = q ? 'inline-block' : 'none';
-
-        const edges = parsedData.edges || [];
-        const nodes = parsedData.nodes || [];
-
-        // 1. 结构化构建行记录
-        let rows = edges.map((e, idx) => {
+        const filtered = edges.filter(e => {
+            if (!q) return true;
             const srcNode = nodes.find(n => n.id === e.from);
             const dstNode = nodes.find(n => n.id === e.to);
-            const srcName = srcNode ? (srcNode.tableName || srcNode.label.replace('\n', ' ')) : e.from;
-            const dstName = dstNode ? (dstNode.tableName || dstNode.label.replace('\n', ' ')) : e.to;
-            const srcType = srcNode?.nodeType === 'datasource' ? '物理数据源' : (srcNode?.raw?.mode || '数据模型表');
-            const dstType = dstNode?.raw?.mode || '数据模型表';
-
-            return {
-                _id: e.id,
-                index: idx + 1,
-                srcName: srcName,
-                srcType: srcType,
-                direction: '➔',
-                dstName: dstName,
-                dstType: dstType,
-                type: e.type,
-                typeDisplay: e.type.toUpperCase(),
-                joinKeys: e.joinKeys || '-',
-                detail: e.detail || '-'
-            };
+            const srcName = srcNode ? (srcNode.tableName || srcNode.label) : e.from;
+            const dstName = dstNode ? (dstNode.tableName || dstNode.label) : e.to;
+            return srcName.toLowerCase().includes(q) ||
+                   dstName.toLowerCase().includes(q) ||
+                   e.type.toLowerCase().includes(q) ||
+                   (e.joinKeys && e.joinKeys.toLowerCase().includes(q)) ||
+                   (e.detail && e.detail.toLowerCase().includes(q));
         });
 
-        // 2. 搜索过滤
-        if (q) {
-            rows = rows.filter(r => {
-                return r.srcName.toLowerCase().includes(q) ||
-                       r.srcType.toLowerCase().includes(q) ||
-                       r.dstName.toLowerCase().includes(q) ||
-                       r.dstType.toLowerCase().includes(q) ||
-                       r.type.toLowerCase().includes(q) ||
-                       r.joinKeys.toLowerCase().includes(q) ||
-                       r.detail.toLowerCase().includes(q);
-            });
-        }
-
-        // 3. 字段排序
-        if (lineageTableState.sortKey) {
-            const key = lineageTableState.sortKey;
-            const asc = lineageTableState.sortAsc;
-            rows.sort((a, b) => {
-                let va = a[key];
-                let vb = b[key];
-                if (va === null || va === undefined) va = '';
-                if (vb === null || vb === undefined) vb = '';
-
-                let diff = 0;
-                if (typeof va === 'number' && typeof vb === 'number') {
-                    diff = va - vb;
-                } else if (typeof String.prototype.localeCompare === 'function') {
-                    diff = String(va).localeCompare(String(vb), 'zh-CN', { numeric: true });
-                } else {
-                    diff = String(va) < String(vb) ? -1 : (String(va) > String(vb) ? 1 : 0);
-                }
-                return asc ? diff : -diff;
-            });
-        }
-
-        // 4. 更新条数统计与下拉按钮文本
-        const countEl = document.getElementById('lineage-table-count');
-        if (countEl) countEl.textContent = rows.length;
-        updateColBtnText();
-
-        if (rows.length === 0) {
+        if (filtered.length === 0) {
             containerEl.innerHTML = `
                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-secondary); gap: 8px;">
-                    <div style="font-size: 1.6rem;">🔍</div>
-                    <div style="font-size: 0.85rem; font-weight: 500;">未找到匹配的血缘关系记录</div>
-                    <div style="font-size: 0.72rem; opacity: 0.7;">请尝试更换或清空搜索关键词</div>
+                    <div style="font-size: 1.5rem;">🔍</div>
+                    <div>未找到匹配的血缘关系记录</div>
                 </div>
             `;
             return;
         }
 
-        // 5. 提取可见列
-        const activeCols = LINEAGE_COLUMNS.filter(c => lineageTableState.visibleCols.has(c.key));
+        const rowsHtml = filtered.map((e, idx) => {
+            const srcNode = nodes.find(n => n.id === e.from);
+            const dstNode = nodes.find(n => n.id === e.to);
+            const srcName = srcNode ? (srcNode.tableName || srcNode.label.replace('\n', ' ')) : e.from;
+            const dstName = dstNode ? (dstNode.tableName || dstNode.label.replace('\n', ' ')) : e.to;
 
-        // 6. 构造 colgroup
-        const colgroupHtml = activeCols.map(c => {
-            const w = lineageTableState.colWidths[c.key] || c.defaultWidth;
-            return `<col data-col="${c.key}" style="width: ${w}px;">`;
-        }).join('');
-
-        // 7. 构造 thead
-        const theadHtml = activeCols.map(c => {
-            const isSorted = lineageTableState.sortKey === c.key;
-            let sortArrow = '';
-            if (isSorted) {
-                sortArrow = lineageTableState.sortAsc ? ' <span style="color: var(--accent); font-weight: bold;">↑</span>' : ' <span style="color: var(--accent); font-weight: bold;">↓</span>';
+            let typeBadge = '';
+            switch(e.type) {
+                case 'extract':
+                    typeBadge = '<span class="badge" style="border: 1px solid #f59e0b; color: #f59e0b; background: rgba(245,158,11,0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;">🗄️ EXTRACT (抽取)</span>';
+                    break;
+                case 'merge':
+                    typeBadge = '<span class="badge" style="border: 1px solid #3b82f6; color: #3b82f6; background: rgba(59,130,246,0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;">⚡ MERGE (合并)</span>';
+                    break;
+                case 'append':
+                    typeBadge = '<span class="badge" style="border: 1px solid #8b5cf6; color: #8b5cf6; background: rgba(139,92,246,0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;">🟣 APPEND (追加)</span>';
+                    break;
+                case 'reference':
+                    typeBadge = '<span class="badge" style="border: 1px solid #06b6d4; color: #06b6d4; background: rgba(6,182,212,0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;">🔗 REFERENCE (引用)</span>';
+                    break;
+                case 'relationship':
+                    typeBadge = '<span class="badge" style="border: 1px solid #ec4899; color: #ec4899; background: rgba(236,72,153,0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;">🧬 MODEL REL (关系)</span>';
+                    break;
+                default:
+                    typeBadge = `<span class="badge" style="border: 1px solid var(--accent); color: var(--accent); padding: 2px 6px; border-radius: 4px; font-size: 0.72rem;">${e.type}</span>`;
             }
-            const sortCursor = c.sortable ? 'cursor: pointer;' : 'cursor: default;';
-            const sortOnClick = c.sortable ? `onclick="window.LineageExplorer.sortLineageTable('${c.key}')"` : '';
-            const sortTitle = c.sortable ? 'title="点击按此列切换升序/降序排序"' : '';
-            const alignStyle = c.align ? `text-align: ${c.align};` : 'text-align: left;';
 
             return `
-                <th style="padding: 9px 12px; font-weight: 600; white-space: nowrap; user-select: none; position: relative; ${sortCursor} ${alignStyle} ${isSorted ? 'color: var(--accent); background: rgba(99,102,241,0.1);' : ''}" ${sortOnClick} ${sortTitle}>
-                    <span>${c.label}${sortArrow}</span>
-                </th>
+                <tr style="border-bottom: 1px solid var(--panel-border); transition: background 0.15s ease;">
+                    <td style="padding: 10px 12px; font-family: monospace; color: var(--text-secondary); text-align: center;">${idx + 1}</td>
+                    <td style="padding: 10px 12px; font-weight: 600; color: var(--text-primary);">${srcName}</td>
+                    <td style="padding: 10px 12px; text-align: center; color: var(--text-secondary); font-size: 0.8rem;">➔</td>
+                    <td style="padding: 10px 12px; font-weight: 600; color: var(--text-primary);">${dstName}</td>
+                    <td style="padding: 10px 12px;">${typeBadge}</td>
+                    <td style="padding: 10px 12px; font-family: monospace; font-size: 0.75rem; color: var(--accent); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${e.joinKeys}">${e.joinKeys}</td>
+                    <td style="padding: 10px 12px; font-size: 0.75rem; color: var(--text-secondary); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${e.detail}">${e.detail}</td>
+                </tr>
             `;
         }).join('');
 
-        // 8. 构造 tbody
-        const tbodyHtml = rows.map((row) => {
-            const cellsHtml = activeCols.map(c => {
-                const alignStyle = c.align ? `text-align: ${c.align};` : 'text-align: left;';
-                switch(c.key) {
-                    case 'index':
-                        return `<td style="padding: 8px 12px; font-family: monospace; color: var(--text-secondary); white-space: nowrap; ${alignStyle}">${row.index}</td>`;
-                    case 'srcName':
-                        return `<td style="padding: 8px 12px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${row.srcName}">${row.srcName}</td>`;
-                    case 'srcType':
-                        return `<td style="padding: 8px 12px; font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap;"><span class="badge" style="background: rgba(255,255,255,0.06); border: 1px solid var(--panel-border); padding: 1px 6px; border-radius: 4px; white-space: nowrap;">${row.srcType}</span></td>`;
-                    case 'direction':
-                        return `<td style="padding: 8px 12px; color: var(--text-secondary); font-size: 0.8rem; white-space: nowrap; ${alignStyle}">➔</td>`;
-                    case 'dstName':
-                        return `<td style="padding: 8px 12px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${row.dstName}">${row.dstName}</td>`;
-                    case 'dstType':
-                        return `<td style="padding: 8px 12px; font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap;"><span class="badge" style="background: rgba(255,255,255,0.06); border: 1px solid var(--panel-border); padding: 1px 6px; border-radius: 4px; white-space: nowrap;">${row.dstType}</span></td>`;
-                    case 'type':
-                        let badgeHtml = '';
-                        switch(row.type) {
-                            case 'extract':
-                                badgeHtml = '<span class="badge" style="border: 1px solid #f59e0b; color: #f59e0b; background: rgba(245,158,11,0.12); padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px;">🗄️ EXTRACT (抽取)</span>';
-                                break;
-                            case 'merge':
-                                badgeHtml = '<span class="badge" style="border: 1px solid #3b82f6; color: #3b82f6; background: rgba(59,130,246,0.12); padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px;">⚡ MERGE (合并)</span>';
-                                break;
-                            case 'append':
-                                badgeHtml = '<span class="badge" style="border: 1px solid #8b5cf6; color: #8b5cf6; background: rgba(139,92,246,0.12); padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px;">🟣 APPEND (追加)</span>';
-                                break;
-                            case 'reference':
-                                badgeHtml = '<span class="badge" style="border: 1px solid #06b6d4; color: #06b6d4; background: rgba(6,182,212,0.12); padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px;">🔗 REFERENCE (引用)</span>';
-                                break;
-                            case 'relationship':
-                                badgeHtml = '<span class="badge" style="border: 1px solid #ec4899; color: #ec4899; background: rgba(236,72,153,0.12); padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px;">🧬 MODEL REL (关系)</span>';
-                                break;
-                            default:
-                                badgeHtml = `<span class="badge" style="border: 1px solid var(--accent); color: var(--accent); padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; white-space: nowrap; display: inline-flex; align-items: center;">${row.typeDisplay}</span>`;
-                        }
-                        return `<td style="padding: 8px 12px; white-space: nowrap; overflow: visible;">${badgeHtml}</td>`;
-                    case 'joinKeys':
-                        return `<td style="padding: 8px 12px; font-family: monospace; font-size: 0.75rem; color: var(--accent); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${row.joinKeys}">${row.joinKeys}</td>`;
-                    case 'detail':
-                        return `<td style="padding: 8px 12px; font-size: 0.75rem; color: var(--text-secondary); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${row.detail}">${row.detail}</td>`;
-                    default:
-                        return `<td style="padding: 8px 12px; white-space: nowrap;">${row[c.key] || '-'}</td>`;
-                }
-            }).join('');
-
-            return `<tr style="border-bottom: 1px solid var(--panel-border);" onmouseover="this.style.background='var(--overlay-5)'" onmouseout="this.style.background='transparent'">${cellsHtml}</tr>`;
-        }).join('');
-
         containerEl.innerHTML = `
-            <div style="height: 100%; overflow-y: auto; overflow-x: auto;">
-                <table class="data-table uni-modal-table" style="width: 100%; border-collapse: collapse; font-size: 0.8rem; text-align: left; table-layout: fixed;">
-                    <colgroup>${colgroupHtml}</colgroup>
-                    <thead style="position: sticky; top: 0; background: var(--panel-bg, #0f172a); z-index: 10; border-bottom: 2px solid var(--panel-border); box-shadow: 0 1px 0 var(--panel-border);">
-                        <tr>${theadHtml}</tr>
+            <div style="height: 100%; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem; text-align: left;">
+                    <thead style="position: sticky; top: 0; background: var(--panel-bg); z-index: 10; border-bottom: 2px solid var(--panel-border);">
+                        <tr>
+                            <th style="padding: 10px 12px; width: 45px; text-align: center;">#</th>
+                            <th style="padding: 10px 12px;">源节点 (Source Node)</th>
+                            <th style="padding: 10px 12px; width: 30px; text-align: center;">流向</th>
+                            <th style="padding: 10px 12px;">目标节点 (Target Node)</th>
+                            <th style="padding: 10px 12px; width: 140px;">血缘关联类型</th>
+                            <th style="padding: 10px 12px;">关联字段/键 (Join Keys)</th>
+                            <th style="padding: 10px 12px;">转换细节 / 步骤</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        ${tbodyHtml}
+                        ${rowsHtml}
                     </tbody>
                 </table>
             </div>
@@ -1047,12 +795,12 @@ window.LineageExplorer = (function() {
         const overlay = document.createElement('div');
         overlay.id = 'lineage-explorer-modal';
         overlay.className = 'modal-overlay';
-        overlay.style.cssText = 'display: flex; z-index: 21000; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.72); align-items: center; justify-content: center;';
+        overlay.style.cssText = 'display: flex; z-index: 21000; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); align-items: center; justify-content: center;';
 
-        const safeTitle = parsed.datasetName || 'Dataset';
+        const safeTitle = `🔍 [${parsed.datasetName}] 报表级全景血缘拓扑 DAG 看板`;
 
         overlay.innerHTML = `
-            <div class="modal-content" style="width: min(96vw, 1380px); height: min(92vh, 880px); display: flex; flex-direction: column; background: var(--panel-bg, #0f172a); border: 1px solid var(--panel-border); border-radius: 12px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); overflow: hidden; position: relative;">
+            <div class="modal-content glass-panel" style="width: min(96vw, 1380px); height: min(92vh, 880px); display: flex; flex-direction: column; background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 12px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); overflow: hidden; position: relative;">
                 <!-- 弹窗顶栏 -->
                 <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--panel-border); background: var(--overlay-5); cursor: move;">
                     <div style="display: flex; align-items: center; gap: 12px;">
@@ -1090,37 +838,17 @@ window.LineageExplorer = (function() {
                 </div>
 
                 <!-- 弹窗主体区 (包含主画布与侧边看板) -->
-                <div class="modal-body" style="flex: 1; min-height: 0; position: relative; overflow: hidden; padding: 0;">
-                    <!-- 1. DAG 视图容器 (通过 visibility/z-index 瞬时硬件加速切换，杜绝 Canvas 销毁重排卡顿) -->
-                    <div id="lineage-dag-view" style="position: absolute; inset: 0; display: flex; height: 100%; width: 100%; visibility: visible; pointer-events: auto; z-index: 10;">
+                <div class="modal-body" style="flex: 1; min-height: 0; display: flex; position: relative; overflow: hidden; padding: 0;">
+                    <!-- 1. DAG 视图容器 -->
+                    <div id="lineage-dag-view" style="flex: 1; display: flex; position: relative; height: 100%; width: 100%;">
                         <!-- 主拓扑图画布 -->
                         <div id="lineage-vis-container" style="flex: 1; height: 100%; background: #0f172a; position: relative;"></div>
 
-                        <!-- 画布悬浮浮动工具条 (高对比度独立控制组，零重叠，清晰可见) -->
-                        <div class="lineage-toolbar" style="position: absolute; bottom: 18px; left: 18px; z-index: 50; display: flex; align-items: center; gap: 4px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 8px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7); padding: 5px 8px;">
-                            <!-- 缩放控制组 -->
-                            <button type="button" class="lineage-ctrl-btn" onclick="window.LineageExplorer.zoomIn()" title="放大画布 (Zoom In)" style="display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12); color: #ffffff; border-radius: 6px; cursor: pointer; transition: all 0.15s ease;">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                            </button>
-                            <button type="button" class="lineage-ctrl-btn" onclick="window.LineageExplorer.zoomOut()" title="缩小画布 (Zoom Out)" style="display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12); color: #ffffff; border-radius: 6px; cursor: pointer; transition: all 0.15s ease;">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                            </button>
-                            <button type="button" class="lineage-ctrl-btn" onclick="window.LineageExplorer.fitDAG()" title="自适应居中视图 (Fit View)" style="display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 9px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12); color: #ffffff; border-radius: 6px; cursor: pointer; font-size: 0.74rem; font-weight: 600; transition: all 0.15s ease;">
-                                <span>🎯</span><span>居中</span>
-                            </button>
-
-                            <div style="width: 1px; height: 18px; background: rgba(255,255,255,0.2); margin: 0 4px;"></div>
-
-                            <!-- 排列与状态控制组 -->
-                            <button type="button" class="lineage-ctrl-btn" onclick="window.LineageExplorer.realignDAG()" title="重新恢复整齐的自左向右 DAG 层次排列" style="display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 9px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12); color: #ffffff; border-radius: 6px; cursor: pointer; font-size: 0.74rem; font-weight: 600; transition: all 0.15s ease;">
-                                <span>📐</span><span>整齐重排</span>
-                            </button>
-                            <button type="button" id="lineage-btn-force-layout" class="lineage-ctrl-btn" onclick="window.LineageExplorer.toggleLayoutMode()" title="切换层次排列 / 自由物理力导向分布" style="display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 9px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12); color: #ffffff; border-radius: 6px; cursor: pointer; font-size: 0.74rem; font-weight: 600; transition: all 0.15s ease;">
-                                <span>🌐</span><span>力导向</span>
-                            </button>
-                            <button type="button" class="lineage-ctrl-btn" onclick="window.LineageExplorer.resetHighlight()" title="清除聚焦与节点高亮" style="display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 9px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12); color: #ffffff; border-radius: 6px; cursor: pointer; font-size: 0.74rem; font-weight: 600; transition: all 0.15s ease;">
-                                <span>🔄</span><span>重置高亮</span>
-                            </button>
+                        <!-- 画布悬浮浮动工具条 (Zoom & Reset) -->
+                        <div style="position: absolute; bottom: 16px; left: 16px; z-index: 20; display: flex; gap: 6px; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); border: 1px solid var(--panel-border); border-radius: 6px; padding: 4px 8px;">
+                            <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="window.LineageExplorer.fitDAG()" title="自适应居中视图" style="padding: 3px 8px; font-size: 0.72rem;">🎯 居中对齐</button>
+                            <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="window.LineageExplorer.resetHighlight()" title="清除聚焦与高亮" style="padding: 3px 8px; font-size: 0.72rem;">🔄 重置高亮</button>
+                            <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="window.LineageExplorer.toggleLayoutMode()" title="切换层次排列/自由分布" style="padding: 3px 8px; font-size: 0.72rem;">📐 切换布局</button>
                         </div>
 
                         <!-- 拓扑图图例 (Floating Legend) -->
@@ -1138,47 +866,20 @@ window.LineageExplorer = (function() {
                         </div>
                     </div>
 
-                    <!-- 2. 表格列表视图容器 (通用高级结构化数据表格，具备搜索、字段隐藏/显示、表头排序等通用模版能力) -->
-                    <div id="lineage-table-view" style="position: absolute; inset: 0; display: flex; flex-direction: column; height: 100%; width: 100%; background: var(--panel-bg, #0f172a); padding: 12px 16px; box-sizing: border-box; gap: 10px; visibility: hidden; pointer-events: none; z-index: 1;">
-                        <!-- 通用高级数据网格工具栏 (Filter Bar) -->
-                        <div id="lineage-table-toolbar" style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-shrink: 0; background: var(--overlay-5, rgba(255,255,255,0.03)); padding: 6px 12px; border-radius: 8px; border: 1px solid var(--panel-border);">
-                            <!-- 左侧：全局搜索与重置排序 -->
-                            <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
-                                <div style="position: relative; display: flex; align-items: center;">
-                                    <input type="text" id="lineage-table-search" placeholder="🔍 快速搜索表名、字段键 (Join Key) 或关系类型..." style="width: 330px; padding: 5px 26px 5px 10px; font-size: 0.78rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);" oninput="window.LineageExplorer.onTableSearch(this.value)">
-                                    <span id="lineage-search-clear" onclick="document.getElementById('lineage-table-search').value=''; window.LineageExplorer.onTableSearch('');" style="position: absolute; right: 8px; cursor: pointer; font-size: 0.75rem; color: var(--text-secondary); display: none;" title="清空搜索">✕</span>
-                                </div>
-                                <button type="button" id="lineage-table-sort-reset" class="btn-wf-sm btn-wf-secondary" style="display: none; padding: 3px 8px; font-size: 0.72rem; cursor: pointer; align-items: center; gap: 4px;" onclick="window.LineageExplorer.resetTableSort()">
-                                    <span>✕</span><span>重置排序</span>
-                                </button>
+                    <!-- 2. 表格列表视图容器 (Table View Container) -->
+                    <div id="lineage-table-view" style="flex: 1; display: none; flex-direction: column; height: 100%; width: 100%; background: var(--panel-bg); padding: 14px; box-sizing: border-box; gap: 10px;">
+                        <!-- 搜索过滤栏 -->
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <input type="text" id="lineage-table-search" placeholder="🔍 快速搜索表名、关联键 (Join Key) 或关系类型..." style="width: 360px; padding: 6px 10px; font-size: 0.78rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);" oninput="window.LineageExplorer.onTableSearch(this.value)">
                             </div>
-
-                            <!-- 右侧：字段显示隐藏筛选器与状态 -->
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <!-- 列显示/隐藏下拉选择菜单 (Column Selector) -->
-                                <div id="lineage-col-dropdown-wrap" style="position: relative; display: inline-block;">
-                                    <button type="button" id="lineage-col-dropdown-btn" class="wf-input" style="padding: 4px 10px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 6px; background: var(--bg-color, #1e293b); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary); user-select: none;" onclick="window.LineageExplorer.toggleColDropdown(event)">
-                                        <span>👁️ 显示字段 (7/9)</span>
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-                                    </button>
-                                    <div id="lineage-col-dropdown-menu" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 5px; background: var(--dropdown-bg, #1a1a24); border: 1px solid var(--panel-border); border-radius: 8px; box-shadow: 0 12px 36px rgba(0,0,0,0.85); width: 230px; padding: 8px; z-index: 3000;">
-                                        <div style="display: flex; justify-content: space-between; padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid var(--panel-border); font-size: 0.72rem;">
-                                            <span style="color: var(--accent); cursor: pointer; font-weight: 600;" onclick="window.LineageExplorer.toggleAllColumns(true)">全选所有</span>
-                                            <span style="color: var(--text-secondary); cursor: pointer;" onclick="window.LineageExplorer.toggleAllColumns(false)">取消全选</span>
-                                        </div>
-                                        <div id="lineage-col-checkbox-list" style="max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;"></div>
-                                    </div>
-                                </div>
-
-                                <!-- 统计信息 -->
-                                <div style="font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap;">
-                                    共匹配 <span id="lineage-table-count" style="color: var(--accent); font-weight: bold;">${parsed.edges.length}</span> 条血缘链路
-                                </div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                                共提取出 <span id="lineage-table-count" style="color: var(--accent); font-weight: bold;">${parsed.edges.length}</span> 条血缘链路
                             </div>
                         </div>
 
                         <!-- 表格主体容器 -->
-                        <div id="lineage-table-content" style="flex: 1; min-height: 0; border: 1px solid var(--panel-border); border-radius: 8px; overflow: hidden; position: relative;"></div>
+                        <div id="lineage-table-content" style="flex: 1; min-height: 0; border: 1px solid var(--panel-border); border-radius: 6px; overflow: hidden;"></div>
                     </div>
                 </div>
             </div>
@@ -1198,17 +899,10 @@ window.LineageExplorer = (function() {
                 renderNetwork(container, parsed);
                 resetHighlight();
             }
-            // 预渲染血缘明细表，使后续 Tab 切换无需进行 DOM 解析与字符串拼接，达成 0ms 瞬间切换
-            const tblContent = document.getElementById('lineage-table-content');
-            if (tblContent && !tblContent._hasTableLoaded) {
-                renderLineageTable(tblContent, parsed);
-                tblContent._hasTableLoaded = true;
-            }
-        }, 60);
+        }, 80);
     }
 
     function switchView(mode) {
-        if (currentViewMode === mode) return;
         currentViewMode = mode;
         const dagView = document.getElementById('lineage-dag-view');
         const tableView = document.getElementById('lineage-table-view');
@@ -1216,51 +910,33 @@ window.LineageExplorer = (function() {
         const tabTable = document.getElementById('lineage-tab-table');
 
         if (mode === 'dag') {
-            if (dagView) {
-                dagView.style.visibility = 'visible';
-                dagView.style.pointerEvents = 'auto';
-                dagView.style.zIndex = '10';
-            }
-            if (tableView) {
-                tableView.style.visibility = 'hidden';
-                tableView.style.pointerEvents = 'none';
-                tableView.style.zIndex = '1';
-            }
+            if (dagView) dagView.style.display = 'flex';
+            if (tableView) tableView.style.display = 'none';
             if (tabDag) {
-                tabDag.style.background = 'var(--accent, #6366f1)';
+                tabDag.style.background = 'var(--accent)';
                 tabDag.style.color = '#ffffff';
-                if (tabDag.classList) tabDag.classList.add('active');
             }
             if (tabTable) {
                 tabTable.style.background = 'transparent';
-                tabTable.style.color = 'var(--text-secondary, #94a3b8)';
-                if (tabTable.classList) tabTable.classList.remove('active');
+                tabTable.style.color = 'var(--text-secondary)';
+            }
+            if (currentNetwork) {
+                setTimeout(() => currentNetwork.redraw(), 50);
             }
         } else {
-            if (dagView) {
-                dagView.style.visibility = 'hidden';
-                dagView.style.pointerEvents = 'none';
-                dagView.style.zIndex = '1';
-            }
-            if (tableView) {
-                tableView.style.visibility = 'visible';
-                tableView.style.pointerEvents = 'auto';
-                tableView.style.zIndex = '10';
-            }
+            if (dagView) dagView.style.display = 'none';
+            if (tableView) tableView.style.display = 'flex';
             if (tabTable) {
-                tabTable.style.background = 'var(--accent, #6366f1)';
+                tabTable.style.background = 'var(--accent)';
                 tabTable.style.color = '#ffffff';
-                if (tabTable.classList) tabTable.classList.add('active');
             }
             if (tabDag) {
                 tabDag.style.background = 'transparent';
-                tabDag.style.color = 'var(--text-secondary, #94a3b8)';
-                if (tabDag.classList) tabDag.classList.remove('active');
+                tabDag.style.color = 'var(--text-secondary)';
             }
             const tblContent = document.getElementById('lineage-table-content');
-            if (tblContent && currentParsedData && !tblContent._hasTableLoaded) {
+            if (tblContent && currentParsedData) {
                 renderLineageTable(tblContent, currentParsedData);
-                tblContent._hasTableLoaded = true;
             }
         }
     }
@@ -1272,172 +948,30 @@ window.LineageExplorer = (function() {
         }
     }
 
-    function zoomIn() {
-        if (!currentNetwork) return;
-        const currentScale = currentNetwork.getScale();
-        currentNetwork.moveTo({
-            scale: currentScale * 1.28,
-            animation: { duration: 250, easingFunction: 'easeInOutQuad' }
-        });
-    }
-
-    function zoomOut() {
-        if (!currentNetwork) return;
-        const currentScale = currentNetwork.getScale();
-        currentNetwork.moveTo({
-            scale: currentScale * 0.78,
-            animation: { duration: 250, easingFunction: 'easeInOutQuad' }
-        });
-    }
-
     function fitDAG() {
         if (currentNetwork) {
             currentNetwork.fit({ animation: { duration: 400, easingFunction: 'easeInOutQuad' } });
         }
     }
 
-    function updatePhysicsBtnUI() {
-        const btn = document.getElementById('lineage-btn-force-layout');
-        if (!btn) return;
-        if (isPhysicsActive) {
-            btn.style.background = 'var(--accent, #6366f1)';
-            btn.style.borderColor = 'var(--accent, #6366f1)';
-            btn.style.color = '#ffffff';
-            btn.style.boxShadow = '0 0 10px rgba(99, 102, 241, 0.45)';
-            btn.innerHTML = '<span>🌀</span><span>流动中</span>';
-            btn.title = '点击暂停/锁定当前物理力导向分布';
-        } else {
-            btn.style.background = 'rgba(255, 255, 255, 0.12)';
-            btn.style.borderColor = 'rgba(255, 255, 255, 0.25)';
-            btn.style.color = '#ffffff';
-            btn.style.boxShadow = 'none';
-            btn.innerHTML = '<span>🌐</span><span>力导向</span>';
-            btn.title = '切换层次排列 / 自由物理力导向分布';
-        }
-    }
-
-    function realignDAG() {
-        if (!currentNetwork) return;
-
-        // 彻底关停力导向物理模拟状态
-        isPhysicsActive = false;
-        updatePhysicsBtnUI();
-        if (typeof currentNetwork.stopSimulation === 'function') {
-            currentNetwork.stopSimulation();
-        }
-
-        // 连线平滑度恢复为水平三次贝塞尔曲线
-        currentNetwork.setOptions({
-            edges: {
-                smooth: {
-                    type: 'cubicBezier',
-                    forceDirection: 'horizontal',
-                    roundness: 0.25
-                }
-            },
-            layout: {
-                hierarchical: {
-                    enabled: true,
-                    direction: 'LR',
-                    sortMethod: 'directed',
-                    levelSeparation: 240,
-                    nodeSpacing: 140,
-                    treeSpacing: 180,
-                    blockShifting: true,
-                    edgeMinimization: true
-                }
-            },
-            physics: { enabled: false }
-        });
-
-        const onRealignDraw = function() {
-            setTimeout(() => {
-                try {
-                    if (typeof currentNetwork.storePositions === 'function') {
-                        currentNetwork.storePositions();
-                    }
-                    currentNetwork.setOptions({
-                        layout: { hierarchical: { enabled: false } },
-                        physics: { enabled: false }
-                    });
-                    if (typeof currentNetwork.fit === 'function') {
-                        currentNetwork.fit({ animation: { duration: 400, easingFunction: 'easeInOutQuad' } });
-                    }
-                } catch(e) {}
-            }, 60);
-        };
-
-        if (typeof currentNetwork.once === 'function') {
-            currentNetwork.once('afterDrawing', onRealignDraw);
-        } else if (typeof currentNetwork.on === 'function') {
-            currentNetwork.on('afterDrawing', onRealignDraw);
-        }
-        if (window.showNotification) {
-            window.showNotification('📐 节点已自动重新整齐对齐为标准 DAG 层次拓扑！', 'success');
-        }
-    }
-
+    let isHierarchical = true;
     function toggleLayoutMode() {
         if (!currentNetwork) return;
-        isPhysicsActive = !isPhysicsActive;
-        updatePhysicsBtnUI();
-
-        if (isPhysicsActive) {
-            // 1. 关闭层级排版限制
-            // 2. 启用专为 DAG/网络图优化的 forceAtlas2Based 求解器：高阻尼(0.88)、柔和弹簧(0.06)、防重叠
-            // 3. 动态切换连线为 continuous 有机弧线，杜绝水平贝塞尔撕裂抽搐
-            currentNetwork.setOptions({
-                layout: { hierarchical: { enabled: false } },
-                edges: {
-                    smooth: {
-                        type: 'continuous',
-                        roundness: 0.35
-                    }
-                },
-                physics: {
-                    enabled: true,
-                    solver: 'forceAtlas2Based',
-                    forceAtlas2Based: {
-                        gravitationalConstant: -60,
-                        centralGravity: 0.012,
-                        springLength: 150,
-                        springConstant: 0.06,
-                        damping: 0.88,
-                        avoidOverlap: 0.8
-                    },
-                    stabilization: {
-                        enabled: false
-                    },
-                    minVelocity: 0.75
+        isHierarchical = !isHierarchical;
+        currentNetwork.setOptions({
+            layout: {
+                hierarchical: {
+                    enabled: isHierarchical,
+                    direction: 'LR',
+                    sortMethod: 'directed'
                 }
-            });
-
-            // 核心防御：显式调用 startSimulation() 激活物理迭代循环，杜绝“有时点击无效”假死问题
-            if (typeof currentNetwork.startSimulation === 'function') {
-                currentNetwork.startSimulation();
+            },
+            physics: {
+                enabled: !isHierarchical
             }
-
-            if (window.showNotification) {
-                window.showNotification('🌐 已开启力导向物理有机流动分布', 'info');
-            }
-        } else {
-            // 暂停/关闭物理演化，优雅保留当前流动展开的姿态
-            if (typeof currentNetwork.stopSimulation === 'function') {
-                currentNetwork.stopSimulation();
-            }
-            try {
-                if (typeof currentNetwork.storePositions === 'function') {
-                    currentNetwork.storePositions();
-                }
-            } catch(e) {}
-
-            currentNetwork.setOptions({
-                physics: { enabled: false }
-            });
-
-            if (window.showNotification) {
-                window.showNotification('⏸️ 力导向物理流动已暂停并固定当前位置', 'info');
-            }
+        });
+        if (window.showNotification) {
+            window.showNotification(isHierarchical ? '📐 已切换为：层级有向无环图 (DAG)' : '🌐 已切换为：力导向物理自由图', 'info');
         }
     }
 
@@ -1445,17 +979,9 @@ window.LineageExplorer = (function() {
         openModal,
         switchView,
         onTableSearch,
-        sortLineageTable,
-        resetTableSort,
-        toggleColDropdown,
-        toggleColumnVisibility,
-        toggleAllColumns,
         highlightLineage,
         resetHighlight,
-        zoomIn,
-        zoomOut,
         fitDAG,
-        realignDAG,
         toggleLayoutMode,
         exportDAGImage,
         exportLineageExcel,
