@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260903_v2230">
+    <link rel="stylesheet" href="/static/style.css?v=20260903_v2231">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -162,7 +162,7 @@
                 <div class="gtb-auth-mode-pill" title="切换全局认证主体模式 (Service Principal / Personal Delegated)">
                     <span id="gtb-auth-icon" style="font-size: 0.9rem; line-height: 1;">🛡️</span>
                     <select id="gtb-select-auth-mode" class="gtb-auth-select mode-sp" onchange="window.handleGlobalAuthModeChange(this.value)">
-                        <option value="service_principal">Service Principal (服务主体)</option>
+                        <option value="service_principal">Service Principal (APP_Automation)</option>
                         <option value="personal">Personal User (个人委派)</option>
                     </select>
                 </div>
@@ -2606,8 +2606,8 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260718_v22"></script>
     <script src="/static/translations.js?v=20260724_v3"></script>
-    <script src="/static/universal_modal.js?v=20260903_v2230"></script>
-    <script src="/static/script.js?v=20260903_v2230"></script>
+    <script src="/static/universal_modal.js?v=20260903_v2231"></script>
+    <script src="/static/script.js?v=20260903_v2231"></script>
 
 
 
@@ -2673,11 +2673,11 @@
         </div>
     </div>
     <!-- AI Chat FAB -->
-    <div id="ai-chat-fab" onclick="toggleAIChat()" style="position: fixed; bottom: 30px; right: 15px; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--info-dark) 0%, var(--info-darker) 100%); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px var(--info-bg); cursor: pointer; z-index: 9999; transition: transform 0.2s ease;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+    <div id="ai-chat-fab" onclick="toggleAIChat()" style="position: fixed; bottom: 12px; right: 12px; width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, var(--info-dark) 0%, var(--info-darker) 100%); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px var(--shadow-dark); cursor: pointer; z-index: 9999; transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
     </div>
     <!-- AI Chat Window -->
-    <div id="ai-chat-window" class="glass-panel" style="position: fixed; bottom: 100px; right: 10px; width: calc(100vw - 20px); max-width: 380px; height: 500px; flex-direction: column; z-index: 10000; box-shadow: 0 10px 30px var(--shadow-dark); border-radius: 12px; overflow: hidden; transform-origin: bottom right; background: var(--panel-bg); border: 1px solid var(--panel-border); opacity: 0; transform: scale(0.9) translateY(10px); visibility: hidden; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), visibility 0.25s; display: flex;">
+    <div id="ai-chat-window" class="glass-panel" style="position: fixed; bottom: 68px; right: 12px; width: calc(100vw - 20px); max-width: 380px; height: 500px; flex-direction: column; z-index: 10000; box-shadow: 0 10px 30px var(--shadow-dark); border-radius: 12px; overflow: hidden; transform-origin: bottom right; background: var(--panel-bg); border: 1px solid var(--panel-border); opacity: 0; transform: scale(0.9) translateY(10px); visibility: hidden; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), visibility 0.25s; display: flex;">
         <div class="modal-header" style="padding: 15px; background: var(--overlay-5); border-bottom: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center; cursor: move;" id="ai-chat-header">
             <h3 style="margin: 0; font-size: 1rem; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">✨ AI Assistant</h3>
             <div style="display: flex; align-items: center; gap: 12px;">
