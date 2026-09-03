@@ -19885,25 +19885,51 @@ window.wfInspectRefreshWorkspace = async function(btn) {
     }
 
     try {
-        const res = await fetch('/api/proxy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ endpoint: '/groups', method: 'GET' })
+        // 1. 读取本地已配置/缓存的工作区全集
+        const savedWorkspaces = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+        
+        // 2. 同时向后端 /groups 探查最新在线工作区
+        let liveGroups = [];
+        try {
+            const res = await fetch('/api/proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint: '/groups', method: 'GET' })
+            });
+            const json = await res.json();
+            liveGroups = (json.data && json.data.value) ? json.data.value : [];
+        } catch (netErr) {
+            console.warn('Probe /groups failed, fallback to local settings:', netErr);
+        }
+
+        // 3. 智能全集去重合并 (保证已配置的全部工作区与远端新工作区均完整呈现)
+        const map = new Map();
+        savedWorkspaces.forEach(w => {
+            if (w && w.id) {
+                map.set(w.id.toLowerCase(), { id: w.id, name: w.alias || w.name || w.id });
+            }
         });
-        const json = await res.json();
-        const list = (json.data && json.data.value) ? json.data.value : [];
+        liveGroups.forEach(w => {
+            if (w && w.id) {
+                const existing = map.get(w.id.toLowerCase());
+                map.set(w.id.toLowerCase(), { id: w.id, name: existing?.name || w.name || w.id });
+            }
+        });
+
+        const list = Array.from(map.values());
         wsSel.innerHTML = '<option value="">-- 请选择 Workspace --</option>';
         list.forEach(w => {
             const opt = document.createElement('option');
             opt.value = w.id;
-            opt.textContent = w.name;
+            opt.textContent = `${w.name} (${w.id.slice(0, 8)}...)`;
+            opt.title = `${w.name} (${w.id})`;
             wsSel.appendChild(opt);
         });
 
-        // 优先继承全局工作区
+        // 优先继承全局工作区，否则默认选中第一个有效工作区
         const globalWs = document.getElementById('active-workspace')?.value || localStorage.getItem('pbi-active-workspace');
-        if (globalWs && list.some(w => w.id === globalWs)) {
-            wsSel.value = globalWs;
+        if (globalWs && list.some(w => w.id.toLowerCase() === globalWs.toLowerCase())) {
+            wsSel.value = list.find(w => w.id.toLowerCase() === globalWs.toLowerCase()).id;
         } else if (list.length > 0) {
             wsSel.selectedIndex = 1;
         }
@@ -19937,13 +19963,37 @@ window.wfInspectRefreshReport = async function(btn) {
     repSel.innerHTML = '<option value="">⏳ 正在获取报表列表...</option>';
 
     try {
-        const res = await fetch('/api/proxy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ endpoint: `/groups/${wsId}/reports`, method: 'GET' })
+        // 1. 读取本地配置的报表集合中匹配此工作区的项
+        const savedReports = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+        const localMatches = savedReports.filter(r => (r.workspaceId || '').trim().toLowerCase() === wsId.toLowerCase());
+
+        // 2. 在线拉取 /groups/${wsId}/reports
+        let liveReports = [];
+        try {
+            const res = await fetch('/api/proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint: `/groups/${wsId}/reports`, method: 'GET' })
+            });
+            const json = await res.json();
+            liveReports = (json.data && json.data.value) ? json.data.value : [];
+        } catch (netErr) {
+            console.warn('Fetch live reports failed:', netErr);
+        }
+
+        // 3. 智能合并去重
+        const repMap = new Map();
+        localMatches.forEach(r => {
+            if (r && r.id) repMap.set(r.id.toLowerCase(), { id: r.id, name: r.alias || r.name || r.id, datasetId: r.datasetId });
         });
-        const json = await res.json();
-        const list = (json.data && json.data.value) ? json.data.value : [];
+        liveReports.forEach(r => {
+            if (r && r.id) {
+                const existing = repMap.get(r.id.toLowerCase());
+                repMap.set(r.id.toLowerCase(), { id: r.id, name: existing?.name || r.name || r.id, datasetId: r.datasetId || existing?.datasetId });
+            }
+        });
+
+        const list = Array.from(repMap.values());
         repSel.innerHTML = '<option value="">-- All / Direct Select Model Below --</option>';
         list.forEach(r => {
             const opt = document.createElement('option');
@@ -19954,8 +20004,8 @@ window.wfInspectRefreshReport = async function(btn) {
         });
 
         const globalRp = document.getElementById('active-report')?.value || localStorage.getItem('pbi-active-report');
-        if (globalRp && list.some(r => r.id === globalRp)) {
-            repSel.value = globalRp;
+        if (globalRp && list.some(r => r.id.toLowerCase() === globalRp.toLowerCase())) {
+            repSel.value = list.find(r => r.id.toLowerCase() === globalRp.toLowerCase()).id;
         }
 
         if (window.showNotification && btn) window.showNotification(`成功获取 ${list.length} 个报表`, 'success');
@@ -19981,13 +20031,37 @@ window.wfInspectRefreshDataset = async function(btn) {
     dsSel.innerHTML = '<option value="">⏳ 正在获取语义模型列表...</option>';
 
     try {
-        const res = await fetch('/api/proxy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ endpoint: `/groups/${wsId}/datasets`, method: 'GET' })
+        // 1. 读取本地配置的语义模型集合中匹配此工作区的项
+        const savedDatasets = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
+        const localMatches = savedDatasets.filter(d => (d.workspaceId || '').trim().toLowerCase() === wsId.toLowerCase());
+
+        // 2. 在线拉取 /groups/${wsId}/datasets
+        let liveDatasets = [];
+        try {
+            const res = await fetch('/api/proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint: `/groups/${wsId}/datasets`, method: 'GET' })
+            });
+            const json = await res.json();
+            liveDatasets = (json.data && json.data.value) ? json.data.value : [];
+        } catch (netErr) {
+            console.warn('Fetch live datasets failed:', netErr);
+        }
+
+        // 3. 智能合并去重
+        const dsMap = new Map();
+        localMatches.forEach(d => {
+            if (d && d.id) dsMap.set(d.id.toLowerCase(), { id: d.id, name: d.alias || d.name || d.id });
         });
-        const json = await res.json();
-        const list = (json.data && json.data.value) ? json.data.value : [];
+        liveDatasets.forEach(d => {
+            if (d && d.id) {
+                const existing = dsMap.get(d.id.toLowerCase());
+                dsMap.set(d.id.toLowerCase(), { id: d.id, name: existing?.name || d.name || d.id });
+            }
+        });
+
+        const list = Array.from(dsMap.values());
         dsSel.innerHTML = '<option value="">-- 选择目标语义模型 (Dataset) --</option>';
         list.forEach(d => {
             const opt = document.createElement('option');
@@ -19997,8 +20071,8 @@ window.wfInspectRefreshDataset = async function(btn) {
         });
 
         const globalDs = document.getElementById('active-dataset')?.value || localStorage.getItem('pbi-active-dataset');
-        if (globalDs && list.some(d => d.id === globalDs)) {
-            dsSel.value = globalDs;
+        if (globalDs && list.some(d => d.id.toLowerCase() === globalDs.toLowerCase())) {
+            dsSel.value = list.find(d => d.id.toLowerCase() === globalDs.toLowerCase()).id;
         } else if (list.length > 0) {
             dsSel.selectedIndex = 1;
         }
