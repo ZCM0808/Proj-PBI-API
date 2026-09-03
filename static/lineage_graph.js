@@ -298,6 +298,30 @@ window.LineageExplorer = (function() {
 
         currentNetwork = new visLib.Network(containerEl, data, options);
 
+        // 核心拖拽优化：首帧层级布局计算完成后固化各节点 (x, y) 坐标，并解除层级轴向限制，
+        // 使得节点不仅保持优美的自左向右 (LR) 树状排布，更允许用户 360° 任意方向自由拖拽调整位置！
+        const onFirstDraw = function() {
+            setTimeout(() => {
+                try {
+                    if (typeof currentNetwork.storePositions === 'function') {
+                        currentNetwork.storePositions();
+                    }
+                    currentNetwork.setOptions({
+                        layout: { hierarchical: { enabled: false } },
+                        physics: { enabled: false }
+                    });
+                } catch(e) {
+                    console.warn('Store initial positions failed:', e);
+                }
+            }, 60);
+        };
+
+        if (typeof currentNetwork.once === 'function') {
+            currentNetwork.once('afterDrawing', onFirstDraw);
+        } else if (typeof currentNetwork.on === 'function') {
+            currentNetwork.on('afterDrawing', onFirstDraw);
+        }
+
         // 监听节点点击事件：高亮上下游血缘
         currentNetwork.on('click', function(params) {
             if (params.nodes.length > 0) {
@@ -848,7 +872,8 @@ window.LineageExplorer = (function() {
                         <div style="position: absolute; bottom: 16px; left: 16px; z-index: 20; display: flex; gap: 6px; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); border: 1px solid var(--panel-border); border-radius: 6px; padding: 4px 8px;">
                             <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="window.LineageExplorer.fitDAG()" title="自适应居中视图" style="padding: 3px 8px; font-size: 0.72rem;">🎯 居中对齐</button>
                             <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="window.LineageExplorer.resetHighlight()" title="清除聚焦与高亮" style="padding: 3px 8px; font-size: 0.72rem;">🔄 重置高亮</button>
-                            <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="window.LineageExplorer.toggleLayoutMode()" title="切换层次排列/自由分布" style="padding: 3px 8px; font-size: 0.72rem;">📐 切换布局</button>
+                            <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="window.LineageExplorer.realignDAG()" title="重新恢复整齐的 DAG 层次排列" style="padding: 3px 8px; font-size: 0.72rem;">📐 整齐重排</button>
+                            <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="window.LineageExplorer.toggleLayoutMode()" title="切换层次排列/物理力导向自由分布" style="padding: 3px 8px; font-size: 0.72rem;">🌐 物理力导向</button>
                         </div>
 
                         <!-- 拓扑图图例 (Floating Legend) -->
@@ -954,6 +979,50 @@ window.LineageExplorer = (function() {
         }
     }
 
+    function realignDAG() {
+        if (!currentNetwork) return;
+        currentNetwork.setOptions({
+            layout: {
+                hierarchical: {
+                    enabled: true,
+                    direction: 'LR',
+                    sortMethod: 'directed',
+                    levelSeparation: 240,
+                    nodeSpacing: 140,
+                    treeSpacing: 180,
+                    blockShifting: true,
+                    edgeMinimization: true
+                }
+            },
+            physics: { enabled: false }
+        });
+        const onRealignDraw = function() {
+            setTimeout(() => {
+                try {
+                    if (typeof currentNetwork.storePositions === 'function') {
+                        currentNetwork.storePositions();
+                    }
+                    currentNetwork.setOptions({
+                        layout: { hierarchical: { enabled: false } },
+                        physics: { enabled: false }
+                    });
+                    if (typeof currentNetwork.fit === 'function') {
+                        currentNetwork.fit({ animation: { duration: 400, easingFunction: 'easeInOutQuad' } });
+                    }
+                } catch(e) {}
+            }, 60);
+        };
+
+        if (typeof currentNetwork.once === 'function') {
+            currentNetwork.once('afterDrawing', onRealignDraw);
+        } else if (typeof currentNetwork.on === 'function') {
+            currentNetwork.on('afterDrawing', onRealignDraw);
+        }
+        if (window.showNotification) {
+            window.showNotification('📐 节点已自动重新整齐对齐为标准 DAG 层次拓扑！', 'success');
+        }
+    }
+
     let isHierarchical = true;
     function toggleLayoutMode() {
         if (!currentNetwork) return;
@@ -982,6 +1051,7 @@ window.LineageExplorer = (function() {
         highlightLineage,
         resetHighlight,
         fitDAG,
+        realignDAG,
         toggleLayoutMode,
         exportDAGImage,
         exportLineageExcel,
