@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Universal Data Modal Component
  * Dynamically generates a premium data grid modal with search, column selection, sorting, and export.
  */
@@ -109,6 +109,7 @@ window.showUniversalDataModal = function(options) {
 
     // Header
     const hdr = document.createElement('div');
+hdr.className = 'modal-header';
     hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--overlay-10);cursor:move;user-select:none;flex-shrink:0;background:var(--bg-color);';
     
     const hdrTitle = document.createElement('span');
@@ -155,6 +156,91 @@ window.showUniversalDataModal = function(options) {
     if (window.makeDraggable) {
         window.makeDraggable(panel, hdr);
     }
+
+    // Custom Border Resizers
+    const addResizer = (cls, cursor, css) => {
+        const r = document.createElement('div');
+        r.className = cls;
+        r.style.cssText = 'position:absolute;z-index:100;user-select:none;' + css;
+        r.style.cursor = cursor;
+        panel.appendChild(r);
+        
+        r.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Fix positioning to absolute pixels to avoid margin:auto flex conflicts
+            const rect = panel.getBoundingClientRect();
+            panel.style.margin = '0';
+            panel.style.left = rect.left + 'px';
+            panel.style.top = rect.top + 'px';
+            panel.style.right = 'auto';
+            panel.style.bottom = 'auto';
+            
+            let startX = e.clientX;
+            let startY = e.clientY;
+            let startW = rect.width;
+            let startH = rect.height;
+            let startL = rect.left;
+            let startT = rect.top;
+            
+            // Read any existing transform translates and bake them into left/top so resizing doesn't jump
+            const translateMatch = panel.style.transform.match(/translate3d\(([-\d.]+)px,\s*([-\d.]+)px/);
+            if (translateMatch) {
+                const tx = parseFloat(translateMatch[1]);
+                const ty = parseFloat(translateMatch[2]);
+                panel.style.left = (rect.left - tx) + 'px';
+                panel.style.top = (rect.top - ty) + 'px';
+                startL = rect.left - tx;
+                startT = rect.top - ty;
+            }
+            
+            // Remove transform completely to avoid coordinate complex math during resize
+            panel.style.transform = 'none';
+            panel.removeAttribute('data-translate-x');
+            panel.removeAttribute('data-translate-y');
+            
+            const onMouseMove = (me) => {
+                const dx = me.clientX - startX;
+                const dy = me.clientY - startY;
+                
+                if (cls.includes('resizer-r') || cls.includes('br')) {
+                    panel.style.width = Math.max(300, startW + dx) + 'px';
+                }
+                if (cls.includes('resizer-b') || cls.includes('br')) {
+                    panel.style.height = Math.max(200, startH + dy) + 'px';
+                }
+                if (cls.includes('resizer-l')) {
+                    const w = Math.max(300, startW - dx);
+                    if (w > 300) {
+                        panel.style.width = w + 'px';
+                        panel.style.left = (startL + dx) + 'px';
+                    }
+                }
+                if (cls.includes('resizer-t')) {
+                    const h = Math.max(200, startH - dy);
+                    if (h > 200) {
+                        panel.style.height = h + 'px';
+                        panel.style.top = (startT + dy) + 'px';
+                    }
+                }
+            };
+            
+            const onMouseUp = () => {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            };
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        });
+    };
+
+    addResizer('resizer-r', 'e-resize', 'right: -3px; top: 0; width: 6px; height: 100%;');
+    addResizer('resizer-b', 's-resize', 'bottom: -3px; left: 0; height: 6px; width: 100%;');
+    addResizer('resizer-br', 'se-resize', 'bottom: -3px; right: -3px; width: 12px; height: 12px; cursor: se-resize; z-index: 101;');
+    addResizer('resizer-l', 'w-resize', 'left: -3px; top: 0; width: 6px; height: 100%;');
+    addResizer('resizer-t', 'n-resize', 'top: -3px; left: 0; height: 6px; width: 100%;');
+
 
     // Filter Bar (Column Selector & Copy Toolbar)
     let filterBar = null;
