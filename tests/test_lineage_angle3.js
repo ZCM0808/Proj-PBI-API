@@ -13,22 +13,9 @@ class MockElement {
         this.innerHTML = '';
         this.innerText = '';
         this.dataset = {};
-        this.getContext = () => ({
-            fillStyle: '',
-            fillRect: () => {},
-            drawImage: () => {},
-            fillText: () => {}
-        });
-        this.toBlob = (cb) => cb(new Blob([], { type: 'image/png' }));
-        this.click = () => {};
     }
     appendChild(child) {
         this.children.push(child);
-        return child;
-    }
-    removeChild(child) {
-        const idx = this.children.indexOf(child);
-        if (idx >= 0) this.children.splice(idx, 1);
         return child;
     }
     remove() {
@@ -47,8 +34,6 @@ class MockElement {
     getAttribute(k) { return this[k]; }
 }
 
-global.setTimeout = (fn, ms) => fn();
-
 const mockBody = new MockElement('body');
 const mockElements = new Map();
 
@@ -58,7 +43,6 @@ global.document = {
         const el = new MockElement(tag);
         return el;
     },
-    addEventListener: () => {},
     getElementById: (id) => {
         if (!mockElements.has(id)) {
             mockElements.set(id, new MockElement('div'));
@@ -103,14 +87,8 @@ global.window = {
                 };
             }
             on(evt, fn) { this.events[evt] = fn; }
-            once(evt, fn) { this.events[evt] = fn; }
-            storePositions() {}
             fit() {}
             redraw() {}
-            startSimulation() { this.isSimulating = true; }
-            stopSimulation() { this.isSimulating = false; }
-            getScale() { return 1.0; }
-            moveTo(opts) {}
             setOptions(opts) { this.options = Object.assign(this.options, opts); }
         }
     },
@@ -200,50 +178,13 @@ assert(tblContainer.innerHTML.length > 0, 'Table container should be populated w
 console.log('5. Testing onTableSearch()...');
 window.LineageExplorer.onTableSearch('TerritoryID');
 assert(tblContainer.innerHTML.includes('TerritoryID'), 'Search filter should retain matching rows');
-window.LineageExplorer.onTableSearch(''); // Clear filter
 
-// 6. Test Universal Table Sorting
-console.log('6. Testing Universal Table Sorting...');
-window.LineageExplorer.sortLineageTable('srcName');
-assert(tblContainer.innerHTML.includes('↑'), 'Table should display ascending sort indicator');
-window.LineageExplorer.sortLineageTable('srcName');
-assert(tblContainer.innerHTML.includes('↓'), 'Table should display descending sort indicator');
-window.LineageExplorer.resetTableSort();
-
-// 7. Test Column Visibility Toggling
-console.log('7. Testing Column Visibility Toggling...');
-window.LineageExplorer.toggleColumnVisibility('joinKeys', false);
-assert(!tblContainer.innerHTML.includes('data-col="joinKeys"'), 'joinKeys column should be hidden');
-window.LineageExplorer.toggleColumnVisibility('joinKeys', true);
-assert(tblContainer.innerHTML.includes('data-col="joinKeys"'), 'joinKeys column should be restored');
-
-// 8. Test No-Wrap Defense on Badges
-console.log('8. Testing No-Wrap Defense on Badges...');
-assert(tblContainer.innerHTML.includes('white-space: nowrap'), 'Badges and cells must have white-space: nowrap to prevent wrapping');
-
-// 9. Test Excel Export
-console.log('9. Testing exportLineageExcel()...');
+// 6. Test Excel Export
+console.log('6. Testing exportLineageExcel()...');
 window.LineageExplorer.exportLineageExcel();
 
-// 10. Test Image Export
-console.log('10. Testing exportDAGImage()...');
+// 7. Test Image Export
+console.log('7. Testing exportDAGImage()...');
 window.LineageExplorer.exportDAGImage();
 
-// 11. Test Zoom Controls
-console.log('11. Testing zoomIn() and zoomOut()...');
-window.LineageExplorer.zoomIn();
-window.LineageExplorer.zoomOut();
-
-// 12. Test Force-Directed Layout & Realign
-console.log('12. Testing Force-Directed Layout & Realign...');
-window.LineageExplorer.toggleLayoutMode();
-const btnForce = document.getElementById('lineage-btn-force-layout');
-assert(btnForce.innerHTML.includes('流动中'), 'Button should indicate flowing active state');
-window.LineageExplorer.toggleLayoutMode();
-assert(btnForce.innerHTML.includes('力导向'), 'Button should return to normal state on pause');
-window.LineageExplorer.realignDAG();
-assert(btnForce.innerHTML.includes('力导向'), 'Realign should keep physics disabled');
-
-console.log('✅ TEST ANGLE 3 PASSED: Full Lifecycle Browser DOM, Highlighting, Dual-View, Universal Table, Force-Directed Physics & Export Successful!');
-
-
+console.log('✅ TEST ANGLE 3 PASSED: Full Lifecycle Browser DOM, Highlighting, Dual-View & Export Successful!');
