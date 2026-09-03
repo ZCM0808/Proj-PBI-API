@@ -19813,51 +19813,10 @@ window._inspectResultCache = null;
 
 window.initDatasourceInspectorWorkflow = function() {
     const wsSel = document.getElementById('wf-inspect-workspace');
-    const repSel = document.getElementById('wf-inspect-report');
-    const dsSel = document.getElementById('wf-inspect-dataset');
-
     if (!wsSel) return;
 
-    // 联动填充 Workspace
-    if (wsSel.options.length === 0 || wsSel.innerHTML === '') {
-        const savedWorkspaces = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
-        wsSel.innerHTML = '<option value="">-- 请选择 Workspace --</option>';
-        savedWorkspaces.forEach(w => {
-            const opt = document.createElement('option');
-            opt.value = w.id || w.name;
-            opt.textContent = w.alias || w.name || w.id;
-            wsSel.appendChild(opt);
-        });
-        if (savedWorkspaces.length > 0) {
-            wsSel.selectedIndex = 1;
-        } else {
-            window.wfInspectRefreshWorkspace();
-        }
-    }
-
-    if (wsSel.value) {
-        window.wfInspectRefreshReport();
-        window.wfInspectRefreshDataset();
-    }
-
-    wsSel.onchange = () => {
-        window.wfInspectRefreshReport();
-        window.wfInspectRefreshDataset();
-    };
-
-    if (repSel) {
-        repSel.onchange = () => {
-            const selectedOpt = repSel.options[repSel.selectedIndex];
-            const boundDsId = selectedOpt ? selectedOpt.getAttribute('data-dataset-id') : '';
-            if (boundDsId && dsSel) {
-                for (let i = 0; i < dsSel.options.length; i++) {
-                    if (dsSel.options[i].value === boundDsId) {
-                        dsSel.selectedIndex = i;
-                        break;
-                    }
-                }
-            }
-        };
+    if (wsSel.options.length <= 1) {
+        window.wfInspectRefreshWorkspace();
     }
 };
 
