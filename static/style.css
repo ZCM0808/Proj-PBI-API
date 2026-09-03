@@ -3628,6 +3628,7 @@ svg.spinning {
 /* --- Zen Mode (Focus Mode) --- */
 body.zen-mode #app-rail {
     width: 0 !important;
+    margin: 0 !important;
     min-width: 0 !important;
     padding: 0 !important;
     border: none !important;
@@ -3637,6 +3638,7 @@ body.zen-mode #app-rail {
 
 body.zen-mode .sidebar {
     width: 0 !important;
+    margin: 0 !important;
     min-width: 0 !important;
     padding: 0 !important;
     border: none !important;
