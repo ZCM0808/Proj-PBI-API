@@ -652,7 +652,7 @@ window.LineageExplorer = (function() {
             }
 
             return `
-                <tr style="border-bottom: 1px solid var(--panel-border); transition: background 0.15s ease;">
+                <tr style="border-bottom: 1px solid var(--panel-border);">
                     <td style="padding: 10px 12px; font-family: monospace; color: var(--text-secondary); text-align: center;">${idx + 1}</td>
                     <td style="padding: 10px 12px; font-weight: 600; color: var(--text-primary);">${srcName}</td>
                     <td style="padding: 10px 12px; text-align: center; color: var(--text-secondary); font-size: 0.8rem;">➔</td>
@@ -819,12 +819,12 @@ window.LineageExplorer = (function() {
         const overlay = document.createElement('div');
         overlay.id = 'lineage-explorer-modal';
         overlay.className = 'modal-overlay';
-        overlay.style.cssText = 'display: flex; z-index: 21000; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); align-items: center; justify-content: center;';
+        overlay.style.cssText = 'display: flex; z-index: 21000; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.72); align-items: center; justify-content: center;';
 
         const safeTitle = parsed.datasetName || 'Dataset';
 
         overlay.innerHTML = `
-            <div class="modal-content glass-panel" style="width: min(96vw, 1380px); height: min(92vh, 880px); display: flex; flex-direction: column; background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 12px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); overflow: hidden; position: relative;">
+            <div class="modal-content" style="width: min(96vw, 1380px); height: min(92vh, 880px); display: flex; flex-direction: column; background: var(--panel-bg, #0f172a); border: 1px solid var(--panel-border); border-radius: 12px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); overflow: hidden; position: relative;">
                 <!-- 弹窗顶栏 -->
                 <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--panel-border); background: var(--overlay-5); cursor: move;">
                     <div style="display: flex; align-items: center; gap: 12px;">
@@ -863,8 +863,8 @@ window.LineageExplorer = (function() {
 
                 <!-- 弹窗主体区 (包含主画布与侧边看板) -->
                 <div class="modal-body" style="flex: 1; min-height: 0; position: relative; overflow: hidden; padding: 0;">
-                    <!-- 1. DAG 视图容器 (通过 visibility/opacity 瞬时硬件加速切换，杜绝 Canvas 销毁重排卡顿) -->
-                    <div id="lineage-dag-view" style="position: absolute; inset: 0; display: flex; height: 100%; width: 100%; visibility: visible; opacity: 1; pointer-events: auto; z-index: 2; transition: opacity 0.15s ease;">
+                    <!-- 1. DAG 视图容器 (通过 visibility/z-index 瞬时硬件加速切换，杜绝 Canvas 销毁重排卡顿) -->
+                    <div id="lineage-dag-view" style="position: absolute; inset: 0; display: flex; height: 100%; width: 100%; visibility: visible; pointer-events: auto; z-index: 10;">
                         <!-- 主拓扑图画布 -->
                         <div id="lineage-vis-container" style="flex: 1; height: 100%; background: #0f172a; position: relative;"></div>
 
@@ -910,8 +910,8 @@ window.LineageExplorer = (function() {
                         </div>
                     </div>
 
-                    <!-- 2. 表格列表视图容器 (Table View Container，使用绝对定位层叠与硬件加速淡入淡出) -->
-                    <div id="lineage-table-view" style="position: absolute; inset: 0; display: flex; flex-direction: column; height: 100%; width: 100%; background: var(--panel-bg); padding: 14px; box-sizing: border-box; gap: 10px; visibility: hidden; opacity: 0; pointer-events: none; z-index: 1; transition: opacity 0.15s ease;">
+                    <!-- 2. 表格列表视图容器 (Table View Container，首屏静默预渲染完毕，0 毫秒图层切换) -->
+                    <div id="lineage-table-view" style="position: absolute; inset: 0; display: flex; flex-direction: column; height: 100%; width: 100%; background: var(--panel-bg, #0f172a); padding: 14px; box-sizing: border-box; gap: 10px; visibility: hidden; pointer-events: none; z-index: 1;">
                         <!-- 搜索过滤栏 -->
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <div style="display: flex; align-items: center; gap: 8px;">
@@ -943,10 +943,17 @@ window.LineageExplorer = (function() {
                 renderNetwork(container, parsed);
                 resetHighlight();
             }
-        }, 80);
+            // 预渲染血缘明细表，使后续 Tab 切换无需进行 DOM 解析与字符串拼接，达成 0ms 瞬间切换
+            const tblContent = document.getElementById('lineage-table-content');
+            if (tblContent && !tblContent._hasTableLoaded) {
+                renderLineageTable(tblContent, parsed);
+                tblContent._hasTableLoaded = true;
+            }
+        }, 60);
     }
 
     function switchView(mode) {
+        if (currentViewMode === mode) return;
         currentViewMode = mode;
         const dagView = document.getElementById('lineage-dag-view');
         const tableView = document.getElementById('lineage-table-view');
@@ -956,50 +963,43 @@ window.LineageExplorer = (function() {
         if (mode === 'dag') {
             if (dagView) {
                 dagView.style.visibility = 'visible';
-                dagView.style.opacity = '1';
                 dagView.style.pointerEvents = 'auto';
-                dagView.style.zIndex = '2';
+                dagView.style.zIndex = '10';
             }
             if (tableView) {
                 tableView.style.visibility = 'hidden';
-                tableView.style.opacity = '0';
                 tableView.style.pointerEvents = 'none';
                 tableView.style.zIndex = '1';
             }
             if (tabDag) {
-                tabDag.style.background = 'var(--accent)';
+                tabDag.style.background = 'var(--accent, #6366f1)';
                 tabDag.style.color = '#ffffff';
                 if (tabDag.classList) tabDag.classList.add('active');
             }
             if (tabTable) {
                 tabTable.style.background = 'transparent';
-                tabTable.style.color = 'var(--text-secondary)';
+                tabTable.style.color = 'var(--text-secondary, #94a3b8)';
                 if (tabTable.classList) tabTable.classList.remove('active');
-            }
-            if (currentNetwork) {
-                currentNetwork.redraw();
             }
         } else {
             if (dagView) {
                 dagView.style.visibility = 'hidden';
-                dagView.style.opacity = '0';
                 dagView.style.pointerEvents = 'none';
                 dagView.style.zIndex = '1';
             }
             if (tableView) {
                 tableView.style.visibility = 'visible';
-                tableView.style.opacity = '1';
                 tableView.style.pointerEvents = 'auto';
-                tableView.style.zIndex = '2';
+                tableView.style.zIndex = '10';
             }
             if (tabTable) {
-                tabTable.style.background = 'var(--accent)';
+                tabTable.style.background = 'var(--accent, #6366f1)';
                 tabTable.style.color = '#ffffff';
                 if (tabTable.classList) tabTable.classList.add('active');
             }
             if (tabDag) {
                 tabDag.style.background = 'transparent';
-                tabDag.style.color = 'var(--text-secondary)';
+                tabDag.style.color = 'var(--text-secondary, #94a3b8)';
                 if (tabDag.classList) tabDag.classList.remove('active');
             }
             const tblContent = document.getElementById('lineage-table-content');
