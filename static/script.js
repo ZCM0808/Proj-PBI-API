@@ -7294,8 +7294,7 @@ const loadReqHistory = (searchTerm = "") => {
         });
 
     }
-
-
+    window.makeDraggable = makeDraggable;
 
     window.setupFLIPModal = function setupFLIPModal(btnOpen, btnClose, modalOverlay, onLoadCallback = null) {
 
@@ -16649,6 +16648,20 @@ window.showGumUserDetailModal = function(recOrIdx) {
                 </table>
             `;
         }
+    }
+
+    const modalContent = modal.querySelector('.modal-content');
+    const modalHeader = modal.querySelector('.modal-header');
+    if (modalContent && modalHeader && !modal._draggableInit && typeof window.makeDraggable === 'function') {
+        window.makeDraggable(modalContent, modalHeader);
+        modal._draggableInit = true;
+    }
+    if (modalContent && typeof window.centerModal === 'function') {
+        window.centerModal(modalContent);
+    } else if (modalContent) {
+        modalContent.style.transform = 'translate3d(0px, 0px, 0px)';
+        modalContent.setAttribute('data-translate-x', '0');
+        modalContent.setAttribute('data-translate-y', '0');
     }
 
     modal.style.display = 'flex';

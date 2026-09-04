@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260904_v2255">
+    <link rel="stylesheet" href="/static/style.css?v=20260904_v2258">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -1069,8 +1069,8 @@
                                         </select>
                                     </div>
                                     <div>
-                                        <label style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500;">搜索 (Search & Filter)</label>
-                                        <input type="text" id="wf-gum-search" class="wf-input" style="height: 34px;" placeholder="按用户邮箱、姓名、工作区或权限筛选..." onkeyup="if(window.filterGumTable) window.filterGumTable()">
+                                        <label style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500;">🔍 搜索与过滤 (Search &amp; Filter)</label>
+                                        <input type="text" id="wf-gum-search" class="wf-input" style="height: 34px;" placeholder="按用户邮箱、姓名、工作区或权限筛选..." oninput="if(window.filterGumTable) window.filterGumTable()">
                                     </div>
                                     <div style="display: flex; gap: 6px; padding-bottom: 1px;">
                                         <button type="button" class="btn-wf-md btn-wf-secondary" onclick="if(window.openGumAddUserModal) window.openGumAddUserModal()" title="添加用户到工作区" style="height: 34px;">+ Add User</button>
@@ -2515,7 +2515,7 @@
         </div>
     </div>
     <!-- Add User Permission Modal -->
-    <div id="gum-add-modal" class="modal-overlay" style="display: none;">
+    <div id="gum-add-modal" class="modal-overlay" style="display: none; z-index: 25000;">
         <div class="modal-content glass-panel">
             <div class="modal-header">
                 <h3 style="font-size: 1.05rem;">Add User to Workspace</h3>
@@ -2559,7 +2559,7 @@
         </div>
     </div>
     <!-- Edit User Permission Modal -->
-    <div id="gum-edit-modal" class="modal-overlay" style="display: none;">
+    <div id="gum-edit-modal" class="modal-overlay" style="display: none; z-index: 25000;">
         <div class="modal-content glass-panel">
             <div class="modal-header">
                 <h3 style="font-size: 1.05rem;">Edit Workspace Access</h3>
@@ -2594,7 +2594,7 @@
     </div>
 
     <!-- User Deep Profile & Permission Topology Modal -->
-    <div id="gum-user-detail-modal" class="modal-overlay" style="display: none; z-index: 10004;">
+    <div id="gum-user-detail-modal" class="modal-overlay" style="display: none; z-index: 25000;">
         <div class="modal-content glass-panel" style="max-width: 780px; width: 90%; max-height: 85vh; display: flex; flex-direction: column;">
             <div class="modal-header" style="border-bottom: 1px solid var(--overlay-10); padding: 12px 18px; display: flex; align-items: center; justify-content: space-between;">
                 <div style="display: flex; align-items: center; gap: 8px;">
@@ -2628,7 +2628,7 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260904_v2245"></script>
     <script src="/static/universal_modal.js?v=20260904_v2245"></script>
-    <script src="/static/script.js?v=20260904_v2255"></script>
+    <script src="/static/script.js?v=20260904_v2258"></script>
 
 
 
