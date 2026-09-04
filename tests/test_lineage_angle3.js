@@ -13,9 +13,22 @@ class MockElement {
         this.innerHTML = '';
         this.innerText = '';
         this.dataset = {};
+        this.getContext = () => ({
+            fillStyle: '',
+            fillRect: () => {},
+            drawImage: () => {},
+            fillText: () => {}
+        });
+        this.toBlob = (cb) => cb(new Blob([], { type: 'image/png' }));
+        this.click = () => {};
     }
     appendChild(child) {
         this.children.push(child);
+        return child;
+    }
+    removeChild(child) {
+        const idx = this.children.indexOf(child);
+        if (idx >= 0) this.children.splice(idx, 1);
         return child;
     }
     remove() {
@@ -34,6 +47,8 @@ class MockElement {
     getAttribute(k) { return this[k]; }
 }
 
+global.setTimeout = (fn, ms) => fn();
+
 const mockBody = new MockElement('body');
 const mockElements = new Map();
 
@@ -43,6 +58,7 @@ global.document = {
         const el = new MockElement(tag);
         return el;
     },
+    addEventListener: () => {},
     getElementById: (id) => {
         if (!mockElements.has(id)) {
             mockElements.set(id, new MockElement('div'));
@@ -91,6 +107,8 @@ global.window = {
             storePositions() {}
             fit() {}
             redraw() {}
+            startSimulation() { this.isSimulating = true; }
+            stopSimulation() { this.isSimulating = false; }
             getScale() { return 1.0; }
             moveTo(opts) {}
             setOptions(opts) { this.options = Object.assign(this.options, opts); }
@@ -216,5 +234,16 @@ console.log('11. Testing zoomIn() and zoomOut()...');
 window.LineageExplorer.zoomIn();
 window.LineageExplorer.zoomOut();
 
-console.log('✅ TEST ANGLE 3 PASSED: Full Lifecycle Browser DOM, Highlighting, Dual-View, Universal Table & Export Successful!');
+// 12. Test Force-Directed Layout & Realign
+console.log('12. Testing Force-Directed Layout & Realign...');
+window.LineageExplorer.toggleLayoutMode();
+const btnForce = document.getElementById('lineage-btn-force-layout');
+assert(btnForce.innerHTML.includes('流动中'), 'Button should indicate flowing active state');
+window.LineageExplorer.toggleLayoutMode();
+assert(btnForce.innerHTML.includes('力导向'), 'Button should return to normal state on pause');
+window.LineageExplorer.realignDAG();
+assert(btnForce.innerHTML.includes('力导向'), 'Realign should keep physics disabled');
+
+console.log('✅ TEST ANGLE 3 PASSED: Full Lifecycle Browser DOM, Highlighting, Dual-View, Universal Table, Force-Directed Physics & Export Successful!');
+
 

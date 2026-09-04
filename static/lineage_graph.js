@@ -15,6 +15,7 @@ window.LineageExplorer = (function() {
     let currentParsedData = null;
     let activeHighlightNodeId = null;
     let currentViewMode = 'dag'; // 'dag' | 'table'
+    let isPhysicsActive = false; // 当前力导向物理引擎激活状态
 
     // =========================================================================
     // 1. M 语言与模型关系血缘抽取核心算法 (M Lineage Parser)
@@ -1114,7 +1115,7 @@ window.LineageExplorer = (function() {
                             <button type="button" class="lineage-ctrl-btn" onclick="window.LineageExplorer.realignDAG()" title="重新恢复整齐的自左向右 DAG 层次排列" style="display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 9px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12); color: #ffffff; border-radius: 6px; cursor: pointer; font-size: 0.74rem; font-weight: 600; transition: all 0.15s ease;">
                                 <span>📐</span><span>整齐重排</span>
                             </button>
-                            <button type="button" class="lineage-ctrl-btn" onclick="window.LineageExplorer.toggleLayoutMode()" title="切换层次排列 / 自由物理力导向分布" style="display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 9px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12); color: #ffffff; border-radius: 6px; cursor: pointer; font-size: 0.74rem; font-weight: 600; transition: all 0.15s ease;">
+                            <button type="button" id="lineage-btn-force-layout" class="lineage-ctrl-btn" onclick="window.LineageExplorer.toggleLayoutMode()" title="切换层次排列 / 自由物理力导向分布" style="display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 9px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12); color: #ffffff; border-radius: 6px; cursor: pointer; font-size: 0.74rem; font-weight: 600; transition: all 0.15s ease;">
                                 <span>🌐</span><span>力导向</span>
                             </button>
                             <button type="button" class="lineage-ctrl-btn" onclick="window.LineageExplorer.resetHighlight()" title="清除聚焦与节点高亮" style="display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 9px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12); color: #ffffff; border-radius: 6px; cursor: pointer; font-size: 0.74rem; font-weight: 600; transition: all 0.15s ease;">
@@ -1295,9 +1296,45 @@ window.LineageExplorer = (function() {
         }
     }
 
+    function updatePhysicsBtnUI() {
+        const btn = document.getElementById('lineage-btn-force-layout');
+        if (!btn) return;
+        if (isPhysicsActive) {
+            btn.style.background = 'var(--accent, #6366f1)';
+            btn.style.borderColor = 'var(--accent, #6366f1)';
+            btn.style.color = '#ffffff';
+            btn.style.boxShadow = '0 0 10px rgba(99, 102, 241, 0.45)';
+            btn.innerHTML = '<span>🌀</span><span>流动中</span>';
+            btn.title = '点击暂停/锁定当前物理力导向分布';
+        } else {
+            btn.style.background = 'rgba(255, 255, 255, 0.12)';
+            btn.style.borderColor = 'rgba(255, 255, 255, 0.25)';
+            btn.style.color = '#ffffff';
+            btn.style.boxShadow = 'none';
+            btn.innerHTML = '<span>🌐</span><span>力导向</span>';
+            btn.title = '切换层次排列 / 自由物理力导向分布';
+        }
+    }
+
     function realignDAG() {
         if (!currentNetwork) return;
+
+        // 彻底关停力导向物理模拟状态
+        isPhysicsActive = false;
+        updatePhysicsBtnUI();
+        if (typeof currentNetwork.stopSimulation === 'function') {
+            currentNetwork.stopSimulation();
+        }
+
+        // 连线平滑度恢复为水平三次贝塞尔曲线
         currentNetwork.setOptions({
+            edges: {
+                smooth: {
+                    type: 'cubicBezier',
+                    forceDirection: 'horizontal',
+                    roundness: 0.25
+                }
+            },
             layout: {
                 hierarchical: {
                     enabled: true,
@@ -1312,6 +1349,7 @@ window.LineageExplorer = (function() {
             },
             physics: { enabled: false }
         });
+
         const onRealignDraw = function() {
             setTimeout(() => {
                 try {
@@ -1339,24 +1377,67 @@ window.LineageExplorer = (function() {
         }
     }
 
-    let isHierarchical = true;
     function toggleLayoutMode() {
         if (!currentNetwork) return;
-        isHierarchical = !isHierarchical;
-        currentNetwork.setOptions({
-            layout: {
-                hierarchical: {
-                    enabled: isHierarchical,
-                    direction: 'LR',
-                    sortMethod: 'directed'
+        isPhysicsActive = !isPhysicsActive;
+        updatePhysicsBtnUI();
+
+        if (isPhysicsActive) {
+            // 1. 关闭层级排版限制
+            // 2. 启用专为 DAG/网络图优化的 forceAtlas2Based 求解器：高阻尼(0.88)、柔和弹簧(0.06)、防重叠
+            // 3. 动态切换连线为 continuous 有机弧线，杜绝水平贝塞尔撕裂抽搐
+            currentNetwork.setOptions({
+                layout: { hierarchical: { enabled: false } },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        roundness: 0.35
+                    }
+                },
+                physics: {
+                    enabled: true,
+                    solver: 'forceAtlas2Based',
+                    forceAtlas2Based: {
+                        gravitationalConstant: -60,
+                        centralGravity: 0.012,
+                        springLength: 150,
+                        springConstant: 0.06,
+                        damping: 0.88,
+                        avoidOverlap: 0.8
+                    },
+                    stabilization: {
+                        enabled: false
+                    },
+                    minVelocity: 0.75
                 }
-            },
-            physics: {
-                enabled: !isHierarchical
+            });
+
+            // 核心防御：显式调用 startSimulation() 激活物理迭代循环，杜绝“有时点击无效”假死问题
+            if (typeof currentNetwork.startSimulation === 'function') {
+                currentNetwork.startSimulation();
             }
-        });
-        if (window.showNotification) {
-            window.showNotification(isHierarchical ? '📐 已切换为：层级有向无环图 (DAG)' : '🌐 已切换为：力导向物理自由图', 'info');
+
+            if (window.showNotification) {
+                window.showNotification('🌐 已开启力导向物理有机流动分布', 'info');
+            }
+        } else {
+            // 暂停/关闭物理演化，优雅保留当前流动展开的姿态
+            if (typeof currentNetwork.stopSimulation === 'function') {
+                currentNetwork.stopSimulation();
+            }
+            try {
+                if (typeof currentNetwork.storePositions === 'function') {
+                    currentNetwork.storePositions();
+                }
+            } catch(e) {}
+
+            currentNetwork.setOptions({
+                physics: { enabled: false }
+            });
+
+            if (window.showNotification) {
+                window.showNotification('⏸️ 力导向物理流动已暂停并固定当前位置', 'info');
+            }
         }
     }
 
