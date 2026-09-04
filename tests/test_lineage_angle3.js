@@ -91,6 +91,8 @@ global.window = {
             storePositions() {}
             fit() {}
             redraw() {}
+            getScale() { return 1.0; }
+            moveTo(opts) {}
             setOptions(opts) { this.options = Object.assign(this.options, opts); }
         }
     },
@@ -188,5 +190,10 @@ window.LineageExplorer.exportLineageExcel();
 // 7. Test Image Export
 console.log('7. Testing exportDAGImage()...');
 window.LineageExplorer.exportDAGImage();
+
+// 8. Test Zoom Controls
+console.log('8. Testing zoomIn() and zoomOut()...');
+window.LineageExplorer.zoomIn();
+window.LineageExplorer.zoomOut();
 
 console.log('✅ TEST ANGLE 3 PASSED: Full Lifecycle Browser DOM, Highlighting, Dual-View & Export Successful!');
