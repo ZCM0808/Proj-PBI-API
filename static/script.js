@@ -193,7 +193,7 @@ const WORKFLOW_METADATA = [
     { key: 'export_dataset_tables', icon: '🗄️', title: 'Export Dataset Tables', zh: '批量导出数据集表', desc: '批量将数据集物理表数据导出为 CSV' },
     { key: 'dataset_partitions_manager', icon: '🧩', title: 'Dataset Partitions Manager', zh: '数据集分区管理与定向刷新', desc: '穿透 Analysis Services 引擎，检测并执行单分区定向刷新' },
     { key: 'xmla_interactive_refresh', icon: '⚡', title: 'XMLA Interactive Refresh', zh: 'XMLA 交互式模型/表/分区刷新', desc: '基于 XMLA Endpoint 执行模型级/表级细粒度 TMSL 刷新' },
-    { key: 'global_user_manager', icon: '👥', title: 'Global Permissions Manager', zh: '全局工作区权限矩阵', desc: '跨工作区批量检索用户权限、分配角色及批量剥离离职用户' },
+    { key: 'global_user_manager', icon: '👥', title: 'Global User & Permissions Manager', zh: '全局用户管理与权限穿透审计 (Global User Manager)', desc: '跨工作区批量穿透检索用户权限、提权偏离诊断与全景可视化图表' },
     { key: 'report_view_count', icon: '📈', title: 'Admin Report View Count', zh: '报表访问热度统计', desc: '基于 Activity Events 审计日志统计报表访问频次与用户数' },
     { key: 'check_permissions', icon: '🛡️', title: 'Check Current Permissions', zh: 'Token 与权限全景体检', desc: '解包当前 Token Payload 并探测 API 权限范围' },
     { key: 'smart_pipeline', icon: '🚀', title: 'Smart DataOps Pipeline', zh: '智能数据流水线', desc: '自动绑定 Gateway、扫描元数据与数据集健康度巡检' },
