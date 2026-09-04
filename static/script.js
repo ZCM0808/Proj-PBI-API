@@ -3165,7 +3165,46 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     }
 
+    window.updateRequestBodyCollapseState = function(hasBody = null) {
+        const container = document.getElementById('req-body-container') || document.querySelector('.body-editor-container');
+        const badge = document.getElementById('req-body-status-badge');
+        const toggleBtn = document.getElementById('toggle-req-body-btn');
+        const bodyInput = document.getElementById('request-body');
+        const methodSelect = document.getElementById('http-method');
 
+        if (!container) return;
+
+        if (hasBody === null) {
+            const val = (bodyInput?.value || '').trim();
+            const method = (methodSelect?.value || 'GET').toUpperCase();
+            hasBody = Boolean(val && val.length > 0 && !['GET', 'DELETE', 'HEAD'].includes(method));
+        }
+
+        if (!hasBody) {
+            container.classList.add('is-collapsed');
+            if (badge) badge.style.display = 'inline-block';
+            if (toggleBtn) {
+                const sp = toggleBtn.querySelector('span');
+                if (sp) sp.textContent = '展开';
+                else toggleBtn.textContent = '展开';
+            }
+        } else {
+            container.classList.remove('is-collapsed');
+            if (badge) badge.style.display = 'none';
+            if (toggleBtn) {
+                const sp = toggleBtn.querySelector('span');
+                if (sp) sp.textContent = '折叠';
+                else toggleBtn.textContent = '折叠';
+            }
+        }
+    };
+
+    window.toggleRequestBodyCollapse = function() {
+        const container = document.getElementById('req-body-container') || document.querySelector('.body-editor-container');
+        if (!container) return;
+        const isCurrentlyCollapsed = container.classList.contains('is-collapsed');
+        window.updateRequestBodyCollapseState(isCurrentlyCollapsed);
+    };
 
     function getOfficialDocUrl(ep) {
 
@@ -3517,6 +3556,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             });
 
+        }
+
+        if (methodSelect) {
+            methodSelect.addEventListener('change', () => {
+                const m = (methodSelect.value || '').toUpperCase();
+                if (['POST', 'PUT', 'PATCH'].includes(m)) {
+                    window.updateRequestBodyCollapseState(true);
+                } else {
+                    const val = (bodyInput?.value || '').trim();
+                    window.updateRequestBodyCollapseState(Boolean(val));
+                }
+            });
         }
 
 
@@ -5524,8 +5575,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     methodSelect.disabled = true; // 锁定 Method
 
                     bodyInput.value = ep.body;
-
-                                    }
+                    if (window.updateRequestBodyCollapseState) window.updateRequestBodyCollapseState(Boolean(ep.body && ep.body.trim()));
+                }
 
 
 
@@ -5620,6 +5671,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     methodSelect.disabled = true; // 锁定 Method
 
                     bodyInput.value = originalBody;
+                    if (window.updateRequestBodyCollapseState) window.updateRequestBodyCollapseState(Boolean(originalBody && originalBody.trim()));
 
                                         
 
@@ -6338,6 +6390,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateParamHints(originalPath);
 
         bodyInput.value = originalBody;
+        if (window.updateRequestBodyCollapseState) {
+            window.updateRequestBodyCollapseState(Boolean(originalBody && originalBody.trim()));
+        }
 
         
 
@@ -6568,6 +6623,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             endpointInput.dispatchEvent(new Event('input'));
 
             bodyInput.value = '';
+            if (window.updateRequestBodyCollapseState) {
+                window.updateRequestBodyCollapseState(false);
+            }
 
             toggleMethodBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span>Unlock</span>';
 
@@ -6890,6 +6948,9 @@ const loadReqHistory = (searchTerm = "") => {
                     updateParamHints(h.url);
 
                     bodyInput.value = h.body || '';
+                    if (window.updateRequestBodyCollapseState) {
+                        window.updateRequestBodyCollapseState(Boolean(h.body && h.body.trim()));
+                    }
 
                                         methodSelect.disabled = true;
 

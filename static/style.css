@@ -967,6 +967,26 @@ body {
     flex-direction: column;
     gap: 0.5rem;
     flex: 1;
+    min-height: 0;
+    transition: flex 0.25s ease, height 0.25s ease;
+}
+
+.body-editor-container.is-collapsed {
+    flex: none !important;
+    height: auto !important;
+}
+
+.body-editor-container.is-collapsed .body-textarea-wrapper {
+    display: none !important;
+}
+
+#req-body-chevron {
+    transition: transform 0.2s ease;
+    transform: rotate(0deg);
+}
+
+.body-editor-container.is-collapsed #req-body-chevron {
+    transform: rotate(-90deg) !important;
 }
 
 .editor-header {
