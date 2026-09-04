@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260904_v2318">
+    <link rel="stylesheet" href="/static/style.css?v=20260904_v2340">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -2073,15 +2073,19 @@
 
                 </div>
 
-                <div class="body-editor-container" style="position: relative;">
+                <div class="body-editor-container is-collapsed" id="req-body-container" style="position: relative;">
 
-                    <div class="editor-header">
+                    <div class="editor-header" id="req-body-header" style="cursor: pointer; user-select: none;" onclick="window.toggleRequestBodyCollapse()" title="点击展开/折叠 Request Body (Click to toggle)">
 
-                        <span>Request Body (JSON)</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <svg id="req-body-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            <span style="font-weight: 600;">Request Body (JSON)</span>
+                            <span id="req-body-status-badge" style="display: inline-block; font-size: 0.7rem; padding: 1px 6px; border-radius: 4px; background: rgba(255,255,255,0.06); color: var(--text-secondary); border: 1px solid var(--overlay-10);">无需请求体</span>
+                        </div>
 
-                        <div style="margin-left:auto; display:flex; gap:12px; align-items:center;">
+                        <div style="margin-left:auto; display:flex; gap:10px; align-items:center;" onclick="event.stopPropagation()">
 
-                            <span class="hint">仅适用于 POST/PUT/PATCH 等包含请求体的方法</span>
+                            <span class="hint" id="req-body-hint">仅适用于 POST/PUT/PATCH 等包含请求体的方法</span>
 
                             <button id="format-req-body-btn" class="icon-btn" title="Format JSON" type="button" style="padding: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); border-color: var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer;">
 
@@ -2089,13 +2093,17 @@
 
                             </button>
 
+                            <button id="toggle-req-body-btn" class="icon-btn" title="展开 / 折叠 (Toggle Request Body)" type="button" onclick="window.toggleRequestBodyCollapse()" style="padding: 2px 8px; font-size: 0.72rem; color: var(--text-secondary); border: 1px solid var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer;">
+                                <span>展开</span>
+                            </button>
+
                         </div>
 
                     </div>
 
-                    <div class="body-textarea-wrapper" style="position: relative; flex: 1; display: flex; min-height: 0;">
+                    <div class="body-textarea-wrapper" id="req-body-wrapper" style="position: relative; flex: 1; display: flex; min-height: 0;">
 
-                        <textarea id="request-body" placeholder="[当前 API 接口无需提供 Request Body 请求体]"></textarea>
+                        <textarea id="request-body" placeholder="[当前 API 接口无需提供 Request Body 请求体]" oninput="if(this.value.trim()){ window.updateRequestBodyCollapseState(true); }"></textarea>
 
                         <button id="copy-req-body-btn" class="icon-btn copy-btn body-corner-copy-btn" title="Copy Request Body" type="button" onclick="window.handleCopyAction(this, document.getElementById('request-body').value || document.getElementById('request-body').placeholder)">
 
@@ -2609,7 +2617,7 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260904_v2245"></script>
     <script src="/static/universal_modal.js?v=20260904_v2245"></script>
-    <script src="/static/script.js?v=20260904_v2318"></script>
+    <script src="/static/script.js?v=20260904_v2340"></script>
 
 
 
