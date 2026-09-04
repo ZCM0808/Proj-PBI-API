@@ -14,15 +14,13 @@ class DeepPermissionScanRequest(BaseModel):
     workspace_id: Optional[str] = None
     deep_scan: bool = True
     access_token: Optional[str] = None
-    target_users: Optional[List[str]] = None
 
 
 async def scan_permissions_deep(
     workspace_id: Optional[str] = None,
     deep_scan: bool = True,
     config: Optional[Config] = None,
-    client: Optional[PBIClient] = None,
-    target_users: Optional[List[str]] = None
+    client: Optional[PBIClient] = None
 ) -> Dict[str, Any]:
     """
     全景扫描工作区用户权限与语义模型细粒度读写构成
@@ -31,11 +29,9 @@ async def scan_permissions_deep(
     3. 全局生效权限 (Effective Artifact Access via Admin API)
     4. 异常提权偏离检测 (Elevation Drift Detection)
     5. 可视化图表数据包 (KPIs, Donut Breakdown, Role Comparison, Model Coverage)
-    6. 支持指定目标用户列表过滤 (Targeted Principals Auditing)
     """
     cfg = config or Config()
     cli = client or PBIClient(cfg)
-    target_set = {u.strip().lower() for u in (target_users or []) if u.strip()}
 
     # 1. 获取目标工作区
     target_ws = (workspace_id or "").strip()
@@ -115,15 +111,6 @@ async def scan_permissions_deep(
                 users = u_res.get("value", [])
             except Exception:
                 users = []
-
-        if target_set:
-            matched_users = []
-            for u in users:
-                email_val = (u.get("emailAddress") or u.get("identifier") or "").strip().lower()
-                disp_val = (u.get("displayName") or "").strip().lower()
-                if any(t in email_val or t in disp_val or email_val in t for t in target_set):
-                    matched_users.append(u)
-            users = matched_users
 
         for u in users:
             graph_id = u.get("graphId") or u.get("identifier") or ""

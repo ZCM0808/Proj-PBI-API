@@ -2743,3 +2743,27 @@ async def api_inspect_datasource(req: DatasourceInspectRequest):
         return res
     except Exception as e:
         return {"success": False, "message": str(e)}
+
+class DeepPermissionScanRequest(BaseModel):
+    workspace_id: Optional[str] = None
+    deep_scan: bool = True
+    access_token: Optional[str] = None
+
+@app.post("/api/workflow/deep-permissions-scan")
+async def api_deep_permissions_scan(req: DeepPermissionScanRequest):
+    """全景权限与穿透生效治理扫描接口 (直属角色 + 安全组生效穿透 + 语义模型读写判定 + 提权偏离检测)"""
+    from src.permission_scanner import scan_permissions_deep
+    try:
+        cfg = Config()
+        cli = PBIClient(cfg)
+        res = await scan_permissions_deep(
+            workspace_id=req.workspace_id,
+            deep_scan=req.deep_scan,
+            config=cfg,
+            client=cli
+        )
+        return res
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+
