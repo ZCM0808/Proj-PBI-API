@@ -821,7 +821,7 @@ window.LineageExplorer = (function() {
         overlay.className = 'modal-overlay';
         overlay.style.cssText = 'display: flex; z-index: 21000; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); align-items: center; justify-content: center;';
 
-        const safeTitle = `🔍 [${parsed.datasetName}] 报表级全景血缘拓扑 DAG 看板`;
+        const safeTitle = parsed.datasetName || 'Dataset';
 
         overlay.innerHTML = `
             <div class="modal-content glass-panel" style="width: min(96vw, 1380px); height: min(92vh, 880px); display: flex; flex-direction: column; background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 12px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); overflow: hidden; position: relative;">
