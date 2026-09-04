@@ -288,7 +288,7 @@ window.LineageExplorer = (function() {
                 dragNodes: true,
                 zoomView: true,
                 dragView: true,
-                navigationButtons: true,
+                navigationButtons: false,
                 keyboard: true
             },
             physics: {
@@ -862,18 +862,37 @@ window.LineageExplorer = (function() {
                 </div>
 
                 <!-- 弹窗主体区 (包含主画布与侧边看板) -->
-                <div class="modal-body" style="flex: 1; min-height: 0; display: flex; position: relative; overflow: hidden; padding: 0;">
-                    <!-- 1. DAG 视图容器 -->
-                    <div id="lineage-dag-view" style="flex: 1; display: flex; position: relative; height: 100%; width: 100%;">
+                <div class="modal-body" style="flex: 1; min-height: 0; position: relative; overflow: hidden; padding: 0;">
+                    <!-- 1. DAG 视图容器 (通过 visibility/opacity 瞬时硬件加速切换，杜绝 Canvas 销毁重排卡顿) -->
+                    <div id="lineage-dag-view" style="position: absolute; inset: 0; display: flex; height: 100%; width: 100%; visibility: visible; opacity: 1; pointer-events: auto; z-index: 2; transition: opacity 0.15s ease;">
                         <!-- 主拓扑图画布 -->
                         <div id="lineage-vis-container" style="flex: 1; height: 100%; background: #0f172a; position: relative;"></div>
 
-                        <!-- 画布悬浮浮动工具条 (Zoom & Reset) -->
-                        <div style="position: absolute; bottom: 16px; left: 16px; z-index: 20; display: flex; gap: 6px; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); border: 1px solid var(--panel-border); border-radius: 6px; padding: 4px 8px;">
-                            <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="window.LineageExplorer.fitDAG()" title="自适应居中视图" style="padding: 3px 8px; font-size: 0.72rem;">🎯 居中对齐</button>
-                            <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="window.LineageExplorer.resetHighlight()" title="清除聚焦与高亮" style="padding: 3px 8px; font-size: 0.72rem;">🔄 重置高亮</button>
-                            <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="window.LineageExplorer.realignDAG()" title="重新恢复整齐的 DAG 层次排列" style="padding: 3px 8px; font-size: 0.72rem;">📐 整齐重排</button>
-                            <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="window.LineageExplorer.toggleLayoutMode()" title="切换层次排列/物理力导向自由分布" style="padding: 3px 8px; font-size: 0.72rem;">🌐 物理力导向</button>
+                        <!-- 画布悬浮浮动工具条 (高对比度独立控制组，零重叠，清晰可见) -->
+                        <div class="lineage-toolbar" style="position: absolute; bottom: 18px; left: 18px; z-index: 50; display: flex; align-items: center; gap: 4px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 8px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7); padding: 5px 8px;">
+                            <!-- 缩放控制组 -->
+                            <button type="button" class="lineage-ctrl-btn" onclick="window.LineageExplorer.zoomIn()" title="放大画布 (Zoom In)" style="display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12); color: #ffffff; border-radius: 6px; cursor: pointer; transition: all 0.15s ease;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            </button>
+                            <button type="button" class="lineage-ctrl-btn" onclick="window.LineageExplorer.zoomOut()" title="缩小画布 (Zoom Out)" style="display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12); color: #ffffff; border-radius: 6px; cursor: pointer; transition: all 0.15s ease;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            </button>
+                            <button type="button" class="lineage-ctrl-btn" onclick="window.LineageExplorer.fitDAG()" title="自适应居中视图 (Fit View)" style="display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 9px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12); color: #ffffff; border-radius: 6px; cursor: pointer; font-size: 0.74rem; font-weight: 600; transition: all 0.15s ease;">
+                                <span>🎯</span><span>居中</span>
+                            </button>
+
+                            <div style="width: 1px; height: 18px; background: rgba(255,255,255,0.2); margin: 0 4px;"></div>
+
+                            <!-- 排列与状态控制组 -->
+                            <button type="button" class="lineage-ctrl-btn" onclick="window.LineageExplorer.realignDAG()" title="重新恢复整齐的自左向右 DAG 层次排列" style="display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 9px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12); color: #ffffff; border-radius: 6px; cursor: pointer; font-size: 0.74rem; font-weight: 600; transition: all 0.15s ease;">
+                                <span>📐</span><span>整齐重排</span>
+                            </button>
+                            <button type="button" class="lineage-ctrl-btn" onclick="window.LineageExplorer.toggleLayoutMode()" title="切换层次排列 / 自由物理力导向分布" style="display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 9px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12); color: #ffffff; border-radius: 6px; cursor: pointer; font-size: 0.74rem; font-weight: 600; transition: all 0.15s ease;">
+                                <span>🌐</span><span>力导向</span>
+                            </button>
+                            <button type="button" class="lineage-ctrl-btn" onclick="window.LineageExplorer.resetHighlight()" title="清除聚焦与节点高亮" style="display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 9px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12); color: #ffffff; border-radius: 6px; cursor: pointer; font-size: 0.74rem; font-weight: 600; transition: all 0.15s ease;">
+                                <span>🔄</span><span>重置高亮</span>
+                            </button>
                         </div>
 
                         <!-- 拓扑图图例 (Floating Legend) -->
@@ -891,8 +910,8 @@ window.LineageExplorer = (function() {
                         </div>
                     </div>
 
-                    <!-- 2. 表格列表视图容器 (Table View Container) -->
-                    <div id="lineage-table-view" style="flex: 1; display: none; flex-direction: column; height: 100%; width: 100%; background: var(--panel-bg); padding: 14px; box-sizing: border-box; gap: 10px;">
+                    <!-- 2. 表格列表视图容器 (Table View Container，使用绝对定位层叠与硬件加速淡入淡出) -->
+                    <div id="lineage-table-view" style="position: absolute; inset: 0; display: flex; flex-direction: column; height: 100%; width: 100%; background: var(--panel-bg); padding: 14px; box-sizing: border-box; gap: 10px; visibility: hidden; opacity: 0; pointer-events: none; z-index: 1; transition: opacity 0.15s ease;">
                         <!-- 搜索过滤栏 -->
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <div style="display: flex; align-items: center; gap: 8px;">
@@ -935,33 +954,58 @@ window.LineageExplorer = (function() {
         const tabTable = document.getElementById('lineage-tab-table');
 
         if (mode === 'dag') {
-            if (dagView) dagView.style.display = 'flex';
-            if (tableView) tableView.style.display = 'none';
+            if (dagView) {
+                dagView.style.visibility = 'visible';
+                dagView.style.opacity = '1';
+                dagView.style.pointerEvents = 'auto';
+                dagView.style.zIndex = '2';
+            }
+            if (tableView) {
+                tableView.style.visibility = 'hidden';
+                tableView.style.opacity = '0';
+                tableView.style.pointerEvents = 'none';
+                tableView.style.zIndex = '1';
+            }
             if (tabDag) {
                 tabDag.style.background = 'var(--accent)';
                 tabDag.style.color = '#ffffff';
+                if (tabDag.classList) tabDag.classList.add('active');
             }
             if (tabTable) {
                 tabTable.style.background = 'transparent';
                 tabTable.style.color = 'var(--text-secondary)';
+                if (tabTable.classList) tabTable.classList.remove('active');
             }
             if (currentNetwork) {
-                setTimeout(() => currentNetwork.redraw(), 50);
+                currentNetwork.redraw();
             }
         } else {
-            if (dagView) dagView.style.display = 'none';
-            if (tableView) tableView.style.display = 'flex';
+            if (dagView) {
+                dagView.style.visibility = 'hidden';
+                dagView.style.opacity = '0';
+                dagView.style.pointerEvents = 'none';
+                dagView.style.zIndex = '1';
+            }
+            if (tableView) {
+                tableView.style.visibility = 'visible';
+                tableView.style.opacity = '1';
+                tableView.style.pointerEvents = 'auto';
+                tableView.style.zIndex = '2';
+            }
             if (tabTable) {
                 tabTable.style.background = 'var(--accent)';
                 tabTable.style.color = '#ffffff';
+                if (tabTable.classList) tabTable.classList.add('active');
             }
             if (tabDag) {
                 tabDag.style.background = 'transparent';
                 tabDag.style.color = 'var(--text-secondary)';
+                if (tabDag.classList) tabDag.classList.remove('active');
             }
             const tblContent = document.getElementById('lineage-table-content');
-            if (tblContent && currentParsedData) {
+            if (tblContent && currentParsedData && !tblContent._hasTableLoaded) {
                 renderLineageTable(tblContent, currentParsedData);
+                tblContent._hasTableLoaded = true;
             }
         }
     }
@@ -971,6 +1015,24 @@ window.LineageExplorer = (function() {
         if (tblContent && currentParsedData) {
             renderLineageTable(tblContent, currentParsedData, val);
         }
+    }
+
+    function zoomIn() {
+        if (!currentNetwork) return;
+        const currentScale = currentNetwork.getScale();
+        currentNetwork.moveTo({
+            scale: currentScale * 1.28,
+            animation: { duration: 250, easingFunction: 'easeInOutQuad' }
+        });
+    }
+
+    function zoomOut() {
+        if (!currentNetwork) return;
+        const currentScale = currentNetwork.getScale();
+        currentNetwork.moveTo({
+            scale: currentScale * 0.78,
+            animation: { duration: 250, easingFunction: 'easeInOutQuad' }
+        });
     }
 
     function fitDAG() {
@@ -1050,6 +1112,8 @@ window.LineageExplorer = (function() {
         onTableSearch,
         highlightLineage,
         resetHighlight,
+        zoomIn,
+        zoomOut,
         fitDAG,
         realignDAG,
         toggleLayoutMode,
