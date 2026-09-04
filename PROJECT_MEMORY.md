@@ -723,3 +723,59 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
 3. **通用数据表格标准三件套 (Universal Data Grid Trinity)**：
    - 任何供用户审查的结构化明细数据表，必须标配：**列显隐选择器 (Visible Fields)**、**表头点击智能排序 (Sort)**、**强制单行文本防线 (white-space: nowrap)**，杜绝残缺的硬编码静态表格。
 
+---
+
+## 27. API 资源树与全局请求构建器自动折叠及多栏布局体验优化 (API Explorer & Request Body Auto-Collapse Layout Optimization)
+
+### 27.1 业务背景与架构定位
+在 API Explorer(API 资源浏览器) 核心调试场景中，大部分数据读取与删除操作（如 `GET(获取请求)`、`DELETE(删除请求)`）无需提供任何 `Request Body(请求体 Payload)`。原布局固定占据约 300px 的垂直高度展示空白 JSON 输入框，严重挤压了下方 `Response Inspector(响应检查器)` 的可视区域。
+为了最大化垂直屏幕空间利用率，系统引入了自适应智能折叠机制：
+- **无请求体自动折叠**：当选中无 Payload 的 API 接口或切换至 GET/DELETE 方法时，`Request Body (JSON)` 区域自动折叠为单行紧凑状态，并在右侧呈现微动效「无需请求体」状态胶囊徽章；
+- **智能展开响应**：当选中有 Payload 的接口（如 POST/PUT/PATCH）、切换方法、或在输入框中键入内容时，区域自适应平滑展开；
+- **自由手动控制**：支持点击整栏 Header 标题或点击右侧「展开 / 折叠」按钮任意手动切换；
+- **全生命周期联动**：全面覆盖 API 树点击、重置请求（Reset）、新建空白请求（+ New Request）、历史记录载入（History）及方法解锁切换。
+
+---
+
+### 27.2 关键排坑记录与根因剖析 (Failures & Root Cause Analysis)
+
+- ❌ **排坑 1：HTML 容器标签非对称嵌套导致 API Explorer 页面跌落至主视口外 (Premature DOM Close & View Drop)**
+  - **现象**：在 API Explorer 界面中，中间 Request Configuration 面板与右侧 Response 面板“神秘消失”，页面主内容区空白。
+  - **根本原因**：`view-workflows` 内部某个历史工作区配置容器中存在多余的闭合 `</div>` 标签，导致外层父容器 `.workspace-container` 发生提前闭合，后置的 `<main id="view-api_tree">` 被挤出正常布局流，跌落至屏幕外底部 `y: 900+` 处。
+  - **✅ 成功解决 (DOM Stack Validation & Structural Repair)**：
+    1. 编写 DOM 标签树深度与堆栈扫描脚本，精确定位多余的闭合标签并消除；
+    2. 确保 `.api-explorer-sidebar`、`.request-builder`、`.response-container` 的层级结构严丝合缝闭合（0 unclosed / 0 extra），彻底消除布局坍塌隐患。
+
+- ❌ **排坑 2：CSS 内联 Transform 属性与样式类覆写冲突 (Inline Transform vs CSS Class Conflict)**
+  - **现象**：折叠 Chevron 箭头初始在 HTML 中内联写了 `style="transform: rotate(-90deg);"`，在通过 JS 移除 `.is-collapsed` 类展开时，由于内联样式的优先级高于基础类选择器，导致小箭头无法复原为向下展开姿态。
+  - **根本原因**：内联样式 `style` 具备仅次于 `!important` 的特异性（Specificity），阻止了 CSS 类选择器规则的正常继承与应用。
+  - **✅ 成功解决 (Pure CSS State-Driven Animation Standard)**：
+    1. 彻底清除 HTML 内联中的 `transform` 声明；
+    2. 在 `static/style.css` 中统一建立基于类的状态驱动动效规则：
+       ```css
+       #req-body-chevron {
+           transition: transform 0.2s ease;
+           transform: rotate(0deg);
+       }
+       .body-editor-container.is-collapsed #req-body-chevron {
+           transform: rotate(-90deg) !important;
+       }
+       ```
+    3. 实现零内联污染、纯 CSS 硬件加速的丝滑旋转过渡。
+
+- ❌ **排坑 3：多入口生命周期状态同步脱节 (Lifecycle State Machine Disconnection)**
+  - **现象**：从 API Tree 切换到 POST 接口自动展开后，用户如果点击「+ New Request」或「Reset」恢复 GET 接口，输入框仍处于展开的空态，导致状态失步。
+  - **✅ 成功解决 (Unified updateRequestBodyCollapseState Hub)**：
+    1. 在 `static/script.js` 封装统一的全局调度函数 `window.updateRequestBodyCollapseState(hasBody)`；
+    2. 在所有涉及请求体变更的生命周期节点（API 选择、Reset 恢复、New Request 初始化、History 载入、Method 切换）统一调用状态更新函数，确保数据流与 UI 表现 100% 强一致。
+
+---
+
+### 27.3 架构经验与最佳实践总结 (Takeaways)
+
+1. **自适应垂直视口分配原则 (Adaptive Vertical Viewport Allocation)**：
+   - 调试类工具的黄金原则是“高频产出区域优先”。对于占位大但无实质内容的输入容器，默认采用极简折叠，把宝贵的纵向空间留给高密度的响应数据预览区，极大提升调试效率与沉浸感。
+2. **状态驱动的纯 CSS 动画标准 (Class-Driven CSS Transitions)**：
+   - 涉及旋转、缩放、展开折叠等微交互时，永远避免使用 JS 手动修改内联样式，统一采用 `.is-collapsed` / `.active` 等状态类驱动 CSS Transition，保证样式优先级清晰、便于全局维护。
+
+
