@@ -182,18 +182,39 @@ assert(tblContainer.innerHTML.length > 0, 'Table container should be populated w
 console.log('5. Testing onTableSearch()...');
 window.LineageExplorer.onTableSearch('TerritoryID');
 assert(tblContainer.innerHTML.includes('TerritoryID'), 'Search filter should retain matching rows');
+window.LineageExplorer.onTableSearch(''); // Clear filter
 
-// 6. Test Excel Export
-console.log('6. Testing exportLineageExcel()...');
+// 6. Test Universal Table Sorting
+console.log('6. Testing Universal Table Sorting...');
+window.LineageExplorer.sortLineageTable('srcName');
+assert(tblContainer.innerHTML.includes('↑'), 'Table should display ascending sort indicator');
+window.LineageExplorer.sortLineageTable('srcName');
+assert(tblContainer.innerHTML.includes('↓'), 'Table should display descending sort indicator');
+window.LineageExplorer.resetTableSort();
+
+// 7. Test Column Visibility Toggling
+console.log('7. Testing Column Visibility Toggling...');
+window.LineageExplorer.toggleColumnVisibility('joinKeys', false);
+assert(!tblContainer.innerHTML.includes('data-col="joinKeys"'), 'joinKeys column should be hidden');
+window.LineageExplorer.toggleColumnVisibility('joinKeys', true);
+assert(tblContainer.innerHTML.includes('data-col="joinKeys"'), 'joinKeys column should be restored');
+
+// 8. Test No-Wrap Defense on Badges
+console.log('8. Testing No-Wrap Defense on Badges...');
+assert(tblContainer.innerHTML.includes('white-space: nowrap'), 'Badges and cells must have white-space: nowrap to prevent wrapping');
+
+// 9. Test Excel Export
+console.log('9. Testing exportLineageExcel()...');
 window.LineageExplorer.exportLineageExcel();
 
-// 7. Test Image Export
-console.log('7. Testing exportDAGImage()...');
+// 10. Test Image Export
+console.log('10. Testing exportDAGImage()...');
 window.LineageExplorer.exportDAGImage();
 
-// 8. Test Zoom Controls
-console.log('8. Testing zoomIn() and zoomOut()...');
+// 11. Test Zoom Controls
+console.log('11. Testing zoomIn() and zoomOut()...');
 window.LineageExplorer.zoomIn();
 window.LineageExplorer.zoomOut();
 
-console.log('✅ TEST ANGLE 3 PASSED: Full Lifecycle Browser DOM, Highlighting, Dual-View & Export Successful!');
+console.log('✅ TEST ANGLE 3 PASSED: Full Lifecycle Browser DOM, Highlighting, Dual-View, Universal Table & Export Successful!');
+
