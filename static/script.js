@@ -12136,7 +12136,7 @@ window.openInspectResultModal = function() {
 
     if (window.showUniversalDataModal) {
         window.showUniversalDataModal({
-            title: `🔍 数据源与 M 表达式全景穿透看板 — [${data.dataset_name || 'Dataset'}] (模式: ${data.overall_mode})`,
+            title: data.dataset_name || 'Dataset',
             data: tableRows,
             columns: ['#', 'tableName', 'mode', 'sourceType', 'server', 'database', 'nativeSql', 'actions'],
             displayNames: ['#', 'Table Name (表名)', 'Mode (模式)', 'Source Type (源类型)', 'Server (服务器)', 'Database (数据库)', 'Native SQL (SQL语句)', 'Actions (操作)'],
