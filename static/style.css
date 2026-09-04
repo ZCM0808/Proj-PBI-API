@@ -4054,3 +4054,161 @@ body.topbar-collapsed #gtb-expand-handle .gtb-handle-icon {
     flex-shrink: 0;
     white-space: nowrap;
 }
+
+/* ==========================================================================
+   Global Permissions Manager (GUM) Visual Dashboard & Charts
+   ========================================================================== */
+.gum-filter-pill {
+    background: var(--overlay-5);
+    border: 1px solid var(--overlay-10);
+    color: var(--text-secondary);
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+.gum-filter-pill:hover {
+    background: var(--overlay-15);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+}
+.gum-filter-pill.active {
+    background: var(--accent);
+    color: var(--accent-text, #0b0d12);
+    border-color: var(--accent);
+    font-weight: 600;
+    box-shadow: 0 0 10px var(--accent-glow);
+}
+.gum-filter-pill.warning.active {
+    background: var(--warning, #eab308);
+    color: #0b0d12;
+    border-color: var(--warning, #eab308);
+    box-shadow: 0 0 10px rgba(234, 179, 8, 0.4);
+}
+
+.gum-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+}
+.gum-kpi-card {
+    background: var(--overlay-5);
+    border: 1px solid var(--overlay-10);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.gum-kpi-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent-glow);
+}
+.gum-kpi-card.warning-card {
+    border-color: rgba(234, 179, 8, 0.4);
+    background: rgba(234, 179, 8, 0.05);
+}
+.gum-kpi-card.warning-card .gum-kpi-val {
+    color: var(--warning, #eab308);
+    animation: gumPulse 2s infinite ease-in-out;
+}
+.gum-kpi-label {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+.gum-kpi-val {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+.gum-kpi-sub {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    opacity: 0.8;
+}
+
+@keyframes gumPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.04); opacity: 0.85; }
+}
+
+.gum-charts-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 12px;
+}
+@media (max-width: 900px) {
+    .gum-charts-grid {
+        grid-template-columns: 1fr;
+    }
+}
+.gum-chart-card {
+    background: var(--overlay-5);
+    border: 1px solid var(--overlay-10);
+    border-radius: 8px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.gum-chart-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.gum-bar-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+.gum-bar-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+}
+.gum-bar-track {
+    height: 10px;
+    background: var(--overlay-10);
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+}
+.gum-bar-fill-direct {
+    height: 100%;
+    background: var(--info, #0284c7);
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.gum-bar-fill-effective {
+    height: 100%;
+    background: var(--accent, #F2C811);
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.gum-bar-fill-elevated {
+    height: 100%;
+    background: var(--warning, #eab308);
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gum-model-card {
+    background: var(--overlay-8);
+    border: 1px solid var(--overlay-10);
+    border-radius: 6px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
