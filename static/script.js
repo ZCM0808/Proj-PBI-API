@@ -2426,6 +2426,10 @@ window.updateGlobalTopbarDropdowns = function() {
             xmlaInput.value = '';
         }
     }
+
+    if (window.initGumWorkspaceSelector) {
+        window.initGumWorkspaceSelector();
+    }
 };
 
 // 切换全局认证模式 (Service Principal / Personal)
@@ -12306,6 +12310,7 @@ window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded)
         fillSelect('wf-ds-dataset', 'pbi_datasets');
         fillSelect('wf-rvc-workspace', 'pbi_workspaces');
         fillSelect('wf-inspect-workspace', 'pbi_workspaces');
+        if (window.initGumWorkspaceSelector) window.initGumWorkspaceSelector();
 
         const activeW = document.getElementById('active-workspace')?.value;
         const activeR = document.getElementById('active-report')?.value;
@@ -12812,12 +12817,10 @@ window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded)
                 document.getElementById('wf-btn-runall').style.display = 'flex';
 
             } else if (val === 'global_user_manager') {
-
-                  document.getElementById('wf-config-global_user_manager').style.display = 'block';
-
-                  document.getElementById('wf-btn-runall').style.display = 'flex';
-
-              } else if (val === 'check_permissions') {
+                document.getElementById('wf-config-global_user_manager').style.display = 'block';
+                document.getElementById('wf-btn-runall').style.display = 'flex';
+                if (window.initGumWorkspaceSelector) window.initGumWorkspaceSelector();
+            } else if (val === 'check_permissions') {
 
                 document.getElementById('wf-config-check_permissions').style.display = 'block';
 
@@ -16128,21 +16131,50 @@ window.initGumWorkspaceSelector = function() {
     const sel = document.getElementById('wf-gum-workspace-select');
     if (!sel) return;
     const curVal = sel.value;
-    const workspaces = (window.gumWorkspaces && window.gumWorkspaces.length > 0) ? window.gumWorkspaces : (window.allWorkspaces || []);
     
-    let html = '<option value="">全部已配置工作区 (All Configured Workspaces)</option>';
-    if (workspaces && workspaces.length > 0) {
-        workspaces.forEach(ws => {
-            const wsId = ws.id || ws.workspaceId || '';
-            const wsName = ws.name || ws.alias || ws.displayName || wsId;
-            if (wsId) {
-                html += `<option value="${wsId}">${wsName}</option>`;
-            }
-        });
+    // 汇聚所有来源的工作区列表 (localStorage, workspace-list UI, gumWorkspaces, allWorkspaces)
+    const rawList = [];
+    try {
+        const stored = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+        if (Array.isArray(stored)) rawList.push(...stored);
+    } catch(e) {}
+    
+    if (typeof window.getListData === 'function') {
+        const liveList = window.getListData('workspace-list');
+        if (Array.isArray(liveList)) rawList.push(...liveList);
     }
+    
+    if (Array.isArray(window.gumWorkspaces)) {
+        rawList.push(...window.gumWorkspaces);
+    }
+    if (Array.isArray(window.allWorkspaces)) {
+        rawList.push(...window.allWorkspaces);
+    }
+
+    // 按 ID 去重并解析展示名称
+    const uniqueMap = new Map();
+    rawList.forEach(ws => {
+        if (!ws) return;
+        const wsId = (ws.id || ws.workspaceId || '').trim();
+        if (!wsId) return;
+        const wsName = (ws.alias || ws.name || ws.displayName || wsId).trim();
+        if (!uniqueMap.has(wsId.toLowerCase())) {
+            uniqueMap.set(wsId.toLowerCase(), { id: wsId, name: wsName });
+        }
+    });
+
+    let html = '<option value="">全部已配置工作区 (All Configured Workspaces / 全局穿透审计)</option>';
+    uniqueMap.forEach(item => {
+        html += `<option value="${item.id}">${item.name} (${item.id})</option>`;
+    });
     sel.innerHTML = html;
-    if (curVal && Array.from(sel.options).some(o => o.value === curVal)) {
+
+    // 优先保留之前的选择，或同步当前顶栏活动工作区
+    const topWs = document.getElementById('active-workspace')?.value || localStorage.getItem('pbi-active-workspace') || '';
+    if (curVal && Array.from(sel.options).some(o => o.value.toLowerCase() === curVal.toLowerCase())) {
         sel.value = curVal;
+    } else if (topWs && Array.from(sel.options).some(o => o.value.toLowerCase() === topWs.toLowerCase())) {
+        sel.value = topWs;
     }
 };
 
