@@ -142,10 +142,16 @@ window.toggleAppRail = function(action) {
 
 // 独立折叠 / 展开左侧二级菜单侧边栏 (Secondary Sidebar)
 window.toggleSidebar = function() {
-    const isCollapsed = document.body.classList.toggle('sidebar-collapsed');
-    try {
-        localStorage.setItem('pbi-sidebar-collapsed', isCollapsed ? 'true' : 'false');
-    } catch(e) {}
+    const isCurrentlyCollapsed = document.body.classList.contains('sidebar-collapsed');
+    if (isCurrentlyCollapsed) {
+        document.body.classList.remove('sidebar-collapsed');
+        const savedWidth = localStorage.getItem('pbi-sidebar-width') || '280px';
+        document.documentElement.style.setProperty('--sidebar-width', savedWidth.endsWith('px') ? savedWidth : savedWidth + 'px');
+        try { localStorage.setItem('pbi-sidebar-collapsed', 'false'); } catch(e) {}
+    } else {
+        document.body.classList.add('sidebar-collapsed');
+        try { localStorage.setItem('pbi-sidebar-collapsed', 'true'); } catch(e) {}
+    }
 };
 
 // 切换一级模块 (Workflows vs API Tree)
@@ -8715,6 +8721,11 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
         document.body.classList.add('is-resizing');
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
+    });
+
+    resizer.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+        window.toggleSidebar();
     });
 
     let minAllowedHeight = 150;
