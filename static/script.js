@@ -17079,8 +17079,6 @@ window.filterGumTable = function() {
     const term = rawTerm.toLowerCase().trim();
     const statsSpan = document.getElementById('wf-gum-stats');
     const resultWrap = document.getElementById('wf-gum-result-wrap');
-    const placeholder = document.getElementById('wf-gum-empty-placeholder');
-    const emptyText = document.getElementById('wf-gum-empty-text');
     const clearBtn = document.getElementById('wf-gum-search-clear');
     const pillFilter = window._gumPillFilter || 'all';
     const selectedWs = document.getElementById('wf-gum-workspace-select')?.value || '';
@@ -17092,21 +17090,10 @@ window.filterGumTable = function() {
     }
 
     if (!window.gumData || window.gumData.length === 0) {
-        if (placeholder) placeholder.style.display = 'block';
         if (resultWrap) resultWrap.style.display = 'none';
-        if (emptyText) {
-            if (term) {
-                emptyText.innerHTML = `🔍 正在检索关键词 "<b>${rawTerm}</b>"... 当前尚未执行全景权限扫描，请点击右上角【Run】启动审计获取完整结果。`;
-            } else if (window.gumTargetUsers.size > 0) {
-                emptyText.innerHTML = `🎯 已锁定 <b>${window.gumTargetUsers.size}</b> 个定向审计目标用户。请点击右上角【Run】按钮启动精准穿透审计。`;
-            } else {
-                emptyText.innerHTML = `👥 尚未执行全景权限扫描。请在上方选择/勾选用户后，点击右上角【Run】启动审计。`;
-            }
-        }
         return;
     }
 
-    if (placeholder) placeholder.style.display = 'none';
     if (resultWrap) resultWrap.style.display = 'block';
 
     const tokens = term ? term.split(/\s+/).filter(Boolean) : [];
