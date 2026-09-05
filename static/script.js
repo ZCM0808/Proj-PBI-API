@@ -16192,13 +16192,23 @@ window.initGumWorkspaceSelector = function() {
     if (!sel) return;
     const curVal = sel.value;
     
-    // 汇聚所有来源的工作区列表 (localStorage, workspace-list UI, gumWorkspaces, allWorkspaces)
+    // 汇聚所有来源的工作区列表 (localStorage, gtb-select-workspace, workspace-list UI, gumWorkspaces, allWorkspaces)
     const rawList = [];
     try {
         const stored = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
         if (Array.isArray(stored)) rawList.push(...stored);
     } catch(e) {}
     
+    const gtbWs = document.getElementById('gtb-select-workspace');
+    if (gtbWs && gtbWs.options) {
+        Array.from(gtbWs.options).forEach(opt => {
+            if (opt.value) {
+                const name = opt.text.split(' (')[0] || opt.value;
+                rawList.push({ id: opt.value, name: name });
+            }
+        });
+    }
+
     if (typeof window.getListData === 'function') {
         const liveList = window.getListData('workspace-list');
         if (Array.isArray(liveList)) rawList.push(...liveList);
@@ -16229,17 +16239,39 @@ window.initGumWorkspaceSelector = function() {
     });
     sel.innerHTML = html;
 
-    // 优先保留之前的选择，或同步当前顶栏活动工作区
-    const topWs = document.getElementById('active-workspace')?.value || localStorage.getItem('pbi-active-workspace') || '';
+    // 优先保留之前的选择，或同步当前顶栏活动工作区，或默认选中第一个具体工作区
+    const topWs = document.getElementById('gtb-select-workspace')?.value || document.getElementById('active-workspace')?.value || localStorage.getItem('pbi-active-workspace') || localStorage.getItem('pbi_active_workspace') || '';
     if (curVal && Array.from(sel.options).some(o => o.value.toLowerCase() === curVal.toLowerCase())) {
         sel.value = curVal;
     } else if (topWs && Array.from(sel.options).some(o => o.value.toLowerCase() === topWs.toLowerCase())) {
         sel.value = topWs;
+    } else if (sel.options.length > 1 && !sel.value) {
+        sel.value = sel.options[1].value;
     }
 
-    // 自动拉取当前选中工作区的候选用户列表
+    // 自动拉取候选用户列表
     if (window.fetchGumWorkspaceUsers) {
         window.fetchGumWorkspaceUsers(false);
+    }
+
+    // 若无任何已知工作区，异步尝试拉取
+    if (uniqueMap.size === 0) {
+        (async () => {
+            try {
+                const res = await fetch('/api/proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint: '/groups?$top=100', method: 'GET' })
+                });
+                const d = await res.json();
+                const payload = d.data || d;
+                const wsList = Array.isArray(payload) ? payload : (payload.value || []);
+                if (wsList.length > 0) {
+                    window.gumWorkspaces = wsList;
+                    window.initGumWorkspaceSelector();
+                }
+            } catch(e) {}
+        })();
     }
 };
 
@@ -16250,15 +16282,85 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
     const candidateCount = document.getElementById('wf-gum-candidate-count');
     if (!candidateList) return;
 
+    // 全部工作区模式：从所有已配置工作区并发提取并聚合用户
     if (!wsId) {
-        window.gumCandidateUsers = [];
-        if (candidateCount) {
-            candidateCount.innerHTML = '<span style="color:var(--text-secondary); font-size:0.72rem;">(全局模式：点击右上角 Run 全量审计，或在上方搜索栏直接输入邮箱)</span>';
+        const allOptions = Array.from(wsSelect?.options || []).filter(o => o.value);
+        if (allOptions.length === 0) {
+            window.gumCandidateUsers = [];
+            if (candidateCount) {
+                candidateCount.innerHTML = '<span style="color:var(--text-secondary); font-size:0.72rem;">(暂无已配置工作区)</span>';
+            }
+            candidateList.innerHTML = '<div style="font-size: 0.75rem; color: var(--text-secondary); padding: 4px 0;">💡 暂未检测到已配置工作区。您可直接在上方搜索栏输入目标邮箱，点击右上角【Run】发起审计。</div>';
+            return;
         }
-        candidateList.innerHTML = '<div style="font-size: 0.75rem; color: var(--text-secondary); padding: 4px 0;">💡 当前为全部工作区模式，可直接在搜索栏输入定向邮箱（如 user@domain.com），或切换具体工作区拉取直属用户列表。点击右上角【Run】将全景扫描全部工作区。</div>';
+
+        const cacheKey = '__ALL_WORKSPACES__';
+        if (!forceRefresh && window.gumWorkspaceUsersCache && window.gumWorkspaceUsersCache.has(cacheKey)) {
+            window.gumCandidateUsers = window.gumWorkspaceUsersCache.get(cacheKey) || [];
+            window.renderGumCandidateUsers();
+            return;
+        }
+
+        if (candidateCount) {
+            candidateCount.innerHTML = '<span style="color:var(--accent); font-size:0.72rem;">⏳ 正在汇总全部工作区用户...</span>';
+        }
+        candidateList.innerHTML = '<div style="font-size: 0.75rem; color: var(--text-secondary); padding: 4px 0;">⏳ 正在从全部已配置工作区汇聚授权用户名单...</div>';
+
+        try {
+            const promises = allOptions.map(async (opt) => {
+                const wid = opt.value;
+                const wname = opt.text.split(' (')[0] || wid;
+                try {
+                    const res = await fetch('/api/proxy', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ endpoint: `/groups/${wid}/users`, method: 'GET' })
+                    });
+                    const rawData = await res.json();
+                    const data = rawData.data || rawData;
+                    const usersList = Array.isArray(data) ? data : (data.value || []);
+                    return usersList.map(u => ({
+                        identifier: (u.identifier || u.emailAddress || u.userPrincipalName || '').trim(),
+                        displayName: (u.displayName || u.identifier || u.emailAddress || '').trim(),
+                        principalType: u.principalType || 'User',
+                        role: u.groupUserAccessRight || 'Viewer',
+                        workspaceId: wid,
+                        workspaceName: wname
+                    })).filter(u => u.identifier);
+                } catch(e) {
+                    return [];
+                }
+            });
+
+            const results = await Promise.allSettled(promises);
+            const mergedMap = new Map();
+            results.forEach(r => {
+                if (r.status === 'fulfilled' && Array.isArray(r.value)) {
+                    r.value.forEach(u => {
+                        const key = u.identifier.toLowerCase();
+                        if (!mergedMap.has(key)) {
+                            mergedMap.set(key, u);
+                        }
+                    });
+                }
+            });
+
+            const candidates = Array.from(mergedMap.values());
+            window.gumCandidateUsers = candidates;
+            if (!window.gumWorkspaceUsersCache) window.gumWorkspaceUsersCache = new Map();
+            window.gumWorkspaceUsersCache.set(cacheKey, candidates);
+            window.renderGumCandidateUsers();
+        } catch(e) {
+            console.error('Failed to aggregate all workspace users:', e);
+            if (candidateCount) {
+                candidateCount.innerHTML = `<span style="color:var(--warning); font-size:0.72rem;">⚠️ 汇总失败: ${e.message}</span>`;
+            }
+            candidateList.innerHTML = `<div style="font-size:0.75rem; color:var(--warning); padding:4px 0;">拉取失败，您仍可在上方搜索栏直接输入目标邮箱。</div>`;
+        }
         return;
     }
 
+    // 单个工作区模式
     const wsName = wsSelect?.options[wsSelect.selectedIndex]?.text?.split(' (')[0] || wsId;
 
     if (!forceRefresh && window.gumWorkspaceUsersCache && window.gumWorkspaceUsersCache.has(wsId)) {
@@ -16307,6 +16409,7 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
         candidateList.innerHTML = `<div style="font-size:0.75rem; color:var(--warning); padding:4px 0;">拉取失败，请检查网络或 Token 权限。您仍可在上方搜索栏直接输入目标邮箱。</div>`;
     }
 };
+
 
 window.renderGumCandidateUsers = function(searchTerm = '') {
     const candidateList = document.getElementById('wf-gum-candidate-list');
