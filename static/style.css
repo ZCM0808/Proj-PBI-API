@@ -4632,3 +4632,41 @@ body.is-resizing .body-editor-container {
     transform: scale(1.0);
     font-weight: 700;
 }
+
+/* ─── FLIP Animation & Pin Transitions ─── */
+.wf-sidebar-item,
+.api-category {
+    will-change: transform;
+}
+
+/* Anti-spam cooldown & animation lock */
+.is-pin-reordering {
+    pointer-events: none !important;
+    user-select: none !important;
+}
+
+/* Flash pulse glow when an item is newly pinned to top */
+@keyframes pinGlowPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(0, 120, 212, 0.45);
+        background-color: var(--overlay-15);
+    }
+    50% {
+        box-shadow: 0 4px 16px 2px rgba(0, 120, 212, 0.25);
+        background-color: var(--overlay-20);
+    }
+    100% {
+        box-shadow: none;
+        background-color: var(--overlay-5);
+    }
+}
+
+.wf-item-pin-flash {
+    animation: pinGlowPulse 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    z-index: 10 !important;
+}
+
+.api-cat-pin-flash > .api-category-title {
+    animation: pinGlowPulse 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    z-index: 10 !important;
+}

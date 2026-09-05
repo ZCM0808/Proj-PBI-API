@@ -1360,3 +1360,32 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
   1. **工作流置顶与 MRU 堆叠验证**：成功验证单次置顶排至 #1、多次置顶顺次后移、页面刷新后 LocalStorage 状态还原、取消置顶后自然回退；
   2. **API 资源树分类置顶与 MRU 堆叠验证**：成功验证不同 API 分类置顶、MRU 栈后移、全页面重载持久化以及取消置顶。
 - 全套测试 100% 通过，并生成了高清断言截图证据。
+
+## 42. 置顶 FLIP 平滑位移动画与防连击保护架构 (Pin-to-Top FLIP Reorder Animation & Anti-Spam Lock Architecture)
+
+### 42.1 业务背景与动画诉求 (Context & FLIP Animation Requirements)
+
+1. **瞬时跳跃与生硬排序痛点**：
+   - 先前的置顶重排通过直接重建 DOM 列表渲染，导致被置顶的项目与下方项目瞬间发生位置瞬变 (Teleportation / 硬切换)，缺乏物理连续性与高质感过渡；
+2. **防连击与乱序防御诉求**：
+   - 当用户快速连续点击置顶不同的项目时，若无动画锁控缓冲，会导致异步状态冲突、动画抖动或 LocalStorage 写入竞争，需要引入毫秒级防连击冷却锁 (Anti-Spam Cooldown Lock)。
+
+---
+
+### 42.2 核心技术实现 (Technical Architecture)
+
+- **1. FLIP (First, Last, Invert, Play) 经典位移动画技术**：
+  - **First**：在 DOM 变动前，通过 getBoundingClientRect().top 记录所有现有条目（工作流卡片 / API 分类）的初始物理屏幕坐标；
+  - **Last**：调用 
+enderWorkflowSidebarList() / 
+enderTree() 重绘最新 DOM 结构；
+  - **Invert**：重新获取各条目在最新 DOM 中的新坐标，计算出逆向偏移量 deltaY = firstTop - lastTop，立即赋予 el.style.transform = translateY(deltaYpx) 与 	ransition: none，使其视觉位置瞬时锚定在动画起点；
+  - **Play**：通过 
+equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1) 并重置为 	ranslateY(0px)，条目如同弹簧般丝滑滑动到目标第一位（下方条目平滑下移递补）。
+
+- **2. 防连击冷却锁与交互隔离 (Anti-Spam Cooldown Lock & Interaction Isolation)**：
+  - 在置顶触发时置位 window._isPinAnimating = true，并为列表容器添加 .is-pin-reordering 类（赋予 pointer-events: none !important; user-select: none !important;）；
+  - 460ms 动画周期内，任何后续点击置顶操作均被安全拦截并静默阻断，彻底消除乱序与连击风险；动画结束后自动解开锁定。
+
+- **3. 新置顶项高亮脉冲光效 (Pin Glow Pulse Micro-Animation)**：
+  - 为新置顶的条目注入 .wf-item-pin-flash / .api-cat-pin-flash，通过 @keyframes pinGlowPulse 播放 0.55s 的品牌蓝柔和光晕扩散动画，提供明确的视觉落地反馈。
