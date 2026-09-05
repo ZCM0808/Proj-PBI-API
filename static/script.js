@@ -38,6 +38,93 @@ window.centerModal = function(modalContent) {
     modalContent.removeAttribute('data-drag-left');
 };
 
+// ─── Global Pin-to-Top State Helpers (Workflows & API Categories) ───
+window.getPinnedWorkflows = function() {
+    try {
+        const raw = localStorage.getItem('pbi-pinned-workflows');
+        return raw ? JSON.parse(raw) : [];
+    } catch(e) {
+        return [];
+    }
+};
+
+window.savePinnedWorkflows = function(arr) {
+    try {
+        localStorage.setItem('pbi-pinned-workflows', JSON.stringify(arr));
+    } catch(e) {}
+};
+
+window.togglePinWorkflow = function(wfKey, event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    let pinned = window.getPinnedWorkflows();
+    const idx = pinned.indexOf(wfKey);
+    if (idx !== -1) {
+        // Unpin
+        pinned.splice(idx, 1);
+        if (window.showNotification) {
+            window.showNotification('已取消任务置顶', 'info');
+        }
+    } else {
+        // Prepend to top (MRU stack order: newest pinned is index 0)
+        pinned = pinned.filter(k => k !== wfKey);
+        pinned.unshift(wfKey);
+        if (window.showNotification) {
+            window.showNotification('已将任务置顶到第一位 📌', 'success');
+        }
+    }
+    window.savePinnedWorkflows(pinned);
+    if (window.renderWorkflowSidebarList) {
+        window.renderWorkflowSidebarList();
+    }
+};
+
+window.getPinnedCategories = function() {
+    try {
+        const raw = localStorage.getItem('pbi-pinned-categories');
+        return raw ? JSON.parse(raw) : [];
+    } catch(e) {
+        return [];
+    }
+};
+
+window.savePinnedCategories = function(arr) {
+    try {
+        localStorage.setItem('pbi-pinned-categories', JSON.stringify(arr));
+    } catch(e) {}
+};
+
+window.togglePinCategory = function(catName, event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    let pinned = window.getPinnedCategories();
+    const idx = pinned.indexOf(catName);
+    if (idx !== -1) {
+        // Unpin
+        pinned.splice(idx, 1);
+        if (window.showNotification) {
+            window.showNotification(`已取消分类 [${catName}] 置顶`, 'info');
+        }
+    } else {
+        // Prepend to top (MRU stack order)
+        pinned = pinned.filter(c => c !== catName);
+        pinned.unshift(catName);
+        if (window.showNotification) {
+            window.showNotification(`已将分类 [${catName}] 置顶到第一位 📌`, 'success');
+        }
+    }
+    window.savePinnedCategories(pinned);
+    if (typeof window.renderTree === 'function') {
+        const searchInput = document.getElementById('api-search-input');
+        window.renderTree(searchInput ? searchInput.value : '');
+    }
+};
+
+
 
 
 
@@ -232,15 +319,33 @@ window.renderWorkflowSidebarList = function() {
     if (!listContainer) return;
     const currentWf = document.getElementById('wf-selector')?.value || 'datasource_inspector';
     const names = getWfNames();
+    const pinnedWfs = window.getPinnedWorkflows();
 
-    listContainer.innerHTML = WORKFLOW_METADATA.map(item => {
+    const sortedWfs = [...WORKFLOW_METADATA].sort((a, b) => {
+        const idxA = pinnedWfs.indexOf(a.key);
+        const idxB = pinnedWfs.indexOf(b.key);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return 0;
+    });
+
+    listContainer.innerHTML = sortedWfs.map(item => {
         const displayName = names[item.key] || item.title;
         const isActive = item.key === currentWf ? 'active' : '';
+        const isPinned = pinnedWfs.includes(item.key);
+        const pinnedClass = isPinned ? 'is-pinned' : '';
         return `
-            <li class="wf-sidebar-item ${isActive}" data-wf="${item.key}" onclick="window.selectWorkflow('${item.key}')">
+            <li class="wf-sidebar-item ${isActive} ${pinnedClass}" data-wf="${item.key}" onclick="window.selectWorkflow('${item.key}')">
                 <div class="wf-item-header">
                     <span class="wf-item-icon">${item.icon}</span>
                     <span class="wf-item-title">${displayName}</span>
+                    <button type="button" class="btn-pin-item ${isPinned ? 'pinned' : ''}" onclick="window.togglePinWorkflow('${item.key}', event)" title="${isPinned ? '取消置顶 (Unpin)' : '置顶到第一位 (Pin to Top)'}">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="${isPinned ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="17" x2="12" y2="22"></line>
+                            <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a1 1 0 0 0 0-2H8a1 1 0 0 0 0 2h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>
+                        </svg>
+                    </button>
                 </div>
                 <div class="wf-item-zh">${item.zh}</div>
                 <div class="wf-item-desc">${item.desc}</div>
@@ -4866,6 +4971,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 渲染 API 树
 
+    window.renderTree = renderTree;
     function renderTree(searchTerm = "") {
 
         apiTree.innerHTML = '';
@@ -4916,7 +5022,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         }
 
-        categoryList.push(...pbiApis);
+        // Sort pbiApis based on pinned categories (MRU order)
+        const pinnedCats = window.getPinnedCategories();
+        const sortedPbiApis = [...pbiApis].sort((a, b) => {
+            const idxA = pinnedCats.indexOf(a.category);
+            const idxB = pinnedCats.indexOf(b.category);
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return -1;
+            if (idxB !== -1) return 1;
+            return 0;
+        });
+
+        categoryList.push(...sortedPbiApis);
 
         
 
@@ -4987,6 +5104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const categoryEl = document.createElement('div');
 
             categoryEl.className = 'api-category';
+            categoryEl.setAttribute('data-category', category.category);
 
             
 
@@ -5032,7 +5150,30 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             titleEl.className = 'api-category-title';
 
-            titleEl.innerHTML = `<span>${getCategoryDisplayTitle(category.category)}</span> <span>${filteredEndpoints.length}</span>`;
+            const isCatPinned = pinnedCats.includes(category.category);
+            if (isCatPinned) {
+                categoryEl.classList.add('is-pinned');
+            }
+
+            const isBookmarksCat = category.category === "⭐ 收藏夹 (Bookmarks)";
+            const catPinBtnHtml = isBookmarksCat ? '' : `
+                <button type="button" class="btn-pin-item ${isCatPinned ? 'pinned' : ''}" onclick="window.togglePinCategory('${category.category.replace(/'/g, "\\'")}', event)" title="${isCatPinned ? '取消置顶 (Unpin)' : '置顶到第一位 (Pin to Top)'}">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="${isCatPinned ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="17" x2="12" y2="22"></line>
+                        <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a1 1 0 0 0 0-2H8a1 1 0 0 0 0 2h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>
+                    </svg>
+                </button>
+            `;
+
+            titleEl.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0;">
+                    <span class="api-category-name" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${getCategoryDisplayTitle(category.category)}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                    <span class="api-category-count">${filteredEndpoints.length}</span>
+                    ${catPinBtnHtml}
+                </div>
+            `;
 
             categoryEl.appendChild(titleEl);
 

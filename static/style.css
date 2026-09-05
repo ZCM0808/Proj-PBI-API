@@ -4548,3 +4548,87 @@ body.is-resizing .body-editor-container {
     user-select: none !important;
     -webkit-user-select: none !important;
 }
+
+/* ─── Pin to Top Button & State (Workflows & API Categories) ─── */
+.btn-pin-item {
+    background: transparent;
+    border: none;
+    padding: 3px 5px;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    opacity: 0;
+    transform: scale(0.85);
+    transition: opacity 0.2s cubic-bezier(0.22, 1, 0.36, 1), 
+                transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), 
+                color 0.15s ease, 
+                background 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    z-index: 5;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.wf-sidebar-item:hover .btn-pin-item,
+.api-category-title:hover .btn-pin-item {
+    opacity: 0.65;
+    transform: scale(1);
+}
+
+.btn-pin-item:hover {
+    opacity: 1 !important;
+    color: var(--accent) !important;
+    background: var(--overlay-10);
+    transform: scale(1.15) !important;
+}
+
+.btn-pin-item.pinned {
+    opacity: 1 !important;
+    color: var(--accent) !important;
+    transform: rotate(-45deg) scale(1);
+}
+
+.btn-pin-item.pinned svg {
+    fill: currentColor;
+}
+
+.btn-pin-item.pinned:hover {
+    transform: rotate(-45deg) scale(1.2) !important;
+    background: var(--overlay-10);
+}
+
+.wf-sidebar-item.is-pinned {
+    border-left: 3px solid var(--accent);
+    background: var(--overlay-5);
+}
+
+.wf-sidebar-item.is-pinned:hover {
+    background: var(--overlay-10);
+}
+
+.api-category.is-pinned > .api-category-title {
+    border-left: 3px solid var(--accent);
+    background: var(--overlay-5);
+}
+
+.api-category.is-pinned > .api-category-title:hover {
+    background: var(--overlay-10);
+}
+
+.api-category-title .api-category-name {
+    display: inline-block;
+    transform-origin: left center;
+    transform: scale(0.84);
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    backface-visibility: hidden;
+}
+
+.api-category-title:hover .api-category-name {
+    transform: scale(1.0);
+    font-weight: 700;
+}
