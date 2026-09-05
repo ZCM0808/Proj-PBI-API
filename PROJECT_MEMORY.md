@@ -818,46 +818,46 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
 
 ---
 
-## 29. 移除 + Add User 与全局定向主体审计/级联筛选引擎升级 (Global User Manager Targeted Principals & Cascade Auditing)
+## 29. 全局用户与权限管理器定向主体审计、候选池选择与右上角默认 Run 执行机制 (Global User Manager Candidate Pool & Unified Run Execution)
 
 ### 29.1 业务背景与架构痛点 (Context & Problem Statement)
 
 1. **`+ Add User` 功能冗余移除**：
-   - 权限审计与治理工具的核心在于“穿透审计、权限可视、提权预警与异常排查”，单独的快速添加用户容易与生产环境严肃的 IAM 流程冲突，应彻底剥离该功能及相关弹窗代码。
-2. **大型租户全量扫描的性能与分析痛点 (Targeted User Auditing Need)**：
-   - 大型租户存在数十个工作区和上万名用户，全量扫描深度生效权限与所有语义模型读写底表耗时较长且 API 配额消耗大。
-   - 分析师通常需要针对**重点可疑人员、离职交接员工或特定外部顾问**执行跨工作区的定向精准审计，并从第一轮扫描结果中快速勾选人员以作为后续二次排查的级联条件。
+   - 权限审计与治理工具的核心在于“穿透审计、权限可视、提权预警与异常排查”，单独的快速添加用户容易与生产环境严肃的 IAM 流程冲突，已彻底剥离该功能及相关代码。
+2. **定向审计候选池与统一触发原则 (Candidate Users Pool & Unified Run Trigger Rule)**：
+   - 避免要求用户手动默写邮箱，在切换或选定工作区时，自动/手动拉取当前工作区的直属用户列表作为“候选池”，以芯片（Chips / Pills）形式直观展示供用户勾选或搜索过滤。
+   - 严格遵循全局设计规范：**移除输入框旁多余的局部“扫描”小按钮，所有审计与扫描执行统一由右上角默认 Run (执行) 按钮触发**。
 
 ---
 
 ### 29.2 核心架构改进与实现方案 (Architecture Implementation)
 
-- **1. 彻底移除 `+ Add User` 及其冗余结构**：
-  - 清理 `static/index.html` 中的 `#gum-add-modal`、`+ Add User` 按钮及相关描述文本；
-  - 清理 `static/script.js` 中的 `openGumAddUserModal`、`submitGumAddUser` 与自动补全事件监听；
-  - 清理 `static/style.css` 中对应的选择器，将顶部控制栏布局调整为工作区选择器与智能搜索栏平铺的对称双栅格结构。
+- **1. 工作区授权用户候选池 (`#wf-gum-user-picker-panel`)**：
+   - **自动/手动拉取 (`fetchGumWorkspaceUsers`)**：切换工作区下拉框时自动触发（或点击「🔄 刷新列表」手动触发），通过 `/api/proxy` 调用 Power BI API `GET /groups/{workspaceId}/users` 拉取当前工作区全部直属授权主体，并在内存中进行 Map 缓存；
+   - **可视化候选芯片 (`renderGumCandidateUsers`)**：将用户渲染为带有主体类型图标（👤 用户 / 🛡️ 安全组 / 🤖 服务主体 SPN）和直属角色徽章（`Admin` / `Member` / `Contributor` / `Viewer`）的高颜值交互芯片；
+   - **双向锁定与高亮联动**：点击芯片即可将其加入/移出 `window.gumTargetUsers`（已锁定目标池），芯片自动切换为激活状态（`✓` 勾选标记与高亮边框）；
+   - **即时检索过滤 (`filterGumCandidateUsers`)**：在搜索框输入关键词时，候选池芯片与下方内嵌表格双向毫秒级过滤；
+   - **「全选本工作区」一键锁定 (`toggleGumSelectAllCandidates`)**：支持一键将当前工作区全部候选用户锁定为定向审计目标，再次点击一键取消。
 
 - **2. 升级 `🔍 搜索与定向用户过滤 (Search & Target Principals)` 控制器**：
-  - **多关键词与多邮箱批量解析**：支持按空格、逗号或分号输入多个邮箱或关键词，回车即刻自动解析并提取加入“定向审计目标池”；
-  - **定向目标标签栏 (`#wf-gum-target-tags-bar`)**：顶部展示已锁定的目标用户徽章 Chips，带数量指示器与独立 `✕` 移除按钮，支持一键「清空锁定」；
-  - **「仅看/仅扫所选用户」开关**：一键切换全局数据视图与目标人员聚焦视图。
+   - **多关键词与多邮箱批量解析**：支持按空格、逗号或分号输入多个邮箱或关键词，回车即刻自动解析并提取加入“定向审计目标池”；
+   - **定向目标标签栏 (`#wf-gum-target-tags-bar`)**：展示已锁定的目标用户徽章 Chips，带数量指示器与独立 `✕` 移除按钮，支持一键「清空锁定」；
+   - **「仅看/仅扫所选用户」开关**：一键切换全局数据视图与目标人员聚焦视图。
 
-- **3. 结果表格与用户画像弹窗双向联动勾选 (Result-to-Target Feedback Loop)**：
-  - **表头与行级 Checkbox (多选框)**：实时同步当前已勾选目标，支持全选/反选；
-  - **行级与画像弹窗「🎯 设为目标 / 🎯 已锁定」按钮**：在表格每一行及用户全景画像弹窗中均可一键锁定/解锁目标人员，毫秒级同步顶部标签池。
-
-- **4. 级联跨工作区定向穿透审计 (Cascading Targeted Scanning Engine)**：
-  - **后端并发过滤 (`scan_permissions_deep`)**：请求体增加 `target_users` 数组参数。后端扫描引擎在检测到定向用户参数时，仅对目标用户进行组织图谱关联、`/admin/users/{gid}/artifactAccess` 生效权限碰撞及语义模型细粒度读写矩阵计算；
-  - **跨工作区秒级追踪**：用户在工作区 A 中勾选若干可疑人员后，直接切换工作区下拉框（或全租户模式），点击【扫描】即可秒级获取这批人员在目标工作区/全租户下的真实有效权限！
+- **3. 统一右上角默认 Run 按钮执行流 (Unified Top-Right Run Button Flow)**：
+   - 彻底移除输入框旁独立的扫描小按钮，保持系统全局操作行为 100% 一致；
+   - 点击右上角默认 Run 按钮（`#wf-btn-runall`）时，调用 `runGlobalUserManager()`：
+     - 自动读取当前选中的工作区与 `window.gumTargetUsers` 定向用户列表；
+     - 向后端 `/api/workflow/deep-permissions-scan` 发送 `workspace_id` 与 `target_users`；
+     - 后端 `scan_permissions_deep` 仅对目标用户进行组织图谱关联、`/admin/users/{gid}/artifactAccess` 生效权限碰撞及语义模型细粒度读写矩阵计算；
+     - 前端接收到结果后，渲染 KPI 仪表盘、直属 vs 生效分布条形对比图、环形比例图以及内嵌实时数据矩阵表格。
 
 ---
 
 ### 29.3 架构经验与最佳实践总结 (Takeaways)
 
-1. **定向下钻优于盲目全量 (Targeted Deep-Dive over Full Dump)**：
-   - 在大数据量与复杂权限拓扑场景下，系统必须支持定向主体参数透传，大幅缩减无效网络 IO 与 API 配额消耗。
-2. **闭环反馈驱动的工作流 (Closed-Loop Cascade Workflow)**：
-   - 治理型工具应当实现“检索/全览 ➔ 发现异常 ➔ 勾选提纯 ➔ 级联下钻/跨域追踪”的无缝闭环交互，彻底解放用户的重复操作成本。
-
-
+1. **统一操作入口与认知一致性 (Unified Action Entrance Consistency)**：
+   - 在复杂工具平台中，操作触发点应保持全局一致（统一右上角 Run 按钮）。局部小按钮容易造成界面杂乱和用户认知割裂。
+2. **“感知 ➔ 勾选 ➔ 执行 ➔ 下钻”四步闭环 (Sense-Select-Execute-Inspect Loop)**：
+   - 治理型工具提供工作区候选池，让用户“看得见可选人员”，支持“即点即选”、“即搜即选”、“一键全选”，再经由统一 Run 按钮触发精准审计，形成行云流水的运维治理体验。
 
