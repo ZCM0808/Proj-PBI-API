@@ -1060,3 +1060,46 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
    - 当针对某个类使用 `transition: width/opacity` 等特定属性时，若附加了 `!important`，将直接阻断其他全局过渡类对 `background-color` 等颜色属性的插值计算，导致颜色发生 0ms 瞬间跳变。应对颜色、背景、边框统一使用平滑曲线或在全局过渡层统一接管。
 2. **高密度专业工具界面的空间哲学 (High-Density Professional UI Space Philosophy)**：
    - 企业级 API 调试与权限治理平台与面向消费者的内容型应用不同，过宽的外边距与大空白会严重降低同屏信息量。紧凑统一的 6px~8px 间隙不仅极大拓展了数据展示视窗，更赋予系统强烈的工业级工具精密质感。
+
+
+## 35. API 资源树右侧面板结构性恢复与竖直分割线零延迟拖拽重构 (API Explorer Right Panel Restoration & Splitter Zero-Latency Drag Refactor)
+
+### 35.1 业务背景与用户体验痛点 (Context & Problem Statement)
+
+1. **API 资源树右侧工作区面板神秘消失**：
+   - 用户在一级导航轨点击进入「🌲 API 资源树」时，只显示左侧的 API 目录树，右侧本应承载的 `Request Configuration (请求构建器)` 与 `Response Inspector (响应检查器)` 主面板完全消失。
+2. **竖直分割线拖拽滞后、不跟鼠标 (Splitter Drag Lag & Rubber-banding)**：
+   - 在鼠标拖拽侧边栏与主工作台之间的竖向分割线 (`#dragMe`) 时，侧边栏宽度无法实时贴合鼠标指针位置，存在严重的迟滞、回弹和橡皮筋感（Rubber-banding），且向右拖拽时受到隐性最大宽度限制卡死在 420px 无法拉宽。
+
+---
+
+### 35.2 核心架构改进与排坑记录 (Architecture Implementation & Failures & Root Cause Analysis)
+
+- ❌ **排坑 1：HTML 容器标签闭合遗漏导致 API Explorer 主面板被错误嵌套并隐匿 (DOM Cascading Enclosure)**
+  - **现象**：点击 API 资源树，右侧完全空白。
+  - **根本原因深度剖析**：
+    - 在 `static/index.html` 中，`#wf-config-global_user_manager` 容器在重构过程中遗漏了 2 个闭合 `</div></div>` 标签；
+    - 静态 HTML 引擎将后续的所有 DOM 节点全部解析为该容器的子孙元素，导致原本作为同级兄弟容器的 `<main id="view-api_tree">` 被错误地包裹在 `<div id="view-workflows">` 内部；
+    - 当用户点击切换至 API 资源树时，前端路由器执行了 `viewWorkflows.style.display = 'none'`，直接连带隐藏了深陷其中的 `#view-api_tree`。
+  - **✅ 成功解决 (DOM Tag Hierarchy Normalization & Zero-Mismatch Defense)**：
+    1. 编写全量 DOM 标签开闭配对扫描脚本（`scratch/check_full_html_tags.py`），修复缺失闭合标签；
+    2. 将 `#view-api_tree` 彻底提升解脱为与 `#view-workflows` 平级的核心兄弟视窗容器，经过 0 unclosed / 0 mismatched 标签全量校验，彻底根治视窗隐匿缺陷。
+
+- ❌ **排坑 2：CSS 补间动画与拖拽事件冲突导致 300ms 拖拽延迟 (Transition Lag & Width Clamping)**
+  - **现象**：鼠标快速拖拽 `#dragMe` 时，侧边栏宽度延迟 300ms 慢慢平移，无法与光标物理对齐，手感极其生硬迟钝；且最大宽度被锁死在 420px。
+  - **根本原因深度剖析**：
+    - `static/style.css` 中 `.sidebar` 配置了 `transition: width 0.3s cubic-bezier(0.2, 0, 0, 1)`。在 `mousemove` 过程中，每次由 JS 赋予的新宽度都会触发 300ms 的缓动补间计算，导致高频鼠标事件与 CSS 补间发生严重冲突和回弹；
+    - CSS 变量 `--sidebar-width: clamp(240px, 22vw, 420px);` 中设置了硬编码的 420px 上限，限制了用户向右自由拖拽扩宽。
+  - **✅ 成功解决 (Zero-Latency Dragging State Machine & Range Relaxation)**：
+    1. **引入拖拽态全局瞬时样式防御**：在 `static/style.css` 中定义 `body.is-resizing, body.is-resizing .sidebar, body.is-resizing * { transition: none !important; user-select: none !important; cursor: col-resize !important; }`；
+    2. **拖拽生命周期状态机注入**：在 `static/script.js` 的 `initResizer` 中，`mousedown` 发生瞬间立即为 `document.body` 挂载 `.is-resizing`，`mouseup` 瞬间剥离，彻底释放 60FPS 实时原生物理跟踪手感；
+    3. **宽度范围拓展**：解绑 `clamp` 硬编码约束，赋予 `.sidebar` 默认 280px，支持在 `180px ~ 700px` 宽阔区间内自由任意缩放。
+
+---
+
+### 35.3 架构经验与最佳实践总结 (Takeaways)
+
+1. **纯静态 SPA 的 DOM 层级隔离防线 (DOM Structural Boundary Defense in Static SPAs)**：
+   - 在未采用现代 JSX / 组件化模板的原生静态 HTML 单页应用中，单处未闭合的 `<div>` 极易引发雪崩式的 DOM 作用域吞噬（Cascading Enclosure）。任何模块容器的改动必须经过自动化标签配对扫描断言。
+2. **交互拖拽与 CSS 补间的状态机互斥原则 (Resizing State Machine Exclusion Principle)**：
+   - 任何涉及鼠标动态拖拽调整尺寸（Width / Height / Position）的 UI 元素，必须在 `mousedown ➔ mousemove ➔ mouseup` 生命周期中显式禁用所有相关父子元素的 `transition`，并在全局注入 `user-select: none`，以保障绝对零延迟、像素级跟手的物理操作体验。
