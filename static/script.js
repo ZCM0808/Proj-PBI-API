@@ -155,23 +155,7 @@ window.toggleSidebar = function() {
 };
 
 // 切换一级模块 (Workflows vs API Tree)
-window.switchAppModule = function(moduleName, isUserClick = false) {
-    const currentModule = localStorage.getItem('pbi-active-module') || 'workflows';
-    const isSidebarCollapsed = document.body.classList.contains('sidebar-collapsed');
-
-    if (isUserClick) {
-        // 用户主动在 Rail 上点击：
-        // 1. 若点击已激活的模块且侧边栏已展开 -> 折叠侧边栏
-        if (moduleName === currentModule && !isSidebarCollapsed) {
-            window.toggleSidebar();
-            return;
-        }
-        // 2. 若侧边栏当前处于折叠态 -> 点击任何模块均展开侧边栏并切到该模块
-        if (isSidebarCollapsed) {
-            window.toggleSidebar();
-        }
-    }
-
+window.switchAppModule = function(moduleName) {
     // 1. Update Rail active item
     document.querySelectorAll('.rail-item').forEach(el => el.classList.remove('active'));
     const navItem = document.getElementById(`rail-nav-${moduleName}`);
@@ -13011,7 +12995,7 @@ window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded)
         // 如果用户在 script.js 加载前就点了菜单项，优先使用缓存的 _pendingModule
         const savedModule = window._pendingModule || localStorage.getItem('pbi-active-module') || 'workflows';
         delete window._pendingModule;
-        window.switchAppModule(savedModule, false);
+        window.switchAppModule(savedModule);
 
         // 恢复上次选中的 workflow（跨刷新持久化）
         const savedWf = localStorage.getItem('pbi-last-workflow') || 'datasource_inspector';

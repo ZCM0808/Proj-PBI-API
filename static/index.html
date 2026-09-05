@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260905_v1505">
+    <link rel="stylesheet" href="/static/style.css?v=20260905_v1525">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -23,7 +23,7 @@
     </style>
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染 (First Paint) 之前同步恢复本地缓存的布局与主题，
-        // 配合 .no-transitions 彻底消除页面刷新时的闪烁与先折叠再展开的重绘动画。
+        // 配合 .no-transitions 彻底消除页面刷新时的闪烁与重绘跳动。
         (function() {
             // 1. 主题初始化
             var theme = localStorage.getItem('pbi-theme');
@@ -34,21 +34,17 @@
                 document.documentElement.setAttribute('data-theme', 'light');
             }
 
-            // 2. 0ms 提前挂载布局初始类至 html，防止初次绘制与实际状态脱节
+            // 2. 0ms 提前挂载布局初始类至 html
             var isRailExpanded = localStorage.getItem('pbi-rail-expanded') === 'true';
             if (isRailExpanded) {
                 document.documentElement.classList.add('rail-expanded-init');
-            }
-            var isSidebarCollapsed = localStorage.getItem('pbi-sidebar-collapsed') === 'true';
-            if (isSidebarCollapsed) {
-                document.documentElement.classList.add('sidebar-collapsed-init');
             }
             var isTopbarCollapsed = localStorage.getItem('pbi-topbar-collapsed') === 'true';
             if (isTopbarCollapsed) {
                 document.documentElement.classList.add('topbar-collapsed-init');
             }
 
-            // 3. 动态注入 CSS 变量（永久生效，不随 DOMContentLoaded 移除）
+            // 3. 动态注入 CSS 变量（永久生效）
             var sidebarWidth = localStorage.getItem('pbi-sidebar-width');
             var requestHeight = localStorage.getItem('pbi-request-height');
             var styleStr = '';
@@ -66,11 +62,8 @@
                 document.head.appendChild(styleEl);
             }
 
-            // 4. DOMContentLoaded 时同步状态至 <body> 并优雅解除初始类与 .no-transitions
+            // 4. DOMContentLoaded 时同步状态至 body 并优雅解除初始类与 .no-transitions
             window.addEventListener('DOMContentLoaded', function() {
-                if (isSidebarCollapsed) {
-                    document.body.classList.add('sidebar-collapsed');
-                }
                 if (isTopbarCollapsed) {
                     document.body.classList.add('topbar-collapsed');
                 }
@@ -84,7 +77,6 @@
                 }
 
                 // 移除 html 上的初始化占位类
-                document.documentElement.classList.remove('sidebar-collapsed-init');
                 document.documentElement.classList.remove('rail-expanded-init');
                 document.documentElement.classList.remove('topbar-collapsed-init');
 
@@ -114,19 +106,6 @@
                 rail.classList.toggle('expanded');
                 var isExpanded = rail.classList.contains('expanded');
                 try { localStorage.setItem('pbi-rail-expanded', isExpanded ? 'true' : 'false'); } catch(e) {}
-            };
-
-            window.toggleSidebar = function() {
-                var isCurrentlyCollapsed = document.body.classList.contains('sidebar-collapsed');
-                if (isCurrentlyCollapsed) {
-                    document.body.classList.remove('sidebar-collapsed');
-                    var savedWidth = localStorage.getItem('pbi-sidebar-width') || '280px';
-                    document.documentElement.style.setProperty('--sidebar-width', savedWidth.endsWith('px') ? savedWidth : savedWidth + 'px');
-                    try { localStorage.setItem('pbi-sidebar-collapsed', 'false'); } catch(e) {}
-                } else {
-                    document.body.classList.add('sidebar-collapsed');
-                    try { localStorage.setItem('pbi-sidebar-collapsed', 'true'); } catch(e) {}
-                }
             };
 
             window.toggleGlobalTopbarCollapse = function() {
@@ -354,7 +333,7 @@
                     var moduleName = menuItem.getAttribute('data-module');
                     if (!moduleName) return;
                     if (typeof window.switchAppModule === 'function') {
-                        window.switchAppModule(moduleName, true);
+                        window.switchAppModule(moduleName);
                     } else {
                         window._pendingModule = moduleName;
                     }
@@ -365,21 +344,11 @@
 
         <!-- 2. Secondary Sidebar (Tree / Workflow List) -->
         <aside class="sidebar glass-panel">
-            <!-- 窄条模式：折叠时仅显示此竖排展开把手 (Narrow Strip shown when sidebar is collapsed) -->
-            <div id="sidebar-narrow-strip" onclick="window.toggleSidebar()" title="展开侧边栏 (Expand Sidebar)">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                <span>菜单</span>
-            </div>
             <!-- Sidebar Pane A: Workflow List -->
             <div id="sidebar-pane-workflows" class="sidebar-pane" style="display: flex;">
                 <div class="nav-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                     <p class="nav-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">⚡ 工作流中心</p>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span class="api-count-badge" id="wf-total-badge">11 个任务</span>
-                        <button type="button" class="btn-collapse-sidebar" onclick="window.toggleSidebar()" title="折叠侧边栏 (Collapse Sidebar)">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                        </button>
-                    </div>
+                    <span class="api-count-badge" id="wf-total-badge">11 个任务</span>
                 </div>
                 <div style="margin-bottom: 0.75rem;">
                     <input type="search" id="wf-search-input" placeholder="搜索工作流..." class="modern-input" style="width: 100%; border-radius: 6px;" oninput="window.filterWorkflowsList(this.value)">
@@ -393,12 +362,7 @@
             <div id="sidebar-pane-api_tree" class="sidebar-pane" style="display: none;">
                 <div class="nav-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                     <p class="nav-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">🌲 API 资源树</p>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span class="api-count-badge" title="Total APIs">共 <span id="total-api-count">0</span> 个</span>
-                        <button type="button" class="btn-collapse-sidebar" onclick="window.toggleSidebar()" title="折叠侧边栏 (Collapse Sidebar)">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                        </button>
-                    </div>
+                    <span class="api-count-badge" title="Total APIs">共 <span id="total-api-count">0</span> 个</span>
                 </div>
                 <div style="display: flex; gap: 8px; margin-bottom: 0.5rem;">
                     <input type="search" id="api-search-input" placeholder="搜索 API... (支持拼音/英文)" class="modern-input" style="flex: 1; border-radius: 6px; min-width: 0;">
@@ -2675,7 +2639,7 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260904_v2245"></script>
     <script src="/static/universal_modal.js?v=20260904_v2245"></script>
-    <script src="/static/script.js?v=20260905_v1505"></script>
+    <script src="/static/script.js?v=20260905_v1525"></script>
 
 
 
