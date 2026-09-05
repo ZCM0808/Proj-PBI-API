@@ -3811,21 +3811,28 @@ body.rail-collapsed #rail-expand-handle {
     transform: scale(1.08);
 }
 
-/* --- Sidebar Collapsed State: 窄条图标模式 (48px narrow icon strip) --- */
+/* --- Sidebar Collapsed State (0px Clean Collapse) --- */
+html.sidebar-collapsed .sidebar,
 body.sidebar-collapsed .sidebar {
-    width: 48px !important;
-    min-width: 48px !important;
-    max-width: 48px !important;
-    padding: 10px 0 !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
     overflow: hidden !important;
 }
 
+html.sidebar-collapsed #dragMe,
 body.sidebar-collapsed #dragMe {
     opacity: 0 !important;
     pointer-events: none !important;
 }
 
 /* 折叠态平滑隐藏面板内容 */
+html.sidebar-collapsed .sidebar .sidebar-pane,
 body.sidebar-collapsed .sidebar .sidebar-pane {
     opacity: 0 !important;
     transform: translateX(-16px) !important;
@@ -3834,67 +3841,6 @@ body.sidebar-collapsed .sidebar .sidebar-pane {
     transition: opacity 0.16s ease, 
                 transform 0.22s ease, 
                 visibility 0s linear 0.22s;
-}
-
-/* --- 侧边栏窄条 (Sidebar Narrow Strip) --- */
-#sidebar-narrow-strip {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
-    height: 100%;
-    width: 100%;
-    gap: 8px;
-    cursor: pointer;
-    color: var(--text-secondary);
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    user-select: none;
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    border-radius: 8px;
-    padding: 0;
-    opacity: 0;
-    transform: scale(0.85);
-    pointer-events: none;
-    visibility: hidden;
-    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
-                transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), 
-                color 0.2s ease, 
-                background 0.2s ease, 
-                visibility 0s linear 0.22s;
-}
-
-#sidebar-narrow-strip:hover {
-    color: var(--accent);
-    background: var(--overlay-5);
-}
-
-#sidebar-narrow-strip svg {
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-#sidebar-narrow-strip:hover svg {
-    transform: translateX(2px) scale(1.15);
-    color: var(--accent);
-}
-
-/* 折叠态平滑显示窄条 */
-body.sidebar-collapsed #sidebar-narrow-strip {
-    opacity: 1 !important;
-    transform: scale(1) !important;
-    pointer-events: auto !important;
-    visibility: visible !important;
-    transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1) 0.08s, 
-                transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) 0.08s, 
-                color 0.2s ease, 
-                background 0.2s ease;
 }
 
 /* Secondary sidebar collapse button in header */
