@@ -16183,9 +16183,9 @@ window.sortTable = function(thElement, event, colIndex) {
 
 window.gumData = [];
 window.gumWorkspaces = [];
+window.gumCandidateUsers = []; // Array of { identifier, displayName, principalType, role, workspaceId, workspaceName }
+window.gumWorkspaceUsersCache = new Map(); // wsId -> candidates array
 window.gumTargetUsers = new Map(); // identifier.toLowerCase() -> { identifier, displayName }
-
-
 
 window.initGumWorkspaceSelector = function() {
     const sel = document.getElementById('wf-gum-workspace-select');
@@ -16236,7 +16236,177 @@ window.initGumWorkspaceSelector = function() {
     } else if (topWs && Array.from(sel.options).some(o => o.value.toLowerCase() === topWs.toLowerCase())) {
         sel.value = topWs;
     }
+
+    // 自动拉取当前选中工作区的候选用户列表
+    if (window.fetchGumWorkspaceUsers) {
+        window.fetchGumWorkspaceUsers(false);
+    }
 };
+
+window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
+    const wsSelect = document.getElementById('wf-gum-workspace-select');
+    const wsId = wsSelect?.value || '';
+    const candidateList = document.getElementById('wf-gum-candidate-list');
+    const candidateCount = document.getElementById('wf-gum-candidate-count');
+    if (!candidateList) return;
+
+    if (!wsId) {
+        window.gumCandidateUsers = [];
+        if (candidateCount) {
+            candidateCount.innerHTML = '<span style="color:var(--text-secondary); font-size:0.72rem;">(全局模式：点击右上角 Run 全量审计，或在上方搜索栏直接输入邮箱)</span>';
+        }
+        candidateList.innerHTML = '<div style="font-size: 0.75rem; color: var(--text-secondary); padding: 4px 0;">💡 当前为全部工作区模式，可直接在搜索栏输入定向邮箱（如 user@domain.com），或切换具体工作区拉取直属用户列表。点击右上角【Run】将全景扫描全部工作区。</div>';
+        return;
+    }
+
+    const wsName = wsSelect?.options[wsSelect.selectedIndex]?.text?.split(' (')[0] || wsId;
+
+    if (!forceRefresh && window.gumWorkspaceUsersCache && window.gumWorkspaceUsersCache.has(wsId)) {
+        window.gumCandidateUsers = window.gumWorkspaceUsersCache.get(wsId) || [];
+        window.renderGumCandidateUsers();
+        return;
+    }
+
+    if (candidateCount) {
+        candidateCount.innerHTML = '<span style="color:var(--accent); font-size:0.72rem;">⏳ 正在拉取工作区用户...</span>';
+    }
+    candidateList.innerHTML = '<div style="font-size: 0.75rem; color: var(--text-secondary); padding: 4px 0;">⏳ 正在连接 Power BI API 获取工作区用户列表...</div>';
+
+    try {
+        const res = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                endpoint: `/groups/${wsId}/users`,
+                method: 'GET'
+            })
+        });
+        const rawData = await res.json();
+        const data = rawData.data || rawData;
+        const usersList = Array.isArray(data) ? data : (data.value || []);
+
+        const candidates = usersList.map(u => ({
+            identifier: (u.identifier || u.emailAddress || u.userPrincipalName || '').trim(),
+            displayName: (u.displayName || u.identifier || u.emailAddress || '').trim(),
+            principalType: u.principalType || 'User',
+            role: u.groupUserAccessRight || 'Viewer',
+            workspaceId: wsId,
+            workspaceName: wsName
+        })).filter(u => u.identifier);
+
+        window.gumCandidateUsers = candidates;
+        if (!window.gumWorkspaceUsersCache) window.gumWorkspaceUsersCache = new Map();
+        window.gumWorkspaceUsersCache.set(wsId, candidates);
+
+        window.renderGumCandidateUsers();
+    } catch(e) {
+        console.error('Failed to fetch workspace users:', e);
+        if (candidateCount) {
+            candidateCount.innerHTML = `<span style="color:var(--warning); font-size:0.72rem;">⚠️ 获取失败: ${e.message}</span>`;
+        }
+        candidateList.innerHTML = `<div style="font-size:0.75rem; color:var(--warning); padding:4px 0;">拉取失败，请检查网络或 Token 权限。您仍可在上方搜索栏直接输入目标邮箱。</div>`;
+    }
+};
+
+window.renderGumCandidateUsers = function(searchTerm = '') {
+    const candidateList = document.getElementById('wf-gum-candidate-list');
+    const candidateCount = document.getElementById('wf-gum-candidate-count');
+    if (!candidateList) return;
+
+    const term = (searchTerm || document.getElementById('wf-gum-search')?.value || '').toLowerCase().trim();
+    const allCandidates = window.gumCandidateUsers || [];
+
+    if (allCandidates.length === 0) {
+        const wsSelect = document.getElementById('wf-gum-workspace-select');
+        const wsId = wsSelect?.value || '';
+        if (wsId) {
+            if (candidateCount) candidateCount.innerHTML = '<span style="color:var(--text-secondary); font-size:0.72rem;">(0 位用户)</span>';
+            candidateList.innerHTML = '<div style="font-size: 0.75rem; color: var(--text-secondary); padding: 4px 0;">当前工作区暂无直接授权用户，可点击【🔄 刷新列表】重试。</div>';
+        }
+        return;
+    }
+
+    const filtered = term ? allCandidates.filter(u => 
+        u.identifier.toLowerCase().includes(term) ||
+        u.displayName.toLowerCase().includes(term) ||
+        u.role.toLowerCase().includes(term) ||
+        u.principalType.toLowerCase().includes(term)
+    ) : allCandidates;
+
+    const lockedInThisWs = allCandidates.filter(u => window.gumTargetUsers.has(u.identifier.toLowerCase())).length;
+
+    if (candidateCount) {
+        candidateCount.innerHTML = `(共 <b>${allCandidates.length}</b> 人${term ? `，匹配 <b>${filtered.length}</b> 人` : ''}，已锁定 <b style="color:var(--accent);">${lockedInThisWs}</b> 人)`;
+    }
+
+    if (filtered.length === 0) {
+        candidateList.innerHTML = `<div style="font-size: 0.75rem; color: var(--text-secondary); padding: 4px 0;">未找到与 "<b>${term}</b>" 匹配的候选用户。按 Enter 可将该关键词直接加入审计目标。</div>`;
+        return;
+    }
+
+    const typeIcons = {
+        'User': '👤',
+        'Group': '🛡️',
+        'App': '🤖'
+    };
+
+    candidateList.innerHTML = filtered.map(u => {
+        const isSelected = window.gumTargetUsers.has(u.identifier.toLowerCase());
+        const icon = typeIcons[u.principalType] || '👤';
+        const dispName = u.displayName || u.identifier;
+        const titleText = `${dispName} (${u.identifier})\n类型: ${u.principalType}\n直属角色: ${u.role}\n点击快速${isSelected ? '取消锁定' : '锁定为定向审计目标'}`;
+
+        return `
+            <div class="gum-candidate-chip ${isSelected ? 'selected' : ''}" onclick="window.toggleGumTargetUser('${u.identifier.replace(/'/g, "\\'")}', '${dispName.replace(/'/g, "\\'")}')" title="${titleText}">
+                <span class="gum-chip-check">✓</span>
+                <span>${icon}</span>
+                <span style="font-weight: 500;">${dispName}</span>
+                <span class="gum-chip-role">${u.role}</span>
+            </div>
+        `;
+    }).join('');
+};
+
+window.filterGumCandidateUsers = function() {
+    const searchInput = document.getElementById('wf-gum-search');
+    window.renderGumCandidateUsers(searchInput?.value || '');
+};
+
+window.toggleGumSelectAllCandidates = function() {
+    const candidates = window.gumCandidateUsers || [];
+    if (candidates.length === 0) {
+        if (window.showNotification) {
+            window.showNotification('当前没有可供全选的工作区候选用户', 'info');
+        }
+        return;
+    }
+
+    const allSelected = candidates.every(u => window.gumTargetUsers.has(u.identifier.toLowerCase()));
+
+    if (allSelected) {
+        candidates.forEach(u => {
+            window.gumTargetUsers.delete(u.identifier.toLowerCase());
+        });
+        if (window.showNotification) {
+            window.showNotification(`已取消锁定本工作区全部 ${candidates.length} 位候选用户`, 'info');
+        }
+    } else {
+        candidates.forEach(u => {
+            window.gumTargetUsers.set(u.identifier.toLowerCase(), {
+                identifier: u.identifier,
+                displayName: u.displayName || u.identifier
+            });
+        });
+        if (window.showNotification) {
+            window.showNotification(`已锁定本工作区全部 ${candidates.length} 位用户为审计目标`, 'success');
+        }
+    }
+
+    window.renderGumTargetTags();
+    window.renderGumCandidateUsers();
+    window.filterGumTable();
+};
+
 
 window.runGlobalUserManager = async function() {
     const logsDiv = document.getElementById('wf-out-gum-logs');
@@ -16557,6 +16727,7 @@ window.addGumTargetUser = function(identifier, displayName) {
         displayName: displayName || cleanId
     });
     window.renderGumTargetTags();
+    if (window.renderGumCandidateUsers) window.renderGumCandidateUsers();
     window.filterGumTable();
     if (window.showNotification) {
         window.showNotification(`已将 "${displayName || cleanId}" 锁定为定向审计目标`, 'success');
@@ -16567,12 +16738,14 @@ window.removeGumTargetUser = function(identifier) {
     if (!identifier) return;
     window.gumTargetUsers.delete(identifier.trim().toLowerCase());
     window.renderGumTargetTags();
+    if (window.renderGumCandidateUsers) window.renderGumCandidateUsers();
     window.filterGumTable();
 };
 
 window.clearGumTargetUsers = function() {
     window.gumTargetUsers.clear();
     window.renderGumTargetTags();
+    if (window.renderGumCandidateUsers) window.renderGumCandidateUsers();
     window.filterGumTable();
     if (window.showNotification) {
         window.showNotification('已清空定向审计目标用户', 'info');
@@ -16628,7 +16801,9 @@ window.toggleGumUserSelect = function(identifier, displayName, isChecked) {
         window.gumTargetUsers.delete(key);
     }
     window.renderGumTargetTags();
+    if (window.renderGumCandidateUsers) window.renderGumCandidateUsers();
     window.updateGumSelectAllStatus();
+    window.filterGumTable();
 };
 
 window.toggleGumSelectAll = function(isChecked) {
@@ -16653,6 +16828,7 @@ window.toggleGumSelectAll = function(isChecked) {
     }
 
     window.renderGumTargetTags();
+    if (window.renderGumCandidateUsers) window.renderGumCandidateUsers();
     window.renderGumInlineTable(dataset);
 };
 
@@ -16670,12 +16846,7 @@ window.updateGumSelectAllStatus = function() {
 
 window.handleGumSearchEnter = function(val) {
     const cleanVal = (val || '').trim();
-    if (!cleanVal) {
-        if (!window.gumData || window.gumData.length === 0) {
-            window.runGlobalUserManager();
-        }
-        return;
-    }
+    if (!cleanVal) return;
 
     // 解析逗号/分号/空格分隔的多个用户邮箱或标识
     const tokens = cleanVal.split(/[,;\s]+/).filter(Boolean);
@@ -16691,18 +16862,11 @@ window.handleGumSearchEnter = function(val) {
         const searchInput = document.getElementById('wf-gum-search');
         if (searchInput) searchInput.value = '';
         window.renderGumTargetTags();
+        if (window.renderGumCandidateUsers) window.renderGumCandidateUsers();
         if (window.showNotification) {
-            window.showNotification(`已锁定 ${addedCount} 个目标用户，按【扫描】即可发起定向审计！`, 'success');
+            window.showNotification(`已锁定 ${addedCount} 个目标用户，点击右上角【Run】即可启动定向穿透审计！`, 'success');
         }
-        if (!window.gumData || window.gumData.length === 0) {
-            window.runGlobalUserManager();
-        } else {
-            window.filterGumTable();
-        }
-    } else {
-        if (!window.gumData || window.gumData.length === 0) {
-            window.runGlobalUserManager();
-        } else {
+        if (window.gumData && window.gumData.length > 0) {
             window.filterGumTable();
         }
     }
@@ -16792,11 +16956,11 @@ window.filterGumTable = function() {
         if (resultWrap) resultWrap.style.display = 'none';
         if (emptyText) {
             if (term) {
-                emptyText.innerHTML = `🔍 正在检索关键词 "<b>${rawTerm}</b>"... 当前尚未执行全景权限扫描，请点击下方按钮启动审计获取完整结果。`;
+                emptyText.innerHTML = `🔍 正在检索关键词 "<b>${rawTerm}</b>"... 当前尚未执行全景权限扫描，请点击右上角【Run】启动审计获取完整结果。`;
             } else if (window.gumTargetUsers.size > 0) {
-                emptyText.innerHTML = `🎯 已锁定 <b>${window.gumTargetUsers.size}</b> 个定向审计目标用户。请点击下方按钮启动精准穿透审计。`;
+                emptyText.innerHTML = `🎯 已锁定 <b>${window.gumTargetUsers.size}</b> 个定向审计目标用户。请点击右上角【Run】按钮启动精准穿透审计。`;
             } else {
-                emptyText.innerHTML = `👥 尚未执行全景权限扫描。请点击下方按钮启动审计，或在上方搜索栏直接检索/输入目标用户。`;
+                emptyText.innerHTML = `👥 尚未执行全景权限扫描。请在上方选择/勾选用户后，点击右上角【Run】启动审计。`;
             }
         }
         return;
@@ -16866,14 +17030,14 @@ window.filterGumTable = function() {
 };
 
 window.handleGumWorkspaceChange = function(wsId) {
-    if (!window.gumData || window.gumData.length === 0) {
-        if (window.runGlobalUserManager) {
-            window.runGlobalUserManager();
-        }
-    } else {
+    if (window.fetchGumWorkspaceUsers) {
+        window.fetchGumWorkspaceUsers(false);
+    }
+    if (window.gumData && window.gumData.length > 0) {
         window.filterGumTable();
     }
 };
+
 
 window.openGumResultModal = function() {
     const term = (document.getElementById('wf-gum-search')?.value || '');

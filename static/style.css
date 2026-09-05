@@ -4252,3 +4252,50 @@ body.topbar-collapsed #gtb-expand-handle .gtb-handle-icon {
     }
 }
 
+/* GUM Workspace Candidate User Chips */
+.gum-candidate-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: var(--overlay-5);
+    border: 1px solid var(--overlay-15);
+    font-size: 0.74rem;
+    color: var(--text-primary);
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.gum-candidate-chip:hover {
+    background: var(--overlay-12);
+    border-color: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+.gum-candidate-chip.selected {
+    background: rgba(99, 102, 241, 0.16);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 600;
+}
+.gum-candidate-chip .gum-chip-check {
+    display: none;
+}
+.gum-candidate-chip.selected .gum-chip-check {
+    display: inline-block;
+    color: var(--accent);
+    font-weight: bold;
+}
+.gum-candidate-chip .gum-chip-role {
+    font-size: 0.68rem;
+    padding: 1px 4px;
+    border-radius: 4px;
+    background: var(--overlay-10);
+    color: var(--text-secondary);
+}
+.gum-candidate-chip.selected .gum-chip-role {
+    background: rgba(99, 102, 241, 0.22);
+    color: var(--accent);
+}
+
