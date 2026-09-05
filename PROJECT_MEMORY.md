@@ -1103,3 +1103,41 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
    - 在未采用现代 JSX / 组件化模板的原生静态 HTML 单页应用中，单处未闭合的 `<div>` 极易引发雪崩式的 DOM 作用域吞噬（Cascading Enclosure）。任何模块容器的改动必须经过自动化标签配对扫描断言。
 2. **交互拖拽与 CSS 补间的状态机互斥原则 (Resizing State Machine Exclusion Principle)**：
    - 任何涉及鼠标动态拖拽调整尺寸（Width / Height / Position）的 UI 元素，必须在 `mousedown ➔ mousemove ➔ mouseup` 生命周期中显式禁用所有相关父子元素的 `transition`，并在全局注入 `user-select: none`，以保障绝对零延迟、像素级跟手的物理操作体验。
+
+
+## 36. PBI 侧边栏与一级导航轨流体阻尼展开合并重构 (Fluid Spring Sidebar & Primary Rail Smooth Expansion)
+
+### 36.1 业务背景与用户体验痛点 (Context & Problem Statement)
+
+1. **展开/合并视觉生硬、掉帧感严重**：
+   - 之前在展开或收起左侧 PBI Studio 一级导航轨（`#app-rail` 60px ↔ 175px）以及二级工作流/API 资源树侧边栏（`.sidebar` 280px ↔ 48px）时，过渡效果生硬粗糙；
+   - 内部文字、图标与折叠按钮直接采用 `display: none / display: flex` 瞬间切换，产生 0ms 的明显闪烁与视觉撕裂；
+   - 折叠时二级面板内容瞬间消失（白屏），展开时所有卡片在 48px 窄宽度下强制渲染，导致排版剧烈重排（Layout Thrashing）与文字挤压变形。
+2. **缺乏便捷的手动折叠入口与记忆恢复**：
+   - 二级侧边栏头部缺乏直观的折叠按钮（`«` / Chevron），用户只能依赖外部触发；从窄条展开时无法精准恢复用户之前手动拖拽记忆的自定义宽度。
+
+---
+
+### 36.2 核心架构改进与实现方案 (Architecture Implementation)
+
+- **1. 一级导航轨流体弹性阻尼升级 (`#app-rail` 60px ↔ 175px)**：
+  - **高级阻尼缓动曲线**：全面接入 `cubic-bezier(0.16, 1, 0.3, 1)`（0.32s 自然弹簧缓动减速），消除原先机械线性的硬停感；
+  - **文本位移微动效融合 (TranslateX Slide-In)**：为 `.rail-logo-title` 与 `.rail-item-text` 注入 `transform: translateX(-8px) ➔ translateX(0)` 与透明度协同过渡，文字如抽屉般平滑滑出，杜绝水平挤压变形；
+  - **折叠按钮优雅旋转过渡**：`.rail-toggle-btn` 告别 `display: none`，采用 `transform: scale(0.7) rotate(-90deg) ➔ scale(1) rotate(0deg)` 配合透明度渐变，呈现如原生操作系统般的丝滑手感；
+  - **Logo 悬浮微交互**：为 `.rail-logo-wrap` 增加 Subtle Scale 呼吸动效与圆角悬浮背景反馈。
+
+- **2. 二级侧边栏视窗层级隔离与零抖动展开 (`.sidebar` 280px ↔ 48px)**：
+  - **内容层最小宽度防御 (Min-Width Clipping Defense)**：为 `.sidebar-pane` 设定 `min-width: 240px` 并配合父容器 `overflow: hidden`，彻底杜绝折叠/展开过程中的内容挤压换行，实现如同视窗遮罩（Viewport Mask）般的物理平移质感；
+  - **平滑淡入淡出与位移 (`opacity: 1 ➔ 0, translateX(0 ➔ -16px)`)**：面板在折叠时优雅淡出，展开时顺畅淡入；
+  - **窄条把手延迟浮现 (`#sidebar-narrow-strip`)**：配置 `0.08s` 延迟微动效，在侧边栏收窄的同时优雅浮现 `菜单 ›` 垂直交互条，点击或悬浮均具备高亮微动效反馈；
+  - **头部快捷折叠按钮注入 (`.btn-collapse-sidebar`)**：在「⚡ 工作流中心」与「🌲 API 资源树」头部无缝内嵌统一风格的极简折叠按钮（`«`）；
+  - **用户拖拽宽度双向记忆恢复**：在展开时自动读取 `localStorage('pbi-sidebar-width')`，精准还原用户拖拽设置的自定义宽度；支持双击分割线（`#dragMe`）快速切换折叠/展开。
+
+---
+
+### 36.3 架构经验与最佳实践总结 (Takeaways)
+
+1. **容器视窗遮罩优于内部重排 (Viewport Masking vs Content Squishing)**：
+   - 在侧边栏宽度动态动画中，切忌让内部卡片跟随父容器宽度从 280px 实时压缩到 48px。内部容器保持固定 `min-width`，由父容器 `overflow: hidden` 充当裁剪视窗（Viewport Clip），配合 `translateX` 滑动，是解决文字挤压与重排撕裂的黄金方案。
+2. **纯 CSS 状态驱动动效标准 (Pure State-Driven Micro-Animations)**：
+   - 彻底消灭在动画触发元素上的 `display: none` / `display: block` 瞬时切换，统一使用 `opacity + transform + visibility: hidden (delayed)` 组合拳，兼顾无障碍辅助与丝滑帧率。

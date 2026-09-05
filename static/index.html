@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260905_v1016">
+    <link rel="stylesheet" href="/static/style.css?v=20260905_v1445">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -97,8 +97,16 @@
             };
 
             window.toggleSidebar = function() {
-                var isCollapsed = document.body.classList.toggle('sidebar-collapsed');
-                try { localStorage.setItem('pbi-sidebar-collapsed', isCollapsed ? 'true' : 'false'); } catch(e) {}
+                var isCurrentlyCollapsed = document.body.classList.contains('sidebar-collapsed');
+                if (isCurrentlyCollapsed) {
+                    document.body.classList.remove('sidebar-collapsed');
+                    var savedWidth = localStorage.getItem('pbi-sidebar-width') || '280px';
+                    document.documentElement.style.setProperty('--sidebar-width', savedWidth.endsWith('px') ? savedWidth : savedWidth + 'px');
+                    try { localStorage.setItem('pbi-sidebar-collapsed', 'false'); } catch(e) {}
+                } else {
+                    document.body.classList.add('sidebar-collapsed');
+                    try { localStorage.setItem('pbi-sidebar-collapsed', 'true'); } catch(e) {}
+                }
             };
 
             window.toggleGlobalTopbarCollapse = function() {
@@ -346,7 +354,12 @@
             <div id="sidebar-pane-workflows" class="sidebar-pane" style="display: flex;">
                 <div class="nav-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                     <p class="nav-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">⚡ 工作流中心</p>
-                    <span class="api-count-badge" id="wf-total-badge">11 个任务</span>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span class="api-count-badge" id="wf-total-badge">11 个任务</span>
+                        <button type="button" class="btn-collapse-sidebar" onclick="window.toggleSidebar()" title="折叠侧边栏 (Collapse Sidebar)">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </button>
+                    </div>
                 </div>
                 <div style="margin-bottom: 0.75rem;">
                     <input type="search" id="wf-search-input" placeholder="搜索工作流..." class="modern-input" style="width: 100%; border-radius: 6px;" oninput="window.filterWorkflowsList(this.value)">
@@ -360,7 +373,12 @@
             <div id="sidebar-pane-api_tree" class="sidebar-pane" style="display: none;">
                 <div class="nav-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                     <p class="nav-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">🌲 API 资源树</p>
-                    <span class="api-count-badge" title="Total APIs">共 <span id="total-api-count">0</span> 个</span>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span class="api-count-badge" title="Total APIs">共 <span id="total-api-count">0</span> 个</span>
+                        <button type="button" class="btn-collapse-sidebar" onclick="window.toggleSidebar()" title="折叠侧边栏 (Collapse Sidebar)">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </button>
+                    </div>
                 </div>
                 <div style="display: flex; gap: 8px; margin-bottom: 0.5rem;">
                     <input type="search" id="api-search-input" placeholder="搜索 API... (支持拼音/英文)" class="modern-input" style="flex: 1; border-radius: 6px; min-width: 0;">
@@ -2637,7 +2655,7 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260904_v2245"></script>
     <script src="/static/universal_modal.js?v=20260904_v2245"></script>
-    <script src="/static/script.js?v=20260905_v1016"></script>
+    <script src="/static/script.js?v=20260905_v1445"></script>
 
 
 
