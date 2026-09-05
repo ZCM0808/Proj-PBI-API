@@ -16524,19 +16524,84 @@ window.setGumPillFilter = function(filterType, btn) {
     window.filterGumTable();
 };
 
+window.renderGumInlineTable = function(filtered) {
+    const tbody = document.getElementById('wf-gum-inline-tbody');
+    const emptyDiv = document.getElementById('wf-gum-inline-empty');
+    if (!tbody) return;
+
+    if (!filtered || filtered.length === 0) {
+        tbody.innerHTML = '';
+        if (emptyDiv) emptyDiv.style.display = 'block';
+        return;
+    }
+
+    if (emptyDiv) emptyDiv.style.display = 'none';
+
+    tbody.innerHTML = filtered.map((d, idx) => {
+        const wsName = d.workspaceName || d.wsName || '未知工作区';
+        const userTitle = d.displayName ? `${d.displayName} <span style="color:var(--text-secondary);font-size:0.7rem;">(${d.identifier})</span>` : d.identifier;
+        const pType = d.principalType || 'User';
+        const dRole = d.directRole || d.role || '-';
+        const eRole = d.effectiveRole || d.role || '-';
+        const isAdm = eRole === 'Admin';
+        const roleColor = isAdm ? 'var(--accent)' : (eRole === 'Member' ? 'var(--info, #0284c7)' : 'var(--text-primary)');
+        const canWrite = d.canEditModels;
+        const writeBadge = canWrite ? `<span style="color:var(--success, #10b981);font-weight:600;">✅ 全部可读写</span>` : `<span style="color:var(--text-secondary);">❌ 纯只读</span>`;
+        
+        let secStatus = `<span style="color:var(--success, #10b981);">🟢 正常</span>`;
+        if (d.isElevated) {
+            secStatus = `<span style="padding:2px 6px;border-radius:6px;background:rgba(234,179,8,0.15);color:var(--warning,#eab308);font-weight:600;font-size:0.7rem;border:1px solid rgba(234,179,8,0.3);cursor:pointer;" onclick="window.showGumUserDetailModal(${idx})" title="点击查看提权成因">⚠️ 继承提权</span>`;
+        } else if (d.securityStatus && d.securityStatus.includes('⚠️')) {
+            secStatus = `<span style="color:var(--warning,#eab308);font-weight:600;">${d.securityStatus}</span>`;
+        }
+
+        const wsId = d.workspaceId || d.wsId;
+        const identifier = d.identifier;
+
+        return `
+            <tr style="border-bottom: 1px solid var(--overlay-5); transition: background 0.15s;">
+                <td style="padding: 7px 10px; max-width: 140px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="${wsName}"><b>${wsName}</b></td>
+                <td style="padding: 7px 10px; max-width: 180px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="${d.identifier}">${userTitle}</td>
+                <td style="padding: 7px 10px;"><span style="padding:2px 6px;border-radius:4px;background:var(--overlay-10);font-size:0.72rem;">${pType}</span></td>
+                <td style="padding: 7px 10px;"><span style="padding:2px 6px;border-radius:4px;background:var(--overlay-8);font-size:0.72rem;color:var(--text-secondary);">${dRole}</span></td>
+                <td style="padding: 7px 10px;"><span style="font-weight:700;color:${roleColor};">${eRole}</span></td>
+                <td style="padding: 7px 10px;">${writeBadge}</td>
+                <td style="padding: 7px 10px;">${secStatus}</td>
+                <td style="padding: 7px 10px; text-align: center;">
+                    <div style="display:flex;gap:4px;align-items:center;justify-content:center;">
+                        <button class="btn-wf-sm btn-wf-secondary" style="padding:2px 6px;font-size:0.7rem;height:22px;" onclick="window.showGumUserDetailModal(${idx})" title="查看该用户针对所有语义模型的细粒度权限拓扑">🔍 画像</button>
+                        <button class="btn-action-danger" style="padding:2px 6px;font-size:0.7rem;height:22px;" onclick="if(window.deleteGumUser) window.deleteGumUser('${wsId}', '${identifier}', '${wsName}')" title="从工作区移除该用户">移除</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+};
+
 window.filterGumTable = function() {
     const term = (document.getElementById('wf-gum-search')?.value || '').toLowerCase();
     const statsSpan = document.getElementById('wf-gum-stats');
     const resultWrap = document.getElementById('wf-gum-result-wrap');
+    const placeholder = document.getElementById('wf-gum-empty-placeholder');
     const pillFilter = window._gumPillFilter || 'all';
+
+    if (!window.gumData || window.gumData.length === 0) {
+        if (placeholder) placeholder.style.display = 'block';
+        if (resultWrap) resultWrap.style.display = 'none';
+        return;
+    }
+
+    if (placeholder) placeholder.style.display = 'none';
+    if (resultWrap) resultWrap.style.display = 'block';
 
     let filtered = (window.gumData || []).filter(d => {
         // Text Match
-        const matchesText = (d.workspaceName || '').toLowerCase().includes(term) ||
+        const matchesText = !term ||
+            (d.workspaceName || d.wsName || '').toLowerCase().includes(term) ||
             (d.identifier || '').toLowerCase().includes(term) ||
             (d.displayName || '').toLowerCase().includes(term) ||
-            (d.directRole || '').toLowerCase().includes(term) ||
-            (d.effectiveRole || '').toLowerCase().includes(term) ||
+            (d.directRole || d.role || '').toLowerCase().includes(term) ||
+            (d.effectiveRole || d.role || '').toLowerCase().includes(term) ||
             (d.securityStatus || '').toLowerCase().includes(term);
 
         if (!matchesText) return false;
@@ -16549,8 +16614,10 @@ window.filterGumTable = function() {
     });
 
     window._lastGumFiltered = filtered;
-    if (statsSpan) statsSpan.textContent = `${filtered.length} / ${window.gumData.length} 条记录`;
-    if (resultWrap) resultWrap.style.display = 'block';
+    if (statsSpan) statsSpan.textContent = `筛选结果: ${filtered.length} / ${window.gumData.length} 条记录`;
+
+    // 渲染实时内嵌表格
+    window.renderGumInlineTable(filtered);
 
     // If modal is open, re-render
     if (document.getElementById('universal-modal-overlay') && document.getElementById('universal-modal-title')?.textContent?.includes('Global Workspace Permissions')) {
@@ -16559,6 +16626,7 @@ window.filterGumTable = function() {
 };
 
 window.openGumResultModal = function() {
+    const term = (document.getElementById('wf-gum-search')?.value || '');
     const data = window._lastGumFiltered || window.gumData || [];
     if (!data || data.length === 0) {
         if (window.showNotification) window.showNotification('暂无匹配的权限记录，请先执行扫描。', 'info');
@@ -16568,7 +16636,7 @@ window.openGumResultModal = function() {
     const mappedData = data.map((d, idx) => ({
         'Workspace': d.workspaceName || d.wsName,
         'User / Principal': `${d.displayName || d.identifier} (${d.identifier})`,
-        'Type': d.principalType,
+                'Type': d.principalType,
         'Direct Role': d.directRole || d.role,
         'Effective Access': d.effectiveRole || d.role,
         'Model Write Access': d.canEditModels ? '✅ 全部可读写' : '❌ 纯只读',
@@ -16578,13 +16646,15 @@ window.openGumResultModal = function() {
         _raw: d,
         _idx: idx,
         _wsId: d.workspaceId || d.wsId,
-        _identifier: d.identifier
+        _identifier: d.identifier,
+        _wsName: d.workspaceName || d.wsName
     }));
 
     if (window.showUniversalDataModal) {
         window.showUniversalDataModal({
             title: 'Global Workspace Permissions & Effective Access Matrix',
             data: mappedData,
+            initialSearch: term,
             columns: ['Workspace', 'User / Principal', 'Type', 'Direct Role', 'Effective Access', 'Model Write Access', 'Security Status', 'Actions'],
             cellRenderer: (col, val, row) => {
                 if (col === 'Type') {
@@ -16612,7 +16682,7 @@ window.openGumResultModal = function() {
                     return `
                         <div style="display:flex;gap:4px;align-items:center;">
                             <button class="btn-wf-sm btn-wf-secondary" style="padding:2px 8px;font-size:0.7rem;height:24px;" onclick="window.showGumUserDetailModal(${row._idx})" title="查看该用户针对所有语义模型的细粒度权限拓扑">🔍 画像</button>
-                            <button class="btn-action-danger" style="padding:2px 6px;font-size:0.7rem;height:24px;" onclick="if(window.removeGumUser) window.removeGumUser('${row._wsId}', '${row._identifier}')" title="从工作区剥离用户">移除</button>
+                            <button class="btn-action-danger" style="padding:2px 6px;font-size:0.7rem;height:24px;" onclick="if(window.deleteGumUser) window.deleteGumUser('${row._wsId}', '${row._identifier}', '${row._wsName}')" title="从工作区剥离用户">移除</button>
                         </div>
                     `;
                 }
@@ -16844,276 +16914,213 @@ window.submitGumEdit = async function() {
 
 
 window.deleteGumUser = async function(wsId, identifier, wsName) {
-
-    const proceed = await window.showCustomConfirm(`Are you sure you want to completely REMOVE access for:\n${identifier}\nfrom workspace [${wsName}]?`);
-
+    const proceed = await window.showCustomConfirm(`Are you sure you want to completely REMOVE access for:
+${identifier}
+from workspace [${wsName}]?`);
     if (!proceed) return;
 
-    
-
     const logsDiv = document.getElementById('wf-out-gum-logs');
-
-    
-
     const div = document.createElement('div');
-
     div.style.paddingLeft = '10px';
-
     div.style.borderLeft = '2px solid var(--error)';
-
     div.textContent = `[DELETE] Removing ${identifier} from ${wsName} ...`;
-
-    logsDiv.appendChild(div);
-
-    
+    if (logsDiv) logsDiv.appendChild(div);
 
     try {
-
         const res = await fetch('/api/proxy', {
-
             method: 'POST',
-
             headers: { 'Content-Type': 'application/json' },
-
             body: JSON.stringify({ endpoint: `/groups/${wsId}/users/${encodeURIComponent(identifier)}`, method: 'DELETE' })
-
         });
 
-        
-
         if (res.ok) {
-
             div.textContent += " OK (Removed)";
+            if (window.showNotification) window.showNotification(`已成功从工作区移除用户 ${identifier}`, 'success');
 
             // Remove from local state
-
-            window.gumData = window.gumData.filter(d => !(d.wsId === wsId && d.identifier === identifier));
-
+            window.gumData = (window.gumData || []).filter(d => !((d.wsId === wsId || d.workspaceId === wsId) && d.identifier === identifier));
             window.filterGumTable();
-
         } else {
-
             div.textContent += ` FAILED: ${res.status}`;
-
+            if (window.showNotification) window.showNotification(`移除用户失败: ${res.status}`, 'error');
         }
-
     } catch(err) {
-
         div.textContent += ` EXCEPTION: ${err.message}`;
-
+        div.style.borderLeft = '2px solid var(--error)';
     }
 
-    logsDiv.scrollTop = Math.max(0, logsDiv.scrollHeight - logsDiv.clientHeight * 0.66);
-
+    if (logsDiv) logsDiv.scrollTop = Math.max(0, logsDiv.scrollHeight - logsDiv.clientHeight * 0.66);
 };
 
+window.removeGumUser = window.deleteGumUser;
 
 
-window.openGumAddUserModal = function() {
 
+window.openGumAddUserModal = async function() {
     const sel = document.getElementById('gum-add-ws-id');
+    if (!sel) return;
 
     sel.innerHTML = '<option value="">Select a Workspace...</option>';
 
-    
-
-    if (!window.gumWorkspaces || window.gumWorkspaces.length === 0) {
-
-        alert('Please run the "Scan" first to populate the workspaces list!');
-
-        return;
-
+    // Collect workspaces from available sources
+    let wses = [];
+    if (window.gumWorkspaces && window.gumWorkspaces.length > 0) {
+        wses = [...window.gumWorkspaces];
+    } else if (window.configuredWorkspaces && window.configuredWorkspaces.length > 0) {
+        wses = [...window.configuredWorkspaces];
+    } else {
+        const mainWsSelect = document.getElementById('wf-gum-workspace-select');
+        if (mainWsSelect && mainWsSelect.options.length > 1) {
+            for (let i = 1; i < mainWsSelect.options.length; i++) {
+                const opt = mainWsSelect.options[i];
+                if (opt.value) {
+                    wses.push({ id: opt.value, name: opt.textContent });
+                }
+            }
+        }
     }
 
-    
+    if (wses.length === 0) {
+        try {
+            const res = await fetch('/api/proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint: '/groups?$top=100', method: 'GET' })
+            });
+            const data = await res.json();
+            const payload = data.data || data;
+            const items = Array.isArray(payload) ? payload : (payload.value || []);
+            if (items.length > 0) {
+                wses = items;
+                window.gumWorkspaces = items;
+            }
+        } catch (e) {
+            console.warn('Fallback workspace fetch:', e);
+        }
+    }
 
     // Populate workspaces sorted by name
-
-    const wses = [...window.gumWorkspaces].sort((a,b) => (a.name||'').localeCompare(b.name||''));
-
-    for(const ws of wses) {
-
+    wses.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    for (const ws of wses) {
         const opt = document.createElement('option');
-
         opt.value = ws.id;
-
-        opt.textContent = ws.name;
-
+        opt.textContent = ws.name || ws.id;
         sel.appendChild(opt);
-
     }
 
-    
+    // Pre-select current target workspace if chosen in main select
+    const currTargetWs = document.getElementById('wf-gum-workspace-select')?.value;
+    if (currTargetWs && sel.querySelector(`option[value="${currTargetWs}"]`)) {
+        sel.value = currTargetWs;
+    }
 
     document.getElementById('gum-add-identifier').value = '';
-
     document.getElementById('gum-add-role').value = 'Viewer';
-
+    document.getElementById('gum-add-principal-type').value = 'User';
     document.getElementById('gum-add-modal').style.display = 'flex';
-
 };
 
-
-
 window.submitGumAddUser = async function() {
-
     const wsId = document.getElementById('gum-add-ws-id').value;
-
     const identifier = document.getElementById('gum-add-identifier').value.trim();
-
     const principalType = document.getElementById('gum-add-principal-type').value;
-
     const newRole = document.getElementById('gum-add-role').value;
 
-    
-
-    if(!wsId) { alert('Please select a workspace!'); return; }
-
-    if(!identifier) { alert('Please enter an email/identifier!'); return; }
-
-    
+    if (!wsId) {
+        if (window.showNotification) window.showNotification('请先选择目标工作区 (Please select a workspace)', 'warning');
+        else alert('Please select a workspace!');
+        return;
+    }
+    if (!identifier) {
+        if (window.showNotification) window.showNotification('请输入用户邮箱或主体标识符 (Please enter an email/identifier)', 'warning');
+        else alert('Please enter an email/identifier!');
+        return;
+    }
 
     document.getElementById('gum-add-modal').style.display = 'none';
 
-    
-
     const logsDiv = document.getElementById('wf-out-gum-logs');
-
-    window.expandConsole('wf-out-gum-logs'); // ensure logs are visible
-
-    
+    if (window.expandConsole) window.expandConsole('wf-out-gum-logs');
 
     const div = document.createElement('div');
-
     div.style.paddingLeft = '10px';
-
     div.style.borderLeft = '2px solid var(--accent)';
-
     div.textContent = `[ADD] Adding ${identifier} to workspace [${wsId}] as ${newRole}...`;
-
-    logsDiv.appendChild(div);
-
-    
+    if (logsDiv) logsDiv.appendChild(div);
 
     try {
-
         const body = {
-
             identifier: identifier,
-
             groupUserAccessRight: newRole,
-
             principalType: principalType
-
         };
 
-        
-
-        // Use POST to add a user
-
         const res = await fetch('/api/proxy', {
-
             method: 'POST',
-
             headers: { 'Content-Type': 'application/json' },
-
             body: JSON.stringify({ endpoint: `/groups/${wsId}/users`, method: 'POST', body: body })
-
         });
 
-        
-
         if (res.ok) {
-
             div.textContent += " OK (Added)";
-
             div.style.borderLeft = '2px solid var(--success)';
+            if (window.showNotification) window.showNotification(`成功将 ${identifier} 添加为 ${newRole}`, 'success');
 
-            
-
-            // Re-fetch that specific workspace's users to update the table immediately!
-
+            // Re-fetch users for this workspace
             try {
-
                 const uRes = await fetch('/api/proxy', {
-
                     method: 'POST',
-
                     headers: { 'Content-Type': 'application/json' },
-
                     body: JSON.stringify({ endpoint: `/groups/${wsId}/users`, method: 'GET' })
-
                 });
 
-                if(uRes.ok) {
-
+                if (uRes.ok) {
                     const uData = await uRes.json();
-
                     const uPayload = uData.data || uData;
-
                     const users = uPayload.value || [];
 
-                    
-
                     // Remove old records for this workspace
+                    window.gumData = (window.gumData || []).filter(d => d.wsId !== wsId && d.workspaceId !== wsId);
 
-                    window.gumData = window.gumData.filter(d => d.wsId !== wsId);
-
-                    
-
-                    // Add fresh records
-
-                    const wsName = window.gumWorkspaces.find(w => w.id === wsId)?.name || 'Unknown';
-
-                    for(const u of users) {
-
+                    const wsName = (window.gumWorkspaces || []).find(w => w.id === wsId)?.name || 'Target Workspace';
+                    for (const u of users) {
                         window.gumData.push({
-
+                            workspaceId: wsId,
+                            workspaceName: wsName,
                             wsId: wsId,
-
                             wsName: wsName,
-
-                            identifier: u.identifier,
-
-                            principalType: u.principalType,
-
-                            role: u.groupUserAccessRight
-
+                            identifier: u.identifier || u.emailAddress,
+                            displayName: u.displayName || u.identifier,
+                            graphId: u.graphId,
+                            principalType: u.principalType || 'User',
+                            directRole: u.groupUserAccessRight || 'Viewer',
+                            effectiveRole: u.groupUserAccessRight || 'Viewer',
+                            role: u.groupUserAccessRight,
+                            isElevated: false,
+                            canEditModels: ['Admin', 'Member', 'Contributor'].includes(u.groupUserAccessRight),
+                            securityStatus: `🟢 正常 (${u.groupUserAccessRight})`,
+                            datasetsDetail: []
                         });
-
                     }
 
                     window.filterGumTable();
-
                 }
-
-            } catch(e) {}
-
-            
-
+            } catch (e) {
+                console.warn('Error refreshing workspace users:', e);
+            }
         } else {
-
-            const errJson = await res.json().catch(()=>({}));
-
+            const errJson = await res.json().catch(() => ({}));
             div.textContent += ` FAILED: ${res.status} ${JSON.stringify(errJson)}`;
-
             div.style.borderLeft = '2px solid var(--error)';
-
+            if (window.showNotification) window.showNotification(`添加用户失败: ${res.status}`, 'error');
         }
-
-    } catch(err) {
-
+    } catch (err) {
         div.textContent += ` EXCEPTION: ${err.message}`;
-
         div.style.borderLeft = '2px solid var(--error)';
-
     }
 
-    setTimeout(() => { logsDiv.scrollTop = Math.max(0, logsDiv.scrollHeight - logsDiv.clientHeight * 0.66); }, 50);
-
+    if (logsDiv) logsDiv.scrollTop = Math.max(0, logsDiv.scrollHeight - logsDiv.clientHeight * 0.66);
 };
-
-
 
 window.gumAutocompleteTimer = null;
 
