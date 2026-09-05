@@ -59,8 +59,23 @@ window.togglePinWorkflow = function(wfKey, event) {
         event.stopPropagation();
         event.preventDefault();
     }
+    if (window._isPinAnimating) return; // 防连击保护
+
+    const listContainer = document.getElementById('wf-sidebar-list-container');
+    if (!listContainer) return;
+
+    // 1. FIRST: 记录 DOM 变动前所有卡片的绝对位置
+    const firstPositions = new Map();
+    listContainer.querySelectorAll('.wf-sidebar-item').forEach(el => {
+        const key = el.getAttribute('data-wf');
+        if (key) {
+            firstPositions.set(key, el.getBoundingClientRect().top);
+        }
+    });
+
     let pinned = window.getPinnedWorkflows();
     const idx = pinned.indexOf(wfKey);
+    let isNowPinned = false;
     if (idx !== -1) {
         // Unpin
         pinned.splice(idx, 1);
@@ -71,14 +86,61 @@ window.togglePinWorkflow = function(wfKey, event) {
         // Prepend to top (MRU stack order: newest pinned is index 0)
         pinned = pinned.filter(k => k !== wfKey);
         pinned.unshift(wfKey);
+        isNowPinned = true;
         if (window.showNotification) {
             window.showNotification('已将任务置顶到第一位 📌', 'success');
         }
     }
     window.savePinnedWorkflows(pinned);
+
+    // 启用防连击锁定与样式容器
+    window._isPinAnimating = true;
+    listContainer.classList.add('is-pin-reordering');
+
+    // 2. LAST: 重新渲染 DOM 为最新排列顺序
     if (window.renderWorkflowSidebarList) {
         window.renderWorkflowSidebarList();
     }
+
+    // 3. INVERT: 计算位置反转差值，施加无过渡初始位移
+    const items = listContainer.querySelectorAll('.wf-sidebar-item');
+    items.forEach(el => {
+        const key = el.getAttribute('data-wf');
+        const firstTop = firstPositions.get(key);
+        if (firstTop !== undefined) {
+            const lastTop = el.getBoundingClientRect().top;
+            const deltaY = firstTop - lastTop;
+            if (deltaY !== 0) {
+                el.style.transform = `translateY(${deltaY}px)`;
+                el.style.transition = 'none';
+            }
+        }
+    });
+
+    // 强制触发重排渲染
+    void listContainer.offsetHeight;
+
+    // 4. PLAY: 请求下一帧播放平滑弹簧位移动画
+    requestAnimationFrame(() => {
+        items.forEach(el => {
+            el.style.transition = 'transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)';
+            el.style.transform = 'translateY(0px)';
+        });
+        const targetEl = listContainer.querySelector(`.wf-sidebar-item[data-wf="${wfKey}"]`);
+        if (targetEl && isNowPinned) {
+            targetEl.classList.add('wf-item-pin-flash');
+        }
+
+        setTimeout(() => {
+            items.forEach(el => {
+                el.style.transition = '';
+                el.style.transform = '';
+            });
+            if (targetEl) targetEl.classList.remove('wf-item-pin-flash');
+            listContainer.classList.remove('is-pin-reordering');
+            window._isPinAnimating = false;
+        }, 460);
+    });
 };
 
 window.getPinnedCategories = function() {
@@ -101,8 +163,23 @@ window.togglePinCategory = function(catName, event) {
         event.stopPropagation();
         event.preventDefault();
     }
+    if (window._isPinAnimating) return; // 防连击保护
+
+    const apiTree = document.getElementById('api-tree');
+    if (!apiTree) return;
+
+    // 1. FIRST: 记录 DOM 变动前所有分类目录的绝对位置
+    const firstPositions = new Map();
+    apiTree.querySelectorAll('.api-category').forEach(el => {
+        const cat = el.getAttribute('data-category');
+        if (cat) {
+            firstPositions.set(cat, el.getBoundingClientRect().top);
+        }
+    });
+
     let pinned = window.getPinnedCategories();
     const idx = pinned.indexOf(catName);
+    let isNowPinned = false;
     if (idx !== -1) {
         // Unpin
         pinned.splice(idx, 1);
@@ -113,15 +190,62 @@ window.togglePinCategory = function(catName, event) {
         // Prepend to top (MRU stack order)
         pinned = pinned.filter(c => c !== catName);
         pinned.unshift(catName);
+        isNowPinned = true;
         if (window.showNotification) {
             window.showNotification(`已将分类 [${catName}] 置顶到第一位 📌`, 'success');
         }
     }
     window.savePinnedCategories(pinned);
+
+    // 启用防连击锁定与样式容器
+    window._isPinAnimating = true;
+    apiTree.classList.add('is-pin-reordering');
+
+    // 2. LAST: 重新渲染 DOM 为最新排列顺序
     if (typeof window.renderTree === 'function') {
         const searchInput = document.getElementById('api-search-input');
         window.renderTree(searchInput ? searchInput.value : '');
     }
+
+    // 3. INVERT: 计算位置反转差值，施加无过渡初始位移
+    const items = apiTree.querySelectorAll('.api-category');
+    items.forEach(el => {
+        const cat = el.getAttribute('data-category');
+        const firstTop = firstPositions.get(cat);
+        if (firstTop !== undefined) {
+            const lastTop = el.getBoundingClientRect().top;
+            const deltaY = firstTop - lastTop;
+            if (deltaY !== 0) {
+                el.style.transform = `translateY(${deltaY}px)`;
+                el.style.transition = 'none';
+            }
+        }
+    });
+
+    // 强制触发重排渲染
+    void apiTree.offsetHeight;
+
+    // 4. PLAY: 请求下一帧播放平滑弹簧位移动画
+    requestAnimationFrame(() => {
+        items.forEach(el => {
+            el.style.transition = 'transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)';
+            el.style.transform = 'translateY(0px)';
+        });
+        const targetEl = apiTree.querySelector(`.api-category[data-category="${catName}"]`);
+        if (targetEl && isNowPinned) {
+            targetEl.classList.add('api-cat-pin-flash');
+        }
+
+        setTimeout(() => {
+            items.forEach(el => {
+                el.style.transition = '';
+                el.style.transform = '';
+            });
+            if (targetEl) targetEl.classList.remove('api-cat-pin-flash');
+            apiTree.classList.remove('is-pin-reordering');
+            window._isPinAnimating = false;
+        }, 460);
+    });
 };
 
 
