@@ -1,5 +1,5 @@
 :root {
-    --sidebar-width: 280px;
+    --sidebar-width: clamp(240px, 22vw, 420px);
     --app-padding: 8px 10px 10px 10px;
     --bg-color: #0b0d12;
     --panel-bg: rgba(18, 22, 31, 0.85);
@@ -164,10 +164,11 @@ body {
     overflow: hidden;
 }
 
-/* Primary Navigation Rail (Leftmost - PBI Studio Sidebar) */
-#app-rail,
+/* Primary Navigation Rail (Leftmost) */
 .app-rail {
     width: 60px;
+    min-width: 60px;
+    max-width: 60px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -176,24 +177,18 @@ body {
     margin-right: 6px;
     flex-shrink: 0;
     z-index: 25;
-    transition: width 0.38s cubic-bezier(0.22, 1, 0.36, 1), 
-                margin 0.38s cubic-bezier(0.22, 1, 0.36, 1), 
-                padding 0.38s cubic-bezier(0.22, 1, 0.36, 1), 
-                opacity 0.25s ease, 
-                background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
-                border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
-                box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
-                color 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition: width 0.3s cubic-bezier(0.2, 0, 0, 1), min-width 0.3s cubic-bezier(0.2, 0, 0, 1), max-width 0.3s cubic-bezier(0.2, 0, 0, 1), opacity 0.22s ease, margin 0.3s cubic-bezier(0.2, 0, 0, 1), padding 0.3s cubic-bezier(0.2, 0, 0, 1), background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     box-sizing: border-box;
     overflow: hidden;
-    will-change: width;
 }
 
-#app-rail.expanded,
 .app-rail.expanded {
-    width: 175px;
+    width: 175px !important;
+    min-width: 175px !important;
+    max-width: 175px !important;
     align-items: stretch;
 }
+
 
 .rail-top {
     display: flex;
@@ -207,7 +202,7 @@ body {
     align-items: center;
     justify-content: flex-start;
     gap: 10px;
-    padding: 6px 10px 10px 10px;
+    padding: 6px 11px 12px 11px;
     border-bottom: 1px solid var(--overlay-10);
     margin-bottom: 6px;
     cursor: pointer;
@@ -215,31 +210,16 @@ body {
     overflow: hidden;
     white-space: nowrap;
     box-sizing: border-box;
-    border-radius: 8px;
-    transition: background 0.2s ease, padding 0.38s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.rail-logo-wrap:hover {
-    background: var(--overlay-5);
-}
-
-.rail-logo-wrap svg {
-    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-    flex-shrink: 0;
-}
-
-.rail-logo-wrap:hover svg {
-    transform: scale(1.08);
+    transition: padding 0.3s cubic-bezier(0.2, 0, 0, 1);
 }
 
 .app-rail.expanded .rail-logo-wrap {
-    padding: 6px 10px 10px 10px;
+    padding: 6px 11px 12px 11px;
 }
 
 .rail-logo-title {
     max-width: 0;
     opacity: 0;
-    transform: translateX(-10px);
     font-size: 0.95rem;
     font-weight: 700;
     color: var(--text-primary);
@@ -247,57 +227,23 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     letter-spacing: -0.01em;
-    transition: opacity 0.14s ease-out, 
-                transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), 
-                max-width 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: max-width 0.28s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease;
     display: inline-block;
-    will-change: opacity, transform, max-width;
 }
 
 .app-rail.expanded .rail-logo-title {
     max-width: 120px;
     opacity: 1;
-    transform: translateX(0);
-    transition: max-width 0.38s cubic-bezier(0.22, 1, 0.36, 1), 
-                opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1) 0.08s, 
-                transform 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.04s;
 }
 
 .rail-toggle-btn {
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    pointer-events: none;
-    transform: scale(0.6) rotate(-180deg);
-    transition: opacity 0.14s ease-out, 
-                transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), 
-                color 0.15s ease, 
-                background 0.15s ease;
-    background: none;
-    border: none;
-    padding: 0;
-    color: var(--text-secondary);
-    cursor: pointer;
-    margin-left: auto;
-    width: 22px;
-    height: 22px;
-    border-radius: 4px;
-}
-
-.rail-toggle-btn:hover {
-    color: var(--accent);
-    background: var(--overlay-10);
+    display: none;
 }
 
 .app-rail.expanded .rail-toggle-btn {
-    opacity: 1;
-    pointer-events: auto;
-    transform: scale(1) rotate(0deg);
-    transition: opacity 0.25s ease-out 0.1s, 
-                transform 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.05s, 
-                color 0.15s ease, 
-                background 0.15s ease;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
 }
 
 .rail-menu-list {
@@ -319,7 +265,7 @@ body {
     background: transparent;
     border: 1px solid transparent;
     cursor: pointer;
-    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, padding 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, padding 0.3s cubic-bezier(0.2, 0, 0, 1);
     position: relative;
     user-select: none;
     white-space: nowrap;
@@ -357,26 +303,19 @@ body {
 .rail-item-text {
     max-width: 0;
     opacity: 0;
-    transform: translateX(-10px);
     font-size: 0.84rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    transition: opacity 0.14s ease-out, 
-                transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), 
-                max-width 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: max-width 0.28s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease;
     display: inline-block;
-    will-change: opacity, transform, max-width;
 }
 
 .app-rail.expanded .rail-item-text {
     max-width: 110px;
     opacity: 1;
-    transform: translateX(0);
-    transition: max-width 0.38s cubic-bezier(0.22, 1, 0.36, 1), 
-                opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1) 0.08s, 
-                transform 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.04s;
 }
+
 
 .rail-bottom {
     display: flex;
@@ -388,6 +327,7 @@ body {
 }
 
 /* Glassmorphism utility */
+
 .glass-panel {
     background: var(--panel-bg);
     backdrop-filter: blur(12px);
@@ -398,11 +338,12 @@ body {
     transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Sidebar (Secondary List Container - Permanently Resident) */
+/* Sidebar (Secondary List Container) */
+
 .sidebar {
     width: var(--sidebar-width, 280px);
-    min-width: 180px;
-    max-width: 700px;
+    min-width: 220px;
+    max-width: 600px;
     display: flex;
     flex-direction: column;
     padding: 0.85rem 0.95rem 0.75rem 0.95rem;
@@ -412,11 +353,7 @@ body {
     flex-shrink: 0;
     overflow: hidden;
     box-sizing: border-box;
-    background-color: var(--panel-bg);
-    border-color: var(--panel-border);
-    transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
-                border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
-                box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: width 0.3s cubic-bezier(0.2, 0, 0, 1), min-width 0.3s cubic-bezier(0.2, 0, 0, 1), max-width 0.3s cubic-bezier(0.2, 0, 0, 1), opacity 0.22s ease, padding 0.3s cubic-bezier(0.2, 0, 0, 1), margin 0.3s cubic-bezier(0.2, 0, 0, 1), background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Secondary Sidebar Panes */
@@ -1429,7 +1366,7 @@ textarea:focus {
 #gum-edit-modal .modal-content { width: min(90vw, 460px); max-width: 460px; }
 #pipeline-modal .modal-content { width: min(92vw, 840px); max-height: min(88vh, 850px); }
 #settings-modal .modal-content { width: min(94vw, 960px); max-height: min(90vh, 900px); }
-#modal-note .modal-content { width: min(94vw, 960px); height: min(90vh, 720px); max-height: min(90vh, 900px); }
+#modal-note .modal-content { width: min(94vw, 960px); max-height: min(90vh, 900px); }
 
 /* Fluid Responsive Grid for Form Inputs */
 .wf-fluid-grid {
@@ -2519,53 +2456,29 @@ json-viewer {
 }
 
 /* Quick Note Editor Layout Optimization */
-.note-modal-body {
-    flex: 1;
-    min-height: 0;
-    height: 100%;
-    overflow: hidden;
-}
-
-.note-left-panel {
-    height: 100%;
-    min-height: 0;
-}
-
 .note-right-panel {
     display: flex;
     flex-direction: column;
     gap: 10px !important;
-    height: 100%;
-    min-height: 0;
 }
 
 .note-editor-wrapper {
-    flex: 1 1 0;
+    flex: 1;
     display: flex;
     flex-direction: column;
     min-height: 0;
-    height: 100%;
-    overflow: hidden;
 }
 
 .note-editor-wrapper .EasyMDEContainer {
-    flex: 1 1 0;
+    flex: 1;
     display: flex;
     flex-direction: column;
     min-height: 0;
-    height: 100%;
 }
 
 .note-editor-wrapper .CodeMirror {
-    flex: 1 1 0;
-    min-height: 0 !important;
-    height: 100% !important;
-}
-
-.note-editor-wrapper .CodeMirror-scroll {
-    min-height: 0 !important;
-    height: 100% !important;
-    overflow-y: auto !important;
+    flex: 1 1 auto;
+    min-height: 320px;
 }
 
 /* Note Modal Buttons styling and hover animations */
@@ -3828,29 +3741,59 @@ body.rail-collapsed #rail-expand-handle {
     transform: scale(1.08);
 }
 
+/* --- Sidebar Collapsed State: 窄条图标模式 (48px narrow icon strip) --- */
+body.sidebar-collapsed .sidebar {
+    width: 48px !important;
+    min-width: 48px !important;
+    max-width: 48px !important;
+    padding: 12px 0 !important;
+    overflow: hidden !important;
+}
 
+body.sidebar-collapsed #dragMe {
+    display: none !important;
+}
 
-/* Secondary sidebar collapse button in header */
-.btn-collapse-sidebar {
-    background: transparent;
-    border: 1px solid transparent;
-    color: var(--text-secondary);
-    border-radius: 6px;
-    width: 24px;
-    height: 24px;
-    display: inline-flex;
+/* 折叠态隐藏所有面板内容 */
+body.sidebar-collapsed .sidebar .sidebar-pane {
+    display: none !important;
+}
+
+/* 折叠态显示窄条 */
+body.sidebar-collapsed #sidebar-narrow-strip {
+    display: flex !important;
+}
+
+/* --- 侧边栏窄条 (Sidebar Narrow Strip) --- */
+#sidebar-narrow-strip {
+    display: none;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    height: 100%;
+    width: 100%;
+    gap: 8px;
     cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    user-select: none;
+    transition: color 0.2s ease;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    border-radius: 0;
     padding: 0;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#sidebar-narrow-strip:hover {
+    color: var(--accent);
 }
 
 .btn-collapse-sidebar:hover {
     color: var(--accent) !important;
     border-color: var(--accent-glow) !important;
-    background: var(--overlay-10) !important;
-    transform: scale(1.08);
+    background: var(--input-bg-light) !important;
 }
 
 
@@ -4534,139 +4477,4 @@ table.data-table th,
 [data-theme="light"] .data-table td {
     color: #0f172a !important;
     border-bottom: 1px solid #e2e8f0 !important;
-}
-
-/* Disable transitions and text selection completely during active drag resize for zero-lag tracking */
-body.is-resizing,
-body.is-resizing *,
-body.is-resizing .sidebar,
-body.is-resizing .app-rail,
-body.is-resizing .main-content,
-body.is-resizing .wf-detail-board,
-body.is-resizing .body-editor-container {
-    transition: none !important;
-    user-select: none !important;
-    -webkit-user-select: none !important;
-}
-
-/* ─── Pin to Top Button & State (Workflows & API Categories) ─── */
-.btn-pin-item {
-    background: transparent;
-    border: none;
-    padding: 3px 5px;
-    border-radius: 4px;
-    cursor: pointer;
-    color: var(--text-secondary);
-    opacity: 0;
-    transform: scale(0.85);
-    transition: opacity 0.2s cubic-bezier(0.22, 1, 0.36, 1), 
-                transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), 
-                color 0.15s ease, 
-                background 0.15s ease;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
-    z-index: 5;
-    flex-shrink: 0;
-    margin-left: auto;
-}
-
-.wf-sidebar-item:hover .btn-pin-item,
-.api-category-title:hover .btn-pin-item {
-    opacity: 0.65;
-    transform: scale(1);
-}
-
-.btn-pin-item:hover {
-    opacity: 1 !important;
-    color: var(--accent) !important;
-    background: var(--overlay-10);
-    transform: scale(1.15) !important;
-}
-
-.btn-pin-item.pinned {
-    opacity: 1 !important;
-    color: var(--accent) !important;
-    transform: rotate(-45deg) scale(1);
-}
-
-.btn-pin-item.pinned svg {
-    fill: currentColor;
-}
-
-.btn-pin-item.pinned:hover {
-    transform: rotate(-45deg) scale(1.2) !important;
-    background: var(--overlay-10);
-}
-
-.wf-sidebar-item.is-pinned {
-    border-left: 3px solid var(--accent);
-    background: var(--overlay-5);
-}
-
-.wf-sidebar-item.is-pinned:hover {
-    background: var(--overlay-10);
-}
-
-.api-category.is-pinned > .api-category-title {
-    border-left: 3px solid var(--accent);
-    background: var(--overlay-5);
-}
-
-.api-category.is-pinned > .api-category-title:hover {
-    background: var(--overlay-10);
-}
-
-.api-category-title .api-category-name {
-    display: inline-block;
-    transform-origin: left center;
-    transform: scale(0.84);
-    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    backface-visibility: hidden;
-}
-
-.api-category-title:hover .api-category-name {
-    transform: scale(1.0);
-    font-weight: 700;
-}
-
-/* ─── FLIP Animation & Pin Transitions ─── */
-.wf-sidebar-item,
-.api-category {
-    will-change: transform;
-}
-
-/* Anti-spam cooldown & animation lock */
-.is-pin-reordering {
-    pointer-events: none !important;
-    user-select: none !important;
-}
-
-/* Flash pulse glow when an item is newly pinned to top */
-@keyframes pinGlowPulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(0, 120, 212, 0.45);
-        background-color: var(--overlay-15);
-    }
-    50% {
-        box-shadow: 0 4px 16px 2px rgba(0, 120, 212, 0.25);
-        background-color: var(--overlay-20);
-    }
-    100% {
-        box-shadow: none;
-        background-color: var(--overlay-5);
-    }
-}
-
-.wf-item-pin-flash {
-    animation: pinGlowPulse 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    z-index: 10 !important;
-}
-
-.api-cat-pin-flash > .api-category-title {
-    animation: pinGlowPulse 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    z-index: 10 !important;
 }
