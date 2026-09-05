@@ -1,5 +1,5 @@
 :root {
-    --sidebar-width: clamp(240px, 22vw, 420px);
+    --sidebar-width: 280px;
     --app-padding: 8px 10px 10px 10px;
     --bg-color: #0b0d12;
     --panel-bg: rgba(18, 22, 31, 0.85);
@@ -342,8 +342,8 @@ body {
 
 .sidebar {
     width: var(--sidebar-width, 280px);
-    min-width: 220px;
-    max-width: 600px;
+    min-width: 180px;
+    max-width: 700px;
     display: flex;
     flex-direction: column;
     padding: 0.85rem 0.95rem 0.75rem 0.95rem;
@@ -4477,4 +4477,17 @@ table.data-table th,
 [data-theme="light"] .data-table td {
     color: #0f172a !important;
     border-bottom: 1px solid #e2e8f0 !important;
+}
+
+/* Disable transitions and text selection completely during active drag resize for zero-lag tracking */
+body.is-resizing,
+body.is-resizing *,
+body.is-resizing .sidebar,
+body.is-resizing .app-rail,
+body.is-resizing .main-content,
+body.is-resizing .wf-detail-board,
+body.is-resizing .body-editor-container {
+    transition: none !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
 }
