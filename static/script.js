@@ -17233,13 +17233,9 @@ window.openGumResultModal = function() {
                     return `<span style="font-size:0.75rem;color:var(--success,#10b981);">${val}</span>`;
                 }
                 if (col === 'Actions') {
-                    const isTarget = window.gumTargetUsers && window.gumTargetUsers.has((row._identifier || '').trim().toLowerCase());
-                    const lockBtnText = isTarget ? '🎯 已锁定' : '🎯 锁定';
-                    const lockBtnClass = isTarget ? 'btn-wf-primary' : 'btn-wf-secondary';
                     return `
-                        <div style="display: flex; gap: 8px; align-items: center;">
-                            <button class="btn-wf-sm ${lockBtnClass}" style="padding: 3px 10px; font-size: 0.72rem; height: 26px; font-weight: 500; white-space: nowrap; cursor: pointer;" onclick="window.toggleGumTargetUser('${row._identifier}', '${row._raw?.displayName || row._identifier}')" title="${isTarget ? '点击取消该定向目标' : '锁定此用户作为下一次定向穿透审计的目标'}">${lockBtnText}</button>
-                            <button class="btn-wf-sm btn-wf-secondary" style="padding: 3px 10px; font-size: 0.72rem; height: 26px; font-weight: 500; white-space: nowrap; cursor: pointer;" onclick="window.showGumUserDetailModal(${row._idx})" title="查看该用户针对所有语义模型的细粒度权限画像">🔍 画像</button>
+                        <div style="display: flex; justify-content: center; align-items: center; width: 100%; text-align: center;">
+                            <button type="button" class="btn-wf-sm btn-wf-secondary" style="padding: 3px 14px; font-size: 0.72rem; height: 26px; font-weight: 500; white-space: nowrap; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; margin: 0 auto;" onclick="window.showGumUserDetailModal(${row._idx})" title="查看该用户针对所有语义模型的细粒度权限画像">🔍 画像</button>
                         </div>
                     `;
                 }
