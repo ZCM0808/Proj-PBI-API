@@ -1189,3 +1189,37 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
    - 具有动态宽度/位置记忆的 SPA 应用，必须在首次渲染完成前全局注入 `.no-transitions`，并在双重 rAF 后解绑。绝不能让状态恢复过程暴露在 CSS Transition 的计算管线中。
 2. **本地视图瞬态与云端状态的界限 (Local Viewport vs Cloud State Boundary)**：
    - 侧边栏展开状态、分割线拖拽像素等均属于强绑特定设备分辨率的本地视图瞬态（Local Viewport State），必须与业务配置、Token 等云端同步数据严格物理隔离，切忌一股脑进行后端 KV 全量覆盖。
+
+
+## 38. 工作流中心常驻锁定与二级折叠按钮精简归一 (Workflow Center Permanent Residency & Navigation Role Unification)
+
+### 38.1 业务背景与交互痛点 (Context & Problem Statement)
+
+1. **工作流二级面板折叠按钮冗余与误触痛点**：
+   - 「⚡ 工作流中心」是承载 11 个自动化任务调度的核心导航中枢。在常规业务流程中，用户需要随时查看并切换各个工作流任务；
+   - 在二级面板头部放置 `«` 折叠按钮不仅打破了界面的纯粹性，且用户一旦误触收起后无法直观查看任务列表，造成认知断层；
+   - 展开/收起的职责应清晰归属于最左侧 **PBI Studio 一级主导航轨 (Primary Rail, 60px ↔ 175px)**，而非二级菜单。
+
+---
+
+### 38.2 核心架构改进与实现方案 (Architecture Implementation)
+
+- **1. 彻底剥离二级面板折叠按钮与窄条元素**：
+  - 在 `static/index.html` 中彻底移除 `#sidebar-pane-workflows` 与 `#sidebar-pane-api_tree` 头部的 `.btn-collapse-sidebar` 按钮；
+  - 彻底剥离历史遗留的 `#sidebar-narrow-strip` DOM 节点与样式；
+  - 恢复头部为最经典的标题与数量指示器（「⚡ 工作流中心 - 11 个任务」）。
+
+- **2. 锁定工作流中心常驻展示 (Permanent Residency)**：
+  - 二级侧边栏（`.sidebar`）始终稳定呈现于视窗左侧（默认 280px，支持通过 `#dragMe` 分割线在 180px~700px 自由拖拽微调）；
+  - 剥离所有 `sidebar-collapsed` 状态机与持久化逻辑，从根源上杜绝任何尺寸抖动与折叠异常。
+
+- **3. 一级主导航轨 (PBI Studio Rail) 纯净切换**：
+  - 点击左侧 Rail 上的模块图标（`⚡ Workflows` / `🌲 API Explorer`）纯粹执行面板与工作区的主体视图切换，不再附带任何侧边栏收折副作用；
+  - 保留最左侧 PBI Studio Logo 的流体弹簧展开/收起能力（60px 图标模式 ↔ 175px 展开文字模式）。
+
+---
+
+### 38.3 架构经验与最佳实践总结 (Takeaways)
+
+1. **导航层级职责单一性原则 (Navigation Role Separation Principle)**：
+   - 一级主导航轨负责全局模块路由（Workflows vs API Tree vs Settings）；二级侧边栏负责当前模块内的任务与资产列表。保持二级列表常驻展示能够最大化降低用户的认知负荷与操作层级，避免过度设计导致的误触与状态混乱。

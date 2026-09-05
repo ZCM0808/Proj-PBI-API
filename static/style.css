@@ -396,7 +396,7 @@ body {
     transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Sidebar (Secondary List Container) */
+/* Sidebar (Secondary List Container - Permanently Resident) */
 .sidebar {
     width: var(--sidebar-width, 280px);
     min-width: 180px;
@@ -410,16 +410,11 @@ body {
     flex-shrink: 0;
     overflow: hidden;
     box-sizing: border-box;
-    transition: width 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
-                min-width 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
-                max-width 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
-                opacity 0.22s ease, 
-                padding 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
-                margin 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
-                background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+    background-color: var(--panel-bg);
+    border-color: var(--panel-border);
+    transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
                 border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
                 box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    will-change: width, min-width, max-width;
 }
 
 /* Secondary Sidebar Panes */
@@ -428,13 +423,9 @@ body {
     flex-direction: column;
     height: 100%;
     min-height: 0;
-    min-width: 240px;
+    min-width: 0;
     width: 100%;
     overflow: hidden;
-    opacity: 1;
-    transform: translateX(0);
-    transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), 
-                transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Workflow Secondary Sidebar Item Styling */
@@ -3811,37 +3802,7 @@ body.rail-collapsed #rail-expand-handle {
     transform: scale(1.08);
 }
 
-/* --- Sidebar Collapsed State (0px Clean Collapse) --- */
-html.sidebar-collapsed .sidebar,
-body.sidebar-collapsed .sidebar {
-    width: 0 !important;
-    min-width: 0 !important;
-    max-width: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border: none !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-    overflow: hidden !important;
-}
 
-html.sidebar-collapsed #dragMe,
-body.sidebar-collapsed #dragMe {
-    opacity: 0 !important;
-    pointer-events: none !important;
-}
-
-/* 折叠态平滑隐藏面板内容 */
-html.sidebar-collapsed .sidebar .sidebar-pane,
-body.sidebar-collapsed .sidebar .sidebar-pane {
-    opacity: 0 !important;
-    transform: translateX(-16px) !important;
-    pointer-events: none !important;
-    visibility: hidden;
-    transition: opacity 0.16s ease, 
-                transform 0.22s ease, 
-                visibility 0s linear 0.22s;
-}
 
 /* Secondary sidebar collapse button in header */
 .btn-collapse-sidebar {
