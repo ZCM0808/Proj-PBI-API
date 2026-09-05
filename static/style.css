@@ -164,7 +164,7 @@ body {
     overflow: hidden;
 }
 
-/* Primary Navigation Rail (Leftmost) */
+/* Primary Navigation Rail (Leftmost - PBI Studio Sidebar) */
 .app-rail {
     width: 60px;
     min-width: 60px;
@@ -177,12 +177,12 @@ body {
     margin-right: 6px;
     flex-shrink: 0;
     z-index: 25;
-    transition: width 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
-                min-width 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
-                max-width 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
+    transition: width 0.38s cubic-bezier(0.22, 1, 0.36, 1), 
+                min-width 0.38s cubic-bezier(0.22, 1, 0.36, 1), 
+                max-width 0.38s cubic-bezier(0.22, 1, 0.36, 1), 
                 opacity 0.25s ease, 
-                margin 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
-                padding 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
+                margin 0.38s cubic-bezier(0.22, 1, 0.36, 1), 
+                padding 0.38s cubic-bezier(0.22, 1, 0.36, 1), 
                 background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
                 border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
                 box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
@@ -220,7 +220,7 @@ body {
     white-space: nowrap;
     box-sizing: border-box;
     border-radius: 8px;
-    transition: background 0.2s ease, padding 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: background 0.2s ease, padding 0.38s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .rail-logo-wrap:hover {
@@ -228,7 +228,7 @@ body {
 }
 
 .rail-logo-wrap svg {
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
     flex-shrink: 0;
 }
 
@@ -243,7 +243,7 @@ body {
 .rail-logo-title {
     max-width: 0;
     opacity: 0;
-    transform: translateX(-8px);
+    transform: translateX(-10px);
     font-size: 0.95rem;
     font-weight: 700;
     color: var(--text-primary);
@@ -251,19 +251,20 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     letter-spacing: -0.01em;
-    transition: max-width 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
-                opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), 
-                transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: opacity 0.14s ease-out, 
+                transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), 
+                max-width 0.38s cubic-bezier(0.22, 1, 0.36, 1);
     display: inline-block;
+    will-change: opacity, transform, max-width;
 }
 
 .app-rail.expanded .rail-logo-title {
     max-width: 120px;
     opacity: 1;
     transform: translateX(0);
-    transition: max-width 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
-                opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1) 0.04s, 
-                transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: max-width 0.38s cubic-bezier(0.22, 1, 0.36, 1), 
+                opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1) 0.08s, 
+                transform 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.04s;
 }
 
 .rail-toggle-btn {
@@ -272,9 +273,9 @@ body {
     justify-content: center;
     opacity: 0;
     pointer-events: none;
-    transform: scale(0.7) rotate(-90deg);
-    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
-                transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
+    transform: scale(0.6) rotate(-180deg);
+    transition: opacity 0.14s ease-out, 
+                transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), 
                 color 0.15s ease, 
                 background 0.15s ease;
     background: none;
@@ -297,6 +298,10 @@ body {
     opacity: 1;
     pointer-events: auto;
     transform: scale(1) rotate(0deg);
+    transition: opacity 0.25s ease-out 0.1s, 
+                transform 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.05s, 
+                color 0.15s ease, 
+                background 0.15s ease;
 }
 
 .rail-menu-list {
@@ -318,7 +323,7 @@ body {
     background: transparent;
     border: 1px solid transparent;
     cursor: pointer;
-    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, padding 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, padding 0.38s cubic-bezier(0.22, 1, 0.36, 1);
     position: relative;
     user-select: none;
     white-space: nowrap;
@@ -356,24 +361,25 @@ body {
 .rail-item-text {
     max-width: 0;
     opacity: 0;
-    transform: translateX(-8px);
+    transform: translateX(-10px);
     font-size: 0.84rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    transition: max-width 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
-                opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), 
-                transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: opacity 0.14s ease-out, 
+                transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), 
+                max-width 0.38s cubic-bezier(0.22, 1, 0.36, 1);
     display: inline-block;
+    will-change: opacity, transform, max-width;
 }
 
 .app-rail.expanded .rail-item-text {
     max-width: 110px;
     opacity: 1;
     transform: translateX(0);
-    transition: max-width 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
-                opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1) 0.04s, 
-                transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: max-width 0.38s cubic-bezier(0.22, 1, 0.36, 1), 
+                opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1) 0.08s, 
+                transform 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.04s;
 }
 
 .rail-bottom {
