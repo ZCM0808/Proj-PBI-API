@@ -8710,52 +8710,31 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
 
     resizer.addEventListener('mousedown', (e) => {
-
         isResizing = true;
-
         resizer.classList.add('active');
-
+        document.body.classList.add('is-resizing');
         document.body.style.cursor = 'col-resize';
-
         document.body.style.userSelect = 'none';
-
     });
-
-
 
     let minAllowedHeight = 150;
-
     vResizer.addEventListener('mousedown', (e) => {
-
         isVerticalResizing = true;
-
-        
-
         startY = e.clientY;
-
         startHeight = bodyEditorContainer.getBoundingClientRect().height;
-
         minAllowedHeight = 100;
-
         vResizer.classList.add('active');
-
+        document.body.classList.add('is-resizing');
         document.body.style.cursor = 'row-resize';
-
         document.body.style.userSelect = 'none';
-
     });
 
-
-
     document.addEventListener('mousemove', (e) => {
-
         if (isResizing) {
-
             const sidebarLeft = sidebar.getBoundingClientRect().left;
-            let newWidth = e.clientX - sidebarLeft;
-
-            if (newWidth < 200) newWidth = 200;
-            if (newWidth > 600) newWidth = 600;
+            let newWidth = Math.round(e.clientX - sidebarLeft);
+            if (newWidth < 180) newWidth = 180;
+            if (newWidth > 700) newWidth = 700;
             document.documentElement.style.setProperty('--sidebar-width', `${newWidth}px`);
         }
 
@@ -8809,22 +8788,14 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
     document.addEventListener('mouseup', () => {
 
-        if (isResizing) {
-
-            isResizing = false;
-
-            resizer.classList.remove('active');
+        if (isResizing) { isResizing = false; resizer.classList.remove('active'); document.body.classList.remove('is-resizing');
 
             document.body.style.cursor = 'default';
 
             localStorage.setItem('pbi-sidebar-width', getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width') || '280px');
         }
 
-        if (isVerticalResizing) {
-
-            isVerticalResizing = false;
-
-            vResizer.classList.remove('active');
+        if (isVerticalResizing) { isVerticalResizing = false; vResizer.classList.remove('active'); document.body.classList.remove('is-resizing');
 
             document.body.style.cursor = 'default';
 
