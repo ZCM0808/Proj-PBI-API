@@ -1259,3 +1259,43 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
 
 1. **复合组件与通用工具类的 Transition 冲突防御法则 (Component vs Utility Transition Defense Rule)**：
    - 当一个核心布局容器同时附加了通用视觉工具类（如 `.glass-panel`, `.card`, `.theme-transitioning`）时，通用类的 `transition` 属性极易全量覆盖容器自身的尺寸变形动画。必须在组件特有选择器上为 `transition` 声明赋予防御性权重，确保多属性动画管线完整无损。
+
+## 40. 便签记事本 (Quick Note Modal) 弹窗尺寸锁死与内部滚动隔离架构 (Quick Note Modal Dimension Stability & Internal Scroll Isolation)
+
+### 40.1 业务背景与尺寸瞬变弹跳根因分析 (Context & Modal Height Expansion Root Cause)
+
+1. **点击长笔记（如 `20260826_230558.md`）时弹窗突然变大的现象与根因**：
+   - **根因 A：`.note-modal-body` 仅配置 `min-height: 480px` 缺乏固定高度约束**：
+     - 当用户初次打开 Quick Note 便签弹窗（或查看空白短笔记）时，弹窗高度由内容和 `min-height: 480px` 撑开（约为 696px）；
+   - **根因 B：EasyMDE / CodeMirror 编辑器默认按内容行数无限制向下撑开**：
+     - 当用户点击历史列表中的长笔记（如 40 行的 `note 20260826_230558.md`）时，`easyMDE.value(note.content)` 将内容填入 CodeMirror；
+     - 由于 `.note-editor-wrapper .CodeMirror` 仅配置了 `min-height: 320px; flex: 1 1 auto;` 且未开启内部定高滚动约束，CodeMirror 瞬间向下撑大到 482px+；
+     - 导致外层 `.modal-content` 从 696px 被直接顶到 810px（增加了 +114px）；
+   - **根因 C：`align-items: center` 居中布局引发双向视觉跳跃**：
+     - 外层 `.modal-overlay` 采用 Flex 居中布局，高度增加导致弹窗同时向上和向下延伸扩展，在用户视野中产生剧烈的弹窗“突然变大/猛跳”的不良体验。
+
+---
+
+### 40.2 核心架构改进与实现方案 (Architecture Implementation)
+
+- **1. 弹窗尺寸定高固化与弹性边界锁死 (Fixed Modal Dimension & Bound Height)**：
+   - 在 `static/style.css` 中将 `#modal-note .modal-content` 锁定为高质感的固定视窗尺寸：
+     `width: min(94vw, 960px); height: min(90vh, 720px); max-height: min(90vh, 900px);`；
+   - 将 `.note-modal-body` 设为 `flex: 1; height: 100%; min-height: 0; overflow: hidden;`，彻底剥夺内容撑大弹窗物理尺寸的能力。
+
+- **2. 编辑器内部自适应定高滚动隔离 (CodeMirror Internal Scroll Isolation)**：
+   - 对 `.note-editor-wrapper`、`.EasyMDEContainer`、`.CodeMirror` 与 `.CodeMirror-scroll` 实施全链路 `flex: 1 1 0; height: 100% !important; min-height: 0 !important; overflow-y: auto !important;`；
+   - 无论笔记是 1 行还是 1000 行，弹窗外壳像素级绝对稳定（尺寸变化为严格的 **0px**），长文本在 CodeMirror 内部流畅平滑滚动。
+
+- **3. 全局顶层辅助函数脱离加载时序依赖 (Top-Level Modal Helper Hoisting)**：
+   - 将 `window.centerModal` 与 `window.makeDraggable` 提升至顶层作用域，彻底免疫因 `DOMContentLoaded` 内部异步请求时序差导致的未定义异常。
+
+- **4. 历史列表文件名文本溢出省略防御 (Filename Ellipsis Defense)**：
+   - 历史笔记条目文件名应用 `white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`，彻底消灭 `.md` 后缀被折行裁切的不良排版。
+
+---
+
+### 40.3 架构经验与最佳实践总结 (Takeaways)
+
+1. **复杂内容弹窗的定高隔离铁律 (Modal Fixed Dimension & Scroll Isolation Rule)**：
+   - 对于包含富文本/Markdown 编辑器、动态列表或动态表格的复杂弹窗，外层 `.modal-content` 必须显式声明固定高度（如 `height: min(90vh, 720px)`）并将内层容器设为 `min-height: 0; overflow: hidden;`，由内部子组件独立承载滚动条。绝对禁止让动态内容随意撑大弹窗外壳。

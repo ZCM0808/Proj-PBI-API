@@ -18,6 +18,27 @@ window.fetch = async function(...args) {
 
 };
 
+// ─── Global Top-Level Modal Helpers (centerModal & makeDraggable) ───
+window.centerModal = function(modalContent) {
+    if (!modalContent) return;
+    const parent = modalContent.parentElement;
+    if (parent) {
+        parent.style.alignItems = 'center';
+        parent.style.justifyContent = 'center';
+    }
+    modalContent.style.position = 'relative';
+    modalContent.style.top = '0px';
+    modalContent.style.left = '0px';
+    modalContent.style.margin = 'auto';
+    modalContent.style.transform = 'none';
+    modalContent.style.animation = '';
+    modalContent.removeAttribute('data-translate-x');
+    modalContent.removeAttribute('data-translate-y');
+    modalContent.removeAttribute('data-drag-top');
+    modalContent.removeAttribute('data-drag-left');
+};
+
+
 
 
 // ─── 全局 Workflow 输出框自动滚动机制 ─────────────────────────────
@@ -10703,7 +10724,7 @@ window.searchNotes = async function() {
 
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
 
-                    <div style="font-weight: 500; font-size: 0.9rem; margin-bottom: 4px; color: var(--text-primary); word-break: break-all; flex: 1;">📄 ${note.filename}</div>
+                    <div style="font-weight: 500; font-size: 0.9rem; margin-bottom: 4px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;" title="${note.filename}">📄 ${note.filename}</div>
 
                     <button class="btn-delete-note" style="background: none; border: none; padding: 2px 6px; cursor: pointer; color: var(--error); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; opacity: 0.6; transition: all 0.2s;" title="Delete Note">❌</button>
 
