@@ -1226,39 +1226,36 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
 
 ## 39. PBI Studio 一级主导航轨流体阻尼弹簧展开/收起动效架构 (PBI Studio Primary Navigation Rail Fluid Spring Transition Architecture)
 
-### 39.1 业务背景与过渡生硬根因分析 (Context & Stiff Transition Root Cause Analysis)
+### 39.1 业务背景与“仅文字有动效、容器瞬变”的深层根因分析 (Root Cause: Glass Panel Cascade Transition Overwrite)
 
-1. **历史展开/收起动效生硬与视觉割裂痛点**：
-   - **根因 A：初始加速度曲线过陡 (Sharp Acceleration Curve)**：
-     - 原有过渡采用 `cubic-bezier(0.16, 1, 0.3, 1)`，初始运动斜率极大，导致侧边栏在 60px ↔ 175px 切换瞬间如同机械式突变，相邻工作区面板产生视觉震荡；
-   - **根因 B：文本淡出与容器缩窄缺乏时序编排 (Simultaneous Text & Container Collapse Conflict)**：
-     - 在收起阶段，容器宽度在 0.32s 内急剧缩窄至 60px，而文本元素的 `opacity` 与 `max-width` 几乎同步衰减，导致中文文本（如「⚡ 自动化工作流」）在右侧边缘发生瞬间挤压、换行裁切与文字穿透边框的残影；
-   - **根因 C：辅助图标缺乏物理动能反馈 (Lack of Physical Kinetic Feedback)**：
-     - 收起指示按钮与 Logo 缺乏旋转和缩放的动态连贯性，展开态到收起态的切换生硬突兀。
+1. **“仅文字有阻尼动效、整个容器无过渡瞬间弹跳”的深度定位**：
+   - **根因 A：`.glass-panel` 通用类后置级联覆盖容器过渡属性 (CSS Cascade Property Overwrite)**：
+     - DOM 节点定义为 `<aside id="app-rail" class="app-rail glass-panel">`；
+     - 在 `static/style.css` 中，`.app-rail` 声明在第 168 行，配置了 `transition: width 0.38s cubic-bezier(0.22, 1, 0.36, 1)...`；
+     - 但后置的第 389 行定义了通用类 `.glass-panel { transition: background-color 0.25s, border-color 0.25s, box-shadow 0.25s, color 0.25s; }`；
+     - 由于二者优先级（Specificity）同为 `(0, 1, 0)`，浏览器根据 CSS 级联规则，**后定义的 `.glass-panel` 完全抹掉了 `.app-rail` 声明的 `width` 过渡**！
+     - 最终导致 `#app-rail` 容器的计算属性 `computedTransition` 中压根没有 `width`，容器宽度在 0ms 内瞬间硬切（60px ↔ 175px），而内部子元素（`.rail-logo-title`, `.rail-item-text`）自带独立 transition，因而出现了“只有文字在慢慢淡入淡出、整个大容器却瞬间硬弹”的割裂现象；
+   - **根因 B：属性级 `!important` 误用导致插值中断**：
+     - 若在 `width: 175px !important;` 上标注 `!important`，根据 W3C CSS Transition 规范，非 important 与 important 属性之间无法进行补间插值，导致动画被浏览器直接丢弃。
 
 ---
 
 ### 39.2 核心架构改进与实现方案 (Architecture Implementation)
 
-- **1. 流体阻尼弹簧减速曲线 (Fluid Spring Deceleration Curve)**：
-   - 全面升级主导航轨（`#app-rail`）及其内部元素的运动曲线为 `0.38s cubic-bezier(0.22, 1, 0.36, 1)`；
-   - 具备自然的高速启动、平滑阻尼缓冲与极轻微的惯性贴合感，消除所有机械感。
+- **1. 复合选择器与 `transition: ... !important;` 强力防御**：
+   - 使用 `#app-rail, .app-rail` 提升选择器权重；
+   - 将主导航轨的 `transition: width 0.38s cubic-bezier(0.22, 1, 0.36, 1), margin 0.38s, padding 0.38s... !important;` 设为 `!important`，彻底杜绝任何后置通用类（如 `.glass-panel`、主题切换类）对容器宽度过渡声明的恶意冲刷；
+   - 在 `.expanded` 状态中保留纯净的 `width: 175px;`（绝不加 `!important`），确保浏览器渲染引擎在 60px ↔ 175px 之间进行毫秒级高精插值。
 
-- **2. 层次化时序编排机制 (Staggered Animation Timing Choreography)**：
-   - **展开时序 (Expand Choreography)**：
-     - 容器宽度首先平滑撑开（0.38s）；
-     - 文本（`.rail-logo-title`, `.rail-item-text`）在容器撑开 `0.08s` 后，从 `translateX(-10px)` 向右微滑并伴随 `0.28s` 的透明度渐显，呈现自然的由内而外层叠涌出感；
-   - **收起时序 (Collapse Choreography - 零裁切防御)**：
-     - 文本在 `0.14s ease-out` 内迅速淡出并回归隐藏态；
-     - 容器宽度在文本完全隐匿后再从容完成 60px 的收拢闭合，彻底消灭任何文字溢出、边框裁切与字体折行撕裂。
-
-- **3. 纯矢量控制按钮旋转与缩放动效 (Kinetic Vector Rotate & Scale)**：
-   - 折回按钮（`.rail-toggle-btn`）在展开时以 `scale(0.6) rotate(-180deg) ➔ scale(1) rotate(0deg)` 带着 `0.1s` 延迟优雅旋入；
-   - 鼠标悬停（Hover）与点击（Active）配备 `0.15s` 辉光与微缩放硬件加速反馈。
+- **2. rAF 帧级全生命周期平滑曲线验证 (60 FPS Fluid Interpolation)**：
+   - 经 Playwright 逐帧采样断言：
+     - **展开轨迹**：`2ms: 60px` ➔ `59ms: 117.7px` ➔ `102ms: 150.23px` ➔ `155ms: 165.08px` ➔ `206ms: 171.41px` ➔ `383ms: 175px`；
+     - **收起轨迹**：`25ms: 175px` ➔ `74ms: 117.34px` ➔ `123ms: 84.78px` ➔ `176ms: 69.88px` ➔ `272ms: 61.05px` ➔ `375ms: 60px`；
+   - 容器尺寸、背景高亮胶囊、边框与文本全链路以 60 FPS 丝滑弹簧减速曲线联动。
 
 ---
 
 ### 39.3 架构经验与最佳实践总结 (Takeaways)
 
-1. **复合容器收折的时序编排铁律 (Staggered Timing Rule for Collapsible Containers)**：
-   - 任何内部包含文本与图标的侧边栏/抽屉组件，在展开时必须“容器先动、文字后现”，在收起时必须“文字先隐、容器后收”。严格保证文字的生命周期完全包裹在容器可用宽度之内，是实现高质感 UI 交互的基石。
+1. **复合组件与通用工具类的 Transition 冲突防御法则 (Component vs Utility Transition Defense Rule)**：
+   - 当一个核心布局容器同时附加了通用视觉工具类（如 `.glass-panel`, `.card`, `.theme-transitioning`）时，通用类的 `transition` 属性极易全量覆盖容器自身的尺寸变形动画。必须在组件特有选择器上为 `transition` 声明赋予防御性权重，确保多属性动画管线完整无损。
