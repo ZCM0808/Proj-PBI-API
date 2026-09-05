@@ -3135,7 +3135,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 document.documentElement.classList.remove('theme-transitioning');
 
-            }, 300);
+            }, 500);
 
         });
 
@@ -17079,6 +17079,8 @@ window.filterGumTable = function() {
     const term = rawTerm.toLowerCase().trim();
     const statsSpan = document.getElementById('wf-gum-stats');
     const resultWrap = document.getElementById('wf-gum-result-wrap');
+    const placeholder = document.getElementById('wf-gum-empty-placeholder');
+    const emptyText = document.getElementById('wf-gum-empty-text');
     const clearBtn = document.getElementById('wf-gum-search-clear');
     const pillFilter = window._gumPillFilter || 'all';
     const selectedWs = document.getElementById('wf-gum-workspace-select')?.value || '';
@@ -17090,10 +17092,21 @@ window.filterGumTable = function() {
     }
 
     if (!window.gumData || window.gumData.length === 0) {
+        if (placeholder) placeholder.style.display = 'block';
         if (resultWrap) resultWrap.style.display = 'none';
+        if (emptyText) {
+            if (term) {
+                emptyText.innerHTML = `🔍 正在检索关键词 "<b>${rawTerm}</b>"... 当前尚未执行全景权限扫描，请点击右上角【Run】启动审计获取完整结果。`;
+            } else if (window.gumTargetUsers.size > 0) {
+                emptyText.innerHTML = `🎯 已锁定 <b>${window.gumTargetUsers.size}</b> 个定向审计目标用户。请点击右上角【Run】按钮启动精准穿透审计。`;
+            } else {
+                emptyText.innerHTML = `👥 尚未执行全景权限扫描。请在上方选择/勾选用户后，点击右上角【Run】启动审计。`;
+            }
+        }
         return;
     }
 
+    if (placeholder) placeholder.style.display = 'none';
     if (resultWrap) resultWrap.style.display = 'block';
 
     const tokens = term ? term.split(/\s+/).filter(Boolean) : [];
@@ -17220,9 +17233,13 @@ window.openGumResultModal = function() {
                     return `<span style="font-size:0.75rem;color:var(--success,#10b981);">${val}</span>`;
                 }
                 if (col === 'Actions') {
+                    const isTarget = window.gumTargetUsers && window.gumTargetUsers.has((row._identifier || '').trim().toLowerCase());
+                    const lockBtnText = isTarget ? '🎯 已锁定' : '🎯 锁定';
+                    const lockBtnClass = isTarget ? 'btn-wf-primary' : 'btn-wf-secondary';
                     return `
-                        <div style="display: flex; justify-content: center; align-items: center; width: 100%; text-align: center;">
-                            <button type="button" class="btn-wf-sm btn-wf-secondary" style="padding: 3px 14px; font-size: 0.72rem; height: 26px; font-weight: 500; white-space: nowrap; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; margin: 0 auto;" onclick="window.showGumUserDetailModal(${row._idx})" title="查看该用户针对所有语义模型的细粒度权限画像">🔍 画像</button>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <button class="btn-wf-sm ${lockBtnClass}" style="padding: 3px 10px; font-size: 0.72rem; height: 26px; font-weight: 500; white-space: nowrap; cursor: pointer;" onclick="window.toggleGumTargetUser('${row._identifier}', '${row._raw?.displayName || row._identifier}')" title="${isTarget ? '点击取消该定向目标' : '锁定此用户作为下一次定向穿透审计的目标'}">${lockBtnText}</button>
+                            <button class="btn-wf-sm btn-wf-secondary" style="padding: 3px 10px; font-size: 0.72rem; height: 26px; font-weight: 500; white-space: nowrap; cursor: pointer;" onclick="window.showGumUserDetailModal(${row._idx})" title="查看该用户针对所有语义模型的细粒度权限画像">🔍 画像</button>
                         </div>
                     `;
                 }
@@ -17257,6 +17274,9 @@ window.showGumUserDetailModal = function(recOrIdx) {
     const userCard = document.getElementById('gum-detail-user-card');
     if (userCard) {
         const isElev = rec.isElevated;
+        const isTarget = window.gumTargetUsers && window.gumTargetUsers.has((rec.identifier || '').trim().toLowerCase());
+        const lockBtnText = isTarget ? '🎯 已锁定为目标' : '🎯 设为定向审计目标';
+        const lockBtnClass = isTarget ? 'btn-wf-primary' : 'btn-wf-secondary';
         userCard.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
                 <div>
@@ -17264,6 +17284,7 @@ window.showGumUserDetailModal = function(recOrIdx) {
                     <div style="font-size:0.75rem;color:var(--text-secondary);font-family:'Fira Code',monospace;">${rec.identifier}</div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center;">
+                    <button type="button" class="btn-wf-sm ${lockBtnClass}" style="padding:2px 8px;font-size:0.72rem;height:24px;" onclick="window.toggleGumTargetUser('${rec.identifier}', '${rec.displayName || rec.identifier}'); window.showGumUserDetailModal(window.gumData.find(d => d.identifier === '${rec.identifier}') || '${rec.identifier}');">${lockBtnText}</button>
                     <span style="padding:2px 8px;border-radius:4px;background:var(--overlay-10);font-size:0.75rem;">${rec.principalType}</span>
                     <span style="padding:2px 8px;border-radius:4px;background:var(--accent);color:var(--accent-text,#0b0d12);font-weight:700;font-size:0.75rem;">生效: ${rec.effectiveRole}</span>
                 </div>
