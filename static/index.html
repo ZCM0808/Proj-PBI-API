@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="no-transitions">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,86 +11,106 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260905_v1445">
+    <link rel="stylesheet" href="/static/style.css?v=20260905_v1505">
+    <style>
+        /* Prevent CSS transitions during initial page load/refresh */
+        .no-transitions,
+        .no-transitions *,
+        .no-transitions *::before,
+        .no-transitions *::after {
+            transition: none !important;
+        }
+    </style>
     <script>
-        // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
-        // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
-        // 同时提前定义 toggleAppRail 函数，保证 script.js(564KB) 加载完成前 Rail 就可交互。
+        // 阻塞式内联脚本：在浏览器首次渲染 (First Paint) 之前同步恢复本地缓存的布局与主题，
+        // 配合 .no-transitions 彻底消除页面刷新时的闪烁与先折叠再展开的重绘动画。
         (function() {
-            // Theme initialization: Follow local storage if available, otherwise fallback to OS preference
+            // 1. 主题初始化
             var theme = localStorage.getItem('pbi-theme');
             if (!theme) {
-                // OS preference fallback
                 theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
             }
             if (theme === 'light') {
                 document.documentElement.setAttribute('data-theme', 'light');
             }
-            const sidebarWidth = localStorage.getItem('pbi-sidebar-width');
-            const requestHeight = localStorage.getItem('pbi-request-height');
-            const railExpanded = localStorage.getItem('pbi-rail-expanded');
-            let styleStr = '';
+
+            // 2. 0ms 提前挂载布局初始类至 html，防止初次绘制与实际状态脱节
+            var isRailExpanded = localStorage.getItem('pbi-rail-expanded') === 'true';
+            if (isRailExpanded) {
+                document.documentElement.classList.add('rail-expanded-init');
+            }
+            var isSidebarCollapsed = localStorage.getItem('pbi-sidebar-collapsed') === 'true';
+            if (isSidebarCollapsed) {
+                document.documentElement.classList.add('sidebar-collapsed-init');
+            }
+            var isTopbarCollapsed = localStorage.getItem('pbi-topbar-collapsed') === 'true';
+            if (isTopbarCollapsed) {
+                document.documentElement.classList.add('topbar-collapsed-init');
+            }
+
+            // 3. 动态注入 CSS 变量（永久生效，不随 DOMContentLoaded 移除）
+            var sidebarWidth = localStorage.getItem('pbi-sidebar-width');
+            var requestHeight = localStorage.getItem('pbi-request-height');
+            var styleStr = '';
             if (sidebarWidth) {
-                styleStr += `:root { --sidebar-width: ${sidebarWidth}; } `;
+                var wVal = sidebarWidth.endsWith('px') ? sidebarWidth : sidebarWidth + 'px';
+                styleStr += ':root { --sidebar-width: ' + wVal + '; } ';
             }
             if (requestHeight) {
-                styleStr += `.body-editor-container { height: ${requestHeight}; flex: none; } `;
-            }
-            // 恢复 App Rail 展开态：直接在元素上预设 expanded 类，避免刷新时从 60px 闪烁到 175px
-            // 注意：必须在 DOMContentLoaded 后才能访问 DOM 元素，此处用 documentWrite 注入提前样式
-            if (railExpanded === 'true') {
-                styleStr += `#app-rail { width: 175px !important; min-width: 175px !important; max-width: 175px !important; } `;
-                styleStr += `#app-rail .rail-logo-title { max-width: 120px !important; opacity: 1 !important; } `;
-                styleStr += `#app-rail .rail-item-text { max-width: 110px !important; opacity: 1 !important; } `;
-                // 在 DOMContentLoaded 后补加 expanded 类，这样 JS 切换时只操作类而不受内联 style 锁死
-                window.addEventListener('DOMContentLoaded', function() {
-                    var r = document.getElementById('app-rail');
-                    if (r) r.classList.add('expanded');
-                    // 移除注入的内联样式（已由 expanded 类接管）
-                    var injected = document.getElementById('fouc-rail-style');
-                    if (injected) injected.remove();
-                });
+                styleStr += '.body-editor-container { height: ' + requestHeight + '; flex: none; } ';
             }
             if (styleStr) {
-                document.write('<style id="fouc-rail-style">' + styleStr + '</style>');
+                var styleEl = document.createElement('style');
+                styleEl.id = 'fouc-root-vars';
+                styleEl.textContent = styleStr;
+                document.head.appendChild(styleEl);
             }
 
-            // 提前恢复顶栏折叠态
-            if (localStorage.getItem('pbi-topbar-collapsed') === 'true') {
-                document.documentElement.classList.add('topbar-collapsed-init');
-                window.addEventListener('DOMContentLoaded', function() {
-                    document.body.classList.add('topbar-collapsed');
-                    var handle = document.getElementById('gtb-expand-handle');
-                    if (handle) handle.setAttribute('title', '展开全局功能栏 (Expand Global Topbar)');
-                });
-            }
-
-            // 提前恢复侧边栏折叠态
-            if (localStorage.getItem('pbi-sidebar-collapsed') === 'true') {
-                document.documentElement.classList.add('sidebar-collapsed-init');
-                window.addEventListener('DOMContentLoaded', function() {
+            // 4. DOMContentLoaded 时同步状态至 <body> 并优雅解除初始类与 .no-transitions
+            window.addEventListener('DOMContentLoaded', function() {
+                if (isSidebarCollapsed) {
                     document.body.classList.add('sidebar-collapsed');
-                });
-            }
+                }
+                if (isTopbarCollapsed) {
+                    document.body.classList.add('topbar-collapsed');
+                }
+                if (isRailExpanded) {
+                    var r = document.getElementById('app-rail');
+                    if (r) r.classList.add('expanded');
+                }
+                var handle = document.getElementById('gtb-expand-handle');
+                if (handle && isTopbarCollapsed) {
+                    handle.setAttribute('title', '展开全局功能栏 (Expand Global Topbar)');
+                }
 
-            // ★ 提前定义 toggleAppRail、toggleSidebar 与 toggleGlobalTopbarCollapse ★
+                // 移除 html 上的初始化占位类
+                document.documentElement.classList.remove('sidebar-collapsed-init');
+                document.documentElement.classList.remove('rail-expanded-init');
+                document.documentElement.classList.remove('topbar-collapsed-init');
+
+                // 双重 rAF 确保首帧渲染稳定后再启用 CSS 过渡动画
+                requestAnimationFrame(function() {
+                    requestAnimationFrame(function() {
+                        document.documentElement.classList.remove('no-transitions');
+                    });
+                });
+            });
+
+            // 5. 提前定义核心切换函数
             window.toggleAppRail = function(action) {
                 var rail = document.getElementById('app-rail');
                 if (!rail) return;
                 
                 if (action === 'collapse') {
-                    // 完全隐藏收起一级导航轨
-                    var isRailCollapsed = document.body.classList.toggle('rail-collapsed');
+                    document.body.classList.toggle('rail-collapsed');
                     return;
                 }
                 
                 if (document.body.classList.contains('rail-collapsed')) {
-                    // 如果处于完全隐藏态，点击把手先唤出
                     document.body.classList.remove('rail-collapsed');
                     return;
                 }
 
-                // 60px 与 175px 展开态切换
                 rail.classList.toggle('expanded');
                 var isExpanded = rail.classList.contains('expanded');
                 try { localStorage.setItem('pbi-rail-expanded', isExpanded ? 'true' : 'false'); } catch(e) {}
@@ -334,7 +354,7 @@
                     var moduleName = menuItem.getAttribute('data-module');
                     if (!moduleName) return;
                     if (typeof window.switchAppModule === 'function') {
-                        window.switchAppModule(moduleName);
+                        window.switchAppModule(moduleName, true);
                     } else {
                         window._pendingModule = moduleName;
                     }
@@ -2655,7 +2675,7 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260904_v2245"></script>
     <script src="/static/universal_modal.js?v=20260904_v2245"></script>
-    <script src="/static/script.js?v=20260905_v1445"></script>
+    <script src="/static/script.js?v=20260905_v1505"></script>
 
 
 
