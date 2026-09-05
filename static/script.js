@@ -17257,9 +17257,6 @@ window.showGumUserDetailModal = function(recOrIdx) {
     const userCard = document.getElementById('gum-detail-user-card');
     if (userCard) {
         const isElev = rec.isElevated;
-        const isTarget = window.gumTargetUsers && window.gumTargetUsers.has((rec.identifier || '').trim().toLowerCase());
-        const lockBtnText = isTarget ? '🎯 已锁定为目标' : '🎯 设为定向审计目标';
-        const lockBtnClass = isTarget ? 'btn-wf-primary' : 'btn-wf-secondary';
         userCard.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
                 <div>
@@ -17267,7 +17264,6 @@ window.showGumUserDetailModal = function(recOrIdx) {
                     <div style="font-size:0.75rem;color:var(--text-secondary);font-family:'Fira Code',monospace;">${rec.identifier}</div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center;">
-                    <button type="button" class="btn-wf-sm ${lockBtnClass}" style="padding:2px 8px;font-size:0.72rem;height:24px;" onclick="window.toggleGumTargetUser('${rec.identifier}', '${rec.displayName || rec.identifier}'); window.showGumUserDetailModal(window.gumData.find(d => d.identifier === '${rec.identifier}') || '${rec.identifier}');">${lockBtnText}</button>
                     <span style="padding:2px 8px;border-radius:4px;background:var(--overlay-10);font-size:0.75rem;">${rec.principalType}</span>
                     <span style="padding:2px 8px;border-radius:4px;background:var(--accent);color:var(--accent-text,#0b0d12);font-weight:700;font-size:0.75rem;">生效: ${rec.effectiveRole}</span>
                 </div>
