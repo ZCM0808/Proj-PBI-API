@@ -66,6 +66,8 @@
     --teal: #2dd4bf;
     --shadow-light: rgba(0, 0, 0, 0.2);
     --bg-dark: #101216;
+    --table-header-bg: #1e293b;
+    --table-header-color: #f8fafc;
 }
 
 [data-theme="light"] {
@@ -91,6 +93,8 @@
     --shadow-dark: rgba(15, 23, 42, 0.12);
     --input-bg: #f8fafc;
     --input-bg-light: #ffffff;
+    --table-header-bg: #e2e8f0;
+    --table-header-color: #0f172a;
     /* Syntax Highlighting (Mac OS Pro Light Theme) */
     --syntax-key: #0284c7;
     --syntax-string: #d97706;
@@ -4437,4 +4441,41 @@ body.topbar-collapsed #gtb-expand-handle .gtb-handle-icon {
 .gum-dropdown-item.selected .gum-item-role {
     background: rgba(99, 102, 241, 0.25);
     color: var(--accent);
+}
+
+/* Table Headers & Light Mode Consistency */
+table.data-table thead,
+.uni-modal-table thead,
+.data-table thead {
+    background: var(--table-header-bg) !important;
+}
+
+table.data-table th,
+.uni-modal-table th,
+.data-table th {
+    background: var(--table-header-bg) !important;
+    color: var(--table-header-color) !important;
+    border-bottom: 2px solid var(--overlay-15) !important;
+    font-weight: 600 !important;
+}
+
+[data-theme="light"] table.data-table thead,
+[data-theme="light"] .uni-modal-table thead,
+[data-theme="light"] .data-table thead {
+    background: #e2e8f0 !important;
+}
+
+[data-theme="light"] table.data-table th,
+[data-theme="light"] .uni-modal-table th,
+[data-theme="light"] .data-table th {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+    border-bottom: 2px solid #cbd5e1 !important;
+}
+
+[data-theme="light"] table.data-table td,
+[data-theme="light"] .uni-modal-table td,
+[data-theme="light"] .data-table td {
+    color: #0f172a !important;
+    border-bottom: 1px solid #e2e8f0 !important;
 }

@@ -17120,11 +17120,10 @@ window.renderGumInlineTable = function(filtered) {
                 <td style="padding: 7px 10px;"><span style="font-weight:700;color:${roleColor};">${eRole}</span></td>
                 <td style="padding: 7px 10px;">${writeBadge}</td>
                 <td style="padding: 7px 10px;">${secStatus}</td>
-                <td style="padding: 7px 10px; text-align: center;">
-                    <div style="display:flex;gap:4px;align-items:center;justify-content:center;">
-                        <button class="btn-wf-sm ${lockBtnClass}" style="padding:2px 6px;font-size:0.7rem;height:22px;" onclick="window.toggleGumTargetUser('${identifier}', '${d.displayName || identifier}')" title="${isTarget ? '点击取消该定向目标' : '勾选此用户作为下一次定向穿透审计的条件'}">${lockBtnText}</button>
-                        <button class="btn-wf-sm btn-wf-secondary" style="padding:2px 6px;font-size:0.7rem;height:22px;" onclick="window.showGumUserDetailModal(${idx})" title="查看该用户针对所有语义模型的细粒度权限拓扑">🔍 画像</button>
-                        <button class="btn-action-danger" style="padding:2px 6px;font-size:0.7rem;height:22px;" onclick="if(window.deleteGumUser) window.deleteGumUser('${wsId}', '${identifier}', '${wsName}')" title="从工作区移除该用户">移除</button>
+                <td style="padding: 8px 12px; text-align: center; white-space: nowrap;">
+                    <div style="display: flex; gap: 8px; align-items: center; justify-content: center;">
+                        <button class="btn-wf-sm ${lockBtnClass}" style="padding: 3px 10px; font-size: 0.72rem; height: 26px; font-weight: 500; white-space: nowrap; cursor: pointer;" onclick="window.toggleGumTargetUser('${identifier}', '${d.displayName || identifier}')" title="${isTarget ? '点击取消该定向目标' : '锁定此用户作为下一次定向穿透审计的目标'}">${lockBtnText}</button>
+                        <button class="btn-wf-sm btn-wf-secondary" style="padding: 3px 10px; font-size: 0.72rem; height: 26px; font-weight: 500; white-space: nowrap; cursor: pointer;" onclick="window.showGumUserDetailModal(${idx})" title="查看该用户针对所有语义模型的细粒度权限画像">🔍 画像</button>
                     </div>
                 </td>
             </tr>
@@ -17296,10 +17295,9 @@ window.openGumResultModal = function() {
                     const lockBtnText = isTarget ? '🎯 已锁定' : '🎯 锁定';
                     const lockBtnClass = isTarget ? 'btn-wf-primary' : 'btn-wf-secondary';
                     return `
-                        <div style="display:flex;gap:4px;align-items:center;">
-                            <button class="btn-wf-sm ${lockBtnClass}" style="padding:2px 6px;font-size:0.7rem;height:24px;" onclick="window.toggleGumTargetUser('${row._identifier}', '${row._raw?.displayName || row._identifier}')" title="${isTarget ? '点击取消该定向目标' : '勾选此用户作为下一次定向穿透审计的条件'}">${lockBtnText}</button>
-                            <button class="btn-wf-sm btn-wf-secondary" style="padding:2px 8px;font-size:0.7rem;height:24px;" onclick="window.showGumUserDetailModal(${row._idx})" title="查看该用户针对所有语义模型的细粒度权限拓扑">🔍 画像</button>
-                            <button class="btn-action-danger" style="padding:2px 6px;font-size:0.7rem;height:24px;" onclick="if(window.deleteGumUser) window.deleteGumUser('${row._wsId}', '${row._identifier}', '${row._wsName}')" title="从工作区剥离用户">移除</button>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <button class="btn-wf-sm ${lockBtnClass}" style="padding: 3px 10px; font-size: 0.72rem; height: 26px; font-weight: 500; white-space: nowrap; cursor: pointer;" onclick="window.toggleGumTargetUser('${row._identifier}', '${row._raw?.displayName || row._identifier}')" title="${isTarget ? '点击取消该定向目标' : '锁定此用户作为下一次定向穿透审计的目标'}">${lockBtnText}</button>
+                            <button class="btn-wf-sm btn-wf-secondary" style="padding: 3px 10px; font-size: 0.72rem; height: 26px; font-weight: 500; white-space: nowrap; cursor: pointer;" onclick="window.showGumUserDetailModal(${row._idx})" title="查看该用户针对所有语义模型的细粒度权限画像">🔍 画像</button>
                         </div>
                     `;
                 }

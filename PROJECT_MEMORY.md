@@ -887,7 +887,16 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
    - **即时过滤联动 (`window.filterGumDropdownUsers`)**：在搜索栏输入时，下拉浮层中的用户列表毫秒级实时动态过滤；
    - **点击外部与按键防御**：全局监听外部点击事件与 `Escape` 按键，自动平滑收起下拉菜单。
 
-- **3. 定向目标标签与统一执行闭环**：
+- **3. 操作列精简与排版防挤压优化 (Action Buttons Clean-up & Gap Defense)**：
+   - 彻底剥离表格操作列中冗余且高危的「移除」按钮；
+   - 仅保留核心的「🎯 锁定 / 设为目标」与「🔍 画像」操作按钮，统一加大按钮内边距 (`padding: 3px 10px`) 与间隙 (`gap: 8px`)，彻底解决按钮挤压拥挤问题。
+
+- **4. 明亮模式表头色彩变量防御 (Light Mode Table Header Color Sync)**：
+   - 根除内嵌矩阵表格在 `<thead>` 上的硬编码深色回退 (`#1e293b`)；
+   - 全面引入主题自适应 CSS 变量：深色模式 `--table-header-bg: #1e293b; --table-header-color: #f8fafc;`，明亮模式 `--table-header-bg: #e2e8f0; --table-header-color: #0f172a;`；
+   - 保证明亮模式下表格列名呈高对比度、清晰雅致的 Slate 浅灰背景与黑炭字色。
+
+- **5. 定向目标标签与统一执行闭环**：
    - 选中的审计目标依然实时呈现在紧凑的 `#wf-gum-target-tags-bar` 标签栏中，支持单项移除与一键清空；
    - 深度模型穿透与权限审计依然统一由右上角默认全局 **Run (执行)** 按钮触发。
 
