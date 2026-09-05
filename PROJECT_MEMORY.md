@@ -984,3 +984,33 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
 
 1. **操作入口单一性原则 (Single Point of Execution Principle)**：
    - 工具平台应坚决杜绝在同一主流程内出现多个功能重叠的“启动/执行”按钮。将执行动作统一定位在右上角标准操作区，不仅降低了认知负荷，更提升了平台的专业质感与排版整洁度。
+
+## 33. 用户权限全景画像弹窗锁定按钮剥离与排版精简 (Profile Modal Target Lock Button Removal)
+
+### 33.1 业务背景与用户体验痛点 (Context & Problem Statement)
+
+1. **下钻画像弹窗中的锁定功能冗余**：
+   - 在用户点击查看某个授权主体的“用户权限全景画像”弹窗时，顶部卡片右侧原先附带了「🎯 已锁定为目标 / 设为定向审计目标」操作按钮；
+   - 用户画像主要用于只读诊断、权限穿透分析以及多模型读写权下钻，定向目标的选择应归属且统一由全局搜索下拉框与目标标签栏负责，画像弹窗内嵌锁定按钮破坏了只读视窗的纯粹性。
+
+---
+
+### 33.2 核心架构改进与实现方案 (Architecture Implementation)
+
+- **1. 彻底剥离画像卡片操作按钮 (`static/script.js` - `window.showGumUserDetailModal`)**：
+   - 移除了 `isTarget`、`lockBtnText`、`lockBtnClass` 状态计算逻辑与 `<button>` DOM 标签；
+   - 画像顶部卡片右侧精简保留主体类型徽章（如 `User` / `Group`）与最终生效权限徽章（如 `生效: Admin`），结构紧凑、呼吸感更强。
+
+- **2. 自动化回归测试与视觉断言闭环 (Playwright Verification)**：
+   - 编写并执行 Playwright 自动化测试（`scratch/test_no_lock_in_detail_modal.py`），断言：
+     1. 画像卡片内按钮数量严格为 0；
+     2. 页面与卡片内不存在“已锁定为目标”或“设为定向审计目标”文本；
+     3. 模型授权明细表格与生效角色徽章正确渲染；
+     4. 测试用例 100% 通过。
+
+---
+
+### 33.3 架构经验与最佳实践总结 (Takeaways)
+
+1. **信息下钻弹窗的只读性 (Read-Only Purity of Drill-down Modals)**：
+   - 在层级较深的只读下钻弹窗（Drill-down / Profile Modals）中，尽量避免引入跨层级的状态变更按钮（如跨页面锁定、跨流程跳转等），防止用户迷失在多层嵌套操作的状态流中。
