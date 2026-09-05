@@ -778,4 +778,45 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
 2. **状态驱动的纯 CSS 动画标准 (Class-Driven CSS Transitions)**：
    - 涉及旋转、缩放、展开折叠等微交互时，永远避免使用 JS 手动修改内联样式，统一采用 `.is-collapsed` / `.active` 等状态类驱动 CSS Transition，保证样式优先级清晰、便于全局维护。
 
+---
+
+## 28. 全局用户与权限治理矩阵即时内嵌表格与快捷赋权交互升级 (Global User & Permissions Manager Live Matrix & Add User Optimization)
+
+### 28.1 业务背景与交互痛点
+在 `Global User & Permissions Manager(全局用户管理与权限穿透审计)` 工作流中：
+1. **`+ Add User` 功能定位与阻断缺陷**：
+   - 功能定位：管理员向选定工作区赋予指定角色（`Admin`、`Member`、`Contributor`、`Viewer`）的快捷操作入口，调用 Power BI API (`POST /groups/{workspaceId}/users`)；
+   - 原痛点：原逻辑在未执行扫描前点击会直接弹出 `alert('Please run the "Scan" first...')` 阻断用户操作，且弹窗右上角与取消按钮绑定的关闭事件存在 DOM 引用报错。
+2. **`🔍 搜索与过滤 (Search & Filter)`“视效失灵”痛点**：
+   - 原痛点：扫描完成后，主面板仅展示 KPI 卡片与统计图表，完整权限表格需点击弹窗查看。用户在主面板顶部搜索框输入关键字时，虽然内部完成了数组过滤，但页面上缺乏即时响应的明细列表，给用户造成“搜索功能失效/无反应”的错觉；且未扫描前没有任何引导提示。
+
+---
+
+### 28.2 核心架构改进与排坑记录 (Architecture Improvements & Root Cause Analysis)
+
+- ❌ **排坑 1：未扫描时禁止添加用户的生硬阻断 (Add User Prerequisite Decoupling)**
+  - **根本原因**：`openGumAddUserModal` 原代码过度依赖扫描产物 `window.gumWorkspaces`。
+  - **✅ 成功解决 (Multi-tier Workspace Fallback)**：
+    1. 改造为多级容灾工作区提取机制：优先读取 `window.gumWorkspaces` ➔ 降级读取全局 `window.configuredWorkspaces` ➔ 降级读取已挂载的 DOM `<select>` 选项 ➔ 最终异步拉取 `/groups?$top=100`；
+    2. 实现随时随地一键唤起 `+ Add User` 弹窗，并自动关联当前选中的目标工作区；
+    3. 修复弹窗右上角关闭按钮与底部取消按钮的关闭逻辑，彻底消除 `TypeError`。
+
+- ❌ **排坑 2：搜索过滤缺乏页面级即时反馈 (Live Inline Data Grid Integration)**
+  - **根本原因**：数据表仅挂载于大弹窗内部，主面板缺乏直接承载明细记录的即时数据流。
+  - **✅ 成功解决 (Live Inline Table & Dynamic Matrix Sync)**：
+    1. **内嵌实时权限矩阵表格 (Live Inline Matrix Table)**：在主面板直接渲染高对比度、带悬浮高亮与操作按钮（「🔍 画像」/「移除」）的即时权限明细表格；
+    2. **即时打通搜索与胶囊过滤**：在顶部搜索框键入字符或点击「全部 / ⚠️ 提权异常 / 🛡️ 管理员 / 👁️ 纯只读」胶囊时，**下方内嵌表格毫秒级即时重绘，所见即所得**；
+    3. **双向搜索穿透**：点击「全屏弹窗矩阵」时，大弹窗自动继承主面板的筛选关键字；
+    4. **未扫描空态引导**：在未扫描前展示友好虚线提示框，清晰引导用户运行扫描或直接使用 `+ Add User`。
+
+---
+
+### 28.3 架构经验与最佳实践总结 (Takeaways)
+
+1. **所见即所得的响应式反馈原则 (Instant Visual Feedback Rule)**：
+   - 过滤搜索组件必须与当前视口内的主体视图（表格/列表）强绑定。绝不能让搜索框处于“只改数据、无视效反应”的盲打状态。
+2. **快捷操作的独立性与零前提假设 (Decoupled Action Triggers)**：
+   - 具有明确增删改语义的业务操作（如 Add User）应具备独立的运行能力，绝不能人为增加“必须先跑全量扫描”的前提依赖。
+
+
 
