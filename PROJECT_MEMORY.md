@@ -948,3 +948,39 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
    - 在数据呈现层（Modal / View）中应尽量精简高频状态变更类操作，保留只读下钻与穿透功能（如画像/详情），保持视窗职责单一性。
 2. **弹性居中容器防御 (Flexbox Centering Defense in Grid/Table Cells)**：
    - 在虚拟滚动与支持列宽动态伸缩的现代化数据表格中，单按钮操作列应始终使用全宽 Flex 容器进行居中包裹，以防止因父级 table/cell 继承的文本左对齐样式导致单图标按钮视觉偏移。
+
+## 32. 审计占位区域移除与极简前置面板重构 (Pre-Scan Empty Placeholder Removal & Clean UI)
+
+### 32.1 业务背景与用户体验痛点 (Context & Problem Statement)
+
+1. **未扫描状态下冗余的大占位卡片**：
+   - 之前在用户尚未启动全景权限扫描时，页面中间常驻展示了带有“👥 尚未执行全景权限扫描...”提示与“立即启动全景权限扫描 (Start Audit Scan)”大按钮的虚线占位卡片；
+   - 鉴于全局工作流已经统一在右上角保留了标准的 **Run (执行)** 按钮，中间的重复触发按钮与大占位卡片破坏了视觉的整体一致性与紧凑感。
+
+---
+
+### 32.2 核心架构改进与实现方案 (Architecture Implementation)
+
+- **1. 彻底移除未扫描占位容器 (`#wf-gum-empty-placeholder`)**：
+   - 在 `static/index.html` 中剥离虚线占位 DOM 结构及其内置的次级扫描按钮；
+   - 页面初始状态呈现极其干净清爽的配置参数与日志折叠区。
+
+- **2. 控制器逻辑同步精简与鲁棒性防御 (`static/script.js`)**：
+   - 在 `window.filterGumTable` 中移除对 `placeholder` 和 `emptyText` 的显示/隐藏操作；
+   - 当 `gumData` 为空时，仅隐匿结果面板并静默返回，完全杜绝潜在的空指针异常；
+   - 一旦用户点击右上角统一的 Run 按钮并返回审计数据，结果面板与仪表盘图表自动平滑展开。
+
+- **3. 自动化测试闭环与视觉回归断言 (Playwright Verification)**：
+   - 编写并执行端到端 Playwright 自动化测试脚本（`scratch/test_no_placeholder.py`），断言：
+     1. `#wf-gum-empty-placeholder` 在 DOM 中元素数量严格为 0；
+     2. 文本“尚未执行全景权限扫描”在页面上出现次数严格为 0；
+     3. 占位内的“立即启动全景权限扫描”按钮被彻底移除；
+     4. 点击右上角统一 Run 按钮能够正确发起审计并在完成后自动展开 KPI 仪表盘与图表；
+     5. 测试用例 100% 通过。
+
+---
+
+### 32.3 架构经验与最佳实践总结 (Takeaways)
+
+1. **操作入口单一性原则 (Single Point of Execution Principle)**：
+   - 工具平台应坚决杜绝在同一主流程内出现多个功能重叠的“启动/执行”按钮。将执行动作统一定位在右上角标准操作区，不仅降低了认知负荷，更提升了平台的专业质感与排版整洁度。
