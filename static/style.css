@@ -165,10 +165,9 @@ body {
 }
 
 /* Primary Navigation Rail (Leftmost - PBI Studio Sidebar) */
+#app-rail,
 .app-rail {
     width: 60px;
-    min-width: 60px;
-    max-width: 60px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -178,24 +177,21 @@ body {
     flex-shrink: 0;
     z-index: 25;
     transition: width 0.38s cubic-bezier(0.22, 1, 0.36, 1), 
-                min-width 0.38s cubic-bezier(0.22, 1, 0.36, 1), 
-                max-width 0.38s cubic-bezier(0.22, 1, 0.36, 1), 
-                opacity 0.25s ease, 
                 margin 0.38s cubic-bezier(0.22, 1, 0.36, 1), 
                 padding 0.38s cubic-bezier(0.22, 1, 0.36, 1), 
+                opacity 0.25s ease, 
                 background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
                 border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
                 box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
-                color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                color 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
     box-sizing: border-box;
     overflow: hidden;
-    will-change: width, min-width, max-width;
+    will-change: width;
 }
 
+#app-rail.expanded,
 .app-rail.expanded {
-    width: 175px !important;
-    min-width: 175px !important;
-    max-width: 175px !important;
+    width: 175px;
     align-items: stretch;
 }
 
