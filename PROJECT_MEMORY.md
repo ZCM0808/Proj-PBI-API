@@ -1141,3 +1141,51 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
    - 在侧边栏宽度动态动画中，切忌让内部卡片跟随父容器宽度从 280px 实时压缩到 48px。内部容器保持固定 `min-width`，由父容器 `overflow: hidden` 充当裁剪视窗（Viewport Clip），配合 `translateX` 滑动，是解决文字挤压与重排撕裂的黄金方案。
 2. **纯 CSS 状态驱动动效标准 (Pure State-Driven Micro-Animations)**：
    - 彻底消灭在动画触发元素上的 `display: none` / `display: block` 瞬时切换，统一使用 `opacity + transform + visibility: hidden (delayed)` 组合拳，兼顾无障碍辅助与丝滑帧率。
+
+
+## 37. 侧边栏刷新抖动根因治理与 0px 沉浸式智能联动交互 (Zero-FOUC Reload Stabilization & 0px Smart Rail Toggle)
+
+### 37.1 业务背景与深度根因剖析 (Root Cause Analysis)
+
+1. **刷新页面时第二个面板“先折叠再展开”的深层根因 (FOUC & State Inversion Loop)**：
+   - **根因 A：初始加载未禁用 CSS 过渡 (No Preload Transition Barrier)**：
+     - 在页面解析与 DOM 挂载的毫秒时隙内，`.sidebar` 上的 `transition: width 0.32s` 已处于活跃状态。当页面根据本地缓存设置 `--sidebar-width` 或挂载 `sidebar-collapsed` 类时，浏览器强制在用户眼前播放了尺寸过渡动画；
+   - **根因 B：DOMContentLoaded 阶段移除 FOUC 样式导致变量丢失**：
+     - 之前在 `DOMContentLoaded` 事件中执行了 `injected.remove()`，导致动态注入的 `:root { --sidebar-width }` 被直接销毁，侧边栏宽度瞬间跌落回默认值，随后被 `script.js` 重新赋值，引发二次动画弹跳；
+   - **根因 C：初始化流程与用户点击事件耦合 (Init Call Inversion)**：
+     - `script.js` 在启动时调用了 `window.switchAppModule(savedModule)`，内部判定 `if (isSidebarCollapsed) window.toggleSidebar()`，导致初始处于折叠态的侧边栏在页面加载完成后被错误地强制展开；
+   - **根因 D：后端 KV 异步同步覆盖本地布局状态 (Stale Backend State Overwrite)**：
+     - 后端 `/api/db/kv` 批量拉取时，由于缺少对本地视窗布局键（`pbi-sidebar-collapsed`、`pbi-sidebar-width` 等）的过滤隔离，旧数据库值异步回填并篡改了用户的最新本地偏好。
+
+---
+
+### 37.2 核心架构改进与实现方案 (Architecture Implementation)
+
+- **1. 双重 rAF 零过渡防线 (Double requestAnimationFrame Transition Barrier)**：
+  - 在 `<html>` 标签初始注入 `.no-transitions` 类（`transition: none !important;`）；
+  - 阻断首帧（First Paint）阶段的所有宽度计算、类名挂载和变量赋值的补间过渡；
+  - 在 `DOMContentLoaded` 完成并经过双重 `requestAnimationFrame` 确认首屏渲染完全稳定后，再平滑解绑 `.no-transitions`，**彻底消灭任何刷新闪烁与先折叠再展开的假动效**。
+
+- **2. 永久注入根变量与 0ms 初始类隔离 (Permanent Root Vars & Initial Class Isolation)**：
+  - 动态注入的 `<style id="fouc-root-vars">` 设为永久持久化，杜绝 DOM 卸载引发的变量丢失；
+  - 引入 `html.sidebar-collapsed-init` 仅在 DOM 未就绪的极短时隙生效，在 `DOMContentLoaded` 时无缝移交给 `body.sidebar-collapsed`，彻底消除 `html` 与 `body` 之间的状态脱节。
+
+- **3. 本地视窗布局状态与后端 KV 严格隔离 (Local Layout Keys Protection)**：
+  - 在 `syncStateFromBackend` 与 `localStorage.setItem` 拦截器中建立 `localLayoutKeys` 防火墙；
+  - 坚决拦截后端旧数据对 `pbi-sidebar-collapsed`、`pbi-sidebar-width`、`pbi-rail-expanded` 等视窗偏好的静默污染。
+
+- **4. 0px 沉浸式侧边栏与现代 IDE 智能 Rail 点击联动 (0px Immersive Sidebar & Smart Rail Toggle)**：
+  - **0px 纯净折叠**：折叠后侧边栏宽度归零（`width: 0; padding: 0; border: none; opacity: 0`），主工作区无缝占满 100% 视窗空间；
+  - **智能 Rail 交互模式**：
+    - 当侧边栏已展开时，点击当前激活的一级模块图标（如 `⚡ Workflows`）➔ 触发平滑收起侧边栏；
+    - 当侧边栏处于收起态时，点击 Rail 上任何一级模块图标 ➔ 自动平滑展开侧边栏并聚焦至该模块；
+    - 侧边栏头部保留极简折叠按钮（`«`），支持双击分割线（`#dragMe`）一键切换。
+
+---
+
+### 37.3 架构经验与最佳实践总结 (Takeaways)
+
+1. **SPA 启动期动效防线黄金法则 (Zero-Transition on Page Load Rule)**：
+   - 具有动态宽度/位置记忆的 SPA 应用，必须在首次渲染完成前全局注入 `.no-transitions`，并在双重 rAF 后解绑。绝不能让状态恢复过程暴露在 CSS Transition 的计算管线中。
+2. **本地视图瞬态与云端状态的界限 (Local Viewport vs Cloud State Boundary)**：
+   - 侧边栏展开状态、分割线拖拽像素等均属于强绑特定设备分辨率的本地视图瞬态（Local Viewport State），必须与业务配置、Token 等云端同步数据严格物理隔离，切忌一股脑进行后端 KV 全量覆盖。
