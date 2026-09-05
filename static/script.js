@@ -3135,7 +3135,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 document.documentElement.classList.remove('theme-transitioning');
 
-            }, 500);
+            }, 300);
 
         });
 

@@ -1014,3 +1014,49 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
 
 1. **信息下钻弹窗的只读性 (Read-Only Purity of Drill-down Modals)**：
    - 在层级较深的只读下钻弹窗（Drill-down / Profile Modals）中，尽量避免引入跨层级的状态变更按钮（如跨页面锁定、跨流程跳转等），防止用户迷失在多层嵌套操作的状态流中。
+
+## 34. 全局面板紧凑间隙排版与深浅主题毫秒级同步切换重构 (Compact Panel Gaps & Synchronized Theme Transitions)
+
+### 34.1 业务背景与用户体验痛点 (Context & Problem Statement)
+
+1. **面板间距与内边距过大 (Excessive Gaps & Padding)**：
+   - 之前在顶栏、一级导航轨 (`#app-rail`)、二级侧边栏 (`.sidebar`) 以及主工作区 (`#workspace-container` / `.wf-detail-board`) 之间存在 12px~16px 的间隙与 24px 的大内边距，导致视窗有效展示区域被严重压缩；
+   - 鼠标拖拽调整手柄 (`#dragMe`) 宽度为 16px，加剧了面板之间的割裂感。
+2. **主题切换各面板视觉不同步 (Desynchronized Theme Switching)**：
+   - 切换深色/浅色模式时，最左侧一级导航轨和部分独立容器硬编码了独立的 `!important` 结构过渡动画（仅包含 `width/margin/padding`），导致其背景色在 0ms 瞬间跳变；
+   - 与此同时，主工作区和子元素在 `.theme-transitioning` 的 400ms 慢速过渡中逐渐淡入，造成极明显的先后脱节、画面撕裂与视觉闪烁。
+
+---
+
+### 34.2 核心架构改进与实现方案 (Architecture Implementation)
+
+- **1. 全局面板紧凑间隙与尺寸收敛 (Compact Grid & Gap Compression)**：
+   - **全局边距收窄**：将 `--app-padding` 从 16px 压缩为 `8px 10px 10px 10px`；
+   - **顶栏下边距微调**：将 `#global-topbar` 下边距从 16px 减小至 6px；
+   - **组件间隙紧凑化**：
+     - 一级导航轨与侧边栏间距从 12px 压缩为 6px；
+     - 拖拽手柄 (`#dragMe` / `.resizer`) 宽度从 16px 收敛至 8px（手柄线条 3px）；
+     - API 调试器垂直拖拽条 (`.vertical-resizer`) 高度从 16px 收敛至 8px，`.main-content` 间隙收敛至 8px；
+     - 侧边栏与主工作台内边距统一紧凑化（`.sidebar` 压缩至 `0.85rem 0.95rem`，`.wf-detail-board` 压缩至 `1rem 1.25rem`）；
+     - `.glass-panel` 圆角由 16px 精细收窄为 10px，提升现代化工业级桌面工具的精密感与高密度数据吞吐力。
+
+- **2. 统一毫秒级同步主题过渡引擎 (Unified Theme Transition Engine)**：
+   - **根除 `!important` 过渡冲突**：剥离 `.app-rail` 与 `.sidebar` 底层的独立 `!important` 过渡定义，将 `background-color`、`border-color`、`box-shadow` 和 `color` 完整接入统一步调；
+   - **全局同步平滑缓动**：为 `body`、`.glass-panel`、`.app-rail`、`.sidebar`、`#global-topbar` 及 `.theme-transitioning` 统一配置 `0.25s cubic-bezier(0.4, 0, 0.2, 1)` 高性能硬件加速过渡曲线；
+   - **精准状态生命周期闭环**：JavaScript 主题切换监听器在触发后 300ms 精准剥离 `.theme-transitioning` 类，彻底杜绝切换过程中的不同步跳跃与拖尾。
+
+- **3. 自动化测试与视觉断言闭环 (Playwright Verification)**：
+   - 编写并执行端到端 Playwright 测试脚本（`scratch/test_compact_gaps_and_theme_sync.py`），断言：
+     1. 全局顶栏、导航轨、拖拽条计算样式严格符合紧凑规格（`<= 8px`）；
+     2. 玻璃面板圆角严格统一为 `10px`；
+     3. 深色 ➔ 浅色 ➔ 深色双向循环切换，`data-theme` 属性与图标状态 100% 同步切换；
+     4. 测试用例 100% 运行通过。
+
+---
+
+### 34.3 架构经验与最佳实践总结 (Takeaways)
+
+1. **CSS 动画与过渡属性继承防御 (CSS Transition Property Inheritance Defense)**：
+   - 当针对某个类使用 `transition: width/opacity` 等特定属性时，若附加了 `!important`，将直接阻断其他全局过渡类对 `background-color` 等颜色属性的插值计算，导致颜色发生 0ms 瞬间跳变。应对颜色、背景、边框统一使用平滑曲线或在全局过渡层统一接管。
+2. **高密度专业工具界面的空间哲学 (High-Density Professional UI Space Philosophy)**：
+   - 企业级 API 调试与权限治理平台与面向消费者的内容型应用不同，过宽的外边距与大空白会严重降低同屏信息量。紧凑统一的 6px~8px 间隙不仅极大拓展了数据展示视窗，更赋予系统强烈的工业级工具精密质感。
