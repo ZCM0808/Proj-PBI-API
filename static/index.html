@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260905_v1014">
+    <link rel="stylesheet" href="/static/style.css?v=20260905_v1011">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -1170,7 +1170,14 @@
                                         </div>
                                     </div>
 
-
+                                    <!-- Empty Placeholder before Scan -->
+                                    <div id="wf-gum-empty-placeholder" style="padding: 24px; text-align: center; background: var(--overlay-5); border: 1px dashed var(--overlay-15); border-radius: 8px; color: var(--text-secondary); font-size: 0.85rem; margin-top: 6px;">
+                                        <div id="wf-gum-empty-text" style="margin-bottom: 12px;">👥 尚未执行全景权限扫描。请点击下方按钮启动审计，或在上方搜索栏直接检索目标。</div>
+                                        <button type="button" class="btn-wf-md btn-wf-primary" onclick="if(window.runGlobalUserManager) window.runGlobalUserManager()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem;">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>
+                                            立即启动全景权限扫描 (Start Audit Scan)
+                                        </button>
+                                    </div>
 
                                     <!-- Visual Dashboard & Result Wrap -->
                                     <div id="wf-gum-result-wrap" style="display: none; margin-top: 10px; position: relative;">
@@ -2636,7 +2643,7 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260904_v2245"></script>
     <script src="/static/universal_modal.js?v=20260904_v2245"></script>
-    <script src="/static/script.js?v=20260905_v1014"></script>
+    <script src="/static/script.js?v=20260905_v1011"></script>
 
 
 
