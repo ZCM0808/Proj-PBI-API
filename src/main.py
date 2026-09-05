@@ -2748,10 +2748,11 @@ class DeepPermissionScanRequest(BaseModel):
     workspace_id: Optional[str] = None
     deep_scan: bool = True
     access_token: Optional[str] = None
+    target_users: Optional[List[str]] = None
 
 @app.post("/api/workflow/deep-permissions-scan")
 async def api_deep_permissions_scan(req: DeepPermissionScanRequest):
-    """全景权限与穿透生效治理扫描接口 (直属角色 + 安全组生效穿透 + 语义模型读写判定 + 提权偏离检测)"""
+    """全景权限与穿透生效治理扫描接口 (直属角色 + 安全组生效穿透 + 语义模型读写判定 + 提权偏离检测 + 定向用户过滤)"""
     from src.permission_scanner import scan_permissions_deep
     try:
         cfg = Config()
@@ -2760,7 +2761,8 @@ async def api_deep_permissions_scan(req: DeepPermissionScanRequest):
             workspace_id=req.workspace_id,
             deep_scan=req.deep_scan,
             config=cfg,
-            client=cli
+            client=cli,
+            target_users=req.target_users
         )
         return res
     except Exception as e:

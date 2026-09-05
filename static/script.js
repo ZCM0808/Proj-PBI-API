@@ -16182,8 +16182,8 @@ window.sortTable = function(thElement, event, colIndex) {
 // --- Global User Manager Logic ---
 
 window.gumData = [];
-
 window.gumWorkspaces = [];
+window.gumTargetUsers = new Map(); // identifier.toLowerCase() -> { identifier, displayName }
 
 
 
@@ -16269,22 +16269,39 @@ window.runGlobalUserManager = async function() {
         const isDeepAudit = document.getElementById('gum-deep-audit-mode')?.checked ?? true;
         const selWorkspace = document.getElementById('wf-gum-workspace-select')?.value || '';
         const isAdminMode = document.getElementById('gum-admin-mode')?.checked ?? false;
+        const onlyTargets = document.getElementById('wf-gum-only-targets-toggle')?.checked ?? true;
 
-        appendLog(`[1] 正在启动全景权限治理审计 (Deep Audit: ${isDeepAudit ? '开启' : '关闭'}, Target: ${selWorkspace || '全部工作区'})...`);
+        // 获取定向用户列表
+        let targetUsersList = [];
+        if (window.gumTargetUsers && window.gumTargetUsers.size > 0 && onlyTargets) {
+            targetUsersList = Array.from(window.gumTargetUsers.values()).map(u => u.identifier);
+        }
+
+        const targetScopeDesc = targetUsersList.length > 0 ? `定向锁定 [${targetUsersList.join(', ')}]` : '全部授权用户';
+        appendLog(`[1] 正在启动全景权限治理审计 (Deep: ${isDeepAudit ? '开启' : '关闭'}, 工作区: ${selWorkspace || '全部工作区'}, 范围: ${targetScopeDesc})...`);
 
         if (isDeepAudit) {
             appendLog(`[2] 正在调用后端高性能并发扫描引擎 (/api/workflow/deep-permissions-scan)...`);
-            appendLog(`   -> 穿透检索工作区直属角色 (Direct Workspace Roles)`);
-            appendLog(`   -> 穿透检索各语义模型细粒度读写底表 (Dataset Item Rights)`);
-            appendLog(`   -> 并发调用 Admin API /artifactAccess 获取最终生效权限并检测安全组提权偏离...`);
+            if (targetUsersList.length > 0) {
+                appendLog(`   -> 🎯 定向穿透模式激活：仅对 ${targetUsersList.length} 位选定用户执行生效碰撞与模型读写分析`);
+            } else {
+                appendLog(`   -> 穿透检索工作区直属角色 (Direct Workspace Roles)`);
+                appendLog(`   -> 穿透检索各语义模型细粒度读写底表 (Dataset Item Rights)`);
+                appendLog(`   -> 并发调用 Admin API /artifactAccess 获取最终生效权限并检测安全组提权偏离...`);
+            }
+
+            const payload = {
+                workspace_id: selWorkspace || null,
+                deep_scan: true
+            };
+            if (targetUsersList.length > 0) {
+                payload.target_users = targetUsersList;
+            }
 
             const res = await fetch('/api/workflow/deep-permissions-scan', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    workspace_id: selWorkspace || null,
-                    deep_scan: true
-                })
+                body: JSON.stringify(payload)
             });
 
             const data = await res.json();
@@ -16324,11 +16341,16 @@ window.runGlobalUserManager = async function() {
             for (const ws of workspaces) {
                 const users = ws.users || [];
                 for (const u of users) {
+                    const ident = u.identifier || u.emailAddress;
+                    if (targetUsersList.length > 0) {
+                        const matchesTarget = targetUsersList.some(t => t.toLowerCase() === (ident || '').toLowerCase());
+                        if (!matchesTarget) continue;
+                    }
                     window.gumData.push({
                         workspaceId: ws.id,
                         workspaceName: ws.name,
-                        identifier: u.identifier || u.emailAddress,
-                        displayName: u.displayName || u.identifier,
+                        identifier: ident,
+                        displayName: u.displayName || ident,
                         graphId: u.graphId,
                         principalType: u.principalType || 'User',
                         directRole: u.groupUserAccessRight || 'Viewer',
@@ -16524,6 +16546,168 @@ window.setGumPillFilter = function(filterType, btn) {
     window.filterGumTable();
 };
 
+// --- Targeted Principals (定向用户审计与级联筛选) ---
+
+window.addGumTargetUser = function(identifier, displayName) {
+    if (!identifier) return;
+    const cleanId = identifier.trim();
+    if (!cleanId) return;
+    window.gumTargetUsers.set(cleanId.toLowerCase(), {
+        identifier: cleanId,
+        displayName: displayName || cleanId
+    });
+    window.renderGumTargetTags();
+    window.filterGumTable();
+    if (window.showNotification) {
+        window.showNotification(`已将 "${displayName || cleanId}" 锁定为定向审计目标`, 'success');
+    }
+};
+
+window.removeGumTargetUser = function(identifier) {
+    if (!identifier) return;
+    window.gumTargetUsers.delete(identifier.trim().toLowerCase());
+    window.renderGumTargetTags();
+    window.filterGumTable();
+};
+
+window.clearGumTargetUsers = function() {
+    window.gumTargetUsers.clear();
+    window.renderGumTargetTags();
+    window.filterGumTable();
+    if (window.showNotification) {
+        window.showNotification('已清空定向审计目标用户', 'info');
+    }
+};
+
+window.toggleGumTargetUser = function(identifier, displayName) {
+    if (!identifier) return;
+    const key = identifier.trim().toLowerCase();
+    if (window.gumTargetUsers.has(key)) {
+        window.removeGumTargetUser(key);
+    } else {
+        window.addGumTargetUser(identifier, displayName);
+    }
+};
+
+window.renderGumTargetTags = function() {
+    const bar = document.getElementById('wf-gum-target-tags-bar');
+    const container = document.getElementById('wf-gum-target-tags-container');
+    const countSpan = document.getElementById('wf-gum-target-count');
+    if (!bar || !container) return;
+
+    const count = window.gumTargetUsers.size;
+    if (countSpan) countSpan.textContent = count;
+
+    if (count === 0) {
+        bar.style.display = 'none';
+        container.innerHTML = '<span style="font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 4px;">🎯 定向审计目标用户 (<span id="wf-gum-target-count">0</span>):</span>';
+        return;
+    }
+
+    bar.style.display = 'flex';
+    let html = `<span style="font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 4px;">🎯 定向审计目标用户 (<span id="wf-gum-target-count">${count}</span>):</span>`;
+    
+    window.gumTargetUsers.forEach((userObj) => {
+        const disp = (userObj.displayName && userObj.displayName !== userObj.identifier) ? `${userObj.displayName} (${userObj.identifier})` : userObj.identifier;
+        html += `
+            <span class="gum-target-tag" style="display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; background: var(--accent); color: #fff; border-radius: 12px; font-size: 0.73rem; font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.15);">
+                <span>${disp}</span>
+                <span onclick="window.removeGumTargetUser('${userObj.identifier}')" style="cursor: pointer; font-weight: bold; opacity: 0.85; font-size: 0.8rem; margin-left: 2px;" title="移除该目标">✕</span>
+            </span>
+        `;
+    });
+    container.innerHTML = html;
+};
+
+window.toggleGumUserSelect = function(identifier, displayName, isChecked) {
+    if (!identifier) return;
+    const key = identifier.trim().toLowerCase();
+    if (isChecked) {
+        window.gumTargetUsers.set(key, { identifier, displayName: displayName || identifier });
+    } else {
+        window.gumTargetUsers.delete(key);
+    }
+    window.renderGumTargetTags();
+    window.updateGumSelectAllStatus();
+};
+
+window.toggleGumSelectAll = function(isChecked) {
+    const dataset = window._lastGumFiltered || window.gumData || [];
+    if (!dataset || dataset.length === 0) return;
+
+    if (isChecked) {
+        dataset.forEach(d => {
+            if (d.identifier) {
+                window.gumTargetUsers.set(d.identifier.trim().toLowerCase(), {
+                    identifier: d.identifier,
+                    displayName: d.displayName || d.identifier
+                });
+            }
+        });
+    } else {
+        dataset.forEach(d => {
+            if (d.identifier) {
+                window.gumTargetUsers.delete(d.identifier.trim().toLowerCase());
+            }
+        });
+    }
+
+    window.renderGumTargetTags();
+    window.renderGumInlineTable(dataset);
+};
+
+window.updateGumSelectAllStatus = function() {
+    const selectAllBox = document.getElementById('wf-gum-select-all');
+    if (!selectAllBox) return;
+    const dataset = window._lastGumFiltered || window.gumData || [];
+    if (!dataset || dataset.length === 0) {
+        selectAllBox.checked = false;
+        return;
+    }
+    const allSelected = dataset.length > 0 && dataset.every(d => window.gumTargetUsers.has((d.identifier || '').trim().toLowerCase()));
+    selectAllBox.checked = allSelected;
+};
+
+window.handleGumSearchEnter = function(val) {
+    const cleanVal = (val || '').trim();
+    if (!cleanVal) {
+        if (!window.gumData || window.gumData.length === 0) {
+            window.runGlobalUserManager();
+        }
+        return;
+    }
+
+    // 解析逗号/分号/空格分隔的多个用户邮箱或标识
+    const tokens = cleanVal.split(/[,;\s]+/).filter(Boolean);
+    let addedCount = 0;
+    tokens.forEach(t => {
+        if (t.includes('@') || t.length >= 2) {
+            window.gumTargetUsers.set(t.toLowerCase(), { identifier: t, displayName: t });
+            addedCount++;
+        }
+    });
+
+    if (addedCount > 0) {
+        const searchInput = document.getElementById('wf-gum-search');
+        if (searchInput) searchInput.value = '';
+        window.renderGumTargetTags();
+        if (window.showNotification) {
+            window.showNotification(`已锁定 ${addedCount} 个目标用户，按【扫描】即可发起定向审计！`, 'success');
+        }
+        if (!window.gumData || window.gumData.length === 0) {
+            window.runGlobalUserManager();
+        } else {
+            window.filterGumTable();
+        }
+    } else {
+        if (!window.gumData || window.gumData.length === 0) {
+            window.runGlobalUserManager();
+        } else {
+            window.filterGumTable();
+        }
+    }
+};
+
 window.renderGumInlineTable = function(filtered) {
     const tbody = document.getElementById('wf-gum-inline-tbody');
     const emptyDiv = document.getElementById('wf-gum-inline-empty');
@@ -16557,9 +16741,15 @@ window.renderGumInlineTable = function(filtered) {
 
         const wsId = d.workspaceId || d.wsId;
         const identifier = d.identifier;
+        const isTarget = window.gumTargetUsers.has((identifier || '').trim().toLowerCase());
+        const lockBtnText = isTarget ? '🎯 已锁定' : '🎯 设为目标';
+        const lockBtnClass = isTarget ? 'btn-wf-primary' : 'btn-wf-secondary';
 
         return `
-            <tr style="border-bottom: 1px solid var(--overlay-5); transition: background 0.15s;">
+            <tr style="border-bottom: 1px solid var(--overlay-5); transition: background 0.15s; ${isTarget ? 'background: rgba(99,102,241,0.06);' : ''}">
+                <td style="padding: 7px 10px; text-align: center;">
+                    <input type="checkbox" class="gum-row-select" data-identifier="${identifier}" ${isTarget ? 'checked' : ''} onchange="window.toggleGumUserSelect('${identifier}', '${d.displayName || identifier}', this.checked)" style="cursor: pointer; margin: 0;">
+                </td>
                 <td style="padding: 7px 10px; max-width: 140px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="${wsName}"><b>${wsName}</b></td>
                 <td style="padding: 7px 10px; max-width: 180px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="${d.identifier}">${userTitle}</td>
                 <td style="padding: 7px 10px;"><span style="padding:2px 6px;border-radius:4px;background:var(--overlay-10);font-size:0.72rem;">${pType}</span></td>
@@ -16569,6 +16759,7 @@ window.renderGumInlineTable = function(filtered) {
                 <td style="padding: 7px 10px;">${secStatus}</td>
                 <td style="padding: 7px 10px; text-align: center;">
                     <div style="display:flex;gap:4px;align-items:center;justify-content:center;">
+                        <button class="btn-wf-sm ${lockBtnClass}" style="padding:2px 6px;font-size:0.7rem;height:22px;" onclick="window.toggleGumTargetUser('${identifier}', '${d.displayName || identifier}')" title="${isTarget ? '点击取消该定向目标' : '勾选此用户作为下一次定向穿透审计的条件'}">${lockBtnText}</button>
                         <button class="btn-wf-sm btn-wf-secondary" style="padding:2px 6px;font-size:0.7rem;height:22px;" onclick="window.showGumUserDetailModal(${idx})" title="查看该用户针对所有语义模型的细粒度权限拓扑">🔍 画像</button>
                         <button class="btn-action-danger" style="padding:2px 6px;font-size:0.7rem;height:22px;" onclick="if(window.deleteGumUser) window.deleteGumUser('${wsId}', '${identifier}', '${wsName}')" title="从工作区移除该用户">移除</button>
                     </div>
@@ -16579,49 +16770,108 @@ window.renderGumInlineTable = function(filtered) {
 };
 
 window.filterGumTable = function() {
-    const term = (document.getElementById('wf-gum-search')?.value || '').toLowerCase();
+    const searchInput = document.getElementById('wf-gum-search');
+    const rawTerm = searchInput?.value || '';
+    const term = rawTerm.toLowerCase().trim();
     const statsSpan = document.getElementById('wf-gum-stats');
     const resultWrap = document.getElementById('wf-gum-result-wrap');
     const placeholder = document.getElementById('wf-gum-empty-placeholder');
+    const emptyText = document.getElementById('wf-gum-empty-text');
+    const clearBtn = document.getElementById('wf-gum-search-clear');
     const pillFilter = window._gumPillFilter || 'all';
+    const selectedWs = document.getElementById('wf-gum-workspace-select')?.value || '';
+    const onlyTargets = document.getElementById('wf-gum-only-targets-toggle')?.checked ?? true;
+
+    // Update clear button visibility
+    if (clearBtn) {
+        clearBtn.style.display = rawTerm ? 'block' : 'none';
+    }
 
     if (!window.gumData || window.gumData.length === 0) {
         if (placeholder) placeholder.style.display = 'block';
         if (resultWrap) resultWrap.style.display = 'none';
+        if (emptyText) {
+            if (term) {
+                emptyText.innerHTML = `🔍 正在检索关键词 "<b>${rawTerm}</b>"... 当前尚未执行全景权限扫描，请点击下方按钮启动审计获取完整结果。`;
+            } else if (window.gumTargetUsers.size > 0) {
+                emptyText.innerHTML = `🎯 已锁定 <b>${window.gumTargetUsers.size}</b> 个定向审计目标用户。请点击下方按钮启动精准穿透审计。`;
+            } else {
+                emptyText.innerHTML = `👥 尚未执行全景权限扫描。请点击下方按钮启动审计，或在上方搜索栏直接检索/输入目标用户。`;
+            }
+        }
         return;
     }
 
     if (placeholder) placeholder.style.display = 'none';
     if (resultWrap) resultWrap.style.display = 'block';
 
-    let filtered = (window.gumData || []).filter(d => {
-        // Text Match
-        const matchesText = !term ||
-            (d.workspaceName || d.wsName || '').toLowerCase().includes(term) ||
-            (d.identifier || '').toLowerCase().includes(term) ||
-            (d.displayName || '').toLowerCase().includes(term) ||
-            (d.directRole || d.role || '').toLowerCase().includes(term) ||
-            (d.effectiveRole || d.role || '').toLowerCase().includes(term) ||
-            (d.securityStatus || '').toLowerCase().includes(term);
+    const tokens = term ? term.split(/\s+/).filter(Boolean) : [];
 
-        if (!matchesText) return false;
+    let filtered = (window.gumData || []).filter(d => {
+        // Workspace Dropdown Filter
+        if (selectedWs && d.workspaceId !== selectedWs && d.wsId !== selectedWs) {
+            return false;
+        }
+
+        // Targeted Users Filter (when toggle is on and targets are selected)
+        if (onlyTargets && window.gumTargetUsers.size > 0) {
+            const userKey = (d.identifier || '').trim().toLowerCase();
+            if (!window.gumTargetUsers.has(userKey)) {
+                return false;
+            }
+        }
 
         // Pill Match
-        if (pillFilter === 'elevated') return d.isElevated === true;
-        if (pillFilter === 'admin') return d.effectiveRole === 'Admin' || d.directRole === 'Admin';
-        if (pillFilter === 'viewer') return d.effectiveRole === 'Viewer' && !d.isElevated;
+        if (pillFilter === 'elevated' && !d.isElevated) return false;
+        if (pillFilter === 'admin' && d.effectiveRole !== 'Admin' && d.directRole !== 'Admin') return false;
+        if (pillFilter === 'viewer' && (d.effectiveRole !== 'Viewer' || d.isElevated)) return false;
+
+        // Multi-Token Text Match
+        if (tokens.length > 0) {
+            const wsName = (d.workspaceName || d.wsName || '').toLowerCase();
+            const identifier = (d.identifier || '').toLowerCase();
+            const displayName = (d.displayName || '').toLowerCase();
+            const principalType = (d.principalType || '').toLowerCase();
+            const directRole = (d.directRole || d.role || '').toLowerCase();
+            const effectiveRole = (d.effectiveRole || d.role || '').toLowerCase();
+            const securityStatus = (d.securityStatus || '').toLowerCase();
+            const datasetNames = (d.datasetsDetail || []).map(ds => (ds.name || '').toLowerCase()).join(' ');
+
+            const compositeString = `${wsName} ${identifier} ${displayName} ${principalType} ${directRole} ${effectiveRole} ${securityStatus} ${datasetNames}`;
+
+            for (const t of tokens) {
+                if (!compositeString.includes(t)) {
+                    return false;
+                }
+            }
+        }
+
         return true;
     });
 
     window._lastGumFiltered = filtered;
-    if (statsSpan) statsSpan.textContent = `筛选结果: ${filtered.length} / ${window.gumData.length} 条记录`;
+    if (statsSpan) {
+        const total = window.gumData.length;
+        statsSpan.textContent = `筛选结果: ${filtered.length} / ${total} 条记录`;
+    }
 
     // 渲染实时内嵌表格
     window.renderGumInlineTable(filtered);
+    window.updateGumSelectAllStatus();
 
     // If modal is open, re-render
     if (document.getElementById('universal-modal-overlay') && document.getElementById('universal-modal-title')?.textContent?.includes('Global Workspace Permissions')) {
         window.openGumResultModal();
+    }
+};
+
+window.handleGumWorkspaceChange = function(wsId) {
+    if (!window.gumData || window.gumData.length === 0) {
+        if (window.runGlobalUserManager) {
+            window.runGlobalUserManager();
+        }
+    } else {
+        window.filterGumTable();
     }
 };
 
@@ -16679,8 +16929,12 @@ window.openGumResultModal = function() {
                     return `<span style="font-size:0.75rem;color:var(--success,#10b981);">${val}</span>`;
                 }
                 if (col === 'Actions') {
+                    const isTarget = window.gumTargetUsers && window.gumTargetUsers.has((row._identifier || '').trim().toLowerCase());
+                    const lockBtnText = isTarget ? '🎯 已锁定' : '🎯 锁定';
+                    const lockBtnClass = isTarget ? 'btn-wf-primary' : 'btn-wf-secondary';
                     return `
                         <div style="display:flex;gap:4px;align-items:center;">
+                            <button class="btn-wf-sm ${lockBtnClass}" style="padding:2px 6px;font-size:0.7rem;height:24px;" onclick="window.toggleGumTargetUser('${row._identifier}', '${row._raw?.displayName || row._identifier}')" title="${isTarget ? '点击取消该定向目标' : '勾选此用户作为下一次定向穿透审计的条件'}">${lockBtnText}</button>
                             <button class="btn-wf-sm btn-wf-secondary" style="padding:2px 8px;font-size:0.7rem;height:24px;" onclick="window.showGumUserDetailModal(${row._idx})" title="查看该用户针对所有语义模型的细粒度权限拓扑">🔍 画像</button>
                             <button class="btn-action-danger" style="padding:2px 6px;font-size:0.7rem;height:24px;" onclick="if(window.deleteGumUser) window.deleteGumUser('${row._wsId}', '${row._identifier}', '${row._wsName}')" title="从工作区剥离用户">移除</button>
                         </div>
@@ -16717,13 +16971,17 @@ window.showGumUserDetailModal = function(recOrIdx) {
     const userCard = document.getElementById('gum-detail-user-card');
     if (userCard) {
         const isElev = rec.isElevated;
+        const isTarget = window.gumTargetUsers && window.gumTargetUsers.has((rec.identifier || '').trim().toLowerCase());
+        const lockBtnText = isTarget ? '🎯 已锁定为目标' : '🎯 设为定向审计目标';
+        const lockBtnClass = isTarget ? 'btn-wf-primary' : 'btn-wf-secondary';
         userCard.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
                 <div>
                     <div style="font-size:1.05rem;font-weight:700;color:var(--text-primary);">${rec.displayName || rec.identifier}</div>
                     <div style="font-size:0.75rem;color:var(--text-secondary);font-family:'Fira Code',monospace;">${rec.identifier}</div>
                 </div>
-                <div style="display:flex;gap:6px;">
+                <div style="display:flex;gap:6px;align-items:center;">
+                    <button type="button" class="btn-wf-sm ${lockBtnClass}" style="padding:2px 8px;font-size:0.72rem;height:24px;" onclick="window.toggleGumTargetUser('${rec.identifier}', '${rec.displayName || rec.identifier}'); window.showGumUserDetailModal(window.gumData.find(d => d.identifier === '${rec.identifier}') || '${rec.identifier}');">${lockBtnText}</button>
                     <span style="padding:2px 8px;border-radius:4px;background:var(--overlay-10);font-size:0.75rem;">${rec.principalType}</span>
                     <span style="padding:2px 8px;border-radius:4px;background:var(--accent);color:var(--accent-text,#0b0d12);font-weight:700;font-size:0.75rem;">生效: ${rec.effectiveRole}</span>
                 </div>
@@ -16955,284 +17213,6 @@ from workspace [${wsName}]?`);
 window.removeGumUser = window.deleteGumUser;
 
 
-
-window.openGumAddUserModal = async function() {
-    const sel = document.getElementById('gum-add-ws-id');
-    if (!sel) return;
-
-    sel.innerHTML = '<option value="">Select a Workspace...</option>';
-
-    // Collect workspaces from available sources
-    let wses = [];
-    if (window.gumWorkspaces && window.gumWorkspaces.length > 0) {
-        wses = [...window.gumWorkspaces];
-    } else if (window.configuredWorkspaces && window.configuredWorkspaces.length > 0) {
-        wses = [...window.configuredWorkspaces];
-    } else {
-        const mainWsSelect = document.getElementById('wf-gum-workspace-select');
-        if (mainWsSelect && mainWsSelect.options.length > 1) {
-            for (let i = 1; i < mainWsSelect.options.length; i++) {
-                const opt = mainWsSelect.options[i];
-                if (opt.value) {
-                    wses.push({ id: opt.value, name: opt.textContent });
-                }
-            }
-        }
-    }
-
-    if (wses.length === 0) {
-        try {
-            const res = await fetch('/api/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ endpoint: '/groups?$top=100', method: 'GET' })
-            });
-            const data = await res.json();
-            const payload = data.data || data;
-            const items = Array.isArray(payload) ? payload : (payload.value || []);
-            if (items.length > 0) {
-                wses = items;
-                window.gumWorkspaces = items;
-            }
-        } catch (e) {
-            console.warn('Fallback workspace fetch:', e);
-        }
-    }
-
-    // Populate workspaces sorted by name
-    wses.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    for (const ws of wses) {
-        const opt = document.createElement('option');
-        opt.value = ws.id;
-        opt.textContent = ws.name || ws.id;
-        sel.appendChild(opt);
-    }
-
-    // Pre-select current target workspace if chosen in main select
-    const currTargetWs = document.getElementById('wf-gum-workspace-select')?.value;
-    if (currTargetWs && sel.querySelector(`option[value="${currTargetWs}"]`)) {
-        sel.value = currTargetWs;
-    }
-
-    document.getElementById('gum-add-identifier').value = '';
-    document.getElementById('gum-add-role').value = 'Viewer';
-    document.getElementById('gum-add-principal-type').value = 'User';
-    document.getElementById('gum-add-modal').style.display = 'flex';
-};
-
-window.submitGumAddUser = async function() {
-    const wsId = document.getElementById('gum-add-ws-id').value;
-    const identifier = document.getElementById('gum-add-identifier').value.trim();
-    const principalType = document.getElementById('gum-add-principal-type').value;
-    const newRole = document.getElementById('gum-add-role').value;
-
-    if (!wsId) {
-        if (window.showNotification) window.showNotification('请先选择目标工作区 (Please select a workspace)', 'warning');
-        else alert('Please select a workspace!');
-        return;
-    }
-    if (!identifier) {
-        if (window.showNotification) window.showNotification('请输入用户邮箱或主体标识符 (Please enter an email/identifier)', 'warning');
-        else alert('Please enter an email/identifier!');
-        return;
-    }
-
-    document.getElementById('gum-add-modal').style.display = 'none';
-
-    const logsDiv = document.getElementById('wf-out-gum-logs');
-    if (window.expandConsole) window.expandConsole('wf-out-gum-logs');
-
-    const div = document.createElement('div');
-    div.style.paddingLeft = '10px';
-    div.style.borderLeft = '2px solid var(--accent)';
-    div.textContent = `[ADD] Adding ${identifier} to workspace [${wsId}] as ${newRole}...`;
-    if (logsDiv) logsDiv.appendChild(div);
-
-    try {
-        const body = {
-            identifier: identifier,
-            groupUserAccessRight: newRole,
-            principalType: principalType
-        };
-
-        const res = await fetch('/api/proxy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ endpoint: `/groups/${wsId}/users`, method: 'POST', body: body })
-        });
-
-        if (res.ok) {
-            div.textContent += " OK (Added)";
-            div.style.borderLeft = '2px solid var(--success)';
-            if (window.showNotification) window.showNotification(`成功将 ${identifier} 添加为 ${newRole}`, 'success');
-
-            // Re-fetch users for this workspace
-            try {
-                const uRes = await fetch('/api/proxy', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ endpoint: `/groups/${wsId}/users`, method: 'GET' })
-                });
-
-                if (uRes.ok) {
-                    const uData = await uRes.json();
-                    const uPayload = uData.data || uData;
-                    const users = uPayload.value || [];
-
-                    // Remove old records for this workspace
-                    window.gumData = (window.gumData || []).filter(d => d.wsId !== wsId && d.workspaceId !== wsId);
-
-                    const wsName = (window.gumWorkspaces || []).find(w => w.id === wsId)?.name || 'Target Workspace';
-                    for (const u of users) {
-                        window.gumData.push({
-                            workspaceId: wsId,
-                            workspaceName: wsName,
-                            wsId: wsId,
-                            wsName: wsName,
-                            identifier: u.identifier || u.emailAddress,
-                            displayName: u.displayName || u.identifier,
-                            graphId: u.graphId,
-                            principalType: u.principalType || 'User',
-                            directRole: u.groupUserAccessRight || 'Viewer',
-                            effectiveRole: u.groupUserAccessRight || 'Viewer',
-                            role: u.groupUserAccessRight,
-                            isElevated: false,
-                            canEditModels: ['Admin', 'Member', 'Contributor'].includes(u.groupUserAccessRight),
-                            securityStatus: `🟢 正常 (${u.groupUserAccessRight})`,
-                            datasetsDetail: []
-                        });
-                    }
-
-                    window.filterGumTable();
-                }
-            } catch (e) {
-                console.warn('Error refreshing workspace users:', e);
-            }
-        } else {
-            const errJson = await res.json().catch(() => ({}));
-            div.textContent += ` FAILED: ${res.status} ${JSON.stringify(errJson)}`;
-            div.style.borderLeft = '2px solid var(--error)';
-            if (window.showNotification) window.showNotification(`添加用户失败: ${res.status}`, 'error');
-        }
-    } catch (err) {
-        div.textContent += ` EXCEPTION: ${err.message}`;
-        div.style.borderLeft = '2px solid var(--error)';
-    }
-
-    if (logsDiv) logsDiv.scrollTop = Math.max(0, logsDiv.scrollHeight - logsDiv.clientHeight * 0.66);
-};
-
-window.gumAutocompleteTimer = null;
-
-window.handleGumAddIdentifierInput = function(e) {
-
-    const val = e.target.value.trim();
-
-    const dropdown = document.getElementById('gum-add-autocomplete');
-
-    
-
-    if (val.length < 2) {
-
-        dropdown.style.display = 'none';
-
-        return;
-
-    }
-
-    
-
-    if (window.gumAutocompleteTimer) clearTimeout(window.gumAutocompleteTimer);
-
-    
-
-    window.gumAutocompleteTimer = setTimeout(async () => {
-
-        dropdown.innerHTML = '<div style="padding: 8px; font-size: 0.8rem; color: var(--text-secondary);">Searching...</div>';
-
-        dropdown.style.display = 'block';
-
-        
-
-        try {
-
-            const res = await fetch(`/api/graph_users?query=${encodeURIComponent(val)}`);
-
-            const data = await res.json();
-
-            
-
-            if (data.success && data.users && data.users.length > 0) {
-
-                dropdown.innerHTML = '';
-
-                for (const u of data.users) {
-
-                    const div = document.createElement('div');
-
-                    div.style.padding = '8px';
-
-                    div.style.borderBottom = '1px solid var(--overlay-10)';
-
-                    div.style.cursor = 'pointer';
-
-                    div.style.fontSize = '0.8rem';
-
-                    div.innerHTML = `<strong>${u.displayName}</strong> <span style="color: var(--text-secondary); font-size: 0.75rem;">(${u.userPrincipalName})</span>`;
-
-                    div.onmouseover = () => div.style.background = 'var(--overlay-10)';
-
-                    div.onmouseout = () => div.style.background = 'transparent';
-
-                    div.onclick = () => {
-
-                        document.getElementById('gum-add-identifier').value = u.userPrincipalName;
-
-                        dropdown.style.display = 'none';
-
-                    };
-
-                    dropdown.appendChild(div);
-
-                }
-
-            } else if (data.success) {
-
-                dropdown.innerHTML = '<div style="padding: 8px; font-size: 0.8rem; color: var(--text-secondary);">No matching users found</div>';
-
-            } else {
-
-                dropdown.innerHTML = `<div style="padding: 8px; font-size: 0.8rem; color: var(--error);">Error: ${data.error || 'Check Graph API permissions'}</div>`;
-
-            }
-
-        } catch(err) {
-
-            dropdown.innerHTML = `<div style="padding: 8px; font-size: 0.8rem; color: var(--error);">Network Error</div>`;
-
-        }
-
-    }, 500); // 500ms debounce
-
-};
-
-
-
-// Close autocomplete when clicking outside
-
-document.addEventListener('click', function(e) {
-
-    const ac = document.getElementById('gum-add-autocomplete');
-
-    const input = document.getElementById('gum-add-identifier');
-
-    if (ac && input && !ac.contains(e.target) && e.target !== input) {
-
-        ac.style.display = 'none';
-
-    }
-
-});
 
 
 
