@@ -1223,3 +1223,42 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
 
 1. **导航层级职责单一性原则 (Navigation Role Separation Principle)**：
    - 一级主导航轨负责全局模块路由（Workflows vs API Tree vs Settings）；二级侧边栏负责当前模块内的任务与资产列表。保持二级列表常驻展示能够最大化降低用户的认知负荷与操作层级，避免过度设计导致的误触与状态混乱。
+
+## 39. PBI Studio 一级主导航轨流体阻尼弹簧展开/收起动效架构 (PBI Studio Primary Navigation Rail Fluid Spring Transition Architecture)
+
+### 39.1 业务背景与过渡生硬根因分析 (Context & Stiff Transition Root Cause Analysis)
+
+1. **历史展开/收起动效生硬与视觉割裂痛点**：
+   - **根因 A：初始加速度曲线过陡 (Sharp Acceleration Curve)**：
+     - 原有过渡采用 `cubic-bezier(0.16, 1, 0.3, 1)`，初始运动斜率极大，导致侧边栏在 60px ↔ 175px 切换瞬间如同机械式突变，相邻工作区面板产生视觉震荡；
+   - **根因 B：文本淡出与容器缩窄缺乏时序编排 (Simultaneous Text & Container Collapse Conflict)**：
+     - 在收起阶段，容器宽度在 0.32s 内急剧缩窄至 60px，而文本元素的 `opacity` 与 `max-width` 几乎同步衰减，导致中文文本（如「⚡ 自动化工作流」）在右侧边缘发生瞬间挤压、换行裁切与文字穿透边框的残影；
+   - **根因 C：辅助图标缺乏物理动能反馈 (Lack of Physical Kinetic Feedback)**：
+     - 收起指示按钮与 Logo 缺乏旋转和缩放的动态连贯性，展开态到收起态的切换生硬突兀。
+
+---
+
+### 39.2 核心架构改进与实现方案 (Architecture Implementation)
+
+- **1. 流体阻尼弹簧减速曲线 (Fluid Spring Deceleration Curve)**：
+   - 全面升级主导航轨（`#app-rail`）及其内部元素的运动曲线为 `0.38s cubic-bezier(0.22, 1, 0.36, 1)`；
+   - 具备自然的高速启动、平滑阻尼缓冲与极轻微的惯性贴合感，消除所有机械感。
+
+- **2. 层次化时序编排机制 (Staggered Animation Timing Choreography)**：
+   - **展开时序 (Expand Choreography)**：
+     - 容器宽度首先平滑撑开（0.38s）；
+     - 文本（`.rail-logo-title`, `.rail-item-text`）在容器撑开 `0.08s` 后，从 `translateX(-10px)` 向右微滑并伴随 `0.28s` 的透明度渐显，呈现自然的由内而外层叠涌出感；
+   - **收起时序 (Collapse Choreography - 零裁切防御)**：
+     - 文本在 `0.14s ease-out` 内迅速淡出并回归隐藏态；
+     - 容器宽度在文本完全隐匿后再从容完成 60px 的收拢闭合，彻底消灭任何文字溢出、边框裁切与字体折行撕裂。
+
+- **3. 纯矢量控制按钮旋转与缩放动效 (Kinetic Vector Rotate & Scale)**：
+   - 折回按钮（`.rail-toggle-btn`）在展开时以 `scale(0.6) rotate(-180deg) ➔ scale(1) rotate(0deg)` 带着 `0.1s` 延迟优雅旋入；
+   - 鼠标悬停（Hover）与点击（Active）配备 `0.15s` 辉光与微缩放硬件加速反馈。
+
+---
+
+### 39.3 架构经验与最佳实践总结 (Takeaways)
+
+1. **复合容器收折的时序编排铁律 (Staggered Timing Rule for Collapsible Containers)**：
+   - 任何内部包含文本与图标的侧边栏/抽屉组件，在展开时必须“容器先动、文字后现”，在收起时必须“文字先隐、容器后收”。严格保证文字的生命周期完全包裹在容器可用宽度之内，是实现高质感 UI 交互的基石。
