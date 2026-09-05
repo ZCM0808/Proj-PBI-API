@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260905_v1008">
+    <link rel="stylesheet" href="/static/style.css?v=20260905_v1005">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -1074,9 +1074,20 @@
                                                 <span>🔍 搜索与定向用户过滤 (Search &amp; Target Principals)</span>
                                                 <span id="gum-search-hint" style="font-size: 0.72rem; color: var(--accent); font-weight: normal;">从候选列表勾选或输入邮箱定向筛选</span>
                                             </label>
-                                            <div style="position: relative; display: flex; align-items: center;">
-                                                <input type="text" id="wf-gum-search" class="wf-input" style="height: 36px; padding-right: 28px; width: 100%;" placeholder="输入邮箱/姓名筛选工作区用户，或按 Enter 加入目标..." oninput="if(window.filterGumTable) window.filterGumTable(); if(window.filterGumCandidateUsers) window.filterGumCandidateUsers();" onkeydown="if(event.key==='Enter'){ if(window.handleGumSearchEnter) window.handleGumSearchEnter(this.value); } if(event.key==='Escape'){ this.value=''; if(window.filterGumTable) window.filterGumTable(); if(window.filterGumCandidateUsers) window.filterGumCandidateUsers(); }">
-                                                <button type="button" id="wf-gum-search-clear" onclick="document.getElementById('wf-gum-search').value=''; if(window.filterGumTable) window.filterGumTable(); if(window.filterGumCandidateUsers) window.filterGumCandidateUsers();" title="清空搜索" style="position: absolute; right: 6px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: none; padding: 2px 6px; font-size: 0.85rem; line-height: 1;">✕</button>
+                                            <div style="position: relative; display: flex; align-items: center; gap: 8px;">
+                                                <div style="position: relative; display: flex; align-items: center; flex: 1;">
+                                                    <input type="text" id="wf-gum-search" class="wf-input" style="height: 36px; padding-right: 28px; width: 100%;" placeholder="输入邮箱/姓名筛选工作区用户，或按 Enter 加入目标..." oninput="if(window.filterGumTable) window.filterGumTable(); if(window.filterGumCandidateUsers) window.filterGumCandidateUsers();" onkeydown="if(event.key==='Enter'){ if(window.handleGumSearchEnter) window.handleGumSearchEnter(this.value); } if(event.key==='Escape'){ this.value=''; if(window.filterGumTable) window.filterGumTable(); if(window.filterGumCandidateUsers) window.filterGumCandidateUsers(); }">
+                                                    <button type="button" id="wf-gum-search-clear" onclick="document.getElementById('wf-gum-search').value=''; if(window.filterGumTable) window.filterGumTable(); if(window.filterGumCandidateUsers) window.filterGumCandidateUsers();" title="清空搜索" style="position: absolute; right: 6px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: none; padding: 2px 6px; font-size: 0.85rem; line-height: 1;">✕</button>
+                                                </div>
+                                                <button type="button" id="wf-gum-scan-users-btn" class="btn-wf-sm btn-wf-primary" style="height: 36px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 0.78rem; white-space: nowrap; flex-shrink: 0; cursor: pointer;" onclick="if(window.fetchGumWorkspaceUsers) window.fetchGumWorkspaceUsers(true)" title="扫描当前工作区所有直接授权用户">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                        <circle cx="9" cy="7" r="4"></circle>
+                                                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                                    </svg>
+                                                    <span>扫描用户</span>
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -2650,7 +2661,7 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260904_v2245"></script>
     <script src="/static/universal_modal.js?v=20260904_v2245"></script>
-    <script src="/static/script.js?v=20260905_v1008"></script>
+    <script src="/static/script.js?v=20260905_v1005"></script>
 
 
 
