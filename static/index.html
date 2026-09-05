@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260904_v2340">
+    <link rel="stylesheet" href="/static/style.css?v=20260905_v1000">
     <script>
         // 阻塞式内联脚本：在浏览器首次渲染页面(First Paint)之前读取本地缓存的布局尺寸和主题，
         // 动态注入样式表覆盖默认 CSS，彻底消除页面加载时的布局闪烁跳动 (FOUC) 问题。
@@ -1108,6 +1108,11 @@
                                         </div>
                                     </div>
 
+                                    <!-- Empty Placeholder before Scan -->
+                                    <div id="wf-gum-empty-placeholder" style="padding: 24px; text-align: center; background: var(--overlay-5); border: 1px dashed var(--overlay-15); border-radius: 8px; color: var(--text-secondary); font-size: 0.85rem; margin-top: 6px;">
+                                        👥 尚未执行全景权限扫描。请在上方选择目标工作区并点击右下角运行按钮启动审计，或使用 <b>+ Add User</b> 直接向工作区赋权。
+                                    </div>
+
                                     <!-- Visual Dashboard & Result Wrap -->
                                     <div id="wf-gum-result-wrap" style="display: none; margin-top: 10px; position: relative;">
                                         <!-- Visual Charts & Dashboard Container -->
@@ -1118,7 +1123,7 @@
                                             <div style="display: flex; align-items: center; gap: 8px;">
                                                 <button type="button" class="btn-wf-sm btn-wf-primary" onclick="window.openGumResultModal()" title="以全屏/大弹窗打开全局权限矩阵表格" style="display: flex; align-items: center; gap: 6px;">
                                                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-                                                    打开全景权限矩阵表格 (Universal Permissions Table)
+                                                    全屏弹窗矩阵 (Universal Modal)
                                                 </button>
                                                 <span id="wf-gum-stats" style="color: var(--accent); font-size: 0.8rem; font-weight: 500;"></span>
                                             </div>
@@ -1128,6 +1133,32 @@
                                                 <button type="button" class="gum-filter-pill warning" onclick="window.setGumPillFilter('elevated', this)">⚠️ 提权异常</button>
                                                 <button type="button" class="gum-filter-pill" onclick="window.setGumPillFilter('admin', this)">🛡️ 管理员</button>
                                                 <button type="button" class="gum-filter-pill" onclick="window.setGumPillFilter('viewer', this)">👁️ 纯只读</button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Live Inline Permissions Matrix Table -->
+                                        <div id="wf-gum-inline-table-container" style="margin-top: 10px; border-radius: 8px; border: 1px solid var(--overlay-10); background: var(--input-bg-light); overflow: hidden;">
+                                            <div style="max-height: 420px; overflow-y: auto; overflow-x: auto;">
+                                                <table class="data-table uni-modal-table" style="width: 100%; border-collapse: collapse; font-size: 0.78rem;">
+                                                    <thead style="position: sticky; top: 0; background: var(--table-header-bg, #1e293b); z-index: 2;">
+                                                        <tr>
+                                                            <th style="padding: 8px 10px; text-align: left; white-space: nowrap;">工作区 Workspace</th>
+                                                            <th style="padding: 8px 10px; text-align: left; white-space: nowrap;">用户 / 授权主体 Principal</th>
+                                                            <th style="padding: 8px 10px; text-align: left; white-space: nowrap;">类型 Type</th>
+                                                            <th style="padding: 8px 10px; text-align: left; white-space: nowrap;">直属角色 Direct</th>
+                                                            <th style="padding: 8px 10px; text-align: left; white-space: nowrap;">最终生效 Effective</th>
+                                                            <th style="padding: 8px 10px; text-align: left; white-space: nowrap;">模型读写权 Model Access</th>
+                                                            <th style="padding: 8px 10px; text-align: left; white-space: nowrap;">安全状态 Security Status</th>
+                                                            <th style="padding: 8px 10px; text-align: center; white-space: nowrap;">操作 Actions</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="wf-gum-inline-tbody">
+                                                        <!-- Rendered dynamically by window.filterGumTable() -->
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            <div id="wf-gum-inline-empty" style="display: none; padding: 24px; text-align: center; color: var(--text-secondary); font-size: 0.8rem;">
+                                                🔍 未找到匹配的权限记录
                                             </div>
                                         </div>
                                     </div>
@@ -2508,7 +2539,7 @@
         <div class="modal-content glass-panel">
             <div class="modal-header">
                 <h3 style="font-size: 1.05rem;">Add User to Workspace</h3>
-                <button type="button" class="close-btn" onclick="document.getElementById('gum-add-modal').querySelector('.close-modal').click()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
+                <button type="button" class="close-btn" onclick="document.getElementById('gum-add-modal').style.display='none'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
             </div>
             <div class="modal-body" style="padding: 16px;">
                 <div style="margin-bottom: 12px;">
@@ -2541,7 +2572,7 @@
                     </select>
                 </div>
                 <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                    <button type="button" class="btn-cancel" onclick="document.getElementById('gum-add-modal').querySelector('.close-modal').click()">Cancel</button>
+                    <button type="button" class="btn-cancel" onclick="document.getElementById('gum-add-modal').style.display='none'">Cancel</button>
                     <button type="button" class="btn-action-primary" onclick="if(window.submitGumAddUser) window.submitGumAddUser()">Add User</button>
                 </div>
             </div>
@@ -2552,7 +2583,7 @@
         <div class="modal-content glass-panel">
             <div class="modal-header">
                 <h3 style="font-size: 1.05rem;">Edit Workspace Access</h3>
-                <button type="button" class="close-btn" onclick="document.getElementById('gum-edit-modal').querySelector('.close-modal').click()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
+                <button type="button" class="close-btn" onclick="document.getElementById('gum-edit-modal').style.display='none'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
             </div>
             <div class="modal-body" style="padding: 16px;">
                 <input type="hidden" id="gum-edit-ws-id">
@@ -2575,7 +2606,7 @@
                     </select>
                 </div>
                 <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                    <button type="button" class="btn-cancel" onclick="document.getElementById('gum-edit-modal').querySelector('.close-modal').click()">Cancel</button>
+                    <button type="button" class="btn-cancel" onclick="document.getElementById('gum-edit-modal').style.display='none'">Cancel</button>
                     <button type="button" class="btn-action-primary" onclick="if(window.submitGumEdit) window.submitGumEdit()">Save Changes</button>
                 </div>
             </div>
@@ -2617,7 +2648,7 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260904_v2245"></script>
     <script src="/static/universal_modal.js?v=20260904_v2245"></script>
-    <script src="/static/script.js?v=20260904_v2340"></script>
+    <script src="/static/script.js?v=20260905_v1000"></script>
 
 
 
