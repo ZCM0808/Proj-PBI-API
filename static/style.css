@@ -177,9 +177,19 @@ body {
     margin-right: 6px;
     flex-shrink: 0;
     z-index: 25;
-    transition: width 0.3s cubic-bezier(0.2, 0, 0, 1), min-width 0.3s cubic-bezier(0.2, 0, 0, 1), max-width 0.3s cubic-bezier(0.2, 0, 0, 1), opacity 0.22s ease, margin 0.3s cubic-bezier(0.2, 0, 0, 1), padding 0.3s cubic-bezier(0.2, 0, 0, 1), background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: width 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
+                min-width 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
+                max-width 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
+                opacity 0.25s ease, 
+                margin 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
+                padding 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
+                background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+                border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+                box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+                color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     box-sizing: border-box;
     overflow: hidden;
+    will-change: width, min-width, max-width;
 }
 
 .app-rail.expanded {
@@ -188,7 +198,6 @@ body {
     max-width: 175px !important;
     align-items: stretch;
 }
-
 
 .rail-top {
     display: flex;
@@ -202,7 +211,7 @@ body {
     align-items: center;
     justify-content: flex-start;
     gap: 10px;
-    padding: 6px 11px 12px 11px;
+    padding: 6px 10px 10px 10px;
     border-bottom: 1px solid var(--overlay-10);
     margin-bottom: 6px;
     cursor: pointer;
@@ -210,16 +219,31 @@ body {
     overflow: hidden;
     white-space: nowrap;
     box-sizing: border-box;
-    transition: padding 0.3s cubic-bezier(0.2, 0, 0, 1);
+    border-radius: 8px;
+    transition: background 0.2s ease, padding 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.rail-logo-wrap:hover {
+    background: var(--overlay-5);
+}
+
+.rail-logo-wrap svg {
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    flex-shrink: 0;
+}
+
+.rail-logo-wrap:hover svg {
+    transform: scale(1.08);
 }
 
 .app-rail.expanded .rail-logo-wrap {
-    padding: 6px 11px 12px 11px;
+    padding: 6px 10px 10px 10px;
 }
 
 .rail-logo-title {
     max-width: 0;
     opacity: 0;
+    transform: translateX(-8px);
     font-size: 0.95rem;
     font-weight: 700;
     color: var(--text-primary);
@@ -227,23 +251,52 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     letter-spacing: -0.01em;
-    transition: max-width 0.28s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease;
+    transition: max-width 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
+                opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), 
+                transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
     display: inline-block;
 }
 
 .app-rail.expanded .rail-logo-title {
     max-width: 120px;
     opacity: 1;
+    transform: translateX(0);
+    transition: max-width 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
+                opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1) 0.04s, 
+                transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .rail-toggle-btn {
-    display: none;
-}
-
-.app-rail.expanded .rail-toggle-btn {
     display: flex !important;
     align-items: center;
     justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.7) rotate(-90deg);
+    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
+                transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
+                color 0.15s ease, 
+                background 0.15s ease;
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--text-secondary);
+    cursor: pointer;
+    margin-left: auto;
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+}
+
+.rail-toggle-btn:hover {
+    color: var(--accent);
+    background: var(--overlay-10);
+}
+
+.app-rail.expanded .rail-toggle-btn {
+    opacity: 1;
+    pointer-events: auto;
+    transform: scale(1) rotate(0deg);
 }
 
 .rail-menu-list {
@@ -265,7 +318,7 @@ body {
     background: transparent;
     border: 1px solid transparent;
     cursor: pointer;
-    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, padding 0.3s cubic-bezier(0.2, 0, 0, 1);
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, padding 0.32s cubic-bezier(0.16, 1, 0.3, 1);
     position: relative;
     user-select: none;
     white-space: nowrap;
@@ -303,19 +356,25 @@ body {
 .rail-item-text {
     max-width: 0;
     opacity: 0;
+    transform: translateX(-8px);
     font-size: 0.84rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    transition: max-width 0.28s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease;
+    transition: max-width 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
+                opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), 
+                transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
     display: inline-block;
 }
 
 .app-rail.expanded .rail-item-text {
     max-width: 110px;
     opacity: 1;
+    transform: translateX(0);
+    transition: max-width 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
+                opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1) 0.04s, 
+                transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
 
 .rail-bottom {
     display: flex;
@@ -327,7 +386,6 @@ body {
 }
 
 /* Glassmorphism utility */
-
 .glass-panel {
     background: var(--panel-bg);
     backdrop-filter: blur(12px);
@@ -339,7 +397,6 @@ body {
 }
 
 /* Sidebar (Secondary List Container) */
-
 .sidebar {
     width: var(--sidebar-width, 280px);
     min-width: 180px;
@@ -353,7 +410,16 @@ body {
     flex-shrink: 0;
     overflow: hidden;
     box-sizing: border-box;
-    transition: width 0.3s cubic-bezier(0.2, 0, 0, 1), min-width 0.3s cubic-bezier(0.2, 0, 0, 1), max-width 0.3s cubic-bezier(0.2, 0, 0, 1), opacity 0.22s ease, padding 0.3s cubic-bezier(0.2, 0, 0, 1), margin 0.3s cubic-bezier(0.2, 0, 0, 1), background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: width 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
+                min-width 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
+                max-width 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
+                opacity 0.22s ease, 
+                padding 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
+                margin 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
+                background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+                border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+                box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: width, min-width, max-width;
 }
 
 /* Secondary Sidebar Panes */
@@ -362,9 +428,13 @@ body {
     flex-direction: column;
     height: 100%;
     min-height: 0;
-    min-width: 0;
+    min-width: 240px;
     width: 100%;
     overflow: hidden;
+    opacity: 1;
+    transform: translateX(0);
+    transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), 
+                transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Workflow Secondary Sidebar Item Styling */
@@ -3746,54 +3816,108 @@ body.sidebar-collapsed .sidebar {
     width: 48px !important;
     min-width: 48px !important;
     max-width: 48px !important;
-    padding: 12px 0 !important;
+    padding: 10px 0 !important;
     overflow: hidden !important;
 }
 
 body.sidebar-collapsed #dragMe {
-    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
 }
 
-/* 折叠态隐藏所有面板内容 */
+/* 折叠态平滑隐藏面板内容 */
 body.sidebar-collapsed .sidebar .sidebar-pane {
-    display: none !important;
-}
-
-/* 折叠态显示窄条 */
-body.sidebar-collapsed #sidebar-narrow-strip {
-    display: flex !important;
+    opacity: 0 !important;
+    transform: translateX(-16px) !important;
+    pointer-events: none !important;
+    visibility: hidden;
+    transition: opacity 0.16s ease, 
+                transform 0.22s ease, 
+                visibility 0s linear 0.22s;
 }
 
 /* --- 侧边栏窄条 (Sidebar Narrow Strip) --- */
 #sidebar-narrow-strip {
-    display: none;
+    display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
     height: 100%;
     width: 100%;
     gap: 8px;
     cursor: pointer;
     color: var(--text-secondary);
-    font-size: 0.7rem;
+    font-size: 0.72rem;
     font-weight: 600;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     user-select: none;
-    transition: color 0.2s ease;
     writing-mode: vertical-rl;
     text-orientation: mixed;
-    border-radius: 0;
+    border-radius: 8px;
     padding: 0;
+    opacity: 0;
+    transform: scale(0.85);
+    pointer-events: none;
+    visibility: hidden;
+    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
+                transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), 
+                color 0.2s ease, 
+                background 0.2s ease, 
+                visibility 0s linear 0.22s;
 }
 
 #sidebar-narrow-strip:hover {
     color: var(--accent);
+    background: var(--overlay-5);
+}
+
+#sidebar-narrow-strip svg {
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#sidebar-narrow-strip:hover svg {
+    transform: translateX(2px) scale(1.15);
+    color: var(--accent);
+}
+
+/* 折叠态平滑显示窄条 */
+body.sidebar-collapsed #sidebar-narrow-strip {
+    opacity: 1 !important;
+    transform: scale(1) !important;
+    pointer-events: auto !important;
+    visibility: visible !important;
+    transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1) 0.08s, 
+                transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) 0.08s, 
+                color 0.2s ease, 
+                background 0.2s ease;
+}
+
+/* Secondary sidebar collapse button in header */
+.btn-collapse-sidebar {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    border-radius: 6px;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-collapse-sidebar:hover {
     color: var(--accent) !important;
     border-color: var(--accent-glow) !important;
-    background: var(--input-bg-light) !important;
+    background: var(--overlay-10) !important;
+    transform: scale(1.08);
 }
 
 
