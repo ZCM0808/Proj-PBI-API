@@ -17071,65 +17071,7 @@ window.handleGumSearchEnter = function(val) {
     }
 };
 
-window.renderGumInlineTable = function(filtered) {
-    const tbody = document.getElementById('wf-gum-inline-tbody');
-    const emptyDiv = document.getElementById('wf-gum-inline-empty');
-    if (!tbody) return;
-
-    if (!filtered || filtered.length === 0) {
-        tbody.innerHTML = '';
-        if (emptyDiv) emptyDiv.style.display = 'block';
-        return;
-    }
-
-    if (emptyDiv) emptyDiv.style.display = 'none';
-
-    tbody.innerHTML = filtered.map((d, idx) => {
-        const wsName = d.workspaceName || d.wsName || '未知工作区';
-        const userTitle = d.displayName ? `${d.displayName} <span style="color:var(--text-secondary);font-size:0.7rem;">(${d.identifier})</span>` : d.identifier;
-        const pType = d.principalType || 'User';
-        const dRole = d.directRole || d.role || '-';
-        const eRole = d.effectiveRole || d.role || '-';
-        const isAdm = eRole === 'Admin';
-        const roleColor = isAdm ? 'var(--accent)' : (eRole === 'Member' ? 'var(--info, #0284c7)' : 'var(--text-primary)');
-        const canWrite = d.canEditModels;
-        const writeBadge = canWrite ? `<span style="color:var(--success, #10b981);font-weight:600;">✅ 全部可读写</span>` : `<span style="color:var(--text-secondary);">❌ 纯只读</span>`;
-        
-        let secStatus = `<span style="color:var(--success, #10b981);">🟢 正常</span>`;
-        if (d.isElevated) {
-            secStatus = `<span style="padding:2px 6px;border-radius:6px;background:rgba(234,179,8,0.15);color:var(--warning,#eab308);font-weight:600;font-size:0.7rem;border:1px solid rgba(234,179,8,0.3);cursor:pointer;" onclick="window.showGumUserDetailModal(${idx})" title="点击查看提权成因">⚠️ 继承提权</span>`;
-        } else if (d.securityStatus && d.securityStatus.includes('⚠️')) {
-            secStatus = `<span style="color:var(--warning,#eab308);font-weight:600;">${d.securityStatus}</span>`;
-        }
-
-        const wsId = d.workspaceId || d.wsId;
-        const identifier = d.identifier;
-        const isTarget = window.gumTargetUsers.has((identifier || '').trim().toLowerCase());
-        const lockBtnText = isTarget ? '🎯 已锁定' : '🎯 设为目标';
-        const lockBtnClass = isTarget ? 'btn-wf-primary' : 'btn-wf-secondary';
-
-        return `
-            <tr style="border-bottom: 1px solid var(--overlay-5); transition: background 0.15s; ${isTarget ? 'background: rgba(99,102,241,0.06);' : ''}">
-                <td style="padding: 7px 10px; text-align: center;">
-                    <input type="checkbox" class="gum-row-select" data-identifier="${identifier}" ${isTarget ? 'checked' : ''} onchange="window.toggleGumUserSelect('${identifier}', '${d.displayName || identifier}', this.checked)" style="cursor: pointer; margin: 0;">
-                </td>
-                <td style="padding: 7px 10px; max-width: 140px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="${wsName}"><b>${wsName}</b></td>
-                <td style="padding: 7px 10px; max-width: 180px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="${d.identifier}">${userTitle}</td>
-                <td style="padding: 7px 10px;"><span style="padding:2px 6px;border-radius:4px;background:var(--overlay-10);font-size:0.72rem;">${pType}</span></td>
-                <td style="padding: 7px 10px;"><span style="padding:2px 6px;border-radius:4px;background:var(--overlay-8);font-size:0.72rem;color:var(--text-secondary);">${dRole}</span></td>
-                <td style="padding: 7px 10px;"><span style="font-weight:700;color:${roleColor};">${eRole}</span></td>
-                <td style="padding: 7px 10px;">${writeBadge}</td>
-                <td style="padding: 7px 10px;">${secStatus}</td>
-                <td style="padding: 8px 12px; text-align: center; white-space: nowrap;">
-                    <div style="display: flex; gap: 8px; align-items: center; justify-content: center;">
-                        <button class="btn-wf-sm ${lockBtnClass}" style="padding: 3px 10px; font-size: 0.72rem; height: 26px; font-weight: 500; white-space: nowrap; cursor: pointer;" onclick="window.toggleGumTargetUser('${identifier}', '${d.displayName || identifier}')" title="${isTarget ? '点击取消该定向目标' : '锁定此用户作为下一次定向穿透审计的目标'}">${lockBtnText}</button>
-                        <button class="btn-wf-sm btn-wf-secondary" style="padding: 3px 10px; font-size: 0.72rem; height: 26px; font-weight: 500; white-space: nowrap; cursor: pointer;" onclick="window.showGumUserDetailModal(${idx})" title="查看该用户针对所有语义模型的细粒度权限画像">🔍 画像</button>
-                    </div>
-                </td>
-            </tr>
-        `;
-    }).join('');
-};
+window.renderGumInlineTable = function(filtered) {};
 
 window.filterGumTable = function() {
     const searchInput = document.getElementById('wf-gum-search');

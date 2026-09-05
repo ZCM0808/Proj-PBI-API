@@ -891,7 +891,11 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
    - 彻底剥离表格操作列中冗余且高危的「移除」按钮；
    - 仅保留核心的「🎯 锁定 / 设为目标」与「🔍 画像」操作按钮，统一加大按钮内边距 (`padding: 3px 10px`) 与间隙 (`gap: 8px`)，彻底解决按钮挤压拥挤问题。
 
-- **4. 明亮模式表头色彩变量防御 (Light Mode Table Header Color Sync)**：
+- **4. 剥离内嵌表格容器并收归全屏大弹窗 (Streamlined Universal Modal View)**：
+   - 彻底移除了主界面底部常驻的内嵌矩阵表格，释放视窗空间，保持整体工作流简洁清爽；
+   - 审计明细完整交由通用全屏大弹窗（Universal Data Modal）承载，支持多字段 Shift 联合排序、全局检索、列可见性配置、画像穿透与 TSV 复制。
+
+- **5. 明亮模式表头色彩变量防御 (Light Mode Table Header Color Sync)**：
    - 根除内嵌矩阵表格在 `<thead>` 上的硬编码深色回退 (`#1e293b`)；
    - 全面引入主题自适应 CSS 变量：深色模式 `--table-header-bg: #1e293b; --table-header-color: #f8fafc;`，明亮模式 `--table-header-bg: #e2e8f0; --table-header-color: #0f172a;`；
    - 保证明亮模式下表格列名呈高对比度、清晰雅致的 Slate 浅灰背景与黑炭字色。
