@@ -912,3 +912,39 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
    - 对于辅助性的选择器类数据（如待选用户池），采用聚焦/触发时展开的浮层下拉菜单（Floating Dropdown Menu）远胜于在主工作区占据固定垂直高度的静态卡片，兼顾了信息的丰富性与界面的极简性。
 2. **无缝事件流与 DOM 隔离 (Seamless Event Flow & Propagation Defense)**：
    - 在下拉菜单内的各类操作按钮（如“全选本工作区”、“刷新”、用户条目点击）上强制添加 `event.stopPropagation()`，彻底杜绝了因冒泡触发外部聚焦/失焦引发的下拉菜单意外关闭与闪烁问题。
+
+## 31. 通用表格弹窗操作列精简与画像按钮绝对居中优化 (Universal Modal Actions Streamlining & Centering)
+
+### 31.1 业务背景与用户体验痛点 (Context & Problem Statement)
+
+1. **弹窗内重复锁定冗余 (Redundant Lock Button in Result Modal)**：
+   - 之前在全屏通用数据弹窗（Universal Data Modal）中，`Actions (操作)` 列同时提供了「🎯 锁定 / 已锁定」和「🔍 画像」两个按钮；
+   - 鉴于用户定向筛选已经在主工作流顶部的搜索与智能下拉菜单中完成，弹窗内再次提供“锁定”功能显得功能重叠且多余。
+2. **操作按钮偏左未居中 (Profile Button Misalignment)**：
+   - 移除了其他操作按钮后，单列呈现的「🔍 画像」按钮受表格默认左对齐排版影响过于靠左侧边框，视觉上极不均衡。
+
+---
+
+### 31.2 核心架构改进与实现方案 (Architecture Implementation)
+
+- **1. 彻底剥离全屏弹窗操作列中的锁定按钮与逻辑 (`window.openGumResultModal`)**：
+   - 在 `static/script.js` 中重构 `cellRenderer(col, val, row)`：当 `col === 'Actions'` 时，完全移除 `isTarget` 判定与 `lockBtn` 渲染代码，仅保留核心业务的「🔍 画像」穿透入口。
+
+- **2. 操作单元格 Flex 水平垂直绝对居中 (Strict Centering Container Defense)**：
+   - 为画像按钮外层包裹 `display: flex; justify-content: center; align-items: center; width: 100%; text-align: center;` 弹性容器；
+   - 为按钮本身赋予 `margin: 0 auto; display: inline-flex; align-items: center; justify-content: center;`，彻底免疫表格列宽拖拽与缩放造成的视觉偏倚，呈现完美居中的现代视觉质感。
+
+- **3. 自动化测试闭环与视觉断言 (Automated Playwright QA & Visual Assertions)**：
+   - 编写并执行端到端 Playwright 脚本（`scratch/test_centered_profile_btn.py`），验证：
+     1. 弹窗内锁定按钮数量严格为 0；
+     2. 每行单元格仅含一个画像按钮；
+     3. 按钮容器计算样式 `justifyContent === 'center'` 100% 断言通过并截取验证快照。
+
+---
+
+### 31.3 架构经验与最佳实践总结 (Takeaways)
+
+1. **表格操作列极简原则 (Minimalist Table Action Columns)**：
+   - 在数据呈现层（Modal / View）中应尽量精简高频状态变更类操作，保留只读下钻与穿透功能（如画像/详情），保持视窗职责单一性。
+2. **弹性居中容器防御 (Flexbox Centering Defense in Grid/Table Cells)**：
+   - 在虚拟滚动与支持列宽动态伸缩的现代化数据表格中，单按钮操作列应始终使用全宽 Flex 容器进行居中包裹，以防止因父级 table/cell 继承的文本左对齐样式导致单图标按钮视觉偏移。
