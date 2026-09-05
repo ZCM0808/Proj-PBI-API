@@ -155,7 +155,23 @@ window.toggleSidebar = function() {
 };
 
 // 切换一级模块 (Workflows vs API Tree)
-window.switchAppModule = function(moduleName) {
+window.switchAppModule = function(moduleName, isUserClick = false) {
+    const currentModule = localStorage.getItem('pbi-active-module') || 'workflows';
+    const isSidebarCollapsed = document.body.classList.contains('sidebar-collapsed');
+
+    if (isUserClick) {
+        // 用户主动在 Rail 上点击：
+        // 1. 若点击已激活的模块且侧边栏已展开 -> 折叠侧边栏
+        if (moduleName === currentModule && !isSidebarCollapsed) {
+            window.toggleSidebar();
+            return;
+        }
+        // 2. 若侧边栏当前处于折叠态 -> 点击任何模块均展开侧边栏并切到该模块
+        if (isSidebarCollapsed) {
+            window.toggleSidebar();
+        }
+    }
+
     // 1. Update Rail active item
     document.querySelectorAll('.rail-item').forEach(el => el.classList.remove('active'));
     const navItem = document.getElementById(`rail-nav-${moduleName}`);
@@ -321,6 +337,54 @@ window.startWfRename = function() {
     };
 
 };
+
+
+
+// 保存重命名
+
+window.saveWfRename = function() {
+
+    const sel = document.getElementById('wf-selector');
+
+    const bar = document.getElementById('wf-rename-bar');
+
+    const input = document.getElementById('wf-rename-input');
+
+    if (!sel || !bar || !input) return;
+
+    const wfType = sel.value;
+
+    const newName = input.value.trim();
+
+    const names = getWfNames();
+
+    if (newName) {
+
+        names[wfType] = newName;
+
+    } else {
+
+        delete names[wfType]; // 空名称 = 恢复默认
+
+    }
+
+    saveWfNames(names);
+
+    window.applyWfNames();
+
+    bar.style.display = 'none';
+
+    window.showNotification && window.showNotification(
+
+        newName ? `已将此 Workflow 重命名为「${newName}」` : '已恢复默认名称', 'success'
+
+    );
+
+};
+
+
+
+
 
 
 
@@ -4328,15 +4392,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             .then(data => {
 
-                if (data.success && data.data !== null) {
-
+                    const localLayoutKeys = ['pbi-sidebar-width', 'pbi-sidebar-collapsed', 'pbi-rail-expanded', 'pbi-topbar-collapsed', 'pbi-request-height', 'pbi-details-collapsed', 'apiReqHistory', 'pbi-bookmarks'];
                     for (const [key, value] of Object.entries(data.data)) {
-
-                        Storage.prototype.setItem.call(localStorage, key, value);
-
+                        if (!localLayoutKeys.includes(key)) {
+                            Storage.prototype.setItem.call(localStorage, key, value);
+                        }
                     }
-
-                }
 
             }).catch(e => console.error('Backend bulk KV sync failed', e));        // Sync Bookmarks
 
@@ -12950,7 +13011,7 @@ window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded)
         // 如果用户在 script.js 加载前就点了菜单项，优先使用缓存的 _pendingModule
         const savedModule = window._pendingModule || localStorage.getItem('pbi-active-module') || 'workflows';
         delete window._pendingModule;
-        window.switchAppModule(savedModule);
+        window.switchAppModule(savedModule, false);
 
         // 恢复上次选中的 workflow（跨刷新持久化）
         const savedWf = localStorage.getItem('pbi-last-workflow') || 'datasource_inspector';
@@ -14077,7 +14138,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         originalSetItem.apply(this, arguments);
 
-        const ignoredKeys = ['pbi-sidebar-width', 'pbi-request-height', 'pbi-details-collapsed', 'apiReqHistory', 'pbi-bookmarks'];
+        const ignoredKeys = ['pbi-sidebar-width', 'pbi-sidebar-collapsed', 'pbi-rail-expanded', 'pbi-topbar-collapsed', 'pbi-request-height', 'pbi-details-collapsed', 'apiReqHistory', 'pbi-bookmarks'];
 
         if (!ignoredKeys.includes(key)) {
 
