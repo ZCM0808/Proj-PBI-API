@@ -861,3 +861,41 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
 2. **“感知 ➔ 勾选 ➔ 执行 ➔ 下钻”四步闭环 (Sense-Select-Execute-Inspect Loop)**：
    - 治理型工具提供工作区候选池，让用户“看得见可选人员”，支持“即点即选”、“即搜即选”、“一键全选”，再经由统一 Run 按钮触发精准审计，形成行云流水的运维治理体验。
 
+
+## 30. 全局用户与权限管理器搜索下拉列表改造与候选池浮层重构 (Searchable Floating Dropdown Refactor)
+
+### 30.1 业务背景与用户体验痛点 (Context & Problem Statement)
+
+1. **界面层级垂直占用过大**：
+   - 之前版本在搜索框下方常驻展示了一整块“工作区授权用户候选池”卡片面板，占据了宝贵的纵向屏幕空间，在用户仅需快速审计或直接浏览全局时显得模块冗余。
+2. **下拉式搜索选择体验 (Searchable Dropdown Selection)**：
+   - 用户期望将“搜索与定向用户过滤”直接重构为**智能搜索下拉列表**（Combobox / Dropdown Selector），将常驻的候选面板收归为一个在聚焦/点击时平滑展开的悬浮下拉菜单，点击外部或按 Esc 自动收起，还原清爽现代的界面。
+
+---
+
+### 30.2 核心架构改进与实现方案 (Architecture Implementation)
+
+- **1. 彻底移除静态常驻候选池卡片 (`#wf-gum-user-picker-panel`)**：
+   - 剥离主页面中的静态候选池 DOM 容器，优化顶部工作区与搜索过滤器的 Grid 排版。
+
+- **2. 悬浮式智能下拉选择菜单 (`#wf-gum-user-dropdown`)**：
+   - **交互形态**：在 `#wf-gum-search` 输入框内置下拉展开箭头（Chevron Toggle，支持 180° 平滑翻转动画），输入框聚焦、点击或点击右侧【👥 扫描用户】按钮时平滑呼出下拉浮层；
+   - **下拉面板结构 (`.gum-dropdown-menu`)**：
+     - 顶部操作栏：展示用户总数/匹配数徽章、一键【🔄 刷新】及【全选本工作区】按钮；
+     - 用户列表容器 (`.gum-dropdown-list`)：条目式渲染用户，包含多选 Checkbox、主体类型图标（👤 / 🛡️ / 🤖）、姓名、邮箱、角色徽章（`Admin`/`Member`/`Contributor`/`Viewer`）；
+     - 点击任一条目即可一键切换勾选，动态同步至 `window.gumTargetUsers` 和定向目标标签栏；
+   - **即时过滤联动 (`window.filterGumDropdownUsers`)**：在搜索栏输入时，下拉浮层中的用户列表毫秒级实时动态过滤；
+   - **点击外部与按键防御**：全局监听外部点击事件与 `Escape` 按键，自动平滑收起下拉菜单。
+
+- **3. 定向目标标签与统一执行闭环**：
+   - 选中的审计目标依然实时呈现在紧凑的 `#wf-gum-target-tags-bar` 标签栏中，支持单项移除与一键清空；
+   - 深度模型穿透与权限审计依然统一由右上角默认全局 **Run (执行)** 按钮触发。
+
+---
+
+### 30.3 架构经验与最佳实践总结 (Takeaways)
+
+1. **浮层下拉与空间利用率优化 (Floating Overlay vs Static Panels)**：
+   - 对于辅助性的选择器类数据（如待选用户池），采用聚焦/触发时展开的浮层下拉菜单（Floating Dropdown Menu）远胜于在主工作区占据固定垂直高度的静态卡片，兼顾了信息的丰富性与界面的极简性。
+2. **无缝事件流与 DOM 隔离 (Seamless Event Flow & Propagation Defense)**：
+   - 在下拉菜单内的各类操作按钮（如“全选本工作区”、“刷新”、用户条目点击）上强制添加 `event.stopPropagation()`，彻底杜绝了因冒泡触发外部聚焦/失焦引发的下拉菜单意外关闭与闪烁问题。

@@ -4299,3 +4299,142 @@ body.topbar-collapsed #gtb-expand-handle .gtb-handle-icon {
     color: var(--accent);
 }
 
+
+/* GUM User Floating Dropdown Menu */
+.gum-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    background: var(--panel-bg, #1e222d);
+    border: 1px solid var(--overlay-20, rgba(255, 255, 255, 0.18));
+    border-radius: 8px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+    padding: 8px;
+    backdrop-filter: blur(12px);
+    animation: gumDropdownFade 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+@keyframes gumDropdownFade {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.gum-dropdown-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 4px 6px 4px;
+    border-bottom: 1px solid var(--overlay-10, rgba(255, 255, 255, 0.08));
+}
+
+.gum-dropdown-list {
+    max-height: 220px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-right: 2px;
+}
+
+.gum-dropdown-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    user-select: none;
+    background: var(--overlay-5, rgba(255, 255, 255, 0.03));
+    border: 1px solid transparent;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.76rem;
+    color: var(--text-primary);
+}
+
+.gum-dropdown-item:hover {
+    background: var(--overlay-12, rgba(255, 255, 255, 0.08));
+    border-color: var(--accent);
+    transform: translateX(2px);
+}
+
+.gum-dropdown-item.selected {
+    background: rgba(99, 102, 241, 0.16);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.gum-item-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
+}
+
+.gum-item-checkbox {
+    width: 15px;
+    height: 15px;
+    border-radius: 3px;
+    border: 1.5px solid var(--overlay-30, rgba(255, 255, 255, 0.3));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+}
+
+.gum-dropdown-item.selected .gum-item-checkbox {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0b0d12;
+}
+
+.gum-item-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 1px;
+}
+
+.gum-item-name {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gum-item-email {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gum-item-role {
+    font-size: 0.68rem;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--overlay-10);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.gum-dropdown-item.selected .gum-item-role {
+    background: rgba(99, 102, 241, 0.25);
+    color: var(--accent);
+}
