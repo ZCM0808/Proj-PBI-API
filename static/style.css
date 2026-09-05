@@ -1429,7 +1429,7 @@ textarea:focus {
 #gum-edit-modal .modal-content { width: min(90vw, 460px); max-width: 460px; }
 #pipeline-modal .modal-content { width: min(92vw, 840px); max-height: min(88vh, 850px); }
 #settings-modal .modal-content { width: min(94vw, 960px); max-height: min(90vh, 900px); }
-#modal-note .modal-content { width: min(94vw, 960px); max-height: min(90vh, 900px); }
+#modal-note .modal-content { width: min(94vw, 960px); height: min(90vh, 720px); max-height: min(90vh, 900px); }
 
 /* Fluid Responsive Grid for Form Inputs */
 .wf-fluid-grid {
@@ -2519,29 +2519,53 @@ json-viewer {
 }
 
 /* Quick Note Editor Layout Optimization */
+.note-modal-body {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+.note-left-panel {
+    height: 100%;
+    min-height: 0;
+}
+
 .note-right-panel {
     display: flex;
     flex-direction: column;
     gap: 10px !important;
+    height: 100%;
+    min-height: 0;
 }
 
 .note-editor-wrapper {
-    flex: 1;
+    flex: 1 1 0;
     display: flex;
     flex-direction: column;
     min-height: 0;
+    height: 100%;
+    overflow: hidden;
 }
 
 .note-editor-wrapper .EasyMDEContainer {
-    flex: 1;
+    flex: 1 1 0;
     display: flex;
     flex-direction: column;
     min-height: 0;
+    height: 100%;
 }
 
 .note-editor-wrapper .CodeMirror {
-    flex: 1 1 auto;
-    min-height: 320px;
+    flex: 1 1 0;
+    min-height: 0 !important;
+    height: 100% !important;
+}
+
+.note-editor-wrapper .CodeMirror-scroll {
+    min-height: 0 !important;
+    height: 100% !important;
+    overflow-y: auto !important;
 }
 
 /* Note Modal Buttons styling and hover animations */
