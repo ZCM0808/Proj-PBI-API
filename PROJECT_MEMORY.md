@@ -1299,3 +1299,64 @@ elationships.tmdl 中通过代码强行建立了到 Dim_Date 的物理连线，�
 
 1. **复杂内容弹窗的定高隔离铁律 (Modal Fixed Dimension & Scroll Isolation Rule)**：
    - 对于包含富文本/Markdown 编辑器、动态列表或动态表格的复杂弹窗，外层 `.modal-content` 必须显式声明固定高度（如 `height: min(90vh, 720px)`）并将内层容器设为 `min-height: 0; overflow: hidden;`，由内部子组件独立承载滚动条。绝对禁止让动态内容随意撑大弹窗外壳。
+
+## 41. 工作流中心与 API 资源树 MRU 栈式悬浮置顶架构 (Workflow Center & API Explorer MRU Pin-to-Top Architecture)
+
+### 41.1 业务背景与交互需求 (Context & Pin-to-Top Interaction Requirements)
+
+1. **核心需求**：
+   - 为**工作流中心 (Workflow Center)** 下的所有工作流卡片 (#wf-sidebar-list-container .wf-sidebar-item) 与 **API 资源树 (API Explorer)** 下的所有标准分类 (#api-tree .api-category) 添加鼠标悬浮触发的置顶按钮 (.btn-pin-item)。
+2. **栈式置顶交互规则 (MRU / LIFO Queue Stacking Rules)**：
+   - **单项置顶**：点击某项目的置顶按钮后，该项目立刻上升并排在列表第 1 位 (Index 0)；
+   - **多项连续置顶**：再次点击另一个项目置顶时，新项目抢占第 1 位，之前置顶的项目顺次后移为第 2 位（即按最后点击置顶的时间倒序排列，最新置顶永远在第 1 位，构建标准的 MRU / LIFO 优先级队列）；
+   - **取消置顶**：再次点击已置顶项目的置顶按钮时，该项目解除置顶，并平滑恢复至原始的自然顺序；如果还有其他置顶项目，剩余置顶项目自动顶上第 1 位；
+   - **本地持久化**：用户设置的置顶顺序通过 localStorage (pbi-pinned-workflows 与 pbi-pinned-categories) 实时持久化，刷新页面后完美保持置顶顺序与视觉状态。
+
+---
+
+### 41.2 核心架构设计与技术实现 (Architecture & Technical Implementation)
+
+- **1. MRU 优先级队列算法与持久化层 (MRU Priority Queue & Persistence)**：
+  - 提取纯函数逻辑：
+    - window.getPinnedWorkflows() / window.savePinnedWorkflows(arr)
+    - window.togglePinWorkflow(wfKey, event)
+    - window.getPinnedCategories() / window.savePinnedCategories(arr)
+    - window.togglePinCategory(catName, event)
+  - 置顶算法：
+    `javascript
+    // MRU 栈式置顶核心：剔除旧位置并 unshift 插入头部第 0 位
+    pinned = pinned.filter(k => k !== key);
+    pinned.unshift(key);
+    `
+  - 列表排序算法：
+    `javascript
+    list.sort((a, b) => {
+        const idxA = pinned.indexOf(a.key);
+        const idxB = pinned.indexOf(b.key);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB; // 置顶项按 MRU 顺序排列
+        if (idxA !== -1) return -1; // 已置顶项排在未置顶项之前
+        if (idxB !== -1) return 1;
+        return 0; // 未置顶项保留自然初始顺序
+    });
+    `
+
+- **2. 悬浮显隐微动效与高质感视觉设计 (Hover-Revealed Micro-Animations & UI Aesthetics)**：
+  - .btn-pin-item 默认 opacity: 0; transform: scale(0.85);，在父级卡片 :hover 或自身处于 .pinned 状态时平滑过渡为 opacity: 1; transform: scale(1);；
+  - 置顶状态下按钮呈现品牌蓝色背景 (ar(--pbi-theme-color)) 与白色图钉 Icon，并赋予父容器 .is-pinned 状态高亮左侧重点色边条 (order-left: 3px solid var(--pbi-theme-color))；
+  - 图钉按钮点击时带有 	ransform: scale(0.9) 按压反馈，悬浮时带有 	ransform: rotate(-12deg) 倾斜趣味微动效。
+
+- **3. 事件冒泡拦截与无缝重绘集成 (Event Bubble Interception & Seamless Re-render)**：
+  - 在 	ogglePinWorkflow 与 	ogglePinCategory 中显式执行 event.stopPropagation() 与 event.preventDefault()，防止触发工作流选中或 API 目录折叠/展开；
+  - 置顶/取消置顶操作完成后，即时重新调用 window.renderWorkflowSidebarList() 与 window.renderTree() 进行无缝局部 DOM 重绘，并触发 window.showNotification 友好通知。
+
+- **4. 虚拟书签目录安全隔离防御 (Bookmarks Category Safety Isolation)**：
+  - ⭐ 收藏夹 (Bookmarks) 作为虚拟置顶目录常驻头部，不参与常规分类置顶操作，排除在分类图钉按钮之外，确保系统虚拟功能与标准业务目录的清晰解耦。
+
+---
+
+### 41.3 自动化测试与质量断言 (Automated QA & Playwright TDD Loop)
+
+- 编写了端到端自动化测试脚本 scratch/test_pin_system.py：
+  1. **工作流置顶与 MRU 堆叠验证**：成功验证单次置顶排至 #1、多次置顶顺次后移、页面刷新后 LocalStorage 状态还原、取消置顶后自然回退；
+  2. **API 资源树分类置顶与 MRU 堆叠验证**：成功验证不同 API 分类置顶、MRU 栈后移、全页面重载持久化以及取消置顶。
+- 全套测试 100% 通过，并生成了高清断言截图证据。
