@@ -1389,3 +1389,39 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
 
 - **3. 新置顶项高亮脉冲光效 (Pin Glow Pulse Micro-Animation)**：
   - 为新置顶的条目注入 .wf-item-pin-flash / .api-cat-pin-flash，通过 @keyframes pinGlowPulse 播放 0.55s 的品牌蓝柔和光晕扩散动画，提供明确的视觉落地反馈。
+
+## 43. 全局用户管理器工作区范围统一与管理员模式冗余消除 (GUM Workspace Scope Unification & Admin Mode Redundancy Elimination)
+
+### 43.1 业务背景与界面冲突根因 (Context & Semantic Redundancy Root Cause)
+
+1. **工作区选择器与管理员模式复选框的语义冲突痛点**：
+   - 历史背景：系统早期基础模式通过 `[ ] 管理员全量扫描 (Admin Mode: All Workspaces)` 复选框在 `/groups` 与 `/admin/groups` 之间切换接口权限；
+   - 痛点产生：后续升级了具备全局 Admin 穿透能力的「🛡️ 穿透生效与模型读写审计 (Deep Audit)」引擎（后端默认直接调用 `/admin/groups` 获取全租户数据），但前端依然保留了该复选框；
+   - 致命误导：工作区选择下拉框 (`#wf-gum-workspace-select`) 在页面加载时自动从顶栏继承了当前单一工作区（如 `PersonalWorkspace nameless...`），导致用户即使勾选了“管理员全量扫描”，后端依然被传入了单工作区 ID，仅对该单一工作区进行了审计（如搜索用户 `nameless` 仅返回 1 条记录，而非其在全租户实际拥有的 3 个工作区授权），产生强烈的“全量扫描失效”错觉。
+
+---
+
+### 43.2 核心架构改进与实现方案 (Architecture Implementation)
+
+- **1. 扫描范围控制归一化 (Workspace Scope Dropdown Unification)**：
+  - 将工作区选择器第一项重构为 **`🌐 全租户全量审计 (Tenant-Wide: All Workspaces / 全局穿透)`**（value 为空字符串 `""`），并设定为 GUM 面板进入时的**首选默认项**，彻底解除与全局顶栏单工作区的强制硬绑定；
+  - 当用户需要全租户全景审计时，无需任何配置直接运行即可全量扫描；当需要定向体检单工作区时，手动在下拉框中选择目标工作区即可。
+
+- **2. 剥离冗余复选框与精简操作面板 (Redundant Control Removal & Clean UI)**：
+  - 从 `static/index.html` 的选项行中彻底剥离重复且令人困惑的 `[ ] 管理员全量扫描` 复选框，将权限能力与范围职责彻底厘清；
+  - 选项行保留核心的 `🛡️ 穿透生效与模型读写审计` 与 `自动识别 ⚠️ 组继承提权 偏离` 指示标。
+
+- **3. 全租户级联候选用户汇总与深度穿透审计验证**：
+  - 运行全租户全量审计时，系统并发遍历租户内所有 8 个工作区并深度穿透各语义模型直接授权与生效角色，精准定位出目标用户（如 `nameless@carman.ccwu.cc`）在 `WorkSpace_DEV` (Viewer)、`PersonalWorkspace nameless` (Admin) 与 `Workspace-2` (Contributor) 的全部 3 处权限矩阵；
+  - 切换为单工作区下拉选项时，精准聚焦收敛为该单一工作区的 1 条记录，切换回全租户时无缝恢复 3 条记录。
+
+---
+
+### 43.3 自动化测试与质量断言 (Automated QA & Playwright Verification)
+
+- 编写了端到端自动化测试脚本 `scratch/test_gum_all_workspaces.py`：
+  1. 验证下拉框默认值为 `"" (🌐 全租户全量审计)`；
+  2. 验证锁定目标用户后执行扫描，准确返回全租户 3 处工作区授权记录并在 Universal Modal 表格中完整展示；
+  3. 验证选择单工作区后扫描精准收敛为 1 条记录；
+  4. 验证重新切回全租户后恢复 3 条记录。
+- 全套测试 100% 通过并生成了高清断言截图证据。

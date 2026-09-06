@@ -16536,18 +16536,17 @@ window.initGumWorkspaceSelector = function() {
         }
     });
 
-    let html = '<option value="">全部已配置工作区 (All Configured Workspaces / 全局穿透审计)</option>';
+    let html = '<option value="">🌐 全租户全量审计 (Tenant-Wide: All Workspaces / 全局穿透)</option>';
     uniqueMap.forEach(item => {
         html += `<option value="${item.id}">${item.name} (${item.id})</option>`;
     });
     sel.innerHTML = html;
 
-    // 优先保留之前的选择，或同步当前顶栏活动工作区
-    const topWs = document.getElementById('active-workspace')?.value || localStorage.getItem('pbi-active-workspace') || '';
+    // 如果用户在当前会话中显式选过了具体工作区，则保留；否则默认选择 ""（全租户全量审计）
     if (curVal && Array.from(sel.options).some(o => o.value.toLowerCase() === curVal.toLowerCase())) {
         sel.value = curVal;
-    } else if (topWs && Array.from(sel.options).some(o => o.value.toLowerCase() === topWs.toLowerCase())) {
-        sel.value = topWs;
+    } else {
+        sel.value = "";
     }
 
     // 自动拉取当前选中工作区的候选用户列表
@@ -16947,7 +16946,6 @@ window.runGlobalUserManager = async function() {
     try {
         const isDeepAudit = document.getElementById('gum-deep-audit-mode')?.checked ?? true;
         const selWorkspace = document.getElementById('wf-gum-workspace-select')?.value || '';
-        const isAdminMode = document.getElementById('gum-admin-mode')?.checked ?? false;
         const onlyTargets = document.getElementById('wf-gum-only-targets-toggle')?.checked ?? true;
 
         // 获取定向用户列表
@@ -16957,7 +16955,8 @@ window.runGlobalUserManager = async function() {
         }
 
         const targetScopeDesc = targetUsersList.length > 0 ? `定向锁定 [${targetUsersList.join(', ')}]` : '全部授权用户';
-        appendLog(`[1] 正在启动全景权限治理审计 (Deep: ${isDeepAudit ? '开启' : '关闭'}, 工作区: ${selWorkspace || '全部工作区'}, 范围: ${targetScopeDesc})...`);
+        const wsScopeDesc = selWorkspace ? `指定工作区 (${selWorkspace})` : '🌐 全租户所有工作区 (Tenant-Wide All Workspaces)';
+        appendLog(`[1] 正在启动全景权限治理审计 (Deep: ${isDeepAudit ? '开启' : '关闭'}, 范围: ${wsScopeDesc}, 目标: ${targetScopeDesc})...`);
 
         if (isDeepAudit) {
             appendLog(`[2] 正在调用后端高性能并发扫描引擎 (/api/workflow/deep-permissions-scan)...`);
@@ -17006,7 +17005,7 @@ window.runGlobalUserManager = async function() {
         } else {
             // 基础极速模式 (Legacy Standard Mode)
             appendLog(`[2] 执行工作区直接角色极速扫描...`);
-            const wsEndpoint = isAdminMode ? '/admin/groups?$top=5000&$expand=users' : '/groups?$top=100';
+            const wsEndpoint = selWorkspace ? `/groups/${selWorkspace}/users` : '/admin/groups?$top=5000&$expand=users';
             const wsRes = await fetch('/api/proxy', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
