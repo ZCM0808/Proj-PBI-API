@@ -1568,3 +1568,42 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
   3. 验证深色/浅色模式双向切换顺畅无缝；
   4. 截取并保存了 Light 与 Dark 模式的双向断言高清证据快照；
   5. Python 后端通过 `ruff` 与 `mypy` 静态全量检查，零警告、零错误。
+
+## 48. 全局置顶按钮方案 A 拟物交互重构与悬浮姿态一致性防御 (Pin Button Ergonomics Scheme A & Hover State Stabilization)
+
+### 48.1 业务背景与交互抽搐根因 (Context & Root Cause Analysis)
+
+1. **“反复横跳”的奇怪现象**：
+   - 先前用户观察到：工作流与 API 资源树的置顶按钮在置顶后默认是倾斜 45°，鼠标滑过条目行时瞬间变成立正 90°，鼠标进一步悬停在置顶按钮自身上时又重新变回 45°；
+   - **CSS 选择器层叠特异性缺陷**：
+     - 置顶态定义为 `.btn-pin-item.pinned { transform: rotate(-45deg) scale(1); }`；
+     - 但父级卡片悬停规则 `.wf-sidebar-item:hover .btn-pin-item { transform: scale(1); }` 缺乏 `:not(.pinned)` 限定，导致鼠标划入行时直接强制覆写了 `transform`，丢失了旋转声明，瞬间复原为 0°（即垂直 90°）；
+     - 鼠标随后进入按钮自身时，`.btn-pin-item.pinned:hover` 又强制补上 `rotate(-45deg)`，造成了“45° -> 90° -> 45°”的严重交互抽搐与状态割裂。
+
+---
+
+### 48.2 核心架构方案与方案 A 拟物实现 (Technical Implementation: Scheme A)
+
+- **1. 方案 A 经典物理拟物法则 (Scheme A Physical Metaphor)**：
+  - **未置顶态（Unpinned）**：
+    - 呈现为待插入状态的 **45° 倾斜姿态**（`transform: rotate(45deg) scale(0.85)`，空心描边）；
+    - 父容器悬浮时平滑浮现并维持 45° 准备姿态（`opacity: 0.65; transform: rotate(45deg) scale(1)`）；
+    - 悬停于未置顶按钮自身时平滑微放大至 `scale(1.18)`，角度依然稳定保持 45°。
+  - **已置顶态（Pinned）**：
+    - 呈现为用力垂直直插于画板的 **0° 坚毅垂直姿态**（`transform: rotate(0deg) scale(1) !important`，实心填充品牌强调色）；
+    - 鼠标滑过整行或子元素时，通过 `:not(:hover)` 与 `.pinned` 隔离，坚决锁死垂直 0°，绝对禁止被父级规则覆盖；
+    - 鼠标滑入置顶按钮自身时，在 0° 垂直姿态下平滑微放大至 `scale(1.18)` 并呈现柔和高质感背景胶囊。
+  - **彻底杜绝状态跳转**：未置顶恒为 45°，已置顶恒为 0°，交互语义清晰、直觉明确。
+
+- **2. 静态缓存版本号递增 (Cache Busting)**：
+  - 同步递增 [`static/index.html`](file:///D:/zcm/Proj-PBI-API/static/index.html) 中 `style.css` 的静态版本后缀为 `?v=20260906_v2135`。
+
+---
+
+### 48.3 自动化测试与质量断言 (Automated QA & Playwright TDD Loop)
+
+- 编写并执行端到端 Playwright 测试脚本 `scratch/test_pin_scheme_a.py`：
+  1. 验证未置顶态在行悬浮（`matrix(0.707, 0.707, -0.707, 0.707...)` 即 45°）及按钮自身悬浮时均保持 45°；
+  2. 验证点击置顶后，默认姿态（`matrix(1, 0, 0, 1, 0, 0)` 即 0° 直插）、行悬浮姿态（`matrix(1, 0, 0, 1, 0, 0)`）与按钮自身悬浮（`matrix(1.18, 0, 0, 1.18, 0, 0)`）全程严格锁定 0°，彻底杜绝角度跳转；
+  3. 捕获并保存了渲染快照证据 `scratch/pin_scheme_a_verified.png`；
+  4. 后端静态分析工具 `ruff` 和 `mypy` 校验全量通过，0 警告，0 错误。

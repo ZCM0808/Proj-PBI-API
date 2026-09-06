@@ -4628,9 +4628,9 @@ body.is-resizing .body-editor-container {
     cursor: pointer;
     color: var(--text-secondary);
     opacity: 0;
-    transform: scale(0.85);
+    transform: rotate(45deg) scale(0.85);
     transition: opacity 0.2s cubic-bezier(0.22, 1, 0.36, 1), 
-                transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), 
+                transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), 
                 color 0.15s ease, 
                 background 0.15s ease;
     display: inline-flex;
@@ -4642,11 +4642,16 @@ body.is-resizing .body-editor-container {
     margin-left: auto;
 }
 
-.wf-sidebar-item:hover .btn-pin-item,
-.api-category-title:hover .btn-pin-item,
-.api-item:hover .btn-pin-item {
+.btn-pin-item svg {
+    transition: fill 0.2s ease, stroke 0.2s ease;
+}
+
+/* 父级容器悬停时浮现未置顶按钮：保持 45° 斜插准备姿态 */
+.wf-sidebar-item:hover .btn-pin-item:not(.pinned),
+.api-category-title:hover .btn-pin-item:not(.pinned),
+.api-item:hover .btn-pin-item:not(.pinned) {
     opacity: 0.65;
-    transform: scale(1);
+    transform: rotate(45deg) scale(1);
 }
 
 .btn-pin-item.bm-pin-btn {
@@ -4656,25 +4661,41 @@ body.is-resizing .body-editor-container {
     font-size: 0.75rem;
 }
 
-.btn-pin-item:hover {
+/* 未置顶按钮悬浮：强化 45° 拟物微缩放反馈 */
+.btn-pin-item:not(.pinned):hover {
     opacity: 1 !important;
     color: var(--accent) !important;
     background: var(--overlay-10);
-    transform: scale(1.15) !important;
+    transform: rotate(45deg) scale(1.18) !important;
 }
 
+/* 方案 A 核心：已置顶态坚决垂直直插 0°（实心高亮），消除任何状态反复横跳 */
 .btn-pin-item.pinned {
     opacity: 1 !important;
     color: var(--accent) !important;
-    transform: rotate(-45deg) scale(1);
+    transform: rotate(0deg) scale(1) !important;
 }
 
 .btn-pin-item.pinned svg {
     fill: currentColor;
 }
 
-.btn-pin-item.pinned:hover {
-    transform: rotate(-45deg) scale(1.2) !important;
+/* 父级悬停时置顶项依然保持稳固直插 0°（自身未悬停时） */
+.wf-sidebar-item:hover .btn-pin-item.pinned:not(:hover),
+.api-category-title:hover .btn-pin-item.pinned:not(:hover),
+.api-item:hover .btn-pin-item.pinned:not(:hover) {
+    opacity: 1 !important;
+    transform: rotate(0deg) scale(1) !important;
+}
+
+/* 置顶按钮自身悬停：平滑微放大直插姿态 */
+.btn-pin-item.pinned:hover,
+.wf-sidebar-item:hover .btn-pin-item.pinned:hover,
+.api-category-title:hover .btn-pin-item.pinned:hover,
+.api-item:hover .btn-pin-item.pinned:hover {
+    opacity: 1 !important;
+    color: var(--accent) !important;
+    transform: rotate(0deg) scale(1.18) !important;
     background: var(--overlay-10);
 }
 
