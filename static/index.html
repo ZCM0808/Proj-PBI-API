@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260906_v1655">
+    <link rel="stylesheet" href="/static/style.css?v=20260906_v1855">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -129,27 +129,6 @@
         @keyframes flashBlink {
             0%, 100% { background-color: transparent; }
             50% { background-color: rgba(242, 200, 17, 0.4); }
-        }
-        .tree-pin-btn {
-            cursor: pointer;
-            padding: 0;
-            user-select: none;
-            transition: all 0.2s ease;
-            display: inline-block;
-        }
-        .tree-pin-btn.unpinned {
-            opacity: 0.2;
-        }
-        .tree-pin-btn.pinned {
-            opacity: 1.0;
-        }
-        .tree-pin-btn.unpinned:hover {
-            opacity: 1.0;
-            transform: scale(1.1);
-        }
-        .tree-pin-btn.pinned:hover {
-            opacity: 1.0;
-            transform: scale(1.1);
         }
         @keyframes fadeOutModal {
             from { opacity: 1; transform: scale(1); }
@@ -2635,7 +2614,7 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260906_v1225"></script>
     <script src="/static/universal_modal.js?v=20260906_v1225"></script>
-    <script src="/static/script.js?v=20260906_v1350"></script>
+    <script src="/static/script.js?v=20260906_v1855"></script>
 
 
 

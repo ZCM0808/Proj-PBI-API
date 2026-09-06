@@ -4850,15 +4850,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     
 
-                    // 闪烁两次以提供明确的成功反馈
+                    // 统一微动效高亮光晕反馈
 
-                    newEl.style.animation = 'flashBlink 0.4s ease-in-out 2';
+                    newEl.classList.add('api-item-pin-flash');
 
                     setTimeout(() => {
 
-                        newEl.style.animation = '';
+                        newEl.classList.remove('api-item-pin-flash');
 
-                    }, 850);
+                    }, 600);
 
                 }
 
@@ -5382,7 +5382,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const itemEl = document.createElement('li');
 
-                itemEl.className = 'api-item';
+                itemEl.className = 'api-item' + (ep.isPinned ? ' is-pinned' : '');
 
                 itemEl.dataset.path = ep.path;
 
@@ -5540,11 +5540,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 if (category.category === "⭐ 收藏夹 (Bookmarks)") {
 
-                    const pinClass = ep.isPinned ? 'pinned' : 'unpinned';
+                    const pinTitle = ep.isPinned ? '取消置顶 (Unpin)' : '置顶到第一位 (Pin to Top)';
 
-                    const pinIcon = ep.isPinned ? '📍' : '📌';
+                    const isPinned = !!ep.isPinned;
 
-                    pinBtnHtml = `<span class="tree-pin-btn ${pinClass}" title="Toggle Pin" style="margin-right: 2px; font-size: 1.1rem;">${pinIcon}</span>`;
+                    pinBtnHtml = `
+
+                        <button type="button" class="btn-pin-item bm-pin-btn ${isPinned ? 'pinned' : ''}" title="${pinTitle}">
+
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="${isPinned ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+
+                                <line x1="12" y1="17" x2="12" y2="22"></line>
+
+                                <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a1 1 0 0 0 0-2H8a1 1 0 0 0 0 2h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>
+
+                            </svg>
+
+                        </button>
+
+                    `;
 
                 }
 
@@ -5658,7 +5672,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Bind pin button
 
-                const pinBtn = nameEl.querySelector('.tree-pin-btn');
+                const pinBtn = nameEl.querySelector('.bm-pin-btn');
 
                 if (pinBtn) {
 

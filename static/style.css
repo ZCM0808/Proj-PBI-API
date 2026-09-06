@@ -4629,9 +4629,17 @@ body.is-resizing .body-editor-container {
 }
 
 .wf-sidebar-item:hover .btn-pin-item,
-.api-category-title:hover .btn-pin-item {
+.api-category-title:hover .btn-pin-item,
+.api-item:hover .btn-pin-item {
     opacity: 0.65;
     transform: scale(1);
+}
+
+.btn-pin-item.bm-pin-btn {
+    margin-left: 0;
+    margin-right: 4px;
+    padding: 2px 4px;
+    font-size: 0.75rem;
 }
 
 .btn-pin-item:hover {
@@ -4662,6 +4670,15 @@ body.is-resizing .body-editor-container {
 }
 
 .wf-sidebar-item.is-pinned:hover {
+    background: var(--overlay-10);
+}
+
+.api-item.is-pinned {
+    border-left: 3px solid var(--accent);
+    background: var(--overlay-5);
+}
+
+.api-item.is-pinned:hover {
     background: var(--overlay-10);
 }
 
@@ -4718,6 +4735,11 @@ body.is-resizing .body-editor-container {
 }
 
 .wf-item-pin-flash {
+    animation: pinGlowPulse 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    z-index: 10 !important;
+}
+
+.api-item-pin-flash {
     animation: pinGlowPulse 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     z-index: 10 !important;
 }
