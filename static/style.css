@@ -3863,7 +3863,7 @@ body.rail-collapsed #rail-expand-handle {
 
 
 /* ═══════════════════════════════════════════════════════════════════
-   ⚡ 全局顶部控制台功能栏 (Global Top Context Control Bar - Borderless)
+   ⚡ 全局顶部控制台功能栏 (Global Top Context Control Bar - Borderless & Fluid Transition)
    ═══════════════════════════════════════════════════════════════════ */
 #global-topbar {
     display: flex;
@@ -3873,66 +3873,115 @@ body.rail-collapsed #rail-expand-handle {
     padding: 2px 4px;
     margin: 0 0 6px 0;
     width: 100%;
+    height: 36px;
+    max-height: 36px;
     background: transparent;
     border: none;
     box-shadow: none;
     flex-shrink: 0;
     z-index: 40;
     box-sizing: border-box;
-    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, margin 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    max-height: 50px;
     overflow: hidden;
     opacity: 1;
     transform: translateY(0);
+    transform-origin: top center;
+    transition: height 0.36s cubic-bezier(0.16, 1, 0.3, 1),
+                max-height 0.36s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+                margin 0.36s cubic-bezier(0.16, 1, 0.3, 1),
+                padding 0.36s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.36s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: height, max-height, opacity, transform, margin, padding;
 }
 
-/* 折叠收起态 (Collapsed State) */
+/* 内部控件微动效跟随 (Fade & Glide Stagger) */
+#global-topbar .gtb-group,
+#global-topbar > div {
+    transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: opacity, transform;
+}
+
+/* 折叠收起态 (Collapsed State) - 优雅阻尼折叠 */
 body.topbar-collapsed #global-topbar {
+    height: 0 !important;
     max-height: 0 !important;
     opacity: 0 !important;
     margin: 0 !important;
     padding-top: 0 !important;
     padding-bottom: 0 !important;
     pointer-events: none !important;
-    transform: translateY(-10px) !important;
+    transform: translateY(-14px) scaleY(0.92) !important;
 }
 
-/* 顶部展开小把手 (Floating Expand Handle) */
+body.topbar-collapsed #global-topbar .gtb-group,
+body.topbar-collapsed #global-topbar > div {
+    opacity: 0 !important;
+    transform: translateY(-8px) !important;
+}
+
+/* 页面首次加载防闪烁初始类 */
+html.topbar-collapsed-init #global-topbar {
+    height: 0 !important;
+    max-height: 0 !important;
+    opacity: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: none !important;
+}
+
+/* 顶部展开小把手 (Floating Expand Handle) - 灵动胶囊 */
 #gtb-expand-handle {
     display: inline-flex;
     position: fixed;
     top: 0;
     left: 50%;
-    transform: translateX(-50%) translateY(calc(-100% + 15px));
-    opacity: 0.7;
+    transform: translateX(-50%) translateY(calc(-100% + 14px));
+    opacity: 0.65;
     background: var(--panel-bg);
     border: 1px solid var(--overlay-10);
     border-top: none;
     border-bottom-left-radius: 10px;
     border-bottom-right-radius: 10px;
-    padding: 4px 32px;
-    font-size: 0.75rem;
+    padding: 3px 28px;
+    font-size: 0.72rem;
     font-weight: 600;
     color: var(--text-secondary);
     cursor: pointer;
     z-index: 1000;
     backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     box-shadow: 0 2px 8px var(--shadow-base);
     align-items: center;
     justify-content: center;
     gap: 6px;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.36s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.25s ease,
+                background 0.2s ease,
+                color 0.2s ease,
+                padding 0.25s ease,
+                border-color 0.2s ease,
+                box-shadow 0.25s ease;
 }
 
 /* default expanded mode: arrow points up to indicate collapse */
 #gtb-expand-handle svg,
 #gtb-expand-handle .gtb-handle-icon {
     transform: rotate(180deg);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.36s cubic-bezier(0.16, 1, 0.3, 1);
     transform-origin: center center;
 }
 
-/* collapsed mode: arrow points down to indicate expand */
+/* collapsed mode: 把手平滑悬浮为磁吸胶囊，箭头朝下指示展开 */
+body.topbar-collapsed #gtb-expand-handle {
+    transform: translateX(-50%) translateY(0);
+    opacity: 0.95;
+    background: var(--panel-bg);
+    border-color: var(--accent-glow);
+    color: var(--accent);
+    box-shadow: 0 4px 16px var(--shadow-dark), 0 0 10px var(--accent-glow);
+}
+
 body.topbar-collapsed #gtb-expand-handle svg,
 body.topbar-collapsed #gtb-expand-handle .gtb-handle-icon {
     transform: rotate(0deg);
@@ -3955,8 +4004,8 @@ body.topbar-collapsed #gtb-expand-handle .gtb-handle-icon {
     border-color: var(--accent-glow);
     transform: translateX(-50%) translateY(0);
     opacity: 1;
-    padding: 6px 42px;
-    box-shadow: 0 6px 20px var(--shadow-dark);
+    padding: 5px 36px;
+    box-shadow: 0 6px 20px var(--shadow-dark), 0 0 12px var(--accent-glow);
 }
 
 .gtb-group {

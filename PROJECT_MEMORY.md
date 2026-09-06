@@ -1461,3 +1461,38 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
   3. 验证单选 `Workspace-2` 后扫描用户成功返回 `seven` 与 `nameless` 且无 404 报错；
   4. 验证定向审计 `nameless` 跨全租户精准捕获 3 个工作区记录。
 - 全套测试 100% 通过，并通过 `ruff` / `mypy` 静态类型零错误校验。
+
+## 45. 全局功能栏高质感流体弹簧展开折叠动画 (Global Topbar Fluid Spring Expand/Collapse Animation Architecture)
+
+### 45.1 业务背景与生硬假象根因剖析 (Context & "No Animation" Illusion Root Cause)
+
+1. **为什么先前展开折叠显得极度生硬、甚至感觉“没有过渡动画”？**
+   - **`max-height` 死区延迟 (Dead-Zone Delay & Violent Snap)**：先前 CSS 设置了 `max-height: 50px` 配合 `transition: max-height 0.3s`，但顶栏内部实际元素测量高度仅为 **36px**。在折叠开始的前 120ms，`max-height` 从 50px 下降到 36px，在此期间视觉高度丝毫未动；随后在剩余的极短时间内突然暴跌至 0。展开时亦然，导致视觉上产生严重的“先迟钝停滞、随后瞬时硬切”的劣质卡顿感；
+   - **`padding` 属性缺失过渡**：先前的 `transition` 仅声明了 `max-height, opacity, margin, transform`，而忽略了 `padding`。折叠时 `padding-top: 0 !important; padding-bottom: 0 !important;` 发生瞬时硬跳变；
+   - **子元素被生硬裁切 (Hard Clipping)**：容器在 `overflow: hidden` 收缩时，内部的选择框、标签与按钮直接被下边界硬性切断，缺乏层次感和透明度补间；
+   - **顶部把手缺乏形态自适应**：展开把手 `#gtb-expand-handle` 在顶栏折叠后仍隐藏在屏幕顶部夹缝中，缺乏作为悬浮控制入口的独立胶囊形态。
+
+---
+
+### 45.2 核心架构改进与实现方案 (Technical Implementation)
+
+- **1. 精确物理高度对齐与全维度同步缓动 (Exact Dimension & Multi-Property Sync)**：
+  - 在 [`static/style.css`](file:///D:/zcm/Proj-PBI-API/static/style.css) 中将 `#global-topbar` 的高度精确锚定为 `height: 36px; max-height: 36px;`，彻底根除 14px 的死区延迟；
+  - 引入目前业界高质感体验的流体弹簧缓动曲线 **`cubic-bezier(0.16, 1, 0.3, 1)`**，将 `height, max-height, opacity, margin, padding, transform` 全属性统一为 0.36s 联动同步过渡，从第 1 帧开始即产生平滑、线性的物理阻尼流动。
+
+- **2. 内部控件渐隐浮动微动效 (Fade & Glide Stagger Micro-Animations)**：
+  - 为 `#global-topbar .gtb-group` 及内部容器添加了跟随过渡：在折叠收起时，内部控件带有轻微的 `translateY(-8px)` 上滑与 `opacity: 0` 渐隐衰减，展开时自上而下丝滑滑入，彻底消除边缘生硬裁切。
+
+- **3. 顶部把手升级为磁吸灵动悬浮胶囊 (Magnetic Floating Pill Handle)**：
+  - 当顶栏折叠后，`#gtb-expand-handle` 平滑下移浮现为带有柔和强调色光晕 (`box-shadow: 0 4px 16px var(--shadow-dark), 0 0 10px var(--accent-glow)`) 的半透明磁吸胶囊，同时内部折叠指示箭头优雅翻转 180° 朝下指示“展开”，鼠标悬浮时提供弹簧微缩放反馈；顶栏展开后自动内敛贴边，极简内隐。
+
+---
+
+### 45.3 自动化测试与质量断言 (Automated QA & Playwright TDD Loop)
+
+- 编写并执行了端到端自动化测试脚本 `scratch/test_topbar_fluid_animation.py`：
+  1. 验证展开态初始高度精准为 36px；
+  2. 验证折叠过程中高度呈现连续线性阻尼衰减（0ms -> 150ms 优雅过渡），高度归零后自动赋予 `.topbar-collapsed` 状态；
+  3. 验证再次点击把手后平滑反向展开至 36px；
+  4. 截取并保存了展开态与折叠态高清比对快照证据。
+- 全套测试 100% 通过，并经 `ruff` 和 `mypy` 静态类型检查零错误。
