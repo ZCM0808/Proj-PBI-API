@@ -4,10 +4,17 @@ Power BI Full-Spectrum Permission Scanner & Governance Engine
 """
 
 import asyncio
+import time
 from typing import Any, Dict, List, Optional, Set
 from pydantic import BaseModel
 from src.config import Config
 from src.pbi_client import PBIClient
+
+# 模块级租户工作区元数据缓存 (TTL 180s，支持在 429 限流时优雅降级复用)
+_TENANT_WORKSPACES_CACHE: Dict[str, Any] = {
+    "timestamp": 0.0,
+    "workspaces": []
+}
 
 
 class DeepPermissionScanRequest(BaseModel):
@@ -41,26 +48,74 @@ async def scan_permissions_deep(
     target_ws = (workspace_id or "").strip()
     workspaces: List[Dict[str, Any]] = []
 
+    now = time.time()
+    cached_workspaces: List[Dict[str, Any]] = _TENANT_WORKSPACES_CACHE.get("workspaces", [])
+    cache_age = now - _TENANT_WORKSPACES_CACHE.get("timestamp", 0.0)
+
     try:
         if target_ws and target_ws.lower() not in ("all", "null", "undefined", ""):
-            try:
-                ws_res = await asyncio.to_thread(
-                    cli.request, "GET", f"/admin/groups?$top=1&$filter=id eq '{target_ws}'&$expand=users,datasets"
-                )
-                workspaces = ws_res.get("value", [])
-            except Exception:
-                ws_single = await asyncio.to_thread(cli.request, "GET", f"/groups/{target_ws}")
-                if isinstance(ws_single, dict) and "id" in ws_single:
-                    workspaces = [ws_single]
+            # 优先从内存租户缓存中匹配单工作区
+            cached_single = next((w for w in cached_workspaces if str(w.get("id", "")).lower() == target_ws.lower()), None)
+            if cached_single and cache_age < 180 and cached_single.get("users"):
+                workspaces = [cached_single]
+            else:
+                try:
+                    ws_res = await asyncio.to_thread(
+                        cli.request, "GET", f"/admin/groups?$top=1&$filter=id eq '{target_ws}'&$expand=users,datasets"
+                    )
+                    workspaces = ws_res.get("value", [])
+                    # 更新缓存单项
+                    if workspaces:
+                        if not cached_workspaces:
+                            _TENANT_WORKSPACES_CACHE["workspaces"] = [workspaces[0]]
+                            _TENANT_WORKSPACES_CACHE["timestamp"] = now
+                        else:
+                            existing_idx = next((i for i, w in enumerate(cached_workspaces) if str(w.get("id", "")).lower() == target_ws.lower()), -1)
+                            if existing_idx >= 0:
+                                cached_workspaces[existing_idx] = workspaces[0]
+                            else:
+                                cached_workspaces.append(workspaces[0])
+                except Exception as ex:
+                    ex_msg = str(ex)
+                    if "429" in ex_msg or "exceeded the amount of requests" in ex_msg.lower():
+                        if cached_single:
+                            workspaces = [cached_single]
+                        else:
+                            return {"success": False, "message": f"⚠️ 微软 Power BI Admin API 租户级频次限流 (429 Rate Limit)，请稍候重试。详情: {ex_msg}"}
+                    else:
+                        # 尝试常规工作区接口降级
+                        try:
+                            ws_single = await asyncio.to_thread(cli.request, "GET", f"/groups/{target_ws}")
+                            if isinstance(ws_single, dict) and "id" in ws_single:
+                                workspaces = [ws_single]
+                        except Exception as sub_ex:
+                            return {"success": False, "message": f"拉取工作区失败 (Admin 与常规接口均未命中): {str(sub_ex)}"}
         else:
-            try:
-                ws_res = await asyncio.to_thread(
-                    cli.request, "GET", "/admin/groups?$top=500&$expand=users,datasets"
-                )
-                workspaces = ws_res.get("value", [])
-            except Exception:
-                ws_res = await asyncio.to_thread(cli.request, "GET", "/groups?$top=100")
-                workspaces = ws_res.get("value", [])
+            # 全租户模式
+            if cached_workspaces and cache_age < 120 and len(cached_workspaces) > 1:
+                workspaces = cached_workspaces
+            else:
+                try:
+                    ws_res = await asyncio.to_thread(
+                        cli.request, "GET", "/admin/groups?$top=500&$expand=users,datasets"
+                    )
+                    workspaces = ws_res.get("value", [])
+                    if workspaces:
+                        _TENANT_WORKSPACES_CACHE["timestamp"] = now
+                        _TENANT_WORKSPACES_CACHE["workspaces"] = workspaces
+                except Exception as ex:
+                    ex_msg = str(ex)
+                    if "429" in ex_msg or "exceeded the amount of requests" in ex_msg.lower():
+                        if cached_workspaces:
+                            workspaces = cached_workspaces
+                        else:
+                            return {"success": False, "message": f"⚠️ 微软 Power BI Admin API 租户级频次限流 (429 Rate Limit)，请稍候重试。详情: {ex_msg}"}
+                    else:
+                        try:
+                            ws_res = await asyncio.to_thread(cli.request, "GET", "/groups?$top=100")
+                            workspaces = ws_res.get("value", [])
+                        except Exception as sub_ex:
+                            return {"success": False, "message": f"拉取工作区失败: {str(sub_ex)}"}
     except Exception as e:
         return {"success": False, "message": f"拉取工作区失败: {str(e)}"}
 
