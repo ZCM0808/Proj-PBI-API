@@ -3414,7 +3414,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             if (isThemeToggling) return;
             isThemeToggling = true;
-            setTimeout(() => { isThemeToggling = false; }, 250);
+            setTimeout(() => { isThemeToggling = false; }, 280);
 
             document.documentElement.classList.add('theme-transitioning');
             
@@ -3430,7 +3430,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             setTimeout(() => {
                 document.documentElement.classList.remove('theme-transitioning');
-            }, 220);
+            }, 260);
         });
     }
 

@@ -1529,3 +1529,42 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
   3. 验证未置顶书签项在点击置顶按钮后，首项自动跃迁置顶、动态赋予 `.pinned` 与 `.is-pinned` 状态；
   4. 截取并保存了置顶成功的渲染快照；
   5. 验证浏览器控制台无任何 Runtime 错误，且 Python 后端经 `ruff` 和 `mypy` 静态健康检查 100% 完美通过。
+
+## 47. 全局主题切换毫秒级同步平滑缓动体系 (Synchronized Theme Transition Engine & Micro-Timing Harmony)
+
+### 47.1 业务背景与撕裂根因 (Context & Root Cause Analysis)
+
+1. **各视觉表面过渡时间与曲线分裂**：
+   - 先前 `#app-rail` 硬编码了 `0.25s cubic-bezier(0.4, 0, 0.2, 1) !important`，而 `.glass-panel` 和 `.sidebar` 也各自定义了独立的 `0.25s` 声明；
+   - 与此同时，`.theme-transitioning` 临时类仅配置了 `0.2s` 并仅覆盖了少数顶层容器；
+   - 下拉选择框 (`select`)、输入框 (`input`)、代码块 (`pre`, `code`)、方法徽章 (`.method-badge`)、API 列表项 (`.api-item`) 未被 `.theme-transitioning` 纳入，导致其背景与文字颜色在 0ms 瞬间跳变，而卡片容器在 200ms 慢速过渡，产生显著的视觉撕裂与画面闪烁。
+
+2. **JavaScript 状态剥离生命周期过早截断**：
+   - 动画过渡时长设定为 200ms/250ms，但先前 JavaScript 中的 `setTimeout` 在 **220ms** 即过早移除了 `.theme-transitioning` 类；
+   - 这导致尚未走完的 CSS 缓动插值被强行掐断，在最后一刻发生瞬间生硬闪烁。
+
+---
+
+### 47.2 核心架构改进与实现方案 (Technical Implementation)
+
+- **1. 统一缓动曲线与全视觉表面纳管**：
+  - 在 [`static/style.css`](file:///D:/zcm/Proj-PBI-API/static/style.css) 中重构 `.theme-transitioning` 规则集，将过渡参数严格统一为 `0.22s cubic-bezier(0.4, 0, 0.2, 1)`；
+  - 采用兼具 60fps 高性能与全面性的选择器纳管策略，不仅覆盖 `body`, `#global-topbar`, `#app-rail`, `.sidebar`, `.main-content`, `.wf-detail-board`, `.glass-panel`, `.card`, `.uni-modal-container`，同时穿透纳管所有交互式控件与文本容器：`input`, `select`, `textarea`, `button`, `.api-item`, `.method-badge`, `pre`, `code`，确保所有前景色、背景色、边框色与阴影步调完全一致；
+  - 剥离 `#app-rail` 上与主题切换冲突的 `!important` 声明，确保其在主题过渡时完全服从统一步调。
+
+- **2. 精准加固 JavaScript 状态生命周期闭环**：
+  - 在 [`static/script.js`](file:///D:/zcm/Proj-PBI-API/static/script.js) 中将 `.theme-transitioning` 类的保留时长调整为 **260ms**（安全包裹 220ms 缓动全生命周期），同时将防抖锁控延长至 **280ms**，确保动画在 60fps 完整走完后才精准解绑类名，彻底杜绝尾部跳变。
+
+- **3. 静态缓存版本号递增防御 (Cache Busting)**：
+  - 同步递增 [`static/index.html`](file:///D:/zcm/Proj-PBI-API/static/index.html) 中 `style.css` 与 `script.js` 的硬编码版本后缀为 `?v=20260906_v2055`。
+
+---
+
+### 47.3 自动化测试与质量断言 (Automated QA & Playwright TDD Loop)
+
+- 编写并执行端到端 Playwright 自动化测试脚本 `scratch/test_theme_sync.py`：
+  1. 验证点击主题切换按钮后，在缓动窗口期内所有核心面板（`body`, `#app-rail`, `.sidebar`, `.main-content`, `.card`, `#global-topbar`, `.gtb-item`, `input`, `select`）的计算样式均为 `duration=0.22s, timing=cubic-bezier(0.4, 0, 0.2, 1)`，实现 100% 毫秒级同频共振；
+  2. 验证过渡结束后 `.theme-transitioning` 状态类被精准剥离（`removed after animation: True`）；
+  3. 验证深色/浅色模式双向切换顺畅无缝；
+  4. 截取并保存了 Light 与 Dark 模式的双向断言高清证据快照；
+  5. Python 后端通过 `ruff` 与 `mypy` 静态全量检查，零警告、零错误。

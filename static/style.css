@@ -183,7 +183,7 @@ body {
                 background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
                 border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
                 box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
-                color 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     box-sizing: border-box;
     overflow: hidden;
     will-change: width;
@@ -2620,21 +2620,35 @@ json-viewer {
 .theme-transitioning,
 .theme-transitioning body,
 .theme-transitioning #global-topbar,
+.theme-transitioning #global-topbar *,
 .theme-transitioning #app-rail,
+.theme-transitioning #app-rail *,
 .theme-transitioning .sidebar,
+.theme-transitioning .sidebar *,
 .theme-transitioning .main-content,
+.theme-transitioning .main-content *,
 .theme-transitioning .wf-detail-board,
+.theme-transitioning .wf-detail-board *,
 .theme-transitioning .body-editor-container,
 .theme-transitioning .glass-panel,
 .theme-transitioning .card,
 .theme-transitioning .gtb-item,
 .theme-transitioning .uni-modal-container,
+.theme-transitioning .uni-modal-container *,
 .theme-transitioning header,
-.theme-transitioning footer {
-    transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
-                color 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
-                border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
-                box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+.theme-transitioning footer,
+.theme-transitioning input,
+.theme-transitioning select,
+.theme-transitioning textarea,
+.theme-transitioning button,
+.theme-transitioning .api-item,
+.theme-transitioning .method-badge,
+.theme-transitioning pre,
+.theme-transitioning code {
+    transition: background-color 0.22s cubic-bezier(0.4, 0, 0.2, 1), 
+                color 0.22s cubic-bezier(0.4, 0, 0.2, 1), 
+                border-color 0.22s cubic-bezier(0.4, 0, 0.2, 1), 
+                box-shadow 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 /* =====================================================================
