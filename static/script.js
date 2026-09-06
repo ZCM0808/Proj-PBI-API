@@ -3405,44 +3405,33 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
 
+    let isThemeToggling = false;
     if (themeBtn) {
-
-        themeBtn.addEventListener('click', () => {
+        themeBtn.addEventListener('click', (e) => {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            if (isThemeToggling) return;
+            isThemeToggling = true;
+            setTimeout(() => { isThemeToggling = false; }, 250);
 
             document.documentElement.classList.add('theme-transitioning');
-
-            // Force a reflow to ensure the browser registers the transition class before theme vars change
-
-            document.documentElement.offsetHeight;
-
             
-
             const currentTheme = document.documentElement.getAttribute('data-theme');
-
             const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-
             if (newTheme === 'light') {
-
                 document.documentElement.setAttribute('data-theme', 'light');
-
             } else {
-
                 document.documentElement.removeAttribute('data-theme');
-
             }
-
             localStorage.setItem('pbi-theme', newTheme);
-
             updateThemeIcons();
 
             setTimeout(() => {
-
                 document.documentElement.classList.remove('theme-transitioning');
-
-            }, 300);
-
+            }, 220);
         });
-
     }
 
 
@@ -16629,21 +16618,8 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
         }
     };
 
-    // 全部工作区模式：从所有已配置工作区并发提取并聚合用户
+    // 全部工作区模式：优先调用 Admin API 穿透全租户所有工作区并极速汇聚用户名单
     if (!wsId) {
-        const allOptions = Array.from(wsSelect?.options || []).filter(o => o.value);
-        if (allOptions.length === 0) {
-            window.gumCandidateUsers = [];
-            if (dropdownCount) {
-                dropdownCount.innerHTML = '<span style="color:var(--text-secondary); font-size:0.72rem;">(暂无已配置工作区)</span>';
-            }
-            if (dropdownList) {
-                dropdownList.innerHTML = '<div style="font-size: 0.75rem; color: var(--text-secondary); padding: 8px 4px; text-align: center;">💡 暂未检测到已配置工作区。您可直接在搜索栏输入目标邮箱。</div>';
-            }
-            resetScanBtn();
-            return;
-        }
-
         const cacheKey = '__ALL_WORKSPACES__';
         if (!forceRefresh && window.gumWorkspaceUsersCache && window.gumWorkspaceUsersCache.has(cacheKey)) {
             window.gumCandidateUsers = window.gumWorkspaceUsersCache.get(cacheKey) || [];
@@ -16653,52 +16629,95 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
         }
 
         if (dropdownCount) {
-            dropdownCount.innerHTML = '<span style="color:var(--accent); font-size:0.72rem;">⏳ 正在汇总...</span>';
+            dropdownCount.innerHTML = '<span style="color:var(--accent); font-size:0.72rem;">⏳ 正在全租户汇总...</span>';
         }
         if (dropdownList) {
-            dropdownList.innerHTML = '<div style="font-size: 0.75rem; color: var(--text-secondary); padding: 8px 4px; text-align: center;">⏳ 正在从全部已配置工作区汇聚授权用户名单...</div>';
+            dropdownList.innerHTML = '<div style="font-size: 0.75rem; color: var(--text-secondary); padding: 8px 4px; text-align: center;">⏳ 正在穿透全租户扫描全部工作区并汇聚授权用户名单...</div>';
         }
 
         try {
-            const promises = allOptions.map(async (opt) => {
-                const wid = opt.value;
-                const wname = opt.text.split(' (')[0] || wid;
-                try {
-                    const res = await fetch('/api/proxy', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ endpoint: `/groups/${wid}/users`, method: 'GET' })
+            // 优先尝试 Admin API 一键穿透全租户 (包括 SP 未加入的工作区)
+            let candidates = [];
+            try {
+                const adminRes = await fetch('/api/proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint: '/admin/groups?$top=500&$expand=users', method: 'GET' })
+                });
+                const adminRaw = await adminRes.json();
+                const adminData = adminRaw.data || adminRaw;
+                const wsList = Array.isArray(adminData) ? adminData : (adminData.value || []);
+                if (Array.isArray(wsList) && wsList.length > 0) {
+                    const mergedMap = new Map();
+                    wsList.forEach(ws => {
+                        const wid = ws.id;
+                        const wname = ws.name || wid;
+                        (ws.users || []).forEach(u => {
+                            const ident = (u.identifier || u.emailAddress || u.userPrincipalName || '').trim();
+                            if (ident) {
+                                const key = ident.toLowerCase();
+                                if (!mergedMap.has(key)) {
+                                    mergedMap.set(key, {
+                                        identifier: ident,
+                                        displayName: (u.displayName || ident).trim(),
+                                        principalType: u.principalType || 'User',
+                                        role: u.groupUserAccessRight || 'Viewer',
+                                        workspaceId: wid,
+                                        workspaceName: wname
+                                    });
+                                }
+                            }
+                        });
                     });
-                    const rawData = await res.json();
-                    const data = rawData.data || rawData;
-                    const usersList = Array.isArray(data) ? data : (data.value || []);
-                    return usersList.map(u => ({
-                        identifier: (u.identifier || u.emailAddress || u.userPrincipalName || '').trim(),
-                        displayName: (u.displayName || u.identifier || u.emailAddress || '').trim(),
-                        principalType: u.principalType || 'User',
-                        role: u.groupUserAccessRight || 'Viewer',
-                        workspaceId: wid,
-                        workspaceName: wname
-                    })).filter(u => u.identifier);
-                } catch(e) {
-                    return [];
+                    candidates = Array.from(mergedMap.values());
                 }
-            });
+            } catch (adminErr) {
+                console.warn('Admin API expand users failed, falling back to per-workspace query:', adminErr);
+            }
 
-            const results = await Promise.allSettled(promises);
-            const mergedMap = new Map();
-            results.forEach(r => {
-                if (r.status === 'fulfilled' && Array.isArray(r.value)) {
-                    r.value.forEach(u => {
-                        const key = u.identifier.toLowerCase();
-                        if (!mergedMap.has(key)) {
-                            mergedMap.set(key, u);
-                        }
-                    });
-                }
-            });
+            // 若 Admin API 未能获取，回退至本地配置工作区的并发拉取
+            if (!candidates || candidates.length === 0) {
+                const allOptions = Array.from(wsSelect?.options || []).filter(o => o.value);
+                const promises = allOptions.map(async (opt) => {
+                    const wid = opt.value;
+                    const wname = opt.text.split(' (')[0] || wid;
+                    try {
+                        const res = await fetch('/api/proxy', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ endpoint: `/groups/${wid}/users`, method: 'GET' })
+                        });
+                        const rawData = await res.json();
+                        const data = rawData.data || rawData;
+                        const usersList = Array.isArray(data) ? data : (data.value || []);
+                        return usersList.map(u => ({
+                            identifier: (u.identifier || u.emailAddress || u.userPrincipalName || '').trim(),
+                            displayName: (u.displayName || u.identifier || u.emailAddress || '').trim(),
+                            principalType: u.principalType || 'User',
+                            role: u.groupUserAccessRight || 'Viewer',
+                            workspaceId: wid,
+                            workspaceName: wname
+                        })).filter(u => u.identifier);
+                    } catch(e) {
+                        return [];
+                    }
+                });
 
-            const candidates = Array.from(mergedMap.values());
+                const results = await Promise.allSettled(promises);
+                const mergedMap = new Map();
+                results.forEach(r => {
+                    if (r.status === 'fulfilled' && Array.isArray(r.value)) {
+                        r.value.forEach(u => {
+                            const key = u.identifier.toLowerCase();
+                            if (!mergedMap.has(key)) {
+                                mergedMap.set(key, u);
+                            }
+                        });
+                    }
+                });
+                candidates = Array.from(mergedMap.values());
+            }
+
             window.gumCandidateUsers = candidates;
             if (!window.gumWorkspaceUsersCache) window.gumWorkspaceUsersCache = new Map();
             window.gumWorkspaceUsersCache.set(cacheKey, candidates);
@@ -16717,7 +16736,7 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
         return;
     }
 
-    // 单个工作区模式
+    // 单个工作区模式：优先通过 Admin 过滤拉取（解决非成员 404 限制），失败回退常规接口
     const wsName = wsSelect?.options[wsSelect.selectedIndex]?.text?.split(' (')[0] || wsId;
 
     if (!forceRefresh && window.gumWorkspaceUsersCache && window.gumWorkspaceUsersCache.has(wsId)) {
@@ -16735,17 +16754,41 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
     }
 
     try {
-        const res = await fetch('/api/proxy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                endpoint: `/groups/${wsId}/users`,
-                method: 'GET'
-            })
-        });
-        const rawData = await res.json();
-        const data = rawData.data || rawData;
-        const usersList = Array.isArray(data) ? data : (data.value || []);
+        let usersList = [];
+        try {
+            // 优先尝试 Admin 接口（可穿透读取任意工作区）
+            const adminSingleRes = await fetch('/api/proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    endpoint: `/admin/groups?$top=1&$filter=id eq '${wsId}'&$expand=users`,
+                    method: 'GET'
+                })
+            });
+            const adminRaw = await adminSingleRes.json();
+            const adminData = adminRaw.data || adminRaw;
+            const singleWsList = Array.isArray(adminData) ? adminData : (adminData.value || []);
+            if (singleWsList && singleWsList.length > 0 && singleWsList[0].users) {
+                usersList = singleWsList[0].users;
+            }
+        } catch(e) {
+            console.warn('Admin single workspace query failed, trying standard endpoint:', e);
+        }
+
+        // 若 Admin 接口未返回，尝试常规接口
+        if (!usersList || usersList.length === 0) {
+            const res = await fetch('/api/proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    endpoint: `/groups/${wsId}/users`,
+                    method: 'GET'
+                })
+            });
+            const rawData = await res.json();
+            const data = rawData.data || rawData;
+            usersList = Array.isArray(data) ? data : (data.value || []);
+        }
 
         const candidates = usersList.map(u => ({
             identifier: (u.identifier || u.emailAddress || u.userPrincipalName || '').trim(),

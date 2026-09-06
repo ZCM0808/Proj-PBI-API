@@ -2615,19 +2615,26 @@ json-viewer {
     box-shadow: none;
 }
 
-/* Smooth Transition on Theme Change */
+/* Smooth Transition on Theme Change (Targeted surfaces for 60fps zero-lag switching) */
 
 .theme-transitioning,
-.theme-transitioning *,
-.theme-transitioning *::before,
-.theme-transitioning *::after {
-    transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
-                background 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
-                color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
-                border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
-                box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-                fill 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-                stroke 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+.theme-transitioning body,
+.theme-transitioning #global-topbar,
+.theme-transitioning #app-rail,
+.theme-transitioning .sidebar,
+.theme-transitioning .main-content,
+.theme-transitioning .wf-detail-board,
+.theme-transitioning .body-editor-container,
+.theme-transitioning .glass-panel,
+.theme-transitioning .card,
+.theme-transitioning .gtb-item,
+.theme-transitioning .uni-modal-container,
+.theme-transitioning header,
+.theme-transitioning footer {
+    transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+                color 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+                border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+                box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 /* =====================================================================
