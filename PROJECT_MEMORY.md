@@ -1496,3 +1496,36 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
   3. 验证再次点击把手后平滑反向展开至 36px；
   4. 截取并保存了展开态与折叠态高清比对快照证据。
 - 全套测试 100% 通过，并经 `ruff` 和 `mypy` 静态类型检查零错误。
+
+## 46. API 资源树收藏夹置顶矢量 SVG 图钉统一与微交互动效体系 (API Bookmark Pin Icon Unification & Micro-Interaction Architecture)
+
+### 46.1 历史遗留原因与重构背景 (Legacy Root Cause & Motivation)
+
+1. **为什么收藏夹中的置顶按钮先前是 Emoji 文本？**
+   - **分批迭代的技术债务**：收藏夹（Bookmarks）功能是系统最早落地的模块之一。当时为了以最低成本快速跑通书签收藏与本地置顶排序逻辑，直接在 DOM(Document Object Model / 文档对象模型) 文本节点中拼接了 `📌` 与 `📍` Emoji 字符。
+   - **设计系统尚未统一**：后期上线的“自动化工作流中心（Workflow Center）”和“API 分类置顶（Category Pin）”全面引入了统一的 `.btn-pin-item` 矢量 SVG(Scalable Vector Graphics / 可缩放矢量图形) 图标体系与 45° 阻尼平滑旋转过渡动效，导致 API 资源树收藏夹项产生了明显的视觉断层与交互分裂。
+
+---
+
+### 46.2 核心架构改进与视觉统一 (Technical Implementation)
+
+- **1. 废弃 Emoji，全面对齐标准化矢量 SVG 图标体系**：
+  - 在 [`static/script.js`](file:///D:/zcm/Proj-PBI-API/static/script.js) 中移除旧版 `tree-pin-btn` 和 Emoji 拼接，全面引入与工作流中心同源的 `<button type="button" class="btn-pin-item bm-pin-btn ...">` 结构，内嵌标准 24x24 视口矢量路径。
+- **2. 统一微交互状态与过渡动效**：
+  - **置顶态（Pinned）**：图标自动顺滑旋转 `-45deg`，填充为主题品牌强调色 (`fill: currentColor; color: var(--accent);`)，并赋予 `.is-pinned` 左侧高亮边条 (`border-left: 3px solid var(--accent); background: var(--overlay-5);`)；
+  - **未置顶态（Unpinned）**：默认空心描边 (`fill: none; stroke: currentColor;`)，并在悬停时平滑缩放放大并展现高质感背景胶囊 (`background: var(--overlay-10);`)；
+  - **点击脉冲反馈**：置顶成功时触发统一的 `@keyframes pinGlowPulse` 高光脉冲微动效（通过 `.api-item-pin-flash` 驱动），并平滑居中滚动定位到首位。
+- **3. 清理冗余样式与版本缓存刷新 (Cache Busting)**：
+  - 清理了 [`static/index.html`](file:///D:/zcm/Proj-PBI-API/static/index.html) 中历史残留的 `.tree-pin-btn` 样式规则；
+  - 同步递增了 `style.css` 和 `script.js` 的静态版本后缀为 `?v=20260906_v1855`，彻底免疫浏览器旧静态缓存。
+
+---
+
+### 46.3 自动化测试与质量断言 (Automated QA & Playwright TDD Loop)
+
+- 编写并执行了端到端自动化测试脚本 `scratch/test_bookmark_pin.py`：
+  1. 验证在 API 资源树中成功挂载标准矢量 SVG 置顶按钮；
+  2. 验证 SVG 结构属性与 `viewBox="0 0 24 24"` 一致性；
+  3. 验证未置顶书签项在点击置顶按钮后，首项自动跃迁置顶、动态赋予 `.pinned` 与 `.is-pinned` 状态；
+  4. 截取并保存了置顶成功的渲染快照；
+  5. 验证浏览器控制台无任何 Runtime 错误，且 Python 后端经 `ruff` 和 `mypy` 静态健康检查 100% 完美通过。
