@@ -4620,6 +4620,7 @@ body.is-resizing .body-editor-container {
 }
 
 /* ─── Pin to Top Button & State (Workflows & API Categories) ─── */
+/* 外层按钮容器：永久保持水平端正，仅负责显示端正圆角底色与透明度/微缩放 */
 .btn-pin-item {
     background: transparent;
     border: none;
@@ -4628,9 +4629,9 @@ body.is-resizing .body-editor-container {
     cursor: pointer;
     color: var(--text-secondary);
     opacity: 0;
-    transform: rotate(45deg) scale(0.85);
+    transform: scale(0.88);
     transition: opacity 0.2s cubic-bezier(0.22, 1, 0.36, 1), 
-                transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), 
+                transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), 
                 color 0.15s ease, 
                 background 0.15s ease;
     display: inline-flex;
@@ -4642,16 +4643,27 @@ body.is-resizing .body-editor-container {
     margin-left: auto;
 }
 
+/* 核心解耦：旋转动效精准施加在内部矢量 SVG 图标上，彻底消除倾斜背景方块 */
 .btn-pin-item svg {
-    transition: fill 0.2s ease, stroke 0.2s ease;
+    transform-origin: center center;
+    transform: rotate(45deg); /* 未置顶默认：斜插 45° 待钉姿态 */
+    transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+                fill 0.2s ease,
+                stroke 0.2s ease;
 }
 
-/* 父级容器悬停时浮现未置顶按钮：保持 45° 斜插准备姿态 */
+/* 父级容器悬停时浮现未置顶按钮：容器端正微展，图标保持 45° 斜插 */
 .wf-sidebar-item:hover .btn-pin-item:not(.pinned),
 .api-category-title:hover .btn-pin-item:not(.pinned),
 .api-item:hover .btn-pin-item:not(.pinned) {
     opacity: 0.65;
-    transform: rotate(45deg) scale(1);
+    transform: scale(1);
+}
+
+.wf-sidebar-item:hover .btn-pin-item:not(.pinned) svg,
+.api-category-title:hover .btn-pin-item:not(.pinned) svg,
+.api-item:hover .btn-pin-item:not(.pinned) svg {
+    transform: rotate(45deg);
 }
 
 .btn-pin-item.bm-pin-btn {
@@ -4661,42 +4673,60 @@ body.is-resizing .body-editor-container {
     font-size: 0.75rem;
 }
 
-/* 未置顶按钮悬浮：强化 45° 拟物微缩放反馈 */
+/* 未置顶按钮悬浮：容器端正并呈现方正半透明底色卡片，图标保持 45° */
 .btn-pin-item:not(.pinned):hover {
     opacity: 1 !important;
     color: var(--accent) !important;
     background: var(--overlay-10);
-    transform: rotate(45deg) scale(1.18) !important;
+    transform: scale(1.15) !important;
 }
 
-/* 方案 A 核心：已置顶态坚决垂直直插 0°（实心高亮），消除任何状态反复横跳 */
+.btn-pin-item:not(.pinned):hover svg {
+    transform: rotate(45deg);
+}
+
+/* 方案 A 核心：已置顶态坚决垂直直插 0°（实心高亮），容器水平端正 */
 .btn-pin-item.pinned {
     opacity: 1 !important;
     color: var(--accent) !important;
-    transform: rotate(0deg) scale(1) !important;
+    transform: scale(1) !important;
 }
 
 .btn-pin-item.pinned svg {
+    transform: rotate(0deg) !important; /* 图标立正垂直直插 0° */
     fill: currentColor;
 }
 
-/* 父级悬停时置顶项依然保持稳固直插 0°（自身未悬停时） */
-.wf-sidebar-item:hover .btn-pin-item.pinned:not(:hover),
-.api-category-title:hover .btn-pin-item.pinned:not(:hover),
-.api-item:hover .btn-pin-item.pinned:not(:hover) {
+/* 父级悬停时置顶项依然保持稳固直插 0° */
+.wf-sidebar-item:hover .btn-pin-item.pinned,
+.api-category-title:hover .btn-pin-item.pinned,
+.api-item:hover .btn-pin-item.pinned {
     opacity: 1 !important;
-    transform: rotate(0deg) scale(1) !important;
+    transform: scale(1) !important;
 }
 
-/* 置顶按钮自身悬停：平滑微放大直插姿态 */
+.wf-sidebar-item:hover .btn-pin-item.pinned svg,
+.api-category-title:hover .btn-pin-item.pinned svg,
+.api-item:hover .btn-pin-item.pinned svg {
+    transform: rotate(0deg) !important;
+}
+
+/* 置顶按钮自身悬停：端正底色微放大，图标坚定直插 0° */
 .btn-pin-item.pinned:hover,
 .wf-sidebar-item:hover .btn-pin-item.pinned:hover,
 .api-category-title:hover .btn-pin-item.pinned:hover,
 .api-item:hover .btn-pin-item.pinned:hover {
     opacity: 1 !important;
     color: var(--accent) !important;
-    transform: rotate(0deg) scale(1.18) !important;
+    transform: scale(1.15) !important;
     background: var(--overlay-10);
+}
+
+.btn-pin-item.pinned:hover svg,
+.wf-sidebar-item:hover .btn-pin-item.pinned:hover svg,
+.api-category-title:hover .btn-pin-item.pinned:hover svg,
+.api-item:hover .btn-pin-item.pinned:hover svg {
+    transform: rotate(0deg) !important;
 }
 
 .wf-sidebar-item.is-pinned {

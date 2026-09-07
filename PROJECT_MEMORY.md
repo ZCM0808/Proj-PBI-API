@@ -1584,26 +1584,31 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
 
 ### 48.2 核心架构方案与方案 A 拟物实现 (Technical Implementation: Scheme A)
 
-- **1. 方案 A 经典物理拟物法则 (Scheme A Physical Metaphor)**：
+- **1. 方案 A 经典物理拟物法则与外正内斜容器解耦 (Scheme A & Decoupled Architecture)**：
+  - **根除斜放背景方块（外正内斜）**：
+    - 先前将 `transform: rotate(45deg)` 误加在外层 `<button class="btn-pin-item">` 上，导致鼠标悬浮激活 `background` 半透明底色时，圆角矩形按钮外壳连同底色一起倾斜 45° 变成了刺眼的菱形方块；
+    - **核心解耦改造**：外层 `<button>` 容器永久保持水平端正（`transform: scale(0.88) -> scale(1.15)`），悬停时呈现方方正正、水平居中的半透明圆角底色卡片；
+    - **旋转精准下沉**：将 `rotate` 旋转动效唯一下沉至内部 `<svg>` 矢量图标（`transform-origin: center center;`），使图标在端正底色内部执行姿态变换。
   - **未置顶态（Unpinned）**：
-    - 呈现为待插入状态的 **45° 倾斜姿态**（`transform: rotate(45deg) scale(0.85)`，空心描边）；
-    - 父容器悬浮时平滑浮现并维持 45° 准备姿态（`opacity: 0.65; transform: rotate(45deg) scale(1)`）；
-    - 悬停于未置顶按钮自身时平滑微放大至 `scale(1.18)`，角度依然稳定保持 45°。
+    - 外层按钮容器保持水平端正，内部 `<svg>` 呈现待插入状态的 **45° 倾斜姿态**（`transform: rotate(45deg)`，空心描边）；
+    - 父容器悬浮时按钮平滑浮现并微展（`transform: scale(1)`）；
+    - 悬停于未置顶按钮自身时容器呈现端正半透明底色卡片（`scale(1.15)`），图标稳定保持 45°。
   - **已置顶态（Pinned）**：
-    - 呈现为用力垂直直插于画板的 **0° 坚毅垂直姿态**（`transform: rotate(0deg) scale(1) !important`，实心填充品牌强调色）；
+    - 外层按钮容器保持水平端正，内部 `<svg>` 呈现用力垂直直插于画板的 **0° 坚毅垂直姿态**（`transform: rotate(0deg) !important`，实心填充品牌强调色）；
     - 鼠标滑过整行或子元素时，通过 `:not(:hover)` 与 `.pinned` 隔离，坚决锁死垂直 0°，绝对禁止被父级规则覆盖；
-    - 鼠标滑入置顶按钮自身时，在 0° 垂直姿态下平滑微放大至 `scale(1.18)` 并呈现柔和高质感背景胶囊。
-  - **彻底杜绝状态跳转**：未置顶恒为 45°，已置顶恒为 0°，交互语义清晰、直觉明确。
+    - 鼠标滑入置顶按钮自身时，在 0° 垂直姿态下平滑微放大至 `scale(1.15)` 并呈现端正底色。
+  - **彻底杜绝状态横跳与斜方块**：未置顶恒为 45°，已置顶恒为 0°，悬浮背景永远方正工整。
 
 - **2. 静态缓存版本号递增 (Cache Busting)**：
-  - 同步递增 [`static/index.html`](file:///D:/zcm/Proj-PBI-API/static/index.html) 中 `style.css` 的静态版本后缀为 `?v=20260906_v2135`。
+  - 同步递增 [`static/index.html`](file:///D:/zcm/Proj-PBI-API/static/index.html) 中 `style.css` 的静态版本后缀为 `?v=20260907_v1925`。
 
 ---
 
 ### 48.3 自动化测试与质量断言 (Automated QA & Playwright TDD Loop)
 
-- 编写并执行端到端 Playwright 测试脚本 `scratch/test_pin_scheme_a.py`：
-  1. 验证未置顶态在行悬浮（`matrix(0.707, 0.707, -0.707, 0.707...)` 即 45°）及按钮自身悬浮时均保持 45°；
-  2. 验证点击置顶后，默认姿态（`matrix(1, 0, 0, 1, 0, 0)` 即 0° 直插）、行悬浮姿态（`matrix(1, 0, 0, 1, 0, 0)`）与按钮自身悬浮（`matrix(1.18, 0, 0, 1.18, 0, 0)`）全程严格锁定 0°，彻底杜绝角度跳转；
-  3. 捕获并保存了渲染快照证据 `scratch/pin_scheme_a_verified.png`；
+- 编写并执行端到端 Playwright 测试脚本 `scratch/test_decoupled_pin.py`：
+  1. 验证未置顶态行悬浮与按钮自身悬浮时，外层按钮容器计算样式均为端正无旋转（`matrix(1, 0, 0, 1, 0, 0)` 及 `matrix(1.15, 0, 0, 1.15, 0, 0)`），内部 `<svg>` 矢量图标精确旋转 45°（`matrix(0.707, 0.707, -0.707, 0.707...)`），彻底消除倾斜背景菱形；
+  2. 验证点击置顶后，默认姿态、行悬浮姿态与按钮自身悬浮时，内部 `<svg>` 图标全程严格锁定 0°（`matrix(1, 0, 0, 1, 0, 0)`）；
+  3. 捕获并校验了渲染快照证据 `scratch/decoupled_unpinned_btn_hover.png` 与 `scratch/decoupled_pinned_btn_hover.png`；
   4. 后端静态分析工具 `ruff` 和 `mypy` 校验全量通过，0 警告，0 错误。
+
