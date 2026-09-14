@@ -47,6 +47,19 @@ if ($LASTEXITCODE -eq 0) {
     exit 0
 }
 
+# Strategy 4: Smart Local Proxy Auto-Detection (e.g., 3066, 3067, 7890, 10808)
+Write-Host "`n[!] Strategy 3 Failed. Falling back to Strategy 4..." -ForegroundColor Red
+Write-Host "[Strategy 4] Probing Local Proxy Ports (3066, 3067, 7890, 10808)..." -ForegroundColor Yellow
+$probePorts = @(3066, 3067, 7890, 10808, 10809)
+foreach ($port in $probePorts) {
+    Write-Host "  -> Trying proxy http://127.0.0.1:$port ..." -ForegroundColor Gray
+    git -c http.proxy="http://127.0.0.1:$port" -c credential.helper= push $remote $branch
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "[+] Strategy 4 Succeeded! Push completed via proxy port $port." -ForegroundColor Green
+        exit 0
+    }
+}
+
 # All strategies failed
 Write-Host "`n[X] All push strategies failed. Please check your network connection, proxy settings, or PAT validity." -ForegroundColor Red
 exit 1

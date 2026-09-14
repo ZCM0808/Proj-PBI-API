@@ -35,14 +35,17 @@ async def scan_permissions_deep(
     全景扫描工作区用户权限与语义模型细粒度读写构成
     1. 工作区直属角色 (Direct Workspace Roles)
     2. 数据集直接权限 (Direct Dataset Rights)
-    3. 全局生效权限 (Effective Artifact Access via Admin API)
-    4. 异常提权偏离检测 (Elevation Drift Detection)
-    5. 可视化图表数据包 (KPIs, Donut Breakdown, Role Comparison, Model Coverage)
-    6. 支持指定目标用户列表过滤 (Targeted Principals Auditing)
+    3. 全局生效权限 (Effective Artifact Access via Admin API /artifactAccess)
+    4. 穿透/继承用户无死角补全 (Targeted / Inherited Principals Discovery)
+    5. 异常提权偏离检测 (Elevation Drift Detection)
+    6. 可视化图表数据包 (KPIs, Donut Breakdown, Role Comparison, Model Coverage)
     """
+    from urllib.parse import quote
+
     cfg = config or Config()
     cli = client or PBIClient(cfg)
     target_set = {u.strip().lower() for u in (target_users or []) if u.strip()}
+    target_users_clean = [u.strip() for u in (target_users or []) if u.strip()]
 
     # 1. 获取目标工作区
     target_ws = (workspace_id or "").strip()
@@ -64,7 +67,6 @@ async def scan_permissions_deep(
                         cli.request, "GET", f"/admin/groups?$top=1&$filter=id eq '{target_ws}'&$expand=users,datasets"
                     )
                     workspaces = ws_res.get("value", [])
-                    # 更新缓存单项
                     if workspaces:
                         if not cached_workspaces:
                             _TENANT_WORKSPACES_CACHE["workspaces"] = [workspaces[0]]
@@ -83,7 +85,6 @@ async def scan_permissions_deep(
                         else:
                             return {"success": False, "message": f"⚠️ 微软 Power BI Admin API 租户级频次限流 (429 Rate Limit)，请稍候重试。详情: {ex_msg}"}
                     else:
-                        # 尝试常规工作区接口降级
                         try:
                             ws_single = await asyncio.to_thread(cli.request, "GET", f"/groups/{target_ws}")
                             if isinstance(ws_single, dict) and "id" in ws_single:
@@ -120,9 +121,13 @@ async def scan_permissions_deep(
         return {"success": False, "message": f"拉取工作区失败: {str(e)}"}
 
     all_records: List[Dict[str, Any]] = []
-    unique_user_graph_ids: Set[str] = set()
+    unique_user_query_ids: Set[str] = set()
     workspace_datasets: Dict[str, List[Dict[str, Any]]] = {}
     dataset_users_map: Dict[str, Dict[str, str]] = {}  # dsId -> { userIdentifierLower -> right }
+
+    # 将所有 target_users 显式加入待查 API 列表
+    for tu in target_users_clean:
+        unique_user_query_ids.add(tu)
 
     # 2. 遍历各工作区，提取数据集及数据集授权底表
     for ws in workspaces:
@@ -162,7 +167,7 @@ async def scan_permissions_deep(
             for ds_id_key, u_map_data in ds_user_results:
                 dataset_users_map[ds_id_key] = u_map_data
 
-        # 提取工作区用户
+        # 提取工作区直属用户
         users = ws.get("users", [])
         if not users and ws_id:
             try:
@@ -176,7 +181,8 @@ async def scan_permissions_deep(
             for u in users:
                 email_val = (u.get("emailAddress") or u.get("identifier") or "").strip().lower()
                 disp_val = (u.get("displayName") or "").strip().lower()
-                if any(t in email_val or t in disp_val or email_val in t for t in target_set):
+                graph_val = (u.get("graphId") or "").strip().lower()
+                if any(t == email_val or t == disp_val or t == graph_val or t in email_val or t in disp_val or email_val in t for t in target_set):
                     matched_users.append(u)
             users = matched_users
 
@@ -187,8 +193,10 @@ async def scan_permissions_deep(
             ptype = u.get("principalType") or "User"
             direct_role = u.get("groupUserAccessRight") or "Viewer"
 
-            if ptype == "User" and graph_id and "-" in str(graph_id):
-                unique_user_graph_ids.add(graph_id)
+            if graph_id:
+                unique_user_query_ids.add(graph_id)
+            if email and email != "Unknown":
+                unique_user_query_ids.add(email)
 
             all_records.append({
                 "workspaceId": ws_id,
@@ -207,10 +215,12 @@ async def scan_permissions_deep(
 
     # 3. 深度穿透模式：并发请求 /admin/users/{userId}/artifactAccess 获取合并生效快照
     artifact_access_cache: Dict[str, List[Dict[str, Any]]] = {}
-    if deep_scan and unique_user_graph_ids:
-        async def fetch_user_artifact_access(gid: str) -> tuple[str, List[Dict[str, Any]]]:
+    if deep_scan and unique_user_query_ids:
+        async def fetch_user_artifact_access(uid_or_gid: str) -> tuple[str, List[Dict[str, Any]]]:
             items: List[Dict[str, Any]] = []
-            url: Optional[str] = f"/admin/users/{gid}/artifactAccess"
+            clean_id = uid_or_gid.strip()
+            quoted_id = quote(clean_id, safe='')
+            url: Optional[str] = f"/admin/users/{quoted_id}/artifactAccess"
             try:
                 while url:
                     res = await asyncio.to_thread(cli.request, "GET", url)
@@ -222,25 +232,105 @@ async def scan_permissions_deep(
                         url = None
             except Exception:
                 pass
-            return gid, items
+            return clean_id.lower(), items
 
-        tasks = [fetch_user_artifact_access(gid) for gid in unique_user_graph_ids]
+        tasks = [fetch_user_artifact_access(uid) for uid in unique_user_query_ids]
         user_artifact_results = await asyncio.gather(*tasks)
-        for gid_key, items_val in user_artifact_results:
-            artifact_access_cache[gid_key] = items_val
+        for uid_key, items_val in user_artifact_results:
+            if items_val:
+                artifact_access_cache[uid_key] = items_val
 
-    # 4. 交叉碰撞计算每个用户的最终有效权限与提权偏离
+    # 已存在的 (wsId, identifierLower) 避免重复录入
+    existing_records_keys: Set[tuple[str, str]] = {
+        (r["workspaceId"].lower(), r["identifier"].lower()) for r in all_records
+    }
+
+    # 4. 穿透/继承用户补全 (针对 target_users 发现非直属但有生效权限的记录)
+    if target_users_clean:
+        ws_lookup: Dict[str, str] = {w.get("id", "").lower(): w.get("name") or "Unnamed Workspace" for w in workspaces}
+        dataset_to_ws: Dict[str, str] = {}
+        for w_id, d_list in workspace_datasets.items():
+            for d_item in d_list:
+                d_id_str = (d_item.get("id") or "").lower()
+                if d_id_str:
+                    dataset_to_ws[d_id_str] = w_id
+
+        for t_user in target_users_clean:
+            t_lower = t_user.lower()
+            access_entities = artifact_access_cache.get(t_lower, [])
+
+            found_any_record_for_user = any(r["identifier"].lower() == t_lower for r in all_records)
+
+            for entity in access_entities:
+                art_id = (entity.get("artifactId") or "").lower()
+                art_type = entity.get("artifactType") or ""
+                access_right = entity.get("accessRight") or "Viewer"
+
+                matched_ws_id = None
+                matched_ws_name = None
+
+                if art_type == "Workspace" and art_id in ws_lookup:
+                    matched_ws_id = next((w.get("id") for w in workspaces if w.get("id", "").lower() == art_id), art_id)
+                    matched_ws_name = ws_lookup[art_id]
+                elif art_type == "Dataset" and art_id in dataset_to_ws:
+                    parent_ws_id = dataset_to_ws[art_id]
+                    if parent_ws_id.lower() in ws_lookup:
+                        matched_ws_id = parent_ws_id
+                        matched_ws_name = ws_lookup[parent_ws_id.lower()]
+
+                if matched_ws_id and (matched_ws_id.lower(), t_lower) not in existing_records_keys:
+                    rec: Dict[str, Any] = {
+                        "workspaceId": matched_ws_id,
+                        "workspaceName": matched_ws_name,
+                        "identifier": t_user,
+                        "displayName": t_user,
+                        "graphId": t_user,
+                        "principalType": "User",
+                        "directRole": "None (继承/穿透)",
+                        "effectiveRole": access_right,
+                        "isElevated": True,
+                        "elevationReason": f"非工作区直属成员，但穿透拥有 {access_right} 生效权限（继承自工作区特权组或全局租户管理员）",
+                        "securityStatus": f"⚠️ 穿透继承 ({access_right})",
+                        "canEditModels": access_right in ["Admin", "Member", "Contributor"],
+                        "datasetsDetail": []
+                    }
+                    all_records.append(rec)
+                    existing_records_keys.add((matched_ws_id.lower(), t_lower))
+                    found_any_record_for_user = True
+
+            # 若此 target_user 在已被查工作区中一条记录都没有，提供一条无风险告知记录，防前端空盲
+            if not found_any_record_for_user:
+                all_records.append({
+                    "workspaceId": target_ws if target_ws and target_ws.lower() not in ("all", "null", "") else "Tenant-Wide",
+                    "workspaceName": "未找到关联工作区 / 无生效权限",
+                    "identifier": t_user,
+                    "displayName": t_user,
+                    "graphId": t_user,
+                    "principalType": "User",
+                    "directRole": "None",
+                    "effectiveRole": "None",
+                    "isElevated": False,
+                    "elevationReason": "全租户范围内未检测到该用户在此工作区的直属或继承授权",
+                    "securityStatus": "🟢 无生效权限 (Unprivileged)",
+                    "canEditModels": False,
+                    "datasetsDetail": []
+                })
+
+    # 5. 交叉碰撞计算每个用户的最终有效权限与提权偏离
     for rec in all_records:
         ws_id_val = rec["workspaceId"]
-        gid_val = rec["graphId"]
+        gid_val = (rec["graphId"] or "").lower()
         email_clean = (rec["identifier"] or "").strip().lower()
         ws_datasets_list = workspace_datasets.get(ws_id_val, [])
 
+        # 查找 artifactAccess 缓存
+        user_access_entities = artifact_access_cache.get(email_clean) or artifact_access_cache.get(gid_val) or []
+
         # 从 artifactAccess 中匹配该工作区的真实生效角色
-        if gid_val in artifact_access_cache:
-            for a in artifact_access_cache[gid_val]:
+        if user_access_entities:
+            for a in user_access_entities:
                 if (a.get("artifactId") or "").lower() == ws_id_val.lower() and a.get("artifactType") == "Workspace":
-                    rec["effectiveRole"] = a.get("accessRight") or rec["directRole"]
+                    rec["effectiveRole"] = a.get("accessRight") or rec["effectiveRole"]
                     break
 
         # 细粒度数据集权限与模型编辑能力判定
@@ -254,8 +344,8 @@ async def scan_permissions_deep(
 
             # 匹配该数据集在 /artifactAccess 中的有效生效权限
             effective_ds_right = direct_ds_right
-            if gid_val in artifact_access_cache:
-                for a in artifact_access_cache[gid_val]:
+            if user_access_entities:
+                for a in user_access_entities:
                     if (a.get("artifactId") or "").lower() == ds_id.lower():
                         effective_ds_right = a.get("accessRight") or direct_ds_right
                         break
@@ -280,7 +370,11 @@ async def scan_permissions_deep(
 
         # 提权偏离判定 (Elevation Drift Detection)
         if rec["principalType"] == "User":
-            if rec["directRole"] == "Viewer" and (rec["effectiveRole"] in ["Admin", "Member", "Contributor"] or can_edit_any):
+            if rec["directRole"].startswith("None") and rec["effectiveRole"] != "None":
+                rec["isElevated"] = True
+                rec["elevationReason"] = f"非直属成员，但实际拥有 {rec['effectiveRole']} 生效权限（通过安全组/特权继承）"
+                rec["securityStatus"] = f"⚠️ 穿透继承 ({rec['effectiveRole']})"
+            elif rec["directRole"] == "Viewer" and (rec["effectiveRole"] in ["Admin", "Member", "Contributor"] or can_edit_any):
                 rec["isElevated"] = True
                 rec["elevationReason"] = f"直属为 Viewer，但实际拥有 {rec['effectiveRole']} 权限（继承自工作区特权组或全局租户管理员）"
                 rec["securityStatus"] = "⚠️ 继承提权 (Inherited Elevation)"
@@ -291,7 +385,7 @@ async def scan_permissions_deep(
         else:
             rec["securityStatus"] = "ℹ️ 安全组主体 (Group Principal)"
 
-    # 5. 汇聚图表数据 (KPIs, Role Comparison, Donut Breakdown, Model Coverage)
+    # 6. 汇聚图表数据 (KPIs, Role Comparison, Donut Breakdown, Model Coverage)
     total_principals = len(all_records)
     direct_admins = sum(1 for r in all_records if r["directRole"] == "Admin")
     direct_members = sum(1 for r in all_records if r["directRole"] == "Member")
@@ -324,7 +418,7 @@ async def scan_permissions_deep(
         for ds in ds_items:
             ds_id_val = ds.get("id") or ""
             ds_name_val = ds.get("name") or "Unnamed"
-            
+
             # 计算有多少用户具有该模型的编辑权限
             writers_count = 0
             readers_count = 0
