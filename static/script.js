@@ -2352,88 +2352,163 @@ window.selectCustomOption = function(type, id, alias, skipCascade = false) {
 
 
 window._populateDropdown = function(type, data) {
-
     const input = document.getElementById(`active-${type}`);
-
     const optionsDiv = document.getElementById(`options-${type}`);
-
     if (!input || !optionsDiv) return;
 
-    
+    // 添加优雅展开类
+    optionsDiv.classList.add('animated-dropdown');
 
     const savedVal = localStorage.getItem(`pbi-active-${type}`);
-
     const currentVal = savedVal !== null ? savedVal : input.value;
 
-    
+    const renderList = (filterText = '') => {
+        const query = filterText.trim().toLowerCase();
+        let itemsHtml = `
+            <div onclick="selectCustomOption('${type}', '', '')" class="custom-select-item" style="padding: 6px 10px; cursor: pointer; border-bottom: 1px solid var(--panel-border);">
+                <div style="color: var(--text-secondary); font-size: 0.72rem; font-style: italic;">-- None (未选择) --</div>
+            </div>
+        `;
 
-    let html = `<div onclick="selectCustomOption('${type}', '', '')" style="padding: 6px 8px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid var(--panel-border);" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'">
+        const filtered = query ? data.filter(item => {
+            const alias = String(item.alias || item.name || '').toLowerCase();
+            const id = String(item.id || '').toLowerCase();
+            return alias.includes(query) || id.includes(query);
+        }) : data;
 
-        <div style="color: var(--text-secondary); font-size: 0.75rem;">-- None --</div>
+        if (filtered.length === 0) {
+            itemsHtml += `
+                <div style="padding: 12px 10px; text-align: center; color: var(--text-secondary); font-size: 0.72rem;">
+                    未找到匹配项
+                </div>
+            `;
+        } else {
+            filtered.forEach(item => {
+                const safeAlias = (item.alias || item.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                const safeId = String(item.id || '').replace(/'/g, "\\'");
+                const wsType = String(item.type || '').toLowerCase();
+                const wsAlias = String(item.alias || item.name || '').toLowerCase();
+                const isDedicated = Boolean(item.isOnDedicatedCapacity);
 
-    </div>`;
+                const isPersonal = wsType.includes('personal') || wsAlias.includes('my workspace') || wsAlias.includes('个人工作区');
+                const isPremium = isDedicated || wsType.includes('premium') || wsType.includes('fabric') || wsType.includes('dedicated') || wsAlias.includes('premium') || wsAlias.includes('fabric') || wsAlias.includes('capac');
 
-    
+                let badgeHtml = '';
+                if (type === 'workspace') {
+                    if (isPremium) {
+                        badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); margin-left: 6px; font-weight: 500; flex-shrink: 0; white-space: nowrap; line-height: 1.2;">⚡ Premium</span>`;
+                    } else if (isPersonal) {
+                        badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); margin-left: 6px; font-weight: 500; flex-shrink: 0; white-space: nowrap; line-height: 1.2;">Personal</span>`;
+                    } else {
+                        badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); margin-left: 6px; font-weight: 500; flex-shrink: 0; white-space: nowrap; line-height: 1.2;">Pro</span>`;
+                    }
+                }
 
-    data.forEach(item => {
-
-        const safeAlias = (item.alias || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-
-        const safeId = item.id.replace(/'/g, "\\'");
-
-        const wsType = String(item.type || '').toLowerCase();
-        const wsAlias = String(item.alias || '').toLowerCase();
-        const isDedicated = Boolean(item.isOnDedicatedCapacity);
-
-        const isPersonal = wsType.includes('personal') || wsAlias.includes('my workspace') || wsAlias.includes('个人工作区');
-        const isPremium = isDedicated || wsType.includes('premium') || wsType.includes('fabric') || wsType.includes('dedicated') || wsAlias.includes('premium') || wsAlias.includes('fabric') || wsAlias.includes('capac');
-
-        let badgeHtml = '';
-        if (type === 'workspace') {
-            if (isPremium) {
-                badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); margin-left: 6px; font-weight: 500; flex-shrink: 0; white-space: nowrap; line-height: 1.2;">⚡ Premium</span>`;
-            } else if (isPersonal) {
-                badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); margin-left: 6px; font-weight: 500; flex-shrink: 0; white-space: nowrap; line-height: 1.2;">Personal</span>`;
-            } else {
-                badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); margin-left: 6px; font-weight: 500; flex-shrink: 0; white-space: nowrap; line-height: 1.2;">Pro</span>`;
-            }
+                const isCurrent = (item.id === currentVal);
+                itemsHtml += `
+                    <div onclick="selectCustomOption('${type}', '${safeId}', '${safeAlias}')" class="custom-select-item" style="padding: 6px 10px; cursor: pointer; border-bottom: 1px solid var(--panel-border); background: ${isCurrent ? 'var(--overlay-10)' : 'transparent'};">
+                        <div style="color: var(--text-primary); font-size: 0.74rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                            <span style="overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0;">${item.alias || item.name}</span>
+                            ${badgeHtml}
+                        </div>
+                        <div style="color: var(--text-secondary); font-size: 0.65rem; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.id}</div>
+                    </div>
+                `;
+            });
         }
 
-        html += `<div onclick="selectCustomOption('${type}', '${safeId}', '${safeAlias}')" style="padding: 6px 8px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid var(--panel-border);" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'">
+        const listContainer = optionsDiv.querySelector('.custom-select-list');
+        if (listContainer) {
+            listContainer.innerHTML = itemsHtml;
+        }
+    };
 
-            <div style="color: var(--text-primary); font-size: 0.75rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; justify-content: space-between; gap: 4px;">
-                <span style="overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0;">${item.alias}</span>
-                ${badgeHtml}
-            </div>
+    // 构建带吸顶搜索框的容器骨架
+    optionsDiv.innerHTML = `
+        <div class="custom-select-dropdown-header">
+            <input type="text" placeholder="搜索 ${type === 'workspace' ? '工作区' : (type === 'dataset' ? '模型' : '报表')}..." oninput="window._filterCustomSelect('${type}', this.value)" onclick="event.stopPropagation()">
+        </div>
+        <div class="custom-select-list" style="max-height: 240px; overflow-y: auto;"></div>
+    `;
 
-            <div style="color: var(--text-secondary); font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.id}</div>
-
-        </div>`;
-
-    });
-
-    
-
-    optionsDiv.innerHTML = html;
-
-    
+    // 缓存数据源引用以供搜索过滤
+    optionsDiv._sourceData = data;
+    renderList('');
 
     if (data.some(d => d.id === currentVal)) {
-
         const selected = data.find(d => d.id === currentVal);
-
         selectCustomOption(type, selected.id, selected.alias, true);
-
     } else if (data.length > 0) {
-
         selectCustomOption(type, data[0].id, data[0].alias, true);
-
     } else {
-
         selectCustomOption(type, '', '', true);
+    }
+};
 
+window._filterCustomSelect = function(type, query) {
+    const optionsDiv = document.getElementById(`options-${type}`);
+    if (!optionsDiv || !optionsDiv._sourceData) return;
+    const data = optionsDiv._sourceData;
+    const q = (query || '').trim().toLowerCase();
+
+    let itemsHtml = `
+        <div onclick="selectCustomOption('${type}', '', '')" class="custom-select-item" style="padding: 6px 10px; cursor: pointer; border-bottom: 1px solid var(--panel-border);">
+            <div style="color: var(--text-secondary); font-size: 0.72rem; font-style: italic;">-- None (未选择) --</div>
+        </div>
+    `;
+
+    const filtered = q ? data.filter(item => {
+        const alias = String(item.alias || item.name || '').toLowerCase();
+        const id = String(item.id || '').toLowerCase();
+        return alias.includes(q) || id.includes(q);
+    }) : data;
+
+    if (filtered.length === 0) {
+        itemsHtml += `
+            <div style="padding: 12px 10px; text-align: center; color: var(--text-secondary); font-size: 0.72rem;">
+                未找到匹配项
+            </div>
+        `;
+    } else {
+        const currentVal = document.getElementById(`active-${type}`)?.value;
+        filtered.forEach(item => {
+            const safeAlias = (item.alias || item.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const safeId = String(item.id || '').replace(/'/g, "\\'");
+            const wsType = String(item.type || '').toLowerCase();
+            const wsAlias = String(item.alias || item.name || '').toLowerCase();
+            const isDedicated = Boolean(item.isOnDedicatedCapacity);
+
+            const isPersonal = wsType.includes('personal') || wsAlias.includes('my workspace') || wsAlias.includes('个人工作区');
+            const isPremium = isDedicated || wsType.includes('premium') || wsType.includes('fabric') || wsType.includes('dedicated') || wsAlias.includes('premium') || wsAlias.includes('fabric') || wsAlias.includes('capac');
+
+            let badgeHtml = '';
+            if (type === 'workspace') {
+                if (isPremium) {
+                    badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); margin-left: 6px; font-weight: 500; flex-shrink: 0; white-space: nowrap; line-height: 1.2;">⚡ Premium</span>`;
+                } else if (isPersonal) {
+                    badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); margin-left: 6px; font-weight: 500; flex-shrink: 0; white-space: nowrap; line-height: 1.2;">Personal</span>`;
+                } else {
+                    badgeHtml = `<span style="font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); margin-left: 6px; font-weight: 500; flex-shrink: 0; white-space: nowrap; line-height: 1.2;">Pro</span>`;
+                }
+            }
+
+            const isCurrent = (item.id === currentVal);
+            itemsHtml += `
+                <div onclick="selectCustomOption('${type}', '${safeId}', '${safeAlias}')" class="custom-select-item" style="padding: 6px 10px; cursor: pointer; border-bottom: 1px solid var(--panel-border); background: ${isCurrent ? 'var(--overlay-10)' : 'transparent'};">
+                    <div style="color: var(--text-primary); font-size: 0.74rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                        <span style="overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0;">${item.alias || item.name}</span>
+                        ${badgeHtml}
+                    </div>
+                    <div style="color: var(--text-secondary); font-size: 0.65rem; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.id}</div>
+                </div>
+            `;
+        });
     }
 
+    const listContainer = optionsDiv.querySelector('.custom-select-list');
+    if (listContainer) {
+        listContainer.innerHTML = itemsHtml;
+    }
 };
 
 
@@ -2720,15 +2795,28 @@ window.updateGlobalTopbarDropdowns = function() {
     });
     rpSelect.innerHTML = rpHtml;
 
-    // 计算并更新 XMLA 终结点连接串
+    // 计算并更新 XMLA 终结点连接串及历史记录维护
     if (xmlaInput) {
+        let currentEndpoint = '';
         if (activeWsName) {
-            xmlaInput.value = `powerbi://api.powerbi.com/v1.0/myorg/${activeWsName}`;
+            currentEndpoint = `powerbi://api.powerbi.com/v1.0/myorg/${activeWsName}`;
         } else if (curWsId) {
-            xmlaInput.value = `powerbi://api.powerbi.com/v1.0/myorg/${curWsId}`;
-        } else {
-            xmlaInput.value = '';
+            currentEndpoint = `powerbi://api.powerbi.com/v1.0/myorg/${curWsId}`;
         }
+        xmlaInput.value = currentEndpoint;
+
+        // 维护并去重 XMLA 历史记录 (localStorage)
+        if (currentEndpoint) {
+            try {
+                let history = JSON.parse(localStorage.getItem('pbi-xmla-history') || '[]');
+                if (!history.includes(currentEndpoint)) {
+                    history.unshift(currentEndpoint);
+                    if (history.length > 20) history = history.slice(0, 20);
+                    localStorage.setItem('pbi-xmla-history', JSON.stringify(history));
+                }
+            } catch(e) {}
+        }
+        window.renderGlobalXmlaHistoryOptions();
     }
 
     if (window.initGumWorkspaceSelector) {
@@ -2736,107 +2824,89 @@ window.updateGlobalTopbarDropdowns = function() {
     }
 };
 
-// 切换全局认证模式 (Service Principal / Personal)
-window.handleGlobalAuthModeChange = async function(mode) {
-    const authSelect = document.getElementById('gtb-select-auth-mode');
-    const authIcon = document.getElementById('gtb-auth-icon');
-    if (authSelect) {
-        authSelect.className = `gtb-auth-select mode-${mode === 'personal' ? 'personal' : 'sp'}`;
-    }
-    if (authIcon) {
-        authIcon.textContent = mode === 'personal' ? '👤' : '🛡️';
-    }
+// 渲染 XMLA 历史下拉选项
+window.renderGlobalXmlaHistoryOptions = function() {
+    const xmlaHistorySelect = document.getElementById('gtb-select-xmla-history');
+    if (!xmlaHistorySelect) return;
 
+    let history = [];
     try {
-        const res = await fetch('/api/auth-mode', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ auth_mode: mode })
-        });
-        const data = await res.json();
-        if (data.success) {
-            if (window.showNotification) {
-                window.showNotification(`已切换为全局 ${mode === 'personal' ? '个人委派 (Personal User)' : '服务主体 (Service Principal)'} 认证模式`, 'success');
-            }
-            // 刷新环境变量指示与工作流卡片顶部徽章
-            if (window.renderEnvIdentity) window.renderEnvIdentity();
-            const wfAuthBadge = document.getElementById('wf-header-auth-badge');
-            if (wfAuthBadge) {
-                wfAuthBadge.textContent = mode === 'personal' ? '· Personal User (Delegated)' : '· Service Principal (APP_Automation)';
-            }
-        } else {
-            alert('认证模式切换失败: ' + (data.message || '未知错误'));
-        }
-    } catch(e) {
-        console.error('Error switching auth mode:', e);
-        alert('切换认证模式发生网络异常');
-    }
-};
+        history = JSON.parse(localStorage.getItem('pbi-xmla-history') || '[]');
+    } catch(e) { history = []; }
 
-// 切换全局工作区
-window.handleGlobalWorkspaceChange = function(wsId) {
+    // 从已知工作区列表中提取候选 XMLA
     const wsData = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
-    const targetWs = wsData.find(w => w.id === wsId);
-    const wsName = targetWs ? (targetWs.alias || targetWs.name || '') : '';
+    wsData.forEach(w => {
+        const name = w.alias || w.name;
+        if (name) {
+            const ep = `powerbi://api.powerbi.com/v1.0/myorg/${name}`;
+            if (!history.includes(ep)) history.push(ep);
+        }
+    });
 
-    // 1. 同步到底层 selectCustomOption
-    if (typeof selectCustomOption === 'function') {
-        selectCustomOption('workspace', wsId, wsName);
+    if (history.length > 0) {
+        xmlaHistorySelect.style.display = 'block';
+        const currentVal = document.getElementById('gtb-input-xmla')?.value || '';
+        let opts = `<option value="">-- XMLA 历史 (${history.length}) --</option>`;
+        history.forEach(ep => {
+            const shortName = ep.split('/').pop();
+            const isSel = (ep === currentVal);
+            opts += `<option value="${ep}" ${isSel ? 'selected' : ''} title="${ep}">${shortName}</option>`;
+        });
+        xmlaHistorySelect.innerHTML = opts;
     } else {
-        const hiddenWs = document.getElementById('active-workspace');
-        if (hiddenWs) hiddenWs.value = wsId;
-        try { localStorage.setItem('pbi-active-workspace', wsId); } catch(e) {}
-    }
-
-    // 2. 级联重置已选模型和报表 (防止带着旧工作区的资源跨区操作)
-    if (typeof selectCustomOption === 'function') {
-        selectCustomOption('dataset', '', '');
-        selectCustomOption('report', '', '');
-    }
-
-    // 3. 更新全局顶部栏与各工作流卡片内部表单
-    window.updateGlobalTopbarDropdowns();
-    window.syncAllWorkflowSelectors();
-
-    if (window.showNotification && wsName) {
-        window.showNotification(`已全局切换工作区: ${wsName}`, 'info');
+        xmlaHistorySelect.style.display = 'none';
     }
 };
 
-// 切换全局数据模型
-window.handleGlobalDatasetChange = function(dsId) {
-    const dsData = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
-    const targetDs = dsData.find(d => d.id === dsId);
-    const dsName = targetDs ? (targetDs.alias || targetDs.name || '') : '';
-
-    if (typeof selectCustomOption === 'function') {
-        selectCustomOption('dataset', dsId, dsName);
-    } else {
-        const hiddenDs = document.getElementById('active-dataset');
-        if (hiddenDs) hiddenDs.value = dsId;
-        try { localStorage.setItem('pbi-active-dataset', dsId); } catch(e) {}
+// 选择 XMLA 历史记录
+window.handleGlobalXmlaHistoryChange = function(ep) {
+    if (!ep) return;
+    const xmlaInput = document.getElementById('gtb-input-xmla');
+    if (xmlaInput) {
+        xmlaInput.value = ep;
     }
-
-    window.updateGlobalTopbarDropdowns();
-    window.syncAllWorkflowSelectors();
+    // 尝试反向联动匹配对应工作区
+    const wsData = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+    const targetWsName = ep.split('/').pop();
+    const matchedWs = wsData.find(w => (w.alias || w.name || '').toLowerCase() === targetWsName.toLowerCase());
+    if (matchedWs) {
+        window.handleGlobalWorkspaceChange(matchedWs.id);
+    } else {
+        if (window.showNotification) window.showNotification(`已切换当前 XMLA 端点: ${ep}`, 'info');
+    }
 };
 
-// 切换全局报表
-window.handleGlobalReportChange = function(rpId) {
-    const rpData = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
-    const targetRp = rpData.find(r => r.id === rpId);
-    const rpName = targetRp ? (targetRp.alias || targetRp.name || '') : '';
-
-    if (typeof selectCustomOption === 'function') {
-        selectCustomOption('report', rpId, rpName);
-    } else {
-        const hiddenRp = document.getElementById('active-report');
-        if (hiddenRp) hiddenRp.value = rpId;
-        try { localStorage.setItem('pbi-active-report', rpId); } catch(e) {}
+// 通用 GTB 选项悬浮复制函数 (Workspace / Dataset / Report)
+window.copyGtbItem = function(btn, type) {
+    let val = '';
+    let label = '';
+    if (type === 'workspace') {
+        val = document.getElementById('gtb-select-workspace')?.value || '';
+        label = '工作区 ID';
+    } else if (type === 'dataset') {
+        val = document.getElementById('gtb-select-dataset')?.value || '';
+        label = '模型 ID';
+    } else if (type === 'report') {
+        val = document.getElementById('gtb-select-report')?.value || '';
+        label = '报表 ID';
     }
 
-    window.updateGlobalTopbarDropdowns();
-    window.syncAllWorkflowSelectors();
+    if (!val) {
+        if (window.showNotification) window.showNotification(`未选中有效的${label}`, 'warning');
+        return;
+    }
+
+    navigator.clipboard.writeText(val).then(() => {
+        if (btn) {
+            const orig = btn.innerHTML;
+            btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+            setTimeout(() => { btn.innerHTML = orig; }, 1800);
+        }
+        if (window.showNotification) window.showNotification(`已复制${label}: ${val}`, 'success');
+    }).catch(e => {
+        alert('复制失败: ' + e);
+    });
 };
 
 // 复制全局 XMLA 终结点连接串
@@ -2850,7 +2920,7 @@ window.copyGlobalXmlaEndpoint = function(btn) {
     navigator.clipboard.writeText(val).then(() => {
         if (btn) {
             const orig = btn.innerHTML;
-            btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+            btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
             setTimeout(() => { btn.innerHTML = orig; }, 1800);
         }
         if (window.showNotification) window.showNotification(`已复制 XMLA 端点: ${val}`, 'success');

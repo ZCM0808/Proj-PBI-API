@@ -17,6 +17,10 @@ window.LineageExplorer = (function() {
     let currentViewMode = 'dag'; // 'dag' | 'table'
     let isPhysicsActive = false; // 当前力导向物理引擎激活状态
 
+    function isLightTheme() {
+        return document.documentElement.getAttribute('data-theme') === 'light';
+    }
+
     // =========================================================================
     // 1. M 语言与模型关系血缘抽取核心算法 (M Lineage Parser)
     // =========================================================================
@@ -56,6 +60,7 @@ window.LineageExplorer = (function() {
         };
 
         // 1. 注册物理数据源节点 (Physical Datasource Nodes)
+        const isLight = isLightTheme();
         datasources.forEach((ds, idx) => {
             const dsType = ds.datasourceType || 'Database';
             const server = ds.server || (ds.url ? (function(){ try { return new URL(ds.url).hostname; } catch(e){ return ds.url; } })() : 'External Server');
@@ -70,9 +75,11 @@ window.LineageExplorer = (function() {
                 group: 'datasource',
                 shape: 'box',
                 margin: 10,
-                color: { background: '#78350f', border: '#f59e0b', highlight: { background: '#92400e', border: '#fbbf24' } },
-                font: { color: '#fef3c7', size: 11, face: 'system-ui, -apple-system, sans-serif' },
-                shadow: { enabled: true, color: 'rgba(245, 158, 11, 0.25)', size: 8 },
+                color: isLight
+                    ? { background: '#fef3c7', border: '#f59e0b', highlight: { background: '#fde68a', border: '#d97706' } }
+                    : { background: '#78350f', border: '#f59e0b', highlight: { background: '#92400e', border: '#fbbf24' } },
+                font: { color: isLight ? '#92400e' : '#fef3c7', size: 11, face: 'system-ui, -apple-system, sans-serif' },
+                shadow: { enabled: true, color: isLight ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.25)', size: 8 },
                 raw: ds
             });
         });
@@ -81,21 +88,25 @@ window.LineageExplorer = (function() {
         tables.forEach((t) => {
             const tId = `tbl_${t.tableName.toLowerCase().replace(/[^a-z0-9_]/g, '_')}`;
             const mode = (t.mode || 'Import').toLowerCase();
-            let bgColor = '#065f46';
-            let borderColor = '#10b981';
+            let bgColor = isLight ? '#d1fae5' : '#065f46';
+            let borderColor = isLight ? '#10b981' : '#10b981';
+            let fontColor = isLight ? '#065f46' : '#ffffff';
             let badgeIcon = '🟢';
 
             if (mode.includes('directquery')) {
-                bgColor = '#1e3a8a';
-                borderColor = '#3b82f6';
+                bgColor = isLight ? '#dbeafe' : '#1e3a8a';
+                borderColor = isLight ? '#3b82f6' : '#3b82f6';
+                fontColor = isLight ? '#1e40af' : '#ffffff';
                 badgeIcon = '⚡';
             } else if (mode.includes('composite') || mode.includes('dual')) {
-                bgColor = '#4c1d95';
-                borderColor = '#8b5cf6';
+                bgColor = isLight ? '#ede9fe' : '#4c1d95';
+                borderColor = isLight ? '#8b5cf6' : '#8b5cf6';
+                fontColor = isLight ? '#5b21b6' : '#ffffff';
                 badgeIcon = '🟣';
             } else if (mode.includes('live')) {
-                bgColor = '#164e63';
-                borderColor = '#06b6d4';
+                bgColor = isLight ? '#cffafe' : '#164e63';
+                borderColor = isLight ? '#06b6d4' : '#06b6d4';
+                fontColor = isLight ? '#155e75' : '#ffffff';
                 badgeIcon = '🌐';
             }
 
@@ -107,9 +118,9 @@ window.LineageExplorer = (function() {
                 tableName: t.tableName,
                 shape: 'box',
                 margin: 10,
-                color: { background: bgColor, border: borderColor, highlight: { background: '#312e81', border: '#6366f1' } },
-                font: { color: '#ffffff', size: 12, face: 'system-ui, -apple-system, sans-serif' },
-                shadow: { enabled: true, color: 'rgba(0, 0, 0, 0.3)', size: 6 },
+                color: { background: bgColor, border: borderColor, highlight: { background: isLight ? '#e0e7ff' : '#312e81', border: '#6366f1' } },
+                font: { color: fontColor, size: 12, face: 'system-ui, -apple-system, sans-serif' },
+                shadow: { enabled: true, color: isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(0, 0, 0, 0.3)', size: 6 },
                 raw: t
             });
         });
@@ -152,8 +163,10 @@ window.LineageExplorer = (function() {
                             group: 'datasource',
                             shape: 'box',
                             margin: 10,
-                            color: { background: '#78350f', border: '#f59e0b' },
-                            font: { color: '#fef3c7', size: 11 },
+                            color: isLight
+                                ? { background: '#fef3c7', border: '#f59e0b', highlight: { background: '#fde68a', border: '#d97706' } }
+                                : { background: '#78350f', border: '#f59e0b', highlight: { background: '#92400e', border: '#fbbf24' } },
+                            font: { color: isLight ? '#92400e' : '#fef3c7', size: 11 },
                             raw: { server: sName, database: dName, datasourceType: t.sourceType }
                         });
                     }
@@ -290,7 +303,7 @@ window.LineageExplorer = (function() {
                 zoomView: true,
                 dragView: true,
                 navigationButtons: false,
-                keyboard: true
+                keyboard: false
             },
             physics: {
                 enabled: false
@@ -382,6 +395,7 @@ window.LineageExplorer = (function() {
         }
 
         // 3. 更新所有节点外观状态
+        const isLight = isLightTheme();
         const updatedNodes = allNodes.map(n => {
             const isTarget = n.id === targetNodeId;
             const isUp = upstreamNodes.has(n.id);
@@ -391,28 +405,38 @@ window.LineageExplorer = (function() {
                 return {
                     id: n.id,
                     opacity: 1.0,
-                    color: { background: '#4338ca', border: '#818cf8', highlight: { background: '#4f46e5', border: '#a5b4fc' } },
-                    shadow: { enabled: true, color: '#818cf8', size: 16 }
+                    color: isLight
+                        ? { background: '#e0e7ff', border: '#4f46e5', highlight: { background: '#c7d2fe', border: '#4338ca' } }
+                        : { background: '#4338ca', border: '#818cf8', highlight: { background: '#4f46e5', border: '#a5b4fc' } },
+                    font: { color: isLight ? '#312e81' : '#ffffff' },
+                    shadow: { enabled: true, color: isLight ? 'rgba(79, 70, 229, 0.4)' : '#818cf8', size: 16 }
                 };
             } else if (isUp) {
                 return {
                     id: n.id,
                     opacity: 1.0,
-                    color: { background: '#78350f', border: '#f59e0b', highlight: { background: '#92400e', border: '#fbbf24' } },
+                    color: isLight
+                        ? { background: '#fef3c7', border: '#f59e0b', highlight: { background: '#fde68a', border: '#d97706' } }
+                        : { background: '#78350f', border: '#f59e0b', highlight: { background: '#92400e', border: '#fbbf24' } },
+                    font: { color: isLight ? '#92400e' : '#fef3c7' },
                     shadow: { enabled: true, color: '#f59e0b', size: 12 }
                 };
             } else if (isDown) {
                 return {
                     id: n.id,
                     opacity: 1.0,
-                    color: { background: '#0e7490', border: '#22d3ee', highlight: { background: '#155e75', border: '#67e8f9' } },
+                    color: isLight
+                        ? { background: '#cffafe', border: '#06b6d4', highlight: { background: '#a5f3fc', border: '#0891b2' } }
+                        : { background: '#0e7490', border: '#22d3ee', highlight: { background: '#155e75', border: '#67e8f9' } },
+                    font: { color: isLight ? '#155e75' : '#ffffff' },
                     shadow: { enabled: true, color: '#22d3ee', size: 12 }
                 };
             } else {
                 return {
                     id: n.id,
-                    opacity: 0.15,
-                    color: { background: '#1e293b', border: '#334155' },
+                    opacity: isLight ? 0.25 : 0.15,
+                    color: isLight ? { background: '#f1f5f9', border: '#cbd5e1' } : { background: '#1e293b', border: '#334155' },
+                    font: { color: isLight ? '#94a3b8' : '#64748b' },
                     shadow: { enabled: false }
                 };
             }
@@ -441,7 +465,7 @@ window.LineageExplorer = (function() {
                 return {
                     id: e.id,
                     width: 0.8,
-                    color: { color: '#334155', opacity: 0.1 },
+                    color: { color: isLight ? '#94a3b8' : '#334155', opacity: isLight ? 0.2 : 0.1 },
                     shadow: { enabled: false }
                 };
             }
@@ -1083,7 +1107,7 @@ window.LineageExplorer = (function() {
                             <span>📊</span><span>导出 Excel</span>
                         </button>
 
-                        <button type="button" class="close-btn" onclick="document.getElementById('lineage-explorer-modal').remove()" title="Close" style="background: none; border: none; cursor: pointer; color: var(--text-secondary); display: flex; align-items: center;">
+                        <button type="button" class="close-btn" onclick="window.LineageExplorer.closeModal()" title="Close" style="background: none; border: none; cursor: pointer; color: var(--text-secondary); display: flex; align-items: center;">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
                         </button>
                     </div>
@@ -1124,7 +1148,7 @@ window.LineageExplorer = (function() {
                         </div>
 
                         <!-- 拓扑图图例 (Floating Legend) -->
-                        <div style="position: absolute; top: 14px; left: 16px; z-index: 20; display: flex; gap: 10px; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); border: 1px solid var(--panel-border); border-radius: 6px; padding: 5px 12px; font-size: 0.72rem; color: var(--text-secondary); pointer-events: none;">
+                        <div class="lineage-legend-box" style="position: absolute; top: 14px; left: 16px; z-index: 20; display: flex; gap: 10px; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); border: 1px solid var(--panel-border); border-radius: 6px; padding: 5px 12px; font-size: 0.72rem; color: var(--text-secondary); pointer-events: none;">
                             <span style="display: flex; align-items: center; gap: 4px;"><span style="display:inline-block;width:10px;height:10px;background:#78350f;border:1px solid #f59e0b;border-radius:2px;"></span> 外部数据源</span>
                             <span style="display: flex; align-items: center; gap: 4px;"><span style="display:inline-block;width:10px;height:10px;background:#065f46;border:1px solid #10b981;border-radius:2px;"></span> 导入表 (Import)</span>
                             <span style="display: flex; align-items: center; gap: 4px;"><span style="display:inline-block;width:10px;height:10px;background:#1e3a8a;border:1px solid #3b82f6;border-radius:2px;"></span> 直连表 (DirectQuery)</span>
@@ -1186,6 +1210,12 @@ window.LineageExplorer = (function() {
 
         document.body.appendChild(overlay);
 
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) {
+                closeModal();
+            }
+        });
+
         if (window.makeDraggable) {
             const content = overlay.querySelector('.modal-content');
             const header = overlay.querySelector('.modal-header');
@@ -1197,6 +1227,7 @@ window.LineageExplorer = (function() {
             if (container) {
                 renderNetwork(container, parsed);
                 resetHighlight();
+                setupThemeObserver();
             }
             // 预渲染血缘明细表，使后续 Tab 切换无需进行 DOM 解析与字符串拼接，达成 0ms 瞬间切换
             const tblContent = document.getElementById('lineage-table-content');
@@ -1441,8 +1472,44 @@ window.LineageExplorer = (function() {
         }
     }
 
+    let themeObserver = null;
+
+    function setupThemeObserver() {
+        if (themeObserver) return;
+        themeObserver = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                if (mutation.attributeName === 'data-theme') {
+                    if (currentNetwork && currentParsedData && window._inspectResultCache) {
+                        const parsed = parseLineage(window._inspectResultCache);
+                        currentParsedData = parsed;
+                        currentNodesDataset.update(parsed.nodes);
+                        currentEdgesDataset.update(parsed.edges);
+                        if (activeHighlightNodeId) {
+                            highlightLineage(activeHighlightNodeId);
+                        }
+                    }
+                }
+            }
+        });
+        themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    }
+
+    function closeModal() {
+        if (themeObserver) {
+            themeObserver.disconnect();
+            themeObserver = null;
+        }
+        if (currentNetwork) {
+            try { currentNetwork.destroy(); } catch(e) {}
+            currentNetwork = null;
+        }
+        const modal = document.getElementById('lineage-explorer-modal');
+        if (modal) modal.remove();
+    }
+
     return {
         openModal,
+        closeModal,
         switchView,
         onTableSearch,
         sortLineageTable,

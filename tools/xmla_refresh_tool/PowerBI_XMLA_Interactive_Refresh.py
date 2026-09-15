@@ -6,7 +6,6 @@ import sys
 import time
 import threading
 import datetime
-import xml.etree.ElementTree as ET
 from msal import PublicClientApplication, SerializableTokenCache
 
 XMLA_ENDPOINT = "powerbi://api.powerbi.com/v1.0/myorg/DA_APAC_BI_QA"
@@ -414,7 +413,7 @@ while True:
                     tables = fetch_model_tables(selected_db_name, selected_ds_id)
 
                 if not tables:
-                    print(f"\n⚠️ 自动枚举表名受限。")
+                    print("\n⚠️ 自动枚举表名受限。")
                     raw_in = input("请输入要刷新的目标表名 [0 返回主菜单，B 返回上一级]: ").strip()
                     if raw_in == "0":
                         step_cancelled = True
@@ -453,7 +452,7 @@ while True:
                 selected_part_idx = -1
                 part_back = False
                 while True:
-                    p_in = input(f"请输入刷新选项 [0 全表，99 手动分区，B 返回上一级]: ").strip().upper()
+                    p_in = input("请输入刷新选项 [0 全表，99 手动分区，B 返回上一级]: ").strip().upper()
                     if p_in == "0":
                         selected_part_idx = 0
                         break
