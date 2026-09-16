@@ -2844,28 +2844,30 @@ window.renderGlobalXmlaHistoryOptions = function() {
         }
     });
 
-    if (history.length > 0) {
-        xmlaHistorySelect.style.display = 'block';
-        const currentVal = document.getElementById('gtb-input-xmla')?.value || '';
-        let opts = `<option value="">-- XMLA 历史 (${history.length}) --</option>`;
-        history.forEach(ep => {
-            const shortName = ep.split('/').pop();
-            const isSel = (ep === currentVal);
-            opts += `<option value="${ep}" ${isSel ? 'selected' : ''} title="${ep}">${shortName}</option>`;
-        });
-        xmlaHistorySelect.innerHTML = opts;
-    } else {
-        xmlaHistorySelect.style.display = 'none';
+    const currentVal = document.getElementById('gtb-input-xmla')?.value || '';
+    if (currentVal && !history.includes(currentVal)) {
+        history.unshift(currentVal);
+    }
+
+    let opts = `<option value="">-- 选择 XMLA 端点 (${history.length}) --</option>`;
+    history.forEach(ep => {
+        const shortName = ep.split('/').pop();
+        const isSel = (ep === currentVal);
+        opts += `<option value="${ep}" ${isSel ? 'selected' : ''} title="${ep}">${shortName} (${ep})</option>`;
+    });
+    xmlaHistorySelect.innerHTML = opts;
+    if (currentVal) {
+        xmlaHistorySelect.value = currentVal;
     }
 };
 
 // 选择 XMLA 历史记录
 window.handleGlobalXmlaHistoryChange = function(ep) {
-    if (!ep) return;
     const xmlaInput = document.getElementById('gtb-input-xmla');
     if (xmlaInput) {
-        xmlaInput.value = ep;
+        xmlaInput.value = ep || '';
     }
+    if (!ep) return;
     // 尝试反向联动匹配对应工作区
     const wsData = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
     const targetWsName = ep.split('/').pop();
@@ -2911,12 +2913,13 @@ window.copyGtbItem = function(btn, type) {
 
 // 复制全局 XMLA 终结点连接串
 window.copyGlobalXmlaEndpoint = function(btn) {
+    const xmlaSelect = document.getElementById('gtb-select-xmla-history');
     const xmlaInput = document.getElementById('gtb-input-xmla');
-    if (!xmlaInput || !xmlaInput.value) {
+    const val = xmlaSelect?.value || xmlaInput?.value || '';
+    if (!val) {
         if (window.showNotification) window.showNotification('当前暂未选择具备 XMLA 终结点的工作区', 'warning');
         return;
     }
-    const val = xmlaInput.value;
     navigator.clipboard.writeText(val).then(() => {
         if (btn) {
             const orig = btn.innerHTML;

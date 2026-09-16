@@ -144,17 +144,17 @@
         <!-- ⚡ 全局顶部上下文控制台功能栏 (Global Top Context Control Bar - Borderless & Collapsible) -->
         <header id="global-topbar">
             <div class="gtb-group">
-                <!-- 1. XMLA 终结点 (XMLA Endpoint - 最左侧快速连接入口) -->
-                <div class="gtb-item gtb-xmla-box" title="当前工作区 XMLA 连接串 / 下拉选择历史">
+                <!-- 1. XMLA 终结点 (XMLA Endpoint - 最左侧快速连接入口，纯下拉选择历史/当前端点) -->
+                <div class="gtb-item gtb-xmla-box" title="XMLA 端点 (下拉选择曾经用过的 XMLA，右侧一键复制)">
                     <div class="gtb-label">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent); flex-shrink: 0;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
                         <span>XMLA</span>
                     </div>
-                    <select id="gtb-select-xmla-history" class="gtb-select" style="display: none; font-family: 'Fira Code', monospace; font-size: 0.70rem;" onchange="window.handleGlobalXmlaHistoryChange(this.value)">
-                        <option value="">-- XMLA 历史 --</option>
+                    <select id="gtb-select-xmla-history" class="gtb-select" style="font-family: 'Fira Code', monospace; font-size: 0.70rem;" onchange="window.handleGlobalXmlaHistoryChange(this.value)">
+                        <option value="">-- 选择 XMLA 端点 --</option>
                     </select>
-                    <input type="text" id="gtb-input-xmla" class="gtb-xmla-input" readonly placeholder="powerbi://api.powerbi.com/v1.0/myorg/WorkspaceName" value="" title="XMLA Endpoint">
-                    <button type="button" class="gtb-copy-btn" onclick="window.copyGlobalXmlaEndpoint(this)" title="复制 XMLA 连接串">
+                    <input type="hidden" id="gtb-input-xmla" value="">
+                    <button type="button" class="gtb-copy-btn" onclick="window.copyGlobalXmlaEndpoint(this)" title="复制当前选中的 XMLA 连接串">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                     </button>
                 </div>
