@@ -21291,6 +21291,16 @@ document.addEventListener('DOMContentLoaded', () => {
    ========================================================================== */
 let cachedVersionData = null;
 
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 window.closeVersionPopover = function() {
     const popover = document.getElementById('version-popover');
     if (!popover || !popover.classList.contains('active')) return;
@@ -21330,6 +21340,7 @@ window.renderVersionPopoverContent = function(data) {
     const container = document.getElementById('vp-body-content');
     if (!container) return;
 
+    data = data || {};
     const commits = Array.isArray(data.recent_commits) ? data.recent_commits : [];
     const hasHistory = commits.length > 1;
 
@@ -21428,35 +21439,60 @@ window.toggleVersionPopover = async function(event) {
         popover.classList.add('active');
     });
 
-    // 请求数据
+    const container = document.getElementById('vp-body-content');
+
     if (cachedVersionData) {
-        window.renderVersionPopoverContent(cachedVersionData);
-    } else {
         try {
-            const resp = await fetch('/api/version');
-            if (resp.ok) {
-                const data = await resp.json();
-                cachedVersionData = data;
-                window.renderVersionPopoverContent(data);
-                // 重新校准一次高度定位
-                const newHeight = popover.offsetHeight;
-                let adjustedTop = rect.bottom - newHeight;
-                if (adjustedTop < 15) adjustedTop = 15;
-                if (adjustedTop + newHeight > window.innerHeight - 15) {
-                    adjustedTop = window.innerHeight - newHeight - 15;
-                }
-                popover.style.top = adjustedTop + 'px';
-            } else {
-                const container = document.getElementById('vp-body-content');
-                if (container) {
-                    container.innerHTML = `<div style="color: var(--error); font-size: 0.78rem; padding: 10px 0;">获取版本失败 (HTTP ${resp.status})</div>`;
-                }
-            }
-        } catch (err) {
-            const container = document.getElementById('vp-body-content');
+            window.renderVersionPopoverContent(cachedVersionData);
+        } catch (e) {
+            console.error('[Version Popover Render Error]', e);
+        }
+        return;
+    }
+
+    // 显示加载中动效
+    if (container) {
+        container.innerHTML = `
+            <div class="vp-loading">
+                <svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" style="animation: spin 1s linear infinite;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                <span>正在加载版本数据...</span>
+            </div>
+        `;
+    }
+
+    let data = null;
+    try {
+        const resp = await fetch('/api/version');
+        if (!resp.ok) {
             if (container) {
-                container.innerHTML = `<div style="color: var(--error); font-size: 0.78rem; padding: 10px 0;">网络异常，无法获取版本</div>`;
+                container.innerHTML = `<div style="color: var(--error); font-size: 0.78rem; padding: 10px 0;">获取版本失败 (HTTP ${resp.status})</div>`;
             }
+            return;
+        }
+        data = await resp.json();
+        cachedVersionData = data;
+    } catch (netErr) {
+        console.error('[Version Popover Network Error]', netErr);
+        if (container) {
+            container.innerHTML = `<div style="color: var(--error); font-size: 0.78rem; padding: 10px 0;">网络异常，无法获取版本</div>`;
+        }
+        return;
+    }
+
+    try {
+        window.renderVersionPopoverContent(data);
+        // 重新校准一次高度定位
+        const newHeight = popover.offsetHeight;
+        let adjustedTop = rect.bottom - newHeight;
+        if (adjustedTop < 15) adjustedTop = 15;
+        if (adjustedTop + newHeight > window.innerHeight - 15) {
+            adjustedTop = window.innerHeight - newHeight - 15;
+        }
+        popover.style.top = adjustedTop + 'px';
+    } catch (renderErr) {
+        console.error('[Version Popover Render Error]', renderErr);
+        if (container) {
+            container.innerHTML = `<div style="color: var(--error); font-size: 0.78rem; padding: 10px 0;">渲染版本异常: ${escapeHtml(renderErr.message || String(renderErr))}</div>`;
         }
     }
 };

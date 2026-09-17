@@ -380,10 +380,11 @@ async def get_version_info():
         except Exception:
             pass
 
+        commit_id = os.getenv("RENDER_GIT_COMMIT") or os.getenv("GIT_COMMIT") or "25c5e70"
         info["version"] = os.getenv("APP_VERSION", "v2026.09.17")
-        info["commit_hash"] = os.getenv("GIT_COMMIT", "5e17e2a")[:7]
-        info["pushed_at"] = os.getenv("BUILD_TIME", "2026-09-16 20:47:38")
-        info["summary"] = os.getenv("BUILD_MESSAGE", "Release Build")
+        info["commit_hash"] = commit_id[:7]
+        info["pushed_at"] = os.getenv("BUILD_TIME", "2026-09-17 16:05:35")
+        info["summary"] = os.getenv("BUILD_MESSAGE", "feat: add compact version info popover to navigation rail")
         return info
 
     data = await asyncio.to_thread(_read_git_info)
