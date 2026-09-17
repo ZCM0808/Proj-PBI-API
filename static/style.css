@@ -4001,15 +4001,31 @@ body.topbar-collapsed #gtb-expand-handle .gtb-handle-icon {
     transform: rotate(0deg);
 }
 
-/* 磁吸触发感应区域 (更大磁吸感应范围) */
+/* 磁吸触发感应区域 (紧凑型磁吸感应范围，触发时可视化呈现感应边界) */
 #gtb-expand-handle::before {
     content: '';
     position: absolute;
-    top: -10px;
-    left: -80px;
-    right: -80px;
-    bottom: -22px;
+    top: -6px;
+    left: -25px;
+    right: -25px;
+    bottom: -15px;
+    border-radius: 8px;
+    border: 1px dashed transparent;
+    background: transparent;
     z-index: -1;
+    pointer-events: auto;
+    opacity: 0;
+    transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                background 0.22s ease,
+                border-color 0.22s ease,
+                box-shadow 0.22s ease;
+}
+
+#gtb-expand-handle:hover::before {
+    opacity: 1;
+    background: rgba(242, 200, 17, 0.08);
+    border-color: rgba(242, 200, 17, 0.5);
+    box-shadow: 0 0 10px rgba(242, 200, 17, 0.18);
 }
 
 #gtb-expand-handle:hover {
