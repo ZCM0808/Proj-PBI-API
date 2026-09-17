@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260917_v2130">
+    <link rel="stylesheet" href="/static/style.css?v=20260917_v2140">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -184,12 +184,12 @@
                 </div>
 
                 <!-- 3. 工作区选择 (Workspace - 支持单选/多选/全选) -->
-                <div class="gtb-item gtb-workspace-box" id="gtb-workspace-box" title="全局活动工作区 (点击展开多选/全选/单选)">
+                <div class="gtb-item gtb-workspace-box" id="gtb-workspace-box" onclick="if(!event.target.closest('#gtb-ws-dropdown') && !event.target.closest('.gtb-copy-btn')) window.toggleGtbWsDropdown(event);" title="全局活动工作区 (点击展开多选/全选/单选)">
                     <div class="gtb-label">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #60a5fa; flex-shrink: 0;"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="22" x2="9" y2="22.01"></line><line x1="15" y1="22" x2="15" y2="22.01"></line><line x1="9" y1="6" x2="9" y2="6.01"></line><line x1="15" y1="6" x2="15" y2="6.01"></line><line x1="9" y1="10" x2="9" y2="10.01"></line><line x1="15" y1="10" x2="15" y2="10.01"></line><line x1="9" y1="14" x2="9" y2="14.01"></line><line x1="15" y1="14" x2="15" y2="14.01"></line><line x1="9" y1="18" x2="9" y2="18.01"></line><line x1="15" y1="18" x2="15" y2="18.01"></line></svg>
                         <span>工作区</span>
                     </div>
-                    <div class="gtb-ws-trigger" id="gtb-ws-trigger" onclick="window.toggleGtbWsDropdown(event)">
+                    <div class="gtb-ws-trigger" id="gtb-ws-trigger">
                         <span id="gtb-ws-display-text" class="gtb-ws-display-text">-- 选择工作区 --</span>
                         <span id="gtb-ws-count-badge" class="gtb-ws-count-badge" style="display: none;">0</span>
                         <svg class="gtb-ws-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -1102,57 +1102,59 @@
                                 <span style="font-size: 0.75rem; color: var(--text-secondary);">直属角色 + 安全组穿透 + 语义模型细粒度读写</span>
                             </div>
                             <div class="wf-step-content" style="display: block; margin-top: 8px;">
-                                <!-- Top Controls: Workspace Selector & User Picker -->
-                                <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
-                                    <div style="display: grid; grid-template-columns: minmax(200px, 1fr) minmax(280px, 1.5fr); gap: 12px; align-items: flex-end;">
-                                        <div>
-                                            <label style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500; display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-                                                <span>🎯 审计目标范围 (Audit Target Scope)</span>
-                                                <span style="font-size: 0.70rem; color: var(--accent); font-weight: normal;">从全局功能区继承与联动</span>
-                                            </label>
-                                            <div class="wf-gum-scope-container" id="wf-gum-scope-container">
-                                                <!-- 选项1：当前租户级别 (Tenant Level - 租户单选) -->
-                                                <div class="wf-gum-scope-pill active" id="wf-gum-scope-tenant" onclick="window.handleGumScopeChange('tenant')" title="当前租户级别：穿透全租户所有工作区与模型进行全局穿透审计 (继承全局顶栏租户)">
-                                                    <div class="wf-gum-scope-radio">
-                                                        <div class="wf-gum-radio-dot"></div>
-                                                    </div>
-                                                    <div class="wf-gum-scope-info">
-                                                        <div class="wf-gum-scope-title">
-                                                            <span>🏢 当前租户级别</span>
-                                                            <span class="wf-gum-scope-tag tag-tenant">租户单选</span>
-                                                        </div>
-                                                        <div class="wf-gum-scope-detail" id="wf-gum-scope-tenant-detail">
-                                                            组织: <b id="wf-gum-echo-tenant-name">默认组织</b>
-                                                        </div>
-                                                    </div>
+                                <!-- Top Controls: Dual-Level Scope Cards (Row 1) & Search/Scanner (Row 2) -->
+                                <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px;">
+                                    <!-- Row 1: 🎯 审计目标范围 (Audit Target Scope - 租户单选 vs 工作区多选) -->
+                                    <div style="width: 100%;">
+                                        <label style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500; display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                                            <span>🎯 审计目标范围 (Audit Target Scope)</span>
+                                            <span style="font-size: 0.70rem; color: var(--accent); font-weight: normal;">从全局功能区继承与联动</span>
+                                        </label>
+                                        <div class="wf-gum-scope-container" id="wf-gum-scope-container">
+                                            <!-- 选项1：当前租户级别 (Tenant Level - 租户单选) -->
+                                            <div class="wf-gum-scope-pill active" id="wf-gum-scope-tenant" onclick="window.handleGumScopeChange('tenant')" title="当前租户级别：穿透全租户所有工作区与模型进行全局穿透审计 (继承全局顶栏租户)">
+                                                <div class="wf-gum-scope-radio">
+                                                    <div class="wf-gum-radio-dot"></div>
                                                 </div>
-
-                                                <!-- 选项2：当前工作区级别 (Workspace Level - 工作区多选) -->
-                                                <div class="wf-gum-scope-pill" id="wf-gum-scope-workspaces" onclick="window.handleGumScopeChange('workspaces')" title="当前工作区级别：仅对全局功能区选定的工作区进行细粒度穿透审计 (支持多选/全选)">
-                                                    <div class="wf-gum-scope-radio">
-                                                        <div class="wf-gum-radio-dot"></div>
+                                                <div class="wf-gum-scope-info">
+                                                    <div class="wf-gum-scope-title">
+                                                        <span>🏢 当前租户级别</span>
+                                                        <span class="wf-gum-scope-tag tag-tenant">租户单选</span>
                                                     </div>
-                                                    <div class="wf-gum-scope-info">
-                                                        <div class="wf-gum-scope-title">
-                                                            <span>📂 当前工作区级别</span>
-                                                            <span class="wf-gum-scope-tag tag-ws" id="wf-gum-echo-ws-count-badge">已选 0 个</span>
-                                                        </div>
-                                                        <div class="wf-gum-scope-detail" id="wf-gum-scope-ws-detail">
-                                                            <span id="wf-gum-echo-ws-summary">未选工作区 (点击配置)</span>
-                                                        </div>
+                                                    <div class="wf-gum-scope-detail" id="wf-gum-scope-tenant-detail">
+                                                        组织: <b id="wf-gum-echo-tenant-name">默认组织</b>
                                                     </div>
                                                 </div>
                                             </div>
-                                            <!-- 隐藏域保留向后兼容 -->
-                                            <input type="hidden" id="wf-gum-workspace-select" value="">
-                                            <input type="hidden" id="wf-gum-scope-type" value="tenant">
+
+                                            <!-- 选项2：当前工作区级别 (Workspace Level - 工作区多选) -->
+                                            <div class="wf-gum-scope-pill" id="wf-gum-scope-workspaces" onclick="window.handleGumScopeChange('workspaces')" title="当前工作区级别：仅对全局功能区选定的工作区进行细粒度穿透审计 (支持多选/全选)">
+                                                <div class="wf-gum-scope-radio">
+                                                    <div class="wf-gum-radio-dot"></div>
+                                                </div>
+                                                <div class="wf-gum-scope-info">
+                                                    <div class="wf-gum-scope-title">
+                                                        <span>📂 当前工作区级别</span>
+                                                        <span class="wf-gum-scope-tag tag-ws" id="wf-gum-echo-ws-count-badge">已选 0 个</span>
+                                                    </div>
+                                                    <div class="wf-gum-scope-detail" id="wf-gum-scope-ws-detail">
+                                                        <span id="wf-gum-echo-ws-summary">未选工作区 (点击配置)</span>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div style="position: relative;" id="wf-gum-search-wrapper">
-                                            <label style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500; display: flex; justify-content: space-between; margin-bottom: 4px;">
-                                                <span>🔍 搜索与定向用户过滤 (Search &amp; Target Principals)</span>
-                                                <span id="gum-search-hint" style="font-size: 0.72rem; color: var(--accent); font-weight: normal;">点击展开下拉列表选择用户或输入筛选</span>
-                                            </label>
-                                            <div style="position: relative; display: flex; align-items: center; gap: 8px;">
+                                        <!-- 隐藏域保留向后兼容 -->
+                                        <input type="hidden" id="wf-gum-workspace-select" value="">
+                                        <input type="hidden" id="wf-gum-scope-type" value="tenant">
+                                    </div>
+
+                                    <!-- Row 2: 🔍 搜索与定向用户过滤 (Search & Target Principals) -->
+                                    <div style="position: relative; width: 100%;" id="wf-gum-search-wrapper">
+                                        <label style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500; display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                            <span>🔍 搜索与定向用户过滤 (Search &amp; Target Principals)</span>
+                                            <span id="gum-search-hint" style="font-size: 0.72rem; color: var(--accent); font-weight: normal;">点击展开下拉列表选择用户或输入筛选</span>
+                                        </label>
+                                        <div style="position: relative; display: flex; align-items: center; gap: 8px;">
                                                 <div style="position: relative; display: flex; align-items: center; flex: 1;">
                                                     <input type="text" id="wf-gum-search" class="wf-input" style="height: 36px; padding-right: 56px; width: 100%;" placeholder="搜索或点击下拉选择目标用户..." autocomplete="off"
                                                         onfocus="if(window.openGumUserDropdown) window.openGumUserDropdown();"
@@ -2711,7 +2713,7 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260906_v1225"></script>
-    <script src="/static/script.js?v=20260917_v2130"></script>
+    <script src="/static/script.js?v=20260917_v2140"></script>
 
 
 

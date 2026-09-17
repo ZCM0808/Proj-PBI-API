@@ -2771,6 +2771,39 @@ try {
     }
 } catch(e) {}
 
+// 汇聚所有来源的可用工作区列表 (localStorage, workspace-list UI, gumWorkspaces, allWorkspaces)
+window.getMergedGtbWorkspaces = function() {
+    const rawList = [];
+    try {
+        const stored = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+        if (Array.isArray(stored)) rawList.push(...stored);
+    } catch(e) {}
+    if (typeof window.getListData === 'function') {
+        const liveList = window.getListData('workspace-list');
+        if (Array.isArray(liveList)) rawList.push(...liveList);
+    }
+    if (Array.isArray(window.gumWorkspaces)) rawList.push(...window.gumWorkspaces);
+    if (Array.isArray(window.allWorkspaces)) rawList.push(...window.allWorkspaces);
+
+    const uniqueMap = new Map();
+    rawList.forEach(w => {
+        if (!w) return;
+        const id = String(w.id || w.workspaceId || '').trim();
+        if (!id) return;
+        const name = String(w.alias || w.name || w.displayName || id).trim();
+        if (!uniqueMap.has(id.toLowerCase())) {
+            uniqueMap.set(id.toLowerCase(), { id: id, alias: name, name: name });
+        }
+    });
+    const result = Array.from(uniqueMap.values());
+    if (result.length > 0) {
+        try {
+            localStorage.setItem('pbi_workspaces', JSON.stringify(result));
+        } catch(e) {}
+    }
+    return result;
+};
+
 // 获取当前在全局功能区选中的所有工作区 ID 数组
 window.getSelectedWorkspaces = function() {
     return Array.from(window.selectedGtbWorkspaceIds || []);
@@ -2781,13 +2814,17 @@ window.toggleGtbWsDropdown = function(event) {
     if (event) event.stopPropagation();
     const dropdown = document.getElementById('gtb-ws-dropdown');
     const trigger = document.getElementById('gtb-ws-trigger');
+    const box = document.getElementById('gtb-workspace-box');
     if (!dropdown) return;
     const isVisible = (dropdown.style.display === 'flex');
     if (isVisible) {
         window.closeGtbWsDropdown();
     } else {
+        // 关键：打开前强制执行一次全面数据聚合与列表渲染
+        window.updateGlobalTopbarDropdowns();
         dropdown.style.display = 'flex';
         if (trigger) trigger.classList.add('active');
+        if (box) box.classList.add('active');
         const searchInput = document.getElementById('gtb-ws-search-input');
         if (searchInput) {
             searchInput.value = '';
@@ -2801,13 +2838,15 @@ window.toggleGtbWsDropdown = function(event) {
 window.closeGtbWsDropdown = function() {
     const dropdown = document.getElementById('gtb-ws-dropdown');
     const trigger = document.getElementById('gtb-ws-trigger');
+    const box = document.getElementById('gtb-workspace-box');
     if (dropdown) dropdown.style.display = 'none';
     if (trigger) trigger.classList.remove('active');
+    if (box) box.classList.remove('active');
 };
 
 // 全选或清空已选工作区
 window.selectAllGtbWorkspaces = function(selectAll = true) {
-    const wsData = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+    const wsData = window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
     if (selectAll) {
         wsData.forEach(w => { if (w && w.id) window.selectedGtbWorkspaceIds.add(String(w.id)); });
     } else {
@@ -2889,7 +2928,7 @@ if (!window._gtbWsClickListenerAdded) {
 }
 
 window.updateGlobalTopbarDropdowns = function() {
-    const wsData = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+    const wsData = window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
     const dsData = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
     const rpData = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
 
@@ -16862,7 +16901,7 @@ window.syncGumScopeDisplay = function() {
     const wsBadge = document.getElementById('wf-gum-echo-ws-count-badge');
     const wsSummary = document.getElementById('wf-gum-echo-ws-summary');
     const selectedWss = window.getSelectedWorkspaces ? window.getSelectedWorkspaces() : [];
-    const wsData = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+    const wsData = window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
 
     if (wsBadge) {
         if (selectedWss.length === 0) {
@@ -16885,7 +16924,7 @@ window.syncGumScopeDisplay = function() {
 
     if (wsSummary) {
         if (selectedWss.length === 0) {
-            wsSummary.innerHTML = '<span style="color: var(--warning); cursor: pointer;" onclick="window.toggleGtbWsDropdown(event)">⚠️ 全局功能区未选工作区 (点击展开顶栏配置)</span>';
+            wsSummary.innerHTML = '<span style="color: var(--warning); cursor: pointer;" onclick="window.toggleGtbWsDropdown(event)" title="点击展开顶栏工作区多选面板">⚠️ 未选工作区 (点击配置)</span>';
         } else if (selectedWss.length === 1) {
             const matched = wsData.find(w => String(w.id).toLowerCase() === selectedWss[0].toLowerCase());
             const name = matched ? (matched.alias || matched.name || matched.id) : selectedWss[0];
