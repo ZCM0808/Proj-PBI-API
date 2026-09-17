@@ -108,7 +108,7 @@ async def auth_middleware(request: Request, call_next):
         return await call_next(request)
 
     if Config.APP_ACCESS_PASSWORD:
-        whitelist = ["/login", "/api/login", "/static/login.html", "/api/app-info"]
+        whitelist = ["/login", "/api/login", "/static/login.html", "/api/app-info", "/api/version"]
         if request.url.path not in whitelist and not request.url.path.startswith("/static/"):
             token = request.cookies.get("pbi_auth_token")
             if not token or not verify_auth_token(token):
@@ -333,6 +333,61 @@ async def app_info():
         "is_dev_mode": is_dev_mode(),
         "env": os.getenv("APP_ENV", "production" if not is_dev_mode() else "development")
     })
+
+
+@app.get("/api/version")
+async def get_version_info():
+    """公开接口：获取当前系统版本号、最新 Git 提交信息及变更摘要"""
+    def _read_git_info() -> Dict[str, Any]:
+        info: Dict[str, Any] = {
+            "success": True,
+            "version": "v1.0.0",
+            "commit_hash": "unknown",
+            "pushed_at": "unknown",
+            "author": "unknown",
+            "summary": "暂无提交描述",
+            "recent_commits": [],
+        }
+        try:
+            cmd = ["git", "log", "-n", "5", "--pretty=format:%h%x09%an%x09%ad%x09%s", "--date=iso"]
+            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=2.5, encoding="utf-8")
+            if res.returncode == 0 and res.stdout.strip():
+                lines = [line.strip() for line in res.stdout.strip().split("\n") if line.strip()]
+                commits = []
+                for line in lines:
+                    parts = line.split("\t")
+                    if len(parts) >= 4:
+                        h, author, dt, msg = parts[0], parts[1], parts[2], parts[3]
+                        commits.append({
+                            "hash": h,
+                            "author": author,
+                            "date": dt.split(" +")[0].split(" -")[0],
+                            "message": msg
+                        })
+                if commits:
+                    first = commits[0]
+                    date_part = first["date"].split(" ")[0].replace("-", ".")
+                    derived_ver = os.getenv("APP_VERSION", f"v{date_part}")
+                    info.update({
+                        "version": derived_ver,
+                        "commit_hash": first["hash"],
+                        "pushed_at": first["date"],
+                        "author": first["author"],
+                        "summary": first["message"],
+                        "recent_commits": commits,
+                    })
+                    return info
+        except Exception:
+            pass
+
+        info["version"] = os.getenv("APP_VERSION", "v2026.09.17")
+        info["commit_hash"] = os.getenv("GIT_COMMIT", "5e17e2a")[:7]
+        info["pushed_at"] = os.getenv("BUILD_TIME", "2026-09-16 20:47:38")
+        info["summary"] = os.getenv("BUILD_MESSAGE", "Release Build")
+        return info
+
+    data = await asyncio.to_thread(_read_git_info)
+    return JSONResponse(content=data)
 
 
 @app.get("/api/session-status")

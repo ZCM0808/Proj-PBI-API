@@ -21285,3 +21285,196 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     } catch(e) {}
 });
+
+/* ==========================================================================
+   Compact Version Info Popover Logic
+   ========================================================================== */
+let cachedVersionData = null;
+
+window.closeVersionPopover = function() {
+    const popover = document.getElementById('version-popover');
+    if (!popover || !popover.classList.contains('active')) return;
+    popover.classList.remove('active');
+    setTimeout(() => {
+        if (!popover.classList.contains('active')) {
+            popover.style.display = 'none';
+        }
+    }, 220);
+};
+
+window.copyVpHash = function(hash, btn) {
+    if (!hash) return;
+    navigator.clipboard.writeText(hash).then(() => {
+        const originalText = btn.innerHTML;
+        btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> 已复制`;
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+        }, 1500);
+    }).catch(() => {});
+};
+
+window.toggleVpHistory = function() {
+    const list = document.getElementById('vp-history-list');
+    const toggleBtn = document.getElementById('vp-history-toggle-btn');
+    if (!list || !toggleBtn) return;
+    if (list.style.display === 'none' || !list.style.display) {
+        list.style.display = 'flex';
+        toggleBtn.innerHTML = `收起更新历史 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>`;
+    } else {
+        list.style.display = 'none';
+        toggleBtn.innerHTML = `查看更多历史 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+    }
+};
+
+window.renderVersionPopoverContent = function(data) {
+    const container = document.getElementById('vp-body-content');
+    if (!container) return;
+
+    const commits = Array.isArray(data.recent_commits) ? data.recent_commits : [];
+    const hasHistory = commits.length > 1;
+
+    let historyHtml = '';
+    if (hasHistory) {
+        const extraCommits = commits.slice(1);
+        const items = extraCommits.map(c => `
+            <div class="vp-history-item">
+                <div class="vp-h-top">
+                    <span>${escapeHtml(c.hash || '')}</span>
+                    <span>${escapeHtml(c.date || '')}</span>
+                </div>
+                <div style="color: var(--text-primary); font-size: 0.72rem;">${escapeHtml(c.message || '')}</div>
+            </div>
+        `).join('');
+
+        historyHtml = `
+            <div class="vp-history-section">
+                <button type="button" id="vp-history-toggle-btn" class="vp-history-toggle" onclick="window.toggleVpHistory()">
+                    查看更多历史 (${commits.length} 次) <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                <div id="vp-history-list" class="vp-history-list" style="display: none;">
+                    ${items}
+                </div>
+            </div>
+        `;
+    }
+
+    container.innerHTML = `
+        <div class="vp-badge-row">
+            <span class="vp-version-badge">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="12 8 8 12 12 16 12 8"></polygon></svg>
+                <span>${escapeHtml(data.version || 'v1.0.0')}</span>
+            </span>
+            <button type="button" class="vp-hash-btn" title="点击复制 Commit Hash" onclick="window.copyVpHash('${escapeHtml(data.commit_hash || '')}', this)">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                <span>${escapeHtml(data.commit_hash || 'unknown')}</span>
+            </button>
+        </div>
+
+        <div class="vp-field">
+            <div class="vp-field-label">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <span>推送时间</span>
+            </div>
+            <div class="vp-field-value" style="font-family: monospace; font-size: 0.74rem;">
+                ${escapeHtml(data.pushed_at || '未知')}
+            </div>
+        </div>
+
+        <div class="vp-field">
+            <div class="vp-field-label">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                <span>最新修改</span>
+            </div>
+            <div class="vp-commit-card">
+                ${escapeHtml(data.summary || '无修改描述')}
+                ${data.author ? `<div class="vp-author-tag">提交者: ${escapeHtml(data.author)}</div>` : ''}
+            </div>
+        </div>
+
+        ${historyHtml}
+    `;
+};
+
+window.toggleVersionPopover = async function(event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    const popover = document.getElementById('version-popover');
+    const btn = document.getElementById('btn-version-info');
+    if (!popover || !btn) return;
+
+    if (popover.classList.contains('active')) {
+        window.closeVersionPopover();
+        return;
+    }
+
+    // 动态定位到按钮右侧
+    const rect = btn.getBoundingClientRect();
+    popover.style.display = 'flex';
+    popover.style.left = (rect.right + 12) + 'px';
+
+    // 计算纵向位置：使 popover 底部尽量靠近按钮底部
+    const popoverHeight = popover.offsetHeight || 220;
+    let targetTop = rect.bottom - popoverHeight;
+    if (targetTop < 15) targetTop = 15;
+    if (targetTop + popoverHeight > window.innerHeight - 15) {
+        targetTop = window.innerHeight - popoverHeight - 15;
+    }
+    popover.style.top = targetTop + 'px';
+
+    // 触发动画展开
+    requestAnimationFrame(() => {
+        popover.classList.add('active');
+    });
+
+    // 请求数据
+    if (cachedVersionData) {
+        window.renderVersionPopoverContent(cachedVersionData);
+    } else {
+        try {
+            const resp = await fetch('/api/version');
+            if (resp.ok) {
+                const data = await resp.json();
+                cachedVersionData = data;
+                window.renderVersionPopoverContent(data);
+                // 重新校准一次高度定位
+                const newHeight = popover.offsetHeight;
+                let adjustedTop = rect.bottom - newHeight;
+                if (adjustedTop < 15) adjustedTop = 15;
+                if (adjustedTop + newHeight > window.innerHeight - 15) {
+                    adjustedTop = window.innerHeight - newHeight - 15;
+                }
+                popover.style.top = adjustedTop + 'px';
+            } else {
+                const container = document.getElementById('vp-body-content');
+                if (container) {
+                    container.innerHTML = `<div style="color: var(--error); font-size: 0.78rem; padding: 10px 0;">获取版本失败 (HTTP ${resp.status})</div>`;
+                }
+            }
+        } catch (err) {
+            const container = document.getElementById('vp-body-content');
+            if (container) {
+                container.innerHTML = `<div style="color: var(--error); font-size: 0.78rem; padding: 10px 0;">网络异常，无法获取版本</div>`;
+            }
+        }
+    }
+};
+
+// 全局事件监听：点击外部关闭 / 按 ESC 关闭
+document.addEventListener('click', (e) => {
+    const popover = document.getElementById('version-popover');
+    const btn = document.getElementById('btn-version-info');
+    if (!popover || !popover.classList.contains('active')) return;
+    if (popover.contains(e.target) || (btn && btn.contains(e.target))) {
+        return;
+    }
+    window.closeVersionPopover();
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        window.closeVersionPopover();
+    }
+});
+

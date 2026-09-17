@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260916_v0755">
+    <link rel="stylesheet" href="/static/style.css?v=20260917_v1515">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -289,6 +289,16 @@
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.31L4.62 18.5A2 2 0 0 0 6.35 21.5h11.3a2 2 0 0 0 1.73-3L14 9.31V2"></path><line x1="8.5" y1="2" x2="15.5" y2="2"></line><line x1="14" y1="9.3" x2="10" y2="9.3"></line></svg>
                     </div>
                     <span class="rail-item-text">QA Harness</span>
+                </button>
+                <button id="btn-version-info" class="rail-item" style="border:none;" title="版本与更新记录 (Version & Releases)" onclick="window.toggleVersionPopover(event)">
+                    <div class="rail-item-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                    </div>
+                    <span class="rail-item-text">Version</span>
                 </button>
                 <button id="theme-toggle-btn" class="rail-item" style="border:none;" title="切换主题 (Toggle Theme)">
                     <div class="rail-item-icon">
@@ -2628,7 +2638,7 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260906_v1225"></script>
-    <script src="/static/script.js?v=20260916_v0755"></script>
+    <script src="/static/script.js?v=20260917_v1515"></script>
 
 
 
@@ -2762,6 +2772,30 @@
             </div>
         </div>
     </div>
+
+    <!-- Compact Version Info Popover (Mini Floating Prompt) -->
+    <div id="version-popover" class="version-popover glass-panel" style="display: none;" onclick="event.stopPropagation()">
+        <div class="vp-header">
+            <div class="vp-title-wrap">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                <span class="vp-title">版本与更新记录</span>
+            </div>
+            <button type="button" class="close-btn" onclick="window.closeVersionPopover()" title="Close">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div class="vp-body" id="vp-body-content">
+            <div class="vp-loading">
+                <svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" style="animation: spin 1s linear infinite;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                <span>正在加载版本数据...</span>
+            </div>
+        </div>
+    </div>
+
     <!-- Background Daily Limit Pinger -->
     <script>
         (function() {
