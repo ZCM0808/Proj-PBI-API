@@ -17740,43 +17740,44 @@ window.setGumPillFilter = function(filterType, btn) {
 // --- Targeted Principals (定向用户审计与级联筛选) ---
 
 window.renderGumTargetTags = function() {
-    const bar = document.getElementById('wf-gum-target-tags-bar');
-    const container = document.getElementById('wf-gum-target-tags-container');
-    const countSpan = document.getElementById('wf-gum-target-count');
+    const searchInput = document.getElementById('wf-gum-search');
+    const clearBtn = document.getElementById('wf-gum-search-clear');
     const searchHint = document.getElementById('gum-search-hint');
-    if (!bar || !container) return;
+    const countSpan = document.getElementById('wf-gum-target-count');
 
     const count = window.gumTargetUsers ? window.gumTargetUsers.size : 0;
     if (countSpan) countSpan.textContent = count;
 
-    if (searchHint) {
-        const allCandidates = window.gumCandidateUsers || [];
-        if (count > 0) {
-            searchHint.innerHTML = `<span style="color:var(--accent); font-weight: 600;">已锁定 ${count} 位审计目标</span>`;
+    const names = [];
+    if (window.gumTargetUsers && window.gumTargetUsers.size > 0) {
+        window.gumTargetUsers.forEach(u => {
+            const name = (u.displayName && u.displayName !== u.identifier) ? u.displayName : u.identifier;
+            names.push(name);
+        });
+    }
+
+    if (searchInput) {
+        if (names.length > 0) {
+            searchInput.value = names.join(', ');
+            searchInput.title = `已选 ${names.length} 位目标用户: ${names.join(', ')}`;
+            if (clearBtn) clearBtn.style.display = 'block';
         } else {
-            searchHint.innerText = allCandidates.length > 0 ? `可选 ${allCandidates.length} 位用户` : '点击展开下拉列表选择用户';
+            if (!searchInput.matches(':focus')) {
+                searchInput.value = '';
+                searchInput.removeAttribute('title');
+                if (clearBtn) clearBtn.style.display = 'none';
+            }
         }
     }
 
-    if (count === 0) {
-        bar.style.display = 'none';
-        container.innerHTML = '<span style="font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 4px;">🎯 定向审计目标用户 (<span id="wf-gum-target-count">0</span>):</span>';
-        return;
+    if (searchHint) {
+        const allCandidates = window.gumCandidateUsers || [];
+        if (names.length > 0) {
+            searchHint.innerHTML = `<span style="color:var(--accent); font-weight: 600;">已锁定 ${names.length} 位审计目标</span>`;
+        } else {
+            searchHint.innerText = allCandidates.length > 0 ? `可选 ${allCandidates.length} 位用户` : '点击展开下拉列表选择用户或输入筛选';
+        }
     }
-
-    bar.style.display = 'flex';
-    let html = `<span style="font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 4px;">🎯 定向审计目标用户 (<span id="wf-gum-target-count">${count}</span>):</span>`;
-    
-    window.gumTargetUsers.forEach((userObj) => {
-        const disp = (userObj.displayName && userObj.displayName !== userObj.identifier) ? `${userObj.displayName} (${userObj.identifier})` : userObj.identifier;
-        html += `
-            <span class="gum-target-tag" style="display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; background: var(--accent); color: #0b0d12; border-radius: 12px; font-size: 0.73rem; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.15);">
-                <span>${disp}</span>
-                <span onclick="window.removeGumTargetUser('${userObj.identifier.replace(/'/g, "\\'")}'); event.stopPropagation();" style="cursor: pointer; font-weight: bold; opacity: 0.85; font-size: 0.8rem; margin-left: 2px;" title="移除该目标">✕</span>
-            </span>
-        `;
-    });
-    container.innerHTML = html;
 };
 
 window.addGumTargetUser = function(identifier, displayName) {

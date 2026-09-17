@@ -400,4 +400,30 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     expect(scanTriggered).toBe(false);
   });
 
+
+  test('工作流标题高度矮化且已选定向审计用户直接回显在搜索框中', async ({ page }) => {
+    // 1. 验证工作流标题栏和按钮高度收敛
+    const headerInfo = await page.evaluate(() => {
+      const header = document.querySelector('.wf-detail-board > .modal-header');
+      const runBtn = document.getElementById('wf-btn-runall');
+      return {
+        headerHeight: header ? header.getBoundingClientRect().height : 0,
+        runBtnHeight: runBtn ? runBtn.getBoundingClientRect().height : 0
+      };
+    });
+    expect(headerInfo.headerHeight).toBeLessThanOrEqual(42);
+    expect(headerInfo.runBtnHeight).toBeLessThanOrEqual(30);
+
+    // 2. 验证“定向审计目标用户”栏已移除
+    await expect(page.locator('#wf-gum-target-tags-bar')).toHaveCount(0);
+
+    // 3. 验证选中目标用户后，用户名回显在搜索框中
+    await page.evaluate(() => {
+      window.gumTargetUsers.clear();
+      window.toggleGumTargetUser('user1@example.com', 'User One');
+      window.toggleGumTargetUser('user2@example.com', 'User Two');
+    });
+    const searchVal = await page.locator('#wf-gum-search').inputValue();
+    expect(searchVal).toBe('User One, User Two');
+  });
 });
