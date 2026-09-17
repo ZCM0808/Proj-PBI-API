@@ -3011,7 +3011,6 @@ window.updateGlobalTopbarDropdowns = function() {
                                 <div class="gtb-ws-item-sub" title="${wid}">${wid}</div>
                             </div>
                         </div>
-                        <button type="button" class="gtb-ws-item-only-btn" onclick="window.selectSingleGtbWorkspace('${wid}'); event.stopPropagation();" title="仅选此工作区">仅选</button>
                     </div>
                 `;
             });
@@ -3082,9 +3081,13 @@ window.updateGlobalTopbarDropdowns = function() {
         window.renderGlobalXmlaHistoryOptions();
     }
 
-    // 联动 GUM 目标范围展示
+    // 联动 GUM 目标范围展示与候选人员状态 (不自动发起扫描，等待用户手动点击)
     if (window.syncGumScopeDisplay) {
         window.syncGumScopeDisplay();
+    }
+    window.gumCandidateUsers = [];
+    if (window.renderGumUserOptions) {
+        window.renderGumUserOptions('');
     }
 };
 
@@ -16878,9 +16881,10 @@ window.handleGumScopeChange = function(scope) {
 
     window.syncGumScopeDisplay();
 
-    // 重新拉取对应范围的候选用户
-    if (window.fetchGumWorkspaceUsers) {
-        window.fetchGumWorkspaceUsers(false);
+    // 切换范围后清空旧范围的候选用户，由用户手动点击扫描按钮启动拉取
+    window.gumCandidateUsers = [];
+    if (window.renderGumUserOptions) {
+        window.renderGumUserOptions('');
     }
     // 若已有数据，重新本地过滤表格
     if (window.filterGumTable) {
@@ -16966,11 +16970,6 @@ window.initGumWorkspaceSelector = function() {
     if (hiddenScope) hiddenScope.value = currentScope;
 
     window.syncGumScopeDisplay();
-
-    // 自动拉取当前范围的候选用户列表
-    if (window.fetchGumWorkspaceUsers) {
-        window.fetchGumWorkspaceUsers(false);
-    }
 };
 
 window.openGumUserDropdown = function() {
@@ -17988,8 +17987,10 @@ window.filterGumTable = function() {
 };
 
 window.handleGumWorkspaceChange = function(wsId) {
-    if (window.fetchGumWorkspaceUsers) {
-        window.fetchGumWorkspaceUsers(false);
+    // 变更工作区后清空候选用户列表，由用户手动点击扫描按钮启动拉取
+    window.gumCandidateUsers = [];
+    if (window.renderGumUserOptions) {
+        window.renderGumUserOptions('');
     }
     if (window.gumData && window.gumData.length > 0) {
         window.filterGumTable();

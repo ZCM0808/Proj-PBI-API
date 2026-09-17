@@ -373,4 +373,31 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     expect(uiErrors.length, 'Found UI Consistency Violations:\\n' + uiErrors.join('\\n')).toBe(0);
   });
 
+  test('全局工作区下拉浮层已移除“完成”与“仅选”按钮，且 API 树充满工作区无多余空白', async ({ page }) => {
+    // 1. 验证不存在 .gtb-ws-btn-ok 和 .gtb-ws-item-only-btn
+    await expect(page.locator('.gtb-ws-btn-ok')).toHaveCount(0);
+    await expect(page.locator('.gtb-ws-item-only-btn')).toHaveCount(0);
+
+    // 2. 验证 API Tree 页面布局：#view-api_tree 是 #workspace-container 的直接子元素
+    const isChild = await page.evaluate(() => {
+        const wsContainer = document.getElementById('workspace-container');
+        const apiView = document.getElementById('view-api_tree');
+        return wsContainer && apiView && apiView.parentElement === wsContainer;
+    });
+    expect(isChild).toBe(true);
+
+    // 3. 验证 GUM 范围切换时不自动发起 fetchGumWorkspaceUsers
+    const scanTriggered = await page.evaluate(() => {
+        let fetchCalled = false;
+        const origFetch = window.fetchGumWorkspaceUsers;
+        window.fetchGumWorkspaceUsers = () => { fetchCalled = true; };
+        if (window.handleGumScopeChange) {
+            window.handleGumScopeChange('workspaces');
+        }
+        window.fetchGumWorkspaceUsers = origFetch;
+        return fetchCalled;
+    });
+    expect(scanTriggered).toBe(false);
+  });
+
 });
