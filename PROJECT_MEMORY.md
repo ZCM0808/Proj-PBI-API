@@ -1612,3 +1612,33 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
   3. 捕获并校验了渲染快照证据 `scratch/decoupled_unpinned_btn_hover.png` 与 `scratch/decoupled_pinned_btn_hover.png`；
   4. 后端静态分析工具 `ruff` 和 `mypy` 校验全量通过，0 警告，0 错误。
 
+---
+
+## 49. 工作流头部标题栏高度矮化与定向审计目标用户输入框回显重构 (Compact Workflow Header & Target User Direct Search Input Sync)
+
+### 49.1 业务背景与用户诉求 (User Requirements)
+1. **工作流标题栏高度过高**：原工作流详情板头部标题区域内边距与外边距（上下 padding 14px，margin-bottom 14px）占用较大垂直可视空间，且右侧按钮（沉浸模式按钮 36px、Run Workflow 按钮 36px）尺寸偏大，导致主体配置区域被向下推挤；
+2. **定向审计用户展示冗余**：用户在 GUM 模块中选择审计目标人员后，下方额外弹出的 `wf-gum-target-tags-bar` 标签栏（包含“🎯 定向审计目标用户 ( 4 ):”前缀文字、标签芯片等）占据了整行横向与纵向面积，视觉繁复。用户要求移除该标签栏，将选中的目标用户名直接同步显示在搜索输入框（`#wf-gum-search`）中。
+
+### 49.2 核心实现与架构设计 (Implementation & Architecture)
+- **1. 工作流头部紧凑化与按钮尺寸同步矮化**：
+  - 在 [static/index.html](file:///D:/zcm/Proj-PBI-API/static/index.html) 与 [static/style.css](file:///D:/zcm/Proj-PBI-API/static/style.css) 中，将 `.wf-detail-board > .modal-header` 的 padding 收敛为 `0 0 8px 0`，`margin-bottom` 设为 `8px`；
+  - 标题文字 `#wf-board-title` 字体尺寸由 `1.15rem` 精炼收敛为 `0.95rem`；
+  - 标题栏右侧的沉浸模式按钮 `.zen-mode-btn` 尺寸由 `36px * 36px` 收敛为 `28px * 28px`（图标 13px）；
+  - 主动作按钮 `#wf-btn-runall` 高度由 `36px` 收敛为 `28px`，内边距 `0 12px`，字体 `0.78rem`，矢量图标 `13px * 13px`，整体头部高度从近 70px 压缩至 37px，与 API 树头部视觉基准高度和谐一致。
+- **2. 彻底移除“定向审计目标用户”栏并将人员直接回显于搜索框**：
+  - 在 HTML 中移除 `wf-gum-target-tags-bar` 结构，保留隐藏的兼容字段（`#wf-gum-only-targets-toggle` 默认为 true，`#wf-gum-target-count` 兜底统计）；
+  - 在 [static/script.js](file:///D:/zcm/Proj-PBI-API/static/script.js) 中重构 `window.renderGumTargetTags()`：
+    - 选中用户后，提取所有目标的真实姓名或标识并以 `, ` 连接，直接写入搜索框 `wf-gum-search.value`；
+    - 输入框注入 `title` 属性显示完整的人员清单；
+    - 动态显现右侧清除按钮 `✕`（`#wf-gum-search-clear`），点击即可调用 `clearGumTargetUsers()` 一键清空所有锁定目标并重置列表；
+    - 搜索框上方状态提示联动更新为高亮 `已锁定 X 位目标用户`。
+
+### 49.3 自动化测试与质量闭环 (Automated QA & Playwright TDD Loop)
+- 在 [tests/e2e.spec.js](file:///D:/zcm/Proj-PBI-API/tests/e2e.spec.js) 中新增自动化测试用例并通过验证：
+  1. 断言标题栏高度 <= 42px，运行按钮高度 <= 30px；
+  2. 断言页面中 `#wf-gum-target-tags-bar` 已彻底移除；
+  3. 模拟锁定 2 位用户后，断言搜索框内精准回显 `User One, User Two`；
+- 静态分析校验：`node -c static/script.js`、`python -m ruff check src/`、`python -m mypy src/main.py` 全量通过（0 警告，0 错误）。
+
+
