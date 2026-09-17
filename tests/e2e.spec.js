@@ -417,13 +417,47 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     // 2. 验证“定向审计目标用户”栏已移除
     await expect(page.locator('#wf-gum-target-tags-bar')).toHaveCount(0);
 
-    // 3. 验证选中目标用户后，用户名回显在搜索框中
+    // 3. 验证选中目标用户后，用户名回显在搜索框中且下拉列表其他用户不消失
     await page.evaluate(() => {
+      window.gumCandidateUsers = [
+        { identifier: 'user1@example.com', displayName: 'User One', role: 'Admin', principalType: 'User' },
+        { identifier: 'user2@example.com', displayName: 'User Two', role: 'Member', principalType: 'User' },
+        { identifier: 'user3@example.com', displayName: 'User Three', role: 'Viewer', principalType: 'User' }
+      ];
       window.gumTargetUsers.clear();
+      window.renderGumDropdownUsers('');
       window.toggleGumTargetUser('user1@example.com', 'User One');
-      window.toggleGumTargetUser('user2@example.com', 'User Two');
     });
-    const searchVal = await page.locator('#wf-gum-search').inputValue();
-    expect(searchVal).toBe('User One, User Two');
+    
+    // 验证搜索框值
+    let searchVal = await page.locator('#wf-gum-search').inputValue();
+    expect(searchVal).toBe('User One');
+
+    // 验证下拉列表其他用户没有消失，总数依然为 3
+    const candidatesCount = await page.locator('#wf-gum-dropdown-list .gum-dropdown-item').count();
+    expect(candidatesCount).toBe(3);
+
+    // 4. 验证下拉列表中无刷新按钮，且有全选与取消全选
+    const hasRefreshBtn = await page.evaluate(() => {
+      const dd = document.getElementById('wf-gum-user-dropdown');
+      if (!dd) return false;
+      return Array.from(dd.querySelectorAll('button')).some(b => b.textContent.includes('刷新'));
+    });
+    expect(hasRefreshBtn).toBe(false);
+
+    // 5. 验证全选与取消全选
+    await page.evaluate(() => {
+      window.selectAllGumCandidates(true);
+    });
+    searchVal = await page.locator('#wf-gum-search').inputValue();
+    expect(searchVal).toContain('User One');
+    expect(searchVal).toContain('User Two');
+    expect(searchVal).toContain('User Three');
+
+    await page.evaluate(() => {
+      window.selectAllGumCandidates(false);
+    });
+    searchVal = await page.locator('#wf-gum-search').inputValue();
+    expect(searchVal).toBe('');
   });
 });

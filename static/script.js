@@ -17273,13 +17273,30 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
     }
 };
 
+// 全局搜索过滤词状态（与搜索框的回显展示词彻底解耦）
+window._gumSearchFilterTerm = '';
+
+window.handleGumSearchFocus = function(inputEl) {
+    if (window.openGumUserDropdown) window.openGumUserDropdown();
+    // 获得焦点时，下拉列表展示全量候选人（不使用回显名字作为过滤条件）
+    window.renderGumDropdownUsers(window._gumSearchFilterTerm || '');
+};
+
+window.handleGumSearchInput = function(val) {
+    window._gumSearchFilterTerm = (val || '').toLowerCase().trim();
+    if (window.openGumUserDropdown) window.openGumUserDropdown();
+    if (window.filterGumDropdownUsers) window.filterGumDropdownUsers();
+    if (window.filterGumTable) window.filterGumTable();
+};
+
 window.renderGumDropdownUsers = function(searchTerm = '') {
     const dropdownList = document.getElementById('wf-gum-dropdown-list');
     const dropdownCount = document.getElementById('wf-gum-dropdown-count');
     const searchHint = document.getElementById('gum-search-hint');
     if (!dropdownList) return;
 
-    const term = (searchTerm || document.getElementById('wf-gum-search')?.value || '').toLowerCase().trim();
+    // 核心防御：仅使用显式传入的过滤词或全局打字词 _gumSearchFilterTerm，严禁去读 wf-gum-search.value（因为那里显示的是已选用户标签）
+    const term = (typeof searchTerm === 'string' ? searchTerm : (window._gumSearchFilterTerm || '')).toLowerCase().trim();
     const allCandidates = window.gumCandidateUsers || [];
     const wsSelect = document.getElementById('wf-gum-workspace-select');
     const wsId = wsSelect?.value || '';
@@ -17346,7 +17363,7 @@ window.renderGumDropdownUsers = function(searchTerm = '') {
 点击快速${isSelected ? '取消锁定' : '锁定为定向审计目标'}`;
 
         return `
-            <div class="gum-dropdown-item ${isSelected ? 'selected' : ''}" onclick="window.toggleGumTargetUser('${u.identifier.replace(/'/g, "\'")}', '${dispName.replace(/'/g, "\'")}'); event.stopPropagation();" title="${titleText}">
+            <div class="gum-dropdown-item ${isSelected ? 'selected' : ''}" onclick="window.toggleGumTargetUser('${u.identifier.replace(/'/g, "\\'")}', '${dispName.replace(/'/g, "\\'")}'); event.stopPropagation();" title="${titleText}">
                 <div class="gum-item-left">
                     <span class="gum-item-checkbox">${isSelected ? '✓' : ''}</span>
                     <span style="font-size: 0.9rem;">${icon}</span>
@@ -17362,33 +17379,24 @@ window.renderGumDropdownUsers = function(searchTerm = '') {
 };
 
 window.filterGumDropdownUsers = function() {
-    const searchInput = document.getElementById('wf-gum-search');
-    window.renderGumDropdownUsers(searchInput?.value || '');
+    window.renderGumDropdownUsers(window._gumSearchFilterTerm || '');
 };
 
 // Aliases for compatibility
 window.renderGumCandidateUsers = window.renderGumDropdownUsers;
 window.filterGumCandidateUsers = window.filterGumDropdownUsers;
 
-window.toggleGumSelectAllCandidates = function() {
+// 全选 / 取消全选所有候选人员
+window.selectAllGumCandidates = function(selectAll = true) {
     const candidates = window.gumCandidateUsers || [];
     if (candidates.length === 0) {
         if (window.showNotification) {
-            window.showNotification('当前没有可供全选的工作区候选用户', 'info');
+            window.showNotification('当前没有可供操作的候选用户，请先点击【👥 扫描用户】', 'info');
         }
         return;
     }
 
-    const allSelected = candidates.every(u => window.gumTargetUsers.has(u.identifier.toLowerCase()));
-
-    if (allSelected) {
-        candidates.forEach(u => {
-            window.gumTargetUsers.delete(u.identifier.toLowerCase());
-        });
-        if (window.showNotification) {
-            window.showNotification(`已取消锁定本工作区全部 ${candidates.length} 位候选用户`, 'info');
-        }
-    } else {
+    if (selectAll) {
         candidates.forEach(u => {
             window.gumTargetUsers.set(u.identifier.toLowerCase(), {
                 identifier: u.identifier,
@@ -17396,19 +17404,34 @@ window.toggleGumSelectAllCandidates = function() {
             });
         });
         if (window.showNotification) {
-            window.showNotification(`已锁定本工作区全部 ${candidates.length} 位用户为审计目标`, 'success');
+            window.showNotification(`已全选全部 ${candidates.length} 位候选用户`, 'success');
+        }
+    } else {
+        candidates.forEach(u => {
+            window.gumTargetUsers.delete(u.identifier.toLowerCase());
+        });
+        if (window.showNotification) {
+            window.showNotification('已取消全选候选用户', 'info');
         }
     }
 
+    window._gumSearchFilterTerm = '';
     window.renderGumTargetTags();
-    window.renderGumDropdownUsers();
+    window.renderGumDropdownUsers('');
     window.filterGumTable();
+};
+
+window.toggleGumSelectAllCandidates = function() {
+    const candidates = window.gumCandidateUsers || [];
+    const allSelected = candidates.length > 0 && candidates.every(u => window.gumTargetUsers.has(u.identifier.toLowerCase()));
+    window.selectAllGumCandidates(!allSelected);
 };
 
 window.clearGumTargetUsers = function() {
     window.gumTargetUsers.clear();
+    window._gumSearchFilterTerm = '';
     window.renderGumTargetTags();
-    window.renderGumDropdownUsers();
+    window.renderGumDropdownUsers('');
     window.filterGumTable();
     if (window.showNotification) {
         window.showNotification('已清空所有定向审计目标用户', 'info');
@@ -17825,9 +17848,9 @@ window.toggleGumTargetUser = function(identifier, displayName) {
             displayName: (displayName || identifier).trim()
         });
     }
+    window._gumSearchFilterTerm = '';
     window.renderGumTargetTags();
-    if (window.renderGumDropdownUsers) window.renderGumDropdownUsers();
-    if (window.renderGumCandidateUsers) window.renderGumCandidateUsers();
+    if (window.renderGumDropdownUsers) window.renderGumDropdownUsers('');
     if (window.filterGumTable) window.filterGumTable();
 };
 
@@ -17902,7 +17925,6 @@ window.renderGumInlineTable = function(filtered) {};
 window.filterGumTable = function() {
     const searchInput = document.getElementById('wf-gum-search');
     const rawTerm = searchInput?.value || '';
-    const term = rawTerm.toLowerCase().trim();
     const statsSpan = document.getElementById('wf-gum-stats');
     const resultWrap = document.getElementById('wf-gum-result-wrap');
     const clearBtn = document.getElementById('wf-gum-search-clear');
@@ -17912,9 +17934,9 @@ window.filterGumTable = function() {
     const selectedWsSet = new Set(selectedWss.map(w => w.toLowerCase()));
     const onlyTargets = document.getElementById('wf-gum-only-targets-toggle')?.checked ?? true;
 
-    // Update clear button visibility
+    // Update clear button visibility (有搜索词或有锁定用户时显示)
     if (clearBtn) {
-        clearBtn.style.display = rawTerm ? 'block' : 'none';
+        clearBtn.style.display = (rawTerm || window.gumTargetUsers.size > 0) ? 'block' : 'none';
     }
 
     if (!window.gumData || window.gumData.length === 0) {
@@ -17924,7 +17946,8 @@ window.filterGumTable = function() {
 
     if (resultWrap) resultWrap.style.display = 'block';
 
-    const tokens = term ? term.split(/\s+/).filter(Boolean) : [];
+    const filterTerm = (window._gumSearchFilterTerm || '').toLowerCase().trim();
+    const tokens = (window.gumTargetUsers.size === 0 && filterTerm) ? filterTerm.split(/\s+/).filter(Boolean) : [];
 
     let filtered = (window.gumData || []).filter(d => {
         // Workspace Scope Filter (当在工作区级别时，仅展示已勾选工作区的审计记录)

@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260917_v2220">
+    <link rel="stylesheet" href="/static/style.css?v=20260917_v2240">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -1152,14 +1152,14 @@
                                             <span id="gum-search-hint" style="font-size: 0.72rem; color: var(--accent); font-weight: normal;">点击展开下拉列表选择用户或输入筛选</span>
                                         </label>
                                         <div style="position: relative; display: flex; align-items: center; gap: 8px;">
-                                                <div style="position: relative; display: flex; align-items: center; flex: 1;">
+                                                 <div style="position: relative; display: flex; align-items: center; flex: 1;">
                                                     <input type="text" id="wf-gum-search" class="wf-input" style="height: 36px; padding-right: 56px; width: 100%;" placeholder="搜索或点击下拉选择目标用户..." autocomplete="off"
-                                                        onfocus="if(window.openGumUserDropdown) window.openGumUserDropdown();"
+                                                        onfocus="if(window.handleGumSearchFocus) window.handleGumSearchFocus(this); else if(window.openGumUserDropdown) window.openGumUserDropdown();"
                                                         onclick="if(window.openGumUserDropdown) window.openGumUserDropdown();"
-                                                        oninput="if(window.filterGumTable) window.filterGumTable(); if(window.filterGumDropdownUsers) window.filterGumDropdownUsers(); if(window.openGumUserDropdown) window.openGumUserDropdown();" 
+                                                        oninput="if(window.handleGumSearchInput) window.handleGumSearchInput(this.value);" 
                                                         onkeydown="if(event.key==='Enter'){ if(window.handleGumSearchEnter) window.handleGumSearchEnter(this.value); } if(event.key==='Escape'){ if(window.closeGumUserDropdown) window.closeGumUserDropdown(); }">
                                                     
-                                                    <button type="button" id="wf-gum-search-clear" onclick="if(window.clearGumTargetUsers){ window.clearGumTargetUsers(); } document.getElementById('wf-gum-search').value=''; if(window.filterGumTable) window.filterGumTable(); if(window.filterGumDropdownUsers) window.filterGumDropdownUsers();" title="清空已选目标用户与搜索" style="position: absolute; right: 28px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: none; padding: 2px 6px; font-size: 0.85rem; line-height: 1;">✕</button>
+                                                    <button type="button" id="wf-gum-search-clear" onclick="if(window.clearGumTargetUsers){ window.clearGumTargetUsers(); } else { document.getElementById('wf-gum-search').value=''; window._gumSearchFilterTerm=''; if(window.filterGumTable) window.filterGumTable(); if(window.filterGumDropdownUsers) window.filterGumDropdownUsers(); }" title="清空已选目标用户与搜索" style="position: absolute; right: 28px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: none; padding: 2px 6px; font-size: 0.85rem; line-height: 1;">✕</button>
                                                     
                                                     <button type="button" id="wf-gum-dropdown-toggle" onclick="if(window.toggleGumUserDropdown) window.toggleGumUserDropdown(); event.stopPropagation();" title="展开/收起用户下拉列表" style="position: absolute; right: 6px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 4px; transition: transform 0.2s ease;">
                                                         <svg id="wf-gum-dropdown-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s ease;">
@@ -1186,8 +1186,8 @@
                                                         <span id="wf-gum-dropdown-count" style="color: var(--accent); font-weight: normal; font-size: 0.72rem;">(0)</span>
                                                     </div>
                                                     <div style="display: flex; align-items: center; gap: 6px;">
-                                                        <button type="button" class="btn-wf-sm btn-wf-secondary" style="height: 20px; font-size: 0.68rem; padding: 0 6px;" onclick="if(window.fetchGumWorkspaceUsers) window.fetchGumWorkspaceUsers(true); event.stopPropagation();" title="重新拉取当前工作区用户列表">🔄 刷新</button>
-                                                        <button type="button" class="btn-wf-sm btn-wf-secondary" style="height: 20px; font-size: 0.68rem; padding: 0 6px;" onclick="if(window.toggleGumSelectAllCandidates) window.toggleGumSelectAllCandidates(); event.stopPropagation();" title="全选/全不选当前工作区所有候选用户">全选本工作区</button>
+                                                        <button type="button" class="btn-wf-sm btn-wf-secondary" style="height: 20px; font-size: 0.68rem; padding: 0 6px;" onclick="if(window.selectAllGumCandidates) window.selectAllGumCandidates(true); event.stopPropagation();" title="全选所有候选用户">全选</button>
+                                                        <button type="button" class="btn-wf-sm btn-wf-secondary" style="height: 20px; font-size: 0.68rem; padding: 0 6px;" onclick="if(window.selectAllGumCandidates) window.selectAllGumCandidates(false); event.stopPropagation();" title="取消全选所有候选用户">取消全选</button>
                                                     </div>
                                                 </div>
                                                 
@@ -2696,7 +2696,7 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260906_v1225"></script>
-    <script src="/static/script.js?v=20260917_v2220"></script>
+    <script src="/static/script.js?v=20260917_v2240"></script>
 
 
 
