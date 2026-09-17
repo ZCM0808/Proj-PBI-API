@@ -4149,6 +4149,29 @@ body.topbar-collapsed #gtb-expand-handle .gtb-handle-icon {
     right: 12px !important;
 }
 
+.gtb-tenant-box {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex: 0 0 auto;
+    max-width: 175px;
+    min-width: 110px;
+    cursor: default;
+    position: relative;
+}
+
+.gtb-tenant-text {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0 2px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    letter-spacing: 0.2px;
+}
+
 .gtb-xmla-box {
     display: flex;
     align-items: center;

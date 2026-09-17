@@ -2696,6 +2696,8 @@ window.renderGlobalTopbar = async function() {
         let appName = localStorage.getItem('pbi_app_name') || '';
         let clientId = '';
         let username = '';
+        let tenantId = '';
+        let tenantName = '';
 
         const setRes = await fetch('/api/settings');
         const settings = await setRes.json();
@@ -2703,6 +2705,8 @@ window.renderGlobalTopbar = async function() {
             authMode = settings.AUTH_MODE || 'service_principal';
             clientId = settings.CLIENT_ID || '';
             username = settings.USERNAME || '';
+            tenantId = settings.TENANT_ID || '';
+            tenantName = settings.TENANT_NAME || '';
         }
 
         const authInfoRes = await fetch('/api/auth-info');
@@ -2710,6 +2714,28 @@ window.renderGlobalTopbar = async function() {
         if (authInfo && authInfo.success) {
             if (authInfo.app_name) appName = authInfo.app_name;
             if (authInfo.username) username = authInfo.username;
+            if (authInfo.tenant_id) tenantId = authInfo.tenant_id;
+            if (authInfo.tenant_name) tenantName = authInfo.tenant_name;
+        }
+
+        // 回显最左侧租户信息 (Tenant)
+        const tenantNameEl = document.getElementById('gtb-tenant-name');
+        const tenantInputEl = document.getElementById('gtb-input-tenant-id');
+        const tenantBoxEl = document.getElementById('gtb-tenant-box');
+        if (tenantNameEl) {
+            let displayTenant = '默认组织';
+            if (tenantName) {
+                displayTenant = tenantName;
+            } else if (tenantId) {
+                displayTenant = tenantId.length > 18 ? `${tenantId.slice(0, 8)}...${tenantId.slice(-4)}` : tenantId;
+            }
+            tenantNameEl.textContent = displayTenant;
+            if (tenantBoxEl) {
+                tenantBoxEl.setAttribute('title', `组织租户 (Tenant)\n名称: ${tenantName || '未命名'}\nID: ${tenantId || '未配置'}`);
+            }
+        }
+        if (tenantInputEl) {
+            tenantInputEl.value = tenantId || '';
         }
 
         const authSelect = document.getElementById('gtb-select-auth-mode');
@@ -2892,6 +2918,9 @@ window.copyGtbItem = function(btn, type) {
     } else if (type === 'report') {
         val = document.getElementById('gtb-select-report')?.value || '';
         label = '报表 ID';
+    } else if (type === 'tenant') {
+        val = document.getElementById('gtb-input-tenant-id')?.value || '';
+        label = '租户 ID';
     }
 
     if (!val) {
@@ -2939,6 +2968,7 @@ window.refreshGlobalContext = async function(btn) {
         btn.innerHTML = `<svg class="spinning" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation: spin 1s linear infinite;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>`;
     }
     try {
+        if (window.renderGlobalTopbar) await window.renderGlobalTopbar();
         if (window.renderEnvIdentity) await window.renderEnvIdentity();
         if (window.renderContextDropdowns) window.renderContextDropdowns();
         window.updateGlobalTopbarDropdowns();
