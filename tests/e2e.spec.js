@@ -460,4 +460,83 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     searchVal = await page.locator('#wf-gum-search').inputValue();
     expect(searchVal).toBe('');
   });
+
+  test('全局功能区数据模型下拉框支持工作区分组矩阵、全选、清空、多选以及 GUM 统计计数精准匹配', async ({ page }) => {
+    // 1. 验证模型下拉触发器结构与初始显示
+    await expect(page.locator('#gtb-dataset-box')).toBeVisible();
+    await expect(page.locator('#gtb-ds-trigger')).toBeVisible();
+
+    // 展开模型多选与矩阵浮层
+    await page.click('#gtb-ds-trigger');
+    await expect(page.locator('#gtb-ds-dropdown')).toBeVisible();
+
+    // 2. 验证工作区分组矩阵是否包含每个工作区下的所有模型
+    const wsGroups = page.locator('#gtb-ds-list .gtb-ds-ws-group');
+    const groupCount = await wsGroups.count();
+    expect(groupCount).toBeGreaterThanOrEqual(1);
+
+    const firstGroup = wsGroups.first();
+    await expect(firstGroup.locator('.gtb-ds-ws-header')).toBeVisible();
+    await expect(firstGroup.locator('.gtb-ds-ws-select-btn')).toBeVisible();
+    const itemsCount = await firstGroup.locator('.gtb-ds-item').count();
+    expect(itemsCount).toBeGreaterThanOrEqual(1);
+
+    // 3. 测试通过 UI 按钮【全选】全部模型
+    await page.click('#gtb-ds-dropdown .gtb-ws-btn-sm:has-text("全选")');
+    let displayText = await page.locator('#gtb-ds-display-text').textContent();
+    expect(displayText).toContain('全部模型');
+    const badgeText = await page.locator('#gtb-ds-count-badge').textContent();
+    expect(badgeText).toBe('全选');
+
+    // 4. 测试通过 UI 按钮【清空】模型
+    await page.click('#gtb-ds-dropdown .gtb-ws-btn-sm:has-text("清空")');
+    displayText = await page.locator('#gtb-ds-display-text').textContent();
+    expect(displayText).toContain('-- 选择模型 (0) --');
+
+    // 5. 测试单个工作区【全选本区】与单选/多选勾选
+    await firstGroup.locator('.gtb-ds-ws-select-btn').click();
+    let selectedDs = await page.evaluate(() => window.getSelectedDatasets());
+    expect(selectedDs.length).toBe(itemsCount);
+
+    // 单项切换取消勾选第一项
+    await firstGroup.locator('.gtb-ds-item').first().click();
+    selectedDs = await page.evaluate(() => window.getSelectedDatasets());
+    expect(selectedDs.length).toBe(itemsCount - 1);
+
+    // 关闭模型下拉框
+    await page.evaluate(() => window.closeGtbDsDropdown());
+    await expect(page.locator('#gtb-ds-dropdown')).toBeHidden();
+
+    // 6. 验证 GUM 审计统计：无任何筛选时分子与分母完全一致 (如 8/8 或 7/7，绝不出现 7/8)
+    await page.evaluate(() => {
+      window.gumAuditScope = 'tenant';
+      window.gumData = [
+        { workspaceId: 'ws-1', identifier: 'u1@test.com', displayName: 'User 1', role: 'Viewer', effectiveRole: 'Viewer' },
+        { workspaceId: 'ws-1', identifier: 'u2@test.com', displayName: 'User 2', role: 'Viewer', effectiveRole: 'Viewer' },
+        { workspaceId: 'ws-1', identifier: 'u3@test.com', displayName: 'User 3', role: 'Viewer', effectiveRole: 'Viewer' },
+        { workspaceId: 'ws-1', identifier: 'u4@test.com', displayName: 'User 4', role: 'Viewer', effectiveRole: 'Viewer' },
+        { workspaceId: 'ws-1', identifier: 'u5@test.com', displayName: 'User 5', role: 'Viewer', effectiveRole: 'Viewer' },
+        { workspaceId: 'ws-1', identifier: 'u6@test.com', displayName: 'User 6', role: 'Viewer', effectiveRole: 'Viewer' },
+        { workspaceId: 'ws-1', identifier: 'u7@test.com', displayName: 'User 7', role: 'Viewer', effectiveRole: 'Viewer' },
+        { workspaceId: 'ws-2', identifier: 'spn-app-8', displayName: 'Service Principal App', role: 'Admin', effectiveRole: 'Admin' }
+      ];
+      window.gumTargetUsers.clear();
+      window._gumSearchFilterTerm = '';
+      window._gumPillFilter = 'all';
+      window.filterGumTable();
+    });
+
+    let gumStats = await page.locator('#wf-gum-stats').textContent();
+    expect(gumStats).toBe('筛选结果: 8 / 8 条记录');
+
+    // 切换为工作区级别范围 (已选 ws-1，7条记录)，无用户筛选时精准显示 7 / 7
+    await page.evaluate(() => {
+      window.gumAuditScope = 'workspaces';
+      window.selectedGtbWorkspaceIds.clear();
+      window.selectedGtbWorkspaceIds.add('ws-1');
+      window.filterGumTable();
+    });
+    gumStats = await page.locator('#wf-gum-stats').textContent();
+    expect(gumStats).toBe('筛选结果: 7 / 7 条记录');
+  });
 });

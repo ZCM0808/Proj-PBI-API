@@ -1641,4 +1641,66 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
   3. 模拟锁定 2 位用户后，断言搜索框内精准回显 `User One, User Two`；
 - 静态分析校验：`node -c static/script.js`、`python -m ruff check src/`、`python -m mypy src/main.py` 全量通过（0 警告，0 错误）。
 
+---
 
+## 50. GUM 下拉列表回显与过滤解耦防御及全选/取消全选重构 (GUM Dropdown Filter Decoupling & Select All Actions)
+
+### 50.1 业务背景与问题分析 (Issues Analysis)
+1. **选中用户后下拉列表中其他候选人员“消失”缺陷**：
+   - **根因分析**：先前在回显逻辑中，`renderGumTargetTags()` 将选中的用户名（如 `"Alice Zhang"`）直接回填到了搜索框 `wf-gum-search.value` 中。当用户点击条目触发重新渲染下拉列表时，`renderGumDropdownUsers()` 隐式读取了 `wf-gum-search.value` 作为过滤关键字 `term`，导致列表被错误地按照已选用户的名字进行二次筛选，使得其他所有不包含此名字的候选人被全部剔除消失。
+2. **下拉列表头部刷新按钮冗余**：
+   - 搜索框右侧已有明显的【👥 扫描用户】主要动作按钮，下拉浮层头部内嵌的 `🔄 刷新` 按钮功能重复、挤占空间；
+3. **缺少快捷全选与取消全选操作**：
+   - 原仅有单个状态反转的“全选本工作区”按钮，缺乏直观、明确的“全选”与“取消全选”双动作按钮支持。
+
+### 50.2 核心改造方案 (Implementation Details)
+- **1. 搜索过滤关键字与输入框回显文案彻底解耦 (State Decoupling Shield)**：
+  - 引入全局显式状态 `window._gumSearchFilterTerm`，专用于存储用户在键盘上主动键入的模糊匹配过滤词；
+  - 重构 `handleGumSearchInput` 与 `handleGumSearchFocus`，仅在用户发生键盘输入时更新 `_gumSearchFilterTerm`；
+  - 在 `renderGumDropdownUsers` 中，严禁直接读取 `wf-gum-search.value`，严格使用 `_gumSearchFilterTerm` 进行过滤。在用户点击勾选/取消勾选任意条目时，`_gumSearchFilterTerm` 保持为空，下拉列表始终展示全量候选人列表，已勾选的人员打勾高亮，其余人员完好保留，支持无缝连续多选；
+  - 在 `filterGumTable` 底层审计记录过滤中，同样解耦 `tokens` 过滤，避免选了多个用户后长字符串逗号组合导致表格匹配落空。
+- **2. 下拉浮层头部按钮极简规范化**：
+  - 在 [static/index.html](file:///D:/zcm/Proj-PBI-API/static/index.html) 中彻底删除冗余的 `🔄 刷新` 按钮；
+  - 将原按钮替换拆分为统一规范的两个次级动作按钮：【全选】（`selectAllGumCandidates(true)`）与【取消全选】（`selectAllGumCandidates(false)`）；
+  - 支持一键将当前作用域下全部候选人批量锁定为审计目标，或一键彻底清空。
+
+### 50.3 自动化测试断言 (Automated QA & Playwright TDD Loop)
+- 在 [tests/e2e.spec.js](file:///D:/zcm/Proj-PBI-API/tests/e2e.spec.js) 中扩充测试用例：
+  1. 验证点击勾选第 1 位用户后，下拉列表中候选人员数量不减少（3 位依然全部展示）；
+  2. 验证下拉框中不存在刷新按钮；
+  3. 验证点击【全选】后全部用户均被选中回显，点击【取消全选】后全部重置清空；
+  4. 测试结果全量通过（1 passed, 100% 成功）。
+
+---
+
+## 51. 全局功能区数据模型下拉框分组矩阵重构与 GUM 筛选计数精准化 (Dataset Group Matrix & GUM Stat Sync)
+
+### 51.1 业务背景与问题分析 (Issues Analysis)
+1. **全局顶栏模型选择器能力缺失**：
+   - 此前工作区选择器已升级为现代化 Popover 下拉面板，支持批量多选与搜索，而“模型”选择器依然使用原生 `<select>` 单选框，无法支持多选、一键全选/清空，也无法直观看出各模型归属的工作区关系。
+2. **GUM 筛选结果计数异常（7 / 8 记录）**：
+   - 用户在未施加任何关键字或用户筛选时，界面显示 `筛选结果: 7 / 8 条记录`。
+   - **根因分析**：
+     - ① **作用域基准错位**：此前 `total` 直接写死为 `window.gumData.length`（租户全量 8 条），而当前若处于工作区级别视图（仅 7 条记录属于该工作区），分子为 7，分母却为 8，导致未加用户筛选却显示 `7 / 8`。
+     - ② **候选人全选状态被误判为机械过滤**：当用户在下拉列表中点击【全选】时，若候选池中有 7 位直属用户，后端深扫返回了 8 条（包含 1 条服务主体或租户特权记录），定向过滤条件机械排除非目标人员，导致第 8 条记录被滤掉。
+     - ③ **用户多字段与大小写/空格容错**：候选人列表提取的标识与后端返回记录的 GUID / Email 在大小写或字段上有出入。
+
+### 51.2 核心改造方案 (Implementation Details)
+1. **全局功能区模型下拉 Popover 结构改造**：
+   - 在 [static/index.html](file:///D:/zcm/Proj-PBI-API/static/index.html) 中将原原生 `<select id="gtb-select-dataset">` 升级重构为与工作区完全统一的触发器与浮层面板结构：`#gtb-dataset-box`、`#gtb-ds-trigger`、`#gtb-ds-display-text`、`#gtb-ds-count-badge`、`#gtb-ds-dropdown`、搜索框 `#gtb-ds-search-input`、操作按钮【全选】与【清空】、矩阵列表容器 `#gtb-ds-list`、底部统计 `#gtb-ds-stat-text` 及隐藏域 `#gtb-select-dataset`。
+2. **样式设计与工作区分组矩阵 UI**：
+   - 在 [static/style.css](file:///D:/zcm/Proj-PBI-API/static/style.css) 中新增 `.gtb-dataset-box`、`.gtb-ds-dropdown`、`.gtb-ds-ws-group`、`.gtb-ds-ws-header`、`.gtb-ds-ws-title`、`.gtb-ds-ws-badge`、`.gtb-ds-ws-select-btn`、`.gtb-ds-items-group`、`.gtb-ds-checkbox` 等矩阵样式与平滑过渡动效。
+3. **模型选择状态机与矩阵渲染交互**：
+   - 在 [static/script.js](file:///D:/zcm/Proj-PBI-API/static/script.js) 中实现了 `window.selectedGtbDatasetIds = new Set()`、`window.getMergedGtbDatasets()`、`window.toggleGtbDsDropdown()`、`window.closeGtbDsDropdown()`、`window.selectAllGtbDatasets()`、`window.toggleGtbDataset()`、`window.selectSingleGtbDataset()`、`window.toggleGtbWsModels()`、`window.filterGtbDsOptions()` 及 `window.persistGtbDatasetsAndSync()`。
+   - 在 `window.updateGlobalTopbarDropdowns()` 中根据 `wsData` 与 `dsData` 动态聚合渲染工作区分组矩阵，仅渲染包含模型的工作区分组，每个分组头部附带模型数量 Badge 及【全选本区/取消全选】快捷按钮，并支持点击外部自动关闭。
+   - 修复了此前在每次 `updateGlobalTopbarDropdowns` 中无条件重新自动勾选首个模型导致【清空】操作失效的问题（增加了 `_gtbDsInitialized` 与 `_gtbWsInitialized` 门控）。
+4. **根除 GUM 筛选计数 7 / 8 Bug**：
+   - 在 [static/script.js](file:///D:/zcm/Proj-PBI-API/static/script.js) 的 `window.filterGumTable` 中引入 `scopeBaseline` 作为基准数据集，动态计算 `total = scopeBaseline.length`；
+   - 识别 `isAllCandidatesSelected`，当候选人全选时视为全量审查不机械排除；
+   - 匹配目标用户时扩展至 `identifier`、`graphId`、`displayName` 及子串匹配；多工作区 ID 兼容逗号切分匹配。
+5. **静态资源缓存防御与版本更新**：
+   - [static/index.html](file:///D:/zcm/Proj-PBI-API/static/index.html) 中静态资源后缀更新为 `?v=20260917_v2310`。
+
+### 51.3 自动化测试与工业级静态检查验证
+- **Playwright E2E**：运行 `npx playwright test -g "全局功能区数据模型下拉框支持工作区分组矩阵"`，包含模型下拉框矩阵渲染、全选、清空、单选、多选及 GUM 统计计数精准匹配（8/8 与 7/7），用例 100% 通过（耗时 27.8s）。
+- **静态代码健康检查**：`python -m ruff check src/`、`python -m mypy src/main.py --ignore-missing-imports` 全量通过（0 issues, 0 errors）。

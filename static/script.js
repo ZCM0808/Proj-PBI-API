@@ -2927,13 +2927,237 @@ if (!window._gtbWsClickListenerAdded) {
     });
 }
 
+// ⚡ 全局已选数据模型 ID 集合 (Set<string> - 支持单选、多选与全选)
+window.selectedGtbDatasetIds = new Set();
+try {
+    const savedDs = JSON.parse(localStorage.getItem('pbi-selected-datasets') || '[]');
+    if (Array.isArray(savedDs) && savedDs.length > 0) {
+        savedDs.forEach(id => { if (id) window.selectedGtbDatasetIds.add(String(id)); });
+    } else {
+        const activeDs = localStorage.getItem('pbi-active-dataset') || document.getElementById('active-dataset')?.value;
+        if (activeDs) window.selectedGtbDatasetIds.add(String(activeDs));
+    }
+} catch(e) {}
+
+// 汇聚所有来源的可用数据模型列表 (localStorage, dataset-list UI, gumData, allDatasets)
+window.getMergedGtbDatasets = function() {
+    const rawList = [];
+    try {
+        const stored = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
+        if (Array.isArray(stored)) rawList.push(...stored);
+    } catch(e) {}
+    if (typeof window.getListData === 'function') {
+        const liveList = window.getListData('dataset-list');
+        if (Array.isArray(liveList)) rawList.push(...liveList);
+    }
+    if (Array.isArray(window.allDatasets)) rawList.push(...window.allDatasets);
+
+    // 从全局权限审计数据 (gumData) 中穿透提取各工作区关联的模型
+    if (Array.isArray(window.gumData)) {
+        window.gumData.forEach(rec => {
+            const wid = rec.workspaceId || rec.wsId || '';
+            const wname = rec.workspaceName || rec.wsName || '';
+            (rec.datasetsDetail || []).forEach(ds => {
+                if (ds && ds.datasetId) {
+                    rawList.push({
+                        id: ds.datasetId,
+                        alias: ds.datasetName || ds.datasetId,
+                        name: ds.datasetName || ds.datasetId,
+                        workspaceId: wid,
+                        workspaceName: wname
+                    });
+                }
+            });
+        });
+    }
+
+    const uniqueMap = new Map();
+    rawList.forEach(d => {
+        if (!d) return;
+        const id = String(d.id || d.datasetId || '').trim();
+        if (!id) return;
+        const name = String(d.alias || d.name || d.displayName || d.datasetName || id).trim();
+        const wid = String(d.workspaceId || d.wsId || '').trim();
+        const wname = String(d.workspaceName || d.wsName || '').trim();
+        const key = id.toLowerCase();
+        const existing = uniqueMap.get(key);
+        if (!existing) {
+            uniqueMap.set(key, { id: id, alias: name, name: name, workspaceId: wid, workspaceName: wname });
+        } else {
+            if (!existing.workspaceId && wid) {
+                existing.workspaceId = wid;
+                if (wname) existing.workspaceName = wname;
+            }
+        }
+    });
+
+    const result = Array.from(uniqueMap.values());
+    if (result.length > 0) {
+        try {
+            localStorage.setItem('pbi_datasets', JSON.stringify(result));
+        } catch(e) {}
+    }
+    return result;
+};
+
+// 获取当前在全局功能区选中的所有数据模型 ID 数组
+window.getSelectedDatasets = function() {
+    return Array.from(window.selectedGtbDatasetIds || []);
+};
+
+// 展开/折叠顶栏数据模型多选与矩阵浮层
+window.toggleGtbDsDropdown = function(event) {
+    if (event) event.stopPropagation();
+    const dropdown = document.getElementById('gtb-ds-dropdown');
+    const trigger = document.getElementById('gtb-ds-trigger');
+    const box = document.getElementById('gtb-dataset-box');
+    if (!dropdown) return;
+    const isVisible = (dropdown.style.display === 'flex');
+    if (isVisible) {
+        window.closeGtbDsDropdown();
+    } else {
+        window.closeGtbWsDropdown();
+        window.updateGlobalTopbarDropdowns();
+        dropdown.style.display = 'flex';
+        if (trigger) trigger.classList.add('active');
+        if (box) box.classList.add('active');
+        const searchInput = document.getElementById('gtb-ds-search-input');
+        if (searchInput) {
+            searchInput.value = '';
+            setTimeout(() => searchInput.focus(), 50);
+        }
+        window.filterGtbDsOptions('');
+    }
+};
+
+// 关闭数据模型多选浮层
+window.closeGtbDsDropdown = function() {
+    const dropdown = document.getElementById('gtb-ds-dropdown');
+    const trigger = document.getElementById('gtb-ds-trigger');
+    const box = document.getElementById('gtb-dataset-box');
+    if (dropdown) dropdown.style.display = 'none';
+    if (trigger) trigger.classList.remove('active');
+    if (box) box.classList.remove('active');
+};
+
+// 全选或清空已选数据模型
+window.selectAllGtbDatasets = function(selectAll = true) {
+    const dsData = window.getMergedGtbDatasets ? window.getMergedGtbDatasets() : JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
+    if (selectAll) {
+        dsData.forEach(d => { if (d && d.id) window.selectedGtbDatasetIds.add(String(d.id)); });
+    } else {
+        window.selectedGtbDatasetIds.clear();
+    }
+    window.persistGtbDatasetsAndSync();
+};
+
+// 切换某个数据模型的选中状态 (多选)
+window.toggleGtbDataset = function(dsId) {
+    if (!dsId) return;
+    const idStr = String(dsId);
+    if (window.selectedGtbDatasetIds.has(idStr)) {
+        window.selectedGtbDatasetIds.delete(idStr);
+    } else {
+        window.selectedGtbDatasetIds.add(idStr);
+    }
+    window.persistGtbDatasetsAndSync();
+};
+
+// 单选某个数据模型 (清空其他所有选择，并关闭浮层)
+window.selectSingleGtbDataset = function(dsId) {
+    if (!dsId) return;
+    window.selectedGtbDatasetIds.clear();
+    window.selectedGtbDatasetIds.add(String(dsId));
+    window.persistGtbDatasetsAndSync();
+    window.closeGtbDsDropdown();
+};
+
+// 单选切换全局活动数据模型 (兼容老接口与快捷方式)
+window.handleGlobalDatasetChange = function(dsId) {
+    if (!dsId) return;
+    window.selectSingleGtbDataset(dsId);
+};
+
+// 全选/取消全选指定工作区下的所有模型
+window.toggleGtbWsModels = function(wsId, event) {
+    if (event) event.stopPropagation();
+    if (!wsId) return;
+    const dsData = window.getMergedGtbDatasets ? window.getMergedGtbDatasets() : JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
+    const targetWid = String(wsId).toLowerCase();
+    const modelsInWs = dsData.filter(d => String(d.workspaceId || '').toLowerCase() === targetWid);
+    if (modelsInWs.length === 0) return;
+    const allSelected = modelsInWs.every(m => window.selectedGtbDatasetIds.has(String(m.id)));
+    modelsInWs.forEach(m => {
+        if (allSelected) {
+            window.selectedGtbDatasetIds.delete(String(m.id));
+        } else {
+            window.selectedGtbDatasetIds.add(String(m.id));
+        }
+    });
+    window.persistGtbDatasetsAndSync();
+};
+
+// 持久化当前选中的数据模型并触发全站联动与回显
+window.persistGtbDatasetsAndSync = function() {
+    const selectedArray = Array.from(window.selectedGtbDatasetIds);
+    try {
+        localStorage.setItem('pbi-selected-datasets', JSON.stringify(selectedArray));
+        const firstDsId = selectedArray[0] || '';
+        localStorage.setItem('pbi-active-dataset', firstDsId);
+        const activeDsInput = document.getElementById('active-dataset');
+        if (activeDsInput) activeDsInput.value = firstDsId;
+    } catch(e) {}
+
+    window.updateGlobalTopbarDropdowns();
+    if (window.syncAllWorkflowSelectors) window.syncAllWorkflowSelectors();
+};
+
+// 过滤 Popover 里的数据模型列表项与工作区分组
+window.filterGtbDsOptions = function(term = '') {
+    const q = (term || '').toLowerCase().trim();
+    const groups = document.querySelectorAll('#gtb-ds-list .gtb-ds-ws-group');
+    groups.forEach(group => {
+        const items = group.querySelectorAll('.gtb-ds-item');
+        let visibleItemCount = 0;
+        items.forEach(item => {
+            const text = item.getAttribute('data-search-text') || '';
+            if (!q || text.includes(q)) {
+                item.style.display = 'flex';
+                visibleItemCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+        const headerTitle = group.querySelector('.gtb-ds-ws-title')?.textContent?.toLowerCase() || '';
+        if (!q || visibleItemCount > 0 || headerTitle.includes(q)) {
+            group.style.display = 'block';
+            if (headerTitle.includes(q) && q) {
+                items.forEach(item => item.style.display = 'flex');
+            }
+        } else {
+            group.style.display = 'none';
+        }
+    });
+};
+
+// 注册全局点击事件以关闭数据模型 Popover
+if (!window._gtbDsClickListenerAdded) {
+    window._gtbDsClickListenerAdded = true;
+    document.addEventListener('click', function(e) {
+        const box = document.getElementById('gtb-dataset-box');
+        if (box && !box.contains(e.target)) {
+            window.closeGtbDsDropdown();
+        }
+    });
+}
+
 window.updateGlobalTopbarDropdowns = function() {
     const wsData = window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
-    const dsData = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
+    const dsData = window.getMergedGtbDatasets ? window.getMergedGtbDatasets() : JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
     const rpData = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
 
     const wsHidden = document.getElementById('gtb-select-workspace');
-    const dsSelect = document.getElementById('gtb-select-dataset');
+    const dsHidden = document.getElementById('gtb-select-dataset');
     const rpSelect = document.getElementById('gtb-select-report');
     const xmlaInput = document.getElementById('gtb-input-xmla');
 
@@ -2941,8 +3165,9 @@ window.updateGlobalTopbarDropdowns = function() {
     const curDsId = document.getElementById('active-dataset')?.value || localStorage.getItem('pbi-active-dataset') || '';
     const curRpId = document.getElementById('active-report')?.value || localStorage.getItem('pbi-active-report') || '';
 
-    // 若当前未选中任何工作区，但有可用工作区，默认选中当前主工作区或第一个
-    if (window.selectedGtbWorkspaceIds.size === 0 && wsData.length > 0) {
+    // 若当前未选中任何工作区，但有可用工作区，默认选中当前主工作区或第一个 (仅初次初始化)
+    if (!window._gtbWsInitialized && window.selectedGtbWorkspaceIds.size === 0 && wsData.length > 0) {
+        window._gtbWsInitialized = true;
         if (curWsId && wsData.some(w => String(w.id).toLowerCase() === curWsId.toLowerCase())) {
             window.selectedGtbWorkspaceIds.add(String(curWsId));
         } else if (wsData[0] && wsData[0].id) {
@@ -3022,29 +3247,178 @@ window.updateGlobalTopbarDropdowns = function() {
         statTextEl.textContent = `已选 ${selectedCount} / ${totalCount} 个工作区`;
     }
 
-    // 3. 根据所选的工作区过滤 Datasets 和 Reports
-    const selectedWsSet = new Set(selectedList.map(s => s.toLowerCase()));
-    const filteredDs = (selectedCount > 0) ? dsData.filter(d => {
-        const dWid = (d.workspaceId || '').trim().toLowerCase();
-        return !dWid || selectedWsSet.has(dWid);
-    }) : dsData;
+    // 3. 渲染数据模型 (Dataset / Model) 顶栏触发器与工作区分组矩阵 (仅初次初始化默认选中)
+    if (!window._gtbDsInitialized && window.selectedGtbDatasetIds.size === 0 && dsData.length > 0) {
+        window._gtbDsInitialized = true;
+        if (curDsId && dsData.some(d => String(d.id).toLowerCase() === curDsId.toLowerCase())) {
+            window.selectedGtbDatasetIds.add(String(curDsId));
+        } else if (dsData[0] && dsData[0].id) {
+            window.selectedGtbDatasetIds.add(String(dsData[0].id));
+        }
+    }
 
+    const selectedDsList = Array.from(window.selectedGtbDatasetIds);
+    const selectedDsCount = selectedDsList.length;
+    const totalDsCount = dsData.length;
+
+    const dsDisplayTextEl = document.getElementById('gtb-ds-display-text');
+    const dsCountBadgeEl = document.getElementById('gtb-ds-count-badge');
+    const dsStatTextEl = document.getElementById('gtb-ds-stat-text');
+    const dsListContainer = document.getElementById('gtb-ds-list');
+
+    if (dsDisplayTextEl) {
+        if (selectedDsCount === 0) {
+            dsDisplayTextEl.textContent = '-- 选择模型 (0) --';
+        } else if (selectedDsCount === 1) {
+            const matched = dsData.find(d => String(d.id).toLowerCase() === selectedDsList[0].toLowerCase());
+            const firstDsName = matched ? (matched.alias || matched.name || matched.id) : selectedDsList[0];
+            dsDisplayTextEl.textContent = firstDsName;
+        } else if (selectedDsCount === totalDsCount && totalDsCount > 1) {
+            dsDisplayTextEl.textContent = `全部模型 (共 ${totalDsCount} 个)`;
+        } else {
+            dsDisplayTextEl.textContent = `已选 ${selectedDsCount} 个模型`;
+        }
+    }
+
+    if (dsCountBadgeEl) {
+        if (selectedDsCount > 1) {
+            dsCountBadgeEl.style.display = 'inline-block';
+            dsCountBadgeEl.textContent = (selectedDsCount === totalDsCount) ? '全选' : `${selectedDsCount}/${totalDsCount}`;
+        } else {
+            dsCountBadgeEl.style.display = 'none';
+        }
+    }
+
+    if (dsStatTextEl) {
+        dsStatTextEl.textContent = `已选 ${selectedDsCount} / ${totalDsCount} 个模型`;
+    }
+
+    if (dsHidden) {
+        dsHidden.value = selectedDsList.join(',');
+    }
+
+    // 渲染各工作区下的模型分组矩阵 (Workspace Grouping Matrix)
+    if (dsListContainer) {
+        if (dsData.length === 0) {
+            dsListContainer.innerHTML = '<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 16px 0;">暂无可用的模型缓存</div>';
+        } else {
+            const wsMap = new Map();
+            wsData.forEach(w => {
+                if (w && w.id) {
+                    wsMap.set(String(w.id).toLowerCase(), {
+                        id: String(w.id),
+                        name: w.alias || w.name || String(w.id),
+                        models: []
+                    });
+                }
+            });
+
+            const unassignedModels = [];
+            dsData.forEach(d => {
+                const wid = String(d.workspaceId || '').trim().toLowerCase();
+                if (wid && wsMap.has(wid)) {
+                    wsMap.get(wid).models.push(d);
+                } else if (wid) {
+                    if (!wsMap.has(wid)) {
+                        wsMap.set(wid, {
+                            id: d.workspaceId,
+                            name: d.workspaceName || d.workspaceId,
+                            models: []
+                        });
+                    }
+                    wsMap.get(wid).models.push(d);
+                } else {
+                    unassignedModels.push(d);
+                }
+            });
+
+            let matrixHtml = '';
+            wsMap.forEach(group => {
+                const wid = group.id;
+                const wname = group.name;
+                const models = group.models;
+                if (!models || models.length === 0) return;
+                const isAllGroupSelected = models.every(m => window.selectedGtbDatasetIds.has(String(m.id)));
+
+                matrixHtml += `
+                    <div class="gtb-ds-ws-group" data-ws-id="${wid}">
+                        <div class="gtb-ds-ws-header">
+                            <div class="gtb-ds-ws-title">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect></svg>
+                                <span title="${wname}">${wname}</span>
+                                <span class="gtb-ds-ws-badge">${models.length} 个模型</span>
+                            </div>
+                            <button type="button" class="gtb-ds-ws-select-btn" onclick="window.toggleGtbWsModels('${wid}', event)">
+                                ${isAllGroupSelected ? '取消全选' : '全选本区'}
+                            </button>
+                        </div>
+                        <div class="gtb-ds-items-group">
+                            ${models.map(m => {
+                                const mId = String(m.id);
+                                const mName = m.alias || m.name || mId;
+                                const isSel = window.selectedGtbDatasetIds.has(mId);
+                                const searchText = `${mName} ${mId} ${wname}`.toLowerCase();
+                                return `
+                                    <div class="gtb-ws-item gtb-ds-item ${isSel ? 'selected' : ''}" data-search-text="${searchText}" onclick="window.toggleGtbDataset('${mId}')">
+                                        <div class="gtb-ws-item-left">
+                                            <input type="checkbox" class="gtb-ws-checkbox gtb-ds-checkbox" ${isSel ? 'checked' : ''} onclick="event.stopPropagation(); window.toggleGtbDataset('${mId}')">
+                                            <div class="gtb-ws-item-names">
+                                                <div class="gtb-ws-item-title" title="${mName}">${mName}</div>
+                                                <div class="gtb-ws-item-sub" title="${mId}">${mId}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+
+            if (unassignedModels.length > 0) {
+                const isAllUnassignedSelected = unassignedModels.every(m => window.selectedGtbDatasetIds.has(String(m.id)));
+                matrixHtml += `
+                    <div class="gtb-ds-ws-group" data-ws-id="__unassigned__">
+                        <div class="gtb-ds-ws-header">
+                            <div class="gtb-ds-ws-title">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                                <span>其他 / 未指定工作区模型</span>
+                                <span class="gtb-ds-ws-badge">${unassignedModels.length} 个模型</span>
+                            </div>
+                        </div>
+                        <div class="gtb-ds-items-group">
+                            ${unassignedModels.map(m => {
+                                const mId = String(m.id);
+                                const mName = m.alias || m.name || mId;
+                                const isSel = window.selectedGtbDatasetIds.has(mId);
+                                const searchText = `${mName} ${mId} 其他 全局`.toLowerCase();
+                                return `
+                                    <div class="gtb-ws-item gtb-ds-item ${isSel ? 'selected' : ''}" data-search-text="${searchText}" onclick="window.toggleGtbDataset('${mId}')">
+                                        <div class="gtb-ws-item-left">
+                                            <input type="checkbox" class="gtb-ws-checkbox gtb-ds-checkbox" ${isSel ? 'checked' : ''} onclick="event.stopPropagation(); window.toggleGtbDataset('${mId}')">
+                                            <div class="gtb-ws-item-names">
+                                                <div class="gtb-ws-item-title" title="${mName}">${mName}</div>
+                                                <div class="gtb-ws-item-sub" title="${mId}">${mId}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            dsListContainer.innerHTML = matrixHtml;
+        }
+    }
+
+    // 4. 根据所选的工作区过滤 Reports (向后兼容)
+    const selectedWsSet = new Set(selectedList.map(s => s.toLowerCase()));
     const filteredRp = (selectedCount > 0) ? rpData.filter(r => {
         const rWid = (r.workspaceId || '').trim().toLowerCase();
         return !rWid || selectedWsSet.has(rWid);
     }) : rpData;
-
-    // 填充数据模型下拉框
-    if (dsSelect) {
-        let dsHtml = `<option value="">-- 选择模型 (${filteredDs.length}) --</option>`;
-        filteredDs.forEach(d => {
-            const isSel = (d.id === curDsId);
-            const name = d.alias || d.name || d.id;
-            const displayLabel = `${name} (${d.id})`;
-            dsHtml += `<option value="${d.id}" ${isSel ? 'selected' : ''} title="${displayLabel}">${displayLabel}</option>`;
-        });
-        dsSelect.innerHTML = dsHtml;
-    }
 
     // 填充报表下拉框
     if (rpSelect) {
@@ -17082,13 +17456,16 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
                         const wid = ws.id;
                         const wname = ws.name || wid;
                         (ws.users || []).forEach(u => {
-                            const ident = (u.identifier || u.emailAddress || u.userPrincipalName || '').trim();
+                            const emailStr = (u.emailAddress || u.userPrincipalName || '').trim();
+                            const identStr = (u.identifier || '').trim();
+                            const ident = emailStr || identStr;
                             if (ident) {
                                 const key = ident.toLowerCase();
                                 if (!mergedMap.has(key)) {
                                     mergedMap.set(key, {
                                         identifier: ident,
-                                        displayName: (u.displayName || ident).trim(),
+                                        displayName: (u.displayName || identStr || emailStr).trim(),
+                                        graphId: (u.graphId || '').trim(),
                                         principalType: u.principalType || 'User',
                                         role: u.groupUserAccessRight || 'Viewer',
                                         workspaceId: wid,
@@ -17117,14 +17494,20 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
                         const rawData = await res.json();
                         const data = rawData.data || rawData;
                         const usersList = Array.isArray(data) ? data : (data.value || []);
-                        return usersList.map(u => ({
-                            identifier: (u.identifier || u.emailAddress || u.userPrincipalName || '').trim(),
-                            displayName: (u.displayName || u.identifier || u.emailAddress || '').trim(),
-                            principalType: u.principalType || 'User',
-                            role: u.groupUserAccessRight || 'Viewer',
-                            workspaceId: wid,
-                            workspaceName: wname
-                        })).filter(u => u.identifier);
+                        return usersList.map(u => {
+                            const emailStr = (u.emailAddress || u.userPrincipalName || '').trim();
+                            const identStr = (u.identifier || '').trim();
+                            const ident = emailStr || identStr;
+                            return {
+                                identifier: ident,
+                                displayName: (u.displayName || identStr || emailStr).trim(),
+                                graphId: (u.graphId || '').trim(),
+                                principalType: u.principalType || 'User',
+                                role: u.groupUserAccessRight || 'Viewer',
+                                workspaceId: wid,
+                                workspaceName: wname
+                            };
+                        }).filter(u => u.identifier);
                     } catch(e) {
                         return [];
                     }
@@ -17228,14 +17611,20 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
                     usersList = Array.isArray(data) ? data : (data.value || []);
                 }
 
-                return (usersList || []).map(u => ({
-                    identifier: (u.identifier || u.emailAddress || u.userPrincipalName || '').trim(),
-                    displayName: (u.displayName || u.identifier || u.emailAddress || '').trim(),
-                    principalType: u.principalType || 'User',
-                    role: u.groupUserAccessRight || 'Viewer',
-                    workspaceId: wid,
-                    workspaceName: wname
-                })).filter(u => u.identifier);
+                return (usersList || []).map(u => {
+                    const emailStr = (u.emailAddress || u.userPrincipalName || '').trim();
+                    const identStr = (u.identifier || '').trim();
+                    const ident = emailStr || identStr;
+                    return {
+                        identifier: ident,
+                        displayName: (u.displayName || identStr || emailStr).trim(),
+                        graphId: (u.graphId || '').trim(),
+                        principalType: u.principalType || 'User',
+                        role: u.groupUserAccessRight || 'Viewer',
+                        workspaceId: wid,
+                        workspaceName: wname
+                    };
+                }).filter(u => u.identifier);
             } catch(e) {
                 return [];
             }
@@ -17949,21 +18338,50 @@ window.filterGumTable = function() {
     const filterTerm = (window._gumSearchFilterTerm || '').toLowerCase().trim();
     const tokens = (window.gumTargetUsers.size === 0 && filterTerm) ? filterTerm.split(/\s+/).filter(Boolean) : [];
 
-    let filtered = (window.gumData || []).filter(d => {
-        // Workspace Scope Filter (当在工作区级别时，仅展示已勾选工作区的审计记录)
+    // 1. 确定当前审计作用域下的有效基准全量集合 (Baseline Universe for Current Scope)
+    const scopeBaseline = (window.gumData || []).filter(d => {
         if (scope === 'workspaces' && selectedWsSet.size > 0) {
             const dWid = (d.workspaceId || d.wsId || '').toLowerCase();
-            if (dWid && dWid !== 'tenant-wide' && !selectedWsSet.has(dWid)) {
-                return false;
+            if (dWid && dWid !== 'tenant-wide') {
+                const wIds = dWid.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+                const hasMatch = wIds.some(w => selectedWsSet.has(w));
+                if (!hasMatch) return false;
             }
         }
+        return true;
+    });
 
-        // Targeted Users Filter (when toggle is on and targets are selected)
-        if (onlyTargets && window.gumTargetUsers.size > 0) {
-            const userKey = (d.identifier || '').trim().toLowerCase();
-            if (!window.gumTargetUsers.has(userKey)) {
-                return false;
+    // 2. 检查是否候选人池全选：若全部候选人均在锁定列表中，视为审查全量，不机械排除
+    const candidates = window.gumCandidateUsers || [];
+    const isAllCandidatesSelected = (candidates.length > 0 && candidates.every(c => {
+        const k = (c.identifier || '').trim().toLowerCase();
+        return window.gumTargetUsers.has(k);
+    }));
+
+    let filtered = scopeBaseline.filter(d => {
+        // Targeted Users Filter (仅在非全选且锁定了特定用户时执行过滤)
+        if (onlyTargets && window.gumTargetUsers.size > 0 && !isAllCandidatesSelected) {
+            const dIdent = (d.identifier || '').trim().toLowerCase();
+            const dGraph = (d.graphId || '').trim().toLowerCase();
+            const dDisp = (d.displayName || '').trim().toLowerCase();
+
+            let matched = window.gumTargetUsers.has(dIdent) ||
+                          (dGraph && window.gumTargetUsers.has(dGraph)) ||
+                          (dDisp && window.gumTargetUsers.has(dDisp));
+
+            if (!matched) {
+                for (const [tKey, tObj] of window.gumTargetUsers.entries()) {
+                    const targetIdent = (tObj.identifier || tKey || '').trim().toLowerCase();
+                    const targetDisp = (tObj.displayName || '').trim().toLowerCase();
+                    if ((dIdent && (dIdent === targetIdent || dIdent.includes(targetIdent) || targetIdent.includes(dIdent))) ||
+                        (dGraph && targetIdent === dGraph) ||
+                        (dDisp && targetDisp && dDisp === targetDisp)) {
+                        matched = true;
+                        break;
+                    }
+                }
             }
+            if (!matched) return false;
         }
 
         // Pill Match
@@ -17996,7 +18414,7 @@ window.filterGumTable = function() {
 
     window._lastGumFiltered = filtered;
     if (statsSpan) {
-        const total = window.gumData.length;
+        const total = scopeBaseline.length;
         statsSpan.textContent = `筛选结果: ${filtered.length} / ${total} 条记录`;
     }
 
