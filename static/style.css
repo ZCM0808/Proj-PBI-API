@@ -5202,3 +5202,392 @@ body.is-resizing .body-editor-container {
     color: var(--text-secondary);
 }
 
+/* ==========================================================================
+   ⚡ 全局功能区 (GTB) 工作区多选/全选/单选下拉面板 (Workspace Multi-Select Popover)
+   ========================================================================== */
+.gtb-workspace-box {
+    position: relative;
+    user-select: none;
+}
+
+.gtb-ws-trigger {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--input-bg);
+    border: 1px solid var(--overlay-10);
+    border-radius: 6px;
+    padding: 3px 8px;
+    min-width: 140px;
+    max-width: 220px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.gtb-ws-trigger:hover {
+    border-color: var(--accent);
+    background: var(--input-bg-light);
+    box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.gtb-ws-display-text {
+    flex: 1;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gtb-ws-count-badge {
+    background: rgba(96, 165, 250, 0.18);
+    color: #60a5fa;
+    border: 1px solid rgba(96, 165, 250, 0.35);
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0 5px;
+    border-radius: 10px;
+    line-height: 14px;
+    white-space: nowrap;
+}
+
+.gtb-ws-chevron {
+    color: var(--text-secondary);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    flex-shrink: 0;
+}
+
+.gtb-ws-trigger.active .gtb-ws-chevron {
+    transform: rotate(180deg);
+}
+
+/* 浮层下拉框 */
+.gtb-ws-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    width: 320px;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    box-shadow: 0 10px 30px var(--shadow-dark), 0 0 12px var(--accent-glow);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    z-index: 10001;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: gtbDropdownIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes gtbDropdownIn {
+    from {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.gtb-ws-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--overlay-10);
+    background: var(--overlay-5);
+}
+
+.gtb-ws-search-box {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    background: var(--input-bg);
+    border: 1px solid var(--overlay-10);
+    border-radius: 4px;
+    padding: 3px 8px;
+}
+
+.gtb-ws-search-box input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-size: 0.72rem;
+    width: 100%;
+}
+
+.gtb-ws-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.gtb-ws-btn-sm {
+    background: var(--overlay-10);
+    border: 1px solid var(--overlay-10);
+    color: var(--text-primary);
+    font-size: 0.68rem;
+    padding: 3px 7px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.gtb-ws-btn-sm:hover {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+}
+
+.gtb-ws-list {
+    max-height: 240px;
+    overflow-y: auto;
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.gtb-ws-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.gtb-ws-item:hover {
+    background: var(--overlay-10);
+}
+
+.gtb-ws-item.selected {
+    background: rgba(96, 165, 250, 0.12);
+}
+
+.gtb-ws-item-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+}
+
+.gtb-ws-checkbox {
+    cursor: pointer;
+    accent-color: #60a5fa;
+    width: 14px;
+    height: 14px;
+}
+
+.gtb-ws-item-names {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+}
+
+.gtb-ws-item-title {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gtb-ws-item-sub {
+    font-size: 0.64rem;
+    font-family: monospace;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gtb-ws-item-only-btn {
+    opacity: 0;
+    font-size: 0.65rem;
+    color: var(--accent);
+    background: transparent;
+    border: 1px solid var(--accent);
+    border-radius: 3px;
+    padding: 1px 5px;
+    cursor: pointer;
+    transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.gtb-ws-item:hover .gtb-ws-item-only-btn {
+    opacity: 1;
+}
+
+.gtb-ws-item-only-btn:hover {
+    background: var(--accent);
+    color: #000;
+}
+
+.gtb-ws-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border-top: 1px solid var(--overlay-10);
+    background: var(--overlay-5);
+    font-size: 0.70rem;
+    color: var(--text-secondary);
+}
+
+.gtb-ws-btn-ok {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    font-size: 0.70rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.gtb-ws-btn-ok:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   🎯 GUM 工作流目标范围双级别选择卡片 (GUM Audit Target Scope Dual-Level Pills)
+   ========================================================================== */
+.wf-gum-scope-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 2px;
+}
+
+.wf-gum-scope-pill {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--input-bg);
+    border: 1.5px solid var(--overlay-10);
+    border-radius: 8px;
+    cursor: pointer;
+    position: relative;
+    user-select: none;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.wf-gum-scope-pill:hover {
+    background: var(--input-bg-light);
+    border-color: var(--overlay-30);
+    transform: translateY(-1px);
+}
+
+.wf-gum-scope-pill.active {
+    background: rgba(99, 102, 241, 0.08);
+    border-color: #6366f1;
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.25);
+}
+
+.wf-gum-scope-pill#wf-gum-scope-workspaces.active {
+    background: rgba(59, 130, 246, 0.08);
+    border-color: #3b82f6;
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.25);
+}
+
+.wf-gum-scope-radio {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.wf-gum-scope-pill.active .wf-gum-scope-radio {
+    border-color: #6366f1;
+}
+
+.wf-gum-scope-pill#wf-gum-scope-workspaces.active .wf-gum-scope-radio {
+    border-color: #3b82f6;
+}
+
+.wf-gum-radio-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: transparent;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: scale(0);
+}
+
+.wf-gum-scope-pill.active .wf-gum-radio-dot {
+    background: #6366f1;
+    transform: scale(1);
+}
+
+.wf-gum-scope-pill#wf-gum-scope-workspaces.active .wf-gum-radio-dot {
+    background: #3b82f6;
+    transform: scale(1);
+}
+
+.wf-gum-scope-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+}
+
+.wf-gum-scope-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.wf-gum-scope-tag {
+    font-size: 0.64rem;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.wf-gum-scope-tag.tag-tenant {
+    background: rgba(167, 139, 250, 0.16);
+    color: #a78bfa;
+    border: 1px solid rgba(167, 139, 250, 0.3);
+}
+
+.wf-gum-scope-tag.tag-ws {
+    background: rgba(59, 130, 246, 0.16);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.wf-gum-scope-detail {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wf-gum-scope-detail b {
+    color: var(--text-primary);
+}
+
+

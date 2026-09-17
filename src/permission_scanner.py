@@ -19,6 +19,8 @@ _TENANT_WORKSPACES_CACHE: Dict[str, Any] = {
 
 class DeepPermissionScanRequest(BaseModel):
     workspace_id: Optional[str] = None
+    workspace_ids: Optional[List[str]] = None
+    scope: Optional[str] = "tenant"
     deep_scan: bool = True
     access_token: Optional[str] = None
     target_users: Optional[List[str]] = None
@@ -26,6 +28,8 @@ class DeepPermissionScanRequest(BaseModel):
 
 async def scan_permissions_deep(
     workspace_id: Optional[str] = None,
+    workspace_ids: Optional[List[str]] = None,
+    scope: Optional[str] = "tenant",
     deep_scan: bool = True,
     config: Optional[Config] = None,
     client: Optional[PBIClient] = None,
@@ -47,8 +51,16 @@ async def scan_permissions_deep(
     target_set = {u.strip().lower() for u in (target_users or []) if u.strip()}
     target_users_clean = [u.strip() for u in (target_users or []) if u.strip()]
 
-    # 1. 获取目标工作区
-    target_ws = (workspace_id or "").strip()
+    # 1. 规范化目标工作区集合与审计层级 (Tenant Level vs Workspace Level)
+    target_ws_list: List[str] = []
+    if workspace_ids and isinstance(workspace_ids, list):
+        target_ws_list = [str(w).strip() for w in workspace_ids if str(w).strip()]
+    elif workspace_id and str(workspace_id).strip() and str(workspace_id).lower() not in ("all", "null", "undefined", ""):
+        target_ws_list = [str(w).strip() for w in str(workspace_id).split(",") if str(w).strip()]
+
+    is_tenant_level = (scope == "tenant") or (not target_ws_list)
+    target_ws_set = {w.lower() for w in target_ws_list}
+
     workspaces: List[Dict[str, Any]] = []
 
     now = time.time()
@@ -56,15 +68,16 @@ async def scan_permissions_deep(
     cache_age = now - _TENANT_WORKSPACES_CACHE.get("timestamp", 0.0)
 
     try:
-        if target_ws and target_ws.lower() not in ("all", "null", "undefined", ""):
-            # 优先从内存租户缓存中匹配单工作区
-            cached_single = next((w for w in cached_workspaces if str(w.get("id", "")).lower() == target_ws.lower()), None)
+        if not is_tenant_level and len(target_ws_list) == 1:
+            # 单工作区精准命中
+            single_id = target_ws_list[0]
+            cached_single = next((w for w in cached_workspaces if str(w.get("id", "")).lower() == single_id.lower()), None)
             if cached_single and cache_age < 180 and cached_single.get("users"):
                 workspaces = [cached_single]
             else:
                 try:
                     ws_res = await asyncio.to_thread(
-                        cli.request, "GET", f"/admin/groups?$top=1&$filter=id eq '{target_ws}'&$expand=users,datasets"
+                        cli.request, "GET", f"/admin/groups?$top=1&$filter=id eq '{single_id}'&$expand=users,datasets"
                     )
                     workspaces = ws_res.get("value", [])
                     if workspaces:
@@ -72,7 +85,7 @@ async def scan_permissions_deep(
                             _TENANT_WORKSPACES_CACHE["workspaces"] = [workspaces[0]]
                             _TENANT_WORKSPACES_CACHE["timestamp"] = now
                         else:
-                            existing_idx = next((i for i, w in enumerate(cached_workspaces) if str(w.get("id", "")).lower() == target_ws.lower()), -1)
+                            existing_idx = next((i for i, w in enumerate(cached_workspaces) if str(w.get("id", "")).lower() == single_id.lower()), -1)
                             if existing_idx >= 0:
                                 cached_workspaces[existing_idx] = workspaces[0]
                             else:
@@ -86,11 +99,36 @@ async def scan_permissions_deep(
                             return {"success": False, "message": f"⚠️ 微软 Power BI Admin API 租户级频次限流 (429 Rate Limit)，请稍候重试。详情: {ex_msg}"}
                     else:
                         try:
-                            ws_single = await asyncio.to_thread(cli.request, "GET", f"/groups/{target_ws}")
+                            ws_single = await asyncio.to_thread(cli.request, "GET", f"/groups/{single_id}")
                             if isinstance(ws_single, dict) and "id" in ws_single:
                                 workspaces = [ws_single]
                         except Exception as sub_ex:
                             return {"success": False, "message": f"拉取工作区失败 (Admin 与常规接口均未命中): {str(sub_ex)}"}
+        elif not is_tenant_level and len(target_ws_list) > 1:
+            # 多工作区定向集合模式：优先从全租户缓存匹配，未命中则请求 Admin API 并精准过滤
+            if cached_workspaces and cache_age < 180:
+                workspaces = [w for w in cached_workspaces if str(w.get("id", "")).lower() in target_ws_set]
+            
+            if len(workspaces) < len(target_ws_list):
+                try:
+                    ws_res = await asyncio.to_thread(
+                        cli.request, "GET", "/admin/groups?$top=500&$expand=users,datasets"
+                    )
+                    all_fetched = ws_res.get("value", [])
+                    if all_fetched:
+                        _TENANT_WORKSPACES_CACHE["timestamp"] = now
+                        _TENANT_WORKSPACES_CACHE["workspaces"] = all_fetched
+                        workspaces = [w for w in all_fetched if str(w.get("id", "")).lower() in target_ws_set]
+                except Exception:
+                    if not workspaces:
+                        # 降级：并发逐个请求
+                        async def _fetch_one(wid: str) -> Optional[Dict[str, Any]]:
+                            try:
+                                return await asyncio.to_thread(cli.request, "GET", f"/groups/{wid}")
+                            except Exception:
+                                return None
+                        results = await asyncio.gather(*[_fetch_one(wid) for wid in target_ws_list])
+                        workspaces = [r for r in results if r and isinstance(r, dict) and "id" in r]
         else:
             # 全租户模式
             if cached_workspaces and cache_age < 120 and len(cached_workspaces) > 1:
@@ -300,8 +338,9 @@ async def scan_permissions_deep(
 
             # 若此 target_user 在已被查工作区中一条记录都没有，提供一条无风险告知记录，防前端空盲
             if not found_any_record_for_user:
+                fallback_ws_id = ",".join(target_ws_list) if target_ws_list else "Tenant-Wide"
                 all_records.append({
-                    "workspaceId": target_ws if target_ws and target_ws.lower() not in ("all", "null", "") else "Tenant-Wide",
+                    "workspaceId": fallback_ws_id,
                     "workspaceName": "未找到关联工作区 / 无生效权限",
                     "identifier": t_user,
                     "displayName": t_user,
@@ -310,7 +349,7 @@ async def scan_permissions_deep(
                     "directRole": "None",
                     "effectiveRole": "None",
                     "isElevated": False,
-                    "elevationReason": "全租户范围内未检测到该用户在此工作区的直属或继承授权",
+                    "elevationReason": "指定扫描范围内未检测到该用户在此工作区的直属或继承授权",
                     "securityStatus": "🟢 无生效权限 (Unprivileged)",
                     "canEditModels": False,
                     "datasetsDetail": []

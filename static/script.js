@@ -2762,76 +2762,274 @@ window.renderGlobalTopbar = async function() {
     window.updateGlobalTopbarDropdowns();
 };
 
+// ⚡ 全局已选工作区 ID 集合 (Set<string> - 支持单选、多选与全选)
+window.selectedGtbWorkspaceIds = new Set();
+try {
+    const savedWs = JSON.parse(localStorage.getItem('pbi-selected-workspaces') || '[]');
+    if (Array.isArray(savedWs) && savedWs.length > 0) {
+        savedWs.forEach(id => { if (id) window.selectedGtbWorkspaceIds.add(String(id)); });
+    }
+} catch(e) {}
+
+// 获取当前在全局功能区选中的所有工作区 ID 数组
+window.getSelectedWorkspaces = function() {
+    return Array.from(window.selectedGtbWorkspaceIds || []);
+};
+
+// 展开/折叠顶栏工作区多选浮层
+window.toggleGtbWsDropdown = function(event) {
+    if (event) event.stopPropagation();
+    const dropdown = document.getElementById('gtb-ws-dropdown');
+    const trigger = document.getElementById('gtb-ws-trigger');
+    if (!dropdown) return;
+    const isVisible = (dropdown.style.display === 'flex');
+    if (isVisible) {
+        window.closeGtbWsDropdown();
+    } else {
+        dropdown.style.display = 'flex';
+        if (trigger) trigger.classList.add('active');
+        const searchInput = document.getElementById('gtb-ws-search-input');
+        if (searchInput) {
+            searchInput.value = '';
+            setTimeout(() => searchInput.focus(), 50);
+        }
+        window.filterGtbWsOptions('');
+    }
+};
+
+// 关闭工作区多选浮层
+window.closeGtbWsDropdown = function() {
+    const dropdown = document.getElementById('gtb-ws-dropdown');
+    const trigger = document.getElementById('gtb-ws-trigger');
+    if (dropdown) dropdown.style.display = 'none';
+    if (trigger) trigger.classList.remove('active');
+};
+
+// 全选或清空已选工作区
+window.selectAllGtbWorkspaces = function(selectAll = true) {
+    const wsData = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+    if (selectAll) {
+        wsData.forEach(w => { if (w && w.id) window.selectedGtbWorkspaceIds.add(String(w.id)); });
+    } else {
+        window.selectedGtbWorkspaceIds.clear();
+    }
+    window.persistGtbWorkspacesAndSync();
+};
+
+// 切换某个工作区的选中状态 (多选)
+window.toggleGtbWorkspace = function(wsId) {
+    if (!wsId) return;
+    const idStr = String(wsId);
+    if (window.selectedGtbWorkspaceIds.has(idStr)) {
+        window.selectedGtbWorkspaceIds.delete(idStr);
+    } else {
+        window.selectedGtbWorkspaceIds.add(idStr);
+    }
+    window.persistGtbWorkspacesAndSync();
+};
+
+// 单选某个工作区 (清空其他所有选择，并关闭浮层)
+window.selectSingleGtbWorkspace = function(wsId) {
+    if (!wsId) return;
+    window.selectedGtbWorkspaceIds.clear();
+    window.selectedGtbWorkspaceIds.add(String(wsId));
+    window.persistGtbWorkspacesAndSync();
+    window.closeGtbWsDropdown();
+};
+
+// 单选切换全局活动工作区 (兼容老接口与快捷方式)
+window.handleGlobalWorkspaceChange = function(wsId) {
+    if (!wsId) return;
+    window.selectSingleGtbWorkspace(wsId);
+};
+
+// 持久化当前选中的工作区并触发全站联动与回显
+window.persistGtbWorkspacesAndSync = function() {
+    const selectedArray = Array.from(window.selectedGtbWorkspaceIds);
+    try {
+        localStorage.setItem('pbi-selected-workspaces', JSON.stringify(selectedArray));
+        // 同时维护单个主工作区 ID（取首个选中的，以向下兼容原 active-workspace 机制）
+        const firstWsId = selectedArray[0] || '';
+        localStorage.setItem('pbi-active-workspace', firstWsId);
+        const activeWsInput = document.getElementById('active-workspace');
+        if (activeWsInput) activeWsInput.value = firstWsId;
+    } catch(e) {}
+
+    // 重新更新顶栏下拉框与 Popover 视图
+    window.updateGlobalTopbarDropdowns();
+    // 同步到工作流
+    if (window.syncAllWorkflowSelectors) window.syncAllWorkflowSelectors();
+    // 联动 GUM 目标范围展示
+    if (window.syncGumScopeDisplay) window.syncGumScopeDisplay();
+};
+
+// 过滤 Popover 里的工作区列表项
+window.filterGtbWsOptions = function(term = '') {
+    const q = (term || '').toLowerCase().trim();
+    const items = document.querySelectorAll('#gtb-ws-list .gtb-ws-item');
+    items.forEach(item => {
+        const text = item.getAttribute('data-search-text') || '';
+        if (!q || text.includes(q)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+};
+
+// 注册全局点击事件以关闭 Popover
+if (!window._gtbWsClickListenerAdded) {
+    window._gtbWsClickListenerAdded = true;
+    document.addEventListener('click', function(e) {
+        const box = document.getElementById('gtb-workspace-box');
+        if (box && !box.contains(e.target)) {
+            window.closeGtbWsDropdown();
+        }
+    });
+}
+
 window.updateGlobalTopbarDropdowns = function() {
     const wsData = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
     const dsData = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
     const rpData = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
 
-    const wsSelect = document.getElementById('gtb-select-workspace');
+    const wsHidden = document.getElementById('gtb-select-workspace');
     const dsSelect = document.getElementById('gtb-select-dataset');
     const rpSelect = document.getElementById('gtb-select-report');
     const xmlaInput = document.getElementById('gtb-input-xmla');
-
-    if (!wsSelect || !dsSelect || !rpSelect) return;
 
     const curWsId = document.getElementById('active-workspace')?.value || localStorage.getItem('pbi-active-workspace') || '';
     const curDsId = document.getElementById('active-dataset')?.value || localStorage.getItem('pbi-active-dataset') || '';
     const curRpId = document.getElementById('active-report')?.value || localStorage.getItem('pbi-active-report') || '';
 
-    // 填充工作区下拉框 (同时显示名称与 GUID)
-    let wsHtml = `<option value="">-- 选择工作区 (${wsData.length}) --</option>`;
-    let activeWsName = '';
-    wsData.forEach(w => {
-        const isSel = (w.id === curWsId);
-        const name = w.alias || w.name || w.id;
-        if (isSel) activeWsName = name;
-        const displayLabel = `${name} (${w.id})`;
-        wsHtml += `<option value="${w.id}" ${isSel ? 'selected' : ''} title="${displayLabel}">${displayLabel}</option>`;
-    });
-    wsSelect.innerHTML = wsHtml;
+    // 若当前未选中任何工作区，但有可用工作区，默认选中当前主工作区或第一个
+    if (window.selectedGtbWorkspaceIds.size === 0 && wsData.length > 0) {
+        if (curWsId && wsData.some(w => String(w.id).toLowerCase() === curWsId.toLowerCase())) {
+            window.selectedGtbWorkspaceIds.add(String(curWsId));
+        } else if (wsData[0] && wsData[0].id) {
+            window.selectedGtbWorkspaceIds.add(String(wsData[0].id));
+        }
+    }
 
-    // 根据当前工作区过滤 Datasets 和 Reports
-    const filteredDs = curWsId ? dsData.filter(d => {
+    const selectedList = Array.from(window.selectedGtbWorkspaceIds);
+    const selectedCount = selectedList.length;
+    const totalCount = wsData.length;
+
+    // 1. 更新顶栏触发器文本与徽章
+    const displayTextEl = document.getElementById('gtb-ws-display-text');
+    const countBadgeEl = document.getElementById('gtb-ws-count-badge');
+    let firstWsName = '';
+
+    if (displayTextEl) {
+        if (selectedCount === 0) {
+            displayTextEl.textContent = '-- 选择工作区 (0) --';
+        } else if (selectedCount === 1) {
+            const matched = wsData.find(w => String(w.id).toLowerCase() === selectedList[0].toLowerCase());
+            firstWsName = matched ? (matched.alias || matched.name || matched.id) : selectedList[0];
+            displayTextEl.textContent = firstWsName;
+        } else if (selectedCount === totalCount && totalCount > 1) {
+            displayTextEl.textContent = `全部工作区 (共 ${totalCount} 个)`;
+        } else {
+            displayTextEl.textContent = `已选 ${selectedCount} 个工作区`;
+        }
+    }
+
+    if (countBadgeEl) {
+        if (selectedCount > 1) {
+            countBadgeEl.style.display = 'inline-block';
+            countBadgeEl.textContent = (selectedCount === totalCount) ? '全选' : `${selectedCount}/${totalCount}`;
+        } else {
+            countBadgeEl.style.display = 'none';
+        }
+    }
+
+    // 更新隐藏值与兼容字段
+    if (wsHidden) {
+        wsHidden.value = selectedList.join(',');
+    }
+
+    // 2. 渲染 Popover 下拉列表
+    const wsListContainer = document.getElementById('gtb-ws-list');
+    const statTextEl = document.getElementById('gtb-ws-stat-text');
+    if (wsListContainer) {
+        if (wsData.length === 0) {
+            wsListContainer.innerHTML = '<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 16px 0;">暂无可用的工作区缓存</div>';
+        } else {
+            let listHtml = '';
+            wsData.forEach(w => {
+                if (!w || !w.id) return;
+                const wid = String(w.id);
+                const wname = w.alias || w.name || wid;
+                const isSelected = window.selectedGtbWorkspaceIds.has(wid);
+                const searchText = `${wname} ${wid}`.toLowerCase();
+
+                listHtml += `
+                    <div class="gtb-ws-item ${isSelected ? 'selected' : ''}" data-search-text="${searchText}" onclick="window.toggleGtbWorkspace('${wid}')">
+                        <div class="gtb-ws-item-left">
+                            <input type="checkbox" class="gtb-ws-checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); window.toggleGtbWorkspace('${wid}')">
+                            <div class="gtb-ws-item-names">
+                                <div class="gtb-ws-item-title" title="${wname}">${wname}</div>
+                                <div class="gtb-ws-item-sub" title="${wid}">${wid}</div>
+                            </div>
+                        </div>
+                        <button type="button" class="gtb-ws-item-only-btn" onclick="window.selectSingleGtbWorkspace('${wid}'); event.stopPropagation();" title="仅选此工作区">仅选</button>
+                    </div>
+                `;
+            });
+            wsListContainer.innerHTML = listHtml;
+        }
+    }
+
+    if (statTextEl) {
+        statTextEl.textContent = `已选 ${selectedCount} / ${totalCount} 个工作区`;
+    }
+
+    // 3. 根据所选的工作区过滤 Datasets 和 Reports
+    const selectedWsSet = new Set(selectedList.map(s => s.toLowerCase()));
+    const filteredDs = (selectedCount > 0) ? dsData.filter(d => {
         const dWid = (d.workspaceId || '').trim().toLowerCase();
-        return !dWid || dWid === curWsId.toLowerCase();
+        return !dWid || selectedWsSet.has(dWid);
     }) : dsData;
 
-    const filteredRp = curWsId ? rpData.filter(r => {
+    const filteredRp = (selectedCount > 0) ? rpData.filter(r => {
         const rWid = (r.workspaceId || '').trim().toLowerCase();
-        return !rWid || rWid === curWsId.toLowerCase();
+        return !rWid || selectedWsSet.has(rWid);
     }) : rpData;
 
-    // 填充数据模型下拉框 (同时显示名称与 GUID)
-    let dsHtml = `<option value="">-- 选择模型 (${filteredDs.length}) --</option>`;
-    filteredDs.forEach(d => {
-        const isSel = (d.id === curDsId);
-        const name = d.alias || d.name || d.id;
-        const displayLabel = `${name} (${d.id})`;
-        dsHtml += `<option value="${d.id}" ${isSel ? 'selected' : ''} title="${displayLabel}">${displayLabel}</option>`;
-    });
-    dsSelect.innerHTML = dsHtml;
+    // 填充数据模型下拉框
+    if (dsSelect) {
+        let dsHtml = `<option value="">-- 选择模型 (${filteredDs.length}) --</option>`;
+        filteredDs.forEach(d => {
+            const isSel = (d.id === curDsId);
+            const name = d.alias || d.name || d.id;
+            const displayLabel = `${name} (${d.id})`;
+            dsHtml += `<option value="${d.id}" ${isSel ? 'selected' : ''} title="${displayLabel}">${displayLabel}</option>`;
+        });
+        dsSelect.innerHTML = dsHtml;
+    }
 
-    // 填充报表下拉框 (同时显示名称与 GUID)
-    let rpHtml = `<option value="">-- 选择报表 (${filteredRp.length}) --</option>`;
-    filteredRp.forEach(r => {
-        const isSel = (r.id === curRpId);
-        const name = r.alias || r.name || r.id;
-        const displayLabel = `${name} (${r.id})`;
-        rpHtml += `<option value="${r.id}" ${isSel ? 'selected' : ''} title="${displayLabel}">${displayLabel}</option>`;
-    });
-    rpSelect.innerHTML = rpHtml;
+    // 填充报表下拉框
+    if (rpSelect) {
+        let rpHtml = `<option value="">-- 选择报表 (${filteredRp.length}) --</option>`;
+        filteredRp.forEach(r => {
+            const isSel = (r.id === curRpId);
+            const name = r.alias || r.name || r.id;
+            const displayLabel = `${name} (${r.id})`;
+            rpHtml += `<option value="${r.id}" ${isSel ? 'selected' : ''} title="${displayLabel}">${displayLabel}</option>`;
+        });
+        rpSelect.innerHTML = rpHtml;
+    }
 
     // 计算并更新 XMLA 终结点连接串及历史记录维护
     if (xmlaInput) {
         let currentEndpoint = '';
-        if (activeWsName) {
-            currentEndpoint = `powerbi://api.powerbi.com/v1.0/myorg/${activeWsName}`;
-        } else if (curWsId) {
-            currentEndpoint = `powerbi://api.powerbi.com/v1.0/myorg/${curWsId}`;
+        if (firstWsName) {
+            currentEndpoint = `powerbi://api.powerbi.com/v1.0/myorg/${firstWsName}`;
+        } else if (selectedList[0]) {
+            currentEndpoint = `powerbi://api.powerbi.com/v1.0/myorg/${selectedList[0]}`;
         }
         xmlaInput.value = currentEndpoint;
 
-        // 维护并去重 XMLA 历史记录 (localStorage)
         if (currentEndpoint) {
             try {
                 let history = JSON.parse(localStorage.getItem('pbi-xmla-history') || '[]');
@@ -2845,8 +3043,9 @@ window.updateGlobalTopbarDropdowns = function() {
         window.renderGlobalXmlaHistoryOptions();
     }
 
-    if (window.initGumWorkspaceSelector) {
-        window.initGumWorkspaceSelector();
+    // 联动 GUM 目标范围展示
+    if (window.syncGumScopeDisplay) {
+        window.syncGumScopeDisplay();
     }
 };
 
@@ -16606,56 +16805,130 @@ window.gumCandidateUsers = []; // Array of { identifier, displayName, principalT
 window.gumWorkspaceUsersCache = new Map(); // wsId -> candidates array
 window.gumTargetUsers = new Map(); // identifier.toLowerCase() -> { identifier, displayName }
 
-window.initGumWorkspaceSelector = function() {
-    const sel = document.getElementById('wf-gum-workspace-select');
-    if (!sel) return;
-    const curVal = sel.value;
-    
-    // 汇聚所有来源的工作区列表 (localStorage, workspace-list UI, gumWorkspaces, allWorkspaces)
-    const rawList = [];
+// 🎯 GUM 审计范围状态 ('tenant' 或 'workspaces')
+window.gumAuditScope = 'tenant';
+try {
+    const savedScope = localStorage.getItem('pbi-gum-scope');
+    if (savedScope === 'workspaces' || savedScope === 'tenant') {
+        window.gumAuditScope = savedScope;
+    }
+} catch(e) {}
+
+// 切换 GUM 审计范围级别 (🏢 当前租户级别 / 📂 当前工作区级别)
+window.handleGumScopeChange = function(scope) {
+    if (scope !== 'tenant' && scope !== 'workspaces') scope = 'tenant';
+    window.gumAuditScope = scope;
     try {
-        const stored = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
-        if (Array.isArray(stored)) rawList.push(...stored);
+        localStorage.setItem('pbi-gum-scope', scope);
     } catch(e) {}
-    
-    if (typeof window.getListData === 'function') {
-        const liveList = window.getListData('workspace-list');
-        if (Array.isArray(liveList)) rawList.push(...liveList);
-    }
-    
-    if (Array.isArray(window.gumWorkspaces)) {
-        rawList.push(...window.gumWorkspaces);
-    }
-    if (Array.isArray(window.allWorkspaces)) {
-        rawList.push(...window.allWorkspaces);
-    }
 
-    // 按 ID 去重并解析展示名称
-    const uniqueMap = new Map();
-    rawList.forEach(ws => {
-        if (!ws) return;
-        const wsId = (ws.id || ws.workspaceId || '').trim();
-        if (!wsId) return;
-        const wsName = (ws.alias || ws.name || ws.displayName || wsId).trim();
-        if (!uniqueMap.has(wsId.toLowerCase())) {
-            uniqueMap.set(wsId.toLowerCase(), { id: wsId, name: wsName });
+    const pillTenant = document.getElementById('wf-gum-scope-tenant');
+    const pillWs = document.getElementById('wf-gum-scope-workspaces');
+    const hiddenScope = document.getElementById('wf-gum-scope-type');
+
+    if (pillTenant && pillWs) {
+        if (scope === 'tenant') {
+            pillTenant.classList.add('active');
+            pillWs.classList.remove('active');
+        } else {
+            pillTenant.classList.remove('active');
+            pillWs.classList.add('active');
         }
-    });
+    }
+    if (hiddenScope) hiddenScope.value = scope;
 
-    let html = '<option value="">🌐 全租户全量审计 (Tenant-Wide: All Workspaces / 全局穿透)</option>';
-    uniqueMap.forEach(item => {
-        html += `<option value="${item.id}">${item.name} (${item.id})</option>`;
-    });
-    sel.innerHTML = html;
+    window.syncGumScopeDisplay();
 
-    // 如果用户在当前会话中显式选过了具体工作区，则保留；否则默认选择 ""（全租户全量审计）
-    if (curVal && Array.from(sel.options).some(o => o.value.toLowerCase() === curVal.toLowerCase())) {
-        sel.value = curVal;
-    } else {
-        sel.value = "";
+    // 重新拉取对应范围的候选用户
+    if (window.fetchGumWorkspaceUsers) {
+        window.fetchGumWorkspaceUsers(false);
+    }
+    // 若已有数据，重新本地过滤表格
+    if (window.filterGumTable) {
+        window.filterGumTable();
+    }
+};
+
+// 同步回显全局功能区的租户与工作区状态到 GUM 卡片
+window.syncGumScopeDisplay = function() {
+    // 1. 同步当前租户回显 (单选，从全局功能区获取)
+    const tenantEcho = document.getElementById('wf-gum-echo-tenant-name');
+    const gtbTenantName = document.getElementById('gtb-tenant-name')?.textContent || '';
+    if (tenantEcho) {
+        tenantEcho.textContent = gtbTenantName && gtbTenantName !== '加载中...' ? gtbTenantName : '默认组织 (Default Tenant)';
     }
 
-    // 自动拉取当前选中工作区的候选用户列表
+    // 2. 同步当前工作区多选状态回显 (多选/全选，从全局功能区获取)
+    const wsBadge = document.getElementById('wf-gum-echo-ws-count-badge');
+    const wsSummary = document.getElementById('wf-gum-echo-ws-summary');
+    const selectedWss = window.getSelectedWorkspaces ? window.getSelectedWorkspaces() : [];
+    const wsData = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+
+    if (wsBadge) {
+        if (selectedWss.length === 0) {
+            wsBadge.textContent = '未选择';
+            wsBadge.style.background = 'rgba(239, 68, 68, 0.16)';
+            wsBadge.style.color = '#ef4444';
+            wsBadge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+        } else if (wsData.length > 0 && selectedWss.length === wsData.length) {
+            wsBadge.textContent = `全选 (${selectedWss.length}个)`;
+            wsBadge.style.background = 'rgba(59, 130, 246, 0.16)';
+            wsBadge.style.color = '#60a5fa';
+            wsBadge.style.borderColor = 'rgba(59, 130, 246, 0.3)';
+        } else {
+            wsBadge.textContent = `已选 ${selectedWss.length} 个`;
+            wsBadge.style.background = 'rgba(59, 130, 246, 0.16)';
+            wsBadge.style.color = '#60a5fa';
+            wsBadge.style.borderColor = 'rgba(59, 130, 246, 0.3)';
+        }
+    }
+
+    if (wsSummary) {
+        if (selectedWss.length === 0) {
+            wsSummary.innerHTML = '<span style="color: var(--warning); cursor: pointer;" onclick="window.toggleGtbWsDropdown(event)">⚠️ 全局功能区未选工作区 (点击展开顶栏配置)</span>';
+        } else if (selectedWss.length === 1) {
+            const matched = wsData.find(w => String(w.id).toLowerCase() === selectedWss[0].toLowerCase());
+            const name = matched ? (matched.alias || matched.name || matched.id) : selectedWss[0];
+            wsSummary.textContent = `工作区: ${name}`;
+        } else if (wsData.length > 0 && selectedWss.length === wsData.length) {
+            wsSummary.textContent = `全量包含全部 ${selectedWss.length} 个可用工作区`;
+        } else {
+            const names = selectedWss.slice(0, 2).map(id => {
+                const m = wsData.find(w => String(w.id).toLowerCase() === id.toLowerCase());
+                return m ? (m.alias || m.name || id) : id;
+            });
+            wsSummary.textContent = `${names.join(', ')} 等 ${selectedWss.length} 个工作区`;
+        }
+    }
+
+    // 同步隐藏输入框
+    const hiddenWs = document.getElementById('wf-gum-workspace-select');
+    if (hiddenWs) {
+        hiddenWs.value = selectedWss.join(',');
+    }
+};
+
+window.initGumWorkspaceSelector = function() {
+    // 根据持久化状态初始化 scope pill 激活态
+    const currentScope = window.gumAuditScope || 'tenant';
+    const pillTenant = document.getElementById('wf-gum-scope-tenant');
+    const pillWs = document.getElementById('wf-gum-scope-workspaces');
+    const hiddenScope = document.getElementById('wf-gum-scope-type');
+
+    if (pillTenant && pillWs) {
+        if (currentScope === 'workspaces') {
+            pillTenant.classList.remove('active');
+            pillWs.classList.add('active');
+        } else {
+            pillTenant.classList.add('active');
+            pillWs.classList.remove('active');
+        }
+    }
+    if (hiddenScope) hiddenScope.value = currentScope;
+
+    window.syncGumScopeDisplay();
+
+    // 自动拉取当前范围的候选用户列表
     if (window.fetchGumWorkspaceUsers) {
         window.fetchGumWorkspaceUsers(false);
     }
@@ -16704,8 +16977,10 @@ if (!window._gumDropdownClickListenerAdded) {
 }
 
 window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
-    const wsSelect = document.getElementById('wf-gum-workspace-select');
-    const wsId = wsSelect?.value || '';
+    const scope = window.gumAuditScope || 'tenant';
+    const selectedWss = window.getSelectedWorkspaces ? window.getSelectedWorkspaces() : [];
+    const wsData = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+
     const dropdownList = document.getElementById('wf-gum-dropdown-list');
     const dropdownCount = document.getElementById('wf-gum-dropdown-count');
     const scanBtn = document.getElementById('wf-gum-scan-users-btn');
@@ -16735,9 +17010,9 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
         }
     };
 
-    // 全部工作区模式：优先调用 Admin API 穿透全租户所有工作区并极速汇聚用户名单
-    if (!wsId) {
-        const cacheKey = '__ALL_WORKSPACES__';
+    // 1. 🏢 当前租户级别 (全租户穿透汇聚)
+    if (scope === 'tenant') {
+        const cacheKey = '__ALL_TENANT_WORKSPACES__';
         if (!forceRefresh && window.gumWorkspaceUsersCache && window.gumWorkspaceUsersCache.has(cacheKey)) {
             window.gumCandidateUsers = window.gumWorkspaceUsersCache.get(cacheKey) || [];
             window.renderGumDropdownUsers();
@@ -16753,7 +17028,6 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
         }
 
         try {
-            // 优先尝试 Admin API 一键穿透全租户 (包括 SP 未加入的工作区)
             let candidates = [];
             try {
                 const adminRes = await fetch('/api/proxy', {
@@ -16789,15 +17063,13 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
                     candidates = Array.from(mergedMap.values());
                 }
             } catch (adminErr) {
-                console.warn('Admin API expand users failed, falling back to per-workspace query:', adminErr);
+                console.warn('Admin API expand users failed, falling back to local workspaces query:', adminErr);
             }
 
-            // 若 Admin API 未能获取，回退至本地配置工作区的并发拉取
             if (!candidates || candidates.length === 0) {
-                const allOptions = Array.from(wsSelect?.options || []).filter(o => o.value);
-                const promises = allOptions.map(async (opt) => {
-                    const wid = opt.value;
-                    const wname = opt.text.split(' (')[0] || wid;
+                const promises = wsData.map(async (ws) => {
+                    const wid = ws.id;
+                    const wname = ws.alias || ws.name || wid;
                     try {
                         const res = await fetch('/api/proxy', {
                             method: 'POST',
@@ -16840,12 +17112,12 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
             window.gumWorkspaceUsersCache.set(cacheKey, candidates);
             window.renderGumDropdownUsers();
         } catch(e) {
-            console.error('Failed to aggregate all workspace users:', e);
+            console.error('Failed to aggregate all tenant workspace users:', e);
             if (dropdownCount) {
                 dropdownCount.innerHTML = `<span style="color:var(--warning); font-size:0.72rem;">⚠️ 汇总失败: ${e.message}</span>`;
             }
             if (dropdownList) {
-                dropdownList.innerHTML = `<div style="font-size:0.75rem; color:var(--warning); padding:8px 4px; text-align: center;">拉取失败，您仍可在搜索栏直接输入目标邮箱。</div>`;
+                dropdownList.innerHTML = `<div style="font-size:0.75rem; color:var(--warning); padding:8px 4px; text-align: center;">全租户拉取失败，您仍可在搜索栏直接输入目标邮箱。</div>`;
             }
         } finally {
             resetScanBtn();
@@ -16853,81 +17125,110 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
         return;
     }
 
-    // 单个工作区模式：优先通过 Admin 过滤拉取（解决非成员 404 限制），失败回退常规接口
-    const wsName = wsSelect?.options[wsSelect.selectedIndex]?.text?.split(' (')[0] || wsId;
+    // 2. 📂 当前工作区级别 (按全局顶栏选中的工作区多选扫描)
+    if (selectedWss.length === 0) {
+        if (dropdownCount) dropdownCount.innerHTML = '<span style="color:var(--warning); font-size:0.72rem;">未选择工作区</span>';
+        if (dropdownList) {
+            dropdownList.innerHTML = `
+                <div style="font-size: 0.75rem; color: var(--text-secondary); padding: 12px 8px; text-align: center;">
+                    ⚠️ 全局功能区暂未选定工作区。<br>
+                    <a href="javascript:void(0)" onclick="window.toggleGtbWsDropdown(event)" style="color: var(--accent); text-decoration: underline; margin-top: 4px; display: inline-block;">点击展开顶栏工作区多选面板</a>
+                </div>
+            `;
+        }
+        resetScanBtn();
+        return;
+    }
 
-    if (!forceRefresh && window.gumWorkspaceUsersCache && window.gumWorkspaceUsersCache.has(wsId)) {
-        window.gumCandidateUsers = window.gumWorkspaceUsersCache.get(wsId) || [];
+    const cacheKey = `__WORKSPACES_${selectedWss.sort().join('_')}__`;
+    if (!forceRefresh && window.gumWorkspaceUsersCache && window.gumWorkspaceUsersCache.has(cacheKey)) {
+        window.gumCandidateUsers = window.gumWorkspaceUsersCache.get(cacheKey) || [];
         window.renderGumDropdownUsers();
         resetScanBtn();
         return;
     }
 
     if (dropdownCount) {
-        dropdownCount.innerHTML = '<span style="color:var(--accent); font-size:0.72rem;">⏳ 正在拉取...</span>';
+        dropdownCount.innerHTML = `<span style="color:var(--accent); font-size:0.72rem;">⏳ 正在拉取 (${selectedWss.length}个工作区)...</span>`;
     }
     if (dropdownList) {
-        dropdownList.innerHTML = '<div style="font-size: 0.75rem; color: var(--text-secondary); padding: 8px 4px; text-align: center;">⏳ 正在连接 Power BI API 获取工作区用户列表...</div>';
+        dropdownList.innerHTML = `<div style="font-size: 0.75rem; color: var(--text-secondary); padding: 8px 4px; text-align: center;">⏳ 正在穿透已选的 ${selectedWss.length} 个工作区获取授权人员名单...</div>`;
     }
 
     try {
-        let usersList = [];
-        try {
-            // 优先尝试 Admin 接口（可穿透读取任意工作区）
-            const adminSingleRes = await fetch('/api/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    endpoint: `/admin/groups?$top=1&$filter=id eq '${wsId}'&$expand=users`,
-                    method: 'GET'
-                })
-            });
-            const adminRaw = await adminSingleRes.json();
-            const adminData = adminRaw.data || adminRaw;
-            const singleWsList = Array.isArray(adminData) ? adminData : (adminData.value || []);
-            if (singleWsList && singleWsList.length > 0 && singleWsList[0].users) {
-                usersList = singleWsList[0].users;
+        const promises = selectedWss.map(async (wid) => {
+            const matched = wsData.find(w => String(w.id).toLowerCase() === String(wid).toLowerCase());
+            const wname = matched ? (matched.alias || matched.name || wid) : wid;
+            try {
+                // 优先 Admin 单独查询
+                let usersList = [];
+                try {
+                    const adminRes = await fetch('/api/proxy', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            endpoint: `/admin/groups?$top=1&$filter=id eq '${wid}'&$expand=users`,
+                            method: 'GET'
+                        })
+                    });
+                    const adminRaw = await adminRes.json();
+                    const adminData = adminRaw.data || adminRaw;
+                    const sList = Array.isArray(adminData) ? adminData : (adminData.value || []);
+                    if (sList && sList.length > 0 && sList[0].users) {
+                        usersList = sList[0].users;
+                    }
+                } catch(err) {}
+
+                if (!usersList || usersList.length === 0) {
+                    const res = await fetch('/api/proxy', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ endpoint: `/groups/${wid}/users`, method: 'GET' })
+                    });
+                    const rawData = await res.json();
+                    const data = rawData.data || rawData;
+                    usersList = Array.isArray(data) ? data : (data.value || []);
+                }
+
+                return (usersList || []).map(u => ({
+                    identifier: (u.identifier || u.emailAddress || u.userPrincipalName || '').trim(),
+                    displayName: (u.displayName || u.identifier || u.emailAddress || '').trim(),
+                    principalType: u.principalType || 'User',
+                    role: u.groupUserAccessRight || 'Viewer',
+                    workspaceId: wid,
+                    workspaceName: wname
+                })).filter(u => u.identifier);
+            } catch(e) {
+                return [];
             }
-        } catch(e) {
-            console.warn('Admin single workspace query failed, trying standard endpoint:', e);
-        }
+        });
 
-        // 若 Admin 接口未返回，尝试常规接口
-        if (!usersList || usersList.length === 0) {
-            const res = await fetch('/api/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    endpoint: `/groups/${wsId}/users`,
-                    method: 'GET'
-                })
-            });
-            const rawData = await res.json();
-            const data = rawData.data || rawData;
-            usersList = Array.isArray(data) ? data : (data.value || []);
-        }
+        const results = await Promise.allSettled(promises);
+        const mergedMap = new Map();
+        results.forEach(r => {
+            if (r.status === 'fulfilled' && Array.isArray(r.value)) {
+                r.value.forEach(u => {
+                    const key = u.identifier.toLowerCase();
+                    if (!mergedMap.has(key)) {
+                        mergedMap.set(key, u);
+                    }
+                });
+            }
+        });
 
-        const candidates = usersList.map(u => ({
-            identifier: (u.identifier || u.emailAddress || u.userPrincipalName || '').trim(),
-            displayName: (u.displayName || u.identifier || u.emailAddress || '').trim(),
-            principalType: u.principalType || 'User',
-            role: u.groupUserAccessRight || 'Viewer',
-            workspaceId: wsId,
-            workspaceName: wsName
-        })).filter(u => u.identifier);
-
+        const candidates = Array.from(mergedMap.values());
         window.gumCandidateUsers = candidates;
         if (!window.gumWorkspaceUsersCache) window.gumWorkspaceUsersCache = new Map();
-        window.gumWorkspaceUsersCache.set(wsId, candidates);
+        window.gumWorkspaceUsersCache.set(cacheKey, candidates);
 
         window.renderGumDropdownUsers();
     } catch(e) {
-        console.error('Failed to fetch workspace users:', e);
+        console.error('Failed to fetch selected workspace users:', e);
         if (dropdownCount) {
             dropdownCount.innerHTML = `<span style="color:var(--warning); font-size:0.72rem;">⚠️ 获取失败: ${e.message}</span>`;
         }
         if (dropdownList) {
-            dropdownList.innerHTML = `<div style="font-size:0.75rem; color:var(--warning); padding:8px 4px; text-align: center;">拉取失败，请检查网络或 Token 权限。您仍可在搜索栏直接输入目标邮箱。</div>`;
+            dropdownList.innerHTML = `<div style="font-size:0.75rem; color:var(--warning); padding:8px 4px; text-align: center;">拉取失败，您仍可在搜索栏直接输入目标邮箱。</div>`;
         }
     } finally {
         resetScanBtn();
@@ -17105,8 +17406,9 @@ window.runGlobalUserManager = async function() {
 
     try {
         const isDeepAudit = document.getElementById('gum-deep-audit-mode')?.checked ?? true;
-        const selWorkspace = document.getElementById('wf-gum-workspace-select')?.value || '';
+        const scope = window.gumAuditScope || 'tenant';
         const onlyTargets = document.getElementById('wf-gum-only-targets-toggle')?.checked ?? true;
+        const selectedWss = window.getSelectedWorkspaces ? window.getSelectedWorkspaces() : [];
 
         // 获取定向用户列表
         let targetUsersList = [];
@@ -17114,9 +17416,20 @@ window.runGlobalUserManager = async function() {
             targetUsersList = Array.from(window.gumTargetUsers.values()).map(u => u.identifier);
         }
 
+        let wsScopeDesc = '';
+        if (scope === 'tenant') {
+            const tenantName = document.getElementById('gtb-tenant-name')?.textContent || '默认组织';
+            wsScopeDesc = `🏢 当前租户级别 (${tenantName} - 全租户穿透)`;
+        } else {
+            wsScopeDesc = `📂 当前工作区级别 (${selectedWss.length > 0 ? `已选 ${selectedWss.length} 个工作区` : '未选择工作区'})`;
+        }
+
         const targetScopeDesc = targetUsersList.length > 0 ? `定向锁定 [${targetUsersList.join(', ')}]` : '全部授权用户';
-        const wsScopeDesc = selWorkspace ? `指定工作区 (${selWorkspace})` : '🌐 全租户所有工作区 (Tenant-Wide All Workspaces)';
         appendLog(`[1] 正在启动全景权限治理审计 (Deep: ${isDeepAudit ? '开启' : '关闭'}, 范围: ${wsScopeDesc}, 目标: ${targetScopeDesc})...`);
+
+        if (scope === 'workspaces' && selectedWss.length === 0) {
+            throw new Error('当前为【当前工作区级别】，但全局功能区未勾选任何工作区。请点击顶部功能区展开工作区面板并勾选至少一个工作区。');
+        }
 
         if (isDeepAudit) {
             appendLog(`[2] 正在调用后端高性能并发扫描引擎 (/api/workflow/deep-permissions-scan)...`);
@@ -17129,7 +17442,9 @@ window.runGlobalUserManager = async function() {
             }
 
             const payload = {
-                workspace_id: selWorkspace || null,
+                scope: scope,
+                workspace_id: selectedWss[0] || null,
+                workspace_ids: (scope === 'workspaces') ? selectedWss : null,
                 deep_scan: true
             };
             if (targetUsersList.length > 0) {
@@ -17553,7 +17868,9 @@ window.filterGumTable = function() {
     const resultWrap = document.getElementById('wf-gum-result-wrap');
     const clearBtn = document.getElementById('wf-gum-search-clear');
     const pillFilter = window._gumPillFilter || 'all';
-    const selectedWs = document.getElementById('wf-gum-workspace-select')?.value || '';
+    const scope = window.gumAuditScope || 'tenant';
+    const selectedWss = window.getSelectedWorkspaces ? window.getSelectedWorkspaces() : [];
+    const selectedWsSet = new Set(selectedWss.map(w => w.toLowerCase()));
     const onlyTargets = document.getElementById('wf-gum-only-targets-toggle')?.checked ?? true;
 
     // Update clear button visibility
@@ -17571,9 +17888,12 @@ window.filterGumTable = function() {
     const tokens = term ? term.split(/\s+/).filter(Boolean) : [];
 
     let filtered = (window.gumData || []).filter(d => {
-        // Workspace Dropdown Filter
-        if (selectedWs && d.workspaceId !== selectedWs && d.wsId !== selectedWs) {
-            return false;
+        // Workspace Scope Filter (当在工作区级别时，仅展示已勾选工作区的审计记录)
+        if (scope === 'workspaces' && selectedWsSet.size > 0) {
+            const dWid = (d.workspaceId || d.wsId || '').toLowerCase();
+            if (dWid && dWid !== 'tenant-wide' && !selectedWsSet.has(dWid)) {
+                return false;
+            }
         }
 
         // Targeted Users Filter (when toggle is on and targets are selected)

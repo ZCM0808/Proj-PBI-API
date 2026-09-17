@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260917_v2100">
+    <link rel="stylesheet" href="/static/style.css?v=20260917_v2130">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -183,18 +183,42 @@
                     </select>
                 </div>
 
-                <!-- 3. 工作区选择 (Workspace) -->
-                <div class="gtb-item" title="全局活动工作区 (Workspace / groupId)">
+                <!-- 3. 工作区选择 (Workspace - 支持单选/多选/全选) -->
+                <div class="gtb-item gtb-workspace-box" id="gtb-workspace-box" title="全局活动工作区 (点击展开多选/全选/单选)">
                     <div class="gtb-label">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #60a5fa; flex-shrink: 0;"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="22" x2="9" y2="22.01"></line><line x1="15" y1="22" x2="15" y2="22.01"></line><line x1="9" y1="6" x2="9" y2="6.01"></line><line x1="15" y1="6" x2="15" y2="6.01"></line><line x1="9" y1="10" x2="9" y2="10.01"></line><line x1="15" y1="10" x2="15" y2="10.01"></line><line x1="9" y1="14" x2="9" y2="14.01"></line><line x1="15" y1="14" x2="15" y2="14.01"></line><line x1="9" y1="18" x2="9" y2="18.01"></line><line x1="15" y1="18" x2="15" y2="18.01"></line></svg>
                         <span>工作区</span>
                     </div>
-                    <select id="gtb-select-workspace" class="gtb-select" onchange="window.handleGlobalWorkspaceChange(this.value)">
-                        <option value="">-- 选择工作区 --</option>
-                    </select>
-                    <button type="button" class="gtb-copy-btn" onclick="window.copyGtbItem(this, 'workspace')" title="复制当前工作区 ID">
+                    <div class="gtb-ws-trigger" id="gtb-ws-trigger" onclick="window.toggleGtbWsDropdown(event)">
+                        <span id="gtb-ws-display-text" class="gtb-ws-display-text">-- 选择工作区 --</span>
+                        <span id="gtb-ws-count-badge" class="gtb-ws-count-badge" style="display: none;">0</span>
+                        <svg class="gtb-ws-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <input type="hidden" id="gtb-select-workspace" value="">
+                    <button type="button" class="gtb-copy-btn" onclick="window.copyGtbItem(this, 'workspace')" title="复制当前选中的工作区 ID (多选时逗号分隔)">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                     </button>
+
+                    <!-- 全局工作区多选/全选浮层面板 (Workspace Multi-Select Popover) -->
+                    <div class="gtb-ws-dropdown" id="gtb-ws-dropdown" style="display: none;" onclick="event.stopPropagation()">
+                        <div class="gtb-ws-header">
+                            <div class="gtb-ws-search-box">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                <input type="text" id="gtb-ws-search-input" placeholder="筛选工作区名称或 ID..." oninput="window.filterGtbWsOptions(this.value)" autocomplete="off">
+                            </div>
+                            <div class="gtb-ws-actions">
+                                <button type="button" class="gtb-ws-btn-sm" onclick="window.selectAllGtbWorkspaces(true)">全选</button>
+                                <button type="button" class="gtb-ws-btn-sm" onclick="window.selectAllGtbWorkspaces(false)">清空</button>
+                            </div>
+                        </div>
+                        <div class="gtb-ws-list" id="gtb-ws-list">
+                            <!-- 动态加载工作区列表 -->
+                        </div>
+                        <div class="gtb-ws-footer">
+                            <span id="gtb-ws-stat-text">已选 0 / 0 个工作区</span>
+                            <button type="button" class="gtb-ws-btn-ok" onclick="window.closeGtbWsDropdown()">完成</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 4. 数据模型选择 (Dataset / Model) -->
@@ -1082,10 +1106,46 @@
                                 <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
                                     <div style="display: grid; grid-template-columns: minmax(200px, 1fr) minmax(280px, 1.5fr); gap: 12px; align-items: flex-end;">
                                         <div>
-                                            <label style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500; display: block; margin-bottom: 4px;">🎯 目标工作区 (Target Workspace)</label>
-                                            <select id="wf-gum-workspace-select" class="wf-input" style="width: 100%; height: 36px;" onchange="if(window.handleGumWorkspaceChange) window.handleGumWorkspaceChange(this.value)">
-                                                <option value="">全部已配置工作区 (All Workspaces / 全局穿透审计)</option>
-                                            </select>
+                                            <label style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500; display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                                                <span>🎯 审计目标范围 (Audit Target Scope)</span>
+                                                <span style="font-size: 0.70rem; color: var(--accent); font-weight: normal;">从全局功能区继承与联动</span>
+                                            </label>
+                                            <div class="wf-gum-scope-container" id="wf-gum-scope-container">
+                                                <!-- 选项1：当前租户级别 (Tenant Level - 租户单选) -->
+                                                <div class="wf-gum-scope-pill active" id="wf-gum-scope-tenant" onclick="window.handleGumScopeChange('tenant')" title="当前租户级别：穿透全租户所有工作区与模型进行全局穿透审计 (继承全局顶栏租户)">
+                                                    <div class="wf-gum-scope-radio">
+                                                        <div class="wf-gum-radio-dot"></div>
+                                                    </div>
+                                                    <div class="wf-gum-scope-info">
+                                                        <div class="wf-gum-scope-title">
+                                                            <span>🏢 当前租户级别</span>
+                                                            <span class="wf-gum-scope-tag tag-tenant">租户单选</span>
+                                                        </div>
+                                                        <div class="wf-gum-scope-detail" id="wf-gum-scope-tenant-detail">
+                                                            组织: <b id="wf-gum-echo-tenant-name">默认组织</b>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- 选项2：当前工作区级别 (Workspace Level - 工作区多选) -->
+                                                <div class="wf-gum-scope-pill" id="wf-gum-scope-workspaces" onclick="window.handleGumScopeChange('workspaces')" title="当前工作区级别：仅对全局功能区选定的工作区进行细粒度穿透审计 (支持多选/全选)">
+                                                    <div class="wf-gum-scope-radio">
+                                                        <div class="wf-gum-radio-dot"></div>
+                                                    </div>
+                                                    <div class="wf-gum-scope-info">
+                                                        <div class="wf-gum-scope-title">
+                                                            <span>📂 当前工作区级别</span>
+                                                            <span class="wf-gum-scope-tag tag-ws" id="wf-gum-echo-ws-count-badge">已选 0 个</span>
+                                                        </div>
+                                                        <div class="wf-gum-scope-detail" id="wf-gum-scope-ws-detail">
+                                                            <span id="wf-gum-echo-ws-summary">未选工作区 (点击配置)</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- 隐藏域保留向后兼容 -->
+                                            <input type="hidden" id="wf-gum-workspace-select" value="">
+                                            <input type="hidden" id="wf-gum-scope-type" value="tenant">
                                         </div>
                                         <div style="position: relative;" id="wf-gum-search-wrapper">
                                             <label style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500; display: flex; justify-content: space-between; margin-bottom: 4px;">
@@ -2651,7 +2711,7 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260906_v1225"></script>
-    <script src="/static/script.js?v=20260917_v2100"></script>
+    <script src="/static/script.js?v=20260917_v2130"></script>
 
 
 

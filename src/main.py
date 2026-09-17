@@ -2802,6 +2802,8 @@ async def api_inspect_datasource(req: DatasourceInspectRequest):
 
 class DeepPermissionScanRequest(BaseModel):
     workspace_id: Optional[str] = None
+    workspace_ids: Optional[List[str]] = None
+    scope: Optional[str] = "tenant"
     deep_scan: bool = True
     access_token: Optional[str] = None
     target_users: Optional[List[str]] = None
@@ -2815,6 +2817,8 @@ async def api_deep_permissions_scan(req: DeepPermissionScanRequest):
         cli = PBIClient(cfg)
         res = await scan_permissions_deep(
             workspace_id=req.workspace_id,
+            workspace_ids=req.workspace_ids,
+            scope=req.scope,
             deep_scan=req.deep_scan,
             config=cfg,
             client=cli,
