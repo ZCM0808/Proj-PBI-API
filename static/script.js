@@ -21312,6 +21312,25 @@ window.closeVersionPopover = function() {
     }, 220);
 };
 
+function positionVersionPopover() {
+    const popover = document.getElementById('version-popover');
+    const btn = document.getElementById('btn-version-info');
+    if (!popover || !btn) return;
+
+    const rect = btn.getBoundingClientRect();
+    const margin = 12;
+
+    // 水平定位：在按钮右侧 12px
+    popover.style.left = (rect.right + margin) + 'px';
+
+    // 纵向定位：以视口底部为锚点 (Bottom-anchored)
+    // 按钮位于左侧菜单底栏。固定 bottom 保持下边界对齐按钮底部，
+    // 当展开历史内容变高时，浮层自然向上伸展，绝不会超出屏幕底部！
+    const bottomOffset = Math.max(margin, window.innerHeight - rect.bottom);
+    popover.style.bottom = bottomOffset + 'px';
+    popover.style.top = 'auto';
+}
+
 window.copyVpHash = function(hash, btn) {
     if (!hash) return;
     navigator.clipboard.writeText(hash).then(() => {
@@ -21334,6 +21353,7 @@ window.toggleVpHistory = function() {
         list.style.display = 'none';
         toggleBtn.innerHTML = `查看更多历史 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
     }
+    positionVersionPopover();
 };
 
 window.renderVersionPopoverContent = function(data) {
@@ -21420,23 +21440,14 @@ window.toggleVersionPopover = async function(event) {
         return;
     }
 
-    // 动态定位到按钮右侧
-    const rect = btn.getBoundingClientRect();
+    // 动态定位
     popover.style.display = 'flex';
-    popover.style.left = (rect.right + 12) + 'px';
-
-    // 计算纵向位置：使 popover 底部尽量靠近按钮底部
-    const popoverHeight = popover.offsetHeight || 220;
-    let targetTop = rect.bottom - popoverHeight;
-    if (targetTop < 15) targetTop = 15;
-    if (targetTop + popoverHeight > window.innerHeight - 15) {
-        targetTop = window.innerHeight - popoverHeight - 15;
-    }
-    popover.style.top = targetTop + 'px';
+    positionVersionPopover();
 
     // 触发动画展开
     requestAnimationFrame(() => {
         popover.classList.add('active');
+        positionVersionPopover();
     });
 
     const container = document.getElementById('vp-body-content');
@@ -21444,6 +21455,7 @@ window.toggleVersionPopover = async function(event) {
     if (cachedVersionData) {
         try {
             window.renderVersionPopoverContent(cachedVersionData);
+            positionVersionPopover();
         } catch (e) {
             console.error('[Version Popover Render Error]', e);
         }
@@ -21481,14 +21493,7 @@ window.toggleVersionPopover = async function(event) {
 
     try {
         window.renderVersionPopoverContent(data);
-        // 重新校准一次高度定位
-        const newHeight = popover.offsetHeight;
-        let adjustedTop = rect.bottom - newHeight;
-        if (adjustedTop < 15) adjustedTop = 15;
-        if (adjustedTop + newHeight > window.innerHeight - 15) {
-            adjustedTop = window.innerHeight - newHeight - 15;
-        }
-        popover.style.top = adjustedTop + 'px';
+        positionVersionPopover();
     } catch (renderErr) {
         console.error('[Version Popover Render Error]', renderErr);
         if (container) {
@@ -21497,7 +21502,7 @@ window.toggleVersionPopover = async function(event) {
     }
 };
 
-// 全局事件监听：点击外部关闭 / 按 ESC 关闭
+// 全局事件监听：点击外部关闭 / 按 ESC 关闭 / 窗口尺寸改变重新对齐
 document.addEventListener('click', (e) => {
     const popover = document.getElementById('version-popover');
     const btn = document.getElementById('btn-version-info');
@@ -21511,6 +21516,13 @@ document.addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         window.closeVersionPopover();
+    }
+});
+
+window.addEventListener('resize', () => {
+    const popover = document.getElementById('version-popover');
+    if (popover && popover.classList.contains('active')) {
+        positionVersionPopover();
     }
 });
 

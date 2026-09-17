@@ -4951,6 +4951,9 @@ body.is-resizing .body-editor-container {
     position: fixed;
     width: 310px;
     max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    scrollbar-width: thin;
     background: var(--panel-bg);
     border: 1px solid var(--panel-border);
     border-radius: 10px;
@@ -5125,8 +5128,10 @@ body.is-resizing .body-editor-container {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    max-height: 120px;
+    max-height: 140px;
     overflow-y: auto;
+    scrollbar-width: thin;
+    padding-right: 2px;
 }
 
 .vp-history-item {
