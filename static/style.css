@@ -3951,10 +3951,10 @@ html.topbar-collapsed-init #global-topbar {
     position: fixed;
     top: 0;
     left: 50%;
-    transform: translateX(-50%) translateY(calc(-100% + 14px));
-    opacity: 0.65;
-    background: var(--panel-bg);
-    border: 1px solid var(--overlay-10);
+    transform: translateX(-50%) translateY(calc(-100% + 18px));
+    opacity: 0.85;
+    background: var(--input-bg, #1e222d);
+    border: 1px solid var(--overlay-20);
     border-top: none;
     border-bottom-left-radius: 10px;
     border-bottom-right-radius: 10px;
@@ -3963,10 +3963,10 @@ html.topbar-collapsed-init #global-topbar {
     font-weight: 600;
     color: var(--text-secondary);
     cursor: pointer;
-    z-index: 1000;
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    box-shadow: 0 2px 8px var(--shadow-base);
+    z-index: 2005;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 4px 14px var(--shadow-dark), 0 0 10px var(--shadow-base);
     align-items: center;
     justify-content: center;
     gap: 6px;
@@ -4472,23 +4472,30 @@ body.topbar-collapsed #gtb-expand-handle .gtb-handle-icon {
 }
 
 
-/* GUM User Floating Dropdown Menu */
+/* GUM User Floating Dropdown Menu (高不透明度与清晰对比) */
 .gum-dropdown-menu {
     position: absolute;
     top: calc(100% + 4px);
     left: 0;
     right: 0;
     z-index: 1050;
-    background: var(--panel-bg, #1e222d);
-    border: 1px solid var(--overlay-20, rgba(255, 255, 255, 0.18));
+    background: #141824;
+    border: 1px solid var(--overlay-20, rgba(255, 255, 255, 0.2));
     border-radius: 8px;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75);
     padding: 8px;
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     animation: gumDropdownFade 0.18s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
     gap: 6px;
+}
+
+body.light-theme .gum-dropdown-menu {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.15);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15);
 }
 
 @keyframes gumDropdownFade {
@@ -5268,25 +5275,31 @@ body.is-resizing .body-editor-container {
     transform: rotate(180deg);
 }
 
-/* 浮层下拉框 (Workspace Multi-Select Popover) */
+/* 浮层下拉框 (Workspace Multi-Select Popover - 高不透明度与清晰对比) */
 .gtb-ws-dropdown {
     position: absolute;
     top: calc(100% + 4px);
     left: 0;
-    width: 320px;
+    width: 330px;
     min-width: 280px;
     max-width: 380px;
-    background: var(--panel-bg);
-    border: 1px solid var(--panel-border);
+    background: #141824;
+    border: 1px solid var(--overlay-20, rgba(255, 255, 255, 0.2));
     border-radius: 8px;
-    box-shadow: 0 12px 36px var(--shadow-dark), 0 0 16px var(--accent-glow);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75), 0 0 1px 1px var(--overlay-10);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     z-index: 10005;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     animation: gtbDropdownIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+body.light-theme .gtb-ws-dropdown {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.15);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15);
 }
 
 @keyframes gtbDropdownIn {
@@ -5306,7 +5319,11 @@ body.is-resizing .body-editor-container {
     gap: 8px;
     padding: 8px 10px;
     border-bottom: 1px solid var(--overlay-10);
-    background: var(--overlay-5);
+    background: rgba(0, 0, 0, 0.25);
+}
+
+body.light-theme .gtb-ws-header {
+    background: rgba(0, 0, 0, 0.04);
 }
 
 .gtb-ws-search-box {
@@ -5447,9 +5464,13 @@ body.is-resizing .body-editor-container {
     justify-content: space-between;
     padding: 6px 10px;
     border-top: 1px solid var(--overlay-10);
-    background: var(--overlay-5);
+    background: rgba(0, 0, 0, 0.25);
     font-size: 0.70rem;
     color: var(--text-secondary);
+}
+
+body.light-theme .gtb-ws-footer {
+    background: rgba(0, 0, 0, 0.04);
 }
 
 .gtb-ws-btn-ok {
