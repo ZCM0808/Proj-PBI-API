@@ -2089,5 +2089,44 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
 - 自动化端到端测试：
   - 在 [tests/e2e.spec.js](file:///D:/zcm/Proj-PBI-API/tests/e2e.spec.js) 中运行 `0918 需求全面回归断言` 与 GUM 相关的全套 Playwright 测试，断言 Quick Note 拖拽/缩放/排序/SVG 图标，Universal Modal 全选/清空/字段重排/列冻结/模型打散全部 100% 成功通过！
 
+---
+
+## 57. 0918 Improvement v2 极致体验重构与架构落地 (UX Polish & Defense)
+
+### 57.1 需求全量清单 (Requirements Checklist)
+1. **全屏弹窗矩阵记住偏好设置 (Universal Modal Preference Persistence)**：记住各列显示/隐藏、窗格冻结、字段顺序及宽度，并向下兼容历史旧缓存；
+2. **Visible Fields 拖拽重排与箭头移除 (HTML5 Drag & Drop Grip Handle)**：下拉框移除上下箭头 `▲ / ▼`，在每个条目左侧增加 6 点 SVG 抓手符号（vertical grip），支持 HTML5 流畅拖拽调整列顺序并即时存盘重绘；
+3. **GUM 穿透审计默认恒定激活 (Always-on Deep Effective Audit)**：移除 UI 上的“🛡️ 穿透生效与模型读写审计”勾选项，底层默认恒定 `isDeepAudit = true`；
+4. **Quick Note 弹窗最高层级防御 (Z-Index Defense 35000)**：为 `#modal-note.modal-overlay` 与 `.modal-content` 注入 `z-index: 35000 / 35001 !important;`，拖动时绝不被 `#global-topbar`（1002）或功能区遮挡；
+5. **Quick Note 搜索框与排序按钮高度对齐 (34px) & 6 项排序下拉菜单 (Sort Dropdown)**：高度统一为 34px，点击排序按钮展开下拉菜单展示 6 种规则（时间/名称/大小的升降序），带当前高亮 `✓` 勾选，支持点击空白处自动关闭；
+6. **根除编辑器三个滚动条 Bug (Single CodeMirror Scrollbar)**：将 `.CodeMirror` 强制重构为 `overflow: hidden !important;`，容器级全部 `overflow: hidden !important;`，唯一由 `.CodeMirror-scroll` 承载单纵向滚动条；
+7. **Quick Note 操作按钮纯图标化与精准 Tooltip (Pure Icon Buttons)**：Upload File、Insert API、新建笔记、保存笔记全部采用 `.btn-icon-sq` 纯 SVG 矢量图标并搭配详尽的 Tooltip 提示，无任何文字冗余。
+
+### 57.2 核心改造与防御方案 (Technical Implementation)
+1. **Universal Modal 偏好存储与新旧列平滑迁移 (Preference Hydration Defense)**：
+   - 在 [static/universal_modal.js](file:///D:/zcm/Proj-PBI-API/static/universal_modal.js) 中增强 `storageKey` 解析；
+   - 在列顺序与显示列反序列化时，自动识别旧版 `Models` 缓存并智能展开为 `['Model Name', 'Model ID']`；对于后端软件升级新增的核心列（如 `Permission Source`），自动检测并予以保留选中，杜绝旧本地缓存把新增列屏蔽的隐性缺陷；
+   - 在拖拽、勾选、冻结和排序时实时调用 `savePreferences()` 存入 `localStorage`。
+2. **HTML5 拖放重排 (HTML5 Drag and Drop API)**：
+   - 彻底移除条目中的 `▲` / `▼` 按钮；
+   - 条目左侧注入 6 点垂直 SVG 抓手手柄，整个条目配置 `draggable="true"`；
+   - 监听 `dragstart`、`dragover`、`dragleave`、`drop`、`dragend` 事件，通过计算鼠标在目标元素上的 Y 轴相对中点位置，动态显示上下分割插入指示线，释放后精准通过 `splice` 重组 `columns` 和 `displayNames` 数组并触发响应式重新渲染。
+3. **Quick Note 滚动条防并发生成 (Triple Scrollbar Elimination)**：
+   - 在 [static/style.css](file:///D:/zcm/Proj-PBI-API/static/style.css) 中对 `.note-right-panel` 增加 `min-height: 0 !important; overflow: hidden !important;`；
+   - 对 `.note-editor-wrapper .CodeMirror` 设置 `overflow: hidden !important; overflow-y: hidden !important;`；
+   - 保证只存在 `.CodeMirror-scroll` 内部一个纵向滚动滑块，彻底解决多层容器滚动条重叠的视觉瑕疵。
+4. **纯图标按钮与 34px 垂直对齐**：
+   - 在 [static/style.css](file:///D:/zcm/Proj-PBI-API/static/style.css) 中通过 `#note-sort-btn` 强制 `width: 34px !important; height: 34px !important;`，与 `#note-search` 严格像素级对齐；
+   - 按钮全部添加 `.btn-icon-sq`，移除内嵌 `<span>` 文案，保存中与完成时在 [static/script.js](file:///D:/zcm/Proj-PBI-API/static/script.js) 中保持纯 SVG 图标与 Tooltip 驱动。
+
+### 57.3 自动化测试与质量闭环验证
+- **静态分析与代码体检**：
+  - `python -m ruff check src/`：All checks passed!
+  - `python -m mypy src/main.py --ignore-missing-imports`：Success: no issues found.
+  - `node -c static/universal_modal.js` 与 `node -c static/script.js`：语法零错误。
+- **Playwright 端到端回归**：
+  - 编写专用回归测试套件 [tests/test_v2_improvements.spec.js](file:///D:/zcm/Proj-PBI-API/tests/test_v2_improvements.spec.js)，断言 Quick Note z-index 35000/35001、单滚动条验证、纯图标按钮与 Tooltip、34px 严格高度对齐与 6 项排序下拉菜单交互、GUM 深度穿透扫描默认状态、Universal Modal 6 点拖拽抓手与冻结偏好记忆，全部 6 项测试用例 **100% 绿灯通过**！
+
+
 
 

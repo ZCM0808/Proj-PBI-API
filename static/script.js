@@ -11843,18 +11843,61 @@ window.noteSortModes = [
 ];
 window.currentNoteSortIndex = 0;
 
-window.cycleNoteSort = function() {
-    window.currentNoteSortIndex = (window.currentNoteSortIndex + 1) % window.noteSortModes.length;
-    const mode = window.noteSortModes[window.currentNoteSortIndex];
+window.toggleNoteSortMenu = function(e) {
+    if (e) e.stopPropagation();
+    const menu = document.getElementById('note-sort-menu');
+    if (!menu) return;
+    if (menu.style.display === 'block') {
+        menu.style.display = 'none';
+        return;
+    }
+
+    const currentIdx = window.currentNoteSortIndex || 0;
+    menu.innerHTML = window.noteSortModes.map((mode, idx) => {
+        const isSelected = idx === currentIdx;
+        return `
+            <div class="note-sort-item ${isSelected ? 'active' : ''}" onclick="window.selectNoteSort(${idx}, event)">
+                <span class="note-sort-label">${mode.label}</span>
+                ${isSelected ? '<span class="note-sort-check">✓</span>' : ''}
+            </div>
+        `;
+    }).join('');
+
+    menu.style.display = 'block';
+};
+
+window.selectNoteSort = function(index, e) {
+    if (e) e.stopPropagation();
+    window.currentNoteSortIndex = index;
+    const mode = window.noteSortModes[index];
     const sortBtn = document.getElementById('note-sort-btn');
     if (sortBtn) {
-        sortBtn.title = `当前排序：${mode.label} (点击切换)`;
+        sortBtn.title = `笔记排序规则：${mode.label}`;
     }
+    const menu = document.getElementById('note-sort-menu');
+    if (menu) menu.style.display = 'none';
+
     if (window.showNotification) {
         window.showNotification(`笔记排序已切换：${mode.label}`, 'info');
     }
     window.renderSortedNotesList();
 };
+
+window.cycleNoteSort = function() {
+    window.currentNoteSortIndex = ((window.currentNoteSortIndex || 0) + 1) % window.noteSortModes.length;
+    window.selectNoteSort(window.currentNoteSortIndex);
+};
+
+// Global click listener to close note sort menu
+document.addEventListener('click', (e) => {
+    const menu = document.getElementById('note-sort-menu');
+    const btn = document.getElementById('note-sort-btn');
+    if (menu && menu.style.display === 'block') {
+        if (!menu.contains(e.target) && (!btn || !btn.contains(e.target))) {
+            menu.style.display = 'none';
+        }
+    }
+});
 
 window.renderSortedNotesList = function() {
     const listEl = document.getElementById('note-history-list');
@@ -12131,86 +12174,49 @@ window.saveMarkdownNote = async function() {
 
 
     btn.disabled = true;
-
-    btn.innerHTML = '<span class="loader" style="width:12px;height:12px;border-width:2px;"></span> Saving & Pushing...';
-
+    btn.innerHTML = '<span class="loader" style="width:13px;height:13px;border-width:2px;"></span>';
+    btn.title = '正在保存并同步至 GitHub...';
     
-
     try {
-
         const response = await fetch('/api/save-note', {
-
             method: 'POST',
-
             headers: { 'Content-Type': 'application/json' },
-
             body: JSON.stringify({ filename, content })
-
         });
-
         const data = await response.json();
-
         
-
         if (data.success) {
-
             if (data.filename) {
-
                 document.getElementById('note-filename').value = data.filename;
-
             }
-
             if (window.showNotification) {
-
                 window.showNotification(data.message || "Note saved & pushed successfully!", "success");
-
             }
-
             // Refresh note history
-
             window.searchNotes();
-
         } else {
-
             window._lastNoteErrorDetail = data.error || 'Unknown error occurred while saving note.';
-
             if (errWrapper && errMsg) {
-
                 errMsg.textContent = data.local_saved ? 'Git Push Failed (Saved locally)' : 'Save Note Failed';
-
                 errWrapper.style.display = 'inline-flex';
-
             }
-
             if (window.showNotification) {
-
                 window.showNotification("Save/Push Note Error! Click '❗' for details.", "error");
-
             }
-
         }
-
     } catch (e) {
-
         window._lastNoteErrorDetail = e.message || String(e);
-
         if (errWrapper && errMsg) {
-
             errMsg.textContent = 'Network/Server Error';
-
             errWrapper.style.display = 'inline-flex';
-
         }
-
         if (window.showNotification) {
-
             window.showNotification("Network Error! Click '❗' for details.", "error");
-
         }
-
     } finally {
         btn.disabled = false;
-        btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> <span>保存并同步 GitHub</span>`;
+        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>`;
+        btn.title = '保存并同步至 GitHub';
     }
 };
 
@@ -18038,7 +18044,7 @@ window.runGlobalUserManager = async function() {
     };
 
     try {
-        const isDeepAudit = document.getElementById('gum-deep-audit-mode')?.checked ?? true;
+        const isDeepAudit = true;
         const scope = window.gumAuditScope || 'tenant';
         const onlyTargets = document.getElementById('wf-gum-only-targets-toggle')?.checked ?? true;
         const selectedWss = window.getSelectedWorkspaces ? window.getSelectedWorkspaces() : [];
@@ -18058,7 +18064,7 @@ window.runGlobalUserManager = async function() {
         }
 
         const targetScopeDesc = targetUsersList.length > 0 ? `定向锁定 [${targetUsersList.join(', ')}]` : '全部授权用户';
-        appendLog(`[1] 正在启动全景权限治理审计 (Deep: ${isDeepAudit ? '开启' : '关闭'}, 范围: ${wsScopeDesc}, 目标: ${targetScopeDesc})...`);
+        appendLog(`[1] 正在启动全景权限治理穿透审计 (范围: ${wsScopeDesc}, 目标: ${targetScopeDesc})...`);
 
         if (scope === 'workspaces' && selectedWss.length === 0) {
             throw new Error('当前为【当前工作区级别】，但全局功能区未勾选任何工作区。请点击顶部功能区展开工作区面板并勾选至少一个工作区。');
@@ -18741,6 +18747,7 @@ window.openGumResultModal = function() {
     if (window.showUniversalDataModal) {
         window.showUniversalDataModal({
             title: 'Global Workspace Permissions & Effective Access Matrix',
+            storageKey: 'pbi_grid_pref_gum_permissions',
             data: flatData,
             initialSearch: term,
             columns: [

@@ -64,11 +64,19 @@ window.showUniversalDataModal = function(options) {
 
     // Hydrate Column Order (Preference persistence)
     if (savedPrefs.columnOrder && Array.isArray(savedPrefs.columnOrder) && savedPrefs.columnOrder.length > 0) {
+        const expandedOrder = [];
+        savedPrefs.columnOrder.forEach(col => {
+            if (col === 'Models') {
+                expandedOrder.push('Model Name', 'Model ID');
+            } else {
+                expandedOrder.push(col);
+            }
+        });
         const ordered = [];
         const orderedNames = [];
-        savedPrefs.columnOrder.forEach(col => {
+        expandedOrder.forEach(col => {
             const idx = columns.indexOf(col);
-            if (idx !== -1) {
+            if (idx !== -1 && !ordered.includes(col)) {
                 ordered.push(col);
                 orderedNames.push(displayNames[idx]);
             }
@@ -86,9 +94,27 @@ window.showUniversalDataModal = function(options) {
     // State (Hydrated from persistent storage)
     let selectedCols = new Set(columns);
     if (savedPrefs.selectedCols && Array.isArray(savedPrefs.selectedCols) && savedPrefs.selectedCols.length > 0) {
+        const expandedSelected = [];
+        savedPrefs.selectedCols.forEach(col => {
+            if (col === 'Models') {
+                expandedSelected.push('Model Name', 'Model ID');
+            } else {
+                expandedSelected.push(col);
+            }
+        });
         // Intersect with valid current columns
-        const validSaved = savedPrefs.selectedCols.filter(c => columns.includes(c));
-        if (validSaved.length > 0) selectedCols = new Set(validSaved);
+        const validSaved = expandedSelected.filter(c => columns.includes(c));
+        if (validSaved.length > 0) {
+            // If new columns were added to the schema that didn't exist when user saved preferences, ensure they are visible
+            if (savedPrefs.columnOrder && Array.isArray(savedPrefs.columnOrder)) {
+                columns.forEach(col => {
+                    if (!savedPrefs.columnOrder.includes(col) && col !== 'Models' && !validSaved.includes(col)) {
+                        validSaved.push(col);
+                    }
+                });
+            }
+            selectedCols = new Set(validSaved);
+        }
     }
 
     // Frozen columns state (Excel Frozen columns)
@@ -491,19 +517,46 @@ hdr.className = 'modal-header';
         renderColItems = () => {
             colDropdownBtn.innerHTML = `Select Columns (${selectedCols.size}/${columns.length}) <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>`;
             colItemsContainer.innerHTML = '';
+            let draggedColIdx = null;
+
             columns.forEach((col, idx) => {
                 const itemDiv = document.createElement('div');
-                itemDiv.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:4px;padding:3px 6px;border-radius:4px;transition:background 0.2s;';
-                itemDiv.onmouseover = () => itemDiv.style.background = 'var(--overlay-5)';
-                itemDiv.onmouseout = () => itemDiv.style.background = 'transparent';
+                itemDiv.className = 'uni-col-item';
+                itemDiv.setAttribute('draggable', 'true');
+                itemDiv.dataset.idx = idx;
+                itemDiv.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:4px;padding:4px 6px;border-radius:4px;transition:background 0.15s, border-color 0.15s;border-top:2px solid transparent;border-bottom:2px solid transparent;user-select:none;cursor:default;';
+                itemDiv.onmouseover = () => { if (itemDiv.style.borderTopColor === 'transparent' && itemDiv.style.borderBottomColor === 'transparent') itemDiv.style.background = 'var(--overlay-5)'; };
+                itemDiv.onmouseout = () => { if (draggedColIdx === null) itemDiv.style.background = 'transparent'; };
 
-                const leftPart = document.createElement('label');
-                leftPart.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.75rem;flex:1;min-width:0;';
+                // Left part: Drag Handle + Checkbox + Label
+                const leftPart = document.createElement('div');
+                leftPart.style.cssText = 'display:flex;align-items:center;gap:6px;flex:1;min-width:0;';
+
+                // 6-dot vertical grip SVG handle
+                const dragHandle = document.createElement('span');
+                dragHandle.className = 'uni-col-drag-grip';
+                dragHandle.title = '上下拖拽调整列显示顺序';
+                dragHandle.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;cursor:grab;padding:2px;border-radius:3px;color:var(--text-secondary);opacity:0.65;transition:opacity 0.2s, color 0.2s;flex-shrink:0;';
+                dragHandle.innerHTML = `
+                    <svg width="12" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;">
+                        <circle cx="8" cy="5" r="1.5" fill="currentColor"/>
+                        <circle cx="16" cy="5" r="1.5" fill="currentColor"/>
+                        <circle cx="8" cy="12" r="1.5" fill="currentColor"/>
+                        <circle cx="16" cy="12" r="1.5" fill="currentColor"/>
+                        <circle cx="8" cy="19" r="1.5" fill="currentColor"/>
+                        <circle cx="16" cy="19" r="1.5" fill="currentColor"/>
+                    </svg>
+                `;
+                dragHandle.onmouseenter = () => { dragHandle.style.opacity = '1'; dragHandle.style.color = 'var(--accent)'; };
+                dragHandle.onmouseleave = () => { dragHandle.style.opacity = '0.65'; dragHandle.style.color = 'var(--text-secondary)'; };
+                leftPart.appendChild(dragHandle);
 
                 const chk = document.createElement('input');
                 chk.type = 'checkbox';
                 chk.checked = selectedCols.has(col);
                 chk.style.cursor = 'pointer';
+                chk.style.accentColor = 'var(--accent)';
+                chk.style.flexShrink = '0';
                 chk.onchange = (e) => {
                     if (e.target.checked) selectedCols.add(col);
                     else {
@@ -515,72 +568,29 @@ hdr.className = 'modal-header';
                     updateCopyToolbar();
                     renderTable();
                 };
+                leftPart.appendChild(chk);
 
                 const span = document.createElement('span');
-                span.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;';
+                span.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;cursor:pointer;font-size:0.75rem;color:var(--text-primary);';
                 span.title = displayNames[idx];
                 span.textContent = displayNames[idx];
-
-                leftPart.appendChild(chk);
+                span.onclick = () => {
+                    chk.checked = !chk.checked;
+                    chk.dispatchEvent(new Event('change'));
+                };
                 leftPart.appendChild(span);
                 itemDiv.appendChild(leftPart);
 
-                // Right action controls: Move Up / Move Down / Freeze Pin
+                // Right action controls: Only Freeze Pin (▲ / ▼ removed)
                 const orderCtrl = document.createElement('div');
-                orderCtrl.style.cssText = 'display:flex;align-items:center;gap:2px;flex-shrink:0;';
-
-                const upBtn = document.createElement('button');
-                upBtn.type = 'button';
-                upBtn.innerHTML = '▲';
-                upBtn.title = '向前移动此列顺序';
-                upBtn.disabled = idx === 0;
-                upBtn.style.cssText = `background:none;border:none;color:${idx === 0 ? 'var(--overlay-20)' : 'var(--text-secondary)'};cursor:${idx === 0 ? 'default' : 'pointer'};font-size:0.62rem;padding:2px 3px;border-radius:3px;line-height:1;`;
-                upBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    if (idx > 0) {
-                        const tempCol = columns[idx];
-                        columns[idx] = columns[idx - 1];
-                        columns[idx - 1] = tempCol;
-
-                        const tempName = displayNames[idx];
-                        displayNames[idx] = displayNames[idx - 1];
-                        displayNames[idx - 1] = tempName;
-
-                        savePreferences();
-                        renderColItems();
-                        renderTable();
-                    }
-                };
-
-                const downBtn = document.createElement('button');
-                downBtn.type = 'button';
-                downBtn.innerHTML = '▼';
-                downBtn.title = '向后移动此列顺序';
-                downBtn.disabled = idx === columns.length - 1;
-                downBtn.style.cssText = `background:none;border:none;color:${idx === columns.length - 1 ? 'var(--overlay-20)' : 'var(--text-secondary)'};cursor:${idx === columns.length - 1 ? 'default' : 'pointer'};font-size:0.62rem;padding:2px 3px;border-radius:3px;line-height:1;`;
-                downBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    if (idx < columns.length - 1) {
-                        const tempCol = columns[idx];
-                        columns[idx] = columns[idx + 1];
-                        columns[idx + 1] = tempCol;
-
-                        const tempName = displayNames[idx];
-                        displayNames[idx] = displayNames[idx + 1];
-                        displayNames[idx + 1] = tempName;
-
-                        savePreferences();
-                        renderColItems();
-                        renderTable();
-                    }
-                };
+                orderCtrl.style.cssText = 'display:flex;align-items:center;gap:4px;flex-shrink:0;';
 
                 const pinBtn = document.createElement('button');
                 pinBtn.type = 'button';
                 const isFrozen = frozenCols.has(col);
                 pinBtn.innerHTML = '📌';
                 pinBtn.title = isFrozen ? '已冻结固定该列 (点击取消)' : '点击冻结固定该列 (Excel 窗格冻结)';
-                pinBtn.style.cssText = `background:none;border:none;cursor:pointer;font-size:0.75rem;padding:1px 3px;line-height:1;opacity:${isFrozen ? '1' : '0.35'};transition:opacity 0.2s;`;
+                pinBtn.style.cssText = `background:none;border:none;cursor:pointer;font-size:0.75rem;padding:2px 4px;border-radius:3px;line-height:1;opacity:${isFrozen ? '1' : '0.35'};transition:opacity 0.2s;`;
                 pinBtn.onclick = (e) => {
                     e.stopPropagation();
                     if (frozenCols.has(col)) {
@@ -593,10 +603,68 @@ hdr.className = 'modal-header';
                     renderTable();
                 };
 
-                orderCtrl.appendChild(upBtn);
-                orderCtrl.appendChild(downBtn);
                 orderCtrl.appendChild(pinBtn);
                 itemDiv.appendChild(orderCtrl);
+
+                // HTML5 Drag and Drop events for reordering
+                itemDiv.addEventListener('dragstart', (e) => {
+                    draggedColIdx = idx;
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', String(idx));
+                    itemDiv.style.opacity = '0.35';
+                });
+
+                itemDiv.addEventListener('dragend', () => {
+                    itemDiv.style.opacity = '1';
+                    draggedColIdx = null;
+                    colItemsContainer.querySelectorAll('.uni-col-item').forEach(el => {
+                        el.style.borderTopColor = 'transparent';
+                        el.style.borderBottomColor = 'transparent';
+                        el.style.background = 'transparent';
+                    });
+                });
+
+                itemDiv.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    const rect = itemDiv.getBoundingClientRect();
+                    const midY = rect.top + rect.height / 2;
+                    if (e.clientY < midY) {
+                        itemDiv.style.borderTopColor = 'var(--accent)';
+                        itemDiv.style.borderBottomColor = 'transparent';
+                    } else {
+                        itemDiv.style.borderTopColor = 'transparent';
+                        itemDiv.style.borderBottomColor = 'var(--accent)';
+                    }
+                });
+
+                itemDiv.addEventListener('dragleave', () => {
+                    itemDiv.style.borderTopColor = 'transparent';
+                    itemDiv.style.borderBottomColor = 'transparent';
+                });
+
+                itemDiv.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    itemDiv.style.borderTopColor = 'transparent';
+                    itemDiv.style.borderBottomColor = 'transparent';
+
+                    const fromIdx = draggedColIdx !== null ? draggedColIdx : parseInt(e.dataTransfer.getData('text/plain'), 10);
+                    if (isNaN(fromIdx) || fromIdx === idx) return;
+
+                    const rect = itemDiv.getBoundingClientRect();
+                    const midY = rect.top + rect.height / 2;
+                    let targetIdx = e.clientY < midY ? idx : idx + 1;
+                    if (fromIdx < targetIdx) targetIdx--;
+
+                    const [movedCol] = columns.splice(fromIdx, 1);
+                    const [movedName] = displayNames.splice(fromIdx, 1);
+                    columns.splice(targetIdx, 0, movedCol);
+                    displayNames.splice(targetIdx, 0, movedName);
+
+                    savePreferences();
+                    renderColItems();
+                    renderTable();
+                });
 
                 colItemsContainer.appendChild(itemDiv);
             });

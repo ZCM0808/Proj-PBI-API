@@ -2210,6 +2210,7 @@ json-viewer {
 #modal-note.modal-overlay {
     pointer-events: none;
     background: transparent;
+    z-index: 35000 !important;
 }
 
 #modal-note .modal-content {
@@ -2224,9 +2225,10 @@ json-viewer {
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: hidden !important;
     min-width: 320px;
     min-height: 240px;
+    z-index: 35001;
 }
 
 #modal-note .modal-header {
@@ -2256,11 +2258,22 @@ json-viewer {
     min-width: 0 !important;
     max-width: 100% !important;
     overflow: hidden !important;
+    flex-shrink: 0;
+}
+
+.note-right-panel {
+    min-width: 0 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
 }
 
 .note-filename-row {
     min-width: 0 !important;
     max-width: 100% !important;
+    flex-shrink: 0;
 }
 
 .note-filename-container {
@@ -2293,13 +2306,15 @@ json-viewer {
     min-height: 28px !important;
 }
 
+/* 彻底杜绝多重垂直滚动条：CodeMirror 容器禁止滚动，唯一由 CodeMirror-scroll 处理纵向滚动 */
 .note-editor-wrapper .CodeMirror {
     flex: 1 !important;
     min-height: 0 !important;
     min-width: 0 !important;
     max-width: 100% !important;
+    overflow: hidden !important;
     overflow-x: hidden !important;
-    overflow-y: auto !important;
+    overflow-y: hidden !important;
     word-break: break-word !important;
 }
 
@@ -2330,9 +2345,9 @@ json-viewer {
     white-space: pre-wrap !important;
 }
 
-/* Quick Note 精致小按钮 */
+/* Quick Note 精致纯图标小按钮 */
 .btn-note-sm {
-    height: 30px !important;
+    height: 32px !important;
     padding: 0 10px !important;
     font-size: 0.76rem !important;
     font-weight: 500 !important;
@@ -2343,6 +2358,67 @@ json-viewer {
     cursor: pointer !important;
     transition: all 0.2s ease !important;
     white-space: nowrap !important;
+}
+
+.btn-icon-sq {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-sizing: border-box !important;
+}
+.btn-icon-sq:hover {
+    transform: translateY(-1px);
+}
+#note-sort-btn {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+}
+
+/* 排序规则下拉菜单 (Sort Rule Dropdown) */
+.note-sort-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    background: var(--dropdown-bg, #1a1a24);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    padding: 4px;
+    z-index: 36000;
+    display: none;
+    min-width: 180px;
+}
+.note-sort-dropdown.show {
+    display: block;
+}
+.note-sort-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    font-size: 0.76rem;
+    color: var(--text-primary);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    user-select: none;
+}
+.note-sort-item:hover {
+    background: var(--overlay-10);
+}
+.note-sort-item.active {
+    background: var(--accent-subtle, rgba(99,102,241,0.15));
+    color: var(--accent);
+    font-weight: 600;
 }
 
 /* Modern Input Styling */
