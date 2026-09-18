@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260918_v0810">
+    <link rel="stylesheet" href="/static/style.css?v=20260918_v0815">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -152,7 +152,7 @@
                     </div>
                     <span id="gtb-tenant-name" class="gtb-tenant-text">加载中...</span>
                     <input type="hidden" id="gtb-input-tenant-id" value="">
-                    <button type="button" class="gtb-copy-btn" onclick="window.copyGtbItem(this, 'tenant')" title="复制租户 ID (Tenant ID)">
+                    <button type="button" class="gtb-copy-btn" onclick="window.copyGtbItem(this, 'tenant')" title="复制当前租户名称与 ID">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                     </button>
                 </div>
@@ -195,7 +195,7 @@
                         <svg class="gtb-ws-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
                     </div>
                     <input type="hidden" id="gtb-select-workspace" value="">
-                    <button type="button" class="gtb-copy-btn" onclick="window.copyGtbItem(this, 'workspace')" title="复制当前选中的工作区 ID (多选时逗号分隔)">
+                    <button type="button" class="gtb-copy-btn" onclick="window.copyGtbItem(this, 'workspace')" title="复制当前选中的工作区名称与 ID">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                     </button>
 
@@ -232,7 +232,7 @@
                         <svg class="gtb-ws-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
                     </div>
                     <input type="hidden" id="gtb-select-dataset" value="">
-                    <button type="button" class="gtb-copy-btn" onclick="window.copyGtbItem(this, 'dataset')" title="复制当前选中的模型 ID (多选时逗号分隔)">
+                    <button type="button" class="gtb-copy-btn" onclick="window.copyGtbItem(this, 'dataset')" title="复制当前选中的模型名称与 ID">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                     </button>
 
@@ -266,7 +266,7 @@
                     <select id="gtb-select-report" class="gtb-select" onchange="window.handleGlobalReportChange(this.value)">
                         <option value="">-- 选择报表 --</option>
                     </select>
-                    <button type="button" class="gtb-copy-btn" onclick="window.copyGtbItem(this, 'report')" title="复制当前报表 ID">
+                    <button type="button" class="gtb-copy-btn" onclick="window.copyGtbItem(this, 'report')" title="复制当前选中的报表名称与 ID">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                     </button>
                 </div>
@@ -2719,7 +2719,7 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260906_v1225"></script>
-    <script src="/static/script.js?v=20260918_v0810"></script>
+    <script src="/static/script.js?v=20260918_v0815"></script>
 
 
 

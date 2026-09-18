@@ -1969,3 +1969,31 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
 - 在 [tests/e2e.spec.js](file:///D:/zcm/Proj-PBI-API/tests/e2e.spec.js) 中加入针对删除 `gtb-ds-ws-select-btn`（断言数量为 0）、工作区联动筛选（单选工作区 1 时仅展示工作区 1 的分组和模型，其他工作区彻底隐藏）以及包含联动工作区后的滚动测试断言，Playwright 测试 100% 成功通过（1 passed, 耗时 20.6s）。
 - `python -m ruff check src/`、`python -m mypy src/main.py --ignore-missing-imports`、`node -c static/script.js` 全量通过（0 issues, 0 errors）。
 
+---
+
+## 54. 全局功能区复制按钮升级：同步复制实体名称与对应 ID (Entity Name & ID Dual Copy Refactor)
+
+### 54.1 业务背景与用户诉求 (User Requirements)
+用户反馈：“复制按钮应该复制name和对应的ID，而不是仅仅复制id”。此前在全局顶栏（Global Topbar）中，点击工作区、数据模型、报表或租户右侧的 📋 复制按钮仅向剪贴板写入了纯字符串 GUID，导致在跨工具粘贴使用、阅读日志或撰写需求沟通时难以直观分辨 ID 所代表的实际业务实体名称。
+
+### 54.2 核心改造方案 (Implementation Details)
+1. **`copyGtbItem` 提取引擎升级**：
+   - 在 [static/script.js](file:///D:/zcm/Proj-PBI-API/static/script.js) 中全面重构 `window.copyGtbItem(btn, type)`：
+     - **工作区 (Workspace)**：读取本地缓存 `pbi_workspaces`，匹配各选中工作区的别名或名称（`w.alias || w.name`），格式化为 `Name (ID)`；
+     - **数据模型 (Dataset)**：读取 `pbi_datasets`，匹配各选中模型的别名或名称，格式化为 `Name (ID)`；
+     - **报表 (Report)**：读取 `pbi_reports`，匹配当前报表别名或名称，格式化为 `Name (ID)`；
+     - **租户 (Tenant)**：读取界面已渲染的租户真实名称与 GUID，格式化为 `Name (ID)`；
+     - **多选支持**：若同时多选了多个工作区或模型，每一项均独立格式化为 `Name (ID)` 并以标准换行符 `\n` 分隔拼接，方便单行或多行整洁粘贴；
+     - 若实体未单独设置名称（即名称与 ID 相同），智能降级为纯 ID 避免冗余。
+2. **浮动提示与视觉交互反馈**：
+   - 按钮点击后瞬间呈现绿色对勾徽标（✓）1.8 秒；
+   - Toast(轻量浮动通知) 联动回显前缀名称与项数，如 `已复制工作区: WorkSpace_DEV (2c51e061-...)` 或多选时展示首项与总项数预览。
+3. **HTML 属性与静态缓存版本号同步更新**：
+   - 在 [static/index.html](file:///D:/zcm/Proj-PBI-API/static/index.html) 中将各复制按钮的 `title` 属性由单纯的“复制 ID”更新为“复制当前选中的 [实体] 名称与 ID”；
+   - 静态资源版本号递增更新为 `?v=20260918_v0815`。
+
+### 54.3 自动化测试与质量闭环验证
+- 在 [tests/e2e.spec.js](file:///D:/zcm/Proj-PBI-API/tests/e2e.spec.js) 中加入对复制按钮剪贴板写入内容的断言，验证成功复制出包含实体 Name 与 ID 的组合内容，Playwright 测试 100% 成功通过（1 passed, 耗时 19.0s）。
+- 工业级静态健康检查：`python -m ruff check src/`、`python -m mypy src/main.py --ignore-missing-imports`、`node -c static/script.js` 全量通过（0 issues, 0 errors）。
+
+

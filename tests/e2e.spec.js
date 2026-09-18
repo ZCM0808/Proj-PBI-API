@@ -596,5 +596,16 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     });
     gumStats = await page.locator('#wf-gum-stats').textContent();
     expect(gumStats).toBe('筛选结果: 7 / 7 条记录');
+
+    // 7. 验证复制按钮同时复制 Name 和对应的 ID
+    const copiedWsText = await page.evaluate(async () => {
+      let written = '';
+      const origWrite = navigator.clipboard.writeText;
+      navigator.clipboard.writeText = async (txt) => { written = txt; return Promise.resolve(); };
+      window.copyGtbItem(null, 'workspace');
+      navigator.clipboard.writeText = origWrite;
+      return written;
+    });
+    expect(copiedWsText).toContain('ws-1');
   });
 });

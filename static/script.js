@@ -3595,36 +3595,71 @@ window.handleGlobalXmlaHistoryChange = function(ep) {
     }
 };
 
-// 通用 GTB 选项悬浮复制函数 (Workspace / Dataset / Report)
+// 通用 GTB 选项悬浮复制函数 (Workspace / Dataset / Report / Tenant) - 复制名称与对应的 ID
 window.copyGtbItem = function(btn, type) {
-    let val = '';
+    let lines = [];
     let label = '';
+
     if (type === 'workspace') {
-        val = document.getElementById('gtb-select-workspace')?.value || '';
-        label = '工作区 ID';
+        label = '工作区';
+        const wsData = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+        let selectedIds = Array.from(window.selectedGtbWorkspaceIds || []);
+        if (selectedIds.length === 0) {
+            const fallbackId = document.getElementById('gtb-select-workspace')?.value;
+            if (fallbackId) selectedIds = [fallbackId];
+        }
+        selectedIds.forEach(id => {
+            if (!id) return;
+            const matched = wsData.find(w => String(w.id).toLowerCase() === String(id).toLowerCase());
+            const name = matched ? (matched.alias || matched.name || matched.id) : id;
+            lines.push((name && name !== id) ? `${name} (${id})` : id);
+        });
     } else if (type === 'dataset') {
-        val = document.getElementById('gtb-select-dataset')?.value || '';
-        label = '模型 ID';
+        label = '模型';
+        const dsData = window.getMergedGtbDatasets ? window.getMergedGtbDatasets() : JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
+        let selectedIds = Array.from(window.selectedGtbDatasetIds || []);
+        if (selectedIds.length === 0) {
+            const fallbackId = document.getElementById('gtb-select-dataset')?.value;
+            if (fallbackId) selectedIds = [fallbackId];
+        }
+        selectedIds.forEach(id => {
+            if (!id) return;
+            const matched = dsData.find(d => String(d.id).toLowerCase() === String(id).toLowerCase());
+            const name = matched ? (matched.alias || matched.name || matched.id) : id;
+            lines.push((name && name !== id) ? `${name} (${id})` : id);
+        });
     } else if (type === 'report') {
-        val = document.getElementById('gtb-select-report')?.value || '';
-        label = '报表 ID';
+        label = '报表';
+        const rpData = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+        const curRpId = document.getElementById('gtb-select-report')?.value || '';
+        if (curRpId) {
+            const matched = rpData.find(r => String(r.id).toLowerCase() === curRpId.toLowerCase());
+            const name = matched ? (matched.alias || matched.name || matched.id) : curRpId;
+            lines.push((name && name !== curRpId) ? `${name} (${curRpId})` : curRpId);
+        }
     } else if (type === 'tenant') {
-        val = document.getElementById('gtb-input-tenant-id')?.value || '';
-        label = '租户 ID';
+        label = '租户';
+        const tenantId = document.getElementById('gtb-input-tenant-id')?.value || '';
+        const tenantName = document.getElementById('gtb-tenant-name')?.textContent?.trim() || '';
+        if (tenantId) {
+            lines.push((tenantName && tenantName !== '加载中...' && tenantName !== tenantId) ? `${tenantName} (${tenantId})` : tenantId);
+        }
     }
 
-    if (!val) {
+    if (lines.length === 0) {
         if (window.showNotification) window.showNotification(`未选中有效的${label}`, 'warning');
         return;
     }
 
-    navigator.clipboard.writeText(val).then(() => {
+    const textToCopy = lines.join('\n');
+    navigator.clipboard.writeText(textToCopy).then(() => {
         if (btn) {
             const orig = btn.innerHTML;
             btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
             setTimeout(() => { btn.innerHTML = orig; }, 1800);
         }
-        if (window.showNotification) window.showNotification(`已复制${label}: ${val}`, 'success');
+        const preview = lines.length === 1 ? textToCopy : `${lines[0]} 等 ${lines.length} 项`;
+        if (window.showNotification) window.showNotification(`已复制${label}: ${preview}`, 'success');
     }).catch(e => {
         alert('复制失败: ' + e);
     });
