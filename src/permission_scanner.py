@@ -424,6 +424,23 @@ async def scan_permissions_deep(
         else:
             rec["securityStatus"] = "ℹ️ 安全组主体 (Group Principal)"
 
+        # 标明最终权限来源 (Permission Source / Origin)
+        if rec.get("principalType") in ["Group", "SecurityGroup"]:
+            rec["permissionSource"] = "Group Principal(安全组主体)"
+        elif rec.get("isElevated"):
+            if "租户" in rec.get("elevationReason", "") or (rec.get("effectiveRole") == "Admin" and rec.get("directRole", "").startswith("None")):
+                rec["permissionSource"] = "Tenant Admin(租户管理员特权)"
+            else:
+                rec["permissionSource"] = "Group Membership(安全组继承穿透)"
+        elif rec.get("directRole") and not rec["directRole"].startswith("None"):
+            rec["permissionSource"] = "Direct Assignment(工作区直接授权)"
+        elif any(d.get("directRight") and d.get("directRight") != "None" for d in rec.get("datasetsDetail", [])):
+            rec["permissionSource"] = "Item Sharing(模型单独共享)"
+        elif rec.get("effectiveRole") == "None" or rec.get("directRole") == "None":
+            rec["permissionSource"] = "Unassigned(无生效授权)"
+        else:
+            rec["permissionSource"] = "Direct Assignment(工作区直接授权)"
+
     # 6. 汇聚图表数据 (KPIs, Role Comparison, Donut Breakdown, Model Coverage)
     total_principals = len(all_records)
     direct_admins = sum(1 for r in all_records if r["directRole"] == "Admin")

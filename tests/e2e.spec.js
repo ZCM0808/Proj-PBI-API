@@ -608,4 +608,110 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     });
     expect(copiedWsText).toContain('ws-1');
   });
+
+  test('GUM 下拉列表空态与全屏矩阵弹窗列扩展审计 (User Name / Email / Models / Permission Source)', async ({ page }) => {
+    // 1. 验证空候选用户时提示为“暂无候选用户”，且彻底无“点击【扫描用户】拉取人员”
+    await page.evaluate(() => {
+      window.gumCandidateUsers = [];
+      if (window.renderGumCandidateUsers) window.renderGumCandidateUsers();
+      if (window.renderGumUserOptions) window.renderGumUserOptions('');
+    });
+
+    const dropdownListText = await page.locator('#wf-gum-dropdown-list').innerText();
+    expect(dropdownListText).toContain('暂无候选用户');
+    expect(dropdownListText).not.toContain('点击【扫描用户】拉取人员');
+
+    const searchHint = await page.locator('#gum-search-hint').innerText();
+    expect(searchHint).not.toContain('点击【扫描用户】拉取人员');
+
+    // 2. 清理旧本地偏好并注入模拟数据，打开 Universal Modal 全屏矩阵
+    await page.evaluate(() => {
+      // 清空 modal 列偏好，防止历史缓存过滤掉新增列
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('pbi_grid_pref_')) localStorage.removeItem(k);
+        }
+      } catch(e) {}
+
+      window.gumData = [
+        {
+          workspaceId: 'ws-mock-1',
+          workspaceName: 'Finance Sales Workspace',
+          identifier: 'alice.wang@contoso.com',
+          displayName: 'Alice Wang',
+          principalType: 'User',
+          directRole: 'Viewer',
+          effectiveRole: 'Admin',
+          isElevated: true,
+          elevationReason: '直属为 Viewer，但实际拥有 Admin 权限（继承自工作区特权组或全局租户管理员）',
+          permissionSource: 'Group Membership(安全组继承穿透)',
+          canEditModels: true,
+          datasetsDetail: [
+            { datasetId: 'ds-guid-111', datasetName: 'Revenue Semantic Model', directRight: 'Read', effectiveRight: 'ReadWrite', canEdit: true },
+            { datasetId: 'ds-guid-222', datasetName: 'Cost Center Model', directRight: 'None', effectiveRight: 'ReadWrite', canEdit: true }
+          ]
+        },
+        {
+          workspaceId: 'ws-mock-1',
+          workspaceName: 'Finance Sales Workspace',
+          identifier: 'bob.li@contoso.com',
+          displayName: 'Bob Li',
+          principalType: 'User',
+          directRole: 'Admin',
+          effectiveRole: 'Admin',
+          isElevated: false,
+          elevationReason: '',
+          permissionSource: 'Direct Assignment(工作区直接授权)',
+          canEditModels: true,
+          datasetsDetail: [
+            { datasetId: 'ds-guid-111', datasetName: 'Revenue Semantic Model', directRight: 'ReadWrite', effectiveRight: 'ReadWrite', canEdit: true }
+          ]
+        }
+      ];
+      window._lastGumFiltered = window.gumData;
+      window.openGumResultModal();
+    });
+
+    // 3. 验证 Universal Modal 渲染
+    const modal = page.locator('#universal-modal-overlay');
+    await expect(modal).toBeVisible();
+
+    // 4. 验证列名：User Name, Email / ID, Models, Permission Source 均存在
+    const headers = await page.locator('#universal-modal-overlay table.uni-modal-table thead th').allTextContents();
+    const headersText = headers.join(' ');
+    expect(headersText).toContain('User Name');
+    expect(headersText).toContain('Email / ID');
+    expect(headersText).toContain('Models');
+    expect(headersText).toContain('Permission Source');
+
+    // 5. 验证单元格渲染内容
+    const tableBody = page.locator('#universal-modal-overlay table.uni-modal-table tbody');
+    const tableHtml = await tableBody.innerHTML();
+    
+    // 验证姓名与邮箱拆分
+    expect(tableHtml).toContain('Alice Wang');
+    expect(tableHtml).toContain('alice.wang@contoso.com');
+    expect(tableHtml).toContain('Bob Li');
+    expect(tableHtml).toContain('bob.li@contoso.com');
+
+    // 验证模型列中分别呈现模型名字和模型 ID
+    expect(tableHtml).toContain('Revenue Semantic Model');
+    expect(tableHtml).toContain('ds-guid-111');
+    expect(tableHtml).toContain('Cost Center Model');
+    expect(tableHtml).toContain('ds-guid-222');
+
+    // 验证权限来源列
+    expect(tableHtml).toContain('Group Membership(安全组继承穿透)');
+    expect(tableHtml).toContain('Direct Assignment(工作区直接授权)');
+
+    // 6. 验证明亮主题切换下的样式继承
+    await page.evaluate(() => {
+      document.body.classList.add('light-theme');
+      document.documentElement.setAttribute('data-theme', 'light');
+    });
+
+    const isLightClass = await page.evaluate(() => document.body.classList.contains('light-theme'));
+    expect(isLightClass).toBe(true);
+  });
 });

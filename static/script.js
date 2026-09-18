@@ -3069,12 +3069,14 @@ window.closeGtbDsDropdown = function() {
 
 // 全选或清空已选数据模型 (支持联动当前已选工作区)
 window.selectAllGtbDatasets = function(selectAll = true) {
+    window._gtbDsInitialized = true;
+    const wsData = window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
     const dsData = window.getMergedGtbDatasets ? window.getMergedGtbDatasets() : JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
     const selectedWsIds = Array.from(window.selectedGtbWorkspaceIds || []);
-    const hasWsFilter = selectedWsIds.length > 0;
+    const isAllWs = selectedWsIds.length === 0 || (wsData.length > 0 && selectedWsIds.length >= wsData.length);
     const selectedWsSet = new Set(selectedWsIds.map(id => String(id).toLowerCase()));
 
-    const scopedDsData = hasWsFilter
+    const scopedDsData = !isAllWs
         ? dsData.filter(d => {
             const wid = String(d.workspaceId || '').trim().toLowerCase();
             return wid && selectedWsSet.has(wid);
@@ -3294,19 +3296,20 @@ window.updateGlobalTopbarDropdowns = function() {
 
     // 3. 渲染数据模型 (Dataset / Model) 顶栏触发器与工作区分组矩阵 (全面支持与已选工作区联动)
     const selectedWsIds = Array.from(window.selectedGtbWorkspaceIds);
-    const hasWsFilter = selectedWsIds.length > 0;
+    const isAllWs = selectedWsIds.length === 0 || (wsData.length > 0 && selectedWsIds.length >= wsData.length);
+    const hasWsFilter = !isAllWs;
     const selectedWsSet = new Set(selectedWsIds.map(id => String(id).toLowerCase()));
 
     // 动态根据工作区联动过滤出当前范围可用的模型集
-    const scopedDsData = hasWsFilter
+    const scopedDsData = !isAllWs
         ? dsData.filter(d => {
             const wid = String(d.workspaceId || '').trim().toLowerCase();
             return wid && selectedWsSet.has(wid);
         })
         : dsData;
 
-    // 清理并对齐已选模型：剔除不在当前联动工作区内的已选模型
-    if (hasWsFilter) {
+    // 清理并对齐已选模型：仅在非全选且指定工作区子集时剔除超出范围的模型
+    if (!isAllWs) {
         const validScopedDsIds = new Set(scopedDsData.map(d => String(d.id).toLowerCase()));
         for (const curSelectedId of Array.from(window.selectedGtbDatasetIds)) {
             if (!validScopedDsIds.has(String(curSelectedId).toLowerCase())) {
@@ -17802,11 +17805,10 @@ window.renderGumDropdownUsers = function(searchTerm = '') {
 
     if (allCandidates.length === 0) {
         if (dropdownCount) dropdownCount.innerHTML = '<span style="color:var(--text-secondary); font-size:0.72rem;">(0)</span>';
-        if (searchHint) searchHint.innerText = '点击【扫描用户】拉取人员';
+        if (searchHint) searchHint.innerText = '';
         dropdownList.innerHTML = `
-            <div style="font-size: 0.76rem; color: var(--text-secondary); padding: 12px 8px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px;">
-                <span>💡 当前工作区尚未加载用户列表。请点击右侧【👥 扫描用户】一键拉取授权主体。</span>
-                <button type="button" class="btn-wf-sm btn-wf-primary" style="height: 24px; padding: 0 10px; font-size: 0.72rem; cursor: pointer;" onclick="if(window.fetchGumWorkspaceUsers) window.fetchGumWorkspaceUsers(true); event.stopPropagation();">立即扫描工作区用户</button>
+            <div style="font-size: 0.76rem; color: var(--text-secondary); padding: 16px 8px; text-align: center;">
+                暂无候选用户
             </div>
         `;
         return;
@@ -18558,55 +18560,188 @@ window.openGumResultModal = function() {
         return;
     }
 
-    const mappedData = data.map((d, idx) => ({
-        'Workspace': d.workspaceName || d.wsName,
-        'User / Principal': `${d.displayName || d.identifier} (${d.identifier})`,
-                'Type': d.principalType,
-        'Direct Role': d.directRole || d.role,
-        'Effective Access': d.effectiveRole || d.role,
-        'Model Write Access': d.canEditModels ? '✅ 全部可读写' : '❌ 纯只读',
-        'Security Status': d.securityStatus || (d.isElevated ? '⚠️ 继承提权' : '🟢 正常'),
-        'Actions': '', // rendered dynamically
+    const mappedData = data.map((d, idx) => {
+        // 1. 拆分 User Name 与 Email / ID
+        const rawIdent = d.identifier || d.graphId || '';
+        const userName = d.displayName || (rawIdent.includes('@') ? rawIdent.split('@')[0] : (rawIdent || 'Unknown'));
+        const userEmailOrId = rawIdent || '-';
 
-        _raw: d,
-        _idx: idx,
-        _wsId: d.workspaceId || d.wsId,
-        _identifier: d.identifier,
-        _wsName: d.workspaceName || d.wsName
-    }));
+        // 2. 提取当前记录归属工作区下的全部模型（名字与ID）
+        const wsId = (d.workspaceId || d.wsId || '').toLowerCase();
+        let models = [];
+        if (Array.isArray(d.datasetsDetail) && d.datasetsDetail.length > 0) {
+            models = d.datasetsDetail.map(m => ({
+                name: m.datasetName || m.name || 'Unnamed Dataset',
+                id: m.datasetId || m.id || ''
+            }));
+        } else if (window._cachedWorkspaceDatasets && window._cachedWorkspaceDatasets[d.workspaceId]) {
+            models = (window._cachedWorkspaceDatasets[d.workspaceId] || []).map(m => ({
+                name: m.name || m.datasetName || 'Unnamed Dataset',
+                id: m.id || m.datasetId || ''
+            }));
+        } else if (Array.isArray(window.allDatasets) && wsId) {
+            models = window.allDatasets
+                .filter(ds => (ds.workspaceId || ds.wsId || '').toLowerCase() === wsId)
+                .map(m => ({
+                    name: m.name || 'Unnamed Dataset',
+                    id: m.id || ''
+                }));
+        }
+
+        // 3. 标明最终权限来源 (Permission Source / Origin)
+        let permSource = d.permissionSource;
+        if (!permSource) {
+            if (d.principalType === 'Group' || d.principalType === 'SecurityGroup') {
+                permSource = 'Group Principal(安全组主体)';
+            } else if (d.isElevated) {
+                if (d.elevationReason && d.elevationReason.includes('租户')) {
+                    permSource = 'Tenant Admin(租户管理员特权)';
+                } else {
+                    permSource = 'Group Membership(安全组继承穿透)';
+                }
+            } else if (d.directRole && !d.directRole.startsWith('None')) {
+                permSource = 'Direct Assignment(工作区直接授权)';
+            } else if (d.datasetsDetail && d.datasetsDetail.some(m => m.directRight && m.directRight !== 'None')) {
+                permSource = 'Item Sharing(模型单独共享)';
+            } else if (d.effectiveRole === 'None' || d.directRole === 'None') {
+                permSource = 'Unassigned(无生效授权)';
+            } else {
+                permSource = 'Direct Assignment(工作区直接授权)';
+            }
+        }
+
+        const modelsSummaryText = models.map(m => `${m.name} (${m.id})`).join('; ');
+
+        return {
+            'Workspace': d.workspaceName || d.wsName || 'Unnamed Workspace',
+            'User Name': userName,
+            'Email / ID': userEmailOrId,
+            'Type': d.principalType || 'User',
+            'Models': modelsSummaryText || '— (无模型)',
+            'Permission Source': permSource,
+            'Direct Role': d.directRole || d.role || 'None',
+            'Effective Access': d.effectiveRole || d.role || 'None',
+            'Model Write Access': d.canEditModels ? '✅ 全部可读写' : '❌ 纯只读',
+            'Security Status': d.securityStatus || (d.isElevated ? '⚠️ 继承提权' : '🟢 正常'),
+            'Actions': '', // rendered dynamically
+
+            _raw: d,
+            _idx: idx,
+            _wsId: d.workspaceId || d.wsId,
+            _identifier: d.identifier,
+            _wsName: d.workspaceName || d.wsName,
+            _models: models,
+            _permSource: permSource
+        };
+    });
 
     if (window.showUniversalDataModal) {
         window.showUniversalDataModal({
             title: 'Global Workspace Permissions & Effective Access Matrix',
             data: mappedData,
             initialSearch: term,
-            columns: ['Workspace', 'User / Principal', 'Type', 'Direct Role', 'Effective Access', 'Model Write Access', 'Security Status', 'Actions'],
+            columns: [
+                'Workspace',
+                'User Name',
+                'Email / ID',
+                'Type',
+                'Models',
+                'Permission Source',
+                'Direct Role',
+                'Effective Access',
+                'Model Write Access',
+                'Security Status',
+                'Actions'
+            ],
             cellRenderer: (col, val, row) => {
+                if (col === 'User Name') {
+                    return `<div style="font-weight:600; color:var(--text-primary); font-size:0.78rem;">${val}</div>`;
+                }
+                if (col === 'Email / ID') {
+                    return `
+                        <div style="display:inline-flex; align-items:center; gap:4px; font-family:'Fira Code',monospace; font-size:0.72rem; color:var(--text-secondary); max-width:240px;">
+                            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${val}">${val}</span>
+                            <button type="button" class="btn-wf-sm" style="height:18px; padding:0 4px; font-size:0.62rem; flex-shrink:0; cursor:pointer;" onclick="if(window.handleCopyAction) window.handleCopyAction(this, '${val}'); event.stopPropagation();" title="复制邮箱或主体ID">复制</button>
+                        </div>
+                    `;
+                }
                 if (col === 'Type') {
-                    return `<span style="padding:2px 6px;border-radius:4px;background:var(--overlay-10);font-size:0.75rem;">${val}</span>`;
+                    return `<span style="padding:2px 6px;border-radius:4px;background:var(--overlay-10);font-size:0.72rem;">${val}</span>`;
+                }
+                if (col === 'Models') {
+                    const modelList = row._models || [];
+                    if (!modelList || modelList.length === 0) {
+                        return `<span style="font-size:0.72rem; color:var(--text-secondary); font-style:italic;">— (无模型)</span>`;
+                    }
+                    return `
+                        <div style="display:flex; flex-direction:column; gap:4px; max-width:280px; max-height:110px; overflow-y:auto; padding-right:2px;">
+                            ${modelList.map(m => `
+                                <div style="background:var(--overlay-5); border:1px solid var(--overlay-10); border-radius:4px; padding:3px 6px; display:flex; flex-direction:column; gap:1px;">
+                                    <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                                        <span style="font-size:0.74rem; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${m.name}">📊 ${m.name}</span>
+                                        ${m.id ? `<button type="button" class="btn-wf-sm" style="height:17px; padding:0 4px; font-size:0.62rem; flex-shrink:0; cursor:pointer;" onclick="if(window.handleCopyAction) window.handleCopyAction(this, '${m.id}'); event.stopPropagation();" title="复制模型ID">复制ID</button>` : ''}
+                                    </div>
+                                    ${m.id ? `<div style="font-size:0.66rem; font-family:'Fira Code',monospace; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${m.id}">${m.id}</div>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+                if (col === 'Permission Source') {
+                    let bg = 'rgba(59, 130, 246, 0.12)';
+                    let color = '#3b82f6';
+                    let border = 'rgba(59, 130, 246, 0.3)';
+                    let icon = '🎯';
+                    if (val.includes('Group Membership') || val.includes('安全组继承')) {
+                        bg = 'rgba(234, 179, 8, 0.15)';
+                        color = 'var(--warning, #eab308)';
+                        border = 'rgba(234, 179, 8, 0.35)';
+                        icon = '🛡️';
+                    } else if (val.includes('Tenant Admin') || val.includes('租户特权')) {
+                        bg = 'rgba(168, 85, 247, 0.15)';
+                        color = '#a855f7';
+                        border = 'rgba(168, 85, 247, 0.35)';
+                        icon = '👑';
+                    } else if (val.includes('Item Sharing') || val.includes('模型单独共享')) {
+                        bg = 'rgba(16, 185, 129, 0.15)';
+                        color = '#10b981';
+                        border = 'rgba(16, 185, 129, 0.35)';
+                        icon = '🔗';
+                    } else if (val.includes('Group Principal') || val.includes('安全组主体')) {
+                        bg = 'rgba(99, 102, 241, 0.15)';
+                        color = '#6366f1';
+                        border = 'rgba(99, 102, 241, 0.35)';
+                        icon = '👥';
+                    }
+                    return `
+                        <span style="display:inline-flex; align-items:center; gap:4px; padding:2px 7px; border-radius:6px; background:${bg}; color:${color}; border:1px solid ${border}; font-size:0.72rem; font-weight:600; white-space:nowrap;" title="${row._raw?.elevationReason || val}">
+                            <span>${icon}</span>
+                            <span>${val}</span>
+                        </span>
+                    `;
                 }
                 if (col === 'Direct Role') {
-                    return `<span style="padding:2px 6px;border-radius:4px;background:var(--overlay-8);font-size:0.75rem;color:var(--text-secondary);">${val}</span>`;
+                    return `<span style="padding:2px 6px;border-radius:4px;background:var(--overlay-8);font-size:0.74rem;color:var(--text-secondary);">${val}</span>`;
                 }
                 if (col === 'Effective Access') {
                     const isAdm = val === 'Admin';
                     const color = isAdm ? 'var(--accent)' : (val === 'Member' ? 'var(--info)' : 'var(--text-primary)');
-                    return `<span style="font-weight:700;color:${color};">${val}</span>`;
+                    return `<span style="font-weight:700;color:${color};font-size:0.78rem;">${val}</span>`;
                 }
                 if (col === 'Model Write Access') {
                     const isWrite = val.includes('✅');
-                    return `<span style="font-size:0.75rem;font-weight:600;color:${isWrite ? 'var(--success, #10b981)' : 'var(--text-secondary)'};">${val}</span>`;
+                    return `<span style="font-size:0.74rem;font-weight:600;color:${isWrite ? 'var(--success, #10b981)' : 'var(--text-secondary)'};">${val}</span>`;
                 }
                 if (col === 'Security Status') {
                     if (val.includes('⚠️')) {
                         return `<span style="padding:2px 8px;border-radius:10px;background:rgba(234,179,8,0.15);color:var(--warning,#eab308);font-weight:600;font-size:0.72rem;border:1px solid rgba(234,179,8,0.3);cursor:pointer;" onclick="window.showGumUserDetailModal(${row._idx})" title="点击查看提权成因">${val}</span>`;
                     }
-                    return `<span style="font-size:0.75rem;color:var(--success,#10b981);">${val}</span>`;
+                    return `<span style="font-size:0.74rem;color:var(--success,#10b981);">${val}</span>`;
                 }
                 if (col === 'Actions') {
                     return `
                         <div style="display: flex; justify-content: center; align-items: center; width: 100%; text-align: center;">
-                            <button type="button" class="btn-wf-sm btn-wf-secondary" style="padding: 3px 14px; font-size: 0.72rem; height: 26px; font-weight: 500; white-space: nowrap; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; margin: 0 auto;" onclick="window.showGumUserDetailModal(${row._idx})" title="查看该用户针对所有语义模型的细粒度权限画像">🔍 画像</button>
+                            <button type="button" class="btn-wf-sm btn-wf-secondary" style="padding: 3px 12px; font-size: 0.72rem; height: 24px; font-weight: 500; white-space: nowrap; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; margin: 0 auto;" onclick="window.showGumUserDetailModal(${row._idx})" title="查看该用户针对所有语义模型的细粒度权限画像">🔍 画像</button>
                         </div>
                     `;
                 }

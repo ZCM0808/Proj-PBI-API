@@ -1996,4 +1996,50 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
 - 在 [tests/e2e.spec.js](file:///D:/zcm/Proj-PBI-API/tests/e2e.spec.js) 中加入对复制按钮剪贴板写入内容的断言，验证成功复制出包含实体 Name 与 ID 的组合内容，Playwright 测试 100% 成功通过（1 passed, 耗时 19.0s）。
 - 工业级静态健康检查：`python -m ruff check src/`、`python -m mypy src/main.py --ignore-missing-imports`、`node -c static/script.js` 全量通过（0 issues, 0 errors）。
 
+---
+
+## 55. 全局下拉明亮主题适配、GUM 空态极简化与全屏矩阵列表全面重构 (Light Theme & GUM Universal Modal Matrix Refactor)
+
+### 55.1 业务背景与用户诉求 (User Requirements)
+用户基于快速开发笔记 [notes/0918 improvement.md](file:///D:/zcm/Proj-PBI-API/notes/0918%20improvement.md) 提出 7 项全量升级诉求：
+1. **全局功能区工作区下拉列表支持明亮主题 (Light Theme)**；
+2. **全局功能区模型下拉列表支持明亮主题 (Light Theme)**；
+3. **彻底删除 label “点击【扫描用户】拉取人员”**；
+4. **删除搜索用户下拉列表中的冗余按钮和长提示文案**，直接极简显示“暂无候选用户”；
+5. **全局弹窗列表中 User 列拆分为 `User Name` 和 `Email / ID` 两列**；
+6. **全局弹窗列表中新增“模型 (Models)”列**，分别清晰呈现该权限记录归属工作区下的所有模型名称与模型 ID；
+7. **全局弹窗列表中清晰标明最终权限来源 (Permission Source / Origin)**。
+
+### 55.2 核心改造方案 (Implementation Details)
+1. **全局功能区与 GUM 用户下拉列表明亮模式深度适配 (Light Theme & High Contrast UI)**：
+   - 在 [static/style.css](file:///D:/zcm/Proj-PBI-API/static/style.css) 中针对 `body.light-theme` 与 `[data-theme="light"]` 全面重构了 `.gtb-ws-dropdown`、`.gtb-ds-dropdown`、`.gum-dropdown-menu` 以及其内部的搜素框、分组卡片、列表项、复选框与滚动条：
+     - **背景与边框**：纯白面板 `#ffffff` 搭配清晰边框 `#cbd5e1`，柔和高阶立体投影 `0 16px 40px rgba(0, 0, 0, 0.12)`；
+     - **文字高对比度**：标题主文字强制 `#0f172a`（高对比深蓝黑），副标题/ID 使用 `#64748b`（清爽蓝灰）；
+     - **交互态与徽章**：条目悬浮背景 `#f1f5f9`，选中高亮背景 `#eff6ff` / `#ecfdf5` / `#eef2ff`，复选框与文字统一搭配 Indigo/Emerald 品牌主色；
+     - **滚动条优化**：定制明亮轨道与高饱和滑块，彻底杜绝浅色背景下文字发灰或无法看清的问题。
+2. **清理冗余提示与搜索用户下拉列表极简化 (Minimalist Candidate Dropdown)**：
+   - 在 [static/script.js](file:///D:/zcm/Proj-PBI-API/static/script.js)（第 17805 行）彻底移除了 `点击【扫描用户】拉取人员` 这一提示；
+   - 在 [static/index.html](file:///D:/zcm/Proj-PBI-API/static/index.html)（第 1218 行）与 [static/script.js](file:///D:/zcm/Proj-PBI-API/static/script.js) 中将原本冗长的“💡 当前工作区尚未加载用户列表。请点击右侧【👥 扫描用户】一键拉取授权主体”及内置按钮彻底替换为极简干净的文案：`暂无候选用户`。
+3. **全局弹窗矩阵 (Universal Modal) 数据架构与视图全面升级**：
+   - 在 [src/permission_scanner.py](file:///D:/zcm/Proj-PBI-API/src/permission_scanner.py) 与 [static/script.js](file:///D:/zcm/Proj-PBI-API/static/script.js) 的 `window.openGumResultModal` 中全面重构表格元数据：
+     - **User 列双列拆分**：将原统一的 `User / Principal` 拆分为 `User Name`（用户物理姓名）与 `Email / ID`（真实 UPN/邮箱或主体 GUID/App ID，附带一键复制小按钮）；
+     - **新增模型 (Models) 列**：从 `d.datasetsDetail` 与工作区缓存中解析出该记录所归属工作区下的全部数据模型，卡片化分别展示每个模型的名称（`📊 Model Name`）与模型 ID，支持单模型 ID 一键复制；
+     - **新增权限来源 (Permission Source) 列**：精准标明生效权限成因，使用彩色状态徽章展示：
+       - `Direct Assignment(工作区直接授权)`：工作区直属成员；
+       - `Group Membership(安全组继承穿透)`：非直属或低权限，通过安全组提权；
+       - `Tenant Admin(租户管理员特权)`：租户级特权渗透；
+       - `Item Sharing(模型单独共享)`：针对特定语义模型的细粒度共享；
+       - `Group Principal(安全组主体)`：主体本身为安全组。
+4. **前端静态资源缓存清理防御 (Cache Busting)**：
+   - 同步更新 [static/index.html](file:///D:/zcm/Proj-PBI-API/static/index.html) 中静态资源版本号为 `?v=20260918_v1030`。
+
+### 55.3 自动化测试与质量闭环验证
+- 在 [tests/e2e.spec.js](file:///D:/zcm/Proj-PBI-API/tests/e2e.spec.js) 中新增专门端到端测试用例 `GUM 下拉列表空态与全屏矩阵弹窗列扩展审计 (User Name / Email / Models / Permission Source)`：
+  - 断言空候选用户时呈现“暂无候选用户”，彻底无“点击【扫描用户】拉取人员”；
+  - 打开 Universal Modal 全屏矩阵弹窗，断言表头包含 `User Name`、`Email / ID`、`Models`、`Permission Source`；
+  - 断言表格单元格分别渲染出姓名与邮箱、模型名称与模型 ID、以及权限来源彩色标签。
+- 运行 Playwright 测试全部 100% 通过（2 passed, 耗时 37.7s）。
+- 静态分析：`python -m ruff check src/`、`python -m mypy src/main.py --ignore-missing-imports`、`node -c static/script.js` 零报错、零警告。
+
+
 
