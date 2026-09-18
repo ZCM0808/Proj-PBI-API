@@ -5493,36 +5493,43 @@ body.light-theme .gtb-ws-footer {
 .gtb-ds-list {
     flex: 1 1 auto;
     min-height: 0;
-    max-height: calc(88vh - 145px);
-    overflow-y: scroll; /* 强制展现纵向滚动槽位，支持直接拖拽与平滑滚动 */
+    max-height: min(380px, calc(75vh - 120px));
+    overflow-y: auto;
     overflow-x: hidden;
     overscroll-behavior: contain;
-    padding: 6px;
+    padding: 6px 4px 6px 6px;
     display: flex;
     flex-direction: column;
     gap: 8px;
+    scrollbar-gutter: stable; /* 始终预留稳定滚动条通道，保证布局永远不晃动 */
     scrollbar-width: thin;
-    scrollbar-color: rgba(52, 211, 153, 0.6) rgba(0, 0, 0, 0.25);
+    scrollbar-color: #34d399 rgba(255, 255, 255, 0.08);
 }
 
 .gtb-ds-list::-webkit-scrollbar {
-    width: 8px;
-    display: block;
+    width: 8px !important;
+    display: block !important;
 }
 
 .gtb-ds-list::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.25);
-    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-radius: 6px;
+}
+
+body.light-theme .gtb-ds-list::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05) !important;
 }
 
 .gtb-ds-list::-webkit-scrollbar-thumb {
-    background: rgba(52, 211, 153, 0.45);
-    border-radius: 4px;
-    border: 1px solid rgba(52, 211, 153, 0.2);
+    background: rgba(52, 211, 153, 0.7) !important;
+    border-radius: 6px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
 }
 
 .gtb-ds-list::-webkit-scrollbar-thumb:hover {
-    background: rgba(52, 211, 153, 0.85);
+    background: #34d399 !important;
+    box-shadow: 0 0 8px rgba(52, 211, 153, 0.6);
 }
 
 .gtb-ds-ws-group {
@@ -5614,25 +5621,6 @@ body.light-theme .gtb-ds-ws-header:hover {
     color: #34d399;
     font-weight: normal;
     white-space: nowrap;
-}
-
-.gtb-ds-ws-select-btn {
-    background: transparent;
-    border: 1px solid var(--overlay-15);
-    color: var(--text-secondary);
-    font-size: 0.65rem;
-    padding: 2px 6px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    white-space: nowrap;
-    margin-left: 6px;
-}
-
-.gtb-ds-ws-select-btn:hover {
-    background: rgba(52, 211, 153, 0.2);
-    color: #34d399;
-    border-color: rgba(52, 211, 153, 0.4);
 }
 
 .gtb-ds-items-group {

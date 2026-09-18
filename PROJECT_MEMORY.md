@@ -1932,3 +1932,40 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
 
 ### 52.3 自动化测试断言
 - 在 [tests/e2e.spec.js](file:///D:/zcm/Proj-PBI-API/tests/e2e.spec.js) 中加入针对工作区分组折叠展开（`.collapsed`）及 30+ 模型的纵向滚动能力断言（`canScroll === true`、`scrollTop > 0`），Playwright 测试全量通过（1 passed, 100% 成功）。
+
+---
+
+## 53. 模型下拉列表与工作区联动、全选本区清理与显式滚动条重构 (Workspace-Linked Models & Visible Scrollbar Refactor)
+
+### 53.1 业务背景与用户诉求 (User Requirements)
+1. **删除多余的“全选本区”按钮**：
+   - 工作区分组头部的【全选本区】功能冗余，用户更倾向于在顶部直接【全选】或点击条目单选/多选，要求彻底删除该按钮以简化界面。
+2. **滚动条未出现与样式隐蔽排查**：
+   - 当联动后模型数量较少或处于大屏幕时，`max-height` 过高导致并未达到溢出阈值，未触发滚动条；且在 Windows 11 自动隐藏滚动条特性下滑块难以被鼠标抓取。
+3. **模型下拉列表联动工作区 (Workspace Linkage)**：
+   - 用户要求顶栏“模型”下拉面板必须与“工作区”形成父子级联动。若当前工作区勾选了特定工作区，模型列表仅展示这些工作区下的模型；若未选工作区或全选，则展示全部模型。
+4. **复制按钮业务逻辑释疑**：
+   - 明确顶栏复制按钮的核心功能：将当前所选实体（工作区、模型、报表、租户）的 GUID(Globally Unique Identifier / 全局唯一标识符) 写入系统剪贴板（Clipboard），支持多选时以逗号分隔，方便开发者无缝粘贴到其他外部调试工具。
+
+### 53.2 核心改造方案 (Implementation Details)
+1. **工作区与数据模型全栈联动引擎 (Workspace-to-Dataset Cascading Engine)**：
+   - 在 [static/script.js](file:///D:/zcm/Proj-PBI-API/static/script.js) 的 `updateGlobalTopbarDropdowns` 中，动态读取 `window.selectedGtbWorkspaceIds`；
+   - 若用户勾选了特定工作区，动态计算 `scopedDsData`，仅保留属于已选工作区的模型（`workspaceId in selectedWsSet`），未分配工作区的模型在选定工作区时自动排除；
+   - **已选模型边界清洗**：当工作区切换时，自动从 `window.selectedGtbDatasetIds` 中剥离不属于当前已选工作区的过期模型 ID，保持数据流严格一致；
+   - **矩阵渲染联动**：`wsMap` 仅对当前联动工作区进行分组卡片渲染，若无模型显示“当前已选工作区下暂无可用的数据模型”；
+   - **全选操作联动**：重构 `selectAllGtbDatasets(true)`，在存在工作区过滤时仅对联动范围内的模型执行批量勾选；
+   - 统计文案联动：底部精准回显 `已选 X / Y 个模型 (联动 Z 个工作区)`。
+2. **彻底删除“全选本区”按钮**：
+   - 从矩阵分组头部模板中彻底移除 `gtb-ds-ws-select-btn` 结构；
+   - 从 [static/style.css](file:///D:/zcm/Proj-PBI-API/static/style.css) 中清理相关 CSS 类定义。
+3. **显式上下滚动条与视窗优化**：
+   - 将 `#gtb-ds-list` 的舒适可见高度重构为 `max-height: min(380px, calc(75vh - 120px));`，模型超过 4~5 个时即稳定展现垂直滚动；
+   - 注入 `scrollbar-gutter: stable;`，固定预留滚动通道槽位，杜绝内容增删时布局横向抖动；
+   - 强化 Emerald 高对比度滑块（`rgba(52, 211, 153, 0.7)`）与轨道半透明对比底色，保证肉眼直观、随时可拖拽。
+4. **前端静态资源缓存清理防御 (Cache Busting)**：
+   - 同步更新 [static/index.html](file:///D:/zcm/Proj-PBI-API/static/index.html) 中静态资源版本号为 `?v=20260918_v0810`。
+
+### 53.3 自动化测试与质量闭环验证
+- 在 [tests/e2e.spec.js](file:///D:/zcm/Proj-PBI-API/tests/e2e.spec.js) 中加入针对删除 `gtb-ds-ws-select-btn`（断言数量为 0）、工作区联动筛选（单选工作区 1 时仅展示工作区 1 的分组和模型，其他工作区彻底隐藏）以及包含联动工作区后的滚动测试断言，Playwright 测试 100% 成功通过（1 passed, 耗时 20.6s）。
+- `python -m ruff check src/`、`python -m mypy src/main.py --ignore-missing-imports`、`node -c static/script.js` 全量通过（0 issues, 0 errors）。
+

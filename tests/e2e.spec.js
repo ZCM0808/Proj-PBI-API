@@ -462,7 +462,8 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
   });
 
   test('全局功能区数据模型下拉框支持工作区分组矩阵、全选、清空、多选以及 GUM 统计计数精准匹配', async ({ page }) => {
-    // 1. 验证模型下拉触发器结构与初始显示
+    // 1. 验证模型下拉触发器结构与初始显示，并先全选工作区以包含全部模型
+    await page.evaluate(() => window.selectAllGtbWorkspaces(true));
     await expect(page.locator('#gtb-dataset-box')).toBeVisible();
     await expect(page.locator('#gtb-ds-trigger')).toBeVisible();
 
@@ -477,7 +478,7 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
 
     const firstGroup = wsGroups.first();
     await expect(firstGroup.locator('.gtb-ds-ws-header')).toBeVisible();
-    await expect(firstGroup.locator('.gtb-ds-ws-select-btn')).toBeVisible();
+    await expect(firstGroup.locator('.gtb-ds-ws-select-btn')).toHaveCount(0); // 验证已删除全选本区冗余按钮
     const itemsCount = await firstGroup.locator('.gtb-ds-item').count();
     expect(itemsCount).toBeGreaterThanOrEqual(1);
 
@@ -493,15 +494,15 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     displayText = await page.locator('#gtb-ds-display-text').textContent();
     expect(displayText).toContain('-- 选择模型 (0) --');
 
-    // 5. 测试单个工作区【全选本区】与单选/多选勾选
-    await firstGroup.locator('.gtb-ds-ws-select-btn').click();
+    // 5. 测试单选/多选勾选模型
+    await firstGroup.locator('.gtb-ds-item').first().click();
     let selectedDs = await page.evaluate(() => window.getSelectedDatasets());
-    expect(selectedDs.length).toBe(itemsCount);
+    expect(selectedDs.length).toBe(1);
 
-    // 单项切换取消勾选第一项
+    // 再次点击取消勾选
     await firstGroup.locator('.gtb-ds-item').first().click();
     selectedDs = await page.evaluate(() => window.getSelectedDatasets());
-    expect(selectedDs.length).toBe(itemsCount - 1);
+    expect(selectedDs.length).toBe(0);
 
     // 测试工作区分组折叠与展开功能
     await firstGroup.locator('.gtb-ds-ws-header').click();
@@ -520,6 +521,8 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
       }
       localStorage.setItem('pbi_workspaces', JSON.stringify(mockWs));
       localStorage.setItem('pbi_datasets', JSON.stringify(mockDs));
+      window.selectedGtbWorkspaceIds.clear();
+      window.selectedGtbWorkspaceIds.add('ws-scroll-test');
       window.updateGlobalTopbarDropdowns();
     });
 
@@ -531,6 +534,32 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     });
     expect(scrollMetrics.canScroll).toBe(true);
     expect(scrollMetrics.scrollTop).toBeGreaterThan(0);
+
+    // 验证模型下拉列表与已选工作区联动 (Workspace Linkage Filter)
+    await page.evaluate(() => {
+      const mockWs = [
+        { id: 'ws-link-1', name: 'Link Workspace 1' },
+        { id: 'ws-link-2', name: 'Link Workspace 2' }
+      ];
+      const mockDs = [
+        { id: 'ds-w1-a', name: 'Dataset 1A', workspaceId: 'ws-link-1' },
+        { id: 'ds-w1-b', name: 'Dataset 1B', workspaceId: 'ws-link-1' },
+        { id: 'ds-w2-a', name: 'Dataset 2A', workspaceId: 'ws-link-2' }
+      ];
+      localStorage.setItem('pbi_workspaces', JSON.stringify(mockWs));
+      localStorage.setItem('pbi_datasets', JSON.stringify(mockDs));
+      // 仅勾选工作区 1
+      window.selectedGtbWorkspaceIds.clear();
+      window.selectedGtbWorkspaceIds.add('ws-link-1');
+      window.updateGlobalTopbarDropdowns();
+    });
+
+    // 仅展示 ws-link-1 的分组，ws-link-2 不展示
+    await expect(page.locator('#gtb-ds-list .gtb-ds-ws-group[data-ws-id="ws-link-1"]')).toBeVisible();
+    await expect(page.locator('#gtb-ds-list .gtb-ds-ws-group[data-ws-id="ws-link-2"]')).toHaveCount(0);
+    // 统计显示联动 1 个工作区
+    let dsStatText = await page.locator('#gtb-ds-stat-text').textContent();
+    expect(dsStatText).toContain('联动 1 个工作区');
 
     // 关闭模型下拉框
     await page.evaluate(() => window.closeGtbDsDropdown());

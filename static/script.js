@@ -3067,11 +3067,22 @@ window.closeGtbDsDropdown = function() {
     if (box) box.classList.remove('active');
 };
 
-// 全选或清空已选数据模型
+// 全选或清空已选数据模型 (支持联动当前已选工作区)
 window.selectAllGtbDatasets = function(selectAll = true) {
     const dsData = window.getMergedGtbDatasets ? window.getMergedGtbDatasets() : JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
+    const selectedWsIds = Array.from(window.selectedGtbWorkspaceIds || []);
+    const hasWsFilter = selectedWsIds.length > 0;
+    const selectedWsSet = new Set(selectedWsIds.map(id => String(id).toLowerCase()));
+
+    const scopedDsData = hasWsFilter
+        ? dsData.filter(d => {
+            const wid = String(d.workspaceId || '').trim().toLowerCase();
+            return wid && selectedWsSet.has(wid);
+        })
+        : dsData;
+
     if (selectAll) {
-        dsData.forEach(d => { if (d && d.id) window.selectedGtbDatasetIds.add(String(d.id)); });
+        scopedDsData.forEach(d => { if (d && d.id) window.selectedGtbDatasetIds.add(String(d.id)); });
     } else {
         window.selectedGtbDatasetIds.clear();
     }
@@ -3281,19 +3292,42 @@ window.updateGlobalTopbarDropdowns = function() {
         statTextEl.textContent = `已选 ${selectedCount} / ${totalCount} 个工作区`;
     }
 
-    // 3. 渲染数据模型 (Dataset / Model) 顶栏触发器与工作区分组矩阵 (仅初次初始化默认选中)
-    if (!window._gtbDsInitialized && window.selectedGtbDatasetIds.size === 0 && dsData.length > 0) {
+    // 3. 渲染数据模型 (Dataset / Model) 顶栏触发器与工作区分组矩阵 (全面支持与已选工作区联动)
+    const selectedWsIds = Array.from(window.selectedGtbWorkspaceIds);
+    const hasWsFilter = selectedWsIds.length > 0;
+    const selectedWsSet = new Set(selectedWsIds.map(id => String(id).toLowerCase()));
+
+    // 动态根据工作区联动过滤出当前范围可用的模型集
+    const scopedDsData = hasWsFilter
+        ? dsData.filter(d => {
+            const wid = String(d.workspaceId || '').trim().toLowerCase();
+            return wid && selectedWsSet.has(wid);
+        })
+        : dsData;
+
+    // 清理并对齐已选模型：剔除不在当前联动工作区内的已选模型
+    if (hasWsFilter) {
+        const validScopedDsIds = new Set(scopedDsData.map(d => String(d.id).toLowerCase()));
+        for (const curSelectedId of Array.from(window.selectedGtbDatasetIds)) {
+            if (!validScopedDsIds.has(String(curSelectedId).toLowerCase())) {
+                window.selectedGtbDatasetIds.delete(curSelectedId);
+            }
+        }
+    }
+
+    // 仅初次初始化默认选中首个模型
+    if (!window._gtbDsInitialized && window.selectedGtbDatasetIds.size === 0 && scopedDsData.length > 0) {
         window._gtbDsInitialized = true;
-        if (curDsId && dsData.some(d => String(d.id).toLowerCase() === curDsId.toLowerCase())) {
+        if (curDsId && scopedDsData.some(d => String(d.id).toLowerCase() === curDsId.toLowerCase())) {
             window.selectedGtbDatasetIds.add(String(curDsId));
-        } else if (dsData[0] && dsData[0].id) {
-            window.selectedGtbDatasetIds.add(String(dsData[0].id));
+        } else if (scopedDsData[0] && scopedDsData[0].id) {
+            window.selectedGtbDatasetIds.add(String(scopedDsData[0].id));
         }
     }
 
     const selectedDsList = Array.from(window.selectedGtbDatasetIds);
     const selectedDsCount = selectedDsList.length;
-    const totalDsCount = dsData.length;
+    const totalDsCount = scopedDsData.length;
 
     const dsDisplayTextEl = document.getElementById('gtb-ds-display-text');
     const dsCountBadgeEl = document.getElementById('gtb-ds-count-badge');
@@ -3304,7 +3338,7 @@ window.updateGlobalTopbarDropdowns = function() {
         if (selectedDsCount === 0) {
             dsDisplayTextEl.textContent = '-- 选择模型 (0) --';
         } else if (selectedDsCount === 1) {
-            const matched = dsData.find(d => String(d.id).toLowerCase() === selectedDsList[0].toLowerCase());
+            const matched = scopedDsData.find(d => String(d.id).toLowerCase() === selectedDsList[0].toLowerCase()) || dsData.find(d => String(d.id).toLowerCase() === selectedDsList[0].toLowerCase());
             const firstDsName = matched ? (matched.alias || matched.name || matched.id) : selectedDsList[0];
             dsDisplayTextEl.textContent = firstDsName;
         } else if (selectedDsCount === totalDsCount && totalDsCount > 1) {
@@ -3324,20 +3358,29 @@ window.updateGlobalTopbarDropdowns = function() {
     }
 
     if (dsStatTextEl) {
-        dsStatTextEl.textContent = `已选 ${selectedDsCount} / ${totalDsCount} 个模型`;
+        dsStatTextEl.textContent = hasWsFilter
+            ? `已选 ${selectedDsCount} / ${totalDsCount} 个模型 (联动 ${selectedWsIds.length} 个工作区)`
+            : `已选 ${selectedDsCount} / ${totalDsCount} 个模型`;
     }
 
     if (dsHidden) {
         dsHidden.value = selectedDsList.join(',');
     }
 
-    // 渲染各工作区下的模型分组矩阵 (Workspace Grouping Matrix)
+    // 渲染各工作区下的模型分组矩阵 (Workspace Grouping Matrix - 联动已选工作区)
     if (dsListContainer) {
-        if (dsData.length === 0) {
-            dsListContainer.innerHTML = '<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 16px 0;">暂无可用的模型缓存</div>';
+        if (scopedDsData.length === 0) {
+            dsListContainer.innerHTML = `<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 24px 10px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="opacity: 0.4; margin-bottom: 6px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                <div>${hasWsFilter ? '当前已选工作区下暂无可用的数据模型' : '暂无可用的模型缓存'}</div>
+            </div>`;
         } else {
             const wsMap = new Map();
-            wsData.forEach(w => {
+            const targetWorkspaces = hasWsFilter
+                ? wsData.filter(w => w && w.id && selectedWsSet.has(String(w.id).toLowerCase()))
+                : wsData;
+
+            targetWorkspaces.forEach(w => {
                 if (w && w.id) {
                     wsMap.set(String(w.id).toLowerCase(), {
                         id: String(w.id),
@@ -3348,11 +3391,11 @@ window.updateGlobalTopbarDropdowns = function() {
             });
 
             const unassignedModels = [];
-            dsData.forEach(d => {
+            scopedDsData.forEach(d => {
                 const wid = String(d.workspaceId || '').trim().toLowerCase();
                 if (wid && wsMap.has(wid)) {
                     wsMap.get(wid).models.push(d);
-                } else if (wid) {
+                } else if (wid && !hasWsFilter) {
                     if (!wsMap.has(wid)) {
                         wsMap.set(wid, {
                             id: d.workspaceId,
@@ -3361,7 +3404,7 @@ window.updateGlobalTopbarDropdowns = function() {
                         });
                     }
                     wsMap.get(wid).models.push(d);
-                } else {
+                } else if (!hasWsFilter) {
                     unassignedModels.push(d);
                 }
             });
@@ -3383,9 +3426,6 @@ window.updateGlobalTopbarDropdowns = function() {
                                 <span title="${wname}">${wname}</span>
                                 <span class="gtb-ds-ws-badge">${models.length} 个模型</span>
                             </div>
-                            <button type="button" class="gtb-ds-ws-select-btn" onclick="event.stopPropagation(); window.toggleGtbWsModels('${wid}', event)">
-                                ${isAllGroupSelected ? '取消全选' : '全选本区'}
-                            </button>
                         </div>
                         <div class="gtb-ds-items-group">
                             ${models.map(m => {
@@ -3450,7 +3490,6 @@ window.updateGlobalTopbarDropdowns = function() {
     }
 
     // 4. 根据所选的工作区过滤 Reports (向后兼容)
-    const selectedWsSet = new Set(selectedList.map(s => s.toLowerCase()));
     const filteredRp = (selectedCount > 0) ? rpData.filter(r => {
         const rWid = (r.workspaceId || '').trim().toLowerCase();
         return !rWid || selectedWsSet.has(rWid);
