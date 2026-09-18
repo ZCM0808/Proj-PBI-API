@@ -645,8 +645,14 @@ async def scan_candidate_users(
     cache_age = now - _TENANT_WORKSPACES_CACHE.get("timestamp", 0.0)
     has_valid_cache = bool(cached_workspaces and cache_age < 180 and not force_refresh)
 
-    workspaces: List[Dict[str, Any]] = []
-    if has_valid_cache:
+    warning_msg: Optional[str] = None
+    rate_limited = False
+
+    # 若缓存极其新鲜 (例如最近 15 秒内刚刚更新)，直接复用内存快照，保护租户请求频次
+    if cached_workspaces and cache_age < 15:
+        workspaces = cached_workspaces
+        has_valid_cache = True
+    elif has_valid_cache:
         workspaces = cached_workspaces
     else:
         try:
@@ -657,12 +663,27 @@ async def scan_candidate_users(
             if workspaces:
                 _TENANT_WORKSPACES_CACHE["timestamp"] = now
                 _TENANT_WORKSPACES_CACHE["workspaces"] = workspaces
-        except Exception:
-            try:
-                ws_res = await asyncio.to_thread(cli.request, "GET", "/groups?$top=100")
-                workspaces = ws_res.get("value", [])
-            except Exception as e:
-                return {"success": False, "message": f"拉取工作区失败: {str(e)}", "users": []}
+        except Exception as ex:
+            ex_str = str(ex)
+            if "429" in ex_str or "exceeded the amount of requests" in ex_str.lower():
+                rate_limited = True
+                warning_msg = "⚠️ 微软 API 频次保护中 (429 Rate Limit)，已秒级切换至最新内存快照"
+                if cached_workspaces:
+                    workspaces = cached_workspaces
+                    has_valid_cache = True
+                else:
+                    return {
+                        "success": False,
+                        "message": f"⚠️ 微软 Power BI Admin API 租户级频次限流 (429)，请稍候重试。详情: {ex_str}",
+                        "users": []
+                    }
+            else:
+                if cached_workspaces:
+                    workspaces = cached_workspaces
+                    has_valid_cache = True
+                    warning_msg = f"⚠️ 云端网络波动，已自动加载高可用内存快照 ({ex_str[:80]})"
+                else:
+                    return {"success": False, "message": f"拉取工作区失败: {ex_str}", "users": []}
 
     # 过滤工作区范围
     target_ws_set = {str(w).strip().lower() for w in (workspace_ids or []) if str(w).strip()}
@@ -670,7 +691,8 @@ async def scan_candidate_users(
         filtered_workspaces = [w for w in workspaces if str(w.get("id", "")).lower() in target_ws_set]
         found_ids = {str(w.get("id", "")).lower() for w in filtered_workspaces}
         missing_ids = [wid for wid in target_ws_set if wid not in found_ids]
-        if missing_ids:
+        # 仅在非 429 状态下尝试补充缺失的工作区，避免限流期并发请求堆叠雪崩
+        if missing_ids and not rate_limited:
             async def _fetch_missing(wid: str) -> Optional[Dict[str, Any]]:
                 try:
                     res = await asyncio.to_thread(cli.request, "GET", f"/groups/{wid}/users")
@@ -711,10 +733,13 @@ async def scan_candidate_users(
                 }
 
     candidates = list(merged_users.values())
-    return {
+    res_dict: Dict[str, Any] = {
         "success": True,
         "users": candidates,
         "count": len(candidates),
         "cached": has_valid_cache
     }
+    if warning_msg:
+        res_dict["warning"] = warning_msg
+    return res_dict
 

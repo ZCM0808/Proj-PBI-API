@@ -18374,6 +18374,9 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
         dropdownList.innerHTML = '<div style="font-size: 0.75rem; color: var(--text-secondary); padding: 8px 4px; text-align: center;">⏳ 正在调用后端高性能引擎高速聚合候选人员名单...</div>';
     }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 9000);
+
     try {
         const payload = {
             scope: scope,
@@ -18383,8 +18386,10 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
         const res = await fetch('/api/workflow/scan-users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: controller.signal
         });
+        clearTimeout(timeoutId);
         const data = await res.json();
         if (!res.ok || (data && data.success === false)) {
             throw new Error(data.message || res.statusText || '拉取人员名单失败');
@@ -18395,14 +18400,21 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
         if (!window.gumWorkspaceUsersCache) window.gumWorkspaceUsersCache = new Map();
         window.gumWorkspaceUsersCache.set(cacheKey, candidates);
 
+        if (data.warning && window.showNotification) {
+            window.showNotification(data.warning, 'warning');
+        }
+
         window.renderGumDropdownUsers();
     } catch(e) {
+        clearTimeout(timeoutId);
         console.error('Failed to scan candidate users:', e);
+        const isAbort = (e.name === 'AbortError');
+        const errMsg = isAbort ? '云端响应超时 (9s)，已启动保护' : e.message;
         if (dropdownCount) {
-            dropdownCount.innerHTML = `<span style="color:var(--warning); font-size:0.72rem;">⚠️ 扫描失败: ${e.message}</span>`;
+            dropdownCount.innerHTML = `<span style="color:var(--warning); font-size:0.72rem;">⚠️ ${errMsg}</span>`;
         }
         if (dropdownList) {
-            dropdownList.innerHTML = `<div style="font-size:0.75rem; color:var(--warning); padding:8px 4px; text-align: center;">拉取失败，您仍可在搜索栏直接输入目标邮箱。</div>`;
+            dropdownList.innerHTML = `<div style="font-size:0.75rem; color:var(--warning); padding:8px 4px; text-align: center;">拉取未完成 (${errMsg})，您可在搜索栏直接输入目标邮箱。</div>`;
         }
     } finally {
         resetScanBtn();

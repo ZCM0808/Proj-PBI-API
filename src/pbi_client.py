@@ -21,12 +21,23 @@ def get_shared_session() -> requests.Session:
         adapter = HTTPAdapter(
             pool_connections=25,
             pool_maxsize=50,
-            max_retries=1
+            max_retries=0
         )
         s.mount("https://", adapter)
         s.mount("http://", adapter)
         _GLOBAL_HTTP_SESSION = s
     return _GLOBAL_HTTP_SESSION
+
+
+def reset_shared_session() -> None:
+    """重置全局 Session 连接池 (在网络连接异常或脏连接时安全重建)"""
+    global _GLOBAL_HTTP_SESSION
+    if _GLOBAL_HTTP_SESSION is not None:
+        try:
+            _GLOBAL_HTTP_SESSION.close()
+        except Exception:
+            pass
+        _GLOBAL_HTTP_SESSION = None
 
 
 class PBIClient:
@@ -148,13 +159,19 @@ class PBIClient:
 
         # 采用全局 Keep-Alive 连接池发送请求，复用 TCP/TLS 会话
         session = get_shared_session()
-        response = session.request(
-            method=method.upper(),
-            url=url,
-            headers=headers,
-            timeout=kwargs.pop('timeout', 30),
-            **kwargs
-        )
+        req_timeout = kwargs.pop('timeout', 12)
+        try:
+            response = session.request(
+                method=method.upper(),
+                url=url,
+                headers=headers,
+                timeout=req_timeout,
+                **kwargs
+            )
+        except (requests.exceptions.ConnectionError, requests.exceptions.ChunkedEncodingError) as conn_err:
+            # 遇到脏连接或底层长连接断开，重置 Session 避免后续请求死锁
+            reset_shared_session()
+            raise conn_err
 
         try:
             response.raise_for_status()

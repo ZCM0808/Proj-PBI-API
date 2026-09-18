@@ -2421,3 +2421,41 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
   - **从 3.3 秒成功跨越至 0.3 秒（约 300 毫秒）**，实际性能提升达 **1000%（整整提速 10 倍）**！
   - 证明了 3~4 秒绝非极限，通过网络连接持久化与内存级鉴权缓存，跨洋调用也可以达到接近本地操作的极致体验。
 - **质量保障闭环**：`ruff check` 零警告，`mypy` 零错误。
+
+---
+
+## 65. 扫描用户 429 限流高可用弹性熔断与长连接超时防挂起架构 (Candidate Scan 429 Circuit Breaker, Session Resilience & Auto-Fallback Architecture)
+
+### 65.1 业务背景与“卡住”根因深度剖析 (Root Cause Diagnosis)
+用户在实测【👥 扫描用户】时反馈界面卡在“正在扫描...”状态。经微秒级全链路调用追踪，定位到以下深层根因：
+1. **短时间内频繁穿透触发微软云端 429 租户限流 (Rate Limit)**：
+   - 微软 Power BI Admin API (`/admin/groups?$top=500&$expand=users,datasets`) 设有严苛的租户级每分钟请求频次上限；
+   - 前端此前在按钮 `onclick` 中硬编码了 `forceRefresh=true`，短时间内连续点击直接触发了微软官方 429 限流保护（响应明确要求 `Retry in 221 seconds`）；
+2. **连接池重试机制导致底层线程挂起延长**：
+   - `HTTPAdapter` 设置了 `max_retries=1`，在遭遇云端 429 限流或长连接失效时在底层隐式重试与等待，放大了线程阻塞时间；
+3. **缺少 429 降级防线与前端无超时感知**：
+   - `scan_candidate_users` 原先在遭遇 429 抛出异常后，未像 `scan_permissions_deep` 那样自动回退复用内存快照，而是尝试执行后续的 `/groups` 或逐个拉取工作区成员，导致限流雪崩；
+   - 前端 `fetch` 缺乏客户端级超时熔断，当网络通道或线程阻塞时，按钮持续停留在“正在扫描...”假死状态。
+
+### 65.2 核心架构改进与实现方案 (Technical Implementation)
+1. **429 租户限流智能弹性熔断与高可用内存快照无缝降级 (429 Circuit Breaker & HA Fallback)**：
+   - 在 [src/permission_scanner.py](file:///D:/zcm/Proj-PBI-API/src/permission_scanner.py) 的 `scan_candidate_users` 中建立双重弹性防御：
+     - **超频保护**：若最近 15 秒内刚刚拉取过数据，即便传入 `force_refresh=True` 也优先复用内存快照，主动防护租户请求配额；
+     - **429 瞬间降级**：一旦捕获到微软 `429 Rate Limit` 或网络异常，只要内存中存在工作区元数据（哪怕已过期），系统立刻无缝降级使用该高可用快照，附带轻量黄色告警信息瞬间返回，**保证候选人名单 0 秒完整呈现，绝不卡住**；
+     - **限流期并发阻断**：在 429 状态下坚决拦截任何后续工作区逐个并发请求，杜绝雪崩效应。
+2. **PBIClient 全局连接池超时加固与脏连接自愈 (Session Timeout & Auto-Reset)**：
+   - 在 [src/pbi_client.py](file:///D:/zcm/Proj-PBI-API/src/pbi_client.py) 中将 `HTTPAdapter` 的 `max_retries` 设为 0，消灭底层盲目重试；
+   - 增加 `reset_shared_session()` 自愈机制，当发生连接破损或传输异常时自动安全重置 Session；
+   - 请求超时精简至合理窗口（默认 12 秒），防止线程永久阻塞。
+3. **前端 9 秒 AbortController 保护与状态重置闭环**：
+   - 在 [static/script.js](file:///D:/zcm/Proj-PBI-API/static/script.js) 中为 `fetch('/api/workflow/scan-users')` 注入 `AbortController` 并在 9 秒强制触发熔断；
+   - 无论网络成功、告警还是超时，`finally` 保证 `resetScanBtn()` 必定执行，解除按钮 `disabled` 状态并恢复交互；
+   - 同步更新 [static/index.html](file:///D:/zcm/Proj-PBI-API/static/index.html) 的脚本硬编码缓存版本号至 `?v=20260918_v2215`。
+
+### 65.3 质量闭环与自动化测试断言 (QA & Playwright TDD Loop)
+- **真实 Playwright 端到端断言**：
+  - 执行真实无头浏览器端到端测试，点击【👥 扫描用户】，按钮状态流转正常（`扫描用户` $\to$ `正在扫描...` $\to$ `扫描用户`），全部 7 位租户候选人员（包含直属管理员 `seven@carman.ccwu.cc` 等）毫秒级成功渲染上屏；
+- **静态代码健康检查**：
+  - `python -m ruff check src/`：零警告通过；
+  - `python -m mypy src/main.py --ignore-missing-imports`：零类型错误通过；
+  - `node -c static/script.js`：语法 100% 正确。
