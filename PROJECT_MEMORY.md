@@ -1696,6 +1696,201 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
    - 修复了此前在每次 `updateGlobalTopbarDropdowns` 中无条件重新自动勾选首个模型导致【清空】操作失效的问题（增加了 `_gtbDsInitialized` 与 `_gtbWsInitialized` 门控）。
 4. **根除 GUM 筛选计数 7 / 8 Bug**：
    - 在 [static/script.js](file:///D:/zcm/Proj-PBI-API/static/script.js) 的 `window.filterGumTable` 中引入 `scopeBaseline` 作为基准数据集，动态计算 `total = scopeBaseline.length`；
+1. **为什么收藏夹中的置顶按钮先前是 Emoji 文本？**
+   - **分批迭代的技术债务**：收藏夹（Bookmarks）功能是系统最早落地的模块之一。当时为了以最低成本快速跑通书签收藏与本地置顶排序逻辑，直接在 DOM(Document Object Model / 文档对象模型) 文本节点中拼接了 `📌` 与 `📍` Emoji 字符。
+   - **设计系统尚未统一**：后期上线的“自动化工作流中心（Workflow Center）”和“API 分类置顶（Category Pin）”全面引入了统一的 `.btn-pin-item` 矢量 SVG(Scalable Vector Graphics / 可缩放矢量图形) 图标体系与 45° 阻尼平滑旋转过渡动效，导致 API 资源树收藏夹项产生了明显的视觉断层与交互分裂。
+
+---
+
+### 46.2 核心架构改进与视觉统一 (Technical Implementation)
+
+- **1. 废弃 Emoji，全面对齐标准化矢量 SVG 图标体系**：
+  - 在 [`static/script.js`](file:///D:/zcm/Proj-PBI-API/static/script.js) 中移除旧版 `tree-pin-btn` 和 Emoji 拼接，全面引入与工作流中心同源的 `<button type="button" class="btn-pin-item bm-pin-btn ...">` 结构，内嵌标准 24x24 视口矢量路径。
+- **2. 统一微交互状态与过渡动效**：
+  - **置顶态（Pinned）**：图标自动顺滑旋转 `-45deg`，填充为主题品牌强调色 (`fill: currentColor; color: var(--accent);`)，并赋予 `.is-pinned` 左侧高亮边条 (`border-left: 3px solid var(--accent); background: var(--overlay-5);`)；
+  - **未置顶态（Unpinned）**：默认空心描边 (`fill: none; stroke: currentColor;`)，并在悬停时平滑缩放放大并展现高质感背景胶囊 (`background: var(--overlay-10);`)；
+  - **点击脉冲反馈**：置顶成功时触发统一的 `@keyframes pinGlowPulse` 高光脉冲微动效（通过 `.api-item-pin-flash` 驱动），并平滑居中滚动定位到首位。
+- **3. 清理冗余样式与版本缓存刷新 (Cache Busting)**：
+  - 清理了 [`static/index.html`](file:///D:/zcm/Proj-PBI-API/static/index.html) 中历史残留的 `.tree-pin-btn` 样式规则；
+  - 同步递增了 `style.css` 和 `script.js` 的静态版本后缀为 `?v=20260906_v1855`，彻底免疫浏览器旧静态缓存。
+
+---
+
+### 46.3 自动化测试与质量断言 (Automated QA & Playwright TDD Loop)
+
+- 编写并执行了端到端自动化测试脚本 `scratch/test_bookmark_pin.py`：
+  1. 验证在 API 资源树中成功挂载标准矢量 SVG 置顶按钮；
+  2. 验证 SVG 结构属性与 `viewBox="0 0 24 24"` 一致性；
+  3. 验证未置顶书签项在点击置顶按钮后，首项自动跃迁置顶、动态赋予 `.pinned` 与 `.is-pinned` 状态；
+  4. 截取并保存了置顶成功的渲染快照；
+  5. 验证浏览器控制台无任何 Runtime 错误，且 Python 后端经 `ruff` 和 `mypy` 静态健康检查 100% 完美通过。
+
+## 47. 全局主题切换毫秒级同步平滑缓动体系 (Synchronized Theme Transition Engine & Micro-Timing Harmony)
+
+### 47.1 业务背景与撕裂根因 (Context & Root Cause Analysis)
+
+1. **各视觉表面过渡时间与曲线分裂**：
+   - 先前 `#app-rail` 硬编码了 `0.25s cubic-bezier(0.4, 0, 0.2, 1) !important`，而 `.glass-panel` 和 `.sidebar` 也各自定义了独立的 `0.25s` 声明；
+   - 与此同时，`.theme-transitioning` 临时类仅配置了 `0.2s` 并仅覆盖了少数顶层容器；
+   - 下拉选择框 (`select`)、输入框 (`input`)、代码块 (`pre`, `code`)、方法徽章 (`.method-badge`)、API 列表项 (`.api-item`) 未被 `.theme-transitioning` 纳入，导致其背景与文字颜色在 0ms 瞬间跳变，而卡片容器在 200ms 慢速过渡，产生显著的视觉撕裂与画面闪烁。
+
+2. **JavaScript 状态剥离生命周期过早截断**：
+   - 动画过渡时长设定为 200ms/250ms，但先前 JavaScript 中的 `setTimeout` 在 **220ms** 即过早移除了 `.theme-transitioning` 类；
+   - 这导致尚未走完的 CSS 缓动插值被强行掐断，在最后一刻发生瞬间生硬闪烁。
+
+---
+
+### 47.2 核心架构改进与实现方案 (Technical Implementation)
+
+- **1. 统一缓动曲线与全视觉表面纳管**：
+  - 在 [`static/style.css`](file:///D:/zcm/Proj-PBI-API/static/style.css) 中重构 `.theme-transitioning` 规则集，将过渡参数严格统一为 `0.22s cubic-bezier(0.4, 0, 0.2, 1)`；
+  - 采用兼具 60fps 高性能与全面性的选择器纳管策略，不仅覆盖 `body`, `#global-topbar`, `#app-rail`, `.sidebar`, `.main-content`, `.wf-detail-board`, `.glass-panel`, `.card`, `.uni-modal-container`，同时穿透纳管所有交互式控件与文本容器：`input`, `select`, `textarea`, `button`, `.api-item`, `.method-badge`, `pre`, `code`，确保所有前景色、背景色、边框色与阴影步调完全一致；
+  - 剥离 `#app-rail` 上与主题切换冲突的 `!important` 声明，确保其在主题过渡时完全服从统一步调。
+
+- **2. 精准加固 JavaScript 状态生命周期闭环**：
+  - 在 [`static/script.js`](file:///D:/zcm/Proj-PBI-API/static/script.js) 中将 `.theme-transitioning` 类的保留时长调整为 **260ms**（安全包裹 220ms 缓动全生命周期），同时将防抖锁控延长至 **280ms**，确保动画在 60fps 完整走完后才精准解绑类名，彻底杜绝尾部跳变。
+
+- **3. 静态缓存版本号递增防御 (Cache Busting)**：
+  - 同步递增 [`static/index.html`](file:///D:/zcm/Proj-PBI-API/static/index.html) 中 `style.css` 与 `script.js` 的硬编码版本后缀为 `?v=20260906_v2055`。
+
+---
+
+### 47.3 自动化测试与质量断言 (Automated QA & Playwright TDD Loop)
+
+- 编写并执行端到端 Playwright 自动化测试脚本 `scratch/test_theme_sync.py`：
+  1. 验证点击主题切换按钮后，在缓动窗口期内所有核心面板（`body`, `#app-rail`, `.sidebar`, `.main-content`, `.card`, `#global-topbar`, `.gtb-item`, `input`, `select`）的计算样式均为 `duration=0.22s, timing=cubic-bezier(0.4, 0, 0.2, 1)`，实现 100% 毫秒级同频共振；
+  2. 验证过渡结束后 `.theme-transitioning` 状态类被精准剥离（`removed after animation: True`）；
+  3. 验证深色/浅色模式双向切换顺畅无缝；
+  4. 截取并保存了 Light 与 Dark 模式的双向断言高清证据快照；
+  5. Python 后端通过 `ruff` 与 `mypy` 静态全量检查，零警告、零错误。
+
+## 48. 全局置顶按钮方案 A 拟物交互重构与悬浮姿态一致性防御 (Pin Button Ergonomics Scheme A & Hover State Stabilization)
+
+### 48.1 业务背景与交互抽搐根因 (Context & Root Cause Analysis)
+
+1. **“反复横跳”的奇怪现象**：
+   - 先前用户观察到：工作流与 API 资源树的置顶按钮在置顶后默认是倾斜 45°，鼠标滑过条目行时瞬间变成立正 90°，鼠标进一步悬停在置顶按钮自身上时又重新变回 45°；
+   - **CSS 选择器层叠特异性缺陷**：
+     - 置顶态定义为 `.btn-pin-item.pinned { transform: rotate(-45deg) scale(1); }`；
+     - 但父级卡片悬停规则 `.wf-sidebar-item:hover .btn-pin-item { transform: scale(1); }` 缺乏 `:not(.pinned)` 限定，导致鼠标划入行时直接强制覆写了 `transform`，丢失了旋转声明，瞬间复原为 0°（即垂直 90°）；
+     - 鼠标随后进入按钮自身时，`.btn-pin-item.pinned:hover` 又强制补上 `rotate(-45deg)`，造成了“45° -> 90° -> 45°”的严重交互抽搐与状态割裂。
+
+---
+
+### 48.2 核心架构方案与方案 A 拟物实现 (Technical Implementation: Scheme A)
+
+- **1. 方案 A 经典物理拟物法则与外正内斜容器解耦 (Scheme A & Decoupled Architecture)**：
+  - **根除斜放背景方块（外正内斜）**：
+    - 先前将 `transform: rotate(45deg)` 误加在外层 `<button class="btn-pin-item">` 上，导致鼠标悬浮激活 `background` 半透明底色时，圆角矩形按钮外壳连同底色一起倾斜 45° 变成了刺眼的菱形方块；
+    - **核心解耦改造**：外层 `<button>` 容器永久保持水平端正（`transform: scale(0.88) -> scale(1.15)`），悬停时呈现方方正正、水平居中的半透明圆角底色卡片；
+    - **旋转精准下沉**：将 `rotate` 旋转动效唯一下沉至内部 `<svg>` 矢量图标（`transform-origin: center center;`），使图标在端正底色内部执行姿态变换。
+  - **未置顶态（Unpinned）**：
+    - 外层按钮容器保持水平端正，内部 `<svg>` 呈现待插入状态的 **45° 倾斜姿态**（`transform: rotate(45deg)`，空心描边）；
+    - 父容器悬浮时按钮平滑浮现并微展（`transform: scale(1)`）；
+    - 悬停于未置顶按钮自身时容器呈现端正半透明底色卡片（`scale(1.15)`），图标稳定保持 45°。
+  - **已置顶态（Pinned）**：
+    - 外层按钮容器保持水平端正，内部 `<svg>` 呈现用力垂直直插于画板的 **0° 坚毅垂直姿态**（`transform: rotate(0deg) !important`，实心填充品牌强调色）；
+    - 鼠标滑过整行或子元素时，通过 `:not(:hover)` 与 `.pinned` 隔离，坚决锁死垂直 0°，绝对禁止被父级规则覆盖；
+    - 鼠标滑入置顶按钮自身时，在 0° 垂直姿态下平滑微放大至 `scale(1.15)` 并呈现端正底色。
+  - **彻底杜绝状态横跳与斜方块**：未置顶恒为 45°，已置顶恒为 0°，悬浮背景永远方正工整。
+
+- **2. 静态缓存版本号递增 (Cache Busting)**：
+  - 同步递增 [`static/index.html`](file:///D:/zcm/Proj-PBI-API/static/index.html) 中 `style.css` 的静态版本后缀为 `?v=20260907_v1925`。
+
+---
+
+### 48.3 自动化测试与质量断言 (Automated QA & Playwright TDD Loop)
+
+- 编写并执行端到端 Playwright 测试脚本 `scratch/test_decoupled_pin.py`：
+  1. 验证未置顶态行悬浮与按钮自身悬浮时，外层按钮容器计算样式均为端正无旋转（`matrix(1, 0, 0, 1, 0, 0)` 及 `matrix(1.15, 0, 0, 1.15, 0, 0)`），内部 `<svg>` 矢量图标精确旋转 45°（`matrix(0.707, 0.707, -0.707, 0.707...)`），彻底消除倾斜背景菱形；
+  2. 验证点击置顶后，默认姿态、行悬浮姿态与按钮自身悬浮时，内部 `<svg>` 图标全程严格锁定 0°（`matrix(1, 0, 0, 1, 0, 0)`）；
+  3. 捕获并校验了渲染快照证据 `scratch/decoupled_unpinned_btn_hover.png` 与 `scratch/decoupled_pinned_btn_hover.png`；
+  4. 后端静态分析工具 `ruff` 和 `mypy` 校验全量通过，0 警告，0 错误。
+
+---
+
+## 49. 工作流头部标题栏高度矮化与定向审计目标用户输入框回显重构 (Compact Workflow Header & Target User Direct Search Input Sync)
+
+### 49.1 业务背景与用户诉求 (User Requirements)
+1. **工作流标题栏高度过高**：原工作流详情板头部标题区域内边距与外边距（上下 padding 14px，margin-bottom 14px）占用较大垂直可视空间，且右侧按钮（沉浸模式按钮 36px、Run Workflow 按钮 36px）尺寸偏大，导致主体配置区域被向下推挤；
+2. **定向审计用户展示冗余**：用户在 GUM 模块中选择审计目标人员后，下方额外弹出的 `wf-gum-target-tags-bar` 标签栏（包含“🎯 定向审计目标用户 ( 4 ):”前缀文字、标签芯片等）占据了整行横向与纵向面积，视觉繁复。用户要求移除该标签栏，将选中的目标用户名直接同步显示在搜索输入框（`#wf-gum-search`）中。
+
+### 49.2 核心实现与架构设计 (Implementation & Architecture)
+- **1. 工作流头部紧凑化与按钮尺寸同步矮化**：
+  - 在 [static/index.html](file:///D:/zcm/Proj-PBI-API/static/index.html) 与 [static/style.css](file:///D:/zcm/Proj-PBI-API/static/style.css) 中，将 `.wf-detail-board > .modal-header` 的 padding 收敛为 `0 0 8px 0`，`margin-bottom` 设为 `8px`；
+  - 标题文字 `#wf-board-title` 字体尺寸由 `1.15rem` 精炼收敛为 `0.95rem`；
+  - 标题栏右侧的沉浸模式按钮 `.zen-mode-btn` 尺寸由 `36px * 36px` 收敛为 `28px * 28px`（图标 13px）；
+  - 主动作按钮 `#wf-btn-runall` 高度由 `36px` 收敛为 `28px`，内边距 `0 12px`，字体 `0.78rem`，矢量图标 `13px * 13px`，整体头部高度从近 70px 压缩至 37px，与 API 树头部视觉基准高度和谐一致。
+- **2. 彻底移除“定向审计目标用户”栏并将人员直接回显于搜索框**：
+  - 在 HTML 中移除 `wf-gum-target-tags-bar` 结构，保留隐藏的兼容字段（`#wf-gum-only-targets-toggle` 默认为 true，`#wf-gum-target-count` 兜底统计）；
+  - 在 [static/script.js](file:///D:/zcm/Proj-PBI-API/static/script.js) 中重构 `window.renderGumTargetTags()`：
+    - 选中用户后，提取所有目标的真实姓名或标识并以 `, ` 连接，直接写入搜索框 `wf-gum-search.value`；
+    - 输入框注入 `title` 属性显示完整的人员清单；
+    - 动态显现右侧清除按钮 `✕`（`#wf-gum-search-clear`），点击即可调用 `clearGumTargetUsers()` 一键清空所有锁定目标并重置列表；
+    - 搜索框上方状态提示联动更新为高亮 `已锁定 X 位目标用户`。
+
+### 49.3 自动化测试与质量闭环 (Automated QA & Playwright TDD Loop)
+- 在 [tests/e2e.spec.js](file:///D:/zcm/Proj-PBI-API/tests/e2e.spec.js) 中新增自动化测试用例并通过验证：
+  1. 断言标题栏高度 <= 42px，运行按钮高度 <= 30px；
+  2. 断言页面中 `#wf-gum-target-tags-bar` 已彻底移除；
+  3. 模拟锁定 2 位用户后，断言搜索框内精准回显 `User One, User Two`；
+- 静态分析校验：`node -c static/script.js`、`python -m ruff check src/`、`python -m mypy src/main.py` 全量通过（0 警告，0 错误）。
+
+---
+
+## 50. GUM 下拉列表回显与过滤解耦防御及全选/取消全选重构 (GUM Dropdown Filter Decoupling & Select All Actions)
+
+### 50.1 业务背景与问题分析 (Issues Analysis)
+1. **选中用户后下拉列表中其他候选人员“消失”缺陷**：
+   - **根因分析**：先前在回显逻辑中，`renderGumTargetTags()` 将选中的用户名（如 `"Alice Zhang"`）直接回填到了搜索框 `wf-gum-search.value` 中。当用户点击条目触发重新渲染下拉列表时，`renderGumDropdownUsers()` 隐式读取了 `wf-gum-search.value` 作为过滤关键字 `term`，导致列表被错误地按照已选用户的名字进行二次筛选，使得所有不包含此名字的候选人被全部剔除消失。
+2. **下拉列表头部刷新按钮冗余**：
+   - 搜索框右侧已有明显的【👥 扫描用户】主要动作按钮，下拉浮层头部内嵌的 `🔄 刷新` 按钮功能重复、挤占空间；
+3. **缺少快捷全选与取消全选操作**：
+   - 原仅有单个状态反转的“全选本工作区”按钮，缺乏直观、明确的“全选”与“取消全选”双动作按钮支持。
+
+### 50.2 核心改造方案 (Implementation Details)
+- **1. 搜索过滤关键字与输入框回显文案彻底解耦 (State Decoupling Shield)**：
+  - 引入全局显式状态 `window._gumSearchFilterTerm`，专用于存储用户在键盘上主动键入的模糊匹配过滤词；
+  - 重构 `handleGumSearchInput` 与 `handleGumSearchFocus`，仅在用户发生键盘输入时更新 `_gumSearchFilterTerm`；
+  - 在 `renderGumDropdownUsers` 中，严禁直接读取 `wf-gum-search.value`，严格使用 `_gumSearchFilterTerm` 进行过滤。在用户点击勾选/取消勾选任意条目时，`_gumSearchFilterTerm` 保持为空，下拉列表始终展示全量候选人列表，已勾选的人员打勾高亮，其余人员完好保留，支持无缝连续多选；
+  - 在 `filterGumTable` 底层审计记录过滤中，同样解耦 `tokens` 过滤，避免选了多个用户后长字符串逗号组合导致表格匹配落空。
+- **2. 下拉浮层头部按钮极简规范化**：
+  - 在 [static/index.html](file:///D:/zcm/Proj-PBI-API/static/index.html) 中彻底删除冗余的 `🔄 刷新` 按钮；
+  - 将原按钮替换拆分为统一规范的两个次级动作按钮：【全选】（`selectAllGumCandidates(true)`）与【取消全选】（`selectAllGumCandidates(false)`）；
+  - 支持一键将当前作用域下全部候选人批量锁定为审计目标，或一键彻底清空。
+
+### 50.3 自动化测试断言 (Automated QA & Playwright TDD Loop)
+- 在 [tests/e2e.spec.js](file:///D:/zcm/Proj-PBI-API/tests/e2e.spec.js) 中扩充测试用例：
+  1. 验证点击勾选第 1 位用户后，下拉列表中候选人员数量不减少（3 位依然全部展示）；
+  2. 验证下拉框中不存在刷新按钮；
+  3. 验证点击【全选】后全部用户均被选中回显，点击【取消全选】后全部重置清空；
+  4. 测试结果全量通过（1 passed, 100% 成功）。
+
+---
+
+## 51. 全局功能区数据模型下拉框分组矩阵重构与 GUM 筛选计数精准化 (Dataset Group Matrix & GUM Stat Sync)
+
+### 51.1 业务背景与问题分析 (Issues Analysis)
+1. **全局顶栏模型选择器能力缺失**：
+   - 此前工作区选择器已升级为现代化 Popover 下拉面板，支持批量多选与搜索，而“模型”选择器依然使用原生 `<select>` 单选框，无法支持多选、一键全选/清空，也无法直观看出各模型归属的工作区关系。
+2. **GUM 筛选结果计数异常（7 / 8 记录）**：
+   - 用户在未施加任何关键字或用户筛选时，界面显示 `筛选结果: 7 / 8 条记录`。
+   - **根因分析**：
+     - ① **作用域基准错位**：此前 `total` 直接写死为 `window.gumData.length`（租户全量 8 条），而当前若处于工作区级别视图（仅 7 条记录属于该工作区），分子为 7，分母却为 8，导致未加用户筛选却显示 `7 / 8`。
+     - ② **候选人全选状态被误判为机械过滤**：当用户在下拉列表中点击【全选】时，若候选池中有 7 位直属用户，后端深扫返回了 8 条（包含 1 条服务主体或租户特权记录），定向过滤条件机械排除非目标人员，导致第 8 条记录被滤掉。
+     - ③ **用户多字段与大小写/空格容错**：候选人列表提取的标识与后端返回记录的 GUID / Email 在大小写或字段上有出入。
+
+### 51.2 核心改造方案 (Implementation Details)
+1. **全局功能区模型下拉 Popover 结构改造**：
+   - 在 [static/index.html](file:///D:/zcm/Proj-PBI-API/static/index.html) 中将原原生 `<select id="gtb-select-dataset">` 升级重构为与工作区完全统一的触发器与浮层面板结构：`#gtb-dataset-box`、`#gtb-ds-trigger`、`#gtb-ds-display-text`、`#gtb-ds-count-badge`、`#gtb-ds-dropdown`、搜索框 `#gtb-ds-search-input`、操作按钮【全选】与【清空】、矩阵列表容器 `#gtb-ds-list`、底部统计 `#gtb-ds-stat-text` 及隐藏域 `#gtb-select-dataset`。
+2. **样式设计与工作区分组矩阵 UI**：
+   - 在 [static/style.css](file:///D:/zcm/Proj-PBI-API/static/style.css) 中新增 `.gtb-dataset-box`、`.gtb-ds-dropdown`、`.gtb-ds-ws-group`、`.gtb-ds-ws-header`、`.gtb-ds-ws-title`、`.gtb-ds-ws-badge`、`.gtb-ds-ws-select-btn`、`.gtb-ds-items-group`、`.gtb-ds-checkbox` 等矩阵样式与平滑过渡动效。
+3. **模型选择状态机与矩阵渲染交互**：
+   - 在 [static/script.js](file:///D:/zcm/Proj-PBI-API/static/script.js) 中实现了 `window.selectedGtbDatasetIds = new Set()`、`window.getMergedGtbDatasets()`、`window.toggleGtbDsDropdown()`、`window.closeGtbDsDropdown()`、`window.selectAllGtbDatasets()`、`window.toggleGtbDataset()`、`window.selectSingleGtbDataset()`、`window.toggleGtbWsModels()`、`window.filterGtbDsOptions()` 及 `window.persistGtbDatasetsAndSync()`。
+   - 在 `window.updateGlobalTopbarDropdowns()` 中根据 `wsData` 与 `dsData` 动态聚合渲染工作区分组矩阵，仅渲染包含模型的工作区分组，每个分组头部附带模型数量 Badge 及【全选本区/取消全选】快捷按钮，并支持点击外部自动关闭。
+   - 修复了此前在每次 `updateGlobalTopbarDropdowns` 中无条件重新自动勾选首个模型导致【清空】操作失效的问题（增加了 `_gtbDsInitialized` 与 `_gtbWsInitialized` 门控）。
+4. **根除 GUM 筛选计数 7 / 8 Bug**：
+   - 在 [static/script.js](file:///D:/zcm/Proj-PBI-API/static/script.js) 的 `window.filterGumTable` 中引入 `scopeBaseline` 作为基准数据集，动态计算 `total = scopeBaseline.length`；
    - 识别 `isAllCandidatesSelected`，当候选人全选时视为全量审查不机械排除；
    - 匹配目标用户时扩展至 `identifier`、`graphId`、`displayName` 及子串匹配；多工作区 ID 兼容逗号切分匹配。
 5. **静态资源缓存防御与版本更新**：
@@ -1704,3 +1899,36 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
 ### 51.3 自动化测试与工业级静态检查验证
 - **Playwright E2E**：运行 `npx playwright test -g "全局功能区数据模型下拉框支持工作区分组矩阵"`，包含模型下拉框矩阵渲染、全选、清空、单选、多选及 GUM 统计计数精准匹配（8/8 与 7/7），用例 100% 通过（耗时 27.8s）。
 - **静态代码健康检查**：`python -m ruff check src/`、`python -m mypy src/main.py --ignore-missing-imports` 全量通过（0 issues, 0 errors）。
+
+---
+
+## 52. 模型下拉列表滚动阻断根除、视口自适应与分组折叠增强 (Dataset Dropdown Scrolling Shield & Accordion Groups)
+
+### 52.1 业务背景与滚动失效根因剖析 (Root Cause Analysis)
+用户反馈在模型下拉列表中“无法滚动，无法查看所有模型”。排查定位到以下四重深层病因：
+1. **Flex 容器无最小高度收缩约束**：
+   - `#gtb-ds-dropdown` 为 `flex-direction: column`，其内部的 `#gtb-ds-list` 是 flex item。未显式设置 `flex: 1 1 auto; min-height: 0;`，导致弹性子项以内容自身的高度作为基准展开，甚至冲出屏幕视口底端，使内部纵向滚动条机制无法正常生效；
+2. **`overflow: hidden` 裁剪上下文劫持滚轮事件**：
+   - `.gtb-ds-ws-group` 容器设置了 `overflow: hidden`，在复合变换层（Backdrop-filter + Animation）下形成了独立的裁剪层，用户鼠标悬停在分组头部或卡片间距上滑动滚轮时，wheel 事件被捕获吞噬，无法冒泡到具备滚动条的父容器；
+3. **滚动条槽位与样式隐蔽**：
+   - 此前仅依赖极细透明滚动条，在无鼠标悬停或特定 Windows 滚动条隐藏设置下用户肉眼难以感知；
+4. **硬编码 `max-height: 280px` 空间极其局促**：
+   - 280px 仅能勉强容纳 1~2 个工作区分组与极少数模型条目，大工作区下用户无法纵览全局。
+
+### 52.2 核心改造方案 (Implementation Details)
+1. **Flex 弹性伸缩与视口自适应重构**：
+   - 将 `#gtb-ds-dropdown` 的最大高度重构为视口自适应 `max-height: calc(88vh - 48px);`，宽度扩展至 `390px`~`460px`；
+   - 将 `#gtb-ds-list` 注入 `flex: 1 1 auto; min-height: 0; max-height: calc(88vh - 145px);`，并显式启用 `overflow-y: scroll;` 与 `overscroll-behavior: contain;`，杜绝滚轮穿透触发主页面背景滚动；
+   - 移除 `.gtb-ds-ws-group` 上的 `overflow: hidden;`，设置为 `overflow: visible;`；
+   - 定制 8px 宽翡翠绿（Emerald Accent）高对比度滚动条与半透明轨道，支持鼠标直观捕捉与拖动。
+2. **滚轮事件兜底驱动守护 (Active Wheel Driver Guard)**：
+   - 在 `static/script.js` 的 `toggleGtbDsDropdown` 中挂载主动式 wheel 监听，当鼠标处于下拉框任意位置滑动滚轮时，直接将滚轮位移 `deltaY` 平滑赋予 `gtb-ds-list.scrollTop`，彻底免疫所有浏览器层叠上下文与内核拦截。
+3. **工作区分组折叠/展开功能 (Collapsible Workspace Groups)**：
+   - 分组头部新增折叠旋转箭头（`gtb-ds-ws-arrow`），用户点击头部即可自由折叠/展开任意工作区下的模型组；
+   - 【全选本区/取消全选】按钮追加 `event.stopPropagation()`，防止操作选择时误触发折叠；
+   - 在搜索过滤时自动展开所有包含匹配项的分组并将列表置顶。
+4. **前端缓存清理防御 (Cache Busting)**：
+   - 同步更新 [static/index.html](file:///D:/zcm/Proj-PBI-API/static/index.html) 中静态资源版本号为 `?v=20260918_v0800`。
+
+### 52.3 自动化测试断言
+- 在 [tests/e2e.spec.js](file:///D:/zcm/Proj-PBI-API/tests/e2e.spec.js) 中加入针对工作区分组折叠展开（`.collapsed`）及 30+ 模型的纵向滚动能力断言（`canScroll === true`、`scrollTop > 0`），Playwright 测试全量通过（1 passed, 100% 成功）。

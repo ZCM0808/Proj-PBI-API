@@ -5482,25 +5482,54 @@ body.light-theme .gtb-ws-footer {
 }
 
 .gtb-ds-dropdown {
-    width: 360px;
-    min-width: 320px;
-    max-width: 420px;
+    width: 390px;
+    min-width: 340px;
+    max-width: 460px;
+    max-height: calc(88vh - 48px);
+    display: flex;
+    flex-direction: column;
 }
 
 .gtb-ds-list {
-    max-height: 280px;
-    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: calc(88vh - 145px);
+    overflow-y: scroll; /* 强制展现纵向滚动槽位，支持直接拖拽与平滑滚动 */
+    overflow-x: hidden;
+    overscroll-behavior: contain;
     padding: 6px;
     display: flex;
     flex-direction: column;
     gap: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(52, 211, 153, 0.6) rgba(0, 0, 0, 0.25);
+}
+
+.gtb-ds-list::-webkit-scrollbar {
+    width: 8px;
+    display: block;
+}
+
+.gtb-ds-list::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 4px;
+}
+
+.gtb-ds-list::-webkit-scrollbar-thumb {
+    background: rgba(52, 211, 153, 0.45);
+    border-radius: 4px;
+    border: 1px solid rgba(52, 211, 153, 0.2);
+}
+
+.gtb-ds-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(52, 211, 153, 0.85);
 }
 
 .gtb-ds-ws-group {
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid var(--overlay-10);
     border-radius: 6px;
-    overflow: hidden;
+    overflow: visible;
     transition: border-color 0.2s ease;
 }
 
@@ -5522,10 +5551,42 @@ body.light-theme .gtb-ds-ws-group {
     border-bottom: 1px solid var(--overlay-8);
     font-size: 0.72rem;
     font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    border-radius: 5px 5px 0 0;
+    transition: background 0.15s ease;
+}
+
+.gtb-ds-ws-header:hover {
+    background: rgba(0, 0, 0, 0.35);
 }
 
 body.light-theme .gtb-ds-ws-header {
     background: rgba(0, 0, 0, 0.04);
+}
+
+body.light-theme .gtb-ds-ws-header:hover {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.gtb-ds-ws-arrow {
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    margin-right: 2px;
+}
+
+.gtb-ds-ws-group.collapsed .gtb-ds-ws-arrow {
+    transform: rotate(-90deg);
+}
+
+.gtb-ds-ws-group.collapsed .gtb-ds-ws-header {
+    border-bottom: none;
+    border-radius: 5px;
+}
+
+.gtb-ds-ws-group.collapsed .gtb-ds-items-group {
+    display: none;
 }
 
 .gtb-ds-ws-title {

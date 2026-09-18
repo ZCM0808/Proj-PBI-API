@@ -3021,12 +3021,39 @@ window.toggleGtbDsDropdown = function(event) {
         dropdown.style.display = 'flex';
         if (trigger) trigger.classList.add('active');
         if (box) box.classList.add('active');
+
+        // 滚轮顺畅滚动兜底守护 (Wheel Event Shield) - 确保浮层内任何位置滑动滚轮均顺畅滚动模型列表
+        if (!dropdown._wheelAttached) {
+            dropdown._wheelAttached = true;
+            dropdown.addEventListener('wheel', function(e) {
+                const list = document.getElementById('gtb-ds-list');
+                if (list) {
+                    const atTop = (list.scrollTop <= 0 && e.deltaY < 0);
+                    const atBottom = ((list.scrollTop + list.clientHeight >= list.scrollHeight - 1) && e.deltaY > 0);
+                    if (!atTop && !atBottom) {
+                        list.scrollTop += e.deltaY;
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                }
+            }, { passive: false });
+        }
+
         const searchInput = document.getElementById('gtb-ds-search-input');
         if (searchInput) {
             searchInput.value = '';
             setTimeout(() => searchInput.focus(), 50);
         }
         window.filterGtbDsOptions('');
+    }
+};
+
+// 切换特定工作区分组的折叠/展开状态 (Collapsible Workspace Groups)
+window.toggleGtbDsGroupCollapse = function(headerEl) {
+    if (!headerEl) return;
+    const group = headerEl.closest('.gtb-ds-ws-group');
+    if (group) {
+        group.classList.toggle('collapsed');
     }
 };
 
@@ -3131,6 +3158,9 @@ window.filterGtbDsOptions = function(term = '') {
         const headerTitle = group.querySelector('.gtb-ds-ws-title')?.textContent?.toLowerCase() || '';
         if (!q || visibleItemCount > 0 || headerTitle.includes(q)) {
             group.style.display = 'block';
+            if (q) {
+                group.classList.remove('collapsed'); // 搜索时自动展开匹配分组
+            }
             if (headerTitle.includes(q) && q) {
                 items.forEach(item => item.style.display = 'flex');
             }
@@ -3138,6 +3168,10 @@ window.filterGtbDsOptions = function(term = '') {
             group.style.display = 'none';
         }
     });
+    const dsList = document.getElementById('gtb-ds-list');
+    if (dsList && q) {
+        dsList.scrollTop = 0;
+    }
 };
 
 // 注册全局点击事件以关闭数据模型 Popover
@@ -3342,13 +3376,14 @@ window.updateGlobalTopbarDropdowns = function() {
 
                 matrixHtml += `
                     <div class="gtb-ds-ws-group" data-ws-id="${wid}">
-                        <div class="gtb-ds-ws-header">
+                        <div class="gtb-ds-ws-header" onclick="window.toggleGtbDsGroupCollapse(this)" title="点击折叠/展开该工作区下的模型">
                             <div class="gtb-ds-ws-title">
+                                <svg class="gtb-ds-ws-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect></svg>
                                 <span title="${wname}">${wname}</span>
                                 <span class="gtb-ds-ws-badge">${models.length} 个模型</span>
                             </div>
-                            <button type="button" class="gtb-ds-ws-select-btn" onclick="window.toggleGtbWsModels('${wid}', event)">
+                            <button type="button" class="gtb-ds-ws-select-btn" onclick="event.stopPropagation(); window.toggleGtbWsModels('${wid}', event)">
                                 ${isAllGroupSelected ? '取消全选' : '全选本区'}
                             </button>
                         </div>
@@ -3379,8 +3414,9 @@ window.updateGlobalTopbarDropdowns = function() {
                 const isAllUnassignedSelected = unassignedModels.every(m => window.selectedGtbDatasetIds.has(String(m.id)));
                 matrixHtml += `
                     <div class="gtb-ds-ws-group" data-ws-id="__unassigned__">
-                        <div class="gtb-ds-ws-header">
+                        <div class="gtb-ds-ws-header" onclick="window.toggleGtbDsGroupCollapse(this)" title="点击折叠/展开该分组下的模型">
                             <div class="gtb-ds-ws-title">
+                                <svg class="gtb-ds-ws-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
                                 <span>其他 / 未指定工作区模型</span>
                                 <span class="gtb-ds-ws-badge">${unassignedModels.length} 个模型</span>

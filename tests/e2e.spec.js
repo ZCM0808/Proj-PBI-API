@@ -503,6 +503,35 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     selectedDs = await page.evaluate(() => window.getSelectedDatasets());
     expect(selectedDs.length).toBe(itemsCount - 1);
 
+    // 测试工作区分组折叠与展开功能
+    await firstGroup.locator('.gtb-ds-ws-header').click();
+    await expect(firstGroup).toHaveClass(/collapsed/);
+    await expect(firstGroup.locator('.gtb-ds-items-group')).toBeHidden();
+    await firstGroup.locator('.gtb-ds-ws-header').click();
+    await expect(firstGroup).not.toHaveClass(/collapsed/);
+    await expect(firstGroup.locator('.gtb-ds-items-group')).toBeVisible();
+
+    // 验证模型下拉列表可顺畅滚动与查看所有模型
+    await page.evaluate(() => {
+      const mockWs = [{ id: 'ws-scroll-test', name: 'Scroll Test Workspace' }];
+      const mockDs = [];
+      for (let i = 1; i <= 30; i++) {
+        mockDs.push({ id: `ds-scroll-${i}`, name: `Dataset Model Long Name ${i}`, workspaceId: 'ws-scroll-test' });
+      }
+      localStorage.setItem('pbi_workspaces', JSON.stringify(mockWs));
+      localStorage.setItem('pbi_datasets', JSON.stringify(mockDs));
+      window.updateGlobalTopbarDropdowns();
+    });
+
+    const scrollMetrics = await page.evaluate(() => {
+      const list = document.getElementById('gtb-ds-list');
+      const canScroll = list.scrollHeight > list.clientHeight;
+      list.scrollTop = 150;
+      return { canScroll, scrollTop: list.scrollTop, scrollHeight: list.scrollHeight, clientHeight: list.clientHeight };
+    });
+    expect(scrollMetrics.canScroll).toBe(true);
+    expect(scrollMetrics.scrollTop).toBeGreaterThan(0);
+
     // 关闭模型下拉框
     await page.evaluate(() => window.closeGtbDsDropdown());
     await expect(page.locator('#gtb-ds-dropdown')).toBeHidden();
