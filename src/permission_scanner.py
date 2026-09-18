@@ -159,60 +159,97 @@ async def scan_permissions_deep(
         return {"success": False, "message": f"拉取工作区失败: {str(e)}"}
 
     all_records: List[Dict[str, Any]] = []
-    unique_user_query_ids: Set[str] = set()
     workspace_datasets: Dict[str, List[Dict[str, Any]]] = {}
     dataset_users_map: Dict[str, Dict[str, str]] = {}  # dsId -> { userIdentifierLower -> right }
 
-    # 将所有 target_users 显式加入待查 API 列表
-    for tu in target_users_clean:
-        unique_user_query_ids.add(tu)
+    # 1. 建立用户唯一身份归一化与别名映射系统 (Identity Normalization & Query Deduplication)
+    alias_to_primary: Dict[str, str] = {}
+    primary_to_aliases: Dict[str, Set[str]] = {}
 
-    # 2. 遍历各工作区，提取数据集及数据集授权底表
-    for ws in workspaces:
+    def register_user_identity(email_str: str, graph_id_str: str, extra_alias: Optional[str] = None) -> str:
+        candidates: List[str] = []
+        if email_str and email_str.strip().lower() not in ("unknown", ""):
+            candidates.append(email_str.strip().lower())
+        if graph_id_str and graph_id_str.strip().lower() not in ("unknown", ""):
+            candidates.append(graph_id_str.strip().lower())
+        if extra_alias and extra_alias.strip().lower() not in ("unknown", ""):
+            candidates.append(extra_alias.strip().lower())
+
+        if not candidates:
+            return ""
+
+        # 检查候选标识中是否已有分配的 primary 代表元
+        existing_primary = None
+        for c in candidates:
+            if c in alias_to_primary:
+                existing_primary = alias_to_primary[c]
+                break
+
+        primary = existing_primary or candidates[0]
+        if primary not in primary_to_aliases:
+            primary_to_aliases[primary] = set()
+
+        for c in candidates:
+            alias_to_primary[c] = primary
+            primary_to_aliases[primary].add(c)
+
+        return primary
+
+    # 将所有 target_users 显式登记进别名映射表
+    for tu in target_users_clean:
+        register_user_identity(tu, "")
+
+    # 2. 并发信号量池与限流保护 (Concurrency Semaphores & Rate Limiting Defense)
+    ws_sem = asyncio.Semaphore(8)        # 工作区元数据及直属用户并发拉取池
+    ds_sem = asyncio.Semaphore(12)       # 数据集授权底表高频并发池
+    artifact_sem = asyncio.Semaphore(6) # 重量级 /artifactAccess 全量穿透并发池
+
+    # 异步协程：全并发处理单个工作区
+    async def process_single_workspace(ws: Dict[str, Any]) -> Dict[str, Any]:
         ws_id = ws.get("id") or ""
         ws_name = ws.get("name") or "Unnamed Workspace"
 
+        # 提取或并发拉取数据集
         datasets = ws.get("datasets", [])
         if not datasets and ws_id:
-            try:
-                ds_res = await asyncio.to_thread(cli.request, "GET", f"/groups/{ws_id}/datasets")
-                datasets = ds_res.get("value", [])
-            except Exception:
-                datasets = []
-        workspace_datasets[ws_id] = datasets
+            async with ws_sem:
+                try:
+                    ds_res = await asyncio.to_thread(cli.request, "GET", f"/groups/{ws_id}/datasets")
+                    datasets = ds_res.get("value", [])
+                except Exception:
+                    datasets = []
 
         # 并发获取当前工作区下所有数据集的独立授权明细
         async def fetch_single_dataset_users(ds_item: Dict[str, Any]) -> tuple[str, Dict[str, str]]:
             ds_id_str = ds_item.get("id") or ""
             if not ds_id_str or not ws_id:
                 return ds_id_str, {}
-            try:
-                du_res = await asyncio.to_thread(
-                    cli.request, "GET", f"/groups/{ws_id}/datasets/{ds_id_str}/users"
-                )
-                u_map: Dict[str, str] = {}
-                for du in du_res.get("value", []):
-                    ident = du.get("emailAddress") or du.get("identifier") or ""
-                    if ident:
-                        u_map[ident.strip().lower()] = du.get("datasetUserAccessRight") or "Read"
-                return ds_id_str, u_map
-            except Exception:
-                return ds_id_str, {}
+            async with ds_sem:
+                try:
+                    du_res = await asyncio.to_thread(
+                        cli.request, "GET", f"/groups/{ws_id}/datasets/{ds_id_str}/users"
+                    )
+                    u_map: Dict[str, str] = {}
+                    for du in du_res.get("value", []):
+                        ident = du.get("emailAddress") or du.get("identifier") or ""
+                        if ident:
+                            u_map[ident.strip().lower()] = du.get("datasetUserAccessRight") or "Read"
+                    return ds_id_str, u_map
+                except Exception:
+                    return ds_id_str, {}
 
         ds_user_tasks = [fetch_single_dataset_users(d) for d in datasets]
-        if ds_user_tasks:
-            ds_user_results = await asyncio.gather(*ds_user_tasks)
-            for ds_id_key, u_map_data in ds_user_results:
-                dataset_users_map[ds_id_key] = u_map_data
+        ds_user_results = await asyncio.gather(*ds_user_tasks) if ds_user_tasks else []
 
-        # 提取工作区直属用户
+        # 提取或并发拉取工作区直属用户
         users = ws.get("users", [])
         if not users and ws_id:
-            try:
-                u_res = await asyncio.to_thread(cli.request, "GET", f"/groups/{ws_id}/users")
-                users = u_res.get("value", [])
-            except Exception:
-                users = []
+            async with ws_sem:
+                try:
+                    u_res = await asyncio.to_thread(cli.request, "GET", f"/groups/{ws_id}/users")
+                    users = u_res.get("value", [])
+                except Exception:
+                    users = []
 
         if target_set:
             matched_users = []
@@ -224,6 +261,29 @@ async def scan_permissions_deep(
                     matched_users.append(u)
             users = matched_users
 
+        return {
+            "ws_id": ws_id,
+            "ws_name": ws_name,
+            "datasets": datasets,
+            "ds_user_results": ds_user_results,
+            "users": users
+        }
+
+    # 工作区全面并发并行化调度
+    ws_tasks = [process_single_workspace(ws) for ws in workspaces]
+    ws_results = await asyncio.gather(*ws_tasks) if ws_tasks else []
+
+    for item in ws_results:
+        ws_id = item["ws_id"]
+        ws_name = item["ws_name"]
+        datasets = item["datasets"]
+        ds_user_results = item["ds_user_results"]
+        users = item["users"]
+
+        workspace_datasets[ws_id] = datasets
+        for ds_id_key, u_map_data in ds_user_results:
+            dataset_users_map[ds_id_key] = u_map_data
+
         for u in users:
             graph_id = u.get("graphId") or u.get("identifier") or ""
             email = u.get("emailAddress") or u.get("identifier") or "Unknown"
@@ -231,10 +291,8 @@ async def scan_permissions_deep(
             ptype = u.get("principalType") or "User"
             direct_role = u.get("groupUserAccessRight") or "Viewer"
 
-            if graph_id:
-                unique_user_query_ids.add(graph_id)
-            if email and email != "Unknown":
-                unique_user_query_ids.add(email)
+            # 注册归一化身份，消除重复与双倍查询
+            register_user_identity(email, graph_id)
 
             all_records.append({
                 "workspaceId": ws_id,
@@ -251,32 +309,51 @@ async def scan_permissions_deep(
                 "datasetsDetail": []
             })
 
-    # 3. 深度穿透模式：并发请求 /admin/users/{userId}/artifactAccess 获取合并生效快照
+    # 3. 深度穿透模式：并发请求 /admin/users/{userId}/artifactAccess 获取合并生效快照 (受控并发与 429 退避)
     artifact_access_cache: Dict[str, List[Dict[str, Any]]] = {}
-    if deep_scan and unique_user_query_ids:
-        async def fetch_user_artifact_access(uid_or_gid: str) -> tuple[str, List[Dict[str, Any]]]:
+    if deep_scan and primary_to_aliases:
+        async def fetch_user_artifact_access(uid_key: str) -> tuple[str, List[Dict[str, Any]]]:
             items: List[Dict[str, Any]] = []
-            clean_id = uid_or_gid.strip()
+            clean_id = uid_key.strip()
             quoted_id = quote(clean_id, safe='')
             url: Optional[str] = f"/admin/users/{quoted_id}/artifactAccess"
-            try:
+            async with artifact_sem:
+                max_retries = 3
+                retry_delay = 1.0
                 while url:
-                    res = await asyncio.to_thread(cli.request, "GET", url)
-                    items.extend(res.get("ArtifactAccessEntities", []))
-                    cont_uri = res.get("continuationUri")
-                    if cont_uri and "v1.0/myorg" in cont_uri:
-                        url = cont_uri.split("v1.0/myorg")[1]
-                    else:
-                        url = None
-            except Exception:
-                pass
+                    current_url: str = url
+                    attempt = 0
+                    while attempt < max_retries:
+                        try:
+                            res = await asyncio.to_thread(cli.request, "GET", current_url)
+                            items.extend(res.get("ArtifactAccessEntities", []))
+                            cont_uri = res.get("continuationUri")
+                            if cont_uri and "v1.0/myorg" in cont_uri:
+                                url = cont_uri.split("v1.0/myorg")[1]
+                            else:
+                                url = None
+                            break
+                        except Exception as ex:
+                            attempt += 1
+                            ex_str = str(ex).lower()
+                            # 遭遇 429 Rate Limit 或临时网络限流时进行指数退避
+                            if ("429" in ex_str or "rate" in ex_str or "throttled" in ex_str) and attempt < max_retries:
+                                await asyncio.sleep(retry_delay)
+                                retry_delay *= 2
+                            else:
+                                url = None
+                                break
             return clean_id.lower(), items
 
-        tasks = [fetch_user_artifact_access(uid) for uid in unique_user_query_ids]
-        user_artifact_results = await asyncio.gather(*tasks)
-        for uid_key, items_val in user_artifact_results:
+        tasks = [fetch_user_artifact_access(pid) for pid in primary_to_aliases.keys()]
+        user_artifact_results = await asyncio.gather(*tasks) if tasks else []
+        for pid_key, items_val in user_artifact_results:
             if items_val:
-                artifact_access_cache[uid_key] = items_val
+                # 归一化写回：同时更新 primary 及其所有别名缓存 (如 email, graphId)
+                aliases = primary_to_aliases.get(pid_key, {pid_key})
+                for alias in aliases:
+                    artifact_access_cache[alias] = items_val
+                artifact_access_cache[pid_key] = items_val
 
     # 已存在的 (wsId, identifierLower) 避免重复录入
     existing_records_keys: Set[tuple[str, str]] = {
