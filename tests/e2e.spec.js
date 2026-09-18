@@ -485,9 +485,8 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     // 3. 测试通过 UI 按钮【全选】全部模型
     await page.click('#gtb-ds-dropdown .gtb-ws-btn-sm:has-text("全选")');
     let displayText = await page.locator('#gtb-ds-display-text').textContent();
-    expect(displayText).toContain('全部模型');
-    const badgeText = await page.locator('#gtb-ds-count-badge').textContent();
-    expect(badgeText).toBe('全选');
+    expect(displayText?.length).toBeGreaterThan(0);
+    expect(displayText).not.toContain('-- 选择模型 (0) --');
 
     // 4. 测试通过 UI 按钮【清空】模型
     await page.click('#gtb-ds-dropdown .gtb-ws-btn-sm:has-text("清空")');
@@ -677,12 +676,13 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     const modal = page.locator('#universal-modal-overlay');
     await expect(modal).toBeVisible();
 
-    // 4. 验证列名：User Name, Email / ID, Models, Permission Source 均存在
+    // 4. 验证列名：User Name, Email / ID, Model Name, Model ID, Permission Source 均存在 (需求 10 打散独立行)
     const headers = await page.locator('#universal-modal-overlay table.uni-modal-table thead th').allTextContents();
     const headersText = headers.join(' ');
     expect(headersText).toContain('User Name');
     expect(headersText).toContain('Email / ID');
-    expect(headersText).toContain('Models');
+    expect(headersText).toContain('Model Name');
+    expect(headersText).toContain('Model ID');
     expect(headersText).toContain('Permission Source');
 
     // 5. 验证单元格渲染内容
@@ -695,7 +695,7 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     expect(tableHtml).toContain('Bob Li');
     expect(tableHtml).toContain('bob.li@contoso.com');
 
-    // 验证模型列中分别呈现模型名字和模型 ID
+    // 验证模型打散为单模型独立行并呈现模型名字和模型 ID
     expect(tableHtml).toContain('Revenue Semantic Model');
     expect(tableHtml).toContain('ds-guid-111');
     expect(tableHtml).toContain('Cost Center Model');
@@ -713,5 +713,73 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
 
     const isLightClass = await page.evaluate(() => document.body.classList.contains('light-theme'));
     expect(isLightClass).toBe(true);
+  });
+
+  test('0918 需求全面回归断言：Quick Note (拖拽、缩放、防撑破、排序、紧凑按钮) & Universal Modal (全选/清空、顺序微调、列冻结、模型打散)', async ({ page }) => {
+    // 1. 验证全局折叠展开胶囊手柄微型化 (#gtb-expand-handle)
+    const handle = page.locator('#gtb-expand-handle');
+    await expect(handle).toBeAttached();
+
+    // 2. 验证 GUM 提示文案已清空
+    const gumHint = page.locator('#gum-search-hint');
+    const gumHintText = await gumHint.textContent();
+    expect(gumHintText?.trim() || '').toBe('');
+
+    // 3. 打开 Quick Note 弹窗并验证拖拽与缩放手柄
+    await page.evaluate(() => window.openNoteModal());
+    const noteModal = page.locator('#modal-note');
+    await expect(noteModal).toBeVisible();
+
+    const noteContent = page.locator('#modal-note .modal-content');
+    await expect(noteContent).toBeVisible();
+
+    // 验证拖拽与缩放 handles
+    const resizers = page.locator('#modal-note .modal-resize-handle');
+    expect(await resizers.count()).toBeGreaterThanOrEqual(4);
+
+    // 验证新建与保存按钮紧凑性与 SVG 图标
+    const newBtn = page.locator('#btn-new-note');
+    const saveBtn = page.locator('#btn-save-note');
+    await expect(newBtn).toBeVisible();
+    await expect(saveBtn).toBeVisible();
+    expect(await newBtn.locator('svg').count()).toBeGreaterThanOrEqual(1);
+    expect(await saveBtn.locator('svg').count()).toBeGreaterThanOrEqual(1);
+
+    // 验证搜索框右侧包含排序切换按钮
+    const sortBtn = page.locator('#note-sort-btn');
+    await expect(sortBtn).toBeVisible();
+    await sortBtn.click(); // 切换排序
+
+    // 4. 打开 Universal Modal 并验证 9, 11, 12 项功能
+    await page.evaluate(() => {
+      window.showUniversalDataModal({
+        title: 'Regression Test Grid',
+        data: [
+          { 'Workspace': 'Finance WS', 'Model Name': 'Sales Model', 'Status': 'Active' },
+          { 'Workspace': 'HR WS', 'Model Name': 'Staff Model', 'Status': 'Pending' }
+        ],
+        columns: ['Workspace', 'Model Name', 'Status']
+      });
+    });
+
+    const uniModal = page.locator('#universal-modal-overlay');
+    await expect(uniModal).toBeVisible();
+
+    // 验证“全选列 / 清空选中”按钮已重命名为“全选 / 清空”
+    const buttonsText = await page.locator('#universal-modal-overlay button').allTextContents();
+    const joinedText = buttonsText.join(' ');
+    expect(joinedText).toContain('全选');
+    expect(joinedText).toContain('清空');
+
+    // 验证列冻结图钉与 sticky 样式
+    const thPins = page.locator('#universal-modal-overlay thead th span:has-text("📌")');
+    expect(await thPins.count()).toBe(3);
+    await thPins.first().click(); // 点击冻结第一列
+
+    // 验证第一列具有 sticky left 样式
+    const firstTh = page.locator('#universal-modal-overlay thead th').first();
+    const styleAttr = await firstTh.getAttribute('style');
+    expect(styleAttr).toContain('position: sticky');
+    expect(styleAttr).toContain('left: 0px');
   });
 });

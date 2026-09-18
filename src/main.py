@@ -1838,6 +1838,7 @@ async def search_notes(q: str = ""):
                         "filename": filename,
                         "snippet": snippet,
                         "mtime": os.path.getmtime(file_path),
+                        "size": os.path.getsize(file_path),
                         "content": content
                     })
                     

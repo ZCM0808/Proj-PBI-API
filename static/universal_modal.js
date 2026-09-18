@@ -50,8 +50,8 @@ window.showUniversalDataModal = function(options) {
 
     const title = options.title || 'Data View';
     const data = options.data || [];
-    const columns = options.columns || (data.length > 0 ? Object.keys(data[0]) : []);
-    const displayNames = options.displayNames || columns;
+    let columns = options.columns ? [...options.columns] : (data.length > 0 ? Object.keys(data[0]) : []);
+    let displayNames = options.displayNames ? [...options.displayNames] : [...columns];
     const enableSearch = options.enableSearch !== false;
     const enableColumnFilter = options.enableColumnFilter !== false;
 
@@ -62,12 +62,41 @@ window.showUniversalDataModal = function(options) {
         savedPrefs = JSON.parse(localStorage.getItem(storageKey) || '{}');
     } catch(e) {}
 
+    // Hydrate Column Order (Preference persistence)
+    if (savedPrefs.columnOrder && Array.isArray(savedPrefs.columnOrder) && savedPrefs.columnOrder.length > 0) {
+        const ordered = [];
+        const orderedNames = [];
+        savedPrefs.columnOrder.forEach(col => {
+            const idx = columns.indexOf(col);
+            if (idx !== -1) {
+                ordered.push(col);
+                orderedNames.push(displayNames[idx]);
+            }
+        });
+        columns.forEach((col, idx) => {
+            if (!ordered.includes(col)) {
+                ordered.push(col);
+                orderedNames.push(displayNames[idx]);
+            }
+        });
+        columns = ordered;
+        displayNames = orderedNames;
+    }
+
     // State (Hydrated from persistent storage)
     let selectedCols = new Set(columns);
     if (savedPrefs.selectedCols && Array.isArray(savedPrefs.selectedCols) && savedPrefs.selectedCols.length > 0) {
         // Intersect with valid current columns
         const validSaved = savedPrefs.selectedCols.filter(c => columns.includes(c));
         if (validSaved.length > 0) selectedCols = new Set(validSaved);
+    }
+
+    // Frozen columns state (Excel Frozen columns)
+    let frozenCols = new Set();
+    if (savedPrefs.frozenCols && Array.isArray(savedPrefs.frozenCols)) {
+        savedPrefs.frozenCols.forEach(c => {
+            if (columns.includes(c)) frozenCols.add(c);
+        });
     }
 
     let searchText = "";
@@ -77,7 +106,9 @@ window.showUniversalDataModal = function(options) {
     const savePreferences = () => {
         try {
             localStorage.setItem(storageKey, JSON.stringify({
+                columnOrder: columns,
                 selectedCols: Array.from(selectedCols),
+                frozenCols: Array.from(frozenCols),
                 sortState: sortState,
                 colWidths: colWidths
             }));
@@ -357,10 +388,10 @@ hdr.className = 'modal-header';
         dropdownWrapper.appendChild(colDropdownBtn);
 
         const dropdownList = document.createElement('div');
-        dropdownList.style.cssText = 'display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--dropdown-bg, #1a1a24);border:1px solid var(--panel-border);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,0.8);max-height:220px;overflow-y:auto;width:240px;padding:6px;z-index:3000;';
+        dropdownList.style.cssText = 'display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--dropdown-bg, #1a1a24);border:1px solid var(--panel-border);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,0.8);max-height:260px;overflow-y:auto;width:290px;padding:6px;z-index:3000;';
         
         const dropdownHeader = document.createElement('div');
-        dropdownHeader.style.cssText = 'display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid var(--overlay-10);margin-bottom:4px;';
+        dropdownHeader.style.cssText = 'display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid var(--overlay-10);margin-bottom:4px;font-size:0.75rem;';
         dropdownHeader.innerHTML = `
             <span style="color:var(--accent);cursor:pointer;font-weight:bold;" id="uni-sel-all">Select All</span>
             <span style="color:var(--text-secondary);cursor:pointer;" id="uni-dsel-all">Deselect All</span>
@@ -380,7 +411,7 @@ hdr.className = 'modal-header';
         const selectAllColsBtn = document.createElement('button');
         selectAllColsBtn.type = 'button';
         selectAllColsBtn.style.cssText = 'background:var(--overlay-10, rgba(255,255,255,0.06));border:1px solid var(--overlay-20, rgba(255,255,255,0.15));color:var(--text-primary);font-size:0.75rem;cursor:pointer;padding:4px 8px;border-radius:5px;transition:all 0.2s;font-weight:500;';
-        selectAllColsBtn.textContent = '全选列';
+        selectAllColsBtn.textContent = '全选';
         selectAllColsBtn.title = '选中所有可见列以供复制';
         selectAllColsBtn.onmouseover = () => { selectAllColsBtn.style.background = 'var(--overlay-20)'; selectAllColsBtn.style.borderColor = 'var(--accent)'; };
         selectAllColsBtn.onmouseout = () => { selectAllColsBtn.style.background = 'var(--overlay-10)'; selectAllColsBtn.style.borderColor = 'var(--overlay-20)'; };
@@ -395,7 +426,7 @@ hdr.className = 'modal-header';
         const clearColsBtn = document.createElement('button');
         clearColsBtn.type = 'button';
         clearColsBtn.style.cssText = 'background:var(--overlay-10, rgba(255,255,255,0.06));border:1px solid var(--overlay-20, rgba(255,255,255,0.15));color:var(--text-secondary);font-size:0.75rem;cursor:pointer;padding:4px 8px;border-radius:5px;transition:all 0.2s;font-weight:500;';
-        clearColsBtn.textContent = '清空选中';
+        clearColsBtn.textContent = '清空';
         clearColsBtn.title = '取消当前所有已选列';
         clearColsBtn.onmouseover = () => { clearColsBtn.style.background = 'var(--overlay-20)'; clearColsBtn.style.color = 'var(--text-primary)'; };
         clearColsBtn.onmouseout = () => { clearColsBtn.style.background = 'var(--overlay-10)'; clearColsBtn.style.color = 'var(--text-secondary)'; };
@@ -461,11 +492,14 @@ hdr.className = 'modal-header';
             colDropdownBtn.innerHTML = `Select Columns (${selectedCols.size}/${columns.length}) <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>`;
             colItemsContainer.innerHTML = '';
             columns.forEach((col, idx) => {
-                const lbl = document.createElement('label');
-                lbl.style.cssText = 'display:flex;align-items:center;gap:6px;padding:4px 6px;cursor:pointer;font-size:0.75rem;border-radius:4px;';
-                lbl.onmouseover = () => lbl.style.background = 'var(--overlay-5)';
-                lbl.onmouseout = () => lbl.style.background = 'transparent';
-                
+                const itemDiv = document.createElement('div');
+                itemDiv.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:4px;padding:3px 6px;border-radius:4px;transition:background 0.2s;';
+                itemDiv.onmouseover = () => itemDiv.style.background = 'var(--overlay-5)';
+                itemDiv.onmouseout = () => itemDiv.style.background = 'transparent';
+
+                const leftPart = document.createElement('label');
+                leftPart.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.75rem;flex:1;min-width:0;';
+
                 const chk = document.createElement('input');
                 chk.type = 'checkbox';
                 chk.checked = selectedCols.has(col);
@@ -481,15 +515,90 @@ hdr.className = 'modal-header';
                     updateCopyToolbar();
                     renderTable();
                 };
-                
+
                 const span = document.createElement('span');
-                span.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+                span.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;';
                 span.title = displayNames[idx];
                 span.textContent = displayNames[idx];
-                
-                lbl.appendChild(chk);
-                lbl.appendChild(span);
-                colItemsContainer.appendChild(lbl);
+
+                leftPart.appendChild(chk);
+                leftPart.appendChild(span);
+                itemDiv.appendChild(leftPart);
+
+                // Right action controls: Move Up / Move Down / Freeze Pin
+                const orderCtrl = document.createElement('div');
+                orderCtrl.style.cssText = 'display:flex;align-items:center;gap:2px;flex-shrink:0;';
+
+                const upBtn = document.createElement('button');
+                upBtn.type = 'button';
+                upBtn.innerHTML = '▲';
+                upBtn.title = '向前移动此列顺序';
+                upBtn.disabled = idx === 0;
+                upBtn.style.cssText = `background:none;border:none;color:${idx === 0 ? 'var(--overlay-20)' : 'var(--text-secondary)'};cursor:${idx === 0 ? 'default' : 'pointer'};font-size:0.62rem;padding:2px 3px;border-radius:3px;line-height:1;`;
+                upBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (idx > 0) {
+                        const tempCol = columns[idx];
+                        columns[idx] = columns[idx - 1];
+                        columns[idx - 1] = tempCol;
+
+                        const tempName = displayNames[idx];
+                        displayNames[idx] = displayNames[idx - 1];
+                        displayNames[idx - 1] = tempName;
+
+                        savePreferences();
+                        renderColItems();
+                        renderTable();
+                    }
+                };
+
+                const downBtn = document.createElement('button');
+                downBtn.type = 'button';
+                downBtn.innerHTML = '▼';
+                downBtn.title = '向后移动此列顺序';
+                downBtn.disabled = idx === columns.length - 1;
+                downBtn.style.cssText = `background:none;border:none;color:${idx === columns.length - 1 ? 'var(--overlay-20)' : 'var(--text-secondary)'};cursor:${idx === columns.length - 1 ? 'default' : 'pointer'};font-size:0.62rem;padding:2px 3px;border-radius:3px;line-height:1;`;
+                downBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (idx < columns.length - 1) {
+                        const tempCol = columns[idx];
+                        columns[idx] = columns[idx + 1];
+                        columns[idx + 1] = tempCol;
+
+                        const tempName = displayNames[idx];
+                        displayNames[idx] = displayNames[idx + 1];
+                        displayNames[idx + 1] = tempName;
+
+                        savePreferences();
+                        renderColItems();
+                        renderTable();
+                    }
+                };
+
+                const pinBtn = document.createElement('button');
+                pinBtn.type = 'button';
+                const isFrozen = frozenCols.has(col);
+                pinBtn.innerHTML = '📌';
+                pinBtn.title = isFrozen ? '已冻结固定该列 (点击取消)' : '点击冻结固定该列 (Excel 窗格冻结)';
+                pinBtn.style.cssText = `background:none;border:none;cursor:pointer;font-size:0.75rem;padding:1px 3px;line-height:1;opacity:${isFrozen ? '1' : '0.35'};transition:opacity 0.2s;`;
+                pinBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (frozenCols.has(col)) {
+                        frozenCols.delete(col);
+                    } else {
+                        frozenCols.add(col);
+                    }
+                    savePreferences();
+                    renderColItems();
+                    renderTable();
+                };
+
+                orderCtrl.appendChild(upBtn);
+                orderCtrl.appendChild(downBtn);
+                orderCtrl.appendChild(pinBtn);
+                itemDiv.appendChild(orderCtrl);
+
+                colItemsContainer.appendChild(itemDiv);
             });
         };
         renderColItems();
@@ -577,6 +686,21 @@ hdr.className = 'modal-header';
         const trHead = document.createElement('tr');
         
         const activeCols = columns.filter(c => selectedCols.has(c));
+        const colStickyLeft = {};
+        let cumulativeLeft = 0;
+        let lastFrozenCol = null;
+
+        activeCols.forEach(col => {
+            if (frozenCols.has(col)) {
+                colStickyLeft[col] = cumulativeLeft;
+                const idx = columns.indexOf(col);
+                const initialWidth = colWidths[col] || Math.max(140, Math.min(300, displayNames[idx].length * 14 + 50));
+                colWidths[col] = initialWidth;
+                cumulativeLeft += initialWidth;
+                lastFrozenCol = col;
+            }
+        });
+
         activeCols.forEach((col) => {
             const idx = columns.indexOf(col);
             const colEl = document.createElement('col');
@@ -587,16 +711,21 @@ hdr.className = 'modal-header';
             colgroup.appendChild(colEl);
 
             const isColSelectedForCopy = selectedColForCopy.has(col);
+            const isFrozen = frozenCols.has(col);
+            const isLastFrozen = (col === lastFrozenCol);
+            const frozenShadow = isLastFrozen ? 'box-shadow: 3px 0 8px -2px rgba(0,0,0,0.45); border-right: 2px solid var(--accent, #6366f1) !important;' : '';
+            const frozenSticky = isFrozen ? `position:sticky; left:${colStickyLeft[col]}px; z-index:25;` : 'position:sticky; top:0; z-index:16;';
+
             const th = document.createElement('th');
             th.setAttribute('data-col', col);
-            th.style.cssText = `position:sticky; top:0; background:${isColSelectedForCopy ? 'var(--accent-subtle, rgba(99,102,241,0.18))' : 'var(--bg-color)'}; z-index:16; padding:10px 16px 10px 10px; border-bottom:1px solid var(--panel-border); font-weight:600; cursor:pointer; user-select:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; box-sizing:border-box; transition:background 0.2s; color:${isColSelectedForCopy ? 'var(--accent)' : 'inherit'};`;
-            th.title = '点击表头选择列以供复制 (支持 Ctrl/Shift 多选)；点击右侧标题排序';
-            
+            th.style.cssText = `${frozenSticky} top:0; background:${isColSelectedForCopy ? 'var(--accent-subtle, rgba(99,102,241,0.18))' : 'var(--bg-color)'}; padding:10px 16px 10px 8px; border-bottom:1px solid var(--panel-border); font-weight:600; cursor:pointer; user-select:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; box-sizing:border-box; transition:background 0.2s; color:${isColSelectedForCopy ? 'var(--accent)' : 'inherit'}; ${frozenShadow}`;
+            th.title = '点击表头选择列以供复制 (支持 Ctrl/Shift 多选)；点击右侧标题排序；点击图钉冻结固定列';
+
             // Checkbox for column selection
             const colChk = document.createElement('input');
             colChk.type = 'checkbox';
             colChk.checked = isColSelectedForCopy;
-            colChk.style.cssText = 'margin-right:6px; cursor:pointer; vertical-align:middle; accent-color:var(--accent);';
+            colChk.style.cssText = 'margin-right:5px; cursor:pointer; vertical-align:middle; accent-color:var(--accent);';
             colChk.title = '选中/取消此列以供复制 (含列名)';
             colChk.onclick = (e) => {
                 e.stopPropagation();
@@ -606,6 +735,26 @@ hdr.className = 'modal-header';
                 renderTable();
             };
             th.appendChild(colChk);
+
+            // Frozen Pin in Header
+            const pinIcon = document.createElement('span');
+            pinIcon.style.cssText = `margin-right:5px; font-size:0.75rem; cursor:pointer; opacity:${isFrozen ? '1' : '0.28'}; transition:opacity 0.2s; vertical-align:middle; display:inline-block;`;
+            pinIcon.title = isFrozen ? '已冻结固定在左侧 (点击解除固定)' : '点击冻结固定在左侧 (左右横向滚动不移动)';
+            pinIcon.innerHTML = '📌';
+            pinIcon.onmouseenter = () => pinIcon.style.opacity = '1';
+            pinIcon.onmouseleave = () => pinIcon.style.opacity = isFrozen ? '1' : '0.28';
+            pinIcon.onclick = (e) => {
+                e.stopPropagation();
+                if (frozenCols.has(col)) {
+                    frozenCols.delete(col);
+                } else {
+                    frozenCols.add(col);
+                }
+                savePreferences();
+                if (renderColItems) renderColItems();
+                renderTable();
+            };
+            th.appendChild(pinIcon);
 
             let arrow = '';
             const existingSort = sortState.find(s => s.index === idx);
@@ -619,7 +768,7 @@ hdr.className = 'modal-header';
             
             const titleSpan = document.createElement('span');
             titleSpan.className = 'uni-sort-trigger';
-            titleSpan.style.cssText = 'display:inline-block; max-width:calc(100% - 30px); overflow:hidden; text-overflow:ellipsis; vertical-align:middle; cursor:pointer;';
+            titleSpan.style.cssText = 'display:inline-block; max-width:calc(100% - 46px); overflow:hidden; text-overflow:ellipsis; vertical-align:middle; cursor:pointer;';
             titleSpan.title = '点击按此列排序 (按住 Shift 多列排序)';
             titleSpan.innerHTML = displayNames[idx] + arrow;
             th.appendChild(titleSpan);
@@ -627,7 +776,7 @@ hdr.className = 'modal-header';
             // Visual Column Resizer Handle (Single unified divider handle)
             const resizer = document.createElement('div');
             resizer.className = 'uni-col-resizer';
-            resizer.style.cssText = 'position:absolute; top:0; right:-4px; width:8px; height:100%; cursor:col-resize; user-select:none; z-index:20; display:flex; align-items:center; justify-content:center;';
+            resizer.style.cssText = 'position:absolute; top:0; right:-4px; width:8px; height:100%; cursor:col-resize; user-select:none; z-index:30; display:flex; align-items:center; justify-content:center;';
             
             const resizerLine = document.createElement('div');
             resizerLine.style.cssText = 'width:2px; height:60%; background:var(--overlay-20); border-radius:1px; transition:background 0.2s, height 0.2s, box-shadow 0.2s;';
@@ -679,6 +828,9 @@ hdr.className = 'modal-header';
                         document.removeEventListener('mousemove', onMouseMove);
                         document.removeEventListener('mouseup', onMouseUp);
                         savePreferences();
+                        if (frozenCols.has(col)) {
+                            renderTable();
+                        }
                     }
                 };
 
@@ -700,6 +852,9 @@ hdr.className = 'modal-header';
                 colWidths[col] = fitWidth;
                 colEl.style.width = fitWidth + 'px';
                 savePreferences();
+                if (frozenCols.has(col)) {
+                    renderTable();
+                }
             });
 
             resizer.addEventListener('click', (e) => {
@@ -781,7 +936,12 @@ hdr.className = 'modal-header';
                 if (!selectedCols.has(col)) return;
                 
                 const isSelectedCol = selectedColForCopy.has(col);
+                const isFrozen = frozenCols.has(col);
+                const isLastFrozen = (col === lastFrozenCol);
                 const colHighlight = isSelectedCol ? 'background: rgba(99, 102, 241, 0.08) !important;' : '';
+                const frozenShadow = isLastFrozen ? 'box-shadow: 3px 0 8px -2px rgba(0,0,0,0.35); border-right: 2px solid var(--accent, #6366f1) !important;' : '';
+                const frozenSticky = isFrozen ? `position: sticky; left: ${colStickyLeft[col]}px; z-index: 10; background: var(--bg-color);` : '';
+                const cellCommonStyle = `padding: 6px 12px; color: var(--text-primary); border-bottom: 1px solid var(--panel-border); border-right: 1px solid var(--overlay-5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; ${colHighlight} ${frozenSticky} ${frozenShadow}`;
 
                 let val = row[col];
                 let cellHtml = '';
@@ -790,7 +950,7 @@ hdr.className = 'modal-header';
                 if (options.cellRenderer) {
                     const customHtml = options.cellRenderer(col, val, row);
                     if (customHtml !== undefined) {
-                        htmlRows += `<td style="padding: 6px 12px; color: var(--text-primary); border-bottom: 1px solid var(--panel-border); border-right: 1px solid var(--overlay-5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; ${colHighlight}">${customHtml}</td>`;
+                        htmlRows += `<td style="${cellCommonStyle}">${customHtml}</td>`;
                         return;
                     }
                 }
@@ -809,7 +969,7 @@ hdr.className = 'modal-header';
                     cellHtml = str.replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 }
                 
-                htmlRows += `<td title="${cellTitle}" style="padding: 6px 12px; color: var(--text-primary); border-bottom: 1px solid var(--panel-border); border-right: 1px solid var(--overlay-5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; ${colHighlight}">${cellHtml}</td>`;
+                htmlRows += `<td title="${cellTitle}" style="${cellCommonStyle}">${cellHtml}</td>`;
             });
             htmlRows += `</tr>`;
         });

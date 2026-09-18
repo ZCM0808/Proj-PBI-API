@@ -2039,7 +2039,55 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
   - 打开 Universal Modal 全屏矩阵弹窗，断言表头包含 `User Name`、`Email / ID`、`Models`、`Permission Source`；
   - 断言表格单元格分别渲染出姓名与邮箱、模型名称与模型 ID、以及权限来源彩色标签。
 - 运行 Playwright 测试全部 100% 通过（2 passed, 耗时 37.7s）。
-- 静态分析：`python -m ruff check src/`、`python -m mypy src/main.py --ignore-missing-imports`、`node -c static/script.js` 零报错、零警告。
+## 56. Quick Note 弹窗工程化重构与 Universal Modal 矩阵全能升级 (Quick Note & Universal Modal Grid Full Upgrade)
+
+### 56.1 业务背景与 12 项核心诉求 (User Requirements)
+用户基于最新笔记 [notes/0918 issues.md](file:///D:/zcm/Proj-PBI-API/notes/0918%20issues.md) 提出 12 项全量升级诉求：
+1. **Quick Note 弹窗可拖拽移动**；
+2. **Quick Note 弹窗可通过拖拽边框/角自定义调整大小 (Resizable)**；
+3. **修复长文本/超长 URL（如 `model上的配置.md` 样例）将 EasyMDE/CodeMirror 编辑器和底部按钮撑出弹窗的布局 Bug**；
+4. **Quick Note 新建/保存按钮过大过高的问题，缩小尺寸并使用 SVG 替代 Emoji**；
+5. **Quick Note 左侧列表在搜索框右侧添加排序按钮（支持按修改时间、名称、文件大小的升序/降序多维排序）**；
+6. **Quick Note 标题区域空白过多，压缩更紧凑**；
+7. **全局功能折叠/展开按钮（`#gtb-expand-handle`）过大，改为横向紧凑微型胶囊并缩小磁吸触发空间**；
+8. **工作流 GUM(Global User Management / 全局用户管理与审计) 中，移除提示文本“点击展开下拉列表选择用户或输入筛选”**；
+9. **全屏弹窗矩阵（Universal Modal）中，在 Visible Fields(选择列) 下拉菜单中增加字段顺序调整功能**；
+10. **全屏弹窗矩阵中，Model 列改为“一个模型独自一行”，即打散为独立模型行（1:1 独立成行），分别输出 Model Name 与 Model ID**；
+11. **全屏弹窗矩阵中，“全选列 / 清空选中”按钮重命名为“全选 / 清空”**；
+12. **全屏弹窗矩阵中，实现类似 Excel Frozen(窗格冻结) 的列固定功能，左右横向滚动时不移动**。
+
+### 56.2 核心改造方案与架构实现 (Technical Implementation)
+1. **Quick Note 弹窗防撑破布局 (CSS Flex & Word Break Defense)**：
+   - 在 [static/style.css](file:///D:/zcm/Proj-PBI-API/static/style.css) 中对 `#modal-note .modal-content` 的 padding 压缩至 `12px 18px 14px 18px`，标题栏外边距压缩至 8px；
+   - 针对 `.note-modal-body`、`.note-right-panel`、`.note-editor-wrapper` 增加了 `min-width: 0 !important; max-width: 100% !important; overflow: hidden !important;`；
+   - 为 CodeMirror 与 EasyMDE 注入了 `word-break: break-all !important; overflow-wrap: anywhere !important; white-space: pre-wrap !important;`，彻底根治长链接撑爆弹窗的 Flex 溢出问题。
+2. **Quick Note 自由拖拽移动与 8 方位边框缩放 (Draggable & Resizable)**：
+   - 抽象通用的 `window.makeResizable(modalContent, minW, minH, onResizeCallback)`，在弹窗边缘和四角注入 8 个方位的控制手柄；
+   - 在 `openNoteModal` 中确保每次打开都居中并无条件绑定 `makeDraggable` 和 `makeResizable`，在缩放结束时自动调用 `easyMDE.codemirror.refresh()` 重绘自适应内容。
+3. **Quick Note 按钮微型紧凑化与 SVG 统一**：
+   - 定义 `.btn-note-sm` 紧凑按钮类（`height: 30px; font-size: 0.78rem;`），新建笔记与保存笔记全部采用精致的 SVG 矢量图标，替换所有粗糙 Emoji；
+   - 修复 `saveMarkdownNote` 在保存成功或失败后的 `finally` 块，确保完全恢复为 SVG 图标和规范中文文案。
+4. **Quick Note 搜索栏多维排序与大小统计**：
+   - 后端 [src/main.py](file:///D:/zcm/Proj-PBI-API/src/main.py) 的 `/api/search-notes` 接口在返回对象中追加 `"size": os.path.getsize(file_path)`；
+   - 前端 [static/index.html](file:///D:/zcm/Proj-PBI-API/static/index.html) 在搜索框右侧加入紧凑排序按钮 `#note-sort-btn`，前端实现 `cycleNoteSort()`，支持在修改时间 (新→旧 / 旧→新)、文件名 (A→Z / Z→A)、文件大小 (大→小 / 小→大) 间无缝轮换，并在每条笔记中优雅展示 `🕒 更新时间` 和 `💾 文件大小`。
+5. **全局折叠把手微型化与 GUM 提示文案清除**：
+   - 将 `#gtb-expand-handle` 横向内边距由 `3px 28px` 压至 `2px 12px`，磁吸范围收紧至 `-6px`，图标调小至 11px，避免大面积误触；
+   - 彻底清除 `#gum-search-hint` 与脚本中的“点击展开下拉列表选择用户或输入筛选”文案。
+6. **Universal Modal 全功能强化**：
+   - **重命名**：将“全选列 / 清空选中”按钮正式更名为“全选 / 清空”；
+   - **字段顺序调整 (需求 9)**：在 Visible Fields 下拉菜单中为每列追加 `▲` 上移、`▼` 下移与 `📌` 冻结图钉按钮，重排后更新 `columns` 与 `displayNames` 并持久化存储至 `savedPrefs.columnOrder`；
+   - **Excel Frozen 窗格冻结 (需求 12)**：基于 `position: sticky` 计算各冻结列的累计左侧偏移量 `colStickyLeft`，在表头与数据行应用固定定位，最后一列添加深色阴影分割线 `box-shadow: 3px 0 8px -2px rgba(0,0,0,0.35); border-right: 2px solid var(--accent)`，横向滚动时被固定列稳如泰山；
+   - **模型行打散 (需求 10)**：在 `openGumResultModal` 中使用 `flatMap` 将多模型记录打散为“单模型独占一行 (1:1 独立成行)”，单独划分 `Model Name` 与 `Model ID` 列，支持单模型 ID 一键快捷复制。
+7. **Cache Busting 防御**：
+   - 同步更新 [static/index.html](file:///D:/zcm/Proj-PBI-API/static/index.html) 中静态资源版本号为 `?v=20260918_v1440`。
+
+### 56.3 自动化测试与质量闭环验证
+- 静态分析：
+  - `python -m ruff check src/`：All checks passed!
+  - `python -m mypy src/main.py --ignore-missing-imports`：Success: no issues found.
+  - `node -c static/universal_modal.js` 与 `node -c static/script.js`：语法零错误。
+- 自动化端到端测试：
+  - 在 [tests/e2e.spec.js](file:///D:/zcm/Proj-PBI-API/tests/e2e.spec.js) 中运行 `0918 需求全面回归断言` 与 GUM 相关的全套 Playwright 测试，断言 Quick Note 拖拽/缩放/排序/SVG 图标，Universal Modal 全选/清空/字段重排/列冻结/模型打散全部 100% 成功通过！
 
 
 

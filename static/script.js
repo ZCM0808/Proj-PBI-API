@@ -38,6 +38,93 @@ window.centerModal = function(modalContent) {
     modalContent.removeAttribute('data-drag-left');
 };
 
+window.makeResizable = function(modalContent, minW = 400, minH = 300, onResizeCallback = null) {
+    if (!modalContent || modalContent._resizableInit) return;
+    modalContent._resizableInit = true;
+
+    const addResizer = (cls, cursor, css) => {
+        const r = document.createElement('div');
+        r.className = 'modal-resize-handle ' + cls;
+        r.style.cssText = 'position:absolute;z-index:105;user-select:none;' + css;
+        r.style.cursor = cursor;
+        modalContent.appendChild(r);
+
+        r.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const rect = modalContent.getBoundingClientRect();
+            modalContent.style.position = 'fixed';
+            modalContent.style.margin = '0';
+            modalContent.style.left = rect.left + 'px';
+            modalContent.style.top = rect.top + 'px';
+            modalContent.style.width = rect.width + 'px';
+            modalContent.style.height = rect.height + 'px';
+            modalContent.style.maxWidth = 'none';
+            modalContent.style.maxHeight = 'none';
+            modalContent.style.right = 'auto';
+            modalContent.style.bottom = 'auto';
+            modalContent.style.transform = 'none';
+            modalContent.style.transition = 'none';
+            modalContent.removeAttribute('data-translate-x');
+            modalContent.removeAttribute('data-translate-y');
+
+            document.body.style.cursor = cursor;
+            document.body.style.userSelect = 'none';
+
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const startW = rect.width;
+            const startH = rect.height;
+            const startL = rect.left;
+            const startT = rect.top;
+
+            const onMouseMove = (me) => {
+                const dx = me.clientX - startX;
+                const dy = me.clientY - startY;
+
+                if (cls.includes('resizer-r') || cls.includes('resizer-br') || cls.includes('resizer-tr')) {
+                    modalContent.style.width = Math.max(minW, startW + dx) + 'px';
+                }
+                if (cls.includes('resizer-l') || cls.includes('resizer-bl') || cls.includes('resizer-tl')) {
+                    const newW = Math.max(minW, startW - dx);
+                    modalContent.style.width = newW + 'px';
+                    modalContent.style.left = (startL + (startW - newW)) + 'px';
+                }
+                if (cls.includes('resizer-b') || cls.includes('resizer-br') || cls.includes('resizer-bl')) {
+                    modalContent.style.height = Math.max(minH, startH + dy) + 'px';
+                }
+                if (cls.includes('resizer-t') || cls.includes('resizer-tr') || cls.includes('resizer-tl')) {
+                    const newH = Math.max(minH, startH - dy);
+                    modalContent.style.height = newH + 'px';
+                    modalContent.style.top = (startT + (startH - newH)) + 'px';
+                }
+                if (onResizeCallback) onResizeCallback();
+            };
+
+            const onMouseUp = () => {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+                if (onResizeCallback) onResizeCallback();
+            };
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        });
+    };
+
+    addResizer('resizer-r', 'e-resize', 'right: -4px; top: 0; width: 8px; height: 100%;');
+    addResizer('resizer-b', 's-resize', 'bottom: -4px; left: 0; height: 8px; width: 100%;');
+    addResizer('resizer-l', 'w-resize', 'left: -4px; top: 0; width: 8px; height: 100%;');
+    addResizer('resizer-t', 'n-resize', 'top: -4px; left: 0; height: 8px; width: 100%;');
+    addResizer('resizer-br', 'se-resize', 'bottom: -4px; right: -4px; width: 14px; height: 14px; z-index: 106;');
+    addResizer('resizer-bl', 'sw-resize', 'bottom: -4px; left: -4px; width: 14px; height: 14px; z-index: 106;');
+    addResizer('resizer-tr', 'ne-resize', 'top: -4px; right: -4px; width: 14px; height: 14px; z-index: 106;');
+    addResizer('resizer-tl', 'nw-resize', 'top: -4px; left: -4px; width: 14px; height: 14px; z-index: 106;');
+};
+
 // ─── Global Pin-to-Top State Helpers (Workflows & API Categories) ───
 window.getPinnedWorkflows = function() {
     try {
@@ -11542,19 +11629,25 @@ window.openNoteModal = function() {
         }
 
     } else {
-
         // Just refresh to avoid layout issues in display:none modals
-
-        setTimeout(() => easyMDE.codemirror.refresh(), 100);
-
+        setTimeout(() => easyMDE && easyMDE.codemirror && easyMDE.codemirror.refresh(), 100);
     }
 
-
+    // Always ensure draggable and resizable handles are bound
+    const noteHeader = noteModal.querySelector('.modal-header');
+    if (noteContent && noteHeader && window.makeDraggable) {
+        window.makeDraggable(noteContent, noteHeader);
+    }
+    if (noteContent && window.makeResizable) {
+        window.makeResizable(noteContent, 480, 360, () => {
+            if (easyMDE && easyMDE.codemirror) {
+                easyMDE.codemirror.refresh();
+            }
+        });
+    }
 
     // Load history
-
     window.searchNotes();
-
 };
 
 
@@ -11734,159 +11827,141 @@ window.insertSpecificApiIntoNote = function(method, endpoint) {
 
 
 let searchNoteTimeout = null;
-
 window.debounceSearchNotes = function() {
-
     if (searchNoteTimeout) clearTimeout(searchNoteTimeout);
-
     searchNoteTimeout = setTimeout(window.searchNotes, 300);
-
 };
 
+window._currentNotesList = [];
+window.noteSortModes = [
+    { key: 'mtime_desc', label: '时间 (新→旧)', field: 'mtime', desc: true },
+    { key: 'mtime_asc', label: '时间 (旧→新)', field: 'mtime', desc: false },
+    { key: 'name_asc', label: '名称 (A→Z)', field: 'filename', desc: false },
+    { key: 'name_desc', label: '名称 (Z→A)', field: 'filename', desc: true },
+    { key: 'size_desc', label: '大小 (大→小)', field: 'size', desc: true },
+    { key: 'size_asc', label: '大小 (小→大)', field: 'size', desc: false }
+];
+window.currentNoteSortIndex = 0;
 
+window.cycleNoteSort = function() {
+    window.currentNoteSortIndex = (window.currentNoteSortIndex + 1) % window.noteSortModes.length;
+    const mode = window.noteSortModes[window.currentNoteSortIndex];
+    const sortBtn = document.getElementById('note-sort-btn');
+    if (sortBtn) {
+        sortBtn.title = `当前排序：${mode.label} (点击切换)`;
+    }
+    if (window.showNotification) {
+        window.showNotification(`笔记排序已切换：${mode.label}`, 'info');
+    }
+    window.renderSortedNotesList();
+};
 
-window.searchNotes = async function() {
-
-    const q = document.getElementById('note-search').value.trim();
-
+window.renderSortedNotesList = function() {
     const listEl = document.getElementById('note-history-list');
-
+    const q = (document.getElementById('note-search')?.value || '').trim();
     if (!listEl) return;
 
-    
+    if (!window._currentNotesList || window._currentNotesList.length === 0) {
+        listEl.innerHTML = '<div style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 20px;">No notes found.</div>';
+        return;
+    }
+
+    const mode = window.noteSortModes[window.currentNoteSortIndex] || window.noteSortModes[0];
+    const sorted = [...window._currentNotesList].sort((a, b) => {
+        let va = a[mode.field];
+        let vb = b[mode.field];
+        if (mode.field === 'filename') {
+            va = (va || '').toLowerCase();
+            vb = (vb || '').toLowerCase();
+            if (va < vb) return mode.desc ? 1 : -1;
+            if (va > vb) return mode.desc ? -1 : 1;
+            return 0;
+        } else {
+            va = Number(va) || 0;
+            vb = Number(vb) || 0;
+            return mode.desc ? vb - va : va - vb;
+        }
+    });
+
+    listEl.innerHTML = '';
+    sorted.forEach(note => {
+        const item = document.createElement('div');
+        item.style.padding = '10px';
+        item.style.background = 'var(--input-bg)';
+        item.style.borderRadius = '6px';
+        item.style.border = '1px solid var(--panel-border)';
+        item.style.cursor = 'pointer';
+        item.style.transition = 'all 0.2s';
+
+        const dateStr = new Date((note.mtime || 0) * 1000).toLocaleString();
+        const byteSize = note.size || 0;
+        const sizeStr = byteSize > 1024 * 1024 
+            ? (byteSize / (1024 * 1024)).toFixed(1) + ' MB' 
+            : byteSize > 1024 
+                ? (byteSize / 1024).toFixed(1) + ' KB' 
+                : byteSize + ' B';
+
+        // Highlight search term in snippet if any
+        let snippetHtml = (note.snippet || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        if (q) {
+            const regex = new RegExp(q, 'gi');
+            snippetHtml = snippetHtml.replace(regex, match => `<span style="background: var(--badge-custom-bg); color: white; padding: 0 2px; border-radius: 2px;">${match}</span>`);
+        }
+
+        item.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                <div style="font-weight: 500; font-size: 0.9rem; margin-bottom: 4px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;" title="${note.filename}">📄 ${note.filename}</div>
+                <button class="btn-delete-note" style="background: none; border: none; padding: 2px 6px; cursor: pointer; color: var(--error); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; opacity: 0.6; transition: all 0.2s;" title="Delete Note">❌</button>
+            </div>
+            <div style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                <span>🕒 ${dateStr}</span>
+                <span style="font-family: monospace; opacity: 0.85;">💾 ${sizeStr}</span>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;">${snippetHtml}</div>
+        `;
+
+        item.onmouseover = () => { item.style.background = 'var(--overlay-10)'; item.style.borderColor = 'var(--badge-custom-text)'; };
+        item.onmouseout = () => { item.style.background = 'var(--input-bg)'; item.style.borderColor = 'var(--panel-border)'; };
+
+        const delBtn = item.querySelector('.btn-delete-note');
+        delBtn.onmouseover = (e) => { e.stopPropagation(); delBtn.style.opacity = '1'; delBtn.style.background = 'rgba(239, 68, 68, 0.15)'; };
+        delBtn.onmouseout = (e) => { e.stopPropagation(); delBtn.style.opacity = '0.6'; delBtn.style.background = 'none'; };
+        delBtn.onclick = async (e) => {
+            e.stopPropagation();
+            if (await showCustomConfirm(`Are you sure you want to delete notes/${note.filename}? This will delete the file locally and push the deletion to GitHub.`)) {
+                window.deleteMarkdownNote(note.filename);
+            }
+        };
+
+        item.onclick = () => {
+            document.getElementById('note-filename').value = note.filename;
+            if (easyMDE) {
+                easyMDE.value(note.content);
+            }
+        };
+
+        listEl.appendChild(item);
+    });
+};
+
+window.searchNotes = async function() {
+    const q = document.getElementById('note-search')?.value.trim() || '';
+    const listEl = document.getElementById('note-history-list');
+    if (!listEl) return;
 
     listEl.innerHTML = '<div style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 20px;">Searching...</div>';
 
-    
-
     try {
-
         const response = await fetch('/api/search-notes?q=' + encodeURIComponent(q));
-
         const data = await response.json();
-
-        
 
         if (!data.success) throw new Error(data.error);
 
-        
-
-        if (!data.results || data.results.length === 0) {
-
-            listEl.innerHTML = '<div style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 20px;">No notes found.</div>';
-
-            return;
-
-        }
-
-        
-
-        listEl.innerHTML = '';
-
-        data.results.forEach(note => {
-
-            const item = document.createElement('div');
-
-            item.style.padding = '10px';
-
-            item.style.background = 'var(--input-bg)';
-
-            item.style.borderRadius = '6px';
-
-            item.style.border = '1px solid var(--panel-border)';
-
-            item.style.cursor = 'pointer';
-
-            item.style.transition = 'all 0.2s';
-
-            
-
-            const dateStr = new Date(note.mtime * 1000).toLocaleString();
-
-            
-
-            // Highlight search term in snippet if any
-
-            let snippetHtml = note.snippet.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-            if (q) {
-
-                const regex = new RegExp(q, 'gi');
-
-                snippetHtml = snippetHtml.replace(regex, match => `<span style="background: var(--badge-custom-bg); color: white; padding: 0 2px; border-radius: 2px;">${match}</span>`);
-
-            }
-
-            
-
-            item.innerHTML = `
-
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
-
-                    <div style="font-weight: 500; font-size: 0.9rem; margin-bottom: 4px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;" title="${note.filename}">📄 ${note.filename}</div>
-
-                    <button class="btn-delete-note" style="background: none; border: none; padding: 2px 6px; cursor: pointer; color: var(--error); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; opacity: 0.6; transition: all 0.2s;" title="Delete Note">❌</button>
-
-                </div>
-
-                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 6px;">🕒 ${dateStr}</div>
-
-                <div style="font-size: 0.8rem; color: var(--text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;">${snippetHtml}</div>
-
-            `;
-
-            
-
-            item.onmouseover = () => { item.style.background = 'var(--overlay-10)'; item.style.borderColor = 'var(--badge-custom-text)'; };
-
-            item.onmouseout = () => { item.style.background = 'var(--input-bg)'; item.style.borderColor = 'var(--panel-border)'; };
-
-            
-
-            const delBtn = item.querySelector('.btn-delete-note');
-
-            delBtn.onmouseover = (e) => { e.stopPropagation(); delBtn.style.opacity = '1'; delBtn.style.background = 'rgba(239, 68, 68, 0.15)'; };
-
-            delBtn.onmouseout = (e) => { e.stopPropagation(); delBtn.style.opacity = '0.6'; delBtn.style.background = 'none'; };
-
-            delBtn.onclick = async (e) => {
-
-                e.stopPropagation();
-
-                if (await showCustomConfirm(`Are you sure you want to delete notes/${note.filename}? This will delete the file locally and push the deletion to GitHub.`)) {
-
-                    window.deleteMarkdownNote(note.filename);
-
-                }
-
-            };
-
-            
-
-            item.onclick = () => {
-
-                document.getElementById('note-filename').value = note.filename;
-
-                if (easyMDE) {
-
-                    easyMDE.value(note.content);
-
-                }
-
-            };
-
-            
-
-            listEl.appendChild(item);
-
-        });
-
+        window._currentNotesList = data.results || [];
+        window.renderSortedNotesList();
     } catch (e) {
-
         listEl.innerHTML = `<div style="text-align: center; color: var(--error); font-size: 0.8rem; margin-top: 20px;">Error loading history</div>`;
-
     }
-
 };
 
 
@@ -12134,13 +12209,9 @@ window.saveMarkdownNote = async function() {
         }
 
     } finally {
-
         btn.disabled = false;
-
-        btn.innerHTML = '<span id="save-note-icon">💾</span> Save & Push to GitHub';
-
+        btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> <span>保存并同步 GitHub</span>`;
     }
-
 };
 
 
@@ -18299,7 +18370,7 @@ window.renderGumTargetTags = function() {
         if (names.length > 0) {
             searchHint.innerHTML = `<span style="color:var(--accent); font-weight: 600;">已锁定 ${names.length} 位审计目标</span>`;
         } else {
-            searchHint.innerText = allCandidates.length > 0 ? `可选 ${allCandidates.length} 位用户` : '点击展开下拉列表选择用户或输入筛选';
+            searchHint.innerText = allCandidates.length > 0 ? `可选 ${allCandidates.length} 位用户` : '';
         }
     }
 };
@@ -18560,7 +18631,8 @@ window.openGumResultModal = function() {
         return;
     }
 
-    const mappedData = data.map((d, idx) => {
+    const flatData = [];
+    data.forEach((d, dIdx) => {
         // 1. 拆分 User Name 与 Email / ID
         const rawIdent = d.identifier || d.graphId || '';
         const userName = d.displayName || (rawIdent.includes('@') ? rawIdent.split('@')[0] : (rawIdent || 'Unknown'));
@@ -18572,19 +18644,25 @@ window.openGumResultModal = function() {
         if (Array.isArray(d.datasetsDetail) && d.datasetsDetail.length > 0) {
             models = d.datasetsDetail.map(m => ({
                 name: m.datasetName || m.name || 'Unnamed Dataset',
-                id: m.datasetId || m.id || ''
+                id: m.datasetId || m.id || '',
+                canEdit: m.canEdit,
+                effectiveRight: m.effectiveRight || m.role || 'Inherited'
             }));
         } else if (window._cachedWorkspaceDatasets && window._cachedWorkspaceDatasets[d.workspaceId]) {
             models = (window._cachedWorkspaceDatasets[d.workspaceId] || []).map(m => ({
                 name: m.name || m.datasetName || 'Unnamed Dataset',
-                id: m.id || m.datasetId || ''
+                id: m.id || m.datasetId || '',
+                canEdit: d.canEditModels,
+                effectiveRight: 'Workspace Inherited'
             }));
         } else if (Array.isArray(window.allDatasets) && wsId) {
             models = window.allDatasets
                 .filter(ds => (ds.workspaceId || ds.wsId || '').toLowerCase() === wsId)
                 .map(m => ({
                     name: m.name || 'Unnamed Dataset',
-                    id: m.id || ''
+                    id: m.id || '',
+                    canEdit: d.canEditModels,
+                    effectiveRight: 'Workspace Inherited'
                 }));
         }
 
@@ -18610,42 +18688,68 @@ window.openGumResultModal = function() {
             }
         }
 
-        const modelsSummaryText = models.map(m => `${m.name} (${m.id})`).join('; ');
-
-        return {
-            'Workspace': d.workspaceName || d.wsName || 'Unnamed Workspace',
-            'User Name': userName,
-            'Email / ID': userEmailOrId,
-            'Type': d.principalType || 'User',
-            'Models': modelsSummaryText || '— (无模型)',
-            'Permission Source': permSource,
-            'Direct Role': d.directRole || d.role || 'None',
-            'Effective Access': d.effectiveRole || d.role || 'None',
-            'Model Write Access': d.canEditModels ? '✅ 全部可读写' : '❌ 纯只读',
-            'Security Status': d.securityStatus || (d.isElevated ? '⚠️ 继承提权' : '🟢 正常'),
-            'Actions': '', // rendered dynamically
-
-            _raw: d,
-            _idx: idx,
-            _wsId: d.workspaceId || d.wsId,
-            _identifier: d.identifier,
-            _wsName: d.workspaceName || d.wsName,
-            _models: models,
-            _permSource: permSource
-        };
+        if (models.length === 0) {
+            flatData.push({
+                'Workspace': d.workspaceName || d.wsName || 'Unnamed Workspace',
+                'User Name': userName,
+                'Email / ID': userEmailOrId,
+                'Type': d.principalType || 'User',
+                'Model Name': '— (无模型)',
+                'Model ID': '-',
+                'Permission Source': permSource,
+                'Direct Role': d.directRole || d.role || 'None',
+                'Effective Access': d.effectiveRole || d.role || 'None',
+                'Model Write Access': d.canEditModels ? '✅ 全部可读写' : '❌ 纯只读',
+                'Security Status': d.securityStatus || (d.isElevated ? '⚠️ 继承提权' : '🟢 正常'),
+                'Actions': '',
+                _raw: d,
+                _idx: dIdx,
+                _wsId: d.workspaceId || d.wsId,
+                _identifier: d.identifier,
+                _wsName: d.workspaceName || d.wsName,
+                _model: null,
+                _permSource: permSource
+            });
+        } else {
+            models.forEach(m => {
+                const modelCanWrite = (m.canEdit !== undefined ? m.canEdit : d.canEditModels);
+                flatData.push({
+                    'Workspace': d.workspaceName || d.wsName || 'Unnamed Workspace',
+                    'User Name': userName,
+                    'Email / ID': userEmailOrId,
+                    'Type': d.principalType || 'User',
+                    'Model Name': m.name,
+                    'Model ID': m.id || '-',
+                    'Permission Source': permSource,
+                    'Direct Role': d.directRole || d.role || 'None',
+                    'Effective Access': d.effectiveRole || d.role || 'None',
+                    'Model Write Access': modelCanWrite ? '✅ 可读写' : '❌ 只读',
+                    'Security Status': d.securityStatus || (d.isElevated ? '⚠️ 继承提权' : '🟢 正常'),
+                    'Actions': '',
+                    _raw: d,
+                    _idx: dIdx,
+                    _wsId: d.workspaceId || d.wsId,
+                    _identifier: d.identifier,
+                    _wsName: d.workspaceName || d.wsName,
+                    _model: m,
+                    _permSource: permSource
+                });
+            });
+        }
     });
 
     if (window.showUniversalDataModal) {
         window.showUniversalDataModal({
             title: 'Global Workspace Permissions & Effective Access Matrix',
-            data: mappedData,
+            data: flatData,
             initialSearch: term,
             columns: [
                 'Workspace',
                 'User Name',
                 'Email / ID',
                 'Type',
-                'Models',
+                'Model Name',
+                'Model ID',
                 'Permission Source',
                 'Direct Role',
                 'Effective Access',
@@ -18668,22 +18772,20 @@ window.openGumResultModal = function() {
                 if (col === 'Type') {
                     return `<span style="padding:2px 6px;border-radius:4px;background:var(--overlay-10);font-size:0.72rem;">${val}</span>`;
                 }
-                if (col === 'Models') {
-                    const modelList = row._models || [];
-                    if (!modelList || modelList.length === 0) {
+                if (col === 'Model Name') {
+                    if (val === '— (无模型)') {
                         return `<span style="font-size:0.72rem; color:var(--text-secondary); font-style:italic;">— (无模型)</span>`;
                     }
+                    return `<span style="font-size:0.75rem; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${val}">📊 ${val}</span>`;
+                }
+                if (col === 'Model ID') {
+                    if (val === '-' || !val) {
+                        return `<span style="font-size:0.72rem; color:var(--text-secondary);">-</span>`;
+                    }
                     return `
-                        <div style="display:flex; flex-direction:column; gap:4px; max-width:280px; max-height:110px; overflow-y:auto; padding-right:2px;">
-                            ${modelList.map(m => `
-                                <div style="background:var(--overlay-5); border:1px solid var(--overlay-10); border-radius:4px; padding:3px 6px; display:flex; flex-direction:column; gap:1px;">
-                                    <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
-                                        <span style="font-size:0.74rem; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${m.name}">📊 ${m.name}</span>
-                                        ${m.id ? `<button type="button" class="btn-wf-sm" style="height:17px; padding:0 4px; font-size:0.62rem; flex-shrink:0; cursor:pointer;" onclick="if(window.handleCopyAction) window.handleCopyAction(this, '${m.id}'); event.stopPropagation();" title="复制模型ID">复制ID</button>` : ''}
-                                    </div>
-                                    ${m.id ? `<div style="font-size:0.66rem; font-family:'Fira Code',monospace; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${m.id}">${m.id}</div>` : ''}
-                                </div>
-                            `).join('')}
+                        <div style="display:inline-flex; align-items:center; gap:4px; font-family:'Fira Code',monospace; font-size:0.72rem; color:var(--text-secondary); max-width:240px;">
+                            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${val}">${val}</span>
+                            <button type="button" class="btn-wf-sm" style="height:18px; padding:0 4px; font-size:0.62rem; flex-shrink:0; cursor:pointer;" onclick="if(window.handleCopyAction) window.handleCopyAction(this, '${val}'); event.stopPropagation();" title="复制模型ID">复制ID</button>
                         </div>
                     `;
                 }
