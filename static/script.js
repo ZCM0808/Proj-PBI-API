@@ -15,7 +15,53 @@ window.fetch = async function(...args) {
     }
 
     return response;
+};
 
+// ─── Global Toast Notification System ───
+window.showNotification = function(message, type = 'info', duration = 3200) {
+    if (!message) return;
+    let container = document.getElementById('pbi-toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'pbi-toast-container';
+        document.body.appendChild(container);
+    }
+
+    const typeIcons = {
+        success: '✅',
+        warning: '⚠️',
+        error: '❌',
+        info: 'ℹ️'
+    };
+    const icon = typeIcons[type] || 'ℹ️';
+
+    const toast = document.createElement('div');
+    toast.className = `pbi-toast-item toast-${type}`;
+    toast.innerHTML = `
+        <span class="pbi-toast-icon">${icon}</span>
+        <span class="pbi-toast-msg">${message}</span>
+        <span class="pbi-toast-close" title="关闭">✕</span>
+    `;
+
+    const closeBtn = toast.querySelector('.pbi-toast-close');
+    const dismiss = () => {
+        toast.classList.remove('show');
+        toast.classList.add('hide');
+        setTimeout(() => {
+            if (toast.parentElement) toast.remove();
+        }, 280);
+    };
+
+    if (closeBtn) closeBtn.onclick = dismiss;
+
+    container.appendChild(toast);
+    requestAnimationFrame(() => {
+        toast.classList.add('show');
+    });
+
+    if (duration > 0) {
+        setTimeout(dismiss, duration);
+    }
 };
 
 // ─── Global Top-Level Modal Helpers (centerModal & makeDraggable) ───
@@ -18335,10 +18381,22 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
         return;
     }
 
+    const now = Date.now();
+    if (window._lastGumScanSuccessTime && (now - window._lastGumScanSuccessTime < 3000)) {
+        if (window.showNotification) {
+            window.showNotification('⚡ 刚刚已同步最新人员名单，请勿频繁连续点击（微软 API 保护中）', 'info');
+        }
+        if (window.openGumUserDropdown) window.openGumUserDropdown();
+        return;
+    }
+
     const cacheKey = (scope === 'tenant') ? '__ALL_TENANT_WORKSPACES__' : `__WORKSPACES_${selectedWss.slice().sort().join('_')}__`;
     if (!forceRefresh && window.gumWorkspaceUsersCache && window.gumWorkspaceUsersCache.has(cacheKey)) {
         window.gumCandidateUsers = window.gumWorkspaceUsersCache.get(cacheKey) || [];
         window.renderGumDropdownUsers();
+        if (window.showNotification) {
+            window.showNotification(`⚡ 已加载最新人员名单 (${window.gumCandidateUsers.length} 人)`, 'info');
+        }
         return;
     }
 
@@ -18399,9 +18457,14 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
         window.gumCandidateUsers = candidates;
         if (!window.gumWorkspaceUsersCache) window.gumWorkspaceUsersCache = new Map();
         window.gumWorkspaceUsersCache.set(cacheKey, candidates);
+        window._lastGumScanSuccessTime = Date.now();
 
         if (data.warning && window.showNotification) {
             window.showNotification(data.warning, 'warning');
+        } else if (!data.cached && window.showNotification) {
+            window.showNotification(`✅ 已成功从微软云端穿透同步 ${candidates.length} 位候选用户`, 'success');
+        } else if (data.cached && window.showNotification) {
+            window.showNotification(`⚡ 已呈现最新人员快照 (${candidates.length} 人)`, 'info');
         }
 
         window.renderGumDropdownUsers();

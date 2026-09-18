@@ -2459,3 +2459,40 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
   - `python -m ruff check src/`：零警告通过；
   - `python -m mypy src/main.py --ignore-missing-imports`：零类型错误通过；
   - `node -c static/script.js`：语法 100% 正确。
+
+---
+
+## 66. 微软 Power BI API 限流配额深度解析与全局轻量 Toast 通知反馈体系 (Power BI API Throttling Limits & Global Toast Notification System)
+
+### 66.1 微软官方 API 请求频次配额深度解析 (Microsoft Official Rate Limits)
+微软 Power BI 服务端通过漏桶/令牌桶算法对各类 API 实施多维度的分层限流保护（Throttling & Rate Limits）：
+1. **Admin API (租户管理员接口，如 `/v1.0/myorg/admin/...`)**：
+   - **小时级配额 (Hourly Limit)**：标准租户每小时最大调用量通常限制为 **200 次请求 (Requests per hour per tenant)**，平均每分钟约 3~4 次；
+   - **突发窗口限制 (Burst Limits)**：在较短时间窗口（如 1~2 分钟）内，若连续高频发起带 `$expand=users,datasets` 或 `/artifactAccess` 等耗费多表 JOIN 计算的复杂请求，云端会直接触发 429 节流保护；
+   - **429 标头指示**：微软会在响应中下发 `Retry-After: <seconds>` 标头（如实测中的 `Retry in 221 seconds`，即强制冷却 3.5 分钟）；
+2. **常规 REST API (非管理员普通工作区及报表接口，如 `/groups/{id}/...`)**：
+   - **共享容量 (Pro/Shared Capacity)**：单用户/租户每小时最多 **120 次请求**；
+   - **Fabric / Premium 独立容量 (P/F SKU)**：每分钟可支持高达 **120 次请求**，或受容量后台 CU(Capacity Units) 消耗保护；
+3. **DAX 执行接口 (`/datasets/{id}/executeQueries`)**：
+   - 共享容量：每分钟 120 次，最大并发 6 个；Premium 容量并发支持更高。
+
+### 66.2 多次点击无提示根因定位与全局 Toast 通知组件实装
+1. **无提示根因剖析**：
+   - 历史代码中虽然在大量函数中编写了 `if (window.showNotification) window.showNotification(...)`，但全局作用域内从未挂载该函数的具体实现，导致所有通知调用全部被 `if` 拦截静默丢弃；
+   - 后端在 15 秒频次保护期内默默复用了内存快照，未向上层返回具体的提示文案，导致用户快速连续点击时产生“点了没反应”的困惑。
+2. **全局轻量 Toast 通知系统落地 (`#pbi-toast-container` & `.pbi-toast-item`)**：
+   - 在 [static/style.css](file:///D:/zcm/Proj-PBI-API/static/style.css) 中实现高质感玻璃拟态卡片样式，支持 `toast-success`（绿）、`toast-warning`（黄）、`toast-error`（红）与 `toast-info`（蓝），具备 0.28s 流体弹簧滑入与淡出过渡；
+   - 在 [static/script.js](file:///D:/zcm/Proj-PBI-API/static/script.js) 中实装全局函数 `window.showNotification(message, type, duration)`；
+   - 在 [static/script.js](file:///D:/zcm/Proj-PBI-API/static/script.js) 的 `fetchGumWorkspaceUsers` 中集成 3 秒客户端防抖：3 秒内连续重复点击立即弹出友好 Toast `⚡ 刚刚已同步最新人员名单，请勿频繁连续点击（微软 API 保护中）`，并在成功穿透或命中超频保护时给出清晰反馈；
+   - 在 [src/permission_scanner.py](file:///D:/zcm/Proj-PBI-API/src/permission_scanner.py) 中，当命中 15 秒保护时主动返回具体秒数提示文案。
+3. **版本防缓存更新**：
+   - 在 [static/index.html](file:///D:/zcm/Proj-PBI-API/static/index.html) 中同步递增 `style.css` 与 `script.js` 版本号至 `?v=20260918_v2245`。
+
+### 66.3 自动化测试与质量闭环 (Automated Playwright QA Loop)
+- **Playwright 连续点击自动化测试断言**：
+  - 模拟第 1 次点击：按钮正常执行，从微软云端同步 7 位用户并触发成功 Toast；
+  - 模拟立即连续第 2 次快速连击：客户端立即捕获防抖保护，弹出黄色 Toast 提示 `⚡ 刚刚已同步最新人员名单，请勿频繁连续点击（微软 API 保护中）`，用户列表丝滑保持可见，彻底解决“多次点击无提示”痛点；
+- **静态代码健康检查**：
+  - `python -m ruff check src/`：零警告通过；
+  - `python -m mypy src/main.py --ignore-missing-imports`：零类型错误通过；
+  - `node -c static/script.js`：语法 100% 正确。

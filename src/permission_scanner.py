@@ -652,6 +652,8 @@ async def scan_candidate_users(
     if cached_workspaces and cache_age < 15:
         workspaces = cached_workspaces
         has_valid_cache = True
+        elapsed = max(1, int(cache_age))
+        warning_msg = f"⚡ 当前名单为 {elapsed} 秒前同步的最新快照（已自动启动微软 API 15 秒超频保护）"
     elif has_valid_cache:
         workspaces = cached_workspaces
     else:
