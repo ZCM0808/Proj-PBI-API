@@ -1,9 +1,32 @@
 """Power BI REST API 客户端"""
 
 import os
+import time
+from typing import Any, Dict, Optional
 import requests  # type: ignore[import-untyped]
+from requests.adapters import HTTPAdapter  # type: ignore[import-untyped]
 from msal import ConfidentialClientApplication, PublicClientApplication, SerializableTokenCache  # type: ignore[import-untyped]
 from src.config import Config
+
+# 模块级全局连接池与 Token 内存缓存 (彻底消除频繁 TCP/TLS 跨洋握手与磁盘反序列化耗时)
+_GLOBAL_HTTP_SESSION: Optional[requests.Session] = None
+_GLOBAL_TOKEN_CACHE: Dict[str, Dict[str, Any]] = {}
+
+
+def get_shared_session() -> requests.Session:
+    """获取全局复用的 HTTP Keep-Alive 连接池会话"""
+    global _GLOBAL_HTTP_SESSION
+    if _GLOBAL_HTTP_SESSION is None:
+        s = requests.Session()
+        adapter = HTTPAdapter(
+            pool_connections=25,
+            pool_maxsize=50,
+            max_retries=1
+        )
+        s.mount("https://", adapter)
+        s.mount("http://", adapter)
+        _GLOBAL_HTTP_SESSION = s
+    return _GLOBAL_HTTP_SESSION
 
 
 class PBIClient:
@@ -24,10 +47,17 @@ class PBIClient:
                 f.write(self.cache.serialize())
 
     def _get_token(self, api_type: str = "powerbi") -> str:
-        """获取访问令牌"""
+        """获取访问令牌 (优先内存缓存 0ms 瞬间返回)"""
         api_type_clean = api_type.strip().lower()
         scope = ["https://api.fabric.microsoft.com/.default"] if api_type_clean == "fabric" else self.config.SCOPE
-        
+
+        now = time.time()
+        auth_identity = self.config.USERNAME if self.config.AUTH_MODE == "personal" else self.config.CLIENT_ID
+        cache_key = f"{self.config.AUTH_MODE}_{api_type_clean}_{auth_identity}"
+        cached_entry = _GLOBAL_TOKEN_CACHE.get(cache_key)
+        if cached_entry and cached_entry.get("expires_at", 0) > now + 180:
+            return str(cached_entry["token"])
+
         result = None
         if self.config.AUTH_MODE == "personal":
             app = PublicClientApplication(
@@ -35,19 +65,19 @@ class PBIClient:
                 authority=self.config.authority_url,
                 token_cache=self.cache
             )
-            
+
             # First try silent cache
             accounts = app.get_accounts(username=self.config.USERNAME)
             if accounts:
                 result = app.acquire_token_silent(scope, account=accounts[0])
-                
+
             if not result:
                 result = app.acquire_token_by_username_password(
                     username=self.config.USERNAME,
                     password=self.config.PASSWORD,
                     scopes=scope
                 )
-                
+
             # Fallback to interactive if MFA is required or interaction needed
             if result and "error" in result:
                 error_codes = result.get("error_codes", [])
@@ -65,10 +95,16 @@ class PBIClient:
                 token_cache=self.cache
             )
             result = app.acquire_token_for_client(scopes=scope)
-            
+
         self._save_cache()
         if result and "access_token" in result:
-            return result["access_token"]
+            token_val = result["access_token"]
+            expires_in = int(result.get("expires_in", 3600))
+            _GLOBAL_TOKEN_CACHE[cache_key] = {
+                "token": token_val,
+                "expires_at": now + expires_in
+            }
+            return token_val
         raise Exception(f"获取令牌失败: {result.get('error_description', '未知错误') if result else '未返回结果'}")
 
     @property
@@ -92,25 +128,27 @@ class PBIClient:
         """
         api_type_clean = api_type.strip().lower()
         base_url = "https://api.fabric.microsoft.com/v1" if api_type_clean == "fabric" else self.config.BASE_URL
-        
+
         # 兼容处理，确保拼接时路径斜线没有重复
         if endpoint.startswith("/") and base_url.endswith("/"):
             url = f"{base_url}{endpoint[1:]}"
         else:
             url = f"{base_url}{endpoint}"
-            
+
         # [安全验证] 双重防御：确保组装后的 URL 必须指向官方域
         if not (url.startswith("https://api.powerbi.com/") or url.startswith("https://api.fabric.microsoft.com/")):
             raise Exception("Security Violation: Target URL must belong to Power BI or Fabric domains.")
-        
+
         # 获取对应类型的 Token 并生成 headers
         token = self._get_token(api_type)
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         }
-        
-        response = requests.request(
+
+        # 采用全局 Keep-Alive 连接池发送请求，复用 TCP/TLS 会话
+        session = get_shared_session()
+        response = session.request(
             method=method.upper(),
             url=url,
             headers=headers,
