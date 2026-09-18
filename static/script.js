@@ -18317,11 +18317,30 @@ if (!window._gumDropdownClickListenerAdded) {
 window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
     const scope = window.gumAuditScope || 'tenant';
     const selectedWss = window.getSelectedWorkspaces ? window.getSelectedWorkspaces() : [];
-    const wsData = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
 
     const dropdownList = document.getElementById('wf-gum-dropdown-list');
     const dropdownCount = document.getElementById('wf-gum-dropdown-count');
     const scanBtn = document.getElementById('wf-gum-scan-users-btn');
+
+    if (scope === 'workspaces' && selectedWss.length === 0) {
+        if (dropdownCount) dropdownCount.innerHTML = '<span style="color:var(--warning); font-size:0.72rem;">未选择工作区</span>';
+        if (dropdownList) {
+            dropdownList.innerHTML = `
+                <div style="font-size: 0.75rem; color: var(--text-secondary); padding: 12px 8px; text-align: center;">
+                    ⚠️ 全局功能区暂未选定工作区。<br>
+                    <a href="javascript:void(0)" onclick="window.toggleGtbWsDropdown(event)" style="color: var(--accent); text-decoration: underline; margin-top: 4px; display: inline-block;">点击展开顶栏工作区多选面板</a>
+                </div>
+            `;
+        }
+        return;
+    }
+
+    const cacheKey = (scope === 'tenant') ? '__ALL_TENANT_WORKSPACES__' : `__WORKSPACES_${selectedWss.slice().sort().join('_')}__`;
+    if (!forceRefresh && window.gumWorkspaceUsersCache && window.gumWorkspaceUsersCache.has(cacheKey)) {
+        window.gumCandidateUsers = window.gumWorkspaceUsersCache.get(cacheKey) || [];
+        window.renderGumDropdownUsers();
+        return;
+    }
 
     if (scanBtn) {
         scanBtn.disabled = true;
@@ -18348,237 +18367,39 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
         }
     };
 
-    // 1. 🏢 当前租户级别 (全租户穿透汇聚)
-    if (scope === 'tenant') {
-        const cacheKey = '__ALL_TENANT_WORKSPACES__';
-        if (!forceRefresh && window.gumWorkspaceUsersCache && window.gumWorkspaceUsersCache.has(cacheKey)) {
-            window.gumCandidateUsers = window.gumWorkspaceUsersCache.get(cacheKey) || [];
-            window.renderGumDropdownUsers();
-            resetScanBtn();
-            return;
-        }
-
-        if (dropdownCount) {
-            dropdownCount.innerHTML = '<span style="color:var(--accent); font-size:0.72rem;">⏳ 正在全租户汇总...</span>';
-        }
-        if (dropdownList) {
-            dropdownList.innerHTML = '<div style="font-size: 0.75rem; color: var(--text-secondary); padding: 8px 4px; text-align: center;">⏳ 正在穿透全租户扫描全部工作区并汇聚授权用户名单...</div>';
-        }
-
-        try {
-            let candidates = [];
-            try {
-                const adminRes = await fetch('/api/proxy', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ endpoint: '/admin/groups?$top=500&$expand=users', method: 'GET' })
-                });
-                const adminRaw = await adminRes.json();
-                const adminData = adminRaw.data || adminRaw;
-                const wsList = Array.isArray(adminData) ? adminData : (adminData.value || []);
-                if (Array.isArray(wsList) && wsList.length > 0) {
-                    const mergedMap = new Map();
-                    wsList.forEach(ws => {
-                        const wid = ws.id;
-                        const wname = ws.name || wid;
-                        (ws.users || []).forEach(u => {
-                            const emailStr = (u.emailAddress || u.userPrincipalName || '').trim();
-                            const identStr = (u.identifier || '').trim();
-                            const ident = emailStr || identStr;
-                            if (ident) {
-                                const key = ident.toLowerCase();
-                                if (!mergedMap.has(key)) {
-                                    mergedMap.set(key, {
-                                        identifier: ident,
-                                        displayName: (u.displayName || identStr || emailStr).trim(),
-                                        graphId: (u.graphId || '').trim(),
-                                        principalType: u.principalType || 'User',
-                                        role: u.groupUserAccessRight || 'Viewer',
-                                        workspaceId: wid,
-                                        workspaceName: wname
-                                    });
-                                }
-                            }
-                        });
-                    });
-                    candidates = Array.from(mergedMap.values());
-                }
-            } catch (adminErr) {
-                console.warn('Admin API expand users failed, falling back to local workspaces query:', adminErr);
-            }
-
-            if (!candidates || candidates.length === 0) {
-                const promises = wsData.map(async (ws) => {
-                    const wid = ws.id;
-                    const wname = ws.alias || ws.name || wid;
-                    try {
-                        const res = await fetch('/api/proxy', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ endpoint: `/groups/${wid}/users`, method: 'GET' })
-                        });
-                        const rawData = await res.json();
-                        const data = rawData.data || rawData;
-                        const usersList = Array.isArray(data) ? data : (data.value || []);
-                        return usersList.map(u => {
-                            const emailStr = (u.emailAddress || u.userPrincipalName || '').trim();
-                            const identStr = (u.identifier || '').trim();
-                            const ident = emailStr || identStr;
-                            return {
-                                identifier: ident,
-                                displayName: (u.displayName || identStr || emailStr).trim(),
-                                graphId: (u.graphId || '').trim(),
-                                principalType: u.principalType || 'User',
-                                role: u.groupUserAccessRight || 'Viewer',
-                                workspaceId: wid,
-                                workspaceName: wname
-                            };
-                        }).filter(u => u.identifier);
-                    } catch(e) {
-                        return [];
-                    }
-                });
-
-                const results = await Promise.allSettled(promises);
-                const mergedMap = new Map();
-                results.forEach(r => {
-                    if (r.status === 'fulfilled' && Array.isArray(r.value)) {
-                        r.value.forEach(u => {
-                            const key = u.identifier.toLowerCase();
-                            if (!mergedMap.has(key)) {
-                                mergedMap.set(key, u);
-                            }
-                        });
-                    }
-                });
-                candidates = Array.from(mergedMap.values());
-            }
-
-            window.gumCandidateUsers = candidates;
-            if (!window.gumWorkspaceUsersCache) window.gumWorkspaceUsersCache = new Map();
-            window.gumWorkspaceUsersCache.set(cacheKey, candidates);
-            window.renderGumDropdownUsers();
-        } catch(e) {
-            console.error('Failed to aggregate all tenant workspace users:', e);
-            if (dropdownCount) {
-                dropdownCount.innerHTML = `<span style="color:var(--warning); font-size:0.72rem;">⚠️ 汇总失败: ${e.message}</span>`;
-            }
-            if (dropdownList) {
-                dropdownList.innerHTML = `<div style="font-size:0.75rem; color:var(--warning); padding:8px 4px; text-align: center;">全租户拉取失败，您仍可在搜索栏直接输入目标邮箱。</div>`;
-            }
-        } finally {
-            resetScanBtn();
-        }
-        return;
-    }
-
-    // 2. 📂 当前工作区级别 (按全局顶栏选中的工作区多选扫描)
-    if (selectedWss.length === 0) {
-        if (dropdownCount) dropdownCount.innerHTML = '<span style="color:var(--warning); font-size:0.72rem;">未选择工作区</span>';
-        if (dropdownList) {
-            dropdownList.innerHTML = `
-                <div style="font-size: 0.75rem; color: var(--text-secondary); padding: 12px 8px; text-align: center;">
-                    ⚠️ 全局功能区暂未选定工作区。<br>
-                    <a href="javascript:void(0)" onclick="window.toggleGtbWsDropdown(event)" style="color: var(--accent); text-decoration: underline; margin-top: 4px; display: inline-block;">点击展开顶栏工作区多选面板</a>
-                </div>
-            `;
-        }
-        resetScanBtn();
-        return;
-    }
-
-    const cacheKey = `__WORKSPACES_${selectedWss.sort().join('_')}__`;
-    if (!forceRefresh && window.gumWorkspaceUsersCache && window.gumWorkspaceUsersCache.has(cacheKey)) {
-        window.gumCandidateUsers = window.gumWorkspaceUsersCache.get(cacheKey) || [];
-        window.renderGumDropdownUsers();
-        resetScanBtn();
-        return;
-    }
-
     if (dropdownCount) {
-        dropdownCount.innerHTML = `<span style="color:var(--accent); font-size:0.72rem;">⏳ 正在拉取 (${selectedWss.length}个工作区)...</span>`;
+        dropdownCount.innerHTML = '<span style="color:var(--accent); font-size:0.72rem;">⏳ 极速扫描中...</span>';
     }
     if (dropdownList) {
-        dropdownList.innerHTML = `<div style="font-size: 0.75rem; color: var(--text-secondary); padding: 8px 4px; text-align: center;">⏳ 正在穿透已选的 ${selectedWss.length} 个工作区获取授权人员名单...</div>`;
+        dropdownList.innerHTML = '<div style="font-size: 0.75rem; color: var(--text-secondary); padding: 8px 4px; text-align: center;">⏳ 正在调用后端高性能引擎高速聚合候选人员名单...</div>';
     }
 
     try {
-        const promises = selectedWss.map(async (wid) => {
-            const matched = wsData.find(w => String(w.id).toLowerCase() === String(wid).toLowerCase());
-            const wname = matched ? (matched.alias || matched.name || wid) : wid;
-            try {
-                // 优先 Admin 单独查询
-                let usersList = [];
-                try {
-                    const adminRes = await fetch('/api/proxy', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            endpoint: `/admin/groups?$top=1&$filter=id eq '${wid}'&$expand=users`,
-                            method: 'GET'
-                        })
-                    });
-                    const adminRaw = await adminRes.json();
-                    const adminData = adminRaw.data || adminRaw;
-                    const sList = Array.isArray(adminData) ? adminData : (adminData.value || []);
-                    if (sList && sList.length > 0 && sList[0].users) {
-                        usersList = sList[0].users;
-                    }
-                } catch(err) {}
-
-                if (!usersList || usersList.length === 0) {
-                    const res = await fetch('/api/proxy', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ endpoint: `/groups/${wid}/users`, method: 'GET' })
-                    });
-                    const rawData = await res.json();
-                    const data = rawData.data || rawData;
-                    usersList = Array.isArray(data) ? data : (data.value || []);
-                }
-
-                return (usersList || []).map(u => {
-                    const emailStr = (u.emailAddress || u.userPrincipalName || '').trim();
-                    const identStr = (u.identifier || '').trim();
-                    const ident = emailStr || identStr;
-                    return {
-                        identifier: ident,
-                        displayName: (u.displayName || identStr || emailStr).trim(),
-                        graphId: (u.graphId || '').trim(),
-                        principalType: u.principalType || 'User',
-                        role: u.groupUserAccessRight || 'Viewer',
-                        workspaceId: wid,
-                        workspaceName: wname
-                    };
-                }).filter(u => u.identifier);
-            } catch(e) {
-                return [];
-            }
+        const payload = {
+            scope: scope,
+            workspace_ids: (scope === 'workspaces') ? selectedWss : null,
+            force_refresh: forceRefresh
+        };
+        const res = await fetch('/api/workflow/scan-users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
         });
+        const data = await res.json();
+        if (!res.ok || (data && data.success === false)) {
+            throw new Error(data.message || res.statusText || '拉取人员名单失败');
+        }
 
-        const results = await Promise.allSettled(promises);
-        const mergedMap = new Map();
-        results.forEach(r => {
-            if (r.status === 'fulfilled' && Array.isArray(r.value)) {
-                r.value.forEach(u => {
-                    const key = u.identifier.toLowerCase();
-                    if (!mergedMap.has(key)) {
-                        mergedMap.set(key, u);
-                    }
-                });
-            }
-        });
-
-        const candidates = Array.from(mergedMap.values());
+        const candidates = data.users || [];
         window.gumCandidateUsers = candidates;
         if (!window.gumWorkspaceUsersCache) window.gumWorkspaceUsersCache = new Map();
         window.gumWorkspaceUsersCache.set(cacheKey, candidates);
 
         window.renderGumDropdownUsers();
     } catch(e) {
-        console.error('Failed to fetch selected workspace users:', e);
+        console.error('Failed to scan candidate users:', e);
         if (dropdownCount) {
-            dropdownCount.innerHTML = `<span style="color:var(--warning); font-size:0.72rem;">⚠️ 获取失败: ${e.message}</span>`;
+            dropdownCount.innerHTML = `<span style="color:var(--warning); font-size:0.72rem;">⚠️ 扫描失败: ${e.message}</span>`;
         }
         if (dropdownList) {
             dropdownList.innerHTML = `<div style="font-size:0.75rem; color:var(--warning); padding:8px 4px; text-align: center;">拉取失败，您仍可在搜索栏直接输入目标邮箱。</div>`;

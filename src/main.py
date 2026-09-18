@@ -2830,3 +2830,29 @@ async def api_deep_permissions_scan(req: DeepPermissionScanRequest):
         return {"success": False, "message": str(e)}
 
 
+class ScanCandidateUsersRequest(BaseModel):
+    scope: Optional[str] = "tenant"
+    workspace_ids: Optional[List[str]] = None
+    force_refresh: bool = False
+
+
+@app.post("/api/workflow/scan-users")
+async def api_scan_candidate_users(req: ScanCandidateUsersRequest):
+    """极速扫描工作区/租户候选人员名单 (0ms 内存缓存秒级复用 + 后端异步并发)"""
+    from src.permission_scanner import scan_candidate_users
+    try:
+        cfg = Config()
+        cli = PBIClient(cfg)
+        res = await scan_candidate_users(
+            scope=req.scope,
+            workspace_ids=req.workspace_ids,
+            force_refresh=req.force_refresh,
+            config=cfg,
+            client=cli
+        )
+        return res
+    except Exception as e:
+        return {"success": False, "message": str(e), "users": []}
+
+
+

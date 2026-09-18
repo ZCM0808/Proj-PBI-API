@@ -616,3 +616,105 @@ async def scan_permissions_deep(
         },
         "records": all_records
     }
+
+
+class CandidateUsersScanRequest(BaseModel):
+    scope: Optional[str] = "tenant"
+    workspace_ids: Optional[List[str]] = None
+    force_refresh: bool = False
+
+
+async def scan_candidate_users(
+    scope: Optional[str] = "tenant",
+    workspace_ids: Optional[List[str]] = None,
+    force_refresh: bool = False,
+    config: Optional[Config] = None,
+    client: Optional[PBIClient] = None
+) -> Dict[str, Any]:
+    """
+    极速扫描工作区候选用户名单 (用于 GUM 搜索下拉列表人员快速填充与定向审计)
+    1. 内存缓存优先复用 (0ms 极速响应)
+    2. 后端异步并发拉取 Admin API
+    3. 支持全租户与指定工作区智能过滤
+    """
+    cfg = config or Config()
+    cli = client or PBIClient(cfg)
+    now = time.time()
+
+    cached_workspaces = _TENANT_WORKSPACES_CACHE.get("workspaces", [])
+    cache_age = now - _TENANT_WORKSPACES_CACHE.get("timestamp", 0.0)
+    has_valid_cache = bool(cached_workspaces and cache_age < 180 and not force_refresh)
+
+    workspaces: List[Dict[str, Any]] = []
+    if has_valid_cache:
+        workspaces = cached_workspaces
+    else:
+        try:
+            ws_res = await asyncio.to_thread(
+                cli.request, "GET", "/admin/groups?$top=500&$expand=users,datasets"
+            )
+            workspaces = ws_res.get("value", [])
+            if workspaces:
+                _TENANT_WORKSPACES_CACHE["timestamp"] = now
+                _TENANT_WORKSPACES_CACHE["workspaces"] = workspaces
+        except Exception:
+            try:
+                ws_res = await asyncio.to_thread(cli.request, "GET", "/groups?$top=100")
+                workspaces = ws_res.get("value", [])
+            except Exception as e:
+                return {"success": False, "message": f"拉取工作区失败: {str(e)}", "users": []}
+
+    # 过滤工作区范围
+    target_ws_set = {str(w).strip().lower() for w in (workspace_ids or []) if str(w).strip()}
+    if scope == "workspaces" and target_ws_set:
+        filtered_workspaces = [w for w in workspaces if str(w.get("id", "")).lower() in target_ws_set]
+        found_ids = {str(w.get("id", "")).lower() for w in filtered_workspaces}
+        missing_ids = [wid for wid in target_ws_set if wid not in found_ids]
+        if missing_ids:
+            async def _fetch_missing(wid: str) -> Optional[Dict[str, Any]]:
+                try:
+                    res = await asyncio.to_thread(cli.request, "GET", f"/groups/{wid}/users")
+                    return {"id": wid, "name": wid, "users": res.get("value", [])}
+                except Exception:
+                    return None
+            missing_res = await asyncio.gather(*[_fetch_missing(wid) for wid in missing_ids])
+            for mr in missing_res:
+                if mr:
+                    filtered_workspaces.append(mr)
+        workspaces = filtered_workspaces
+
+    merged_users: Dict[str, Dict[str, Any]] = {}
+    for ws in workspaces:
+        wid = ws.get("id") or ""
+        wname = ws.get("name") or wid
+        for u in ws.get("users", []):
+            email = (u.get("emailAddress") or u.get("userPrincipalName") or "").strip()
+            ident = (u.get("identifier") or "").strip()
+            gid = (u.get("graphId") or "").strip()
+            ptype = u.get("principalType") or "User"
+            role = u.get("groupUserAccessRight") or "Viewer"
+            disp = (u.get("displayName") or email or ident).strip()
+
+            key = (email or ident or gid).lower()
+            if not key:
+                continue
+
+            if key not in merged_users:
+                merged_users[key] = {
+                    "identifier": email or ident or gid,
+                    "displayName": disp,
+                    "graphId": gid,
+                    "principalType": ptype,
+                    "role": role,
+                    "workspaceId": wid,
+                    "workspaceName": wname
+                }
+
+    candidates = list(merged_users.values())
+    return {
+        "success": True,
+        "users": candidates,
+        "count": len(candidates),
+        "cached": has_valid_cache
+    }
+
