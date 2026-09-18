@@ -12291,6 +12291,14 @@ window.openNoteModal = function() {
         });
     }
 
+    // 检查并恢复 active note filename (防止打开时 filename 为空)
+    const savedFn = (localStorage.getItem('pbi_active_note_filename') || '').trim();
+    const fnInput = document.getElementById('note-filename');
+    if (fnInput && !fnInput.value.trim() && savedFn) {
+        fnInput.value = savedFn;
+        window._activeNoteFilename = savedFn;
+    }
+
     // Load history
     window.searchNotes();
 };
@@ -12564,6 +12572,54 @@ document.addEventListener('click', (e) => {
     }
 });
 
+window._activeNoteFilename = localStorage.getItem('pbi_active_note_filename') || '';
+
+// 设置并激活指定的笔记 (同步文件名、编辑器内容、本地存储与高亮态)
+window.setActiveNote = function(filename, content = null, syncEditor = true) {
+    const fn = (filename || '').trim();
+    window._activeNoteFilename = fn;
+    if (fn) {
+        localStorage.setItem('pbi_active_note_filename', fn);
+    } else {
+        localStorage.removeItem('pbi_active_note_filename');
+    }
+    const fnInput = document.getElementById('note-filename');
+    if (fnInput && fnInput.value !== fn) {
+        fnInput.value = fn;
+    }
+    if (syncEditor && easyMDE && content !== null && content !== undefined) {
+        easyMDE.value(content);
+    }
+    window.highlightActiveNoteItem();
+};
+
+// 高亮左侧列表中与当前 note-filename 匹配的项 (完全对齐工作流选中侧边栏设计)
+window.highlightActiveNoteItem = function() {
+    const fnInputVal = (document.getElementById('note-filename')?.value || '').trim();
+    const currentFn = fnInputVal || window._activeNoteFilename || (localStorage.getItem('pbi_active_note_filename') || '').trim();
+    const items = document.querySelectorAll('#note-history-list .note-history-item');
+    items.forEach(el => {
+        const fn = el.getAttribute('data-filename') || '';
+        if (currentFn && fn.toLowerCase() === currentFn.toLowerCase()) {
+            el.classList.add('active');
+        } else {
+            el.classList.remove('active');
+        }
+    });
+};
+
+// 监听用户在文件名输入框的实时输入，同步高亮与本地记录
+window.handleNoteFilenameInput = function(inputEl) {
+    const val = (inputEl ? inputEl.value : '').trim();
+    window._activeNoteFilename = val;
+    if (val) {
+        localStorage.setItem('pbi_active_note_filename', val);
+    } else {
+        localStorage.removeItem('pbi_active_note_filename');
+    }
+    window.highlightActiveNoteItem();
+};
+
 window.renderSortedNotesList = function() {
     const listEl = document.getElementById('note-history-list');
     const q = (document.getElementById('note-search')?.value || '').trim();
@@ -12594,12 +12650,8 @@ window.renderSortedNotesList = function() {
     listEl.innerHTML = '';
     sorted.forEach(note => {
         const item = document.createElement('div');
-        item.style.padding = '10px';
-        item.style.background = 'var(--input-bg)';
-        item.style.borderRadius = '6px';
-        item.style.border = '1px solid var(--panel-border)';
-        item.style.cursor = 'pointer';
-        item.style.transition = 'all 0.2s';
+        item.className = 'note-history-item';
+        item.setAttribute('data-filename', note.filename);
 
         const dateStr = new Date((note.mtime || 0) * 1000).toLocaleString();
         const byteSize = note.size || 0;
@@ -12618,7 +12670,7 @@ window.renderSortedNotesList = function() {
 
         item.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
-                <div style="font-weight: 500; font-size: 0.9rem; margin-bottom: 4px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;" title="${note.filename}">📄 ${note.filename}</div>
+                <div class="note-item-filename" style="font-weight: 500; font-size: 0.88rem; margin-bottom: 4px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;" title="${note.filename}">📄 ${note.filename}</div>
                 <button class="btn-delete-note" style="background: none; border: none; padding: 2px 6px; cursor: pointer; color: var(--error); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; opacity: 0.6; transition: all 0.2s;" title="Delete Note">❌</button>
             </div>
             <div style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
@@ -12627,9 +12679,6 @@ window.renderSortedNotesList = function() {
             </div>
             <div style="font-size: 0.8rem; color: var(--text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;">${snippetHtml}</div>
         `;
-
-        item.onmouseover = () => { item.style.background = 'var(--overlay-10)'; item.style.borderColor = 'var(--badge-custom-text)'; };
-        item.onmouseout = () => { item.style.background = 'var(--input-bg)'; item.style.borderColor = 'var(--panel-border)'; };
 
         const delBtn = item.querySelector('.btn-delete-note');
         delBtn.onmouseover = (e) => { e.stopPropagation(); delBtn.style.opacity = '1'; delBtn.style.background = 'rgba(239, 68, 68, 0.15)'; };
@@ -12642,14 +12691,44 @@ window.renderSortedNotesList = function() {
         };
 
         item.onclick = () => {
-            document.getElementById('note-filename').value = note.filename;
-            if (easyMDE) {
-                easyMDE.value(note.content);
-            }
+            window.setActiveNote(note.filename, note.content, true);
         };
 
         listEl.appendChild(item);
     });
+
+    // 智能同步活跃笔记与文件名 (防御内容存在而 filename 为空的问题)
+    const fnInput = document.getElementById('note-filename');
+    let curFn = (fnInput?.value || window._activeNoteFilename || localStorage.getItem('pbi_active_note_filename') || '').trim();
+
+    if (!curFn) {
+        // 如果当前 filename 为空，检查是否有正在编辑的内容与某一已有笔记匹配
+        const editorContent = (easyMDE ? easyMDE.value() : '').trim();
+        if (editorContent) {
+            const matchedNote = sorted.find(n => (n.content || '').trim() === editorContent);
+            if (matchedNote) {
+                curFn = matchedNote.filename;
+                window.setActiveNote(matchedNote.filename, null, false);
+            }
+        }
+        // 如果仍为空且列表中存在笔记，则默认激活第一篇最新笔记
+        if (!curFn && sorted.length > 0) {
+            window.setActiveNote(sorted[0].filename, sorted[0].content, !editorContent);
+            curFn = sorted[0].filename;
+        }
+    } else {
+        // 存在记录的活跃文件名，同步设置并高亮
+        if (fnInput && !fnInput.value.trim()) {
+            fnInput.value = curFn;
+        }
+        // 若编辑区尚为空，而该文件存在，则加载内容
+        const matchedNote = sorted.find(n => n.filename.toLowerCase() === curFn.toLowerCase());
+        if (matchedNote && easyMDE && !easyMDE.value().trim()) {
+            easyMDE.value(matchedNote.content);
+        }
+    }
+
+    window.highlightActiveNoteItem();
 };
 
 window.searchNotes = async function() {
@@ -12697,41 +12776,30 @@ window.deleteMarkdownNote = async function(filename) {
             alert(data.message || "Note deleted successfully!");
 
             if (document.getElementById('note-filename').value.trim() === filename) {
-
-                document.getElementById('note-filename').value = '';
-
-                if (easyMDE) easyMDE.value('');
-
+                window.setActiveNote('', '', true);
+                if (easyMDE && typeof easyMDE.clearAutosavedValue === 'function') {
+                    try { easyMDE.clearAutosavedValue(); } catch(e) {}
+                }
             }
-
             window.searchNotes();
-
         } else {
-
             alert("Error deleting note: " + data.error);
-
         }
-
     } catch (e) {
-
         alert("Error deleting note: " + e.message);
-
     }
-
 };
 
-
-
 window.createNewNote = function() {
-
-    document.getElementById('note-filename').value = '';
-
-    if (easyMDE) {
-
-        easyMDE.value('');
-
+    window.setActiveNote('', '', true);
+    if (easyMDE && typeof easyMDE.clearAutosavedValue === 'function') {
+        try { easyMDE.clearAutosavedValue(); } catch(e) {}
     }
-
+    const fnInput = document.getElementById('note-filename');
+    if (fnInput) {
+        fnInput.value = '';
+        fnInput.focus();
+    }
 };
 
 
@@ -12853,8 +12921,9 @@ window.saveMarkdownNote = async function() {
         const data = await response.json();
         
         if (data.success) {
-            if (data.filename) {
-                document.getElementById('note-filename').value = data.filename;
+            const savedName = data.filename || filename;
+            if (savedName) {
+                window.setActiveNote(savedName, null, false);
             }
             if (window.showNotification) {
                 window.showNotification(data.message || "Note saved & pushed successfully!", "success");

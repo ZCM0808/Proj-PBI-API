@@ -2220,7 +2220,7 @@ json-viewer {
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     box-shadow: 0 10px 50px var(--shadow-dark);
-    padding: 12px 18px 14px 18px;
+    padding: 10px 16px 12px 16px;
     position: relative;
     box-sizing: border-box;
     display: flex;
@@ -2234,8 +2234,9 @@ json-viewer {
 #modal-note .modal-header {
     cursor: move;
     user-select: none;
-    margin-bottom: 8px !important;
-    padding-bottom: 8px !important;
+    margin: 0 0 6px 0 !important;
+    padding: 0 0 6px 0 !important;
+    border-bottom: 1px solid var(--panel-border) !important;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -2243,8 +2244,53 @@ json-viewer {
 }
 
 #modal-note .modal-header h3 {
-    font-size: 0.96rem !important;
+    font-size: 0.92rem !important;
     font-weight: 600;
+}
+
+/* Quick Note 左侧列表项与高亮选中态 (类似工作流选中高亮) */
+.note-history-item {
+    padding: 10px;
+    background: var(--input-bg);
+    border-radius: 6px;
+    border: 1px solid var(--panel-border);
+    border-left: 3px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+}
+
+.note-history-item:hover {
+    background: var(--overlay-10);
+    border-color: var(--badge-custom-text);
+    border-left-color: var(--accent);
+    transform: translateX(2px);
+}
+
+.note-history-item.active {
+    background: var(--overlay-15) !important;
+    border-color: var(--accent) !important;
+    border-left: 3px solid var(--accent) !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    transform: translateX(2px);
+}
+
+.note-history-item.active .note-item-filename {
+    color: var(--accent) !important;
+    font-weight: 600 !important;
+}
+
+body.light-theme .note-history-item.active,
+[data-theme="light"] .note-history-item.active {
+    background: #e0f2fe !important;
+    border-color: #0284c7 !important;
+    border-left-color: #0284c7 !important;
+    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.15);
+}
+
+body.light-theme .note-history-item.active .note-item-filename,
+[data-theme="light"] .note-history-item.active .note-item-filename {
+    color: #0284c7 !important;
 }
 
 /* 防御单行超长文本撑破编辑器与弹窗 (Robust Word Wrap & Overflow Defense) */

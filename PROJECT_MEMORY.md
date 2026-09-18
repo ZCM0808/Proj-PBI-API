@@ -2264,4 +2264,55 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
 - **Playwright 100% 绿灯全通过**：全部 6 项测试用例全部通过 (`6 passed (32.8s)`)；
 - **代码健康静态检查**：`python -m ruff check src/` 零警告，`python -m mypy src/main.py --ignore-missing-imports` 零错误。
 
+---
+
+## 61. Quick Note 便签文件名持久同步、列表高亮与紧凑精致顶栏重构 (Quick Note Filename Auto-Sync, Active Item Highlight & Header Space Streamline)
+
+### 61.1 业务背景与改造痛点 (Context & Problem Diagnosis)
+1. **Filename 总是为空的根本原因**：
+   - EasyMDE 编辑器启用了 `autosave` 本地缓存（`smde_quick-note-autosave`），打开时会自动读取上一次留在编辑区的内容；
+   - 但是输入框 `#note-filename` 没有任何本地持久化记录，且在打开弹窗或列表初次加载时未做自动关联恢复；
+   - 导致用户重新打开便签时，编辑区显示了之前的内容，而文件名输入框却空空如也，容易误触保存导致生成无意义的时间戳新文件。
+2. **左侧便签列表缺乏选中高亮反馈**：
+   - 用户无法直观判断当前编辑区呈现的内容对应左侧列表里的哪一篇笔记，与左侧工作流导航选中的清晰高亮样式形成反差。
+3. **弹窗上方标题栏垂直空白挤占问题**：
+   - 弹窗外层 `.modal-content` 已包含 padding，原 `.modal-header` 继承了通用模态框的 `1rem 1.5rem`（上下 16px，左右 24px），且行内硬编码了 `margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid ...`；
+   - 弹窗宽达 960px，标题文字居左，关闭按钮居右，中间横跨 800+ 像素大面积空旷；
+   - 左右两栏下方又分别包含占行的 `<label>Search Notes</label>` 与 `<label>Filename (optional...)</label>`，导致在核心编辑区上方层层堆叠了 70~80px 的垂直空白与分割线，严重挤占了编辑区域。
+
+### 61.2 核心改造与技术实现 (Technical Implementation)
+1. **文件名全链路持久化与内容自动关联 (Filename Auto-Sync & Association)**：
+   - 引入全局 `window._activeNoteFilename` 并结合 `localStorage.setItem('pbi_active_note_filename', filename)` 实时持久化；
+   - 封装核心方法 `window.setActiveNote(filename, content, syncEditor)`，在点击左侧项、保存笔记、新建笔记、以及修改文件名输入框时做原子化状态同步；
+   - 在 `openNoteModal` 和 `renderSortedNotesList` 中实现智能关联：
+     - 若当前未选且编辑区有内容，智能逆向查找列表中内容相同的笔记并自动回填其文件名并高亮；
+     - 若当前未选且编辑区为空，默认激活并载入列表最新第一篇笔记，彻底消灭“内容存在而 filename 为空”的 Bug。
+2. **左侧笔记列表项选中高亮 (Active Note Item Highlighting)**：
+   - 为列表项定义专用样式 `.note-history-item` 与 `.note-history-item.active`，对齐工作流侧边栏标准：
+     - 左侧高光边框：`border-left: 3px solid var(--accent)`；
+     - 背景提亮：`background: var(--overlay-15)`（浅色模式 `#e0f2fe`）；
+     - 标题颜色加深：`color: var(--accent)`（浅色模式 `#0284c7`）；
+     - 投影与微位移：`box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); transform: translateX(2px)`；
+   - 封装 `window.highlightActiveNoteItem()`，根据当前激活文件名实时同步高亮状态。
+3. **顶栏空间紧凑化与空白区域移除 (Streamlined Compact Header)**：
+   - 将原 `#modal-note .modal-header` 重构为高度仅约 28px 的极简紧凑顶栏，消除过度的内外边距堆叠（`padding: 0 0 6px 0 !important; margin: 0 0 6px 0 !important;`）；
+   - 移除左侧栏中占用一行的 `<label>Search Notes</label>`，将搜索提示融入输入框内部 placeholder；
+   - 移除右侧栏中占用一行的 `<label>Filename (...)</label>`，文件名输入框与上传、插入 API 按钮垂直居中紧凑对齐；
+   - 将腾出的 50px+ 宝贵垂直空间奉还给笔记列表与 Markdown 编辑器，使弹窗更加优雅、现代化、赏心悦目；
+   - 保留头部拖拽把手（Draggable Handle）和关闭按钮（Consistent Button Appearance）。
+4. **缓存击穿防护 (Cache Busting)**：
+   - 静态资源版本号硬编码后缀递增至 `?v=20260918_v2055`。
+
+### 61.3 自动化测试与质量闭环验证
+- **Playwright 端到端断言**：
+  - 在 [tests/test_v3_improvements.spec.js](file:///D:/zcm/Proj-PBI-API/tests/test_v3_improvements.spec.js) 中新增 `Requirement 7`，断言：
+    1. 弹窗上方标题栏高度紧凑（`headerHeight <= 40px`）；
+    2. 多余的独立 label 标签已彻底移除；
+    3. 打开弹窗时自动填充文件名并高亮首项笔记；
+    4. 点击切换笔记时高亮切换与文件名同步；
+    5. 点击“新建笔记”时文件名与高亮同步清空重置；
+  - 测试全部通过：`1 passed (24.2s)`，且全局功能区测试集 `test_gtb_dropdowns.spec.js` 全部 6 项用例 100% 绿灯全过 (`6 passed`)；
+- **静态类型与代码质量检查**：`ruff check` 零警告，`mypy` 零错误。
+
+
 

@@ -164,4 +164,55 @@ test.describe('0918 Improvement v3 Requirements Verification', () => {
     await expect(clearBtn).toBeHidden();
   });
 
+  test('Requirement 7: Quick Note filename auto-sync, active note highlighting, and compact header space', async ({ page }) => {
+    // 模拟笔记数据并打开弹窗
+    await page.evaluate(() => {
+      window._currentNotesList = [
+        { filename: '20260918_200000.md', content: '# Welcome Note\nHello world', mtime: 1726660000, size: 28 },
+        { filename: 'architecture_design.md', content: '## System Architecture\nSpecs', mtime: 1726650000, size: 35 }
+      ];
+      localStorage.removeItem('pbi_active_note_filename');
+      if (window.openNoteModal) window.openNoteModal();
+      if (window.renderSortedNotesList) window.renderSortedNotesList();
+    });
+
+    const noteModal = page.locator('#modal-note');
+    await expect(noteModal).toBeVisible();
+
+    // 1. 验证上方标题栏紧凑化 (消除空旷空白区域)
+    const modalHeader = noteModal.locator('.modal-header');
+    await expect(modalHeader).toBeVisible();
+    const headerHeight = await modalHeader.evaluate(el => el.getBoundingClientRect().height);
+    expect(headerHeight).toBeLessThanOrEqual(40); // 紧凑高度，消除了多余空白
+
+    // 2. 验证多余的大 label 已移除
+    const searchLabels = noteModal.locator('.note-left-panel label');
+    expect(await searchLabels.count()).toBe(0);
+
+    // 3. 验证当前选中的笔记具备高亮态，并且 filename 自动填入
+    const filenameInput = page.locator('#note-filename');
+    await expect(filenameInput).toBeVisible();
+    // 默认应自动关联到第一篇笔记
+    expect(await filenameInput.inputValue()).toBe('20260918_200000.md');
+
+    // 第一项应具备 .active 类与高亮边框
+    const items = noteModal.locator('#note-history-list .note-history-item');
+    await expect(items).toHaveCount(2);
+    await expect(items.nth(0)).toHaveClass(/active/);
+    await expect(items.nth(1)).not.toHaveClass(/active/);
+
+    // 4. 点击第二项，验证高亮切换且 filename 与内容同步变更
+    await items.nth(1).click();
+    await expect(items.nth(0)).not.toHaveClass(/active/);
+    await expect(items.nth(1)).toHaveClass(/active/);
+    expect(await filenameInput.inputValue()).toBe('architecture_design.md');
+
+    // 5. 点击新建笔记，验证高亮清除且 filename 为空
+    const newBtn = page.locator('#btn-new-note');
+    await newBtn.click();
+    expect(await filenameInput.inputValue()).toBe('');
+    await expect(items.nth(0)).not.toHaveClass(/active/);
+    await expect(items.nth(1)).not.toHaveClass(/active/);
+  });
+
 });

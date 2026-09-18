@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260918_v2045">
+    <link rel="stylesheet" href="/static/style.css?v=20260918_v2055">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -2672,21 +2672,20 @@
     <!-- Quick Note Modal -->
     <div id="modal-note" class="modal-overlay" style="display: none;">
         <div class="modal-content glass-panel">
-            <div class="modal-header" style="margin-bottom: 12px; border-bottom: 1px solid var(--panel-border); padding-bottom: 12px;">
-                <h3 style="margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-                    <span>Markdown Note & History</span>
+            <div class="modal-header" style="margin-bottom: 8px; border-bottom: 1px solid var(--panel-border); padding: 0 0 8px 0; display: flex; align-items: center; justify-content: space-between;">
+                <h3 style="margin: 0; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                    <span>Markdown Quick Note & History</span>
                 </h3>
                 <button type="button" onclick="closeModalWithAnimation('modal-note')" class="close-btn" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
             </div>
             <div class="note-modal-body" style="display: flex; gap: 20px; align-items: stretch; flex: 1; height: 100%; min-height: 0;">
                 <!-- Left: History & Search -->
-                <div class="note-left-panel" style="width: 260px; display: flex; flex-direction: column; gap: 12px; border-right: 1px solid var(--panel-border); padding-right: 20px;">
+                <div class="note-left-panel" style="width: 260px; display: flex; flex-direction: column; gap: 10px; border-right: 1px solid var(--panel-border); padding-right: 20px;">
                     <div>
-                          <label style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 4px; display: block;">Search Notes</label>
                           <div style="display: flex; gap: 6px; align-items: center; position: relative;">
                               <div style="position: relative; flex: 1;">
-                                  <input type="text" id="note-search" placeholder="Search notes..." class="modern-input" style="width: 100%; height: 34px; box-sizing: border-box; padding: 4px 28px 4px 32px; font-size: 0.82rem; border-radius: 6px;" oninput="window.handleNoteSearchInput(this)" onkeyup="debounceSearchNotes()">
+                                  <input type="text" id="note-search" placeholder="搜索便签历史 (Search notes...)" class="modern-input" style="width: 100%; height: 34px; box-sizing: border-box; padding: 4px 28px 4px 32px; font-size: 0.82rem; border-radius: 6px;" oninput="window.handleNoteSearchInput(this)" onkeyup="debounceSearchNotes()">
                                   <svg style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); pointer-events: none;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                                   <button type="button" id="btn-clear-note-search" onclick="window.clearNoteSearch()" title="清空搜索" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: none; background: none; border: none; padding: 2px; cursor: pointer; color: var(--text-secondary); opacity: 0.7; transition: opacity 0.2s, color 0.2s; line-height: 1; align-items: center; justify-content: center;">
                                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -2708,17 +2707,16 @@
                 </div>
                 <!-- Right: Editor -->
                 <div class="note-right-panel" style="flex: 1; display: flex; flex-direction: column; gap: 10px;">
-                    <div class="note-filename-row" style="display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div class="note-filename-row" style="display: flex; justify-content: space-between; align-items: center;">
                         <div class="note-filename-container" style="flex: 1; margin-right: 12px;">
-                            <label style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 4px; display: block;">Filename (optional, defaults to timestamp)</label>
-                            <input type="text" id="note-filename" placeholder="e.g. feature-idea.md" class="modern-input" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px 10px; font-size: 0.82rem; border-radius: 6px;">
+                            <input type="text" id="note-filename" placeholder="笔记文件名 (可选，默认按时间戳命名，如 feature.md)" class="modern-input" style="width: 100%; height: 34px; box-sizing: border-box; padding: 4px 10px; font-size: 0.82rem; border-radius: 6px;" oninput="window.handleNoteFilenameInput(this)">
                         </div>
-                        <div style="display: flex; gap: 6px;">
+                        <div style="display: flex; gap: 6px; align-items: center;">
                             <input type="file" id="note-file-upload-input" style="display: none;" onchange="window.handleNoteFileUpload(event)" multiple>
-                            <button type="button" id="btn-upload-file" class="btn-insert-api btn-icon-sq" onclick="document.getElementById('note-file-upload-input').click()" title="上传图片或附件到笔记中 (支持拖拽/粘贴)" style="height: 32px; width: 32px;">
+                            <button type="button" id="btn-upload-file" class="btn-insert-api btn-icon-sq" onclick="document.getElementById('note-file-upload-input').click()" title="上传图片或附件到笔记中 (支持拖拽/粘贴)" style="height: 34px; width: 34px;">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
                             </button>
-                            <button type="button" id="btn-insert-api" class="btn-insert-api btn-icon-sq" onclick="insertLinkedApiIntoNote()" title="插入当前主工作区选中的 API 链接 (Insert API Link)" style="height: 32px; width: 32px;">
+                            <button type="button" id="btn-insert-api" class="btn-insert-api btn-icon-sq" onclick="insertLinkedApiIntoNote()" title="插入当前主工作区选中的 API 链接 (Insert API Link)" style="height: 34px; width: 34px;">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 007.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"></path></svg>
                             </button>
                         </div>
@@ -2816,7 +2814,7 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260918_v2030"></script>
-    <script src="/static/script.js?v=20260918_v2045"></script>
+    <script src="/static/script.js?v=20260918_v2055"></script>
 
 
 
