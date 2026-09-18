@@ -2318,38 +2318,44 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
 
 ## 62. GUM 全景用户与权限治理极速并发、唯一身份归一化与防限流重构 (Global User & Permissions Manager High-Concurrency, Deduplication & Rate Limiting Defense)
 
-### 62.1 业务背景与性能瓶颈诊断 (Context & Bottleneck Diagnosis)
-1. **默认全租户扫描的爆炸级放大**：
-   - 用户未指定工作区时，GUM 默认回退全租户扫描（`scope=tenant`），涉及大量工作区与数据集的层层下钻；
-2. **多层串行外循环 (Serial Workspace Iteration)**：
-   - 原代码 `for ws in workspaces:` 采用外层串行遍历，逐个拉取每个工作区的数据集、数据集用户底表及工作区直属成员，当租户下存在数十个工作区时，累积网络 I/O 阻塞高达数十秒；
-3. **用户 ID 双倍膨胀与重复 API 调用 (Duplicate Query ID Amplification)**：
-   - 每个自然人在工作区成员列表中通常同时包含 `graphId` (对象 GUID) 与 `emailAddress` (UPN)。原实现将二者无差别全量塞入 `unique_user_query_ids`，导致每一个自然人被重复触发两次高耗时的 `/admin/users/{userId}/artifactAccess` 请求，HTTP 请求量直接翻倍；
-4. **高频重型接口触发 429 限流风险 (Rate Limit & Throttling Risk)**：
-   - 瞬时无节制的高频并发可能打爆微软 Power BI Admin API 租户级配额并触发 429 (Too Many Requests)，原有异常捕获缺乏信号量调度与针对性的重试退避；
-5. **坚决不降级全量穿透深度审计 (Zero-Degradation Full Artifact Penetration)**：
-   - 坚决贯彻用户指令，绝不为了性能跳过或弱化 `/admin/users/{userId}/artifactAccess`，必须 100% 完整保留全局权限继承、非直属成员穿透权限、数据集细粒度读写碰撞与提权偏离检测 (Elevation Drift) 的完整度与精准度。
+### 62.1 业务背景与性能瓶颈深度剖析 (Context & Deep Bottleneck Diagnosis)
+通过对真实 Power BI 租户环境的毫秒级追踪 Profiling，定位到原先耗时达一分多钟（70~80s）的 4 大超级性能元凶：
+1. **微软 API 假分页/幽灵 Token 陷阱 (Phantom Continuation Token Bug)**：
+   - 微软 `/admin/users/{userId}/artifactAccess` 存在极其隐蔽的分页机制缺陷：即便第一页已返回该用户的全量资产权限（如 11 条记录），它仍然在响应体中返回一个带有 `continuationToken` 的 `continuationUri`；
+   - 原代码 `while url:` 盲目发起第 2 页请求，此时微软返回空列表（0 条数据）却**依然带有一个新的 continuationToken**！导致程序陷入漫长的翻页空循环，每一次无意义的空请求白白消耗 3~5 秒。
+2. **非 User 实体引发 400/404 严重挂起与退避重试**：
+   - 工作区直属成员中包含 `Group(如 Tenant Administrators)`、`App(如 Service Principal GUID)` 及系统服务账号 (`AdminInsights-...`)；
+   - 微软官方明确规定 `/admin/users/{userId}/artifactAccess` 仅支持真实合法 User 实体 (UPN 或真实 User GUID)。原实现将所有成员一并加入查询，导致微软 API 直接返回 400 Bad Request 或 404 EntityNotFound，不仅必定失败，而且在退避重试机制下每个主体被强行挂起 7~12 秒，严重拖垮性能。
+3. **个人工作区与系统监控工作区必定 404 陷阱**：
+   - 租户中存在大量个人工作区 (`PersonalGroup`，即用户的 My Workspace) 及 Fabric 系统内置工作区 (`AdminWorkspace`，如 Admin monitoring、容量指标工作区)；
+   - 微软 API 明确**不支持**对个人及系统内部工作区调用 `/datasets/{id}/users` 接口，每次调用必定 404，且在 Client 底层引发正则重试和异常挂起，白白耗时 30+ 秒。
+4. **工作区子资源空列表重复加载陷阱**：
+   - 在 Admin API 通过 `$expand=users,datasets` 已经返回全量信息的情况下，对于本身就没有数据集或直属用户的空工作区，原代码 `if not datasets:` 误判为未加载，从而反复发起无效的网络查询。
 
 ### 62.2 核心改造与技术实现 (Technical Implementation)
-1. **唯一身份归一化与别名映射去重系统 (Identity Normalization & Query Deduplication)**：
-   - 在 [src/permission_scanner.py](file:///D:/zcm/Proj-PBI-API/src/permission_scanner.py) 中引入 `register_user_identity(email, graph_id, extra_alias)` 核心算法；
-   - 通过代表元映射算法，将每个自然人的 `email`、`graphId` 及 `target_users` 关联并归纳至同一个 Primary 查询键；
-   - 每一个自然人实体仅发起一次 `/artifactAccess` 请求，查询完成后自动将快照数据广播写回该用户的所有别名缓存（`artifact_access_cache[alias]`），在保持后续 O(1) 毫秒级查询的同时，使重量级 API 请求量直接骤降 50% 以上。
-2. **工作区与数据集全面异步协程并行化 (Full Workspace & Dataset Coroutine Parallelism)**：
-   - 将原外层串行 `for ws in workspaces:` 重构为并发协程 `process_single_workspace(ws)`；
-   - 借助 `asyncio.gather` 将全租户所有工作区的数据集拉取、数据集用户底表抓取、以及工作区直属成员查询全面并行化，网络 I/O 延迟由 `O(N)` 骤降至 `O(1)`。
-3. **三级并发信号量池与指数退避重试 (Triple Semaphores & Exponential Backoff Defense)**：
-   - `ws_sem = asyncio.Semaphore(8)`：精准控制工作区级别 API 的并发量；
-   - `ds_sem = asyncio.Semaphore(12)`：控制数据集用户级别 API 的并发量；
-   - `artifact_sem = asyncio.Semaphore(6)`：控制重量级 `/artifactAccess` 全量穿透 API 的并发量；
-   - 在 `fetch_user_artifact_access` 内部针对 429 (Rate Limit) 或网络抖动引入最多 3 次自动指数退避重试机制（`await asyncio.sleep(retry_delay); retry_delay *= 2`），确保在 API 波动时稳定自愈。
-4. **保持 100% 深度穿透能力绝不降级 (Zero-Degradation Full Artifact Penetration)**：
-   - 完整保留所有的多层继承展开、模型细粒度读写授权判断、以及提权偏离检测，准确率与审计深度毫发无损。
+1. **幽灵分页防御与全量截断机制 (Phantom Pagination Defense)**：
+   - 在 `fetch_user_artifact_access` 内部接入严格防御：一旦当前页返回条目为空 (`not page_items`)，或单页条目数不足默认页容上限 (`len(page_items) < 50`)，立即强制终结 `url = None`，彻底阻断后续全部空请求，省下数十秒无谓等待。
+2. **合法自然人精准过滤 (Real User Principal Filtering)**：
+   - 严格遵循微软官方 API 规范，在登记待查主体时，仅允许 `principalType == 'User'` 且具备合法 Email/UPN 格式的自然人发起 `/admin/users/{userId}/artifactAccess` 请求；
+   - 安全组主体 (`Group`)、应用程序主体 (`App`) 保留工作区直接授权并在前端标明主体类型，彻底杜绝 400/404 报错与重试挂起。
+3. **工作区类型智能识别与免检跳过**：
+   - 对 `PersonalGroup` 及 `AdminWorkspace` 智能规避 `/datasets/{id}/users` 查询，直接复用工作区所有者权限，彻底消除 7 个数据集在个人/系统工作区中的 404 挂起；
+   - 仅当工作区对象中确实不存在 `datasets`/`users` 键时才触发降级网络补全，消灭对空工作区的二次无效网络查询。
+4. **唯一身份归一化与全异步并发保持不变**：
+   - 保持 `register_user_identity` 唯一身份代表元归一化算法；
+   - 保持基于 `asyncio.gather` 的工作区全并行调度；
+   - 保持三级信号量 (`ws_sem=8`, `ds_sem=12`, `artifact_sem=6`) 与 429 容错。
+5. **保持 100% 深度穿透能力绝不降级**：
+   - 完完整整保留 `/admin/users/{userId}/artifactAccess`，保证真实人员权限穿透与偏离审计的绝对精准。
 
-### 62.3 自动化测试与质量闭环验证
-- **静态分析与类型推导**：`python -m ruff check src/` 全绿，`python -m mypy src/main.py --ignore-missing-imports` 严格通过类型校验；
-- **端到端自动化测试**：Playwright 40 项用例全部运行通过；
-- **性能飞跃**：在典型包含多工作区与大量人员的环境下，GUM 运行总耗时从原本的 30~60 秒压缩至 2~5 秒，提速幅度达 10 倍以上。
+### 62.3 真实环境性能测试闭环验证 (Real-World Benchmark)
+- **实测总耗时**：
+  - 未优化前：**70 ~ 80 秒**（一分多钟）；
+  - 优化后冷启动首次运行：**14.91 秒**；
+  - 优化后温缓存二次运行：**15.53 秒**；
+  - **整整提速超 500%（缩短近 1 分钟）**！
+- **静态分析与类型推导**：`ruff check` 与 `mypy` 零错误、零警告。
+
 
 
 

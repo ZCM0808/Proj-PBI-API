@@ -208,21 +208,30 @@ async def scan_permissions_deep(
     async def process_single_workspace(ws: Dict[str, Any]) -> Dict[str, Any]:
         ws_id = ws.get("id") or ""
         ws_name = ws.get("name") or "Unnamed Workspace"
+        ws_type = ws.get("type") or ""
 
-        # 提取或并发拉取数据集
-        datasets = ws.get("datasets", [])
-        if not datasets and ws_id:
+        # 个人工作区 (PersonalGroup) 与 Fabric 系统监控工作区 (AdminWorkspace) 不支持且无需多用户数据集查询
+        is_personal_or_system = (
+            ws_type in ("PersonalGroup", "AdminWorkspace")
+            or ws_name.startswith("PersonalWorkspace ")
+        )
+
+        # 提取或并发拉取数据集 (若字典中已有 datasets 键说明已完成 expand，绝不重复网络请求)
+        datasets = ws.get("datasets")
+        if datasets is None and ws_id and not is_personal_or_system:
             async with ws_sem:
                 try:
                     ds_res = await asyncio.to_thread(cli.request, "GET", f"/groups/{ws_id}/datasets")
                     datasets = ds_res.get("value", [])
                 except Exception:
                     datasets = []
+        elif datasets is None:
+            datasets = []
 
-        # 并发获取当前工作区下所有数据集的独立授权明细
+        # 并发获取当前工作区下所有数据集的独立授权明细 (跳过必定 404 的个人及系统内部工作区)
         async def fetch_single_dataset_users(ds_item: Dict[str, Any]) -> tuple[str, Dict[str, str]]:
             ds_id_str = ds_item.get("id") or ""
-            if not ds_id_str or not ws_id:
+            if not ds_id_str or not ws_id or is_personal_or_system:
                 return ds_id_str, {}
             async with ds_sem:
                 try:
@@ -238,18 +247,20 @@ async def scan_permissions_deep(
                 except Exception:
                     return ds_id_str, {}
 
-        ds_user_tasks = [fetch_single_dataset_users(d) for d in datasets]
+        ds_user_tasks = [fetch_single_dataset_users(d) for d in datasets] if not is_personal_or_system else []
         ds_user_results = await asyncio.gather(*ds_user_tasks) if ds_user_tasks else []
 
-        # 提取或并发拉取工作区直属用户
-        users = ws.get("users", [])
-        if not users and ws_id:
+        # 提取或并发拉取工作区直属用户 (若字典中已有 users 键说明已完成 expand，绝不重复网络请求)
+        users = ws.get("users")
+        if users is None and ws_id and not is_personal_or_system:
             async with ws_sem:
                 try:
                     u_res = await asyncio.to_thread(cli.request, "GET", f"/groups/{ws_id}/users")
                     users = u_res.get("value", [])
                 except Exception:
                     users = []
+        elif users is None:
+            users = []
 
         if target_set:
             matched_users = []
@@ -291,8 +302,15 @@ async def scan_permissions_deep(
             ptype = u.get("principalType") or "User"
             direct_role = u.get("groupUserAccessRight") or "Viewer"
 
-            # 注册归一化身份，消除重复与双倍查询
-            register_user_identity(email, graph_id)
+            # 注册归一化身份：微软官方 /artifactAccess 仅支持合法 User 实体 (UPN/GUID)
+            # 过滤非 User 实体 (如 Group 组名称、App 应用 GUID、AdminInsights 系统内部主体)，防 400/404 挂起
+            is_real_user = (
+                (ptype.lower() == "user" or not ptype)
+                and not email.startswith("AdminInsights-")
+                and not email.startswith("mail#")
+            )
+            if is_real_user:
+                register_user_identity(email, graph_id)
 
             all_records.append({
                 "workspaceId": ws_id,
@@ -326,7 +344,15 @@ async def scan_permissions_deep(
                     while attempt < max_retries:
                         try:
                             res = await asyncio.to_thread(cli.request, "GET", current_url)
-                            items.extend(res.get("ArtifactAccessEntities", []))
+                            page_items = res.get("ArtifactAccessEntities", [])
+                            if not page_items:
+                                url = None
+                                break
+                            items.extend(page_items)
+                            # 若首页返回条目数不足默认页容 (通常单页 100-5000)，说明已获取全量数据，无需后续空请求
+                            if len(page_items) < 50:
+                                url = None
+                                break
                             cont_uri = res.get("continuationUri")
                             if cont_uri and "v1.0/myorg" in cont_uri:
                                 url = cont_uri.split("v1.0/myorg")[1]
