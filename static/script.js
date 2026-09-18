@@ -3341,6 +3341,15 @@ window.toggleGtbDsGroupCollapse = function(headerEl) {
     }
 };
 
+// 切换特定报表工作区分组的折叠/展开状态 (Collapsible Workspace Groups for Reports)
+window.toggleGtbRpGroupCollapse = function(headerEl) {
+    if (!headerEl) return;
+    const group = headerEl.closest('.gtb-rp-ws-group');
+    if (group) {
+        group.classList.toggle('collapsed');
+    }
+};
+
 // 关闭数据模型多选浮层
 window.closeGtbDsDropdown = function() {
     const dropdown = document.getElementById('gtb-ds-dropdown');
@@ -3408,7 +3417,13 @@ window.toggleGtbWsModels = function(wsId, event) {
     if (!wsId) return;
     const dsData = window.getMergedGtbDatasets ? window.getMergedGtbDatasets() : JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
     const targetWid = String(wsId).toLowerCase();
-    const modelsInWs = dsData.filter(d => String(d.workspaceId || '').toLowerCase() === targetWid);
+    const wsData = window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+    const knownWsIds = new Set(wsData.map(w => String(w.id).toLowerCase()));
+
+    const modelsInWs = targetWid === '__unassigned__'
+        ? dsData.filter(d => !d.workspaceId || !knownWsIds.has(String(d.workspaceId).toLowerCase()))
+        : dsData.filter(d => String(d.workspaceId || '').toLowerCase() === targetWid);
+
     if (modelsInWs.length === 0) return;
     const allSelected = modelsInWs.every(m => window.selectedGtbDatasetIds.has(String(m.id)));
     modelsInWs.forEach(m => {
@@ -3419,6 +3434,31 @@ window.toggleGtbWsModels = function(wsId, event) {
         }
     });
     window.persistGtbDatasetsAndSync();
+};
+
+// 全选/取消全选指定工作区下的所有报表 (Workspace Group Select/Deselect for Reports)
+window.toggleGtbWsReports = function(wsId, event) {
+    if (event) event.stopPropagation();
+    if (!wsId) return;
+    const rpData = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+    const targetWid = String(wsId).toLowerCase();
+    const wsData = window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+    const knownWsIds = new Set(wsData.map(w => String(w.id).toLowerCase()));
+
+    const reportsInWs = targetWid === '__unassigned__'
+        ? rpData.filter(r => !r.workspaceId || !knownWsIds.has(String(r.workspaceId).toLowerCase()))
+        : rpData.filter(r => String(r.workspaceId || '').toLowerCase() === targetWid);
+
+    if (reportsInWs.length === 0) return;
+    const allSelected = reportsInWs.every(r => window.selectedGtbReportIds.has(String(r.id)));
+    reportsInWs.forEach(r => {
+        if (allSelected) {
+            window.selectedGtbReportIds.delete(String(r.id));
+        } else {
+            window.selectedGtbReportIds.add(String(r.id));
+        }
+    });
+    window.persistGtbReportsAndSync();
 };
 
 // 持久化当前选中的数据模型并触发全站联动与回显
@@ -3590,18 +3630,51 @@ window.persistGtbReportsAndSync = function() {
     if (window.syncAllWorkflowSelectors) window.syncAllWorkflowSelectors();
 };
 
-// 过滤 Popover 里的报表列表项
+// 过滤 Popover 里的报表列表项与工作区分组 (Workspace-Grouped Report Search)
 window.filterGtbRpOptions = function(term = '') {
     const q = (term || '').toLowerCase().trim();
-    const items = document.querySelectorAll('#gtb-rp-list .gtb-rp-item');
-    items.forEach(item => {
-        const text = item.getAttribute('data-search-text') || '';
-        if (!q || text.includes(q)) {
-            item.style.display = 'flex';
-        } else {
-            item.style.display = 'none';
-        }
-    });
+    const groups = document.querySelectorAll('#gtb-rp-list .gtb-rp-ws-group');
+    if (groups.length > 0) {
+        groups.forEach(group => {
+            const items = group.querySelectorAll('.gtb-rp-item');
+            let visibleItemCount = 0;
+            items.forEach(item => {
+                const text = item.getAttribute('data-search-text') || '';
+                if (!q || text.includes(q)) {
+                    item.style.display = 'flex';
+                    visibleItemCount++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            const headerTitle = group.querySelector('.gtb-rp-ws-title')?.textContent?.toLowerCase() || '';
+            if (!q || visibleItemCount > 0 || headerTitle.includes(q)) {
+                group.style.display = 'block';
+                if (q) {
+                    group.classList.remove('collapsed'); // 搜索时自动展开匹配分组
+                }
+                if (headerTitle.includes(q) && q) {
+                    items.forEach(item => item.style.display = 'flex');
+                }
+            } else {
+                group.style.display = 'none';
+            }
+        });
+    } else {
+        const items = document.querySelectorAll('#gtb-rp-list .gtb-rp-item');
+        items.forEach(item => {
+            const text = item.getAttribute('data-search-text') || '';
+            if (!q || text.includes(q)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+    const rpList = document.getElementById('gtb-rp-list');
+    if (rpList && q) {
+        rpList.scrollTop = 0;
+    }
 };
 
 // 全局功能区外部点击统一监听与关闭防护 (Universal Click-Outside Shield)
@@ -3848,6 +3921,9 @@ window.updateGlobalTopbarDropdowns = function() {
                                 <span title="${wname}">${wname}</span>
                                 <span class="gtb-ds-ws-badge">${models.length} 个模型</span>
                             </div>
+                            <button type="button" class="gtb-ws-btn-sm" style="padding: 1px 6px; font-size: 0.65rem; border-radius: 4px;" onclick="window.toggleGtbWsModels('${wid}', event)" title="全选/取消全选该工作区模型">
+                                ${isAllGroupSelected ? '取消' : '全选'}
+                            </button>
                         </div>
                         <div class="gtb-ds-items-group">
                             ${models.map(m => {
@@ -3883,6 +3959,9 @@ window.updateGlobalTopbarDropdowns = function() {
                                 <span>其他 / 未指定工作区模型</span>
                                 <span class="gtb-ds-ws-badge">${unassignedModels.length} 个模型</span>
                             </div>
+                            <button type="button" class="gtb-ws-btn-sm" style="padding: 1px 6px; font-size: 0.65rem; border-radius: 4px;" onclick="window.toggleGtbWsModels('__unassigned__', event)" title="全选/取消全选未指定工作区模型">
+                                ${isAllUnassignedSelected ? '取消' : '全选'}
+                            </button>
                         </div>
                         <div class="gtb-ds-items-group">
                             ${unassignedModels.map(m => {
@@ -3980,7 +4059,7 @@ window.updateGlobalTopbarDropdowns = function() {
         rpSelect.value = selectedRpList[0] || '';
     }
 
-    // 渲染报表下拉面板列表
+    // 渲染报表下拉面板列表 (按工作区分组矩阵渲染 Workspace-Grouped Matrix)
     if (rpListContainer) {
         if (filteredRp.length === 0) {
             rpListContainer.innerHTML = `<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 24px 10px;">
@@ -3988,25 +4067,123 @@ window.updateGlobalTopbarDropdowns = function() {
                 <div>${hasWsFilter ? '当前已选工作区下暂无可用的报表' : '暂无可用的报表缓存'}</div>
             </div>`;
         } else {
-            let rpHtml = '';
+            const wsMap = new Map();
+            const targetWorkspaces = hasWsFilter
+                ? wsData.filter(w => w && w.id && selectedWsSet.has(String(w.id).toLowerCase()))
+                : wsData;
+
+            targetWorkspaces.forEach(w => {
+                if (w && w.id) {
+                    wsMap.set(String(w.id).toLowerCase(), {
+                        id: String(w.id),
+                        name: w.alias || w.name || String(w.id),
+                        reports: []
+                    });
+                }
+            });
+
+            const unassignedReports = [];
             filteredRp.forEach(r => {
-                const rId = String(r.id);
-                const rName = r.alias || r.name || rId;
-                const isSel = window.selectedGtbReportIds.has(rId);
-                const searchText = `${rName} ${rId}`.toLowerCase();
-                rpHtml += `
-                    <div class="gtb-ws-item gtb-rp-item ${isSel ? 'selected' : ''}" data-search-text="${searchText}" onclick="window.toggleGtbReport('${rId}')">
-                        <div class="gtb-ws-item-left">
-                            <input type="checkbox" class="gtb-ws-checkbox gtb-rp-checkbox" ${isSel ? 'checked' : ''} onclick="event.stopPropagation(); window.toggleGtbReport('${rId}')">
-                            <div class="gtb-ws-item-names">
-                                <div class="gtb-ws-item-title" title="${rName}">${rName}</div>
-                                <div class="gtb-ws-item-sub" title="${rId}">${rId}</div>
+                const wid = String(r.workspaceId || '').trim().toLowerCase();
+                if (wid && wsMap.has(wid)) {
+                    wsMap.get(wid).reports.push(r);
+                } else if (wid && !hasWsFilter) {
+                    if (!wsMap.has(wid)) {
+                        wsMap.set(wid, {
+                            id: r.workspaceId,
+                            name: r.workspaceName || r.workspaceId,
+                            reports: []
+                        });
+                    }
+                    wsMap.get(wid).reports.push(r);
+                } else if (!hasWsFilter) {
+                    unassignedReports.push(r);
+                }
+            });
+
+            let matrixHtml = '';
+            wsMap.forEach(group => {
+                const wid = group.id;
+                const wname = group.name;
+                const reports = group.reports;
+                if (!reports || reports.length === 0) return;
+                const isAllGroupSelected = reports.every(r => window.selectedGtbReportIds.has(String(r.id)));
+
+                matrixHtml += `
+                    <div class="gtb-ds-ws-group gtb-rp-ws-group" data-ws-id="${wid}">
+                        <div class="gtb-ds-ws-header gtb-rp-ws-header" onclick="window.toggleGtbRpGroupCollapse(this)" title="点击折叠/展开该工作区下的报表">
+                            <div class="gtb-ds-ws-title gtb-rp-ws-title">
+                                <svg class="gtb-ds-ws-arrow gtb-rp-ws-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect></svg>
+                                <span title="${wname}">${wname}</span>
+                                <span class="gtb-ds-ws-badge gtb-rp-ws-badge">${reports.length} 个报表</span>
                             </div>
+                            <button type="button" class="gtb-ws-btn-sm" style="padding: 1px 6px; font-size: 0.65rem; border-radius: 4px;" onclick="window.toggleGtbWsReports('${wid}', event)" title="全选/取消全选该工作区报表">
+                                ${isAllGroupSelected ? '取消' : '全选'}
+                            </button>
+                        </div>
+                        <div class="gtb-ds-items-group gtb-rp-items-group">
+                            ${reports.map(r => {
+                                const rId = String(r.id);
+                                const rName = r.alias || r.name || rId;
+                                const isSel = window.selectedGtbReportIds.has(rId);
+                                const searchText = `${rName} ${rId} ${wname}`.toLowerCase();
+                                return `
+                                    <div class="gtb-ws-item gtb-rp-item ${isSel ? 'selected' : ''}" data-search-text="${searchText}" onclick="window.toggleGtbReport('${rId}')">
+                                        <div class="gtb-ws-item-left">
+                                            <input type="checkbox" class="gtb-ws-checkbox gtb-rp-checkbox" ${isSel ? 'checked' : ''} onclick="event.stopPropagation(); window.toggleGtbReport('${rId}')">
+                                            <div class="gtb-ws-item-names">
+                                                <div class="gtb-ws-item-title" title="${rName}">${rName}</div>
+                                                <div class="gtb-ws-item-sub" title="${rId}">${rId}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
                         </div>
                     </div>
                 `;
             });
-            rpListContainer.innerHTML = rpHtml;
+
+            if (unassignedReports.length > 0) {
+                const isAllUnassignedSelected = unassignedReports.every(r => window.selectedGtbReportIds.has(String(r.id)));
+                matrixHtml += `
+                    <div class="gtb-ds-ws-group gtb-rp-ws-group" data-ws-id="__unassigned__">
+                        <div class="gtb-ds-ws-header gtb-rp-ws-header" onclick="window.toggleGtbRpGroupCollapse(this)" title="点击折叠/展开该分组下的报表">
+                            <div class="gtb-ds-ws-title gtb-rp-ws-title">
+                                <svg class="gtb-ds-ws-arrow gtb-rp-ws-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="9"></line><line x1="9" y1="13" x2="15" y2="13"></line><line x1="9" y1="17" x2="13" y2="17"></line></svg>
+                                <span>其他 / 未指定工作区报表</span>
+                                <span class="gtb-ds-ws-badge gtb-rp-ws-badge">${unassignedReports.length} 个报表</span>
+                            </div>
+                            <button type="button" class="gtb-ws-btn-sm" style="padding: 1px 6px; font-size: 0.65rem; border-radius: 4px;" onclick="window.toggleGtbWsReports('__unassigned__', event)" title="全选/取消全选未指定工作区报表">
+                                ${isAllUnassignedSelected ? '取消' : '全选'}
+                            </button>
+                        </div>
+                        <div class="gtb-ds-items-group gtb-rp-items-group">
+                            ${unassignedReports.map(r => {
+                                const rId = String(r.id);
+                                const rName = r.alias || r.name || rId;
+                                const isSel = window.selectedGtbReportIds.has(rId);
+                                const searchText = `${rName} ${rId} 其他 全局`.toLowerCase();
+                                return `
+                                    <div class="gtb-ws-item gtb-rp-item ${isSel ? 'selected' : ''}" data-search-text="${searchText}" onclick="window.toggleGtbReport('${rId}')">
+                                        <div class="gtb-ws-item-left">
+                                            <input type="checkbox" class="gtb-ws-checkbox gtb-rp-checkbox" ${isSel ? 'checked' : ''} onclick="event.stopPropagation(); window.toggleGtbReport('${rId}')">
+                                            <div class="gtb-ws-item-names">
+                                                <div class="gtb-ws-item-title" title="${rName}">${rName}</div>
+                                                <div class="gtb-ws-item-sub" title="${rId}">${rId}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            rpListContainer.innerHTML = matrixHtml;
         }
     }
 

@@ -55,8 +55,8 @@ test.describe('Global Topbar Unified Custom Dropdowns Verification', () => {
     // 2. Check search input and actions
     const searchInput = page.locator('#gtb-rp-search-input');
     await expect(searchInput).toBeVisible();
-    const selectAllBtn = page.locator('#gtb-rp-dropdown .gtb-ws-btn-sm', { hasText: '全选' });
-    const clearBtn = page.locator('#gtb-rp-dropdown .gtb-ws-btn-sm', { hasText: '清空' });
+    const selectAllBtn = page.locator('#gtb-rp-dropdown .gtb-ws-actions .gtb-ws-btn-sm', { hasText: '全选' });
+    const clearBtn = page.locator('#gtb-rp-dropdown .gtb-ws-actions .gtb-ws-btn-sm', { hasText: '清空' });
     await expect(selectAllBtn).toBeVisible();
     await expect(clearBtn).toBeVisible();
 
@@ -183,6 +183,78 @@ test.describe('Global Topbar Unified Custom Dropdowns Verification', () => {
     await authTrigger.click();
     await expect(page.locator('#gtb-auth-dropdown')).toBeVisible();
     await expect(page.locator('#gtb-xmla-dropdown')).toBeHidden();
+  });
+
+  test('Requirement 6: Report dropdown groups items by workspace (Workspace Matrix, Collapsible, Group Select/Deselect)', async ({ page }) => {
+    // 允许查看全部工作区报表，包含指定工作区和未指定工作区的报表
+    await page.evaluate(() => {
+      localStorage.setItem('pbi_reports', JSON.stringify([
+        { id: 'rp-1', name: 'DEV_Report_A', workspaceId: 'ws-101' },
+        { id: 'rp-2', name: 'DEV_Report_B', workspaceId: 'ws-101' },
+        { id: 'rp-3', name: 'PROD_Report_X', workspaceId: 'ws-102' },
+        { id: 'rp-4', name: 'Orphan_Report_Z' } // 未指定工作区
+      ]));
+      window.selectedGtbWorkspaceIds = new Set(['ws-101', 'ws-102']);
+      window.selectedGtbReportIds = new Set();
+      window._gtbRpInitialized = true;
+      window.updateGlobalTopbarDropdowns();
+    });
+
+    const rpTrigger = page.locator('#gtb-rp-trigger');
+    const rpDropdown = page.locator('#gtb-rp-dropdown');
+
+    // 打开报表下拉列表
+    await rpTrigger.click();
+    await expect(rpDropdown).toBeVisible();
+
+    // 1. 验证存在对应的工作区分组
+    const groups = page.locator('#gtb-rp-list .gtb-rp-ws-group');
+    await expect(groups).toHaveCount(3); // ws-101, ws-102, __unassigned__
+
+    // 2. 验证工作区分组头部与徽章
+    const devGroup = groups.filter({ hasText: 'WorkSpace_DEV' });
+    await expect(devGroup).toBeVisible();
+    await expect(devGroup.locator('.gtb-rp-ws-badge')).toHaveText('2 个报表');
+
+    const unassignedGroup = groups.filter({ hasText: '其他 / 未指定工作区报表' });
+    await expect(unassignedGroup).toBeVisible();
+    await expect(unassignedGroup.locator('.gtb-rp-ws-badge')).toHaveText('1 个报表');
+
+    // 3. 测试分组折叠与展开
+    const devHeader = devGroup.locator('.gtb-rp-ws-header');
+    await devHeader.click();
+    await expect(devGroup).toHaveClass(/collapsed/);
+
+    await devHeader.click();
+    await expect(devGroup).not.toHaveClass(/collapsed/);
+
+    // 4. 测试分组头部一键全选/反选
+    const devToggleBtn = devGroup.locator('button.gtb-ws-btn-sm');
+    await expect(devToggleBtn).toHaveText('全选');
+    await devToggleBtn.click();
+
+    // 验证 ws-101 组内两个报表均被勾选
+    const devCheckboxes = devGroup.locator('input[type="checkbox"]');
+    await expect(devCheckboxes.nth(0)).toBeChecked();
+    await expect(devCheckboxes.nth(1)).toBeChecked();
+    await expect(devToggleBtn).toHaveText('取消');
+
+    // 再次点击取消全选
+    await devToggleBtn.click();
+    await expect(devCheckboxes.nth(0)).not.toBeChecked();
+    await expect(devCheckboxes.nth(1)).not.toBeChecked();
+    await expect(devToggleBtn).toHaveText('全选');
+
+    // 5. 测试搜索时自动展开
+    // 先折叠 dev 分组
+    await devHeader.click();
+    await expect(devGroup).toHaveClass(/collapsed/);
+
+    // 搜索 DEV_Report_A，分组应自动取消 collapsed
+    const searchInput = page.locator('#gtb-rp-search-input');
+    await searchInput.fill('DEV_Report_A');
+    await expect(devGroup).not.toHaveClass(/collapsed/);
+    await expect(devGroup.locator('.gtb-rp-item:visible')).toHaveCount(1);
   });
 
 });

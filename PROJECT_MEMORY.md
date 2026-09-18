@@ -2227,5 +2227,41 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
     3. 认证模式自定义卡片面板：展开、SP/Personal 卡片存在性与模式切换；
     4. 租户详情自定义面板：展开、字段完整性与关闭；
     5. 多下拉互斥开启：打开任一浮层自动关闭其余所有浮层；
-  - 连同历史所有测试用例全量执行（`test_gtb_dropdowns` + `test_v2_improvements` + `test_v3_improvements`），**16 项测试 100% 绿灯全量通过 (`16 passed`)**！
+---
+
+## 60. 全局功能区报表下拉列表按工作区分组矩阵与联动折叠重构 (Global Topbar Report Workspace Grouping Matrix & Collapsible Structure)
+
+### 60.1 业务背景与改造目标 (Context & Objectives)
+- **用户反馈**：“模型下拉列表是根据工作区分组的，报表下拉列表怎么没有根据工作区分类？”
+- **现状分析**：上一版本在全局功能区（`#global-topbar`）重构报表为自定义下拉列表时，列表条目采用了平铺渲染（Flat List），缺少类似数据模型（Dataset）按所属工作区分组展示、组折叠/展开、组级一键全选/取消以及未指定工作区独立归类的矩阵化能力。
+- **改造目标**：完全对齐数据模型下拉列表的分组交互标准，将报表下拉列表全面升级为**按工作区分组矩阵 (Workspace Grouping Matrix)**，赋予报表相同的层级感与高效批量操作能力。
+
+### 60.2 核心改造与技术实现 (Technical Implementation)
+1. **工作区分组矩阵结构 (Workspace Grouping Matrix)**：
+   - 在 `static/script.js` 的 `updateGlobalTopbarDropdowns` 中，对当前过滤后的报表集合（`filteredRp`）按照已选工作区映射建立 `wsMap: Map<workspaceId, { id, name, reports: [] }>`；
+   - 匹配的工作区报表渲染为 `.gtb-ds-ws-group.gtb-rp-ws-group` 分组容器，并为未指定工作区或孤立的报表构建“其他 / 未指定工作区报表 (`data-ws-id="__unassigned__"`)”独立分组；
+   - 工作区分组头部配备专属图标、工作区名称、旋转指示箭头与 `.gtb-rp-ws-badge` 报表数量徽章（琥珀色/金色设计：`background: rgba(251, 191, 36, 0.15); color: #fbbf24;`）。
+2. **分组折叠与展开 (Collapsible Workspace Groups)**：
+   - 封装 `window.toggleGtbRpGroupCollapse(headerEl)` 函数，点击分组头部平滑切换 `.collapsed` 类，控制其子级 `.gtb-rp-items-group` 的显隐；
+   - 箭头指示图标配合 CSS 阻尼过渡进行 90 度平滑旋转变换。
+3. **工作区一键全选/反选快捷操作 (Group-Level Select / Deselect)**：
+   - 封装 `window.toggleGtbWsReports(wsId, event)` 函数，支持传入指定 `wsId` 或 `__unassigned__`；
+   - 分组头部右侧放置极简操作按钮 `.gtb-ws-btn-sm`，智能判断并展示“全选”或“取消”，实现单工作区内报表的一键批量选中与反选，并同步联动全局顶栏与本地持久化；
+   - 同步为模型分组头部补齐并强化了对齐的 `window.toggleGtbWsModels` 操作按钮。
+4. **智能联动与搜索自动展开 (Search Filtering & Auto-Expansion)**：
+   - 升级 `window.filterGtbRpOptions(term)`：搜索过滤时，同时匹配报表名称、报表 GUID 以及所属工作区名称；
+   - 命中关键词的工作区分组自动移除 `.collapsed` 类实现自动展开并高亮展示匹配报表条目，空匹配分组自动隐藏。
+5. **缓存击穿防护 (Cache Busting)**：
+   - 同步递增 `static/index.html` 中引用 `style.css` 与 `script.js` 的静态资源版本号为 `?v=20260918_v2045`。
+
+### 60.3 自动化测试与质量闭环验证
+- **端到端回归断言**：在 [tests/test_gtb_dropdowns.spec.js](file:///D:/zcm/Proj-PBI-API/tests/test_gtb_dropdowns.spec.js) 中新增 `Requirement 6`，深度断言：
+  1. 多工作区与未指定工作区报表的 3 大分组矩阵渲染完整性；
+  2. 头部名称与报表计数徽章；
+  3. 工作区分组点击折叠与再次点击展开；
+  4. 分组头部全选/取消按钮一键切换勾选状态；
+  5. 折叠状态下进行搜索时自动触发分组展开与精准过滤；
+- **Playwright 100% 绿灯全通过**：全部 6 项测试用例全部通过 (`6 passed (32.8s)`)；
+- **代码健康静态检查**：`python -m ruff check src/` 零警告，`python -m mypy src/main.py --ignore-missing-imports` 零错误。
+
 
