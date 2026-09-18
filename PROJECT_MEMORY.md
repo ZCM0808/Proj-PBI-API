@@ -2127,6 +2127,53 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
 - **Playwright 端到端回归**：
   - 编写专用回归测试套件 [tests/test_v2_improvements.spec.js](file:///D:/zcm/Proj-PBI-API/tests/test_v2_improvements.spec.js)，断言 Quick Note z-index 35000/35001、单滚动条验证、纯图标按钮与 Tooltip、34px 严格高度对齐与 6 项排序下拉菜单交互、GUM 深度穿透扫描默认状态、Universal Modal 6 点拖拽抓手与冻结偏好记忆，全部 6 项测试用例 **100% 绿灯通过**！
 
+---
 
+## 58. 0918 Improvement v3 交互细节精修与边界滚动防护 (UX Refinement & Border Defense)
 
+### 58.1 需求全量清单 (Requirements Checklist)
+1. **密码登录每日累计超过 1 小时仍能登录的根因排查**：分析系统鉴权中间件与每日限制机制；
+2. **Quick Note 弹窗按钮 SVG 标识空白修复**：修复排序、新建、保存等按钮内部 SVG 图标被内边距挤爆不显示的 Bug；
+3. **消除 EasyMDE / CodeMirror 编辑器双纵向滚动条**：彻底根除 CodeMirror 默认模拟滚动条与原生滚动视口叠加的问题；
+4. **全屏弹窗矩阵 Visible Fields 拖拽边界自适应平滑滚动**：拖拽字段靠近列表顶部或底部时自动滚动容器视口；
+5. **Quick Note 按钮全局化布局调整**：移至全局顶部功能区 `#global-topbar`，位于 `#gtb-daily-limit` 与 `#gtb-btn-refresh` 之间；
+6. **Quick Note 搜索框一键清空按钮**：搜索框内置清空叉号按钮，输入有内容时浮现，点击快速清空并重置列表与焦点。
 
+### 58.2 核心改造与防御方案 (Technical Implementation)
+1. **密码登录每日 1 小时限制生效根因 (DEV_MODE Bypass Root Cause)**：
+   - 排查发现本地 `.env` 开启了 `DEV_MODE=true`；
+   - 在 [src/main.py](file:///D:/zcm/Proj-PBI-API/src/main.py) 中，`is_dev_mode()` 处于激活状态时，系统中间件直接跳过所有认证拦截，且 `/api/login` 接口中显式判断跳过单日累积 1 小时检查（`used_seconds >= 3600`），并在心跳统计 `/api/ping-usage` 中直接返回 0 不做时长累加；
+   - 在生产环境或关闭开发模式（`.env` 设置 `DEV_MODE=false`）时，1 小时时长限制与 MFA(Multi-Factor Authentication / 多因素身份验证) 机制完全正常运行。
+2. **SVG 挤压空白根因与样式重构 (SVG Zero Width Defense)**：
+   - 根因：样式表中历史全局类 `.btn-action-secondary` 与 `#btn-save-note` 设置了 `padding: 0.75rem 1.25rem !important;`（左右 padding 达 40px）。当按钮宽度固定为 32px 时，盒模型内容区宽度变为 0，导致内部子元素 `<svg>` 的 `clientWidth` 为 0，视觉上完全空白；
+   - 修复：在 [static/style.css](file:///D:/zcm/Proj-PBI-API/static/style.css) 中对 `.btn-icon-sq` 以及 `#note-sort-btn`、`#btn-new-note`、`#btn-save-note` 赋予更高优先级的重置规则：`padding: 0 !important;`，强制 SVG `width: 16px !important; height: 16px !important; stroke: currentColor !important;`，使其在任何状态下均能清晰居中呈现。
+3. **CodeMirror 模拟滚动条与原生滚动条剥离 (Scrollbar Streamlining)**：
+   - CodeMirror 默认会注入一个独立的 `.CodeMirror-vscrollbar` 绝对定位容器，当外层与内层都开启纵向滚动时便出现并列双滚动条；
+   - 在 [static/style.css](file:///D:/zcm/Proj-PBI-API/static/style.css) 中彻底隐藏模拟滚动条：`.CodeMirror-vscrollbar { display: none !important; width: 0 !important; }`；
+   - 在 [static/script.js](file:///D:/zcm/Proj-PBI-API/static/script.js) 初始化 EasyMDE 时显式指定 `scrollbarStyle: "native"`，保证全局唯一由原生 `.CodeMirror-scroll` 承载纵向滚动视口。
+4. **Visible Fields 拖拽自适应自动滚动算法 (Dynamic Drag Auto-Scroll)**：
+   - 在 [static/universal_modal.js](file:///D:/zcm/Proj-PBI-API/static/universal_modal.js) 中为列选择下拉框实现了 `handleDragAutoScroll(clientY)`：
+   - 设定边界阈值 `threshold = 38px` 与最大速度梯度 `maxSpeed = 10px`；
+   - 当拖拽鼠标靠近容器顶部或底部时，按距离反比动态计算滚动步长，平滑连续滚动 `dropdownList.scrollTop`；
+   - 在下拉容器和每一个列条目的 `dragover` 事件上统一接入该算法。
+5. **Quick Note 按钮全局功能区集成与样式统一**：
+   - 在 [static/index.html](file:///D:/zcm/Proj-PBI-API/static/index.html) 中将 `#btn-note` 移入 `#global-topbar` 的右侧功能区，紧邻刷新按钮 `#gtb-btn-refresh` 左侧；
+   - 应用统一的 `.gtb-icon-btn`（30px × 30px）圆角微投影样式与悬停动效；
+   - 彻底从下方的 Request Builder 区域移除，释放工作流界面空间。
+6. **Search Notes 一键清空交互**：
+   - 在 [static/index.html](file:///D:/zcm/Proj-PBI-API/static/index.html) 的搜索框内添加绝对定位的 `#btn-clear-note-search` 按钮；
+   - 在 [static/script.js](file:///D:/zcm/Proj-PBI-API/static/script.js) 中通过 `handleNoteSearchInput` 实时监听输入，有文本时平滑显现，点击后清空文本并触发重绘及重聚焦点；
+   - 执行 Cache Busting(缓存击穿)，在 [static/index.html](file:///D:/zcm/Proj-PBI-API/static/index.html) 中将版本号递增至 `?v=20260918_v1746`。
+
+### 58.3 自动化测试与质量闭环验证
+- **静态分析与代码体检**：
+  - `python -m ruff check src/`：All checks passed!
+  - `python -m mypy src/main.py --ignore-missing-imports`：Success: no issues found.
+- **自动化端到端测试**：
+  - 编写专用回归测试套件 [tests/test_v3_improvements.spec.js](file:///D:/zcm/Proj-PBI-API/tests/test_v3_improvements.spec.js)，包含：
+    1. 验证排序、新建、保存等所有按钮的 SVG 正常渲染且 clientWidth/BoundingBox >= 12px；
+    2. 验证 CodeMirror-vscrollbar 为 `display: none`，消除双滚动条；
+    3. 验证 Universal Modal Visible Fields 下拉列表在边界拖拽时自动平滑滚动；
+    4. 验证 Quick Note 按钮位于顶部全局功能区刷新按钮左侧；
+    5. 验证 Search Notes 输入清空按钮动态显隐与一键清空逻辑；
+  - 运行结果：5 项测试全部通过（`5 passed`），历史测试套件 [tests/test_v2_improvements.spec.js](file:///D:/zcm/Proj-PBI-API/tests/test_v2_improvements.spec.js)（6 项测试）亦 100% 绿灯通过，零破坏、零回归风险！

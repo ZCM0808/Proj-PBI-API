@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260918_v1636">
+    <link rel="stylesheet" href="/static/style.css?v=20260918_v1746">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -280,6 +280,11 @@
                     <span class="gtb-label" style="font-size: 0.70rem; opacity: 0.85;">Total:</span>
                     <strong id="daily-time-val-main" style="color: var(--accent); font-weight: 700; line-height: 1; font-family: 'Fira Code', monospace; font-size: 0.74rem;">0m</strong>
                 </div>
+
+                <!-- 📝 便签记事本 (Quick Note) - 位于刷新按钮左侧 -->
+                <button type="button" id="btn-note" class="gtb-icon-btn" onclick="openNoteModal()" title="便签记事本 (Quick Markdown Note)" style="height: 30px; width: 30px; min-width: 30px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                </button>
 
                 <!-- 🔄 一键刷新租户/工作区元数据 -->
                 <button type="button" id="gtb-btn-refresh" class="gtb-icon-btn" onclick="window.refreshGlobalContext(this)" title="刷新全局工作区与资产列表 (Sync Context)" style="height: 30px; width: 30px; min-width: 30px;">
@@ -1955,13 +1960,6 @@
                                 </div>
 
                             </div>
-
-                            <button id="btn-note" class="btn-action-icon" title="便签记事本 (Quick Markdown Note)" onclick="openNoteModal()" style="height: 26px; width: 26px; min-width: 26px; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
-
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-
-                            </button>
-
                         </div>
 
                     </div>
@@ -2585,8 +2583,11 @@
                           <label style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 4px; display: block;">Search Notes</label>
                           <div style="display: flex; gap: 6px; align-items: center; position: relative;">
                               <div style="position: relative; flex: 1;">
-                                  <input type="text" id="note-search" placeholder="Search notes..." class="modern-input" style="width: 100%; height: 34px; box-sizing: border-box; padding: 4px 10px 4px 32px; font-size: 0.82rem; border-radius: 6px;" onkeyup="debounceSearchNotes()">
-                                  <svg style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                  <input type="text" id="note-search" placeholder="Search notes..." class="modern-input" style="width: 100%; height: 34px; box-sizing: border-box; padding: 4px 28px 4px 32px; font-size: 0.82rem; border-radius: 6px;" oninput="window.handleNoteSearchInput(this)" onkeyup="debounceSearchNotes()">
+                                  <svg style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); pointer-events: none;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                  <button type="button" id="btn-clear-note-search" onclick="window.clearNoteSearch()" title="清空搜索" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: none; background: none; border: none; padding: 2px; cursor: pointer; color: var(--text-secondary); opacity: 0.7; transition: opacity 0.2s, color 0.2s; line-height: 1; align-items: center; justify-content: center;">
+                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                  </button>
                               </div>
                               <div style="position: relative; flex-shrink: 0;">
                                   <button type="button" id="note-sort-btn" class="btn-action-secondary btn-icon-sq" onclick="window.toggleNoteSortMenu(event)" title="选择笔记排序规则 (时间/名称/大小)" style="height: 34px; width: 34px; border-radius: 6px;">
@@ -2711,8 +2712,8 @@
     <script src="/static/translations.js?v=20260906_v1225"></script>
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
-    <script src="/static/universal_modal.js?v=20260918_v1636"></script>
-    <script src="/static/script.js?v=20260918_v1636"></script>
+    <script src="/static/universal_modal.js?v=20260918_v1746"></script>
+    <script src="/static/script.js?v=20260918_v1746"></script>
 
 
 

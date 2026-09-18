@@ -409,11 +409,13 @@ hdr.className = 'modal-header';
         dropdownWrapper.style.cssText = 'position:relative;display:inline-block;';
 
         colDropdownBtn = document.createElement('button');
+        colDropdownBtn.id = 'um-col-dropdown-btn';
         colDropdownBtn.className = 'wf-input';
         colDropdownBtn.style.cssText = 'padding:4px 10px;font-size:0.75rem;cursor:pointer;display:flex;align-items:center;gap:6px;background:var(--bg-color);';
         dropdownWrapper.appendChild(colDropdownBtn);
 
         const dropdownList = document.createElement('div');
+        dropdownList.id = 'um-column-dropdown-list';
         dropdownList.style.cssText = 'display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--dropdown-bg, #1a1a24);border:1px solid var(--panel-border);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,0.8);max-height:260px;overflow-y:auto;width:290px;padding:6px;z-index:3000;';
         
         const dropdownHeader = document.createElement('div');
@@ -426,6 +428,35 @@ hdr.className = 'modal-header';
 
         const colItemsContainer = document.createElement('div');
         dropdownList.appendChild(colItemsContainer);
+
+        // Auto-scroll dropdown list when dragging near top/bottom boundaries
+        const handleDragAutoScroll = (clientY) => {
+            const rect = dropdownList.getBoundingClientRect();
+            const threshold = 38;
+            const maxSpeed = 10;
+
+            if (clientY < rect.top + threshold) {
+                // Near top boundary
+                const distance = Math.max(0, clientY - rect.top);
+                const speed = Math.ceil((1 - distance / threshold) * maxSpeed) + 2;
+                dropdownList.scrollTop = Math.max(0, dropdownList.scrollTop - speed);
+            } else if (clientY > rect.bottom - threshold) {
+                // Near bottom boundary
+                const distance = Math.max(0, rect.bottom - clientY);
+                const speed = Math.ceil((1 - distance / threshold) * maxSpeed) + 2;
+                dropdownList.scrollTop = Math.min(
+                    dropdownList.scrollHeight - dropdownList.clientHeight,
+                    dropdownList.scrollTop + speed
+                );
+            }
+        };
+        dropdownList._handleDragAutoScroll = handleDragAutoScroll;
+
+        dropdownList.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            handleDragAutoScroll(e.clientY);
+        });
+
         dropdownWrapper.appendChild(dropdownList);
         filterLeft.appendChild(dropdownWrapper);
         filterBar.appendChild(filterLeft);
@@ -627,6 +658,7 @@ hdr.className = 'modal-header';
                 itemDiv.addEventListener('dragover', (e) => {
                     e.preventDefault();
                     e.dataTransfer.dropEffect = 'move';
+                    handleDragAutoScroll(e.clientY);
                     const rect = itemDiv.getBoundingClientRect();
                     const midY = rect.top + rect.height / 2;
                     if (e.clientY < midY) {

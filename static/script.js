@@ -11566,6 +11566,8 @@ window.openNoteModal = function() {
 
                 minHeight: "340px",
 
+                scrollbarStyle: "native",
+
                 placeholder: "Start typing your note here... (Markdown is supported)",
 
                 toolbar: ['bold', 'italic', 'heading', '|', 'quote', 'unordered-list', 'ordered-list', '|', 'link', 'image', '|', 'preview', 'side-by-side', 'fullscreen']
@@ -11832,6 +11834,26 @@ window.debounceSearchNotes = function() {
     searchNoteTimeout = setTimeout(window.searchNotes, 300);
 };
 
+window.handleNoteSearchInput = function(inputEl) {
+    const clearBtn = document.getElementById('btn-clear-note-search');
+    if (clearBtn) {
+        clearBtn.style.display = (inputEl && inputEl.value.trim()) ? 'inline-flex' : 'none';
+    }
+};
+
+window.clearNoteSearch = function() {
+    const inputEl = document.getElementById('note-search');
+    if (inputEl) {
+        inputEl.value = '';
+        inputEl.focus();
+    }
+    const clearBtn = document.getElementById('btn-clear-note-search');
+    if (clearBtn) {
+        clearBtn.style.display = 'none';
+    }
+    window.searchNotes();
+};
+
 window._currentNotesList = [];
 window.noteSortModes = [
     { key: 'mtime_desc', label: '时间 (新→旧)', field: 'mtime', desc: true },
@@ -11989,6 +12011,8 @@ window.renderSortedNotesList = function() {
 
 window.searchNotes = async function() {
     const q = document.getElementById('note-search')?.value.trim() || '';
+    const clearBtn = document.getElementById('btn-clear-note-search');
+    if (clearBtn) clearBtn.style.display = q ? 'inline-flex' : 'none';
     const listEl = document.getElementById('note-history-list');
     if (!listEl) return;
 
