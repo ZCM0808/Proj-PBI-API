@@ -2177,3 +2177,55 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
     4. 验证 Quick Note 按钮位于顶部全局功能区刷新按钮左侧；
     5. 验证 Search Notes 输入清空按钮动态显隐与一键清空逻辑；
   - 运行结果：5 项测试全部通过（`5 passed`），历史测试套件 [tests/test_v2_improvements.spec.js](file:///D:/zcm/Proj-PBI-API/tests/test_v2_improvements.spec.js)（6 项测试）亦 100% 绿灯通过，零破坏、零回归风险！
+
+---
+
+## 59. 全局功能区全量选项统一高颜值自定义下拉列表重构 (Global Topbar Unified Custom Dropdown Modernization)
+
+### 59.1 业务背景与改造目标 (Context & Objectives)
+- **痛点与不协调**：在此前版本中，全局顶部功能区（`#global-topbar`）的工作区（Workspace）与模型（Dataset/Model）已升级为具有毛玻璃、带搜索过滤、多选/全选/单选、计数角标与 180 度平滑翻转箭头的现代化自定义下拉矩阵；而功能区的其他选项（报表 Report、XMLA 终结点、认证模式 Auth Mode、租户 Tenant）仍然使用浏览器原生粗糙的 `<select>` 控件或不可交互静态文本，视觉割裂且缺乏搜索与灵活联动能力。
+- **改造目标**：参照工作区/模型的顶级下拉交互标准，将功能区所有其他选项全面重构为高度一致的自定义浮层面板下拉组件。
+
+### 59.2 核心改造与技术实现 (Technical Implementation)
+1. **报表 (Report) 自定义下拉矩阵**：
+   - 布局结构：采用统一的 `.gtb-item.gtb-workspace-box.gtb-report-box` 容器与 `.gtb-ws-trigger.gtb-rp-trigger` 触发器；
+   - 专属色彩：黄色柱状图图标配合 `accent-color: #fbbf24` 复选框与浅黄高亮背景（深色模式 `rgba(251, 191, 36, 0.12)`，浅色模式 `#fef3c7`）；
+   - 动态能力：
+     - 包含搜索过滤框 `#gtb-rp-search-input`、全选与清空按钮；
+     - 联动所选工作区实时过滤可用报表；
+     - 触发器展示自适应标题（单选显示报表名、多选显示“已选 N 个报表”、全选显示“全部报表 (共 N 个)”）及计数角标 `#gtb-rp-count-badge`；
+     - 升级 `copyGtbItem(btn, 'report')`，完美支持多选报表一键复制名称与 GUID。
+2. **XMLA 终结点 (XMLA Endpoint) 自定义下拉列表**：
+   - 布局结构：统一的 `.gtb-item.gtb-workspace-box.gtb-xmla-box` 与 `.gtb-ws-trigger.gtb-xmla-trigger`；
+   - 动态能力：
+     - 包含搜索框 `#gtb-xmla-search-input` 与“清空历史”动作按钮；
+     - 自动聚合本地历史连接串（`pbi-xmla-history`）与当前所有可用工作区自动推导的端点连接串；
+     - 条目采用等宽代码字体展示连接串 `powerbi://api.powerbi.com/v1.0/myorg/...`；
+     - 点击某端点立即切换、反查匹配对应工作区并关闭浮层；
+     - 触发器精简展示 `myorg/{wsName}` 并提供 Tooltip。
+3. **认证模式 (Auth Mode) 卡片式自定义下拉面板**：
+   - 布局结构：统一的 `.gtb-item.gtb-workspace-box.gtb-auth-box` 与 `.gtb-ws-trigger.gtb-auth-trigger`；
+   - 视觉卡片：两张精致的选项卡片（Service Principal 🛡️ 与 Personal Delegated User 👤），展示具体 App Name/Client ID 与个人用户名；
+   - 交互闭环：点击卡片即向后端接口 `POST /api/auth-mode` 发送切换请求，并自动调用 `window.refreshGlobalContext()` 刷新全局顶栏与环境。
+4. **租户 (Tenant) 详情概览浮层面板**：
+   - 升级为 `.gtb-item.gtb-workspace-box.gtb-tenant-box` 与 `.gtb-ws-trigger.gtb-tenant-trigger`；
+   - 点击展开租户信息卡片，展示当前租户显示名称、Tenant ID / Directory ID，并保持右侧一键复制能力。
+5. **互斥开启与全局外部点击防护 (Mutual Exclusion & Universal Click-Outside Shield)**：
+   - 抽象 `window.closeAllGtbDropdowns()` 函数，在任意浮层展开时自动关闭其余 5 个浮层，杜绝界面重叠遮挡；
+   - 在 `document.addEventListener('click', ...)` 中统一监听，点击页面任何外部空白区域均能平滑关闭所有处于展开状态的浮层；
+   - 前端版本号递增至 `?v=20260918_v2030`（完成 Cache Busting 缓存击穿防护）。
+
+### 59.3 自动化测试与质量闭环验证
+- **静态分析与类型校验**：
+  - `python -m ruff check src/`：All checks passed!
+  - `python -m mypy src/main.py --ignore-missing-imports`：Success: no issues found in 1 source file
+  - `node -c static/script.js` 与 `node -c static/universal_modal.js`：语法零错误。
+- **Playwright 端到端回归测试**：
+  - 编写专用回归测试套件 [tests/test_gtb_dropdowns.spec.js](file:///D:/zcm/Proj-PBI-API/tests/test_gtb_dropdowns.spec.js)，包含：
+    1. 报表自定义下拉列表：展开、清空、搜索过滤、单项选中、全选、徽章更新及外部点击关闭；
+    2. XMLA 终结点自定义下拉列表：展开、搜索、端点切换及回显；
+    3. 认证模式自定义卡片面板：展开、SP/Personal 卡片存在性与模式切换；
+    4. 租户详情自定义面板：展开、字段完整性与关闭；
+    5. 多下拉互斥开启：打开任一浮层自动关闭其余所有浮层；
+  - 连同历史所有测试用例全量执行（`test_gtb_dropdowns` + `test_v2_improvements` + `test_v3_improvements`），**16 项测试 100% 绿灯全量通过 (`16 passed`)**！
+

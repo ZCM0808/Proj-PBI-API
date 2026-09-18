@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260918_v1746">
+    <link rel="stylesheet" href="/static/style.css?v=20260918_v2030">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -144,43 +144,123 @@
         <!-- ⚡ 全局顶部上下文控制台功能栏 (Global Top Context Control Bar - Borderless & Collapsible) -->
         <header id="global-topbar">
             <div class="gtb-group">
-                <!-- 0. 组织租户 (Tenant - 最左侧全局租户标识) -->
-                <div id="gtb-tenant-box" class="gtb-item gtb-tenant-box" title="全局组织租户 (Tenant)">
+                <!-- 0. 组织租户 (Tenant - 最左侧全局租户标识与下拉信息卡片) -->
+                <div id="gtb-tenant-box" class="gtb-item gtb-workspace-box gtb-tenant-box" onclick="if(!event.target.closest('#gtb-tenant-dropdown') && !event.target.closest('.gtb-copy-btn')) window.toggleGtbTenantDropdown(event);" title="全局组织租户 (点击展开租户信息)">
                     <div class="gtb-label">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #a78bfa; flex-shrink: 0;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                         <span>租户</span>
                     </div>
-                    <span id="gtb-tenant-name" class="gtb-tenant-text">加载中...</span>
+                    <div class="gtb-ws-trigger gtb-tenant-trigger" id="gtb-tenant-trigger">
+                        <span id="gtb-tenant-name" class="gtb-tenant-text gtb-ws-display-text">加载中...</span>
+                        <svg class="gtb-ws-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
                     <input type="hidden" id="gtb-input-tenant-id" value="">
                     <button type="button" class="gtb-copy-btn" onclick="window.copyGtbItem(this, 'tenant')" title="复制当前租户名称与 ID">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                     </button>
+
+                    <!-- 全局租户信息浮层面板 (Tenant Popover) -->
+                    <div class="gtb-ws-dropdown gtb-tenant-dropdown" id="gtb-tenant-dropdown" style="display: none; width: 310px;" onclick="event.stopPropagation()">
+                        <div class="gtb-ws-header">
+                            <span style="font-size: 0.74rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                                组织租户概览 (Tenant Profile)
+                            </span>
+                        </div>
+                        <div class="gtb-ws-list" style="padding: 10px; gap: 8px;">
+                            <div style="display: flex; flex-direction: column; gap: 3px;">
+                                <span style="font-size: 0.68rem; color: var(--text-secondary);">租户显示名称 (Display Name)</span>
+                                <span id="gtb-tenant-detail-name" style="font-size: 0.78rem; font-weight: 600; color: var(--text-primary);">--</span>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 3px;">
+                                <span style="font-size: 0.68rem; color: var(--text-secondary);">租户标识 (Tenant ID / Directory ID)</span>
+                                <span id="gtb-tenant-detail-id" style="font-size: 0.70rem; font-family: 'Fira Code', monospace; color: var(--accent); word-break: break-all;">--</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- 1. XMLA 终结点 (XMLA Endpoint - 快速连接入口，纯下拉选择历史/当前端点) -->
-                <div class="gtb-item gtb-xmla-box" title="XMLA 端点 (下拉选择曾经用过的 XMLA，右侧一键复制)">
+                <!-- 1. XMLA 终结点 (XMLA Endpoint - 下拉面板选择历史与工作区端点) -->
+                <div class="gtb-item gtb-workspace-box gtb-xmla-box" id="gtb-xmla-box" onclick="if(!event.target.closest('#gtb-xmla-dropdown') && !event.target.closest('.gtb-copy-btn')) window.toggleGtbXmlaDropdown(event);" title="XMLA 端点 (点击展开选择历史与工作区端点，右侧一键复制)">
                     <div class="gtb-label">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent); flex-shrink: 0;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
                         <span>XMLA</span>
                     </div>
-                    <select id="gtb-select-xmla-history" class="gtb-select" style="font-family: 'Fira Code', monospace; font-size: 0.70rem;" onchange="window.handleGlobalXmlaHistoryChange(this.value)">
-                        <option value="">-- 选择 XMLA 端点 --</option>
-                    </select>
+                    <div class="gtb-ws-trigger gtb-xmla-trigger" id="gtb-xmla-trigger">
+                        <span id="gtb-xmla-display-text" class="gtb-ws-display-text" style="font-family: 'Fira Code', monospace; font-size: 0.70rem;">-- 选择 XMLA 端点 --</span>
+                        <svg class="gtb-ws-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <input type="hidden" id="gtb-select-xmla-history" value="">
                     <input type="hidden" id="gtb-input-xmla" value="">
                     <button type="button" class="gtb-copy-btn" onclick="window.copyGlobalXmlaEndpoint(this)" title="复制当前选中的 XMLA 连接串">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                     </button>
+
+                    <!-- 全局 XMLA 浮层面板 (XMLA Popover) -->
+                    <div class="gtb-ws-dropdown gtb-xmla-dropdown" id="gtb-xmla-dropdown" style="display: none; width: 360px;" onclick="event.stopPropagation()">
+                        <div class="gtb-ws-header">
+                            <div class="gtb-ws-search-box">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                <input type="text" id="gtb-xmla-search-input" placeholder="筛选 XMLA 端点或工作区..." oninput="window.filterGtbXmlaOptions(this.value)" autocomplete="off">
+                            </div>
+                            <div class="gtb-ws-actions">
+                                <button type="button" class="gtb-ws-btn-sm" onclick="window.clearGtbXmlaHistory()">清空历史</button>
+                            </div>
+                        </div>
+                        <div class="gtb-ws-list gtb-xmla-list" id="gtb-xmla-list">
+                            <!-- 动态加载历史 XMLA 与可用工作区端点 -->
+                        </div>
+                        <div class="gtb-ws-footer">
+                            <span id="gtb-xmla-stat-text">共 0 个可用端点</span>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- 2. 认证模式切换 (Auth Mode) -->
-                <div class="gtb-auth-mode-pill" title="切换全局认证主体模式 (Service Principal / Personal Delegated)">
-                    <span id="gtb-auth-icon" style="display: flex; align-items: center; color: var(--accent); flex-shrink: 0;">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                    </span>
-                    <select id="gtb-select-auth-mode" class="gtb-auth-select mode-sp" onchange="window.handleGlobalAuthModeChange(this.value)">
-                        <option value="service_principal">Service Principal</option>
-                        <option value="personal">Personal User (个人委派)</option>
-                    </select>
+                <!-- 2. 认证模式切换 (Auth Mode - 优雅卡片式自定义下拉) -->
+                <div class="gtb-item gtb-workspace-box gtb-auth-box" id="gtb-auth-box" onclick="if(!event.target.closest('#gtb-auth-dropdown')) window.toggleGtbAuthDropdown(event);" title="切换全局认证主体模式 (Service Principal / Personal Delegated)">
+                    <div class="gtb-label">
+                        <span id="gtb-auth-icon" style="display: flex; align-items: center; color: var(--accent); flex-shrink: 0;">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                        </span>
+                        <span>认证</span>
+                    </div>
+                    <div class="gtb-ws-trigger gtb-auth-trigger" id="gtb-auth-trigger">
+                        <span id="gtb-auth-display-text" class="gtb-ws-display-text">Service Principal</span>
+                        <svg class="gtb-ws-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <input type="hidden" id="gtb-select-auth-mode" value="service_principal">
+
+                    <!-- 全局认证模式自定义下拉面板 -->
+                    <div class="gtb-ws-dropdown gtb-auth-dropdown" id="gtb-auth-dropdown" style="display: none; width: 290px;" onclick="event.stopPropagation()">
+                        <div class="gtb-ws-header">
+                            <span style="font-size: 0.72rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                切换认证主体 (Auth Mode)
+                            </span>
+                        </div>
+                        <div class="gtb-ws-list" id="gtb-auth-list" style="padding: 6px; gap: 4px;">
+                            <div class="gtb-auth-card selected" onclick="window.selectGtbAuthMode('service_principal')">
+                                <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                                    <span style="color: #60a5fa; font-size: 1rem;">🛡️</span>
+                                    <div style="display: flex; flex-direction: column; min-width: 0;">
+                                        <span style="font-size: 0.74rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Service Principal</span>
+                                        <span style="font-size: 0.65rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Azure AD Client App</span>
+                                    </div>
+                                </div>
+                                <span class="gtb-auth-badge" style="background: rgba(96, 165, 250, 0.15); color: #60a5fa;">✓ 激活中</span>
+                            </div>
+                            <div class="gtb-auth-card" onclick="window.selectGtbAuthMode('personal')">
+                                <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                                    <span style="color: #34d399; font-size: 1rem;">👤</span>
+                                    <div style="display: flex; flex-direction: column; min-width: 0;">
+                                        <span style="font-size: 0.74rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Personal Delegated</span>
+                                        <span style="font-size: 0.65rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">个人委托用户</span>
+                                    </div>
+                                </div>
+                                <span class="gtb-auth-badge" style="background: rgba(52, 211, 153, 0.15); color: #34d399;">切换</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 3. 工作区选择 (Workspace - 支持单选/多选/全选) -->
@@ -257,18 +337,41 @@
                     </div>
                 </div>
 
-                <!-- 5. 报表选择 (Report) -->
-                <div class="gtb-item" title="全局活动报表 (Report / reportId)">
+                <!-- 5. 报表选择 (Report - 支持单选/多选/全选与工作区分组) -->
+                <div class="gtb-item gtb-workspace-box gtb-report-box" id="gtb-report-box" onclick="if(!event.target.closest('#gtb-rp-dropdown') && !event.target.closest('.gtb-copy-btn')) window.toggleGtbRpDropdown(event);" title="全局活动报表 (点击展开单选/多选/全选与工作区分组)">
                     <div class="gtb-label">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #fbbf24; flex-shrink: 0;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
                         <span>报表</span>
                     </div>
-                    <select id="gtb-select-report" class="gtb-select" onchange="window.handleGlobalReportChange(this.value)">
-                        <option value="">-- 选择报表 --</option>
-                    </select>
+                    <div class="gtb-ws-trigger gtb-rp-trigger" id="gtb-rp-trigger">
+                        <span id="gtb-rp-display-text" class="gtb-ws-display-text">-- 选择报表 --</span>
+                        <span id="gtb-rp-count-badge" class="gtb-rp-count-badge gtb-ws-count-badge" style="display: none;">0</span>
+                        <svg class="gtb-ws-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <input type="hidden" id="gtb-select-report" value="">
                     <button type="button" class="gtb-copy-btn" onclick="window.copyGtbItem(this, 'report')" title="复制当前选中的报表名称与 ID">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                     </button>
+
+                    <!-- 全局报表多选/全选/单选浮层面板 (Report Multi-Select Popover) -->
+                    <div class="gtb-ws-dropdown gtb-rp-dropdown" id="gtb-rp-dropdown" style="display: none; width: 370px;" onclick="event.stopPropagation()">
+                        <div class="gtb-ws-header">
+                            <div class="gtb-ws-search-box">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                <input type="text" id="gtb-rp-search-input" placeholder="筛选报表名称、ID 或工作区..." oninput="window.filterGtbRpOptions(this.value)" autocomplete="off">
+                            </div>
+                            <div class="gtb-ws-actions">
+                                <button type="button" class="gtb-ws-btn-sm" onclick="window.selectAllGtbReports(true)">全选</button>
+                                <button type="button" class="gtb-ws-btn-sm" onclick="window.selectAllGtbReports(false)">清空</button>
+                            </div>
+                        </div>
+                        <div class="gtb-ws-list gtb-rp-list" id="gtb-rp-list">
+                            <!-- 动态加载报表列表 -->
+                        </div>
+                        <div class="gtb-ws-footer">
+                            <span id="gtb-rp-stat-text">已选 0 / 0 个报表</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -2712,8 +2815,8 @@
     <script src="/static/translations.js?v=20260906_v1225"></script>
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
-    <script src="/static/universal_modal.js?v=20260918_v1746"></script>
-    <script src="/static/script.js?v=20260918_v1746"></script>
+    <script src="/static/universal_modal.js?v=20260918_v2030"></script>
+    <script src="/static/script.js?v=20260918_v2030"></script>
 
 
 

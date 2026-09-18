@@ -6041,6 +6041,94 @@ body.light-theme .gtb-ds-empty,
     color: #64748b;
 }
 
+/* 统一功能区各选项展开时箭头翻转动画 (Unified Arrow Rotation) */
+.gtb-tenant-box.active .gtb-ws-chevron,
+.gtb-xmla-box.active .gtb-ws-chevron,
+.gtb-auth-box.active .gtb-ws-chevron,
+.gtb-report-box.active .gtb-ws-chevron {
+    transform: rotate(180deg);
+}
+
+/* 报表下拉矩阵专属样式 (GTB Report Dropdown Styles) */
+.gtb-rp-checkbox {
+    cursor: pointer;
+    accent-color: #fbbf24;
+    width: 14px;
+    height: 14px;
+}
+
+.gtb-rp-item.selected {
+    background: rgba(251, 191, 36, 0.12);
+}
+
+body.light-theme .gtb-rp-item.selected,
+[data-theme="light"] .gtb-rp-item.selected {
+    background: #fef3c7;
+}
+
+.gtb-rp-count-badge {
+    background: rgba(251, 191, 36, 0.18);
+    color: #fbbf24;
+    border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+/* XMLA 下拉矩阵专属样式 (GTB XMLA Dropdown Styles) */
+.gtb-xmla-item.selected {
+    background: rgba(99, 102, 241, 0.15);
+}
+
+body.light-theme .gtb-xmla-item.selected,
+[data-theme="light"] .gtb-xmla-item.selected {
+    background: #eef2ff;
+}
+
+.gtb-xmla-url-text {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.66rem;
+    color: var(--accent);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 认证模式卡片式下拉面板 (GTB Auth Mode Dropdown Cards) */
+.gtb-auth-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--overlay-10);
+    background: var(--input-bg);
+    cursor: pointer;
+    transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.gtb-auth-card:hover {
+    border-color: var(--accent);
+    background: var(--overlay-10);
+    transform: translateY(-1px);
+}
+
+.gtb-auth-card.selected {
+    border-color: var(--accent);
+    background: rgba(99, 102, 241, 0.12);
+}
+
+body.light-theme .gtb-auth-card.selected,
+[data-theme="light"] .gtb-auth-card.selected {
+    background: #eef2ff;
+    border-color: #6366f1;
+}
+
+.gtb-auth-badge {
+    font-size: 0.62rem;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
 /* ==========================================================================
    🎯 GUM 工作流目标范围双级别选择卡片 (GUM Audit Target Scope Dual-Level Pills)
    ========================================================================== */

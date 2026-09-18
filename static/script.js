@@ -2809,37 +2809,76 @@ window.renderGlobalTopbar = async function() {
         const tenantNameEl = document.getElementById('gtb-tenant-name');
         const tenantInputEl = document.getElementById('gtb-input-tenant-id');
         const tenantBoxEl = document.getElementById('gtb-tenant-box');
+        const tenantDetailNameEl = document.getElementById('gtb-tenant-detail-name');
+        const tenantDetailIdEl = document.getElementById('gtb-tenant-detail-id');
+
+        let displayTenant = '默认组织';
+        if (tenantName) {
+            displayTenant = tenantName;
+        } else if (tenantId) {
+            displayTenant = tenantId.length > 18 ? `${tenantId.slice(0, 8)}...${tenantId.slice(-4)}` : tenantId;
+        }
+
         if (tenantNameEl) {
-            let displayTenant = '默认组织';
-            if (tenantName) {
-                displayTenant = tenantName;
-            } else if (tenantId) {
-                displayTenant = tenantId.length > 18 ? `${tenantId.slice(0, 8)}...${tenantId.slice(-4)}` : tenantId;
-            }
             tenantNameEl.textContent = displayTenant;
-            if (tenantBoxEl) {
-                tenantBoxEl.setAttribute('title', `组织租户 (Tenant)\n名称: ${tenantName || '未命名'}\nID: ${tenantId || '未配置'}`);
-            }
+        }
+        if (tenantBoxEl) {
+            tenantBoxEl.setAttribute('title', `组织租户 (Tenant)\n名称: ${tenantName || '未命名'}\nID: ${tenantId || '未配置'}`);
         }
         if (tenantInputEl) {
             tenantInputEl.value = tenantId || '';
         }
+        if (tenantDetailNameEl) {
+            tenantDetailNameEl.textContent = tenantName || '默认组织 (Default Org)';
+        }
+        if (tenantDetailIdEl) {
+            tenantDetailIdEl.textContent = tenantId || '未配置 Tenant ID';
+        }
 
-        const authSelect = document.getElementById('gtb-select-auth-mode');
+        // 回显认证模式 (Auth Mode)
+        const authHidden = document.getElementById('gtb-select-auth-mode');
+        const authDisplayText = document.getElementById('gtb-auth-display-text');
         const authIcon = document.getElementById('gtb-auth-icon');
-        if (authSelect) {
-            const spLabel = appName ? `Service Principal (${appName})` : (clientId ? `Service Principal (${clientId.slice(0, 8)}...)` : 'Service Principal');
-            const personalLabel = username ? `Personal (${username})` : 'Personal (Delegated User)';
+        const authList = document.getElementById('gtb-auth-list');
 
-            authSelect.innerHTML = `
-                <option value="service_principal">${spLabel}</option>
-                <option value="personal">${personalLabel}</option>
-            `;
-            authSelect.value = authMode;
-            authSelect.className = `gtb-auth-select mode-${authMode === 'personal' ? 'personal' : 'sp'}`;
+        const spLabel = appName ? `Service Principal (${appName})` : (clientId ? `Service Principal (${clientId.slice(0, 8)}...)` : 'Service Principal');
+        const personalLabel = username ? `Personal (${username})` : 'Personal (Delegated User)';
+
+        if (authHidden) {
+            authHidden.value = authMode;
+        }
+        if (authDisplayText) {
+            authDisplayText.textContent = authMode === 'personal' ? personalLabel : spLabel;
         }
         if (authIcon) {
-            authIcon.textContent = authMode === 'personal' ? '👤' : '🛡️';
+            authIcon.innerHTML = authMode === 'personal' 
+                ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`
+                : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`;
+        }
+
+        if (authList) {
+            authList.innerHTML = `
+                <div class="gtb-auth-card ${authMode === 'service_principal' ? 'selected' : ''}" onclick="window.selectGtbAuthMode('service_principal')">
+                    <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                        <span style="color: #60a5fa; font-size: 1rem;">🛡️</span>
+                        <div style="display: flex; flex-direction: column; min-width: 0;">
+                            <span style="font-size: 0.74rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Service Principal</span>
+                            <span style="font-size: 0.65rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${appName || clientId || 'Azure AD Client App'}</span>
+                        </div>
+                    </div>
+                    <span class="gtb-auth-badge" style="background: rgba(96, 165, 250, 0.15); color: #60a5fa;">${authMode === 'service_principal' ? '✓ 激活中' : '切换'}</span>
+                </div>
+                <div class="gtb-auth-card ${authMode === 'personal' ? 'selected' : ''}" onclick="window.selectGtbAuthMode('personal')">
+                    <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                        <span style="color: #34d399; font-size: 1rem;">👤</span>
+                        <div style="display: flex; flex-direction: column; min-width: 0;">
+                            <span style="font-size: 0.74rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Personal Delegated</span>
+                            <span style="font-size: 0.65rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${username || '个人委托用户'}</span>
+                        </div>
+                    </div>
+                    <span class="gtb-auth-badge" style="background: rgba(52, 211, 153, 0.15); color: #34d399;">${authMode === 'personal' ? '✓ 激活中' : '切换'}</span>
+                </div>
+            `;
         }
     } catch(e) {
         console.warn('Failed to fetch auth mode for topbar:', e);
@@ -2891,6 +2930,163 @@ window.getMergedGtbWorkspaces = function() {
     return result;
 };
 
+// 关闭所有全局顶栏的自定义下拉浮层 (Mutual Exclusion Defense)
+window.closeAllGtbDropdowns = function() {
+    if (window.closeGtbTenantDropdown) window.closeGtbTenantDropdown();
+    if (window.closeGtbXmlaDropdown) window.closeGtbXmlaDropdown();
+    if (window.closeGtbAuthDropdown) window.closeGtbAuthDropdown();
+    if (window.closeGtbWsDropdown) window.closeGtbWsDropdown();
+    if (window.closeGtbDsDropdown) window.closeGtbDsDropdown();
+    if (window.closeGtbRpDropdown) window.closeGtbRpDropdown();
+};
+
+// 展开/折叠租户详情浮层
+window.toggleGtbTenantDropdown = function(event) {
+    if (event) event.stopPropagation();
+    const dropdown = document.getElementById('gtb-tenant-dropdown');
+    const trigger = document.getElementById('gtb-tenant-trigger');
+    const box = document.getElementById('gtb-tenant-box');
+    if (!dropdown) return;
+    const isVisible = (dropdown.style.display === 'flex');
+    if (isVisible) {
+        window.closeGtbTenantDropdown();
+    } else {
+        window.closeAllGtbDropdowns();
+        dropdown.style.display = 'flex';
+        if (trigger) trigger.classList.add('active');
+        if (box) box.classList.add('active');
+    }
+};
+
+window.closeGtbTenantDropdown = function() {
+    const dropdown = document.getElementById('gtb-tenant-dropdown');
+    const trigger = document.getElementById('gtb-tenant-trigger');
+    const box = document.getElementById('gtb-tenant-box');
+    if (dropdown) dropdown.style.display = 'none';
+    if (trigger) trigger.classList.remove('active');
+    if (box) box.classList.remove('active');
+};
+
+// 展开/折叠 XMLA 下拉浮层
+window.toggleGtbXmlaDropdown = function(event) {
+    if (event) event.stopPropagation();
+    const dropdown = document.getElementById('gtb-xmla-dropdown');
+    const trigger = document.getElementById('gtb-xmla-trigger');
+    const box = document.getElementById('gtb-xmla-box');
+    if (!dropdown) return;
+    const isVisible = (dropdown.style.display === 'flex');
+    if (isVisible) {
+        window.closeGtbXmlaDropdown();
+    } else {
+        window.closeAllGtbDropdowns();
+        window.renderGlobalXmlaHistoryOptions();
+        dropdown.style.display = 'flex';
+        if (trigger) trigger.classList.add('active');
+        if (box) box.classList.add('active');
+        const searchInput = document.getElementById('gtb-xmla-search-input');
+        if (searchInput) {
+            searchInput.value = '';
+            setTimeout(() => searchInput.focus(), 50);
+        }
+        window.filterGtbXmlaOptions('');
+    }
+};
+
+window.closeGtbXmlaDropdown = function() {
+    const dropdown = document.getElementById('gtb-xmla-dropdown');
+    const trigger = document.getElementById('gtb-xmla-trigger');
+    const box = document.getElementById('gtb-xmla-box');
+    if (dropdown) dropdown.style.display = 'none';
+    if (trigger) trigger.classList.remove('active');
+    if (box) box.classList.remove('active');
+};
+
+window.filterGtbXmlaOptions = function(term = '') {
+    const q = (term || '').toLowerCase().trim();
+    const items = document.querySelectorAll('#gtb-xmla-list .gtb-xmla-item');
+    items.forEach(item => {
+        const text = item.getAttribute('data-search-text') || '';
+        if (!q || text.includes(q)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+};
+
+window.clearGtbXmlaHistory = function() {
+    try {
+        localStorage.removeItem('pbi-xmla-history');
+    } catch(e) {}
+    window.renderGlobalXmlaHistoryOptions();
+    if (window.showNotification) window.showNotification('已清空 XMLA 历史端点记录', 'info');
+};
+
+window.selectGtbXmlaEndpoint = function(ep) {
+    if (!ep) return;
+    window.handleGlobalXmlaHistoryChange(ep);
+    window.closeGtbXmlaDropdown();
+};
+
+// 展开/折叠认证模式下拉面板
+window.toggleGtbAuthDropdown = function(event) {
+    if (event) event.stopPropagation();
+    const dropdown = document.getElementById('gtb-auth-dropdown');
+    const trigger = document.getElementById('gtb-auth-trigger');
+    const box = document.getElementById('gtb-auth-box');
+    if (!dropdown) return;
+    const isVisible = (dropdown.style.display === 'flex');
+    if (isVisible) {
+        window.closeGtbAuthDropdown();
+    } else {
+        window.closeAllGtbDropdowns();
+        dropdown.style.display = 'flex';
+        if (trigger) trigger.classList.add('active');
+        if (box) box.classList.add('active');
+    }
+};
+
+window.closeGtbAuthDropdown = function() {
+    const dropdown = document.getElementById('gtb-auth-dropdown');
+    const trigger = document.getElementById('gtb-auth-trigger');
+    const box = document.getElementById('gtb-auth-box');
+    if (dropdown) dropdown.style.display = 'none';
+    if (trigger) trigger.classList.remove('active');
+    if (box) box.classList.remove('active');
+};
+
+window.selectGtbAuthMode = async function(mode) {
+    if (!mode) return;
+    window.closeGtbAuthDropdown();
+    try {
+        const res = await fetch('/api/auth-mode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ auth_mode: mode })
+        });
+        const ret = await res.json();
+        if (ret && ret.success) {
+            if (window.showNotification) {
+                window.showNotification(`认证模式已切换为: ${mode === 'personal' ? 'Personal User (个人委派)' : 'Service Principal (应用主体)'}`, 'success');
+            }
+            if (window.refreshGlobalContext) {
+                await window.refreshGlobalContext();
+            }
+        } else {
+            if (window.showNotification) {
+                window.showNotification('切换认证模式失败: ' + (ret?.message || '未知错误'), 'error');
+            }
+        }
+    } catch(e) {
+        console.error('Failed to set auth mode:', e);
+        if (window.showNotification) window.showNotification('切换认证模式发生网络错误', 'error');
+    }
+};
+
+window.handleGlobalAuthModeChange = function(mode) {
+    window.selectGtbAuthMode(mode);
+};
+
 // 获取当前在全局功能区选中的所有工作区 ID 数组
 window.getSelectedWorkspaces = function() {
     return Array.from(window.selectedGtbWorkspaceIds || []);
@@ -2907,6 +3103,7 @@ window.toggleGtbWsDropdown = function(event) {
     if (isVisible) {
         window.closeGtbWsDropdown();
     } else {
+        window.closeAllGtbDropdowns();
         // 关键：打开前强制执行一次全面数据聚合与列表渲染
         window.updateGlobalTopbarDropdowns();
         dropdown.style.display = 'flex';
@@ -3103,7 +3300,7 @@ window.toggleGtbDsDropdown = function(event) {
     if (isVisible) {
         window.closeGtbDsDropdown();
     } else {
-        window.closeGtbWsDropdown();
+        window.closeAllGtbDropdowns();
         window.updateGlobalTopbarDropdowns();
         dropdown.style.display = 'flex';
         if (trigger) trigger.classList.add('active');
@@ -3274,14 +3471,149 @@ window.filterGtbDsOptions = function(term = '') {
     }
 };
 
-// 注册全局点击事件以关闭数据模型 Popover
-if (!window._gtbDsClickListenerAdded) {
-    window._gtbDsClickListenerAdded = true;
-    document.addEventListener('click', function(e) {
-        const box = document.getElementById('gtb-dataset-box');
-        if (box && !box.contains(e.target)) {
-            window.closeGtbDsDropdown();
+// ⚡ 全局已选报表 ID 集合 (Set<string> - 支持单选、多选与全选)
+window.selectedGtbReportIds = new Set();
+try {
+    const savedRp = JSON.parse(localStorage.getItem('pbi-selected-reports') || '[]');
+    if (Array.isArray(savedRp) && savedRp.length > 0) {
+        savedRp.forEach(id => { if (id) window.selectedGtbReportIds.add(String(id)); });
+    } else {
+        const activeRp = localStorage.getItem('pbi-active-report') || document.getElementById('active-report')?.value;
+        if (activeRp) window.selectedGtbReportIds.add(String(activeRp));
+    }
+} catch(e) {}
+
+// 获取当前在全局功能区选中的所有报表 ID 数组
+window.getSelectedReports = function() {
+    return Array.from(window.selectedGtbReportIds || []);
+};
+
+// 展开/折叠顶栏报表多选浮层
+window.toggleGtbRpDropdown = function(event) {
+    if (event) event.stopPropagation();
+    const dropdown = document.getElementById('gtb-rp-dropdown');
+    const trigger = document.getElementById('gtb-rp-trigger');
+    const box = document.getElementById('gtb-report-box');
+    if (!dropdown) return;
+    const isVisible = (dropdown.style.display === 'flex');
+    if (isVisible) {
+        window.closeGtbRpDropdown();
+    } else {
+        window.closeAllGtbDropdowns();
+        window.updateGlobalTopbarDropdowns();
+        dropdown.style.display = 'flex';
+        if (trigger) trigger.classList.add('active');
+        if (box) box.classList.add('active');
+        const searchInput = document.getElementById('gtb-rp-search-input');
+        if (searchInput) {
+            searchInput.value = '';
+            setTimeout(() => searchInput.focus(), 50);
         }
+        window.filterGtbRpOptions('');
+    }
+};
+
+// 关闭报表多选浮层
+window.closeGtbRpDropdown = function() {
+    const dropdown = document.getElementById('gtb-rp-dropdown');
+    const trigger = document.getElementById('gtb-rp-trigger');
+    const box = document.getElementById('gtb-report-box');
+    if (dropdown) dropdown.style.display = 'none';
+    if (trigger) trigger.classList.remove('active');
+    if (box) box.classList.remove('active');
+};
+
+// 全选或清空已选报表 (支持联动当前已选工作区)
+window.selectAllGtbReports = function(selectAll = true) {
+    const rpData = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+    const selectedWsIds = Array.from(window.selectedGtbWorkspaceIds || []);
+    const wsData = window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+    const isAllWs = selectedWsIds.length === 0 || (wsData.length > 0 && selectedWsIds.length >= wsData.length);
+    const selectedWsSet = new Set(selectedWsIds.map(id => String(id).toLowerCase()));
+
+    const scopedRpData = !isAllWs
+        ? rpData.filter(r => {
+            const wid = String(r.workspaceId || '').trim().toLowerCase();
+            return !wid || selectedWsSet.has(wid);
+        })
+        : rpData;
+
+    if (selectAll) {
+        scopedRpData.forEach(r => { if (r && r.id) window.selectedGtbReportIds.add(String(r.id)); });
+    } else {
+        window.selectedGtbReportIds.clear();
+    }
+    window.persistGtbReportsAndSync();
+};
+
+// 切换某个报表的选中状态 (多选)
+window.toggleGtbReport = function(rpId) {
+    if (!rpId) return;
+    const idStr = String(rpId);
+    if (window.selectedGtbReportIds.has(idStr)) {
+        window.selectedGtbReportIds.delete(idStr);
+    } else {
+        window.selectedGtbReportIds.add(idStr);
+    }
+    window.persistGtbReportsAndSync();
+};
+
+// 单选某个报表 (清空其他所有选择，并关闭浮层)
+window.selectSingleGtbReport = function(rpId) {
+    if (!rpId) return;
+    window.selectedGtbReportIds.clear();
+    window.selectedGtbReportIds.add(String(rpId));
+    window.persistGtbReportsAndSync();
+    window.closeGtbRpDropdown();
+};
+
+// 单选切换全局活动报表 (兼容老接口)
+window.handleGlobalReportChange = function(rpId) {
+    if (!rpId) return;
+    window.selectSingleGtbReport(rpId);
+};
+
+// 持久化当前选中的报表并触发联动
+window.persistGtbReportsAndSync = function() {
+    const selectedArray = Array.from(window.selectedGtbReportIds);
+    try {
+        localStorage.setItem('pbi-selected-reports', JSON.stringify(selectedArray));
+        const firstRpId = selectedArray[0] || '';
+        localStorage.setItem('pbi-active-report', firstRpId);
+        const activeRpInput = document.getElementById('active-report');
+        if (activeRpInput) activeRpInput.value = firstRpId;
+        const gtbSelectRp = document.getElementById('gtb-select-report');
+        if (gtbSelectRp) gtbSelectRp.value = firstRpId;
+    } catch(e) {}
+
+    window.updateGlobalTopbarDropdowns();
+    if (window.syncAllWorkflowSelectors) window.syncAllWorkflowSelectors();
+};
+
+// 过滤 Popover 里的报表列表项
+window.filterGtbRpOptions = function(term = '') {
+    const q = (term || '').toLowerCase().trim();
+    const items = document.querySelectorAll('#gtb-rp-list .gtb-rp-item');
+    items.forEach(item => {
+        const text = item.getAttribute('data-search-text') || '';
+        if (!q || text.includes(q)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+};
+
+// 全局功能区外部点击统一监听与关闭防护 (Universal Click-Outside Shield)
+if (!window._gtbGlobalClickListenerAdded) {
+    window._gtbGlobalClickListenerAdded = true;
+    document.addEventListener('click', function(e) {
+        if (!document.getElementById('gtb-tenant-box')?.contains(e.target)) window.closeGtbTenantDropdown();
+        if (!document.getElementById('gtb-xmla-box')?.contains(e.target)) window.closeGtbXmlaDropdown();
+        if (!document.getElementById('gtb-auth-box')?.contains(e.target)) window.closeGtbAuthDropdown();
+        if (!document.getElementById('gtb-workspace-box')?.contains(e.target)) window.closeGtbWsDropdown();
+        if (!document.getElementById('gtb-dataset-box')?.contains(e.target)) window.closeGtbDsDropdown();
+        if (!document.getElementById('gtb-report-box')?.contains(e.target)) window.closeGtbRpDropdown();
     });
 }
 
@@ -3579,22 +3911,103 @@ window.updateGlobalTopbarDropdowns = function() {
         }
     }
 
-    // 4. 根据所选的工作区过滤 Reports (向后兼容)
+    // 4. 根据所选的工作区过滤 Reports (向后兼容与高颜值下拉列表)
     const filteredRp = (selectedCount > 0) ? rpData.filter(r => {
         const rWid = (r.workspaceId || '').trim().toLowerCase();
         return !rWid || selectedWsSet.has(rWid);
     }) : rpData;
 
-    // 填充报表下拉框
+    // 清理并对齐已选报表：若指定工作区子集，剔除超出范围的报表
+    if (!isAllWs) {
+        const validScopedRpIds = new Set(filteredRp.map(r => String(r.id).toLowerCase()));
+        for (const curSelectedId of Array.from(window.selectedGtbReportIds)) {
+            if (!validScopedRpIds.has(String(curSelectedId).toLowerCase())) {
+                window.selectedGtbReportIds.delete(curSelectedId);
+            }
+        }
+    }
+
+    // 仅初次初始化默认选中首个报表
+    if (!window._gtbRpInitialized && window.selectedGtbReportIds.size === 0 && filteredRp.length > 0) {
+        window._gtbRpInitialized = true;
+        if (curRpId && filteredRp.some(r => String(r.id).toLowerCase() === curRpId.toLowerCase())) {
+            window.selectedGtbReportIds.add(String(curRpId));
+        } else if (filteredRp[0] && filteredRp[0].id) {
+            window.selectedGtbReportIds.add(String(filteredRp[0].id));
+        }
+    }
+
+    const selectedRpList = Array.from(window.selectedGtbReportIds);
+    const selectedRpCount = selectedRpList.length;
+    const totalRpCount = filteredRp.length;
+
+    // 更新报表顶栏触发器
+    const rpDisplayTextEl = document.getElementById('gtb-rp-display-text');
+    const rpCountBadgeEl = document.getElementById('gtb-rp-count-badge');
+    const rpStatTextEl = document.getElementById('gtb-rp-stat-text');
+    const rpListContainer = document.getElementById('gtb-rp-list');
+
+    if (rpDisplayTextEl) {
+        if (selectedRpCount === 0) {
+            rpDisplayTextEl.textContent = '-- 选择报表 (0) --';
+        } else if (selectedRpCount === 1) {
+            const matched = filteredRp.find(r => String(r.id).toLowerCase() === selectedRpList[0].toLowerCase()) || rpData.find(r => String(r.id).toLowerCase() === selectedRpList[0].toLowerCase());
+            const firstRpName = matched ? (matched.alias || matched.name || matched.id) : selectedRpList[0];
+            rpDisplayTextEl.textContent = firstRpName;
+        } else if (selectedRpCount === totalRpCount && totalRpCount > 1) {
+            rpDisplayTextEl.textContent = `全部报表 (共 ${totalRpCount} 个)`;
+        } else {
+            rpDisplayTextEl.textContent = `已选 ${selectedRpCount} 个报表`;
+        }
+    }
+
+    if (rpCountBadgeEl) {
+        if (selectedRpCount > 1) {
+            rpCountBadgeEl.style.display = 'inline-block';
+            rpCountBadgeEl.textContent = (selectedRpCount === totalRpCount) ? '全选' : `${selectedRpCount}/${totalRpCount}`;
+        } else {
+            rpCountBadgeEl.style.display = 'none';
+        }
+    }
+
+    if (rpStatTextEl) {
+        rpStatTextEl.textContent = hasWsFilter
+            ? `已选 ${selectedRpCount} / ${totalRpCount} 个报表 (联动 ${selectedWsIds.length} 个工作区)`
+            : `已选 ${selectedRpCount} / ${totalRpCount} 个报表`;
+    }
+
     if (rpSelect) {
-        let rpHtml = `<option value="">-- 选择报表 (${filteredRp.length}) --</option>`;
-        filteredRp.forEach(r => {
-            const isSel = (r.id === curRpId);
-            const name = r.alias || r.name || r.id;
-            const displayLabel = `${name} (${r.id})`;
-            rpHtml += `<option value="${r.id}" ${isSel ? 'selected' : ''} title="${displayLabel}">${displayLabel}</option>`;
-        });
-        rpSelect.innerHTML = rpHtml;
+        rpSelect.value = selectedRpList[0] || '';
+    }
+
+    // 渲染报表下拉面板列表
+    if (rpListContainer) {
+        if (filteredRp.length === 0) {
+            rpListContainer.innerHTML = `<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 24px 10px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="opacity: 0.4; margin-bottom: 6px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                <div>${hasWsFilter ? '当前已选工作区下暂无可用的报表' : '暂无可用的报表缓存'}</div>
+            </div>`;
+        } else {
+            let rpHtml = '';
+            filteredRp.forEach(r => {
+                const rId = String(r.id);
+                const rName = r.alias || r.name || rId;
+                const isSel = window.selectedGtbReportIds.has(rId);
+                const searchText = `${rName} ${rId}`.toLowerCase();
+                rpHtml += `
+                    <div class="gtb-ws-item gtb-rp-item ${isSel ? 'selected' : ''}" data-search-text="${searchText}" onclick="window.toggleGtbReport('${rId}')">
+                        <div class="gtb-ws-item-left">
+                            <input type="checkbox" class="gtb-ws-checkbox gtb-rp-checkbox" ${isSel ? 'checked' : ''} onclick="event.stopPropagation(); window.toggleGtbReport('${rId}')">
+                            <div class="gtb-ws-item-names">
+                                <div class="gtb-ws-item-title" title="${rName}">${rName}</div>
+                                <div class="gtb-ws-item-sub" title="${rId}">${rId}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            rpListContainer.innerHTML = rpHtml;
+        }
     }
 
     // 计算并更新 XMLA 终结点连接串及历史记录维护
@@ -3633,45 +4046,92 @@ window.updateGlobalTopbarDropdowns = function() {
 // 渲染 XMLA 历史下拉选项
 window.renderGlobalXmlaHistoryOptions = function() {
     const xmlaHistorySelect = document.getElementById('gtb-select-xmla-history');
-    if (!xmlaHistorySelect) return;
+    const xmlaDisplayText = document.getElementById('gtb-xmla-display-text');
+    const xmlaListContainer = document.getElementById('gtb-xmla-list');
+    const xmlaStatText = document.getElementById('gtb-xmla-stat-text');
 
     let history = [];
     try {
         history = JSON.parse(localStorage.getItem('pbi-xmla-history') || '[]');
     } catch(e) { history = []; }
 
-    // 从已知工作区列表中提取候选 XMLA
     const wsData = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+    const currentVal = document.getElementById('gtb-input-xmla')?.value || '';
+
+    // 生成全部候选端点
+    const allEndpoints = [];
+    history.forEach(ep => {
+        if (!allEndpoints.includes(ep)) allEndpoints.push(ep);
+    });
     wsData.forEach(w => {
         const name = w.alias || w.name;
         if (name) {
             const ep = `powerbi://api.powerbi.com/v1.0/myorg/${name}`;
-            if (!history.includes(ep)) history.push(ep);
+            if (!allEndpoints.includes(ep)) allEndpoints.push(ep);
         }
     });
 
-    const currentVal = document.getElementById('gtb-input-xmla')?.value || '';
-    if (currentVal && !history.includes(currentVal)) {
-        history.unshift(currentVal);
+    if (currentVal && !allEndpoints.includes(currentVal)) {
+        allEndpoints.unshift(currentVal);
     }
 
-    let opts = `<option value="">-- 选择 XMLA 端点 (${history.length}) --</option>`;
-    history.forEach(ep => {
-        const shortName = ep.split('/').pop();
-        const isSel = (ep === currentVal);
-        opts += `<option value="${ep}" ${isSel ? 'selected' : ''} title="${ep}">${shortName} (${ep})</option>`;
-    });
-    xmlaHistorySelect.innerHTML = opts;
-    if (currentVal) {
+    // 更新顶栏触发器文本
+    if (xmlaDisplayText) {
+        if (currentVal) {
+            const targetName = currentVal.split('/').pop() || currentVal;
+            xmlaDisplayText.textContent = targetName ? `myorg/${targetName}` : currentVal;
+            xmlaDisplayText.setAttribute('title', currentVal);
+        } else {
+            xmlaDisplayText.textContent = '-- 选择 XMLA 端点 --';
+        }
+    }
+
+    if (xmlaStatText) {
+        xmlaStatText.textContent = `共 ${allEndpoints.length} 个可用端点`;
+    }
+
+    if (xmlaHistorySelect) {
         xmlaHistorySelect.value = currentVal;
+    }
+
+    // 渲染 XMLA Popover 下拉列表
+    if (xmlaListContainer) {
+        if (allEndpoints.length === 0) {
+            xmlaListContainer.innerHTML = '<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 20px 0;">暂无可用的 XMLA 端点</div>';
+        } else {
+            let html = '';
+            allEndpoints.forEach(ep => {
+                const isSel = (ep === currentVal);
+                const shortName = ep.split('/').pop() || ep;
+                const searchText = `${shortName} ${ep}`.toLowerCase();
+
+                html += `
+                    <div class="gtb-ws-item gtb-xmla-item ${isSel ? 'selected' : ''}" data-search-text="${searchText}" onclick="window.selectGtbXmlaEndpoint('${ep}')">
+                        <div class="gtb-ws-item-left">
+                            <span style="font-size: 0.9rem; color: var(--accent); flex-shrink: 0;">⚡</span>
+                            <div class="gtb-ws-item-names">
+                                <div class="gtb-ws-item-title" title="${shortName}">${shortName}</div>
+                                <div class="gtb-xmla-url-text" title="${ep}">${ep}</div>
+                            </div>
+                        </div>
+                        ${isSel ? '<span style="color: var(--accent); font-size: 0.72rem; font-weight: bold;">✓ 激活</span>' : ''}
+                    </div>
+                `;
+            });
+            xmlaListContainer.innerHTML = html;
+        }
     }
 };
 
 // 选择 XMLA 历史记录
 window.handleGlobalXmlaHistoryChange = function(ep) {
     const xmlaInput = document.getElementById('gtb-input-xmla');
+    const xmlaHistorySelect = document.getElementById('gtb-select-xmla-history');
     if (xmlaInput) {
         xmlaInput.value = ep || '';
+    }
+    if (xmlaHistorySelect) {
+        xmlaHistorySelect.value = ep || '';
     }
     if (!ep) return;
     // 尝试反向联动匹配对应工作区
@@ -3683,6 +4143,7 @@ window.handleGlobalXmlaHistoryChange = function(ep) {
     } else {
         if (window.showNotification) window.showNotification(`已切换当前 XMLA 端点: ${ep}`, 'info');
     }
+    window.renderGlobalXmlaHistoryOptions();
 };
 
 // 通用 GTB 选项悬浮复制函数 (Workspace / Dataset / Report / Tenant) - 复制名称与对应的 ID
@@ -3721,12 +4182,17 @@ window.copyGtbItem = function(btn, type) {
     } else if (type === 'report') {
         label = '报表';
         const rpData = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
-        const curRpId = document.getElementById('gtb-select-report')?.value || '';
-        if (curRpId) {
-            const matched = rpData.find(r => String(r.id).toLowerCase() === curRpId.toLowerCase());
-            const name = matched ? (matched.alias || matched.name || matched.id) : curRpId;
-            lines.push((name && name !== curRpId) ? `${name} (${curRpId})` : curRpId);
+        let selectedIds = Array.from(window.selectedGtbReportIds || []);
+        if (selectedIds.length === 0) {
+            const fallbackId = document.getElementById('gtb-select-report')?.value;
+            if (fallbackId) selectedIds = [fallbackId];
         }
+        selectedIds.forEach(id => {
+            if (!id) return;
+            const matched = rpData.find(r => String(r.id).toLowerCase() === String(id).toLowerCase());
+            const name = matched ? (matched.alias || matched.name || matched.id) : id;
+            lines.push((name && name !== id) ? `${name} (${id})` : id);
+        });
     } else if (type === 'tenant') {
         label = '租户';
         const tenantId = document.getElementById('gtb-input-tenant-id')?.value || '';
