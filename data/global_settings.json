@@ -7,128 +7,136 @@
             "alias": "PersonalWorkspace seven@carman.ccwu.cc",
             "id": "c06a2729-ee28-4471-af27-803b56a3d8cc",
             "type": "PersonalGroup",
-            "state": "Active"
+            "state": "Active",
+            "workspaceId": ""
         },
         {
             "alias": "WorkSpace_DEV",
             "id": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
-            "type": "Premium/Fabric",
-            "state": "Active"
+            "type": "Workspace",
+            "state": "Active",
+            "workspaceId": ""
         },
         {
             "alias": "PersonalWorkspace zhaochengmei@sina.cn",
             "id": "c38cfce4-99a9-45a9-929b-44374b63a30a",
             "type": "PersonalGroup",
-            "state": "Active"
+            "state": "Active",
+            "workspaceId": ""
         },
         {
             "alias": "Admin monitoring",
             "id": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5",
-            "type": "AdminWorkspace",
-            "state": "Active"
+            "type": "Workspace",
+            "state": "Active",
+            "workspaceId": ""
         },
         {
             "alias": "PersonalWorkspace nameless@carman.ccwu.cc",
             "id": "ad88bcfe-af01-4744-968e-c59af1daab02",
             "type": "PersonalGroup",
-            "state": "Active"
+            "state": "Active",
+            "workspaceId": ""
         },
         {
             "alias": "Workspace-2",
             "id": "0373c69f-d701-475e-afc6-30c2bafa6146",
             "type": "Workspace",
-            "state": "Active"
+            "state": "Active",
+            "workspaceId": ""
         },
         {
             "alias": "Microsoft Fabric Capacity Metrics",
             "id": "9b9146c9-f8fe-4c9e-b026-f4f2e25c233c",
             "type": "Workspace",
-            "state": "Active"
+            "state": "Active",
+            "workspaceId": ""
         },
         {
             "alias": "PersonalWorkspace APP_Automation",
             "id": "50e6b428-68a9-4366-8aee-e6113d8ed3db",
             "type": "PersonalGroup",
-            "state": "Active"
+            "state": "Active",
+            "workspaceId": ""
         }
     ],
     "PBI_DATASETS": [
         {
             "alias": "AstraZeneca_SFE",
             "id": "c97cbbf8-c326-4d0c-85a5-4bb602dcfd80",
-            "type": "PbixInImportMode",
+            "type": "Workspace",
             "state": "Active",
-            "workspaceId": "2c51e061-0f9f-4d02-bed0-c169019e5d83"
+            "workspaceId": ""
         },
         {
             "alias": "Fabric Capacity Metrics",
             "id": "e8dd1a55-b87b-4ec7-a24d-ccff2d799915",
-            "type": "Unknown",
+            "type": "Workspace",
             "state": "Active",
-            "workspaceId": "9b9146c9-f8fe-4c9e-b026-f4f2e25c233c"
+            "workspaceId": ""
         },
         {
             "alias": "Purview Hub",
             "id": "f65e1072-a92d-48db-ac6c-3c82c1d00bb9",
-            "type": "PbixInImportMode",
+            "type": "Workspace",
             "state": "Active",
-            "workspaceId": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5"
+            "workspaceId": ""
         },
         {
             "alias": "Feature Usage and Adoption",
             "id": "3d20f0e7-9b6e-4404-82e5-682ca707ae7d",
-            "type": "PbixInImportMode",
+            "type": "Workspace",
             "state": "Active",
-            "workspaceId": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5"
+            "workspaceId": ""
         },
         {
             "alias": "Content Sharing",
             "id": "e80b73d7-93f3-4430-983a-3edd14f17171",
-            "type": "PbixInImportMode",
+            "type": "Workspace",
             "state": "Active",
-            "workspaceId": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5"
+            "workspaceId": ""
         },
         {
             "alias": "PBI_Salesforce_demo",
             "id": "0359b9d6-7128-463f-ab49-66d8a7eeedbf",
-            "type": "PbixInImportMode",
+            "type": "Workspace",
             "state": "Active",
-            "workspaceId": "2c51e061-0f9f-4d02-bed0-c169019e5d83"
+            "workspaceId": ""
         },
         {
             "alias": "Usage Metrics Report",
             "id": "7c599a28-e386-4507-a1be-df4735f797be",
-            "type": "PbixInImportMode",
+            "type": "Workspace",
             "state": "Active",
-            "workspaceId": "2c51e061-0f9f-4d02-bed0-c169019e5d83"
+            "workspaceId": ""
         },
         {
             "alias": "Report Usage Metrics Model",
             "id": "554db73d-77e4-40a6-8d4c-fdbf07b63f77",
-            "type": "UsageMetricsUserReport",
+            "type": "Workspace",
             "state": "Active",
-            "workspaceId": "2c51e061-0f9f-4d02-bed0-c169019e5d83"
+            "workspaceId": ""
         },
         {
             "alias": "OneLake Catalog - Governance for Admins",
             "id": "d3f34be6-ecb4-4c8d-b276-407f48969d9d",
-            "type": "PbixInImportMode",
+            "type": "Workspace",
             "state": "Active",
-            "workspaceId": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5"
+            "workspaceId": ""
         },
         {
             "alias": "PBI_Salesforce_demo",
             "id": "944c8bdb-2d08-4a57-9175-6cd14325077f",
-            "type": "PbixInImportMode",
+            "type": "Workspace",
             "state": "Active",
-            "workspaceId": "c06a2729-ee28-4471-af27-803b56a3d8cc"
+            "workspaceId": ""
         },
         {
             "alias": "PBI_BI_SAP_Demo",
             "id": "8f2a320c-7ab8-44df-ae3d-c722664ee9d1",
-            "type": "PbixInImportMode",
+            "type": "Workspace",
             "state": "Active",
-            "workspaceId": "2c51e061-0f9f-4d02-bed0-c169019e5d83"
+            "workspaceId": ""
         }
     ],
     "PBI_REPORTS": [
@@ -137,91 +145,91 @@
             "id": "3a6e9e19-9aed-4372-a7d9-17155e9dd49d",
             "type": "PowerBIReport (PBIR)",
             "state": "Active",
-            "workspaceId": "2c51e061-0f9f-4d02-bed0-c169019e5d83"
+            "workspaceId": ""
         },
         {
             "alias": "PBI_Salesforce_demo",
             "id": "eb1e9614-f437-4925-b930-3db8c57aed83",
             "type": "PowerBIReport (PBIR)",
             "state": "Active",
-            "workspaceId": "c06a2729-ee28-4471-af27-803b56a3d8cc"
+            "workspaceId": ""
         },
         {
             "alias": "OneLake Catalog - Governance for Admins",
             "id": "dd92cf21-8347-46bb-b57a-0d7b1abb54a1",
             "type": "PowerBIReport (PBIR)",
             "state": "Active",
-            "workspaceId": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5"
+            "workspaceId": ""
         },
         {
             "alias": "Report Usage Metrics Report",
             "id": "1b4b8c16-98ba-4122-a9f4-45b515254966",
             "type": "PowerBIReport (PBIRLegacy)",
             "state": "Active",
-            "workspaceId": "2c51e061-0f9f-4d02-bed0-c169019e5d83"
+            "workspaceId": ""
         },
         {
             "alias": "Usage Metrics Report",
             "id": "98c86f67-010c-45be-b62c-70123f7d5854",
             "type": "PowerBIReport (PBIRLegacy)",
             "state": "Active",
-            "workspaceId": "2c51e061-0f9f-4d02-bed0-c169019e5d83"
+            "workspaceId": ""
         },
         {
             "alias": "PBI_Salesforce_demo",
             "id": "cbc29d9e-0d69-4791-9862-03543960bd08",
             "type": "PowerBIReport (PBIR)",
             "state": "Active",
-            "workspaceId": "2c51e061-0f9f-4d02-bed0-c169019e5d83"
+            "workspaceId": ""
         },
         {
             "alias": "Content Sharing",
             "id": "58c8af01-4ae9-44e6-853a-32a6c34802d6",
             "type": "PowerBIReport (PBIR)",
             "state": "Active",
-            "workspaceId": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5"
+            "workspaceId": ""
         },
         {
             "alias": "Feature Usage and Adoption",
             "id": "043db830-2a3b-45f2-8798-1ac69f188793",
             "type": "PowerBIReport (PBIR)",
             "state": "Active",
-            "workspaceId": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5"
+            "workspaceId": ""
         },
         {
             "alias": "Purview Hub",
             "id": "7eb7e61e-424f-48bf-bf0e-be101d0c6131",
             "type": "PowerBIReport (PBIRLegacy)",
             "state": "Active",
-            "workspaceId": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5"
+            "workspaceId": ""
         },
         {
             "alias": "Fabric Capacity Metrics",
             "id": "48f13f45-3da0-4592-a80c-cfb3867bbde8",
             "type": "PowerBIReport (PBIR)",
             "state": "Active",
-            "workspaceId": "9b9146c9-f8fe-4c9e-b026-f4f2e25c233c"
+            "workspaceId": ""
         },
         {
             "alias": "[App] Fabric Capacity Metrics",
             "id": "7f0acb25-c72a-451b-b560-dccdc5861235",
             "type": "PowerBIReport (PBIR)",
             "state": "Active",
-            "workspaceId": "9b9146c9-f8fe-4c9e-b026-f4f2e25c233c"
+            "workspaceId": ""
         },
         {
             "alias": "AstraZeneca_SFE",
             "id": "5c6df788-fcc6-4758-ba9c-42bc1b969666",
             "type": "PowerBIReport (PBIR)",
             "state": "Active",
-            "workspaceId": "2c51e061-0f9f-4d02-bed0-c169019e5d83"
+            "workspaceId": ""
         },
         {
             "alias": "[App] PBI_BI_SAP_Demo",
             "id": "db746473-2c7c-4eb1-a0ce-61c27d888bd4",
             "type": "PowerBIReport (PBIR)",
             "state": "Active",
-            "workspaceId": "2c51e061-0f9f-4d02-bed0-c169019e5d83"
+            "workspaceId": ""
         }
     ],
     "PBI_TENANT_NAME": ""

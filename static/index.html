@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260918_v2245">
+    <link rel="stylesheet" href="/static/style.css?v=20260919_v1410">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -436,6 +436,17 @@
                         </div>
                         <span class="rail-item-text">API Explorer</span>
                     </li>
+                    <li class="rail-item" id="rail-nav-permission_blueprint" data-module="permission_blueprint" title="🕸️ 权限流转蓝图 (Permission Blueprint)">
+                        <div class="rail-item-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="6" height="6" rx="1.5"></rect>
+                                <rect x="15" y="3" width="6" height="6" rx="1.5"></rect>
+                                <rect x="9" y="15" width="6" height="6" rx="1.5"></rect>
+                                <path d="M6 9v3a3 3 0 0 0 3 3h3m0 0h3a3 3 0 0 0 3-3V9"></path>
+                            </svg>
+                        </div>
+                        <span class="rail-item-text">Blueprint</span>
+                    </li>
                 </ul>
             </div>
             <div class="rail-bottom">
@@ -582,6 +593,118 @@
                             </a>
                         </div>
                         <div id="selected-api-desc" style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.4; padding-right: 4px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar Pane C: Permission Blueprint Panel -->
+            <div id="sidebar-pane-permission_blueprint" class="sidebar-pane" style="display: none; flex-direction: column; height: 100%; overflow: hidden;">
+                <div class="nav-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-shrink: 0;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="6" height="6" rx="1.5"></rect>
+                            <rect x="15" y="3" width="6" height="6" rx="1.5"></rect>
+                            <rect x="9" y="15" width="6" height="6" rx="1.5"></rect>
+                            <path d="M6 9v3a3 3 0 0 0 3 3h3m0 0h3a3 3 0 0 0 3-3V9"></path>
+                        </svg>
+                        <p class="nav-title" style="margin: 0; font-size: 0.92rem; font-weight: 700; color: var(--text-primary);">权限流转蓝图</p>
+                    </div>
+                    <span class="api-count-badge" style="background: rgba(167, 139, 250, 0.15); color: #a78bfa; border-color: rgba(167, 139, 250, 0.3);">6 层权限体系</span>
+                </div>
+
+                <!-- 模式切换：以用户为中心 vs 以模型为中心 -->
+                <div class="pb-mode-tabs" style="display: flex; background: var(--input-bg); padding: 3px; border-radius: 6px; border: 1px solid var(--panel-border); margin-bottom: 0.75rem; flex-shrink: 0;">
+                    <button type="button" id="pb-tab-user" class="pb-tab-btn active" onclick="window.PermissionBlueprint.switchPerspective('user')" style="flex: 1; padding: 5px 8px; border-radius: 4px; border: none; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                        👤 按用户主体
+                    </button>
+                    <button type="button" id="pb-tab-model" class="pb-tab-btn" onclick="window.PermissionBlueprint.switchPerspective('model')" style="flex: 1; padding: 5px 8px; border-radius: 4px; border: none; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s; background: transparent; color: var(--text-secondary);">
+                        📊 按目标模型
+                    </button>
+                </div>
+
+                <!-- 滚动配置区 -->
+                <div class="pb-sidebar-scroll" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 2px;">
+                    <!-- A. 用户选择与模拟主体 -->
+                    <div class="pb-control-card glass-panel" style="padding: 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--overlay-10);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 4px;">
+                                <span>🎯 模拟用户 (Principal)</span>
+                            </label>
+                            <span id="pb-badge-role-tag" class="gtb-auth-badge" style="background: rgba(52, 211, 153, 0.15); color: #34d399; font-size: 0.65rem;">Contributor</span>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <select id="pb-user-preset-select" class="modern-input" style="width: 100%; font-size: 0.76rem; padding: 5px 8px;" onchange="window.PermissionBlueprint.selectUserPreset(this.value)">
+                                <option value="preset_admin">👑 组织/工作区最高管理员 (Workspace Admin)</option>
+                                <option value="preset_developer" selected>🛠️ 报表核心开发者 (Contributor / Mashup Editor)</option>
+                                <option value="preset_member">🤝 业务协作成员 (Workspace Member)</option>
+                                <option value="preset_viewer_rls">👁️ 受限业务查看者 (Viewer with RLS Restricted)</option>
+                                <option value="preset_build_user">🧱 单品生成权限者 (Direct Share + Build Access)</option>
+                                <option value="preset_read_only">📄 单品只读访客 (Direct Share Read Only)</option>
+                                <option value="preset_guest">🌐 跨租户外部访客 (Azure AD B2B Guest)</option>
+                                <option value="custom">✏️ 自定义输入主体 UPN...</option>
+                            </select>
+                        </div>
+                        <div id="pb-custom-user-box" style="display: none; margin-bottom: 6px;">
+                            <input type="text" id="pb-custom-upn" class="modern-input" placeholder="输入用户邮箱/UPN..." style="width: 100%; font-size: 0.75rem; padding: 4px 8px;" oninput="window.PermissionBlueprint.updateCustomUpn(this.value)">
+                        </div>
+                        <div style="font-size: 0.70rem; color: var(--text-secondary); line-height: 1.4;">
+                            当前模拟用户：<strong id="pb-current-upn-label" style="color: var(--accent);">alex.developer@contoso.com</strong>
+                        </div>
+                    </div>
+
+                    <!-- B. 目标模型选择与联动 -->
+                    <div class="pb-control-card glass-panel" style="padding: 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--overlay-10);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-primary);">
+                                🗄️ 目标语义模型 (Semantic Model)
+                            </label>
+                            <button type="button" class="icon-btn" onclick="window.PermissionBlueprint.syncGlobalModel()" title="同步当前全局顶栏选中的模型" style="padding: 2px 4px; font-size: 0.68rem; color: var(--accent); background: none; border: none; cursor: pointer;">
+                                🔄 同步顶栏
+                            </button>
+                        </div>
+                        <select id="pb-model-select" class="modern-input" style="width: 100%; font-size: 0.76rem; padding: 5px 8px;" onchange="window.PermissionBlueprint.selectModel(this.value)">
+                            <option value="model_sales">Enterprise Sales & Margin Model (Premium)</option>
+                            <option value="model_finance">Financial Core Ledger (Fabric F64)</option>
+                            <option value="model_hr">HR Payroll Confidential (RLS & OLS)</option>
+                            <option value="model_inventory">Supply Chain & Inventory (Pro Shared)</option>
+                        </select>
+                        <div style="margin-top: 6px; font-size: 0.70rem; color: var(--text-secondary);">
+                            工作区：<span id="pb-model-ws-name" style="color: var(--text-primary); font-weight: 500;">Production Analytics</span>
+                        </div>
+                    </div>
+
+                    <!-- C. 按模型透视时的关联用户矩阵面板 -->
+                    <div id="pb-model-users-card" class="pb-control-card glass-panel" style="display: none; padding: 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--overlay-10);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-primary);">
+                                👥 模型关联用户与权限分布
+                            </label>
+                            <span id="pb-model-user-count" class="api-count-badge" style="font-size: 0.65rem;">5 位用户</span>
+                        </div>
+                        <div id="pb-model-user-list" style="display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow-y: auto;">
+                            <!-- 动态加载模型关联用户 -->
+                        </div>
+                    </div>
+
+                    <!-- D. What-If 假设推演操作区 -->
+                    <div class="pb-control-card glass-panel" style="padding: 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--overlay-10);">
+                        <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 4px; margin-bottom: 8px;">
+                            <span>⚡ What-If 快速预设场景</span>
+                        </label>
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <button type="button" class="modern-btn" onclick="window.PermissionBlueprint.resetSimulation()" style="width: 100%; justify-content: center; font-size: 0.75rem; padding: 6px 10px;">
+                                🔄 重置为默认权限基准
+                            </button>
+                            <button type="button" class="modern-btn" onclick="window.PermissionBlueprint.applyScenario('strict_gac_break')" style="width: 100%; justify-content: center; font-size: 0.73rem; padding: 6px 8px; border-color: rgba(239, 68, 68, 0.3); color: #f87171;">
+                                ⚠️ 模拟：GAC开启但缺连接(阻断PQ)
+                            </button>
+                            <button type="button" class="modern-btn" onclick="window.PermissionBlueprint.applyScenario('bypass_rls_contributor')" style="width: 100%; justify-content: center; font-size: 0.73rem; padding: 6px 8px; border-color: rgba(242, 200, 17, 0.3); color: #fbbf24;">
+                                ✨ 模拟：Contributor 特权穿透 RLS/OLS
+                            </button>
+                            <button type="button" class="modern-btn" onclick="window.PermissionBlueprint.applyScenario('ols_mask_denied')" style="width: 100%; justify-content: center; font-size: 0.73rem; padding: 6px 8px; border-color: rgba(168, 85, 247, 0.3); color: #c084fc;">
+                                🔒 模拟：Viewer 遭遇 OLS 字段掩蔽拦截
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2399,6 +2522,127 @@
 
         
             </main>
+
+            <!-- View C: Permission Flow Blueprint Workspace -->
+            <div id="view-permission_blueprint" class="workspace-view" style="display: none; flex: 1; flex-direction: column; height: 100%; min-width: 0; position: relative; overflow: hidden;">
+                <!-- 顶部蓝图控制条 (Blueprint Canvas Toolbar) -->
+                <div class="pb-canvas-header glass-panel" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 14px; border-bottom: 1px solid var(--overlay-10); background: var(--panel-bg); flex-shrink: 0; z-index: 10;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                                🕸️ Power BI 权限体系流转蓝图与 What-If 沙盒
+                            </span>
+                            <span class="gtb-auth-badge" style="background: rgba(96, 165, 250, 0.15); color: #60a5fa; font-size: 0.68rem; padding: 2px 6px;">
+                                6 层全链路 + GAC 严格门禁
+                            </span>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <!-- 视口缩放与对齐控制 -->
+                        <div style="display: flex; align-items: center; background: var(--input-bg); border-radius: 6px; border: 1px solid var(--panel-border); padding: 2px 4px; gap: 4px;">
+                            <button type="button" class="icon-btn" onclick="window.PermissionBlueprint.zoomCanvas(-0.1)" title="缩小画布 (Zoom Out)" style="padding: 2px 6px; font-size: 0.8rem; background: transparent; border: none; color: var(--text-primary); cursor: pointer;">-</button>
+                            <span id="pb-zoom-label" style="font-size: 0.72rem; font-family: 'Fira Code', monospace; min-width: 40px; text-align: center; color: var(--accent);">100%</span>
+                            <button type="button" class="icon-btn" onclick="window.PermissionBlueprint.zoomCanvas(0.1)" title="放大画布 (Zoom In)" style="padding: 2px 6px; font-size: 0.8rem; background: transparent; border: none; color: var(--text-primary); cursor: pointer;">+</button>
+                            <button type="button" class="icon-btn" onclick="window.PermissionBlueprint.fitCanvas()" title="视口居中重置 (Fit View)" style="padding: 2px 6px; font-size: 0.70rem; color: var(--accent); background: transparent; border: none; cursor: pointer;">居中</button>
+                        </div>
+                        <!-- 连线流动光斑开关 -->
+                        <button type="button" id="pb-toggle-pulse" class="btn-wf-sm" onclick="window.PermissionBlueprint.togglePulse()" title="开启/关闭连线流动光效" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer;">
+                            <span id="pb-pulse-dot" style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #34d399; box-shadow: 0 0 6px #34d399;"></span>
+                            <span>流动光效</span>
+                        </button>
+                        <!-- 一键重置节点坐标布局 -->
+                        <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.resetNodePositions()" title="重置蓝图节点至标准拓扑布局" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-secondary); cursor: pointer;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M3 21v-5h5"></path></svg>
+                            <span>重置排版</span>
+                        </button>
+                        <!-- 沉浸全屏模式 -->
+                        <button type="button" class="icon-btn zen-mode-btn" onclick="window.toggleZenMode()" title="开启蓝图沉浸模式 (Focus Mode)" style="width: 28px; height: 28px; padding: 0; border-radius: 6px; border: 1px solid var(--overlay-10); background: transparent; transition: all 0.2s; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-expand"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-collapse" style="display: none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
+                        </button>
+                        <!-- 最终权力透视抽屉控制 -->
+                        <button type="button" id="pb-btn-open-audit" class="btn-action-primary" onclick="window.PermissionBlueprint.toggleAuditDrawer()" style="height: 28px; padding: 0 12px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; font-weight: 600;">
+                            <span>📊 最终权力透视报告</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 蓝图主画布视口 (Canvas Viewport - 支持拖拽平移与滚轮缩放) -->
+                <div id="pb-canvas-viewport" class="pb-canvas-viewport" style="flex: 1; width: 100%; height: 100%; position: relative; overflow: hidden; background-color: #0b0f19; background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px); background-size: 24px 24px; cursor: grab; user-select: none;">
+                    <!-- 变换容器 (平移 Pan + 缩放 Zoom) -->
+                    <div id="pb-canvas-content" class="pb-canvas-content" style="position: absolute; top: 0; left: 0; width: 3600px; height: 2000px; transform-origin: 0 0;">
+                        <!-- SVG 连线层 -->
+                        <svg id="pb-svg-wires" class="pb-svg-wires" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;">
+                            <defs>
+                                <filter id="pb-glow-filter" x="-20%" y="-20%" width="140%" height="140%">
+                                    <feGaussianBlur stdDeviation="3" result="blur" />
+                                    <feMerge>
+                                        <feMergeNode in="blur" />
+                                        <feMergeNode in="SourceGraphic" />
+                                    </feMerge>
+                                </filter>
+                                <marker id="pb-arrow-normal" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#60a5fa" />
+                                </marker>
+                                <marker id="pb-arrow-bypass" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#f59e0b" />
+                                </marker>
+                                <marker id="pb-arrow-blocked" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#ef4444" />
+                                </marker>
+                                <marker id="pb-arrow-strict" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#a78bfa" />
+                                </marker>
+                            </defs>
+                            <g id="pb-wires-group"></g>
+                        </svg>
+
+                        <!-- DOM 节点渲染层 (8 大核心节点挂载容器) -->
+                        <div id="pb-nodes-layer" class="pb-nodes-layer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none;"></div>
+                    </div>
+
+                    <!-- 画布左下角浮动图例说明 (Floating Legend) -->
+                    <div class="pb-legend-card glass-panel" style="position: absolute; bottom: 14px; left: 14px; padding: 8px 12px; border-radius: 8px; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); border: 1px solid var(--overlay-10); z-index: 15; font-size: 0.68rem; display: flex; flex-direction: column; gap: 4px; pointer-events: auto;">
+                        <span style="font-weight: 700; color: var(--text-primary); margin-bottom: 2px;">连线与流转图例：</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="display: inline-block; width: 22px; height: 3px; background: #60a5fa; border-radius: 2px;"></span>
+                            <span style="color: var(--text-secondary);">标准权限流 (Pass)</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="display: inline-block; width: 22px; height: 3px; background: #f59e0b; border-radius: 2px;"></span>
+                            <span style="color: #fbbf24;">特权豁免穿透 (Contributor+ Bypass)</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="display: inline-block; width: 22px; height: 3px; background: #a78bfa; border-radius: 2px;"></span>
+                            <span style="color: #c084fc;">GAC严格模式门禁 (Mashup Gate)</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="display: inline-block; width: 22px; height: 3px; background: #ef4444; border-radius: 2px; border-top: 1px dashed #ef4444;"></span>
+                            <span style="color: #f87171;">阻断拦截 (Blocked / Denied)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 浮动可拖拽：最终有效权力透视报告抽屉 (Effective Permissions Audit Drawer) -->
+                <div id="pb-audit-drawer" class="pb-audit-drawer glass-panel" style="position: absolute; top: 48px; right: 14px; width: 420px; max-height: calc(100% - 64px); border-radius: 10px; border: 1px solid var(--overlay-20); background: rgba(15, 23, 42, 0.94); backdrop-filter: blur(20px); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6); z-index: 25; display: flex; flex-direction: column; overflow: hidden; transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s;">
+                    <!-- 抽屉头部 -->
+                    <div id="pb-audit-drawer-header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--overlay-10); cursor: move; user-select: none;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                                <span>⚖️ 最终有效权限裁定 (Effective Audit)</span>
+                            </span>
+                            <span id="pb-audit-status-badge" class="gtb-auth-badge" style="background: rgba(52, 211, 153, 0.15); color: #34d399; font-size: 0.65rem;">计算就绪</span>
+                        </div>
+                        <button type="button" class="close-btn" onclick="window.PermissionBlueprint.toggleAuditDrawer(false)" title="收起抽屉" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 2px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    <!-- 抽屉内容区 -->
+                    <div id="pb-audit-results" style="padding: 12px 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; font-size: 0.76rem;">
+                        <!-- 动态填充 6 项核心裁定卡片 -->
+                    </div>
+                </div>
+            </div>
         </div> <!-- End workspace-container -->
     </div> <!-- End app-main-layout -->
 </div> <!-- End app-container -->
@@ -2813,8 +3057,9 @@
     <script src="/static/translations.js?v=20260906_v1225"></script>
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
-    <script src="/static/universal_modal.js?v=20260919_v1339"></script>
-    <script src="/static/script.js?v=20260919_v1115"></script>
+    <script src="/static/universal_modal.js?v=20260919_v1410"></script>
+    <script src="/static/script.js?v=20260919_v1410"></script>
+    <script src="/static/permission_blueprint.js?v=20260919_v1410"></script>
 
 
 

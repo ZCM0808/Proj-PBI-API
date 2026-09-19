@@ -6442,4 +6442,251 @@ body.light-theme .gtb-auth-card.selected,
     opacity: 1;
 }
 
+/* ==========================================================================
+   Power BI Permission Blueprint & What-If Sandbox (蓝图节点引擎样式)
+   ========================================================================== */
+
+.pb-canvas-viewport {
+    background-color: #0b0f19 !important;
+    background-image: 
+        radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+        linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px) !important;
+    background-size: 24px 24px, 120px 120px, 120px 120px !important;
+}
+
+.pb-blueprint-node {
+    position: absolute;
+    width: 320px;
+    border-radius: 10px;
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(14px);
+    overflow: hidden;
+    pointer-events: auto;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    z-index: 10;
+}
+
+.pb-blueprint-node:hover {
+    border-color: rgba(96, 165, 250, 0.4);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 16px rgba(96, 165, 250, 0.2);
+}
+
+.pb-node-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 12px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: grab;
+    user-select: none;
+}
+
+.pb-node-header:active {
+    cursor: grabbing;
+}
+
+.pb-node-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.25;
+}
+
+.pb-node-subtitle {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    font-family: 'Fira Code', monospace;
+    opacity: 0.8;
+}
+
+.pb-node-ports-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    min-height: 28px;
+}
+
+.pb-input-ports, .pb-output-ports {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.pb-port {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    padding: 2px 10px;
+    user-select: none;
+}
+
+.pb-port-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #60a5fa;
+    border: 2px solid #0f172a;
+    box-shadow: 0 0 6px rgba(96, 165, 250, 0.8);
+    transition: transform 0.15s ease, background-color 0.15s ease;
+    flex-shrink: 0;
+}
+
+.pb-port:hover .pb-port-dot {
+    transform: scale(1.35);
+    background: #93c5fd;
+    box-shadow: 0 0 10px #60a5fa;
+}
+
+.pb-node-body {
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pb-node-field {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.72rem;
+}
+
+.pb-node-field label {
+    color: var(--text-secondary);
+    flex: 1;
+    line-height: 1.3;
+}
+
+.pb-node-field select.modern-input,
+.pb-node-field input.modern-input {
+    font-size: 0.72rem;
+    padding: 4px 6px;
+    border-radius: 4px;
+    max-width: 170px;
+}
+
+.pb-node-field input[type="checkbox"] {
+    cursor: pointer;
+    accent-color: var(--accent);
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+}
+
+/* SVG 贝塞尔曲线动效 */
+@keyframes pbFlowPulse {
+    from {
+        stroke-dashoffset: 24;
+    }
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+.pb-wire-path {
+    stroke-dasharray: 8, 4;
+    animation: pbFlowPulse 1.2s linear infinite;
+}
+
+.pb-wires-static .pb-wire-path {
+    animation: none !important;
+}
+
+.pb-wire-bypass {
+    stroke-dasharray: 10, 4 !important;
+    animation: pbFlowPulse 0.8s linear infinite !important;
+    filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.9)) !important;
+}
+
+.pb-wire-blocked {
+    stroke-dasharray: 6, 4 !important;
+    animation: none !important;
+    filter: drop-shadow(0 0 3px rgba(239, 68, 68, 0.7)) !important;
+}
+
+/* 最终权力裁定矩阵卡片 */
+.pb-audit-card {
+    padding: 9px 11px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: all 0.2s ease;
+}
+
+.pb-audit-card.pass {
+    border-left: 3.5px solid #34d399;
+}
+
+.pb-audit-card.fail {
+    border-left: 3.5px solid #ef4444;
+}
+
+.pb-audit-card.warning {
+    border-left: 3.5px solid #f59e0b;
+}
+
+.pb-audit-card.danger {
+    border-left: 3.5px solid #ef4444;
+}
+
+.pb-audit-card.success {
+    border-left: 3.5px solid #34d399;
+}
+
+.pb-audit-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.pb-audit-card-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.pb-audit-card-desc {
+    font-size: 0.69rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.badge-pass {
+    background: rgba(52, 211, 153, 0.15) !important;
+    color: #34d399 !important;
+}
+
+.badge-fail {
+    background: rgba(239, 68, 68, 0.15) !important;
+    color: #f87171 !important;
+}
+
+.badge-warning {
+    background: rgba(245, 158, 11, 0.15) !important;
+    color: #fbbf24 !important;
+}
+
+.badge-success {
+    background: rgba(52, 211, 153, 0.15) !important;
+    color: #34d399 !important;
+}
+
+.badge-danger {
+    background: rgba(239, 68, 68, 0.15) !important;
+    color: #f87171 !important;
+}
+
+
 

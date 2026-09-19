@@ -533,7 +533,7 @@ window.toggleSidebar = function() {
     }
 };
 
-// 切换一级模块 (Workflows vs API Tree)
+// 切换一级模块 (Workflows vs API Tree vs Permission Blueprint)
 window.switchAppModule = function(moduleName) {
     // 1. Update Rail active item
     document.querySelectorAll('.rail-item').forEach(el => el.classList.remove('active'));
@@ -541,32 +541,29 @@ window.switchAppModule = function(moduleName) {
     if (navItem) navItem.classList.add('active');
 
     // 2. Switch Secondary Sidebar Panes
-    const sideWorkflows = document.getElementById('sidebar-pane-workflows');
-    const sideApiTree = document.getElementById('sidebar-pane-api_tree');
-    if (sideWorkflows && sideApiTree) {
-        if (moduleName === 'workflows') {
-            sideWorkflows.style.display = 'flex';
-            sideApiTree.style.display = 'none';
-        } else {
-            sideWorkflows.style.display = 'none';
-            sideApiTree.style.display = 'flex';
-        }
+    document.querySelectorAll('.sidebar-pane').forEach(el => {
+        el.style.display = 'none';
+    });
+    const targetSidePane = document.getElementById(`sidebar-pane-${moduleName}`);
+    if (targetSidePane) {
+        targetSidePane.style.display = 'flex';
     }
 
     // 3. Switch Main Workspace Views
-    const viewWorkflows = document.getElementById('view-workflows');
-    const viewApiTree = document.getElementById('view-api_tree');
-    if (viewWorkflows && viewApiTree) {
-        if (moduleName === 'workflows') {
-            viewWorkflows.style.display = 'flex';
-            viewApiTree.style.display = 'none';
-        } else {
-            viewWorkflows.style.display = 'none';
-            viewApiTree.style.display = 'flex';
-        }
+    document.querySelectorAll('.workspace-view').forEach(el => {
+        el.style.display = 'none';
+    });
+    const targetView = document.getElementById(`view-${moduleName}`);
+    if (targetView) {
+        targetView.style.display = 'flex';
     }
 
-    // 4. Save state
+    // 4. Trigger module specific hooks
+    if (moduleName === 'permission_blueprint' && window.PermissionBlueprint && typeof window.PermissionBlueprint.onActivate === 'function') {
+        window.PermissionBlueprint.onActivate();
+    }
+
+    // 5. Save state
     try { localStorage.setItem('pbi-active-module', moduleName); } catch(e) {}
 };
 
