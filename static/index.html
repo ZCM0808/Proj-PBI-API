@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260919_v1430">
+    <link rel="stylesheet" href="/static/style.css?v=20260919_v1440">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -692,16 +692,16 @@
                             <span>⚡ What-If 快速预设场景</span>
                         </label>
                         <div style="display: flex; flex-direction: column; gap: 6px;">
-                            <button type="button" class="modern-btn" onclick="window.PermissionBlueprint.resetSimulation()" style="width: 100%; justify-content: center; font-size: 0.75rem; padding: 6px 10px;">
+                            <button type="button" class="pb-scenario-btn pb-scenario-reset" onclick="window.PermissionBlueprint.resetSimulation()">
                                 🔄 重置为默认权限基准
                             </button>
-                            <button type="button" class="modern-btn" onclick="window.PermissionBlueprint.applyScenario('strict_gac_break')" style="width: 100%; justify-content: center; font-size: 0.73rem; padding: 6px 8px; border-color: rgba(239, 68, 68, 0.3); color: #f87171;">
+                            <button type="button" class="pb-scenario-btn pb-scenario-gac" onclick="window.PermissionBlueprint.applyScenario('strict_gac_break')">
                                 ⚠️ 模拟：GAC开启但缺连接(阻断PQ)
                             </button>
-                            <button type="button" class="modern-btn" onclick="window.PermissionBlueprint.applyScenario('bypass_rls_contributor')" style="width: 100%; justify-content: center; font-size: 0.73rem; padding: 6px 8px; border-color: rgba(242, 200, 17, 0.3); color: #fbbf24;">
+                            <button type="button" class="pb-scenario-btn pb-scenario-bypass" onclick="window.PermissionBlueprint.applyScenario('bypass_rls_contributor')">
                                 ✨ 模拟：Contributor 特权穿透 RLS/OLS
                             </button>
-                            <button type="button" class="modern-btn" onclick="window.PermissionBlueprint.applyScenario('ols_mask_denied')" style="width: 100%; justify-content: center; font-size: 0.73rem; padding: 6px 8px; border-color: rgba(168, 85, 247, 0.3); color: #c084fc;">
+                            <button type="button" class="pb-scenario-btn pb-scenario-ols" onclick="window.PermissionBlueprint.applyScenario('ols_mask_denied')">
                                 🔒 模拟：Viewer 遭遇 OLS 字段掩蔽拦截
                             </button>
                         </div>
@@ -2550,8 +2550,13 @@
                             <span id="pb-pulse-dot" style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #34d399; box-shadow: 0 0 6px #34d399;"></span>
                             <span>流动光效</span>
                         </button>
+                        <!-- 一键找回/聚焦全景卡片 (核心防丢保障) -->
+                        <button type="button" id="pb-btn-locate-all" class="btn-wf-sm" onclick="window.PermissionBlueprint.locateAndFitAllNodes()" title="一键将所有卡片聚焦居中召回至屏幕中央 (Locate & Center All Cards)" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent-glow); color: var(--accent); cursor: pointer; font-weight: 600;">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle><line x1="12" y1="2" x2="12" y2="5"></line><line x1="12" y1="19" x2="12" y2="22"></line><line x1="2" y1="12" x2="5" y2="12"></line><line x1="19" y1="12" x2="22" y2="12"></line></svg>
+                            <span>找回卡片</span>
+                        </button>
                         <!-- 一键重置节点坐标布局 -->
-                        <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.resetNodePositions()" title="重置蓝图节点至标准拓扑布局" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-secondary); cursor: pointer;">
+                        <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.resetNodePositions()" title="重置蓝图节点至标准拓扑布局并居中" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-secondary); cursor: pointer;">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M3 21v-5h5"></path></svg>
                             <span>重置排版</span>
                         </button>
@@ -2569,6 +2574,14 @@
 
                 <!-- 蓝图主画布视口 (Canvas Viewport - 支持拖拽平移与滚轮缩放) -->
                 <div id="pb-canvas-viewport" class="pb-canvas-viewport" style="flex: 1; width: 100%; height: 100%; position: relative; overflow: hidden; background-color: #0b0f19; background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px); background-size: 24px 24px; cursor: grab; user-select: none;">
+                    <!-- 屏幕外节点雷达浮动提示 (节点不在视野时自动出现) -->
+                    <div id="pb-radar-notice" class="pb-radar-lost-notice" style="display: none;" onclick="window.PermissionBlueprint.locateAndFitAllNodes()">
+                        <div style="display: flex; align-items: center; gap: 6px; color: #f59e0b; font-weight: 700; font-size: 0.82rem;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+                            <span>卡片位于视口外部</span>
+                        </div>
+                        <span style="font-size: 0.72rem; color: var(--text-secondary);">点击此处立即一键召回居中全景</span>
+                    </div>
                     <!-- 变换容器 (平移 Pan + 缩放 Zoom) -->
                     <div id="pb-canvas-content" class="pb-canvas-content" style="position: absolute; top: 0; left: 0; width: 3600px; height: 2000px; transform-origin: 0 0;">
                         <!-- SVG 连线层 (overflow: visible 确保拖到任意坐标均不裁切) -->
@@ -3057,9 +3070,9 @@
     <script src="/static/translations.js?v=20260906_v1225"></script>
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
-    <script src="/static/universal_modal.js?v=20260919_v1430"></script>
-    <script src="/static/script.js?v=20260919_v1430"></script>
-    <script src="/static/permission_blueprint.js?v=20260919_v1430"></script>
+    <script src="/static/universal_modal.js?v=20260919_v1440"></script>
+    <script src="/static/script.js?v=20260919_v1440"></script>
+    <script src="/static/permission_blueprint.js?v=20260919_v1440"></script>
 
 
 

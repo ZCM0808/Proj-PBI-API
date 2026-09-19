@@ -1,7 +1,6 @@
 /**
  * Power BI 6-Layer Permission Flow & What-If Simulation Blueprint Engine
- * 实现了全链路 6 层权限体系流转、GAC 严格模式与 MashupEditor 门禁判定、特权穿透、以及双向透视与 What-If 假设推演。
- * 遵循标准：无终端命令破坏性拼接，强制 UTF-8 编码防御。
+ * 极速 120 FPS 硬件加速渲染、静态几何映射（0 Reflow）、rAF 节流调度、鼠标锚点缩放、智能防丢全景聚焦、与明亮/暗黑双主题深度适配。
  */
 (function() {
     'use strict';
@@ -246,16 +245,38 @@
         }
     };
 
-    // 默认蓝图拓扑节点坐标定义
+    // 默认蓝图拓扑节点坐标定义 (居中舒展布局)
     const DEFAULT_NODE_COORDS = {
-        'node_tenant': { x: 50, y: 100 },
-        'node_conn': { x: 50, y: 550 },
-        'node_capacity': { x: 420, y: 100 },
-        'node_gac': { x: 420, y: 510 },
-        'node_workspace': { x: 790, y: 100 },
-        'node_sharing': { x: 790, y: 550 },
-        'node_rls': { x: 1180, y: 100 },
-        'node_ols': { x: 1180, y: 550 }
+        'node_tenant': { x: 60, y: 80 },
+        'node_conn': { x: 60, y: 530 },
+        'node_capacity': { x: 440, y: 80 },
+        'node_gac': { x: 440, y: 490 },
+        'node_workspace': { x: 820, y: 80 },
+        'node_sharing': { x: 820, y: 530 },
+        'node_rls': { x: 1220, y: 80 },
+        'node_ols': { x: 1220, y: 530 }
+    };
+
+    // 端口几何静态相对偏移表 (彻底消除 getBoundingClientRect 重排)
+    const PORT_OFFSETS = {
+        'port_out_tenant': { nodeId: 'node_tenant', relX: 320, relY: 58 },
+        'port_in_capacity_tenant': { nodeId: 'node_capacity', relX: 0, relY: 58 },
+        'port_out_capacity': { nodeId: 'node_capacity', relX: 320, relY: 58 },
+        'port_in_ws_capacity': { nodeId: 'node_workspace', relX: 0, relY: 58 },
+        'port_out_ws_role': { nodeId: 'node_workspace', relX: 320, relY: 58 },
+        'port_out_ws_bypass': { nodeId: 'node_workspace', relX: 320, relY: 82 },
+        'port_in_gac_ws': { nodeId: 'node_gac', relX: 0, relY: 58 },
+        'port_in_gac_conn': { nodeId: 'node_gac', relX: 0, relY: 82 },
+        'port_out_gac_editor': { nodeId: 'node_gac', relX: 320, relY: 58 },
+        'port_out_conn_stream': { nodeId: 'node_conn', relX: 320, relY: 58 },
+        'port_in_share_ws': { nodeId: 'node_sharing', relX: 0, relY: 58 },
+        'port_out_share_stream': { nodeId: 'node_sharing', relX: 320, relY: 58 },
+        'port_in_rls_item': { nodeId: 'node_rls', relX: 0, relY: 58 },
+        'port_in_rls_bypass': { nodeId: 'node_rls', relX: 0, relY: 82 },
+        'port_out_rls_filtered': { nodeId: 'node_rls', relX: 320, relY: 58 },
+        'port_in_ols_rls': { nodeId: 'node_ols', relX: 0, relY: 58 },
+        'port_in_ols_bypass': { nodeId: 'node_ols', relX: 0, relY: 82 },
+        'port_out_ols_final': { nodeId: 'node_ols', relX: 320, relY: 58 }
     };
 
     // 蓝图运行时单例
@@ -263,27 +284,31 @@
         constructor() {
             this.activePresetKey = 'preset_developer';
             this.currentModelKey = 'model_sales';
-            this.perspective = 'user'; // 'user' | 'model'
+            this.perspective = 'user';
             this.pulseActive = true;
             this.isAuditOpen = true;
 
-            // 画布变换状态
-            this.zoom = 1.0;
-            this.panX = 30;
-            this.panY = 20;
+            // 画布平移与缩放
+            this.zoom = 0.88;
+            this.panX = 35;
+            this.panY = 25;
             this.isPanning = false;
             this.startX = 0;
             this.startY = 0;
 
-            // 拖拽节点状态
+            // 拖拽与硬件加速 rAF 节流调度
             this.draggedNodeId = null;
             this.dragOffset = { x: 0, y: 0 };
+            this.cachedContentRect = null;
+            this.rafPending = false;
+            this.pendingDrag = null;
+            this.pendingPan = null;
 
-            // 深度克隆当前状态
+            // 深度克隆状态
             this.currentState = JSON.parse(JSON.stringify(USER_PRESETS['preset_developer'].state));
             this.nodePositions = JSON.parse(JSON.stringify(DEFAULT_NODE_COORDS));
 
-            // 初始化 DOM 引用
+            // DOM 引用
             this.viewportEl = null;
             this.contentEl = null;
             this.svgEl = null;
@@ -297,11 +322,11 @@
             if (!this.isInitialized) {
                 this.initDOM();
                 this.isInitialized = true;
+                this.locateAndFitAllNodes(false);
             }
             this.renderNodes();
             this.recalculateAndRenderWires();
             this.updateAuditReport();
-            this.fitCanvas();
         }
 
         initDOM() {
@@ -315,8 +340,7 @@
 
             // 绑定视口鼠标拖拽平移
             this.viewportEl.addEventListener('mousedown', (e) => {
-                // 如果点在节点内部或控制元素上，则不平移画布
-                if (e.target.closest('.pb-blueprint-node') || e.target.closest('button') || e.target.closest('select') || e.target.closest('input')) {
+                if (e.target.closest('.pb-blueprint-node') || e.target.closest('button') || e.target.closest('select') || e.target.closest('input') || e.target.closest('#pb-radar-notice')) {
                     return;
                 }
                 this.isPanning = true;
@@ -325,24 +349,19 @@
                 this.viewportEl.style.cursor = 'grabbing';
             });
 
+            // 120 FPS 高性能鼠标移动调度
             window.addEventListener('mousemove', (e) => {
                 if (this.isPanning) {
-                    this.panX = e.clientX - this.startX;
-                    this.panY = e.clientY - this.startY;
-                    this.updateCanvasTransform();
+                    this.pendingPan = { x: e.clientX - this.startX, y: e.clientY - this.startY };
+                    this.scheduleRAF();
                 } else if (this.draggedNodeId) {
-                    const nodeEl = document.getElementById(this.draggedNodeId);
-                    if (!nodeEl) return;
-                    const rect = this.contentEl.getBoundingClientRect();
-                    const newX = (e.clientX - rect.left) / this.zoom - this.dragOffset.x;
-                    const newY = (e.clientY - rect.top) / this.zoom - this.dragOffset.y;
-                    // 完全解除向左与向上拖拽的硬编码限制，支持全向自由无级拖拽
-                    const roundedX = Math.round(newX);
-                    const roundedY = Math.round(newY);
-                    this.nodePositions[this.draggedNodeId] = { x: roundedX, y: roundedY };
-                    nodeEl.style.left = `${roundedX}px`;
-                    nodeEl.style.top = `${roundedY}px`;
-                    this.recalculateAndRenderWires();
+                    if (!this.cachedContentRect) {
+                        this.cachedContentRect = this.contentEl.getBoundingClientRect();
+                    }
+                    const newX = (e.clientX - this.cachedContentRect.left) / this.zoom - this.dragOffset.x;
+                    const newY = (e.clientY - this.cachedContentRect.top) / this.zoom - this.dragOffset.y;
+                    this.pendingDrag = { nodeId: this.draggedNodeId, x: Math.round(newX), y: Math.round(newY) };
+                    this.scheduleRAF();
                 }
             });
 
@@ -350,22 +369,58 @@
                 if (this.isPanning) {
                     this.isPanning = false;
                     if (this.viewportEl) this.viewportEl.style.cursor = 'grab';
+                    this.checkRadarVisibility();
                 }
                 if (this.draggedNodeId) {
                     this.draggedNodeId = null;
+                    this.cachedContentRect = null;
+                    this.checkRadarVisibility();
                 }
             });
 
-            // 滚轮缩放画布
+            // 工业级平滑缩放：以鼠标当前指针为原点进行几何锚定缩放
             this.viewportEl.addEventListener('wheel', (e) => {
                 e.preventDefault();
-                const delta = e.deltaY > 0 ? -0.05 : 0.05;
-                this.zoomCanvas(delta);
+                const delta = e.deltaY > 0 ? -0.06 : 0.06;
+                this.zoomAtPoint(delta, e.clientX, e.clientY);
             }, { passive: false });
 
-            // 绑定全局抽屉拖拽（符合全局弹窗拖拽规范）
+            // 抽屉拖拽初始化
             this.initDrawerDraggable();
             this.renderModelUsersList();
+
+            // 监听全局主题切换
+            const themeObserver = new MutationObserver(() => {
+                this.recalculateAndRenderWires();
+            });
+            themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
+        }
+
+        // rAF 高性能硬件加速渲染管线
+        scheduleRAF() {
+            if (this.rafPending) return;
+            this.rafPending = true;
+            requestAnimationFrame(() => {
+                this.rafPending = false;
+                if (this.pendingPan) {
+                    this.panX = this.pendingPan.x;
+                    this.panY = this.pendingPan.y;
+                    this.updateCanvasTransform();
+                    this.pendingPan = null;
+                }
+                if (this.pendingDrag) {
+                    const { nodeId, x, y } = this.pendingDrag;
+                    this.nodePositions[nodeId] = { x, y };
+                    const nodeEl = document.getElementById(nodeId);
+                    if (nodeEl) {
+                        nodeEl.style.left = `${x}px`;
+                        nodeEl.style.top = `${y}px`;
+                    }
+                    // 增量高频更新直接关联连线 (0 DOM Reflow)
+                    this.updateConnectedWirePaths(nodeId);
+                    this.pendingDrag = null;
+                }
+            });
         }
 
         initDrawerDraggable() {
@@ -403,12 +458,6 @@
                     header.style.cursor = 'move';
                 }
             });
-
-            // 监听全局明暗主题切换，实时响应式重绘连线高对比度配色
-            const themeObserver = new MutationObserver(() => {
-                this.recalculateAndRenderWires();
-            });
-            themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
         }
 
         updateCanvasTransform() {
@@ -418,23 +467,121 @@
             if (label) label.textContent = `${Math.round(this.zoom * 100)}%`;
         }
 
-        zoomCanvas(delta) {
-            const nextZoom = Math.min(1.6, Math.max(0.45, this.zoom + delta));
-            this.zoom = parseFloat(nextZoom.toFixed(2));
+        // 鼠标为中心的自然缩放
+        zoomAtPoint(delta, clientX, clientY) {
+            const nextZoom = Math.min(1.8, Math.max(0.35, this.zoom + delta));
+            const newZoom = parseFloat(nextZoom.toFixed(2));
+            if (newZoom === this.zoom) return;
+
+            const vpRect = this.viewportEl.getBoundingClientRect();
+            const mouseX = clientX - vpRect.left;
+            const mouseY = clientY - vpRect.top;
+
+            // 计算缩放前鼠标指向的世界坐标
+            const worldX = (mouseX - this.panX) / this.zoom;
+            const worldY = (mouseY - this.panY) / this.zoom;
+
+            // 保持鼠标下的世界点不动，计算新的 panX 和 panY
+            this.panX = Math.round(mouseX - worldX * newZoom);
+            this.panY = Math.round(mouseY - worldY * newZoom);
+            this.zoom = newZoom;
+
             this.updateCanvasTransform();
+            this.checkRadarVisibility();
+        }
+
+        zoomCanvas(delta) {
+            if (!this.viewportEl) return;
+            const vpRect = this.viewportEl.getBoundingClientRect();
+            this.zoomAtPoint(delta, vpRect.left + vpRect.width / 2, vpRect.top + vpRect.height / 2);
         }
 
         fitCanvas() {
-            this.zoom = 0.92;
-            this.panX = 35;
-            this.panY = 25;
-            this.updateCanvasTransform();
+            this.locateAndFitAllNodes(true);
+        }
+
+        // 🎯 核心防丢保障：一键计算所有节点的最小包围盒并自动居中聚焦召回
+        locateAndFitAllNodes(showToast = true) {
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            for (const id in this.nodePositions) {
+                const pos = this.nodePositions[id];
+                if (pos.x < minX) minX = pos.x;
+                if (pos.y < minY) minY = pos.y;
+                if (pos.x > maxX) maxX = pos.x;
+                if (pos.y > maxY) maxY = pos.y;
+            }
+
+            if (minX === Infinity) {
+                this.nodePositions = JSON.parse(JSON.stringify(DEFAULT_NODE_COORDS));
+                this.renderNodes();
+                this.locateAndFitAllNodes(showToast);
+                return;
+            }
+
+            // 节点尺寸 320x300，加入周围 80px 的呼吸感 padding
+            const pad = 80;
+            const boxW = (maxX + 320) - minX + pad * 2;
+            const boxH = (maxY + 320) - minY + pad * 2;
+
+            const vpW = this.viewportEl ? this.viewportEl.clientWidth : 1200;
+            const vpH = this.viewportEl ? this.viewportEl.clientHeight : 800;
+
+            const fitZoom = Math.min(1.05, Math.max(0.42, Math.min(vpW / boxW, vpH / boxH)));
+            this.zoom = parseFloat(fitZoom.toFixed(2));
+
+            this.panX = Math.round((vpW - boxW * this.zoom) / 2 - (minX - pad) * this.zoom);
+            this.panY = Math.round((vpH - boxH * this.zoom) / 2 - (minY - pad) * this.zoom);
+
+            if (this.contentEl) {
+                this.contentEl.style.transition = 'transform 0.32s cubic-bezier(0.16, 1, 0.3, 1)';
+                this.updateCanvasTransform();
+                setTimeout(() => {
+                    if (this.contentEl) this.contentEl.style.transition = '';
+                }, 340);
+            } else {
+                this.updateCanvasTransform();
+            }
+
+            this.checkRadarVisibility();
+
+            if (showToast && typeof window.showNotification === 'function') {
+                window.showNotification('🎯 已成功聚焦并召回所有蓝图卡片至视口中央！', 'success');
+            }
+        }
+
+        // 雷达检测：当所有节点均完全漂出可见视口时，中央自动升起提示气泡
+        checkRadarVisibility() {
+            const noticeEl = document.getElementById('pb-radar-notice');
+            if (!noticeEl || !this.viewportEl) return;
+
+            const vpW = this.viewportEl.clientWidth;
+            const vpH = this.viewportEl.clientHeight;
+
+            let anyVisible = false;
+            for (const id in this.nodePositions) {
+                const pos = this.nodePositions[id];
+                const screenX = pos.x * this.zoom + this.panX;
+                const screenY = pos.y * this.zoom + this.panY;
+                const screenW = 320 * this.zoom;
+                const screenH = 260 * this.zoom;
+
+                if (screenX + screenW > 0 && screenX < vpW && screenY + screenH > 0 && screenY < vpH) {
+                    anyVisible = true;
+                    break;
+                }
+            }
+
+            noticeEl.style.display = anyVisible ? 'none' : 'flex';
         }
 
         resetNodePositions() {
             this.nodePositions = JSON.parse(JSON.stringify(DEFAULT_NODE_COORDS));
             this.renderNodes();
             this.recalculateAndRenderWires();
+            this.locateAndFitAllNodes(false);
+            if (typeof window.showNotification === 'function') {
+                window.showNotification('已重置蓝图排版并自动平移居中！', 'info');
+            }
         }
 
         togglePulse() {
@@ -460,7 +607,6 @@
             drawer.style.display = this.isAuditOpen ? 'flex' : 'none';
         }
 
-        // 切换透视视角 (User-Centric vs Model-Centric)
         switchPerspective(mode) {
             this.perspective = mode;
             const tabUser = document.getElementById('pb-tab-user');
@@ -470,32 +616,23 @@
             if (mode === 'user') {
                 if (tabUser) {
                     tabUser.classList.add('active');
-                    tabUser.style.background = 'var(--panel-bg)';
-                    tabUser.style.color = 'var(--text-primary)';
                 }
                 if (tabModel) {
                     tabModel.classList.remove('active');
-                    tabModel.style.background = 'transparent';
-                    tabModel.style.color = 'var(--text-secondary)';
                 }
                 if (modelUsersCard) modelUsersCard.style.display = 'none';
             } else {
                 if (tabModel) {
                     tabModel.classList.add('active');
-                    tabModel.style.background = 'var(--panel-bg)';
-                    tabModel.style.color = 'var(--text-primary)';
                 }
                 if (tabUser) {
                     tabUser.classList.remove('active');
-                    tabUser.style.background = 'transparent';
-                    tabUser.style.color = 'var(--text-secondary)';
                 }
                 if (modelUsersCard) modelUsersCard.style.display = 'block';
                 this.renderModelUsersList();
             }
         }
 
-        // 选择预设用户主体
         selectUserPreset(presetKey) {
             const customBox = document.getElementById('pb-custom-user-box');
             if (presetKey === 'custom') {
@@ -508,7 +645,6 @@
             const preset = USER_PRESETS[presetKey];
             if (!preset) return;
 
-            // 更新侧边栏标签与显示
             const upnLabel = document.getElementById('pb-current-upn-label');
             const badgeTag = document.getElementById('pb-badge-role-tag');
             if (upnLabel) upnLabel.textContent = preset.upn;
@@ -518,7 +654,6 @@
                 badgeTag.style.borderColor = `${preset.roleColor}40`;
             }
 
-            // 加载预设状态
             this.currentState = JSON.parse(JSON.stringify(preset.state));
             this.renderNodes();
             this.recalculateAndRenderWires();
@@ -531,7 +666,6 @@
             this.updateAuditReport();
         }
 
-        // 选择目标模型
         selectModel(modelKey) {
             this.currentModelKey = modelKey;
             const model = MODEL_DEFINITIONS[modelKey];
@@ -544,10 +678,7 @@
             this.updateAuditReport();
         }
 
-        // 与全局顶部模型下拉框同步
         syncGlobalModel() {
-            const gtbModelInput = document.getElementById('gtb-select-dataset');
-            const gtbWsInput = document.getElementById('gtb-select-workspace');
             const gtbModelNameEl = document.getElementById('gtb-ds-display-text');
             const gtbWsNameEl = document.getElementById('gtb-ws-display-text');
 
@@ -562,7 +693,6 @@
             }
         }
 
-        // 渲染按模型透视时的用户列表
         renderModelUsersList() {
             const listEl = document.getElementById('pb-model-user-list');
             const countEl = document.getElementById('pb-model-user-count');
@@ -572,7 +702,7 @@
             if (countEl) countEl.textContent = `${model.users.length} 位关联用户`;
 
             listEl.innerHTML = model.users.map(u => `
-                <div class="pb-model-user-row" onclick="window.PermissionBlueprint.loadUserFromModel('${u.presetId}')" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-radius: 6px; background: var(--input-bg); border: 1px solid var(--overlay-10); cursor: pointer; transition: all 0.2s;" title="点击载入该用户并推演蓝图全链路">
+                <div class="pb-model-user-row" onclick="window.PermissionBlueprint.loadUserFromModel('${u.presetId}')" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-radius: 6px; cursor: pointer; transition: all 0.2s;" title="点击载入该用户并推演蓝图全链路">
                     <div style="display: flex; flex-direction: column; min-width: 0;">
                         <span style="font-size: 0.73rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${u.upn}</span>
                         <span style="font-size: 0.65rem; color: var(--text-secondary);">映射预设: ${USER_PRESETS[u.presetId] ? USER_PRESETS[u.presetId].name : u.role}</span>
@@ -594,7 +724,6 @@
             }
         }
 
-        // 重置模拟为初始状态
         resetSimulation() {
             this.selectUserPreset(this.activePresetKey);
             if (typeof window.showNotification === 'function') {
@@ -602,10 +731,8 @@
             }
         }
 
-        // 快速应用典型假设分析场景
         applyScenario(scenarioType) {
             if (scenarioType === 'strict_gac_break') {
-                // 模拟：GAC 开启，非 Owner，且连接权限缺失，直接阻断 Power Query MashupEditor
                 this.currentState.workspaceRole = 'Contributor';
                 this.currentState.isModelOwner = false;
                 this.currentState.isInStrictMode = true;
@@ -614,7 +741,6 @@
                     window.showNotification('⚠️ 场景已激活：GAC严格模式生效且缺失底层连接，已阻断 Power Query 编辑！', 'warning');
                 }
             } else if (scenarioType === 'bypass_rls_contributor') {
-                // 模拟：从 Viewer 升级为 Contributor，特权豁免直接绕过 RLS 和 OLS
                 this.currentState.workspaceRole = 'Contributor';
                 this.currentState.rlsEnabled = true;
                 this.currentState.olsEnabled = true;
@@ -622,7 +748,6 @@
                     window.showNotification('✨ 场景已激活：Contributor 角色触发特权穿透，全面豁免 RLS/OLS 限制！', 'success');
                 }
             } else if (scenarioType === 'ols_mask_denied') {
-                // 模拟：普通 Viewer 遭遇 OLS 敏感列拦截
                 this.currentState.workspaceRole = 'Viewer';
                 this.currentState.olsEnabled = true;
                 this.currentState.maskedFields = 'Salary, Profit_Margin';
@@ -635,20 +760,18 @@
             this.updateAuditReport();
         }
 
-        // 节点内控件输入状态更新
         updateStateField(key, val) {
             this.currentState[key] = val;
             this.recalculateAndRenderWires();
             this.updateAuditReport();
         }
 
-        // 渲染 8 大核心节点 DOM
         renderNodes() {
             if (!this.nodesLayerEl) return;
             const s = this.currentState;
 
             const nodesData = [
-                // Node 1: L1 组织租户策略
+                // Node 1: L1 租户策略
                 {
                     id: 'node_tenant',
                     title: 'L1: 租户策略与安全主体',
@@ -676,7 +799,7 @@
                     `
                 },
 
-                // Node 2: L2 容量类型与许可
+                // Node 2: L2 容量许可
                 {
                     id: 'node_capacity',
                     title: 'L2: 容量许可与引擎环境',
@@ -693,7 +816,7 @@
                                 <option value="pro_shared" ${s.capacityType === 'pro_shared' ? 'selected' : ''}>📦 Pro 共享容量 (不支持大模型与 XMLA 写入)</option>
                             </select>
                         </div>
-                        <div style="font-size: 0.68rem; color: var(--text-secondary); margin-top: 4px; line-height: 1.3;">
+                        <div class="pb-node-alert alert-normal">
                             说明：非 Premium 容量将禁用部分高级 XMLA 写入与大规模并行刷新特性。
                         </div>
                     `
@@ -722,10 +845,10 @@
                                 <option value="None" ${s.workspaceRole === 'None' ? 'selected' : ''}>🚫 None (无工作区角色)</option>
                             </select>
                         </div>
-                        <div style="margin-top: 6px; padding: 6px 8px; border-radius: 6px; background: ${['Admin', 'Member', 'Contributor'].includes(s.workspaceRole) ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 255, 255, 0.03)'}; border: 1px solid ${['Admin', 'Member', 'Contributor'].includes(s.workspaceRole) ? 'rgba(245, 158, 11, 0.35)' : 'var(--overlay-10)'}; font-size: 0.68rem; line-height: 1.4;">
+                        <div class="pb-node-alert ${['Admin', 'Member', 'Contributor'].includes(s.workspaceRole) ? 'alert-bypass' : 'alert-normal'}">
                             ${['Admin', 'Member', 'Contributor'].includes(s.workspaceRole)
-                                ? '<strong style="color: #fbbf24;">⚡ 特权穿透激活：</strong> Contributor 及以上具有工作区编辑权，自动<strong>绕过豁免 RLS 与 OLS</strong> 限制！'
-                                : '<span style="color: var(--text-secondary);">Viewer 角色不具备编辑权，必须<strong>严格受下游 L5 RLS 与 L6 OLS 过滤与掩蔽</strong>。</span>'}
+                                ? '<strong>⚡ 特权穿透激活：</strong> Contributor 及以上具有工作区编辑权，自动<strong>绕过豁免 RLS 与 OLS</strong> 限制！'
+                                : '<span>Viewer 角色不具备编辑权，必须<strong>严格受下游 L5 RLS 与 L6 OLS 过滤与掩蔽</strong>。</span>'}
                         </div>
                     `
                 },
@@ -751,8 +874,8 @@
                             <label>是否开启严格模式 (isInStrictMode)</label>
                             <input type="checkbox" ${s.isInStrictMode ? 'checked' : ''} onchange="window.PermissionBlueprint.updateStateField('isInStrictMode', this.checked)">
                         </div>
-                        <div style="margin-top: 6px; padding: 6px 8px; border-radius: 6px; background: rgba(167, 139, 250, 0.1); border: 1px solid rgba(167, 139, 250, 0.25); font-size: 0.67rem; line-height: 1.35; color: var(--text-secondary);">
-                            <div style="font-weight: 600; color: #c084fc; margin-bottom: 2px;">📐 GAC.md 核心判定公式：</div>
+                        <div class="pb-node-alert alert-gac">
+                            <div style="font-weight: 600; margin-bottom: 2px;">📐 GAC.md 核心判定公式：</div>
                             <code>CanEditPQ = isModelOwner || (isInStrictMode && hasAccessToAllDataConnections)</code>
                         </div>
                     `
@@ -776,7 +899,7 @@
                             <label>企业网关连通就绪 (Gateway Online)</label>
                             <input type="checkbox" ${s.gatewayOnline ? 'checked' : ''} onchange="window.PermissionBlueprint.updateStateField('gatewayOnline', this.checked)">
                         </div>
-                        <div style="font-size: 0.68rem; color: var(--text-secondary); margin-top: 4px; line-height: 1.3;">
+                        <div class="pb-node-alert alert-normal">
                             若在 GAC 严格模式下缺失底层连接权限，即使是工作区管理员也无法打开 Power Query 编辑器！
                         </div>
                     `
@@ -856,19 +979,17 @@
                             <label>受限敏感字段 (Masked Columns)</label>
                             <input type="text" class="modern-input" value="${s.maskedFields || 'Salary, Margin'}" onchange="window.PermissionBlueprint.updateStateField('maskedFields', this.value)">
                         </div>
-                        <div style="font-size: 0.68rem; color: var(--text-secondary); margin-top: 4px; line-height: 1.3;">
+                        <div class="pb-node-alert alert-normal">
                             受限字段将在 DAX 查询与前端报表视觉对象中直接引发引用错误或完全隐藏。
                         </div>
                     `
                 }
             ];
 
-            // 渲染各个 Node
             this.nodesLayerEl.innerHTML = nodesData.map(n => {
-                const pos = this.nodePositions[n.id] || { x: 50, y: 50 };
+                const pos = this.nodePositions[n.id] || { x: 60, y: 80 };
                 return `
                     <div id="${n.id}" class="pb-blueprint-node glass-panel" style="left: ${pos.x}px; top: ${pos.y}px;">
-                        <!-- 节点头部 (可抓取拖拽) -->
                         <div class="pb-node-header" onmousedown="window.PermissionBlueprint.startNodeDrag(event, '${n.id}')">
                             <div style="display: flex; flex-direction: column; min-width: 0;">
                                 <span class="pb-node-title">${n.title}</span>
@@ -877,7 +998,6 @@
                             <span class="gtb-auth-badge" style="background: ${n.badgeColor}22; color: ${n.badgeColor}; border: 1px solid ${n.badgeColor}40; font-size: 0.65rem; padding: 2px 6px;">${n.badge}</span>
                         </div>
 
-                        <!-- 节点端口行 -->
                         <div class="pb-node-ports-row">
                             <div class="pb-input-ports">
                                 ${n.inputs.map(inp => `
@@ -897,7 +1017,6 @@
                             </div>
                         </div>
 
-                        <!-- 节点内部可交互控制控件 -->
                         <div class="pb-node-body">
                             ${n.contentHtml}
                         </div>
@@ -910,17 +1029,23 @@
             if (e.target.closest('select') || e.target.closest('input') || e.target.closest('button')) return;
             this.draggedNodeId = nodeId;
             const nodeEl = document.getElementById(nodeId);
-            if (!nodeEl) return;
-            const rect = nodeEl.getBoundingClientRect();
+            if (!nodeEl || !this.contentEl) return;
+            this.cachedContentRect = this.contentEl.getBoundingClientRect();
             this.dragOffset = {
-                x: (e.clientX - rect.left) / this.zoom,
-                y: (e.clientY - rect.top) / this.zoom
+                x: (e.clientX - this.cachedContentRect.left) / this.zoom - (this.nodePositions[nodeId] ? this.nodePositions[nodeId].x : 0),
+                y: (e.clientY - this.cachedContentRect.top) / this.zoom - (this.nodePositions[nodeId] ? this.nodePositions[nodeId].y : 0)
             };
             e.stopPropagation();
         }
 
-        // 获取端口相对于 contentEl 的绝对坐标
+        // 高性能几何计算 (0 getBoundingClientRect)
         getPortCenter(portId) {
+            const meta = PORT_OFFSETS[portId];
+            if (meta && this.nodePositions[meta.nodeId]) {
+                const nodePos = this.nodePositions[meta.nodeId];
+                return { x: nodePos.x + meta.relX, y: nodePos.y + meta.relY };
+            }
+            // 动态回退
             const el = document.getElementById(portId);
             if (!el || !this.contentEl) return { x: 0, y: 0 };
             const dot = el.querySelector('.pb-port-dot') || el;
@@ -932,30 +1057,18 @@
             };
         }
 
-        // 重新计算权限流转拓扑并绘制 SVG 贝塞尔曲线
-        recalculateAndRenderWires() {
-            if (!this.wiresGroupEl) return;
+        // 连线拓扑定义计算
+        getWiresConfig() {
             const s = this.currentState;
-
-            // 1. 核心业务裁定逻辑计算
             const isPrivilegeBypass = ['Admin', 'Member', 'Contributor'].includes(s.workspaceRole);
             const canEditReport = isPrivilegeBypass;
-            
-            // GAC 严格公式计算
-            const canEditPQ = Boolean(
-                canEditReport && (
-                    s.isModelOwner || (s.isInStrictMode && s.hasAccessToAllDataConnections && s.gatewayOnline)
-                )
-            );
 
-            // 是否允许查看报表
             const canViewReport = Boolean(
                 ['Admin', 'Member', 'Contributor', 'Viewer'].includes(s.workspaceRole) ||
                 s.sharePermission !== 'None' ||
                 s.hasAppAccess
             );
 
-            // 检测全局明暗主题以匹配自适应连线高对比度配色
             const isLight = document.documentElement.getAttribute('data-theme') === 'light' || document.body.classList.contains('light-theme');
             const colorPass = isLight ? '#2563eb' : '#60a5fa';
             const colorBypass = isLight ? '#d97706' : '#f59e0b';
@@ -963,94 +1076,142 @@
             const colorBlock = isLight ? '#dc2626' : '#ef4444';
             const colorInactive = isLight ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.1)';
 
-            // 定义拓扑连线集合
-            const wires = [
-                // Wire 1: Node 1 (Tenant) -> Node 2 (Capacity)
+            return [
                 {
+                    id: 0,
                     from: 'port_out_tenant',
                     to: 'port_in_capacity_tenant',
+                    fromNode: 'node_tenant',
+                    toNode: 'node_capacity',
                     status: 'pass',
                     style: colorPass,
                     marker: 'pb-arrow-normal',
                     label: '租户凭据授权'
                 },
-                // Wire 2: Node 2 (Capacity) -> Node 3 (Workspace)
                 {
+                    id: 1,
                     from: 'port_out_capacity',
                     to: 'port_in_ws_capacity',
+                    fromNode: 'node_capacity',
+                    toNode: 'node_workspace',
                     status: 'pass',
                     style: colorPass,
                     marker: 'pb-arrow-normal',
                     label: s.capacityType === 'fabric_f64' ? 'Fabric 计算环境' : 'Pro 共享计算'
                 },
-                // Wire 3: Node 3 (Workspace) -> Node 4 (GAC Gate) - 编辑权流
                 {
+                    id: 2,
                     from: 'port_out_ws_role',
                     to: 'port_in_gac_ws',
+                    fromNode: 'node_workspace',
+                    toNode: 'node_gac',
                     status: canEditReport ? 'pass' : 'blocked',
                     style: canEditReport ? colorPass : colorBlock,
                     marker: canEditReport ? 'pb-arrow-normal' : 'pb-arrow-blocked',
                     label: canEditReport ? '工作区编辑授权' : '无编辑权(只读)'
                 },
-                // Wire 4: Node 5 (Connection) -> Node 4 (GAC Gate) - 连接凭据流
                 {
+                    id: 3,
                     from: 'port_out_conn_stream',
                     to: 'port_in_gac_conn',
+                    fromNode: 'node_conn',
+                    toNode: 'node_gac',
                     status: (s.hasAccessToAllDataConnections && s.gatewayOnline) ? 'strict' : 'blocked',
                     style: (s.hasAccessToAllDataConnections && s.gatewayOnline) ? colorStrict : colorBlock,
                     marker: (s.hasAccessToAllDataConnections && s.gatewayOnline) ? 'pb-arrow-strict' : 'pb-arrow-blocked',
                     label: (s.hasAccessToAllDataConnections && s.gatewayOnline) ? '底层连接凭据齐全' : '缺失数据源连接 403'
                 },
-                // Wire 5: Node 3 (Workspace) -> Node 6 (Sharing)
                 {
+                    id: 4,
                     from: 'port_out_ws_role',
                     to: 'port_in_share_ws',
+                    fromNode: 'node_workspace',
+                    toNode: 'node_sharing',
                     status: 'pass',
                     style: colorPass,
                     marker: 'pb-arrow-normal',
                     label: '资产分发流'
                 },
-                // Wire 6: Node 6 (Sharing) -> Node 7 (RLS Engine)
                 {
+                    id: 5,
                     from: 'port_out_share_stream',
                     to: 'port_in_rls_item',
+                    fromNode: 'node_sharing',
+                    toNode: 'node_rls',
                     status: canViewReport ? 'pass' : 'blocked',
                     style: canViewReport ? colorPass : colorBlock,
                     marker: canViewReport ? 'pb-arrow-normal' : 'pb-arrow-blocked',
                     label: canViewReport ? '数据读取权' : '未授权'
                 },
-                // Wire 7: Node 3 (Workspace Bypass) -> Node 7 (RLS Bypass) [金色高亮穿透总线]
                 {
+                    id: 6,
                     from: 'port_out_ws_bypass',
                     to: 'port_in_rls_bypass',
+                    fromNode: 'node_workspace',
+                    toNode: 'node_rls',
                     status: isPrivilegeBypass ? 'bypass' : 'inactive',
                     style: isPrivilegeBypass ? colorBypass : colorInactive,
                     marker: isPrivilegeBypass ? 'pb-arrow-bypass' : '',
                     label: isPrivilegeBypass ? '⚡ 特权穿透: 豁免 RLS' : '无穿透'
                 },
-                // Wire 8: Node 7 (RLS) -> Node 8 (OLS)
                 {
+                    id: 7,
                     from: 'port_out_rls_filtered',
                     to: 'port_in_ols_rls',
+                    fromNode: 'node_rls',
+                    toNode: 'node_ols',
                     status: (canViewReport && (isPrivilegeBypass || s.rlsRoleAssigned !== 'Unassigned')) ? 'pass' : 'blocked',
                     style: (canViewReport && (isPrivilegeBypass || s.rlsRoleAssigned !== 'Unassigned')) ? colorPass : colorBlock,
                     marker: (canViewReport && (isPrivilegeBypass || s.rlsRoleAssigned !== 'Unassigned')) ? 'pb-arrow-normal' : 'pb-arrow-blocked',
                     label: isPrivilegeBypass ? '全量数据穿透' : (s.rlsRoleAssigned === 'Unassigned' ? 'RLS 过滤阻断' : '行切片就绪')
                 },
-                // Wire 9: Node 3 (Workspace Bypass) -> Node 8 (OLS Bypass) [金色高亮穿透总线]
                 {
+                    id: 8,
                     from: 'port_out_ws_bypass',
                     to: 'port_in_ols_bypass',
+                    fromNode: 'node_workspace',
+                    toNode: 'node_ols',
                     status: isPrivilegeBypass ? 'bypass' : 'inactive',
                     style: isPrivilegeBypass ? colorBypass : colorInactive,
                     marker: isPrivilegeBypass ? 'pb-arrow-bypass' : '',
                     label: isPrivilegeBypass ? '⚡ 特权穿透: 豁免 OLS' : '无穿透'
                 }
             ];
+        }
 
-            // 绘制每条光滑贝塞尔曲线
+        // 仅增量更新直接相连的几条 SVG Path，绝不重建 DOM
+        updateConnectedWirePaths(nodeId) {
+            const wires = this.getWiresConfig();
+            wires.forEach((w) => {
+                if (w.fromNode === nodeId || w.toNode === nodeId) {
+                    const p1 = this.getPortCenter(w.from);
+                    const p2 = this.getPortCenter(w.to);
+                    if (p1.x === 0 && p1.y === 0) return;
+
+                    const dx = Math.max(40, Math.abs(p2.x - p1.x) * 0.5);
+                    const pathD = `M ${p1.x} ${p1.y} C ${p1.x + dx} ${p1.y}, ${p2.x - dx} ${p2.y}, ${p2.x} ${p2.y}`;
+
+                    const mainPath = document.getElementById(`pb_wire_main_${w.id}`);
+                    const glowPath = document.getElementById(`pb_wire_glow_${w.id}`);
+                    const textEl = document.getElementById(`pb_wire_text_${w.id}`);
+
+                    if (mainPath) mainPath.setAttribute('d', pathD);
+                    if (glowPath) glowPath.setAttribute('d', pathD);
+                    if (textEl) {
+                        textEl.setAttribute('x', (p1.x + p2.x) / 2);
+                        textEl.setAttribute('y', (p1.y + p2.y) / 2 - 8);
+                    }
+                }
+            });
+        }
+
+        // 全量初次构建或状态重算
+        recalculateAndRenderWires() {
+            if (!this.wiresGroupEl) return;
+            const wires = this.getWiresConfig();
+
             let pathsHtml = '';
-            wires.forEach((w, idx) => {
+            wires.forEach((w) => {
                 const p1 = this.getPortCenter(w.from);
                 const p2 = this.getPortCenter(w.to);
                 if (p1.x === 0 && p1.y === 0) return;
@@ -1072,26 +1233,22 @@
                     strokeWidth = 1.2;
                 }
 
-                // 中间标签位置
                 const midX = (p1.x + p2.x) / 2;
                 const midY = (p1.y + p2.y) / 2 - 8;
 
                 pathsHtml += `
-                    <g class="pb-wire-group" data-wire="${idx}">
-                        <!-- 底层发光宽轨道 -->
-                        <path d="${pathD}" fill="none" stroke="${w.style}" stroke-width="${strokeWidth + 4}" stroke-opacity="0.12" />
-                        <!-- 主线 -->
-                        <path d="${pathD}" fill="none" stroke="${w.style}" stroke-width="${strokeWidth}" ${strokeDash} class="${strokeClass}" ${w.marker ? `marker-end="url(#${w.marker})"` : ''} />
-                        <!-- 连线文字注释 -->
-                        <text x="${midX}" y="${midY}" fill="${w.style}" font-size="9" text-anchor="middle" font-family="'Inter', sans-serif" font-weight="600" opacity="0.85" style="pointer-events: none; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">${w.label}</text>
+                    <g class="pb-wire-group" id="pb_wire_group_${w.id}" data-wire="${w.id}">
+                        <path id="pb_wire_glow_${w.id}" d="${pathD}" fill="none" stroke="${w.style}" stroke-width="${strokeWidth + 4}" stroke-opacity="0.14" />
+                        <path id="pb_wire_main_${w.id}" d="${pathD}" fill="none" stroke="${w.style}" stroke-width="${strokeWidth}" ${strokeDash} class="${strokeClass}" ${w.marker ? `marker-end="url(#${w.marker})"` : ''} />
+                        <text id="pb_wire_text_${w.id}" x="${midX}" y="${midY}" fill="${w.style}" font-size="9" text-anchor="middle" font-family="'Inter', sans-serif" font-weight="600" opacity="0.88" style="pointer-events: none; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">${w.label}</text>
                     </g>
                 `;
             });
 
             this.wiresGroupEl.innerHTML = pathsHtml;
+            this.checkRadarVisibility();
         }
 
-        // 最终权力透视报告实时推演与更新
         updateAuditReport() {
             const resultsEl = document.getElementById('pb-audit-results');
             if (!resultsEl) return;
@@ -1100,14 +1257,12 @@
             const isPrivilegeBypass = ['Admin', 'Member', 'Contributor'].includes(s.workspaceRole);
             const canEditReport = isPrivilegeBypass;
 
-            // 报表只读权
             const canViewReport = Boolean(
                 ['Admin', 'Member', 'Contributor', 'Viewer'].includes(s.workspaceRole) ||
                 s.sharePermission !== 'None' ||
                 s.hasAppAccess
             );
 
-            // GAC Power Query 裁定
             const canEditPQ = Boolean(
                 canEditReport && (
                     s.isModelOwner || (s.isInStrictMode && s.hasAccessToAllDataConnections && s.gatewayOnline)
@@ -1128,7 +1283,6 @@
                 pqReason = '允许访问：GAC 未开启严格模式，按常规工作区编辑权限放行。';
             }
 
-            // RLS 行切片裁定
             let rlsResult = '';
             let rlsClass = 'success';
             if (!s.rlsEnabled) {
@@ -1143,7 +1297,6 @@
                 rlsClass = 'warning';
             }
 
-            // OLS 敏感字段裁定
             let olsResult = '';
             let olsClass = 'success';
             if (!s.olsEnabled) {
@@ -1155,7 +1308,6 @@
                 olsClass = 'warning';
             }
 
-            // 数据导出权
             let exportResult = '';
             if (!s.tenantAllowExport) {
                 exportResult = '全面禁止导出 (受组织租户策略 L1 强力封锁)';
@@ -1168,7 +1320,6 @@
             }
 
             resultsEl.innerHTML = `
-                <!-- 1. 报表访问 -->
                 <div class="pb-audit-card ${canViewReport ? 'pass' : 'fail'}">
                     <div class="pb-audit-card-head">
                         <span class="pb-audit-card-title">1. 报表查看与访问权 (View Report)</span>
@@ -1179,7 +1330,6 @@
                     </div>
                 </div>
 
-                <!-- 2. 报表保存与编辑 -->
                 <div class="pb-audit-card ${canEditReport ? 'pass' : 'fail'}">
                     <div class="pb-audit-card-head">
                         <span class="pb-audit-card-title">2. 报表编辑与在线建模 (Edit Report)</span>
@@ -1190,7 +1340,6 @@
                     </div>
                 </div>
 
-                <!-- 3. Power Query / Transform Data -->
                 <div class="pb-audit-card ${canEditPQ ? 'pass' : 'fail'}">
                     <div class="pb-audit-card-head">
                         <span class="pb-audit-card-title">3. Power Query / GAC 严格门禁 (Transform Data)</span>
@@ -1201,7 +1350,6 @@
                     </div>
                 </div>
 
-                <!-- 4. RLS 行切片范围 -->
                 <div class="pb-audit-card ${rlsClass}">
                     <div class="pb-audit-card-head">
                         <span class="pb-audit-card-title">4. L5 行级别安全性切片 (RLS Effective Filter)</span>
@@ -1212,7 +1360,6 @@
                     </div>
                 </div>
 
-                <!-- 5. OLS 字段掩蔽范围 -->
                 <div class="pb-audit-card ${olsClass}">
                     <div class="pb-audit-card-head">
                         <span class="pb-audit-card-title">5. L6 对象与字段级安全性 (OLS Masked Scope)</span>
@@ -1223,7 +1370,6 @@
                     </div>
                 </div>
 
-                <!-- 6. 数据导出与 Build -->
                 <div class="pb-audit-card ${exportResult.includes('全面禁止') ? 'fail' : 'pass'}">
                     <div class="pb-audit-card-head">
                         <span class="pb-audit-card-title">6. 数据导出与下游生成 (Data Export & Build)</span>

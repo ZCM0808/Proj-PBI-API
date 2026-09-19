@@ -6869,6 +6869,231 @@ body.light-theme #sidebar-pane-permission_blueprint .pb-model-user-row:hover,
     border-color: #bfdbfe !important;
 }
 
+/* ==========================================================================
+   Power BI Blueprint Scenarios & Announced Alerts Adaptation (场景与公告明暗深度适配)
+   ========================================================================== */
+
+.pb-scenario-btn {
+    width: 100%;
+    justify-content: center;
+    font-size: 0.74rem;
+    padding: 7px 10px;
+    border-radius: 6px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* 暗色模式下的预设按钮 */
+.pb-scenario-reset {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #f8fafc;
+}
+.pb-scenario-reset:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: #f8fafc;
+}
+
+.pb-scenario-gac {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    color: #f87171;
+}
+.pb-scenario-gac:hover {
+    background: rgba(239, 68, 68, 0.22);
+    border-color: #ef4444;
+}
+
+.pb-scenario-bypass {
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    color: #fbbf24;
+}
+.pb-scenario-bypass:hover {
+    background: rgba(245, 158, 11, 0.22);
+    border-color: #f59e0b;
+}
+
+.pb-scenario-ols {
+    background: rgba(168, 85, 247, 0.12);
+    border: 1px solid rgba(168, 85, 247, 0.35);
+    color: #c084fc;
+}
+.pb-scenario-ols:hover {
+    background: rgba(168, 85, 247, 0.22);
+    border-color: #a855f7;
+}
+
+/* 明亮模式下的预设按钮 (高对比度深色文字与浅色精致底) */
+body.light-theme .pb-scenario-reset,
+[data-theme="light"] .pb-scenario-reset {
+    background: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+    color: #1e293b !important;
+}
+body.light-theme .pb-scenario-reset:hover,
+[data-theme="light"] .pb-scenario-reset:hover {
+    background: #e2e8f0 !important;
+}
+
+body.light-theme .pb-scenario-gac,
+[data-theme="light"] .pb-scenario-gac {
+    background: #fef2f2 !important;
+    border-color: #fca5a5 !important;
+    color: #b91c1c !important;
+}
+body.light-theme .pb-scenario-gac:hover,
+[data-theme="light"] .pb-scenario-gac:hover {
+    background: #fee2e2 !important;
+    border-color: #ef4444 !important;
+}
+
+body.light-theme .pb-scenario-bypass,
+[data-theme="light"] .pb-scenario-bypass {
+    background: #fffbeb !important;
+    border-color: #fde68a !important;
+    color: #b45309 !important;
+}
+body.light-theme .pb-scenario-bypass:hover,
+[data-theme="light"] .pb-scenario-bypass:hover {
+    background: #fef3c7 !important;
+    border-color: #f59e0b !important;
+}
+
+body.light-theme .pb-scenario-ols,
+[data-theme="light"] .pb-scenario-ols {
+    background: #faf5ff !important;
+    border-color: #e9d5ff !important;
+    color: #7e22ce !important;
+}
+body.light-theme .pb-scenario-ols:hover,
+[data-theme="light"] .pb-scenario-ols:hover {
+    background: #f3e8ff !important;
+    border-color: #9333ea !important;
+}
+
+/* 节点内部公告说明框 (Announced Alert Boxes) 在明暗两套主题下的完美适配 */
+.pb-node-alert {
+    margin-top: 6px;
+    padding: 7px 9px;
+    border-radius: 6px;
+    font-size: 0.69rem;
+    line-height: 1.4;
+    transition: all 0.2s ease;
+}
+
+.pb-node-alert.alert-bypass {
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    color: #fbbf24;
+}
+
+.pb-node-alert.alert-normal {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
+}
+
+.pb-node-alert.alert-gac {
+    background: rgba(167, 139, 250, 0.1);
+    border: 1px solid rgba(167, 139, 250, 0.25);
+    color: #c084fc;
+}
+
+.pb-node-alert code {
+    background: rgba(0, 0, 0, 0.35);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.66rem;
+    color: #e2e8f0;
+}
+
+/* 明亮模式下的节点公告说明框 */
+body.light-theme .pb-node-alert.alert-bypass,
+[data-theme="light"] .pb-node-alert.alert-bypass {
+    background: #fffbeb !important;
+    border: 1px solid #fde68a !important;
+    color: #92400e !important;
+}
+body.light-theme .pb-node-alert.alert-bypass strong,
+[data-theme="light"] .pb-node-alert.alert-bypass strong {
+    color: #b45309 !important;
+}
+
+body.light-theme .pb-node-alert.alert-normal,
+[data-theme="light"] .pb-node-alert.alert-normal {
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #334155 !important;
+}
+
+body.light-theme .pb-node-alert.alert-gac,
+[data-theme="light"] .pb-node-alert.alert-gac {
+    background: #faf5ff !important;
+    border: 1px solid #e9d5ff !important;
+    color: #6b21a8 !important;
+}
+body.light-theme .pb-node-alert.alert-gac div,
+[data-theme="light"] .pb-node-alert.alert-gac div {
+    color: #7e22ce !important;
+}
+
+body.light-theme .pb-node-alert code,
+[data-theme="light"] .pb-node-alert code {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+/* 屏幕外节点雷达浮动召回提示 (Out-of-Screen Lost Notice) */
+.pb-radar-lost-notice {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 12px 20px;
+    background: rgba(15, 23, 42, 0.94);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 24px rgba(245, 158, 11, 0.25);
+    border-radius: 12px;
+    backdrop-filter: blur(16px);
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    animation: radarPulse 2s ease-in-out infinite;
+}
+
+@keyframes radarPulse {
+    0%, 100% { box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(245, 158, 11, 0.2); }
+    50% { box-shadow: 0 16px 45px rgba(0, 0, 0, 0.7), 0 0 28px rgba(245, 158, 11, 0.45); }
+}
+
+.pb-radar-lost-notice:hover {
+    transform: translate(-50%, -50%) scale(1.04);
+}
+
+body.light-theme .pb-radar-lost-notice,
+[data-theme="light"] .pb-radar-lost-notice {
+    background: rgba(255, 255, 255, 0.96) !important;
+    border-color: #f59e0b !important;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12), 0 0 18px rgba(245, 158, 11, 0.25) !important;
+}
+
+body.light-theme .pb-radar-lost-notice span,
+[data-theme="light"] .pb-radar-lost-notice span {
+    color: #0f172a !important;
+}
+
+
 
 
 

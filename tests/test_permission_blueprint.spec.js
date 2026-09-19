@@ -6,6 +6,7 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         await page.evaluate(() => {
             localStorage.clear();
             localStorage.setItem('pbi_tenant_id', 'mock-tenant-1234');
+            localStorage.setItem('pbi-theme', 'dark');
         });
         await page.reload();
     });
@@ -113,9 +114,9 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         const nodeTenant = page.locator('#node_tenant');
         await expect(nodeTenant).toBeVisible();
 
-        // 初始位置
+        // 初始位置 (DEFAULT_NODE_COORDS x=60)
         const initialLeft = await nodeTenant.evaluate(el => parseInt(el.style.left, 10));
-        expect(initialLeft).toBe(50);
+        expect(initialLeft).toBe(60);
 
         // 拖拽手柄向左拖动 200px
         const header = nodeTenant.locator('.pb-node-header');
@@ -164,5 +165,59 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
 
         const restoredDarkBg = await viewport.evaluate(el => window.getComputedStyle(el).backgroundColor);
         expect(restoredDarkBg).toMatch(/rgb\(11,\s*15,\s*25\)/);
+    });
+
+    test('场景预设与Announced公告框在日夜模式下均具备高对比度且零发白', async ({ page }) => {
+        await page.locator('#rail-nav-permission_blueprint').click();
+        const themeToggleBtn = page.locator('#theme-toggle-btn');
+
+        // 切换为亮色白天模式
+        await themeToggleBtn.click();
+        await page.waitForTimeout(300);
+
+        // 1. 验证预设按钮文字在白底下的对比度（金黄色按钮文字应为深琥珀色 #b45309，而不是发白的浅黄）
+        const bypassBtn = page.locator('.pb-scenario-bypass');
+        const bypassTextColor = await bypassBtn.evaluate(el => window.getComputedStyle(el).color);
+        expect(bypassTextColor).toMatch(/rgb\(180,\s*83,\s*9\)/); // #b45309
+
+        // 2. 验证节点内的 Announced 公告框文本清晰易读
+        const nodeAlert = page.locator('.pb-node-alert').first();
+        await expect(nodeAlert).toBeVisible();
+        const alertColor = await nodeAlert.evaluate(el => window.getComputedStyle(el).color);
+        // 不应是几乎看不见的白色/极淡浅色
+        expect(alertColor).not.toMatch(/rgb\(255,\s*255,\s*255\)/);
+    });
+
+    test('防走失核心保障：当卡片漂移出视口时雷达提示自动浮现，点击一键找回瞬间居中', async ({ page }) => {
+        await page.locator('#rail-nav-permission_blueprint').click();
+
+        const radarNotice = page.locator('#pb-radar-notice');
+        const locateBtn = page.locator('#pb-btn-locate-all');
+
+        // 默认卡片在视口内，雷达提示必须隐藏
+        await expect(radarNotice).toBeHidden();
+
+        // 故意将画布平移到遥远坐标，制造“卡片丢失”场景
+        await page.evaluate(() => {
+            window.PermissionBlueprint.panX = 3500;
+            window.PermissionBlueprint.panY = 3500;
+            window.PermissionBlueprint.updateCanvasTransform();
+            window.PermissionBlueprint.checkRadarVisibility();
+        });
+
+        // 验证：雷达防丢提示气泡自动浮现
+        await expect(radarNotice).toBeVisible();
+        await expect(radarNotice).toContainText('卡片位于视口外部');
+
+        // 点击工具栏的“找回卡片”按钮
+        await locateBtn.click();
+        await page.waitForTimeout(400);
+
+        // 验证：雷达提示自动隐藏，且节点重新回到可见视口
+        await expect(radarNotice).toBeHidden();
+        const nodeBox = await page.locator('#node_tenant').boundingBox();
+        expect(nodeBox).not.toBeNull();
+        expect(nodeBox.x).toBeGreaterThan(0);
+        expect(nodeBox.y).toBeGreaterThan(0);
     });
 });
