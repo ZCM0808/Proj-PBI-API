@@ -695,6 +695,13 @@ hdr.className = 'modal-header';
             }
         };
 
+        const copyColsBtn = document.createElement('button');
+        copyColsBtn.type = 'button';
+        copyColsBtn.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:5px 12px;font-size:0.8rem;cursor:pointer;background:#4f46e5;color:#ffffff;border:1px solid rgba(165,180,252,0.4);border-radius:6px;font-weight:600;transition:all 0.2s;box-shadow:0 2px 8px rgba(79,70,229,0.35);letter-spacing:0.2px;';
+        copyColsBtn.title = '复制当前选中列（包含表头列名，支持快捷键 Ctrl+C）';
+        copyColsBtn.onmouseover = () => { copyColsBtn.style.background = '#4338ca'; copyColsBtn.style.transform = 'translateY(-1px)'; copyColsBtn.style.boxShadow = '0 4px 14px rgba(79,70,229,0.5)'; };
+        copyColsBtn.onmouseout = () => { copyColsBtn.style.background = '#4f46e5'; copyColsBtn.style.transform = 'none'; copyColsBtn.style.boxShadow = '0 2px 8px rgba(79,70,229,0.35)'; };
+        copyColsBtn.onclick = copySelectedColumnsData;
         filterRight.appendChild(copyColsBtn);
 
         filterBar.appendChild(filterRight);
