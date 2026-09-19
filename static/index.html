@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260919_v1410">
+    <link rel="stylesheet" href="/static/style.css?v=20260919_v1430">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -2571,8 +2571,8 @@
                 <div id="pb-canvas-viewport" class="pb-canvas-viewport" style="flex: 1; width: 100%; height: 100%; position: relative; overflow: hidden; background-color: #0b0f19; background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px); background-size: 24px 24px; cursor: grab; user-select: none;">
                     <!-- 变换容器 (平移 Pan + 缩放 Zoom) -->
                     <div id="pb-canvas-content" class="pb-canvas-content" style="position: absolute; top: 0; left: 0; width: 3600px; height: 2000px; transform-origin: 0 0;">
-                        <!-- SVG 连线层 -->
-                        <svg id="pb-svg-wires" class="pb-svg-wires" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;">
+                        <!-- SVG 连线层 (overflow: visible 确保拖到任意坐标均不裁切) -->
+                        <svg id="pb-svg-wires" class="pb-svg-wires" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: visible;">
                             <defs>
                                 <filter id="pb-glow-filter" x="-20%" y="-20%" width="140%" height="140%">
                                     <feGaussianBlur stdDeviation="3" result="blur" />
@@ -3057,9 +3057,9 @@
     <script src="/static/translations.js?v=20260906_v1225"></script>
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
-    <script src="/static/universal_modal.js?v=20260919_v1410"></script>
-    <script src="/static/script.js?v=20260919_v1410"></script>
-    <script src="/static/permission_blueprint.js?v=20260919_v1410"></script>
+    <script src="/static/universal_modal.js?v=20260919_v1430"></script>
+    <script src="/static/script.js?v=20260919_v1430"></script>
+    <script src="/static/permission_blueprint.js?v=20260919_v1430"></script>
 
 
 

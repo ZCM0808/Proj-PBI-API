@@ -336,9 +336,12 @@
                     const rect = this.contentEl.getBoundingClientRect();
                     const newX = (e.clientX - rect.left) / this.zoom - this.dragOffset.x;
                     const newY = (e.clientY - rect.top) / this.zoom - this.dragOffset.y;
-                    this.nodePositions[this.draggedNodeId] = { x: Math.max(10, newX), y: Math.max(10, newY) };
-                    nodeEl.style.left = `${this.nodePositions[this.draggedNodeId].x}px`;
-                    nodeEl.style.top = `${this.nodePositions[this.draggedNodeId].y}px`;
+                    // 完全解除向左与向上拖拽的硬编码限制，支持全向自由无级拖拽
+                    const roundedX = Math.round(newX);
+                    const roundedY = Math.round(newY);
+                    this.nodePositions[this.draggedNodeId] = { x: roundedX, y: roundedY };
+                    nodeEl.style.left = `${roundedX}px`;
+                    nodeEl.style.top = `${roundedY}px`;
                     this.recalculateAndRenderWires();
                 }
             });
@@ -400,6 +403,12 @@
                     header.style.cursor = 'move';
                 }
             });
+
+            // 监听全局明暗主题切换，实时响应式重绘连线高对比度配色
+            const themeObserver = new MutationObserver(() => {
+                this.recalculateAndRenderWires();
+            });
+            themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
         }
 
         updateCanvasTransform() {
@@ -946,6 +955,14 @@
                 s.hasAppAccess
             );
 
+            // 检测全局明暗主题以匹配自适应连线高对比度配色
+            const isLight = document.documentElement.getAttribute('data-theme') === 'light' || document.body.classList.contains('light-theme');
+            const colorPass = isLight ? '#2563eb' : '#60a5fa';
+            const colorBypass = isLight ? '#d97706' : '#f59e0b';
+            const colorStrict = isLight ? '#7c3aed' : '#a78bfa';
+            const colorBlock = isLight ? '#dc2626' : '#ef4444';
+            const colorInactive = isLight ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.1)';
+
             // 定义拓扑连线集合
             const wires = [
                 // Wire 1: Node 1 (Tenant) -> Node 2 (Capacity)
@@ -953,7 +970,7 @@
                     from: 'port_out_tenant',
                     to: 'port_in_capacity_tenant',
                     status: 'pass',
-                    style: '#60a5fa',
+                    style: colorPass,
                     marker: 'pb-arrow-normal',
                     label: '租户凭据授权'
                 },
@@ -962,7 +979,7 @@
                     from: 'port_out_capacity',
                     to: 'port_in_ws_capacity',
                     status: 'pass',
-                    style: '#60a5fa',
+                    style: colorPass,
                     marker: 'pb-arrow-normal',
                     label: s.capacityType === 'fabric_f64' ? 'Fabric 计算环境' : 'Pro 共享计算'
                 },
@@ -971,7 +988,7 @@
                     from: 'port_out_ws_role',
                     to: 'port_in_gac_ws',
                     status: canEditReport ? 'pass' : 'blocked',
-                    style: canEditReport ? '#60a5fa' : '#ef4444',
+                    style: canEditReport ? colorPass : colorBlock,
                     marker: canEditReport ? 'pb-arrow-normal' : 'pb-arrow-blocked',
                     label: canEditReport ? '工作区编辑授权' : '无编辑权(只读)'
                 },
@@ -980,7 +997,7 @@
                     from: 'port_out_conn_stream',
                     to: 'port_in_gac_conn',
                     status: (s.hasAccessToAllDataConnections && s.gatewayOnline) ? 'strict' : 'blocked',
-                    style: (s.hasAccessToAllDataConnections && s.gatewayOnline) ? '#a78bfa' : '#ef4444',
+                    style: (s.hasAccessToAllDataConnections && s.gatewayOnline) ? colorStrict : colorBlock,
                     marker: (s.hasAccessToAllDataConnections && s.gatewayOnline) ? 'pb-arrow-strict' : 'pb-arrow-blocked',
                     label: (s.hasAccessToAllDataConnections && s.gatewayOnline) ? '底层连接凭据齐全' : '缺失数据源连接 403'
                 },
@@ -989,7 +1006,7 @@
                     from: 'port_out_ws_role',
                     to: 'port_in_share_ws',
                     status: 'pass',
-                    style: '#60a5fa',
+                    style: colorPass,
                     marker: 'pb-arrow-normal',
                     label: '资产分发流'
                 },
@@ -998,7 +1015,7 @@
                     from: 'port_out_share_stream',
                     to: 'port_in_rls_item',
                     status: canViewReport ? 'pass' : 'blocked',
-                    style: canViewReport ? '#60a5fa' : '#ef4444',
+                    style: canViewReport ? colorPass : colorBlock,
                     marker: canViewReport ? 'pb-arrow-normal' : 'pb-arrow-blocked',
                     label: canViewReport ? '数据读取权' : '未授权'
                 },
@@ -1007,7 +1024,7 @@
                     from: 'port_out_ws_bypass',
                     to: 'port_in_rls_bypass',
                     status: isPrivilegeBypass ? 'bypass' : 'inactive',
-                    style: isPrivilegeBypass ? '#f59e0b' : 'rgba(255, 255, 255, 0.1)',
+                    style: isPrivilegeBypass ? colorBypass : colorInactive,
                     marker: isPrivilegeBypass ? 'pb-arrow-bypass' : '',
                     label: isPrivilegeBypass ? '⚡ 特权穿透: 豁免 RLS' : '无穿透'
                 },
@@ -1016,7 +1033,7 @@
                     from: 'port_out_rls_filtered',
                     to: 'port_in_ols_rls',
                     status: (canViewReport && (isPrivilegeBypass || s.rlsRoleAssigned !== 'Unassigned')) ? 'pass' : 'blocked',
-                    style: (canViewReport && (isPrivilegeBypass || s.rlsRoleAssigned !== 'Unassigned')) ? '#60a5fa' : '#ef4444',
+                    style: (canViewReport && (isPrivilegeBypass || s.rlsRoleAssigned !== 'Unassigned')) ? colorPass : colorBlock,
                     marker: (canViewReport && (isPrivilegeBypass || s.rlsRoleAssigned !== 'Unassigned')) ? 'pb-arrow-normal' : 'pb-arrow-blocked',
                     label: isPrivilegeBypass ? '全量数据穿透' : (s.rlsRoleAssigned === 'Unassigned' ? 'RLS 过滤阻断' : '行切片就绪')
                 },
@@ -1025,7 +1042,7 @@
                     from: 'port_out_ws_bypass',
                     to: 'port_in_ols_bypass',
                     status: isPrivilegeBypass ? 'bypass' : 'inactive',
-                    style: isPrivilegeBypass ? '#f59e0b' : 'rgba(255, 255, 255, 0.1)',
+                    style: isPrivilegeBypass ? colorBypass : colorInactive,
                     marker: isPrivilegeBypass ? 'pb-arrow-bypass' : '',
                     label: isPrivilegeBypass ? '⚡ 特权穿透: 豁免 OLS' : '无穿透'
                 }

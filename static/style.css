@@ -6688,5 +6688,187 @@ body.light-theme .gtb-auth-card.selected,
     color: #f87171 !important;
 }
 
+/* ==========================================================================
+   Power BI Permission Blueprint Light Theme Adaptation (蓝图明亮主题深度适配)
+   ========================================================================== */
+
+body.light-theme .pb-canvas-viewport,
+[data-theme="light"] .pb-canvas-viewport {
+    background-color: #f8fafc !important;
+    background-image: 
+        radial-gradient(rgba(100, 116, 139, 0.25) 1.2px, transparent 1.2px),
+        linear-gradient(to right, rgba(148, 163, 184, 0.18) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(148, 163, 184, 0.18) 1px, transparent 1px) !important;
+    background-size: 24px 24px, 120px 120px, 120px 120px !important;
+}
+
+body.light-theme .pb-canvas-header,
+[data-theme="light"] .pb-canvas-header {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-bottom-color: #e2e8f0 !important;
+}
+
+body.light-theme .pb-canvas-header span,
+[data-theme="light"] .pb-canvas-header span {
+    color: #0f172a !important;
+}
+
+body.light-theme .pb-blueprint-node,
+[data-theme="light"] .pb-blueprint-node {
+    background: rgba(255, 255, 255, 0.96) !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+body.light-theme .pb-blueprint-node:hover,
+[data-theme="light"] .pb-blueprint-node:hover {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 14px 34px rgba(59, 130, 246, 0.16) !important;
+}
+
+body.light-theme .pb-node-header,
+[data-theme="light"] .pb-node-header {
+    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%) !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+
+body.light-theme .pb-node-title,
+[data-theme="light"] .pb-node-title {
+    color: #0f172a !important;
+}
+
+body.light-theme .pb-node-subtitle,
+[data-theme="light"] .pb-node-subtitle {
+    color: #64748b !important;
+}
+
+body.light-theme .pb-node-ports-row,
+[data-theme="light"] .pb-node-ports-row {
+    background: #f8fafc !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+
+body.light-theme .pb-port,
+[data-theme="light"] .pb-port {
+    color: #475569 !important;
+}
+
+body.light-theme .pb-port-dot,
+[data-theme="light"] .pb-port-dot {
+    border-color: #ffffff !important;
+}
+
+body.light-theme .pb-node-field label,
+[data-theme="light"] .pb-node-field label {
+    color: #334155 !important;
+    font-weight: 500;
+}
+
+body.light-theme .pb-node-field select.modern-input,
+body.light-theme .pb-node-field input.modern-input,
+[data-theme="light"] .pb-node-field select.modern-input,
+[data-theme="light"] .pb-node-field input.modern-input {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+body.light-theme .pb-node-field select.modern-input:focus,
+body.light-theme .pb-node-field input.modern-input:focus,
+[data-theme="light"] .pb-node-field select.modern-input:focus,
+[data-theme="light"] .pb-node-field input.modern-input:focus {
+    border-color: #3b82f6 !important;
+}
+
+/* 蓝图连线文字在明亮模式下的可读性优化 */
+body.light-theme .pb-wires-group text,
+body.light-theme .pb-wire-group text,
+[data-theme="light"] .pb-wires-group text,
+[data-theme="light"] .pb-wire-group text {
+    filter: drop-shadow(0 0 2px #ffffff) drop-shadow(0 0 3px #ffffff) !important;
+}
+
+/* 蓝图左下角图例卡片 */
+body.light-theme .pb-legend-card,
+[data-theme="light"] .pb-legend-card {
+    background: rgba(255, 255, 255, 0.94) !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+}
+
+body.light-theme .pb-legend-card span,
+[data-theme="light"] .pb-legend-card span {
+    color: #334155 !important;
+}
+
+/* 最终权力透视报告抽屉 */
+body.light-theme .pb-audit-drawer,
+[data-theme="light"] .pb-audit-drawer {
+    background: rgba(255, 255, 255, 0.96) !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14) !important;
+}
+
+body.light-theme #pb-audit-drawer-header,
+[data-theme="light"] #pb-audit-drawer-header {
+    background: #f8fafc !important;
+    border-bottom-color: #e2e8f0 !important;
+}
+
+body.light-theme #pb-audit-drawer-header span,
+[data-theme="light"] #pb-audit-drawer-header span {
+    color: #0f172a !important;
+}
+
+body.light-theme .pb-audit-card,
+[data-theme="light"] .pb-audit-card {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.light-theme .pb-audit-card-title,
+[data-theme="light"] .pb-audit-card-title {
+    color: #0f172a !important;
+}
+
+body.light-theme .pb-audit-card-desc,
+[data-theme="light"] .pb-audit-card-desc {
+    color: #475569 !important;
+}
+
+/* 侧边栏专属面板亮色适配 */
+body.light-theme #sidebar-pane-permission_blueprint .pb-control-card,
+[data-theme="light"] #sidebar-pane-permission_blueprint .pb-control-card {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
+body.light-theme #sidebar-pane-permission_blueprint .pb-mode-tabs,
+[data-theme="light"] #sidebar-pane-permission_blueprint .pb-mode-tabs {
+    background: #f1f5f9 !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.light-theme #sidebar-pane-permission_blueprint .pb-tab-btn.active,
+[data-theme="light"] #sidebar-pane-permission_blueprint .pb-tab-btn.active {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+body.light-theme #sidebar-pane-permission_blueprint .pb-model-user-row,
+[data-theme="light"] #sidebar-pane-permission_blueprint .pb-model-user-row {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.light-theme #sidebar-pane-permission_blueprint .pb-model-user-row:hover,
+[data-theme="light"] #sidebar-pane-permission_blueprint .pb-model-user-row:hover {
+    background: #eff6ff !important;
+    border-color: #bfdbfe !important;
+}
+
+
 
 

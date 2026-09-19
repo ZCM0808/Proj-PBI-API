@@ -106,4 +106,63 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         const upnLabel = page.locator('#pb-current-upn-label');
         await expect(upnLabel).toHaveText(/sarah.connor@contoso.com/);
     });
+
+    test('沙盒卡片向左拖拽无限制：解除 10px 边界，支持全向自由无级拖动', async ({ page }) => {
+        await page.locator('#rail-nav-permission_blueprint').click();
+
+        const nodeTenant = page.locator('#node_tenant');
+        await expect(nodeTenant).toBeVisible();
+
+        // 初始位置
+        const initialLeft = await nodeTenant.evaluate(el => parseInt(el.style.left, 10));
+        expect(initialLeft).toBe(50);
+
+        // 拖拽手柄向左拖动 200px
+        const header = nodeTenant.locator('.pb-node-header');
+        const box = await header.boundingBox();
+
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(box.x + box.width / 2 - 200, box.y + box.height / 2, { steps: 5 });
+        await page.mouse.up();
+
+        // 断言：新位置必须成功突破原本 10px 的硬限制（已拖到负坐标或远小于 10px）
+        const newLeft = await nodeTenant.evaluate(el => parseInt(el.style.left, 10));
+        expect(newLeft).toBeLessThan(10);
+    });
+
+    test('明亮与黑暗双主题深度支持：主题切换后蓝图画布与节点自适应变色', async ({ page }) => {
+        await page.locator('#rail-nav-permission_blueprint').click();
+
+        const viewport = page.locator('#pb-canvas-viewport');
+        const node = page.locator('#node_tenant');
+        const themeToggleBtn = page.locator('#theme-toggle-btn');
+
+        // 1. 默认暗色模式下：背景为深黑色系
+        const darkBg = await viewport.evaluate(el => window.getComputedStyle(el).backgroundColor);
+        expect(darkBg).toMatch(/rgb\(11,\s*15,\s*25\)/); // #0b0f19
+
+        // 2. 点击主题切换为亮色模式 (Light Theme)
+        await themeToggleBtn.click();
+        await page.waitForTimeout(300);
+
+        // 验证 html 标记了 data-theme="light"
+        const htmlTheme = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
+        expect(htmlTheme).toBe('light');
+
+        // 验证亮色模式下视口变为浅白底 (#f8fafc -> rgb(248, 250, 252))
+        const lightBg = await viewport.evaluate(el => window.getComputedStyle(el).backgroundColor);
+        expect(lightBg).toMatch(/rgb\(248,\s*250,\s*252\)/);
+
+        // 验证蓝图卡片变为纯白玻璃拟态底
+        const nodeBg = await node.evaluate(el => window.getComputedStyle(el).backgroundColor);
+        expect(nodeBg).toMatch(/rgba?\(255,\s*255,\s*255/);
+
+        // 3. 再次点击平滑切回暗色模式
+        await themeToggleBtn.click();
+        await page.waitForTimeout(300);
+
+        const restoredDarkBg = await viewport.evaluate(el => window.getComputedStyle(el).backgroundColor);
+        expect(restoredDarkBg).toMatch(/rgb\(11,\s*15,\s*25\)/);
+    });
 });
