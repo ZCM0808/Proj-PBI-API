@@ -136,7 +136,8 @@ window.showUniversalDataModal = function(options) {
                 selectedCols: Array.from(selectedCols),
                 frozenCols: Array.from(frozenCols),
                 sortState: sortState,
-                colWidths: colWidths
+                colWidths: colWidths,
+                modalSize: savedPrefs.modalSize || null
             }));
         } catch(e) {}
     };
@@ -153,13 +154,39 @@ window.showUniversalDataModal = function(options) {
     overlay.id = modalId;
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:20000;opacity:0;transition:opacity 0.25s;';
     
+    // 计算初始尺寸（优先读取当前弹窗个性化偏好，其次读取通用数据弹窗记忆，最后采用稳定基准尺寸）
+    let initialWidth = 'min(94vw, 1200px)';
+    let initialHeight = 'min(88vh, 850px)';
+
+    let customSize = savedPrefs.modalSize;
+    if (!customSize || typeof customSize.width !== 'number' || typeof customSize.height !== 'number') {
+        try {
+            const lastGlobalSize = JSON.parse(localStorage.getItem('pbi_universal_modal_last_size') || 'null');
+            if (lastGlobalSize && typeof lastGlobalSize.width === 'number' && typeof lastGlobalSize.height === 'number') {
+                customSize = lastGlobalSize;
+            }
+        } catch(e) {}
+    }
+
+    if (customSize && typeof customSize.width === 'number' && typeof customSize.height === 'number') {
+        const safeW = Math.max(360, Math.min(customSize.width, Math.round(window.innerWidth * 0.96)));
+        const safeH = Math.max(260, Math.min(customSize.height, Math.round(window.innerHeight * 0.94)));
+        initialWidth = `${safeW}px`;
+        initialHeight = `${safeH}px`;
+    }
+
     // Panel
     const panel = document.createElement('div');
     // Removed glass-panel to prevent expensive backdrop-filter rendering during modal animation
     panel.style.cssText = [
         'position:relative','background:var(--bg-color)','border:1px solid var(--panel-border)',
         'border-radius:10px','box-shadow:0 24px 80px rgba(0,0,0,0.5)',
-        'width:min(94vw, 1200px)','max-height:min(88vh, 900px)','max-width:1200px','min-width:min(100%, 300px)',
+        `width:${initialWidth}`,
+        `height:${initialHeight}`,
+        'max-width:96vw',
+        'max-height:94vh',
+        'min-width:min(100%, 360px)',
+        'min-height:260px',
         'display:flex','flex-direction:column','overflow:hidden',
         'transform:scale(0.96)','transition:transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
     ].join(';');
@@ -301,6 +328,18 @@ hdr.className = 'modal-header';
                 document.removeEventListener('mouseup', onMouseUp);
                 document.body.style.cursor = '';
                 document.body.style.userSelect = '';
+
+                // 记录手动调节后的大小并持久化存储
+                const currentW = Math.round(panel.offsetWidth);
+                const currentH = Math.round(panel.offsetHeight);
+                if (currentW >= 360 && currentH >= 220) {
+                    const sizePref = { width: currentW, height: currentH };
+                    savedPrefs.modalSize = sizePref;
+                    savePreferences();
+                    try {
+                        localStorage.setItem('pbi_universal_modal_last_size', JSON.stringify(sizePref));
+                    } catch(e) {}
+                }
             };
             document.addEventListener('mousemove', onMouseMove);
             document.addEventListener('mouseup', onMouseUp);
