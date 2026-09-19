@@ -44,6 +44,87 @@ window.showUniversalDataModal = function(options) {
                 scrollbar-width: auto;
                 scrollbar-color: var(--overlay-30, rgba(255, 255, 255, 0.35)) var(--overlay-5, rgba(255, 255, 255, 0.04));
             }
+
+            /* Column Header Filter Popover & Buttons */
+            .uni-col-filter-popover {
+                position: fixed;
+                z-index: 25000;
+                width: 275px;
+                background: var(--dropdown-bg, #1a1a24);
+                border: 1px solid var(--panel-border, rgba(255,255,255,0.14));
+                border-radius: 8px;
+                box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 1px rgba(255,255,255,0.2);
+                display: flex;
+                flex-direction: column;
+                padding: 10px;
+                font-size: 0.78rem;
+                color: var(--text-primary);
+                opacity: 0;
+                transform: translateY(-6px) scale(0.97);
+                transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+                pointer-events: none;
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+            }
+            .uni-col-filter-popover.active {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+                pointer-events: auto;
+            }
+            .uni-col-filter-list {
+                max-height: 220px;
+                overflow-y: auto;
+                margin: 6px 0;
+                padding-right: 2px;
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+            }
+            .uni-col-filter-list::-webkit-scrollbar {
+                width: 6px;
+            }
+            .uni-col-filter-list::-webkit-scrollbar-thumb {
+                background: var(--overlay-20);
+                border-radius: 4px;
+            }
+            .uni-col-filter-item {
+                display: flex;
+                align-items: center;
+                gap: 7px;
+                padding: 5px 6px;
+                border-radius: 4px;
+                cursor: pointer;
+                user-select: none;
+                transition: background 0.15s;
+            }
+            .uni-col-filter-item:hover {
+                background: var(--overlay-10, rgba(255,255,255,0.08));
+            }
+            .uni-col-filter-btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 2px 4px;
+                border-radius: 4px;
+                cursor: pointer;
+                opacity: 0.35;
+                transition: all 0.18s ease;
+                background: transparent;
+                border: none;
+                color: inherit;
+                vertical-align: middle;
+                margin-left: 4px;
+            }
+            .uni-col-filter-btn:hover {
+                opacity: 1;
+                background: var(--overlay-15, rgba(255,255,255,0.12));
+                color: var(--accent);
+            }
+            .uni-col-filter-btn.active {
+                opacity: 1;
+                color: var(--accent);
+                background: var(--accent-subtle, rgba(99,102,241,0.2));
+            }
         `;
         document.head.appendChild(style);
     }
@@ -128,6 +209,63 @@ window.showUniversalDataModal = function(options) {
     let searchText = "";
     let sortState = Array.isArray(savedPrefs.sortState) ? savedPrefs.sortState : []; // Array of {index, asc}
     const colWidths = (savedPrefs.colWidths && typeof savedPrefs.colWidths === 'object') ? savedPrefs.colWidths : {};
+
+    // Column Filters state (key: colName, value: Set of checked string values)
+    const columnFilters = {};
+    let updateResetColFiltersBtn = null;
+
+    const formatFilterVal = (val) => {
+        if (val === null || val === undefined) return '(空白)';
+        const s = String(val).trim();
+        return s === '' ? '(空白)' : s;
+    };
+
+    // 多列联动候选值计算引擎 (Faceted Cross-Filtering Engine)
+    const getFacetValuesForColumn = (targetCol) => {
+        // 1. 先经过全局搜索过滤
+        let baseData = data;
+        if (searchText) {
+            baseData = baseData.filter(row => {
+                return columns.some(col => {
+                    if (!selectedCols.has(col)) return false;
+                    const val = row[col];
+                    if (val === null || val === undefined) return false;
+                    return val.toString().toLowerCase().includes(searchText);
+                });
+            });
+        }
+
+        // 2. 经过除 targetCol 自身之外的所有其他激活筛选列的交集过滤
+        const otherActiveCols = Object.keys(columnFilters).filter(c => c !== targetCol && columnFilters[c] && columnFilters[c].size > 0);
+        let filteredForTarget = baseData;
+        if (otherActiveCols.length > 0) {
+            filteredForTarget = baseData.filter(row => {
+                for (const c of otherActiveCols) {
+                    const rowVal = formatFilterVal(row[c]);
+                    if (!columnFilters[c].has(rowVal)) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+        }
+
+        // 3. 统计 targetCol 在联动数据中的唯一值与频次
+        const countsMap = new Map();
+        filteredForTarget.forEach(row => {
+            const val = formatFilterVal(row[targetCol]);
+            countsMap.set(val, (countsMap.get(val) || 0) + 1);
+        });
+
+        const sortedValues = Array.from(countsMap.entries()).map(([val, count]) => ({ val, count }));
+        sortedValues.sort((a, b) => {
+            if (a.val === '(空白)') return 1;
+            if (b.val === '(空白)') return -1;
+            return a.val.localeCompare(b.val, undefined, { numeric: true, sensitivity: 'base' });
+        });
+
+        return sortedValues;
+    };
 
     const savePreferences = () => {
         try {
@@ -533,13 +671,30 @@ hdr.className = 'modal-header';
         };
         filterRight.appendChild(clearColsBtn);
 
-        const copyColsBtn = document.createElement('button');
-        copyColsBtn.type = 'button';
-        copyColsBtn.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:5px 12px;font-size:0.8rem;cursor:pointer;background:#4f46e5;color:#ffffff;border:1px solid rgba(165,180,252,0.4);border-radius:6px;font-weight:600;transition:all 0.2s;box-shadow:0 2px 8px rgba(79,70,229,0.35);letter-spacing:0.2px;';
-        copyColsBtn.title = '复制当前选中列（包含表头列名，支持快捷键 Ctrl+C）';
-        copyColsBtn.onmouseover = () => { copyColsBtn.style.background = '#4338ca'; copyColsBtn.style.transform = 'translateY(-1px)'; copyColsBtn.style.boxShadow = '0 4px 14px rgba(79,70,229,0.5)'; };
-        copyColsBtn.onmouseout = () => { copyColsBtn.style.background = '#4f46e5'; copyColsBtn.style.transform = 'none'; copyColsBtn.style.boxShadow = '0 2px 8px rgba(79,70,229,0.35)'; };
-        copyColsBtn.onclick = copySelectedColumnsData;
+        const resetColFiltersBtn = document.createElement('button');
+        resetColFiltersBtn.type = 'button';
+        resetColFiltersBtn.id = 'um-reset-col-filters-btn';
+        resetColFiltersBtn.style.cssText = 'display:none;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:var(--error, #ef4444);font-size:0.75rem;cursor:pointer;padding:4px 8px;border-radius:5px;transition:all 0.2s;font-weight:500;align-items:center;gap:4px;';
+        resetColFiltersBtn.title = '一键清除所有列的筛选条件';
+        resetColFiltersBtn.innerHTML = `<span>🧹 重置筛选</span>`;
+        resetColFiltersBtn.onclick = () => {
+            Object.keys(columnFilters).forEach(k => delete columnFilters[k]);
+            if (typeof closeColumnFilterPopover === 'function') closeColumnFilterPopover();
+            if (updateResetColFiltersBtn) updateResetColFiltersBtn();
+            renderTable();
+        };
+        filterRight.appendChild(resetColFiltersBtn);
+
+        updateResetColFiltersBtn = () => {
+            const activeCount = Object.keys(columnFilters).filter(c => columnFilters[c] && columnFilters[c].size > 0).length;
+            if (activeCount > 0) {
+                resetColFiltersBtn.style.display = 'inline-flex';
+                resetColFiltersBtn.innerHTML = `<span>🧹 重置筛选 (${activeCount})</span>`;
+            } else {
+                resetColFiltersBtn.style.display = 'none';
+            }
+        };
+
         filterRight.appendChild(copyColsBtn);
 
         filterBar.appendChild(filterRight);
@@ -781,6 +936,21 @@ hdr.className = 'modal-header';
                 });
             });
         }
+
+        // 2. 列级分面多选联动过滤 (Faceted Cross-Column Filtering)
+        const activeFilterCols = Object.keys(columnFilters).filter(c => columnFilters[c] && columnFilters[c].size !== undefined);
+        if (activeFilterCols.length > 0) {
+            filtered = filtered.filter(row => {
+                for (const c of activeFilterCols) {
+                    const rowVal = formatFilterVal(row[c]);
+                    if (!columnFilters[c].has(rowVal)) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+        }
+
         if (sortState.length > 0) {
             filtered = [...filtered].sort((a, b) => {
                 for (let s of sortState) {
@@ -808,13 +978,261 @@ hdr.className = 'modal-header';
         return filtered;
     };
 
+    // ─── Column Filter Popover Engine ───
+    let activeFilterPopover = null;
+
+    const closeColumnFilterPopover = () => {
+        if (activeFilterPopover) {
+            activeFilterPopover.remove();
+            activeFilterPopover = null;
+        }
+    };
+
+    const openColumnFilterPopover = (col, triggerBtn) => {
+        if (activeFilterPopover && activeFilterPopover._col === col) {
+            closeColumnFilterPopover();
+            return;
+        }
+        closeColumnFilterPopover();
+
+        // 1. 获取联动上下文下的候选值列表
+        const facetList = getFacetValuesForColumn(col);
+        const allPossibleVals = facetList.map(item => item.val);
+        
+        let currentChecked = new Set();
+        if (columnFilters[col]) {
+            columnFilters[col].forEach(v => currentChecked.add(v));
+        } else {
+            allPossibleVals.forEach(v => currentChecked.add(v));
+        }
+
+        // 2. 创建 Popover 容器
+        const popover = document.createElement('div');
+        popover.className = 'uni-col-filter-popover';
+        popover._col = col;
+        activeFilterPopover = popover;
+
+        // Header 标题
+        const popHdr = document.createElement('div');
+        popHdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid var(--overlay-10);font-weight:600;font-size:0.8rem;';
+        popHdr.innerHTML = `
+            <span style="display:flex;align-items:center;gap:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px;" title="${col}">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                筛选: ${col}
+            </span>
+            <span id="pop-filter-count-badge" style="font-size:0.7rem;color:var(--accent);font-weight:normal;flex-shrink:0;"></span>
+        `;
+        popover.appendChild(popHdr);
+
+        // 快速搜索输入框
+        const searchInput = document.createElement('input');
+        searchInput.type = 'text';
+        searchInput.className = 'wf-input';
+        searchInput.placeholder = '在候选值中快速搜索...';
+        searchInput.style.cssText = 'margin-top:6px;padding:4px 8px;font-size:0.75rem;min-height:unset;width:100%;box-sizing:border-box;border-radius:4px;';
+        popover.appendChild(searchInput);
+
+        // 批量操作栏 (全选 / 清空 / 反选)
+        const actionRow = document.createElement('div');
+        actionRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:5px 2px 3px;font-size:0.72rem;color:var(--accent);border-bottom:1px solid var(--overlay-5);';
+        actionRow.innerHTML = `
+            <div style="display:flex;gap:10px;">
+                <span id="pop-select-all" style="cursor:pointer;font-weight:600;text-decoration:underline;">全选</span>
+                <span id="pop-clear-all" style="cursor:pointer;color:var(--text-secondary);">清空</span>
+                <span id="pop-invert" style="cursor:pointer;color:var(--text-secondary);">反选</span>
+            </div>
+            <span style="color:var(--text-secondary);font-size:0.68rem;" id="pop-total-facet-stat">${facetList.length} 项可选</span>
+        `;
+        popover.appendChild(actionRow);
+
+        // 候选项滚动列表
+        const listContainer = document.createElement('div');
+        listContainer.className = 'uni-col-filter-list';
+        popover.appendChild(listContainer);
+
+        let filterKeyword = '';
+        const renderFacetItems = () => {
+            listContainer.innerHTML = '';
+            const matchingFacets = facetList.filter(item => {
+                if (!filterKeyword) return true;
+                return item.val.toLowerCase().includes(filterKeyword);
+            });
+
+            if (matchingFacets.length === 0) {
+                listContainer.innerHTML = `<div style="padding:16px 6px;text-align:center;color:var(--text-secondary);font-size:0.72rem;font-style:italic;">无匹配的候选值</div>`;
+            } else {
+                matchingFacets.forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'uni-col-filter-item';
+                    
+                    const isChecked = currentChecked.has(item.val);
+                    itemDiv.innerHTML = `
+                        <input type="checkbox" style="cursor:pointer;accent-color:var(--accent);margin:0;flex-shrink:0;" ${isChecked ? 'checked' : ''}>
+                        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${item.val}">${item.val}</span>
+                        <span style="font-size:0.68rem;color:var(--text-secondary);background:var(--overlay-5);padding:1px 5px;border-radius:8px;flex-shrink:0;">${item.count}</span>
+                    `;
+
+                    const chk = itemDiv.querySelector('input');
+                    itemDiv.onclick = (e) => {
+                        if (e.target !== chk) {
+                            chk.checked = !chk.checked;
+                        }
+                        if (chk.checked) {
+                            currentChecked.add(item.val);
+                        } else {
+                            currentChecked.delete(item.val);
+                        }
+                        updateBadges();
+                    };
+                    listContainer.appendChild(itemDiv);
+                });
+            }
+
+            updateBadges();
+        };
+
+        const updateBadges = () => {
+            const countBadge = popover.querySelector('#pop-filter-count-badge');
+            if (countBadge) {
+                countBadge.textContent = `${currentChecked.size}/${facetList.length}`;
+            }
+        };
+
+        searchInput.oninput = (e) => {
+            filterKeyword = e.target.value.trim().toLowerCase();
+            renderFacetItems();
+        };
+
+        actionRow.querySelector('#pop-select-all').onclick = () => {
+            if (filterKeyword) {
+                facetList.filter(i => i.val.toLowerCase().includes(filterKeyword)).forEach(i => currentChecked.add(i.val));
+            } else {
+                facetList.forEach(i => currentChecked.add(i.val));
+            }
+            renderFacetItems();
+        };
+        actionRow.querySelector('#pop-clear-all').onclick = () => {
+            if (filterKeyword) {
+                facetList.filter(i => i.val.toLowerCase().includes(filterKeyword)).forEach(i => currentChecked.delete(i.val));
+            } else {
+                currentChecked.clear();
+            }
+            renderFacetItems();
+        };
+        actionRow.querySelector('#pop-invert').onclick = () => {
+            const targetItems = filterKeyword ? facetList.filter(i => i.val.toLowerCase().includes(filterKeyword)) : facetList;
+            targetItems.forEach(item => {
+                if (currentChecked.has(item.val)) currentChecked.delete(item.val);
+                else currentChecked.add(item.val);
+            });
+            renderFacetItems();
+        };
+
+        // Footer 底部操作按钮
+        const popFooter = document.createElement('div');
+        popFooter.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding-top:8px;border-top:1px solid var(--overlay-10);gap:6px;';
+        
+        const resetBtn = document.createElement('button');
+        resetBtn.type = 'button';
+        resetBtn.className = 'btn-wf-sm btn-wf-secondary';
+        resetBtn.style.cssText = 'padding:3px 8px;font-size:0.72rem;cursor:pointer;';
+        resetBtn.textContent = '重置此列';
+        resetBtn.title = '取消此列的所有筛选限制';
+        resetBtn.onclick = () => {
+            delete columnFilters[col];
+            closeColumnFilterPopover();
+            if (updateResetColFiltersBtn) updateResetColFiltersBtn();
+            renderTable();
+        };
+
+        const rightBtns = document.createElement('div');
+        rightBtns.style.cssText = 'display:flex;align-items:center;gap:6px;';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'btn-wf-sm btn-wf-secondary';
+        cancelBtn.style.cssText = 'padding:3px 8px;font-size:0.72rem;cursor:pointer;';
+        cancelBtn.textContent = '取消';
+        cancelBtn.onclick = closeColumnFilterPopover;
+
+        const applyBtn = document.createElement('button');
+        applyBtn.type = 'button';
+        applyBtn.className = 'btn-wf-sm btn-wf-primary';
+        applyBtn.style.cssText = 'padding:3px 10px;font-size:0.72rem;cursor:pointer;background:var(--accent);color:#ffffff;border:none;border-radius:4px;font-weight:600;';
+        applyBtn.textContent = '确定应用';
+        applyBtn.onclick = () => {
+            if (currentChecked.size === facetList.length) {
+                // 全选等同于无限制
+                delete columnFilters[col];
+            } else {
+                columnFilters[col] = new Set(currentChecked);
+            }
+            closeColumnFilterPopover();
+            if (updateResetColFiltersBtn) updateResetColFiltersBtn();
+            renderTable();
+        };
+
+        rightBtns.appendChild(cancelBtn);
+        rightBtns.appendChild(applyBtn);
+        popFooter.appendChild(resetBtn);
+        popFooter.appendChild(rightBtns);
+        popover.appendChild(popFooter);
+
+        // 挂载到 body 并定位
+        document.body.appendChild(popover);
+        renderFacetItems();
+
+        const btnRect = triggerBtn.getBoundingClientRect();
+        const popW = 275;
+        let left = btnRect.left;
+        if (left + popW > window.innerWidth - 16) {
+            left = window.innerWidth - popW - 16;
+        }
+        if (left < 16) left = 16;
+
+        let top = btnRect.bottom + 4;
+        const estimatedHeight = 340;
+        if (top + estimatedHeight > window.innerHeight - 16) {
+            top = Math.max(16, btnRect.top - estimatedHeight - 4);
+        }
+
+        popover.style.left = left + 'px';
+        popover.style.top = top + 'px';
+
+        requestAnimationFrame(() => {
+            popover.classList.add('active');
+            searchInput.focus();
+        });
+
+        popover.onclick = (e) => e.stopPropagation();
+        popover.onmousedown = (e) => e.stopPropagation();
+    };
+
+    // 全局点击空白自动关闭筛选弹窗
+    const handleGlobalMouseDownForPopover = (e) => {
+        if (activeFilterPopover) {
+            if (!activeFilterPopover.contains(e.target) && !e.target.closest('.uni-col-filter-btn')) {
+                closeColumnFilterPopover();
+            }
+        }
+    };
+    document.addEventListener('mousedown', handleGlobalMouseDownForPopover);
+
     const renderTable = () => {
         const visibleData = getFilteredData();
         
         // Update stats
         const statsEl = hdrTitle.querySelector('#uni-modal-stats');
         if (statsEl) {
-            statsEl.textContent = `${visibleData.length} rows / ${selectedCols.size} cols`;
+            if (visibleData.length !== data.length) {
+                statsEl.textContent = `${visibleData.length}/${data.length} rows / ${selectedCols.size} cols`;
+            } else {
+                statsEl.textContent = `${visibleData.length} rows / ${selectedCols.size} cols`;
+            }
+        }
+
+        if (typeof updateResetColFiltersBtn === 'function') {
+            updateResetColFiltersBtn();
         }
 
         let lastSelectedCol = null;
@@ -907,10 +1325,27 @@ hdr.className = 'modal-header';
             
             const titleSpan = document.createElement('span');
             titleSpan.className = 'uni-sort-trigger';
-            titleSpan.style.cssText = 'display:inline-block; max-width:calc(100% - 46px); overflow:hidden; text-overflow:ellipsis; vertical-align:middle; cursor:pointer;';
+            titleSpan.style.cssText = 'display:inline-block; max-width:calc(100% - 68px); overflow:hidden; text-overflow:ellipsis; vertical-align:middle; cursor:pointer;';
             titleSpan.title = '点击按此列排序 (按住 Shift 多列排序)';
             titleSpan.innerHTML = displayNames[idx] + arrow;
             th.appendChild(titleSpan);
+
+            // Column Header Filter Funnel Button
+            const isColFiltered = !!(columnFilters[col] && columnFilters[col].size !== undefined);
+            const filterBtn = document.createElement('button');
+            filterBtn.type = 'button';
+            filterBtn.className = `uni-col-filter-btn ${isColFiltered ? 'active' : ''}`;
+            filterBtn.title = isColFiltered ? `此列已激活筛选 (${columnFilters[col].size} 项已选)，点击查看或调整` : `筛选列: ${displayNames[idx]}`;
+            filterBtn.innerHTML = `
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="${isColFiltered ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="${isColFiltered ? '2.5' : '2'}" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+            `;
+            filterBtn.onclick = (e) => {
+                e.stopPropagation();
+                openColumnFilterPopover(col, filterBtn);
+            };
+            th.appendChild(filterBtn);
 
             // Visual Column Resizer Handle (Single unified divider handle)
             const resizer = document.createElement('div');
@@ -1117,8 +1552,13 @@ hdr.className = 'modal-header';
 
     renderTable();
 
-    // Global Ctrl+C / Cmd+C shortcut listener for copying columns
+    // Global Ctrl+C / Cmd+C shortcut listener for copying columns & ESC for closing filter popover
     const handleKeyDown = (e) => {
+        if (e.key === 'Escape' && activeFilterPopover) {
+            e.stopPropagation();
+            closeColumnFilterPopover();
+            return;
+        }
         if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C')) {
             const activeEl = document.activeElement;
             const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA') && activeEl.selectionStart !== activeEl.selectionEnd;
@@ -1130,10 +1570,12 @@ hdr.className = 'modal-header';
     };
     document.addEventListener('keydown', handleKeyDown);
 
-    // Clean up keydown listener on close
+    // Clean up keydown listener and filter popover on close
     const originalClose = closeBtn.onclick;
     closeBtn.onclick = (e) => {
         document.removeEventListener('keydown', handleKeyDown);
+        document.removeEventListener('mousedown', handleGlobalMouseDownForPopover);
+        if (typeof closeColumnFilterPopover === 'function') closeColumnFilterPopover();
         if (originalClose) originalClose(e);
     };
 
