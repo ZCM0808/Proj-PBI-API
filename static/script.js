@@ -1,17 +1,31 @@
 
 
-// Global Fetch Interceptor for 401 Unauthorized
-
+// Global Fetch Interceptor for System Session Unauthorized
 const originalFetch = window.fetch;
-
 window.fetch = async function(...args) {
-
     const response = await originalFetch.apply(window, args);
 
     if (response.status === 401 && !window.location.pathname.includes('/login')) {
-
-        window.location.href = '/login';
-
+        const reqUrl = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url ? args[0].url : '');
+        // 排除外部绝对 URL（如微软登录、Graph、CDN）以及业务代理/数据测试接口（如 /api/proxy, /api/local-model）
+        const isExternal = /^https?:\/\//i.test(reqUrl) && !reqUrl.startsWith(window.location.origin);
+        const isProxyOrData = reqUrl.includes('/api/proxy') || reqUrl.includes('/api/local-model') || reqUrl.includes('/api/pipeline');
+        
+        if (!isExternal && !isProxyOrData) {
+            // 仅当是系统会话检查接口自身，或平台返回明确的 Session expired 提示时才重定向
+            if (reqUrl.includes('/api/session-status')) {
+                window.location.href = '/login';
+            } else {
+                try {
+                    const clone = response.clone();
+                    clone.json().then(data => {
+                        if (data && data.message && (data.message.includes('Session expired') || data.message.includes('unauthorized'))) {
+                            window.location.href = '/login';
+                        }
+                    }).catch(() => {});
+                } catch(e) {}
+            }
+        }
     }
 
     return response;

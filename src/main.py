@@ -186,7 +186,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
     device_id = request.cookies.get("pbi_device_id")
     if not device_id:
         device_id = str(uuid.uuid4())
-        response.set_cookie(key="pbi_device_id", value=device_id, max_age=86400*365)
+        response.set_cookie(key="pbi_device_id", value=device_id, max_age=86400*365, path="/", samesite="lax")
     
     now = time.time()
     device_record = lockouts.get(device_id, {"attempts": 0, "locked_until": 0})
@@ -225,7 +225,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
         asyncio.create_task(async_git_push())
 
         token = make_auth_token(int(now), mode="mfa")
-        response.set_cookie(key="pbi_auth_token", value=token, httponly=True, max_age=10800)
+        response.set_cookie(key="pbi_auth_token", value=token, httponly=True, max_age=10800, path="/", samesite="lax")
         return {"success": True, "mode": "mfa"}
 
     # ===== 平行分支 2: 使用密码一 (主密码) 登录 (不限登录次数，单次/累计上限1小时) =====
@@ -255,7 +255,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
         asyncio.create_task(async_git_push())
 
         token = make_auth_token(int(now), mode="pwd1")
-        response.set_cookie(key="pbi_auth_token", value=token, httponly=True, max_age=3600)
+        response.set_cookie(key="pbi_auth_token", value=token, httponly=True, max_age=3600, path="/", samesite="lax")
         return {"success": True, "mode": "pwd1"}
 
     return JSONResponse(status_code=400, content={"success": False, "message": "Please provide either password or MFA code."})
@@ -321,7 +321,7 @@ async def ping_usage(request: Request):
 @app.post("/api/logout")
 async def logout(response: Response):
     """清除登录 Cookie，强制退出并跳转回登录页"""
-    response.delete_cookie(key="pbi_auth_token")
+    response.delete_cookie(key="pbi_auth_token", path="/")
     return JSONResponse(content={"success": True, "redirect": "/login"})
 
 
@@ -453,7 +453,7 @@ async def renew_mfa_session(req: RenewMfaRequest, request: Request, response: Re
     
     now = int(time.time())
     new_token = make_auth_token(now, mode="mfa")
-    response.set_cookie(key="pbi_auth_token", value=new_token, httponly=True, max_age=10800)
+    response.set_cookie(key="pbi_auth_token", value=new_token, httponly=True, max_age=10800, path="/", samesite="lax")
     return JSONResponse(content={"success": True, "message": "Session successfully extended by 3 hours."})
 
 _current_api_key = None
@@ -676,7 +676,7 @@ def get_login_ui(request: Request):
         html = f.read()
     resp = HTMLResponse(content=html)
     if not device_id:
-        resp.set_cookie(key="pbi_device_id", value=str(uuid.uuid4()), max_age=86400*365)
+        resp.set_cookie(key="pbi_device_id", value=str(uuid.uuid4()), max_age=86400*365, path="/", samesite="lax")
     return resp
 
 @app.get("/", response_class=HTMLResponse)
