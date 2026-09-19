@@ -315,6 +315,7 @@
             this.wiresGroupEl = null;
             this.nodesLayerEl = null;
             this.isInitialized = false;
+            this.hasCenteredOnce = false;
         }
 
         // 模块首次激活或切换时调用
@@ -322,11 +323,18 @@
             if (!this.isInitialized) {
                 this.initDOM();
                 this.isInitialized = true;
-                this.locateAndFitAllNodes(false);
             }
             this.renderNodes();
             this.recalculateAndRenderWires();
             this.updateAuditReport();
+
+            // 首次激活且视图可见时，在下一帧确保包围盒居中
+            if (!this.hasCenteredOnce) {
+                this.hasCenteredOnce = true;
+                requestAnimationFrame(() => {
+                    this.locateAndFitAllNodes(false);
+                });
+            }
         }
 
         initDOM() {
@@ -502,6 +510,15 @@
 
         // 🎯 核心防丢保障：一键计算所有节点的最小包围盒并自动居中聚焦召回
         locateAndFitAllNodes(showToast = true) {
+            if (!this.isInitialized) {
+                this.initDOM();
+                this.isInitialized = true;
+            }
+            if (!this.nodesLayerEl || !this.nodesLayerEl.children.length) {
+                this.renderNodes();
+                this.recalculateAndRenderWires();
+            }
+
             let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
             for (const id in this.nodePositions) {
                 const pos = this.nodePositions[id];
@@ -523,8 +540,14 @@
             const boxW = (maxX + 320) - minX + pad * 2;
             const boxH = (maxY + 320) - minY + pad * 2;
 
-            const vpW = this.viewportEl ? this.viewportEl.clientWidth : 1200;
-            const vpH = this.viewportEl ? this.viewportEl.clientHeight : 800;
+            let vpW = this.viewportEl ? this.viewportEl.clientWidth : 0;
+            let vpH = this.viewportEl ? this.viewportEl.clientHeight : 0;
+            if (!vpW || vpW < 200) {
+                vpW = Math.max(800, window.innerWidth - 300);
+            }
+            if (!vpH || vpH < 200) {
+                vpH = Math.max(600, window.innerHeight - 100);
+            }
 
             const fitZoom = Math.min(1.05, Math.max(0.42, Math.min(vpW / boxW, vpH / boxH)));
             this.zoom = parseFloat(fitZoom.toFixed(2));
@@ -575,6 +598,10 @@
         }
 
         resetNodePositions() {
+            if (!this.isInitialized) {
+                this.initDOM();
+                this.isInitialized = true;
+            }
             this.nodePositions = JSON.parse(JSON.stringify(DEFAULT_NODE_COORDS));
             this.renderNodes();
             this.recalculateAndRenderWires();
@@ -1385,5 +1412,22 @@
 
     // 暴露全局单例
     window.PermissionBlueprint = new PermissionBlueprintEngine();
+
+    // 自动自愈侦测：无论脚本何时加载，只要当前激活模块为蓝图或视图可见，立即自启动初始化
+    function autoBootstrapBlueprint() {
+        if (!window.PermissionBlueprint) return;
+        const activeMod = localStorage.getItem('pbi-active-module');
+        const viewEl = document.getElementById('view-permission_blueprint');
+        const isVisible = viewEl && (viewEl.style.display === 'flex' || (window.getComputedStyle && window.getComputedStyle(viewEl).display === 'flex'));
+        if (activeMod === 'permission_blueprint' || isVisible) {
+            window.PermissionBlueprint.onActivate();
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', autoBootstrapBlueprint);
+    } else {
+        setTimeout(autoBootstrapBlueprint, 0);
+    }
 
 })();

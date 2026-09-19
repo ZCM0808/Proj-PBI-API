@@ -559,8 +559,21 @@ window.switchAppModule = function(moduleName) {
     }
 
     // 4. Trigger module specific hooks
-    if (moduleName === 'permission_blueprint' && window.PermissionBlueprint && typeof window.PermissionBlueprint.onActivate === 'function') {
-        window.PermissionBlueprint.onActivate();
+    if (moduleName === 'permission_blueprint') {
+        if (window.PermissionBlueprint && typeof window.PermissionBlueprint.onActivate === 'function') {
+            window.PermissionBlueprint.onActivate();
+        } else {
+            let retryCount = 0;
+            const timer = setInterval(() => {
+                retryCount++;
+                if (window.PermissionBlueprint && typeof window.PermissionBlueprint.onActivate === 'function') {
+                    clearInterval(timer);
+                    window.PermissionBlueprint.onActivate();
+                } else if (retryCount > 60) {
+                    clearInterval(timer);
+                }
+            }, 30);
+        }
     }
 
     // 5. Save state

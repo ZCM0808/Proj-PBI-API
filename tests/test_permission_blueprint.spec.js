@@ -220,4 +220,27 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         expect(nodeBox.x).toBeGreaterThan(0);
         expect(nodeBox.y).toBeGreaterThan(0);
     });
+
+    test('持久化跨刷新自愈保障：用户刷新页面 (F5 Reload) 后，8 大核心卡片 100% 自动自愈渲染且绝不消失', async ({ page }) => {
+        // 1. 进入蓝图沙盒
+        await page.locator('#rail-nav-permission_blueprint').click();
+        await expect(page.locator('#node_tenant')).toBeVisible();
+
+        // 2. 模拟真实用户执行页面全量刷新 (F5 Reload)
+        await page.reload();
+
+        // 3. 断言：刷新后主视图依然保持在 Permission Blueprint，且 8 张卡片 100% 渲染呈现，绝不变成 0 张
+        const blueprintMainView = page.locator('#view-permission_blueprint');
+        await expect(blueprintMainView).toBeVisible();
+
+        const nodes = page.locator('.pb-blueprint-node');
+        await expect(nodes).toHaveCount(8);
+
+        const nodeTenant = page.locator('#node_tenant');
+        await expect(nodeTenant).toBeVisible();
+        const tenantBox = await nodeTenant.boundingBox();
+        expect(tenantBox).not.toBeNull();
+        expect(tenantBox.x).toBeGreaterThan(0);
+        expect(tenantBox.y).toBeGreaterThan(0);
+    });
 });
