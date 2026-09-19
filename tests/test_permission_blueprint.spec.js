@@ -86,16 +86,37 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         await expect(olsCard).toContainText('特权穿透');
     });
 
-    test('双向透视模式：按模型透视切换与用户载入', async ({ page }) => {
+    test('双向透视模式：按模型透视切换与用户载入，且支持明暗主题高对比视觉反馈', async ({ page }) => {
         await page.locator('#rail-nav-permission_blueprint').click();
 
-        // 切换至“按目标模型”
+        const tabUser = page.locator('#pb-tab-user');
         const tabModel = page.locator('#pb-tab-model');
+
+        // 1. 默认暗色模式下，用户主体按钮处于激活态
+        await expect(tabUser).toHaveClass(/active/);
+        await expect(tabModel).not.toHaveClass(/active/);
+
+        // 2. 点击切换至“按目标模型”，验证强烈的视觉激活反馈
         await tabModel.click();
+        await expect(tabModel).toHaveClass(/active/);
+        await expect(tabUser).not.toHaveClass(/active/);
 
         // 验证模型关联用户列表卡片展开
         const modelUsersCard = page.locator('#pb-model-users-card');
         await expect(modelUsersCard).toBeVisible();
+
+        // 3. 验证亮色模式下的按钮主题适配
+        const themeToggleBtn = page.locator('#theme-toggle-btn');
+        await themeToggleBtn.click();
+        await page.waitForTimeout(300);
+
+        // 亮色模式下 active 按钮为纯白底配深紫蓝文字 (#4338ca)
+        const lightModelColor = await tabModel.evaluate(el => window.getComputedStyle(el).color);
+        expect(lightModelColor).toMatch(/rgb\(67,\s*56,\s*202\)/); // #4338ca
+
+        // 切回暗色模式
+        await themeToggleBtn.click();
+        await page.waitForTimeout(300);
 
         const userRows = page.locator('.pb-model-user-row');
         await expect(userRows.first()).toBeVisible();
@@ -106,6 +127,7 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         // 自动切回用户主体，且模拟用户标签更新
         const upnLabel = page.locator('#pb-current-upn-label');
         await expect(upnLabel).toHaveText(/sarah.connor@contoso.com/);
+        await expect(tabUser).toHaveClass(/active/);
     });
 
     test('沙盒卡片向左拖拽无限制：解除 10px 边界，支持全向自由无级拖动', async ({ page }) => {

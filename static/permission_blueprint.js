@@ -648,6 +648,17 @@
                     tabModel.classList.remove('active');
                 }
                 if (modelUsersCard) modelUsersCard.style.display = 'none';
+
+                // 沙盒画布反馈：短暂微聚焦 L1 用户主体节点
+                const userNode = document.getElementById('node_tenant');
+                if (userNode) {
+                    userNode.classList.add('pb-node-focus-pulse');
+                    setTimeout(() => userNode.classList.remove('pb-node-focus-pulse'), 800);
+                }
+
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification('👤 已切换为【按用户主体】透视：可指定或自定义用户推演其在 6 层的实际有效权限', 'info');
+                }
             } else {
                 if (tabModel) {
                     tabModel.classList.add('active');
@@ -657,6 +668,17 @@
                 }
                 if (modelUsersCard) modelUsersCard.style.display = 'block';
                 this.renderModelUsersList();
+
+                // 沙盒画布反馈：短暂微聚焦 L3 工作区与模型节点
+                const wsNode = document.getElementById('node_workspace');
+                if (wsNode) {
+                    wsNode.classList.add('pb-node-focus-pulse');
+                    setTimeout(() => wsNode.classList.remove('pb-node-focus-pulse'), 800);
+                }
+
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification('📊 已切换为【按目标模型】透视：已展开模型关联的所有用户主体与权限矩阵', 'info');
+                }
             }
         }
 

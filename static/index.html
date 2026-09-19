@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260919_v1440">
+    <link rel="stylesheet" href="/static/style.css?v=20260919_v1715">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -613,11 +613,11 @@
                 </div>
 
                 <!-- 模式切换：以用户为中心 vs 以模型为中心 -->
-                <div class="pb-mode-tabs" style="display: flex; background: var(--input-bg); padding: 3px; border-radius: 6px; border: 1px solid var(--panel-border); margin-bottom: 0.75rem; flex-shrink: 0;">
-                    <button type="button" id="pb-tab-user" class="pb-tab-btn active" onclick="window.PermissionBlueprint.switchPerspective('user')" style="flex: 1; padding: 5px 8px; border-radius: 4px; border: none; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                <div class="pb-mode-tabs">
+                    <button type="button" id="pb-tab-user" class="pb-tab-btn active" onclick="window.PermissionBlueprint.switchPerspective('user')" title="切换为以特定安全主体/用户为视角的权限全链路推演">
                         👤 按用户主体
                     </button>
-                    <button type="button" id="pb-tab-model" class="pb-tab-btn" onclick="window.PermissionBlueprint.switchPerspective('model')" style="flex: 1; padding: 5px 8px; border-radius: 4px; border: none; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s; background: transparent; color: var(--text-secondary);">
+                    <button type="button" id="pb-tab-model" class="pb-tab-btn" onclick="window.PermissionBlueprint.switchPerspective('model')" title="切换为以语义模型为视角的关联用户与权限分布矩阵">
                         📊 按目标模型
                     </button>
                 </div>
@@ -3071,8 +3071,8 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260919_v1440"></script>
-    <script src="/static/script.js?v=20260919_v1655"></script>
-    <script src="/static/permission_blueprint.js?v=20260919_v1655"></script>
+    <script src="/static/script.js?v=20260919_v1715"></script>
+    <script src="/static/permission_blueprint.js?v=20260919_v1715"></script>
 
 
 

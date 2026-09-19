@@ -6844,17 +6844,118 @@ body.light-theme #sidebar-pane-permission_blueprint .pb-control-card,
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
 }
 
-body.light-theme #sidebar-pane-permission_blueprint .pb-mode-tabs,
-[data-theme="light"] #sidebar-pane-permission_blueprint .pb-mode-tabs {
-    background: #f1f5f9 !important;
-    border-color: #e2e8f0 !important;
+/* ==========================================================================
+   Power BI Blueprint Perspective Tabs (双向透视分段选项卡与明暗双主题)
+   ========================================================================== */
+
+.pb-mode-tabs {
+    display: flex;
+    background: rgba(15, 23, 42, 0.7);
+    padding: 3px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 0.75rem;
+    flex-shrink: 0;
+    gap: 4px;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition: background 0.2s ease, border-color 0.2s ease;
 }
 
-body.light-theme #sidebar-pane-permission_blueprint .pb-tab-btn.active,
-[data-theme="light"] #sidebar-pane-permission_blueprint .pb-tab-btn.active {
-    background: #ffffff !important;
+.pb-tab-btn {
+    flex: 1;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    font-size: 0.76rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: transparent;
+    color: #94a3b8;
+    user-select: none;
+    outline: none;
+}
+
+.pb-tab-btn:hover:not(.active) {
+    color: #f1f5f9;
+    background: rgba(255, 255, 255, 0.07);
+    transform: translateY(-0.5px);
+}
+
+.pb-tab-btn.active {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    border-color: rgba(255, 255, 255, 0.18) !important;
+    box-shadow: 0 2px 10px rgba(99, 102, 241, 0.42), 0 0 0 1px rgba(99, 102, 241, 0.3) !important;
+    transform: translateY(-1px);
+}
+
+.pb-tab-btn:active {
+    transform: scale(0.97);
+}
+
+/* 动效：模型关联用户矩阵展开渐隐位移动画 */
+#pb-model-users-card {
+    animation: pbSlideDown 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes pbSlideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 明亮模式 (Light Theme) 深度适配 */
+body.light-theme .pb-mode-tabs,
+[data-theme="light"] .pb-mode-tabs {
+    background: #e2e8f0 !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+body.light-theme .pb-tab-btn,
+[data-theme="light"] .pb-tab-btn {
+    color: #64748b !important;
+    background: transparent !important;
+}
+
+body.light-theme .pb-tab-btn:hover:not(.active),
+[data-theme="light"] .pb-tab-btn:hover:not(.active) {
     color: #0f172a !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+    background: rgba(255, 255, 255, 0.65) !important;
+}
+
+body.light-theme .pb-tab-btn.active,
+[data-theme="light"] .pb-tab-btn.active {
+    background: #ffffff !important;
+    color: #4338ca !important;
+    font-weight: 700 !important;
+    border: 1px solid rgba(99, 102, 241, 0.25) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(99, 102, 241, 0.15) !important;
+    transform: translateY(-1px);
+}
+
+/* 模型用户行暗色与亮色适配 */
+.pb-model-user-row {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    transition: all 0.2s ease;
+}
+
+.pb-model-user-row:hover {
+    background: rgba(99, 102, 241, 0.12);
+    border-color: rgba(99, 102, 241, 0.3);
+    transform: translateX(2px);
 }
 
 body.light-theme #sidebar-pane-permission_blueprint .pb-model-user-row,
@@ -6865,8 +6966,29 @@ body.light-theme #sidebar-pane-permission_blueprint .pb-model-user-row,
 
 body.light-theme #sidebar-pane-permission_blueprint .pb-model-user-row:hover,
 [data-theme="light"] #sidebar-pane-permission_blueprint .pb-model-user-row:hover {
-    background: #eff6ff !important;
-    border-color: #bfdbfe !important;
+    background: #eef2ff !important;
+    border-color: #c7d2fe !important;
+    transform: translateX(2px);
+}
+
+/* 卡片透视聚焦呼吸微动效 */
+.pb-node-focus-pulse {
+    animation: pbFocusPulse 0.75s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes pbFocusPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.8), 0 10px 25px rgba(0, 0, 0, 0.4);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 0 0 12px rgba(99, 102, 241, 0), 0 15px 35px rgba(99, 102, 241, 0.4);
+        transform: scale(1.025);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(99, 102, 241, 0), 0 10px 25px rgba(0, 0, 0, 0.4);
+        transform: scale(1);
+    }
 }
 
 /* ==========================================================================
