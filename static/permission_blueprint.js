@@ -793,6 +793,133 @@
             }
         }
 
+        async fetchRealModelAndUsers() {
+            const wsIdInput = document.getElementById('gtb-select-workspace');
+            const dsIdInput = document.getElementById('gtb-select-dataset');
+            const wsNameEl = document.getElementById('gtb-ws-display-text');
+            const dsNameEl = document.getElementById('gtb-ds-display-text');
+
+            const wsId = wsIdInput ? wsIdInput.value : '';
+            const dsId = dsIdInput ? dsIdInput.value : '';
+            const wsName = (wsNameEl && wsNameEl.textContent !== '-- 选择工作区 --') ? wsNameEl.textContent : '';
+            const dsName = (dsNameEl && dsNameEl.textContent !== '-- 选择模型 --') ? dsNameEl.textContent : '';
+
+            if (!wsId) {
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification('💡 请先在上方顶栏选择要审计的真实工作区（Workspace）！', 'warning');
+                }
+                return;
+            }
+
+            if (typeof window.showNotification === 'function') {
+                window.showNotification(`🔄 正在连接微软 Power BI 真实环境抓取 [${wsName || wsId}] 的授权用户...`, 'info');
+            }
+
+            try {
+                // 1. 调用 proxy 抓取工作区真实用户与直接角色
+                const res = await fetch('/api/proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        url: `https://api.powerbi.com/v1.0/myorg/groups/${wsId}/users`,
+                        method: 'GET'
+                    })
+                });
+                const data = await res.json();
+                let realUsers = [];
+
+                if (res.ok && data && Array.isArray(data.value) && data.value.length > 0) {
+                    realUsers = data.value.map(u => {
+                        const email = u.emailAddress || u.userPrincipalName || u.identifier || 'unknown@org.com';
+                        const role = u.groupUserAccessRight || 'Viewer';
+                        const presetKey = `real_${email.replace(/[^a-zA-Z0-9_]/g, '_')}`;
+
+                        // 注册到 USER_PRESETS 中，供沙盒完整流转模拟
+                        USER_PRESETS[presetKey] = {
+                            id: presetKey,
+                            name: u.displayName || email.split('@')[0],
+                            upn: email,
+                            roleTag: `${role} (真实租户)`,
+                            roleColor: role === 'Admin' ? '#60a5fa' : (role === 'Contributor' ? '#34d399' : (role === 'Member' ? '#818cf8' : '#fbbf24')),
+                            description: `真实组织工作区 [${wsName}] 中的直属授权主体`,
+                            state: {
+                                isGuestUser: email.includes('#ext#') || email.toLowerCase().includes('external'),
+                                tenantAllowExport: true,
+                                tenantAllowWebModeling: ['Admin', 'Member', 'Contributor'].includes(role),
+                                capacityType: 'fabric_f64',
+                                workspaceRole: role,
+                                isModelOwner: role === 'Admin',
+                                isInStrictMode: false,
+                                hasAccessToAllDataConnections: true,
+                                gatewayOnline: true,
+                                sharePermission: 'ReadBuild',
+                                hasAppAccess: true,
+                                rlsEnabled: true,
+                                rlsRoleAssigned: 'Region_Assigned',
+                                olsEnabled: false,
+                                maskedFields: 'Salary, Margin'
+                            }
+                        };
+
+                        return {
+                            upn: email,
+                            role: `${role}`,
+                            presetId: presetKey
+                        };
+                    });
+                }
+
+                if (realUsers.length === 0) {
+                    throw new Error('未获取到工作区成员列表，可能需要管理员身份或个人 Delegated 授权凭据');
+                }
+
+                // 2. 动态注册真实模型至 MODEL_DEFINITIONS
+                const modelKey = `real_model_${dsId || wsId}`;
+                const finalModelName = dsName ? `🟢 真实模型: ${dsName}` : `🟢 真实工作区资产 (${wsName})`;
+
+                MODEL_DEFINITIONS[modelKey] = {
+                    id: modelKey,
+                    name: finalModelName,
+                    workspaceName: wsName || '生产工作区',
+                    capacity: '真实租户环境 (Fabric / Premium)',
+                    tables: ['Real_Model_Data', 'Security_Mapping'],
+                    hasRLS: true,
+                    hasOLS: false,
+                    users: realUsers
+                };
+
+                // 3. 动态注入到模型下拉框
+                const selectEl = document.getElementById('pb-model-select');
+                if (selectEl) {
+                    let opt = selectEl.querySelector(`option[value="${modelKey}"]`);
+                    if (!opt) {
+                        opt = document.createElement('option');
+                        opt.value = modelKey;
+                        selectEl.insertBefore(opt, selectEl.firstChild);
+                    }
+                    opt.textContent = `${finalModelName} - ${wsName}`;
+                    selectEl.value = modelKey;
+                }
+
+                this.currentModelKey = modelKey;
+                const wsLabel = document.getElementById('pb-model-ws-name');
+                if (wsLabel) wsLabel.textContent = wsName;
+
+                this.exitModelUserDrilldown(false);
+                this.renderModelUsersList();
+                this.updateAuditReport();
+
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification(`🎉 真实数据同步成功！已载入 ${realUsers.length} 位真实租户用户，可点击任意用户进行 6 层权限流转推演！`, 'success');
+                }
+            } catch (err) {
+                console.warn('Fetch real model error:', err);
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification(`⚠️ 真实数据抓取提示: ${err.message || '网络或凭据异常'}，已保留预设环境供离线推演`, 'warning');
+                }
+            }
+        }
+
         syncGlobalModel() {
             const gtbModelNameEl = document.getElementById('gtb-ds-display-text');
             const gtbWsNameEl = document.getElementById('gtb-ws-display-text');

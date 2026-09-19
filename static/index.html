@@ -667,9 +667,14 @@
                             <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-primary);">
                                 🗄️ 目标语义模型 (Semantic Model)
                             </label>
-                            <button type="button" class="icon-btn" onclick="window.PermissionBlueprint.syncGlobalModel()" title="同步当前全局顶栏选中的模型" style="padding: 2px 4px; font-size: 0.68rem; color: var(--accent); background: none; border: none; cursor: pointer;">
-                                🔄 同步顶栏
-                            </button>
+                            <div style="display: flex; align-items: center; gap: 4px;">
+                                <button type="button" id="pb-btn-fetch-real" class="btn-action-primary" onclick="window.PermissionBlueprint.fetchRealModelAndUsers()" title="从当前顶栏选中的真实工作区与模型中抓取授权用户与权限" style="padding: 2px 6px; font-size: 0.65rem; border-radius: 4px; display: flex; align-items: center; gap: 3px;">
+                                    ⚡ 抓取真实数据
+                                </button>
+                                <button type="button" class="icon-btn" onclick="window.PermissionBlueprint.syncGlobalModel()" title="仅同步当前全局顶栏选中的模型名称" style="padding: 2px 4px; font-size: 0.68rem; color: var(--accent); background: none; border: none; cursor: pointer;">
+                                    🔄
+                                </button>
+                            </div>
                         </div>
                         <select id="pb-model-select" class="modern-input" style="width: 100%; font-size: 0.76rem; padding: 5px 8px;" onchange="window.PermissionBlueprint.selectModel(this.value)">
                             <option value="model_sales">Enterprise Sales & Margin Model (Premium)</option>
@@ -3087,8 +3092,8 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260919_v1440"></script>
-    <script src="/static/script.js?v=20260919_v1725"></script>
-    <script src="/static/permission_blueprint.js?v=20260919_v1725"></script>
+    <script src="/static/script.js?v=20260919_v1730"></script>
+    <script src="/static/permission_blueprint.js?v=20260919_v1730"></script>
 
 
 
