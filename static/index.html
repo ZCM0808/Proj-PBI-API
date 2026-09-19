@@ -624,16 +624,22 @@
 
                 <!-- 滚动配置区 -->
                 <div class="pb-sidebar-scroll" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 2px;">
-                    <!-- A. 用户选择与模拟主体 -->
-                    <div class="pb-control-card glass-panel" style="padding: 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--overlay-10);">
+                    <!-- A. 用户主体专属面板：模拟身份选择器 -->
+                    <div id="pb-user-principal-card" class="pb-control-card glass-panel" style="padding: 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--overlay-10);">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                             <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 4px;">
                                 <span>🎯 模拟用户 (Principal)</span>
                             </label>
-                            <span id="pb-badge-role-tag" class="gtb-auth-badge" style="background: rgba(52, 211, 153, 0.15); color: #34d399; font-size: 0.65rem;">Contributor</span>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span id="pb-badge-role-tag" class="gtb-auth-badge" style="background: rgba(52, 211, 153, 0.15); color: #34d399; font-size: 0.65rem;">Contributor</span>
+                                <button type="button" id="pb-btn-clear-user" class="btn-cancel" onclick="window.PermissionBlueprint.clearSimulatedUser()" title="取消当前模拟主体，恢复中立 6 层通用基准拓扑" style="padding: 2px 6px; font-size: 0.65rem; border-radius: 4px; display: flex; align-items: center; gap: 2px;">
+                                    ✕ 取消模拟
+                                </button>
+                            </div>
                         </div>
                         <div style="margin-bottom: 8px;">
                             <select id="pb-user-preset-select" class="modern-input" style="width: 100%; font-size: 0.76rem; padding: 5px 8px;" onchange="window.PermissionBlueprint.selectUserPreset(this.value)">
+                                <option value="none">-- 请选择要模拟的用户主体 --</option>
                                 <option value="preset_admin">👑 组织/工作区最高管理员 (Workspace Admin)</option>
                                 <option value="preset_developer" selected>🛠️ 报表核心开发者 (Contributor / Mashup Editor)</option>
                                 <option value="preset_member">🤝 业务协作成员 (Workspace Member)</option>
@@ -650,10 +656,13 @@
                         <div style="font-size: 0.70rem; color: var(--text-secondary); line-height: 1.4;">
                             当前模拟用户：<strong id="pb-current-upn-label" style="color: var(--accent);">alex.developer@contoso.com</strong>
                         </div>
+                        <div style="margin-top: 6px; font-size: 0.68rem; color: var(--text-secondary); opacity: 0.85;">
+                            💡 切换上方选项可立即切换模拟用户；点击右上角【✕ 取消模拟】可随时恢复通用基准。
+                        </div>
                     </div>
 
-                    <!-- B. 目标模型选择与联动 -->
-                    <div class="pb-control-card glass-panel" style="padding: 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--overlay-10);">
+                    <!-- B. 目标模型专属面板：模型选择器 -->
+                    <div id="pb-model-select-card" class="pb-control-card glass-panel" style="display: none; padding: 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--overlay-10);">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                             <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-primary);">
                                 🗄️ 目标语义模型 (Semantic Model)
@@ -673,7 +682,7 @@
                         </div>
                     </div>
 
-                    <!-- C. 按模型透视时的关联用户矩阵面板 -->
+                    <!-- C. 目标模型专属面板：关联用户与权限分布矩阵 -->
                     <div id="pb-model-users-card" class="pb-control-card glass-panel" style="display: none; padding: 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--overlay-10);">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                             <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-primary);">
@@ -681,13 +690,20 @@
                             </label>
                             <span id="pb-model-user-count" class="api-count-badge" style="font-size: 0.65rem;">5 位用户</span>
                         </div>
-                        <div id="pb-model-user-list" style="display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow-y: auto;">
+                        <div id="pb-model-drill-banner" style="display: none; margin-bottom: 8px; padding: 6px 8px; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 6px; font-size: 0.70rem; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: #a5b4fc;">下钻中: <strong id="pb-drill-user-name" style="color: #fff;"></strong></span>
+                            <button type="button" class="btn-cancel" onclick="window.PermissionBlueprint.exitModelUserDrilldown()" style="padding: 1px 5px; font-size: 0.65rem; border-radius: 4px;">退出下钻</button>
+                        </div>
+                        <div id="pb-model-user-list" style="display: flex; flex-direction: column; gap: 4px; max-height: 200px; overflow-y: auto;">
                             <!-- 动态加载模型关联用户 -->
+                        </div>
+                        <div style="margin-top: 6px; font-size: 0.67rem; color: var(--text-secondary); opacity: 0.85;">
+                            💡 点击列表中的任意用户，可下钻模拟该用户对本模型的 6 层穿透权限。
                         </div>
                     </div>
 
-                    <!-- D. What-If 假设推演操作区 -->
-                    <div class="pb-control-card glass-panel" style="padding: 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--overlay-10);">
+                    <!-- D. What-If 假设推演操作区 (在用户主体模式下主导展示) -->
+                    <div id="pb-scenarios-card" class="pb-control-card glass-panel" style="padding: 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--overlay-10);">
                         <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 4px; margin-bottom: 8px;">
                             <span>⚡ What-If 快速预设场景</span>
                         </label>
@@ -3071,8 +3087,8 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260919_v1440"></script>
-    <script src="/static/script.js?v=20260919_v1715"></script>
-    <script src="/static/permission_blueprint.js?v=20260919_v1715"></script>
+    <script src="/static/script.js?v=20260919_v1725"></script>
+    <script src="/static/permission_blueprint.js?v=20260919_v1725"></script>
 
 
 

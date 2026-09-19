@@ -638,15 +638,19 @@
             this.perspective = mode;
             const tabUser = document.getElementById('pb-tab-user');
             const tabModel = document.getElementById('pb-tab-model');
+            const userPrincipalCard = document.getElementById('pb-user-principal-card');
+            const modelSelectCard = document.getElementById('pb-model-select-card');
             const modelUsersCard = document.getElementById('pb-model-users-card');
+            const scenariosCard = document.getElementById('pb-scenarios-card');
 
             if (mode === 'user') {
-                if (tabUser) {
-                    tabUser.classList.add('active');
-                }
-                if (tabModel) {
-                    tabModel.classList.remove('active');
-                }
+                if (tabUser) tabUser.classList.add('active');
+                if (tabModel) tabModel.classList.remove('active');
+
+                // 呈现用户主体专属面板，隐藏模型专属面板
+                if (userPrincipalCard) userPrincipalCard.style.display = 'block';
+                if (scenariosCard) scenariosCard.style.display = 'block';
+                if (modelSelectCard) modelSelectCard.style.display = 'none';
                 if (modelUsersCard) modelUsersCard.style.display = 'none';
 
                 // 沙盒画布反馈：短暂微聚焦 L1 用户主体节点
@@ -660,12 +664,13 @@
                     window.showNotification('👤 已切换为【按用户主体】透视：可指定或自定义用户推演其在 6 层的实际有效权限', 'info');
                 }
             } else {
-                if (tabModel) {
-                    tabModel.classList.add('active');
-                }
-                if (tabUser) {
-                    tabUser.classList.remove('active');
-                }
+                if (tabModel) tabModel.classList.add('active');
+                if (tabUser) tabUser.classList.remove('active');
+
+                // 彻底隐藏用户主体选择框！专注模型资产与关联用户矩阵
+                if (userPrincipalCard) userPrincipalCard.style.display = 'none';
+                if (scenariosCard) scenariosCard.style.display = 'none';
+                if (modelSelectCard) modelSelectCard.style.display = 'block';
                 if (modelUsersCard) modelUsersCard.style.display = 'block';
                 this.renderModelUsersList();
 
@@ -677,12 +682,64 @@
                 }
 
                 if (typeof window.showNotification === 'function') {
-                    window.showNotification('📊 已切换为【按目标模型】透视：已展开模型关联的所有用户主体与权限矩阵', 'info');
+                    window.showNotification('📊 已切换为【按目标模型】透视：已展开当前模型关联的所有主体与权限分布', 'info');
                 }
             }
         }
 
+        // 取消/清空当前模拟用户主体，恢复中立 6 层通用基准拓扑
+        clearSimulatedUser() {
+            this.activePresetKey = null;
+            const selectEl = document.getElementById('pb-user-preset-select');
+            if (selectEl) selectEl.value = 'none';
+            const customBox = document.getElementById('pb-custom-user-box');
+            if (customBox) customBox.style.display = 'none';
+
+            const upnLabel = document.getElementById('pb-current-upn-label');
+            const badgeTag = document.getElementById('pb-badge-role-tag');
+            if (upnLabel) {
+                upnLabel.innerHTML = '<span style="color: var(--text-secondary); font-weight: normal;">（未选定模拟主体 · 展现通用 6 层基准流向）</span>';
+            }
+            if (badgeTag) {
+                badgeTag.textContent = '通用基准';
+                badgeTag.style.color = '#94a3b8';
+                badgeTag.style.borderColor = '#94a3b840';
+            }
+
+            // 状态重置为无特权穿透的中立基准状态
+            this.currentState = {
+                isGuestUser: false,
+                tenantAllowExport: true,
+                tenantAllowWebModeling: false,
+                capacityType: 'fabric_f64',
+                workspaceRole: 'Viewer',
+                isModelOwner: false,
+                isInStrictMode: false,
+                hasAccessToAllDataConnections: true,
+                gatewayOnline: true,
+                sharePermission: 'Read',
+                hasAppAccess: false,
+                rlsEnabled: true,
+                rlsRoleAssigned: 'Region_East',
+                olsEnabled: false,
+                maskedFields: 'Salary, Margin'
+            };
+
+            this.renderNodes();
+            this.recalculateAndRenderWires();
+            this.updateAuditReport();
+
+            if (typeof window.showNotification === 'function') {
+                window.showNotification('✕ 已取消模拟用户，当前蓝图已恢复 6 层权限流转通用基准拓扑', 'info');
+            }
+        }
+
         selectUserPreset(presetKey) {
+            if (presetKey === 'none') {
+                this.clearSimulatedUser();
+                return;
+            }
+
             const customBox = document.getElementById('pb-custom-user-box');
             if (presetKey === 'custom') {
                 if (customBox) customBox.style.display = 'block';
@@ -707,6 +764,10 @@
             this.renderNodes();
             this.recalculateAndRenderWires();
             this.updateAuditReport();
+
+            if (typeof window.showNotification === 'function') {
+                window.showNotification(`✨ 已切换模拟主体为：${preset.name} (${preset.roleTag})`, 'success');
+            }
         }
 
         updateCustomUpn(val) {
@@ -723,8 +784,13 @@
             const wsLabel = document.getElementById('pb-model-ws-name');
             if (wsLabel) wsLabel.textContent = model.workspaceName;
 
+            this.exitModelUserDrilldown(false);
             this.renderModelUsersList();
             this.updateAuditReport();
+
+            if (typeof window.showNotification === 'function') {
+                window.showNotification(`🗄️ 已切换目标语义模型为：${model.name}`, 'info');
+            }
         }
 
         syncGlobalModel() {
@@ -751,10 +817,10 @@
             if (countEl) countEl.textContent = `${model.users.length} 位关联用户`;
 
             listEl.innerHTML = model.users.map(u => `
-                <div class="pb-model-user-row" onclick="window.PermissionBlueprint.loadUserFromModel('${u.presetId}')" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-radius: 6px; cursor: pointer; transition: all 0.2s;" title="点击载入该用户并推演蓝图全链路">
+                <div class="pb-model-user-row" onclick="window.PermissionBlueprint.loadUserFromModel('${u.presetId}')" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-radius: 6px; cursor: pointer; transition: all 0.2s;" title="点击下钻模拟该用户在当前模型中的 6 层有效权限">
                     <div style="display: flex; flex-direction: column; min-width: 0;">
                         <span style="font-size: 0.73rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${u.upn}</span>
-                        <span style="font-size: 0.65rem; color: var(--text-secondary);">映射预设: ${USER_PRESETS[u.presetId] ? USER_PRESETS[u.presetId].name : u.role}</span>
+                        <span style="font-size: 0.65rem; color: var(--text-secondary);">身份类别: ${USER_PRESETS[u.presetId] ? USER_PRESETS[u.presetId].name : u.role}</span>
                     </div>
                     <span class="gtb-auth-badge" style="font-size: 0.65rem; padding: 2px 6px;">${u.role}</span>
                 </div>
@@ -767,9 +833,26 @@
                 selectEl.value = presetId;
             }
             this.selectUserPreset(presetId);
-            this.switchPerspective('user');
+
+            // 在模型卡片顶部展示下钻提示
+            const drillBanner = document.getElementById('pb-model-drill-banner');
+            const drillUserName = document.getElementById('pb-drill-user-name');
+            if (drillBanner && drillUserName && USER_PRESETS[presetId]) {
+                drillUserName.textContent = `${USER_PRESETS[presetId].name} (${USER_PRESETS[presetId].roleTag})`;
+                drillBanner.style.display = 'flex';
+            }
+
             if (typeof window.showNotification === 'function') {
-                window.showNotification(`已切换至用户: ${USER_PRESETS[presetId].upn}，蓝图全链路已实时重算`, 'success');
+                window.showNotification(`🔍 已下钻推演模型用户: ${USER_PRESETS[presetId].upn}，拓扑链路已实时重算`, 'success');
+            }
+        }
+
+        exitModelUserDrilldown(showToast = true) {
+            const drillBanner = document.getElementById('pb-model-drill-banner');
+            if (drillBanner) drillBanner.style.display = 'none';
+            this.clearSimulatedUser();
+            if (showToast && typeof window.showNotification === 'function') {
+                window.showNotification('已退出用户下钻，恢复当前模型的通用基准拓扑', 'info');
             }
         }
 

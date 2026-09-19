@@ -121,13 +121,31 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         const userRows = page.locator('.pb-model-user-row');
         await expect(userRows.first()).toBeVisible();
 
-        // 点击第一位管理员用户
+        // 点击第一位管理员用户下钻
         await userRows.first().click();
 
-        // 自动切回用户主体，且模拟用户标签更新
+        // 验证模型面板顶部出现下钻横条
+        const drillBanner = page.locator('#pb-model-drill-banner');
+        await expect(drillBanner).toBeVisible();
+        await expect(page.locator('#pb-drill-user-name')).toContainText('Sarah Connor');
+
+        // 验证：在按目标模型透视下，用户主体选择卡片必须彻底隐藏 (完全解决面板重叠混杂)
+        const userCard = page.locator('#pb-user-principal-card');
+        await expect(userCard).toBeHidden();
+
+        // 4. 切回“按用户主体”模式，验证用户选择卡片恢复显示
+        await tabUser.click();
+        await expect(userCard).toBeVisible();
+
+        // 5. 验证【✕ 取消模拟】按钮功能：点击后清空模拟用户，恢复通用基准
+        const clearUserBtn = page.locator('#pb-btn-clear-user');
+        await expect(clearUserBtn).toBeVisible();
+        await clearUserBtn.click();
+
         const upnLabel = page.locator('#pb-current-upn-label');
-        await expect(upnLabel).toHaveText(/sarah.connor@contoso.com/);
-        await expect(tabUser).toHaveClass(/active/);
+        await expect(upnLabel).toContainText('未选定模拟主体');
+        const roleTag = page.locator('#pb-badge-role-tag');
+        await expect(roleTag).toHaveText('通用基准');
     });
 
     test('沙盒卡片向左拖拽无限制：解除 10px 边界，支持全向自由无级拖动', async ({ page }) => {
