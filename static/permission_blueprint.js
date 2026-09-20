@@ -86,7 +86,7 @@
             id: 'preset_viewer_rls',
             name: 'Emma Viewer',
             upn: 'emma.viewer@contoso.com',
-            roleTag: 'Viewer (RLS 受限)',
+            roleTag: 'Viewer (RLS Restricted)',
             roleColor: '#fbbf24',
             description: '普通只读查看者，严格受 L5 RLS 与 L6 OLS 控制，无穿透特权',
             state: {
@@ -284,6 +284,8 @@
         constructor() {
             this.activePresetKey = 'preset_developer';
             this.currentModelKey = 'model_sales';
+            this.currentWorkspaceId = 'ws_prod_analytics';
+            this.currentWorkspaceName = 'Production Analytics';
             this.perspective = 'user';
             this.pulseActive = true;
             this.isAuditOpen = true;
@@ -306,16 +308,40 @@
 
             // 深度克隆状态
             this.currentState = JSON.parse(JSON.stringify(USER_PRESETS['preset_developer'].state));
-            this.nodePositions = JSON.parse(JSON.stringify(DEFAULT_NODE_COORDS));
+            this.nodePositions = this.loadNodePositionsFromStorage();
 
             // DOM 引用
             this.viewportEl = null;
             this.contentEl = null;
             this.svgEl = null;
             this.wiresGroupEl = null;
-            this.nodesLayerEl = null;
             this.isInitialized = false;
             this.hasCenteredOnce = false;
+            this.whatIfOverrides = {};
+            this.activeFeatureCapsule = 'all';
+        }
+
+        // 统一顶栏与蓝图模型的同步入口
+        async syncGlobalModel(isUserTriggered = false) {
+            await this.fetchRealModelAndUsers();
+            this.populateModelSelect();
+        }
+
+        // 设置当前选中的功能场景胶囊 (导出、GAC、RLS、OLS、建模构建)
+        setFeatureCapsule(capsuleKey) {
+            this.activeFeatureCapsule = capsuleKey || 'all';
+            const capsuleContainer = document.getElementById('pb-feature-capsules');
+            if (capsuleContainer) {
+                const btns = capsuleContainer.querySelectorAll('.pb-capsule-btn');
+                btns.forEach(b => {
+                    if (b.getAttribute('data-capsule') === this.activeFeatureCapsule) {
+                        b.classList.add('active');
+                    } else {
+                        b.classList.remove('active');
+                    }
+                });
+            }
+            this.renderEffectivePermissionsCard();
         }
 
         // 模块首次激活或切换时调用
@@ -324,13 +350,54 @@
                 this.initDOM();
                 this.isInitialized = true;
             }
+            this.populateWorkspaceSelect();
+            this.populateModelSelect();
+            this.populatePresetSelect();
+            this.renderModelUsersList();
             this.renderNodes();
             this.recalculateAndRenderWires();
             this.updateAuditReport();
+            this.renderEffectivePermissionsCard();
+            this.syncNodePositionsFromDatabase();
 
             // 首次激活且视图可见时，在下一帧确保包围盒居中
             if (!this.hasCenteredOnce) {
                 this.hasCenteredOnce = true;
+                requestAnimationFrame(() => {
+                    this.locateAndFitAllNodes(false);
+                });
+            }
+
+            // 恢复或默认激活主视图 Tab（默认保留并优先展示交互蓝图）
+            this.switchMainTab(this.activeMainTab || 'blueprint');
+        }
+
+        switchMainTab(tab) {
+            this.activeMainTab = tab || 'blueprint';
+            const canvasEl = document.getElementById('pb-canvas-viewport');
+            const matrixEl = document.getElementById('pb-matrix-container');
+            const bpTabBtn = document.getElementById('pb-tab-blueprint-btn');
+            const mxTabBtn = document.getElementById('pb-tab-matrix-btn');
+            const bpToolbar = document.getElementById('pb-blueprint-toolbar');
+            const mxToolbar = document.getElementById('pb-matrix-toolbar');
+
+            if (this.activeMainTab === 'matrix') {
+                if (canvasEl) canvasEl.style.display = 'none';
+                if (matrixEl) matrixEl.style.display = 'grid';
+                if (bpTabBtn) bpTabBtn.classList.remove('active');
+                if (mxTabBtn) mxTabBtn.classList.add('active');
+                if (bpToolbar) bpToolbar.style.display = 'none';
+                if (mxToolbar) mxToolbar.style.display = 'flex';
+                this.renderMatrix();
+            } else {
+                if (canvasEl) canvasEl.style.display = 'block';
+                if (matrixEl) matrixEl.style.display = 'none';
+                if (bpTabBtn) bpTabBtn.classList.add('active');
+                if (mxTabBtn) mxTabBtn.classList.remove('active');
+                if (bpToolbar) bpToolbar.style.display = 'flex';
+                if (mxToolbar) mxToolbar.style.display = 'none';
+                this.renderNodes();
+                this.recalculateAndRenderWires();
                 requestAnimationFrame(() => {
                     this.locateAndFitAllNodes(false);
                 });
@@ -383,6 +450,7 @@
                     this.draggedNodeId = null;
                     this.cachedContentRect = null;
                     this.checkRadarVisibility();
+                    this.saveNodePositionsToStorage();
                 }
             });
 
@@ -402,6 +470,26 @@
                 this.recalculateAndRenderWires();
             });
             themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
+
+            // ── 实时视口尺寸感知 (窗口缩放、分栏拖拽、全屏侧边栏折叠逐帧自适应) ─────
+            let _rafFitPending = false;
+            const _scheduleRefit = () => {
+                const vp = document.getElementById('pb-canvas-viewport');
+                if (!vp || vp.style.display === 'none' || (window.getComputedStyle && window.getComputedStyle(vp).display === 'none')) return;
+                if (_rafFitPending) return;
+                _rafFitPending = true;
+                requestAnimationFrame(() => {
+                    _rafFitPending = false;
+                    this.syncCenterToViewport();
+                });
+            };
+
+            if (typeof ResizeObserver !== 'undefined' && this.viewportEl) {
+                const _vpObserver = new ResizeObserver(_scheduleRefit);
+                _vpObserver.observe(this.viewportEl);
+            }
+
+            window.addEventListener('resize', _scheduleRefit, { passive: true });
         }
 
         // rAF 高性能硬件加速渲染管线
@@ -508,8 +596,46 @@
             this.locateAndFitAllNodes(true);
         }
 
+        // 🎯 毫秒级原生无感居中同步：保持当前 zoom 绝对固定，让卡片质心严格锁定视口物理中心
+        syncCenterToViewport() {
+            const vp = document.getElementById('pb-canvas-viewport');
+            if (!vp || vp.style.display === 'none' || (window.getComputedStyle && window.getComputedStyle(vp).display === 'none')) return;
+            if (!this.contentEl) return;
+
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            for (const id in this.nodePositions) {
+                const pos = this.nodePositions[id];
+                if (pos.x < minX) minX = pos.x;
+                if (pos.y < minY) minY = pos.y;
+                if (pos.x > maxX) maxX = pos.x;
+                if (pos.y > maxY) maxY = pos.y;
+            }
+            if (minX === Infinity) return;
+
+            // 8 大节点整体真实几何质心 (Card Width: 320, Height: 260)
+            const boxCenterX = (minX + maxX + 320) / 2;
+            const boxCenterY = (minY + maxY + 260) / 2;
+
+            const vpW = vp.clientWidth;
+            const vpH = vp.clientHeight;
+            if (vpW < 100 || vpH < 100) return;
+
+            // 严格保持用户当前 zoom 不变！彻底消除由小数缩放反复量化导致的心跳抖动与左右来回拉扯
+            this.panX = Math.round(vpW / 2 - boxCenterX * this.zoom);
+            this.panY = Math.round(vpH / 2 - boxCenterY * this.zoom);
+
+            // 必须使用原生 0 延迟 (style.transition = '')，确保与侧边栏过渡每一帧 100% 绝对锁步
+            this.contentEl.style.transition = '';
+            this.updateCanvasTransform();
+            this.checkRadarVisibility();
+        }
+
+        onZenModeChange() {
+            this.syncCenterToViewport();
+        }
+
         // 🎯 核心防丢保障：一键计算所有节点的最小包围盒并自动居中聚焦召回
-        locateAndFitAllNodes(showToast = true) {
+        locateAndFitAllNodes(showToast = true, animate = true) {
             if (!this.isInitialized) {
                 this.initDOM();
                 this.isInitialized = true;
@@ -529,9 +655,9 @@
             }
 
             if (minX === Infinity) {
-                this.nodePositions = JSON.parse(JSON.stringify(DEFAULT_NODE_COORDS));
+                this.nodePositions = this.loadNodePositionsFromStorage();
                 this.renderNodes();
-                this.locateAndFitAllNodes(showToast);
+                this.locateAndFitAllNodes(showToast, animate);
                 return;
             }
 
@@ -556,11 +682,18 @@
             this.panY = Math.round((vpH - boxH * this.zoom) / 2 - (minY - pad) * this.zoom);
 
             if (this.contentEl) {
-                this.contentEl.style.transition = 'transform 0.32s cubic-bezier(0.16, 1, 0.3, 1)';
-                this.updateCanvasTransform();
-                setTimeout(() => {
-                    if (this.contentEl) this.contentEl.style.transition = '';
-                }, 340);
+                if (animate) {
+                    if (this._transitionTimeout) clearTimeout(this._transitionTimeout);
+                    this.contentEl.style.transition = 'transform 0.32s cubic-bezier(0.16, 1, 0.3, 1)';
+                    this.updateCanvasTransform();
+                    this._transitionTimeout = setTimeout(() => {
+                        if (this.contentEl) this.contentEl.style.transition = '';
+                    }, 340);
+                } else {
+                    if (this._transitionTimeout) clearTimeout(this._transitionTimeout);
+                    this.contentEl.style.transition = '';
+                    this.updateCanvasTransform();
+                }
             } else {
                 this.updateCanvasTransform();
             }
@@ -597,11 +730,77 @@
             noticeEl.style.display = anyVisible ? 'none' : 'flex';
         }
 
+        // ── 节点排版坐标持久化 (localStorage + SQLite 数据库双写联动) ──────────────────
+        loadNodePositionsFromStorage() {
+            try {
+                const saved = localStorage.getItem('pbi-blueprint-node-positions');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+                        return Object.assign(JSON.parse(JSON.stringify(DEFAULT_NODE_COORDS)), parsed);
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to load node positions from localStorage:', e);
+            }
+            return JSON.parse(JSON.stringify(DEFAULT_NODE_COORDS));
+        }
+
+        async syncNodePositionsFromDatabase() {
+            try {
+                const resp = await fetch('/api/db/kv/pbi-blueprint-node-positions');
+                if (!resp.ok) return;
+                const json = await resp.json();
+                if (json.success && json.data) {
+                    const parsed = typeof json.data === 'string' ? JSON.parse(json.data) : json.data;
+                    if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+                        const merged = Object.assign(JSON.parse(JSON.stringify(DEFAULT_NODE_COORDS)), parsed);
+                        const currentStr = JSON.stringify(this.nodePositions);
+                        const newStr = JSON.stringify(merged);
+                        if (currentStr !== newStr) {
+                            this.nodePositions = merged;
+                            localStorage.setItem('pbi-blueprint-node-positions', newStr);
+                            this.renderNodes();
+                            this.recalculateAndRenderWires();
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to sync node positions from DB:', e);
+            }
+        }
+
+        saveNodePositionsToStorage() {
+            try {
+                if (this.nodePositions) {
+                    const jsonStr = JSON.stringify(this.nodePositions);
+                    localStorage.setItem('pbi-blueprint-node-positions', jsonStr);
+                    // 异步双写写入后端 SQLite 数据库 (kv_store 表)
+                    fetch('/api/db/kv/pbi-blueprint-node-positions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ value: jsonStr })
+                    }).catch(err => console.warn('Failed to sync node positions to DB:', err));
+                }
+            } catch (e) {
+                console.warn('Failed to save node positions to localStorage:', e);
+            }
+        }
+
         resetNodePositions() {
             if (!this.isInitialized) {
                 this.initDOM();
                 this.isInitialized = true;
             }
+            try {
+                localStorage.removeItem('pbi-blueprint-node-positions');
+            } catch (e) {}
+            // 同步清空后端 SQLite 数据库对应记录
+            try {
+                fetch('/api/db/kv/pbi-blueprint-node-positions', {
+                    method: 'DELETE'
+                }).catch(err => console.warn('Failed to delete node positions from DB:', err));
+            } catch (e) {}
             this.nodePositions = JSON.parse(JSON.stringify(DEFAULT_NODE_COORDS));
             this.renderNodes();
             this.recalculateAndRenderWires();
@@ -609,6 +808,11 @@
             if (typeof window.showNotification === 'function') {
                 window.showNotification('已重置蓝图排版并自动平移居中！', 'info');
             }
+        }
+
+        // HTML 按钮调用的公开别名（与 resetNodePositions 完全等价）
+        resetLayout() {
+            this.resetNodePositions();
         }
 
         togglePulse() {
@@ -643,17 +847,17 @@
             const modelUsersCard = document.getElementById('pb-model-users-card');
             const scenariosCard = document.getElementById('pb-scenarios-card');
 
+            // 核心面板一体化合并：用户与模型同时保持可见，支持随时跨模型推演
+            if (userPrincipalCard) userPrincipalCard.style.display = 'block';
+            if (scenariosCard) scenariosCard.style.display = 'block';
+            if (modelSelectCard) modelSelectCard.style.display = 'block';
+            if (modelUsersCard) modelUsersCard.style.display = 'block';
+
             if (mode === 'user') {
                 if (tabUser) tabUser.classList.add('active');
                 if (tabModel) tabModel.classList.remove('active');
 
-                // 呈现用户主体专属面板，隐藏模型专属面板
-                if (userPrincipalCard) userPrincipalCard.style.display = 'block';
-                if (scenariosCard) scenariosCard.style.display = 'block';
-                if (modelSelectCard) modelSelectCard.style.display = 'none';
-                if (modelUsersCard) modelUsersCard.style.display = 'none';
-
-                // 沙盒画布反馈：短暂微聚焦 L1 用户主体节点
+                // 沙盒画布反馈：微聚焦 L1 用户主体节点
                 const userNode = document.getElementById('node_tenant');
                 if (userNode) {
                     userNode.classList.add('pb-node-focus-pulse');
@@ -661,28 +865,22 @@
                 }
 
                 if (typeof window.showNotification === 'function') {
-                    window.showNotification('👤 已切换为【按用户主体】透视：可指定或自定义用户推演其在 6 层的实际有效权限', 'info');
+                    window.showNotification('🔗 联合推演模式：已开启用户主体与目标模型的实时权限关联推演', 'info');
                 }
             } else {
                 if (tabModel) tabModel.classList.add('active');
                 if (tabUser) tabUser.classList.remove('active');
 
-                // 彻底隐藏用户主体选择框！专注模型资产与关联用户矩阵
-                if (userPrincipalCard) userPrincipalCard.style.display = 'none';
-                if (scenariosCard) scenariosCard.style.display = 'none';
-                if (modelSelectCard) modelSelectCard.style.display = 'block';
-                if (modelUsersCard) modelUsersCard.style.display = 'block';
-                this.renderModelUsersList();
-
-                // 沙盒画布反馈：短暂微聚焦 L3 工作区与模型节点
+                // 聚焦模型：微聚焦 L3 工作区与模型节点，并刷新模型用户分布
                 const wsNode = document.getElementById('node_workspace');
                 if (wsNode) {
                     wsNode.classList.add('pb-node-focus-pulse');
                     setTimeout(() => wsNode.classList.remove('pb-node-focus-pulse'), 800);
                 }
+                this.renderModelUsersList();
 
                 if (typeof window.showNotification === 'function') {
-                    window.showNotification('📊 已切换为【按目标模型】透视：已展开当前模型关联的所有主体与权限分布', 'info');
+                    window.showNotification('📊 聚焦目标模型：可直接在下方列表中下钻切换模拟主体', 'info');
                 }
             }
         }
@@ -728,9 +926,658 @@
             this.renderNodes();
             this.recalculateAndRenderWires();
             this.updateAuditReport();
+            this.renderEffectivePermissionsCard();
+            this.renderModelUsersList();
+            if (this.activeMainTab === 'matrix') {
+                this.renderMatrix();
+            }
 
             if (typeof window.showNotification === 'function') {
                 window.showNotification('✕ 已取消模拟用户，当前蓝图已恢复 6 层权限流转通用基准拓扑', 'info');
+            }
+        }
+
+        populateWorkspaceSelect() {
+            const wsSelect = document.getElementById('pb-ws-select');
+            if (!wsSelect) return;
+
+            let wsList = [];
+            if (typeof window.getMergedGtbWorkspaces === 'function') {
+                try {
+                    wsList = window.getMergedGtbWorkspaces();
+                } catch (e) { wsList = []; }
+            }
+            if (!wsList || wsList.length === 0) {
+                try {
+                    wsList = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+                } catch (e) { wsList = []; }
+            }
+
+            // 获取全局功能区选中的工作区 ID 集合 (Set)
+            const selectedGtbIds = new Set();
+            if (window.selectedGtbWorkspaceIds && window.selectedGtbWorkspaceIds.size > 0) {
+                window.selectedGtbWorkspaceIds.forEach(id => {
+                    if (id) selectedGtbIds.add(String(id).toLowerCase().trim());
+                });
+            } else {
+                try {
+                    const saved = JSON.parse(localStorage.getItem('pbi-selected-workspaces') || '[]');
+                    if (Array.isArray(saved)) {
+                        saved.forEach(id => {
+                            if (id) selectedGtbIds.add(String(id).toLowerCase().trim());
+                        });
+                    }
+                } catch (e) {}
+            }
+
+            // 深度补全：如果全局功能区选定的工作区不在 wsList 中，从候选列表补全
+            if (selectedGtbIds.size > 0) {
+                const existingIds = new Set(wsList.map(w => String(w.id || '').toLowerCase()));
+                const candidateLists = [window.allWorkspaces, window.gumWorkspaces];
+                for (const cl of candidateLists) {
+                    if (Array.isArray(cl)) {
+                        for (const w of cl) {
+                            if (w && w.id && selectedGtbIds.has(String(w.id).toLowerCase()) && !existingIds.has(String(w.id).toLowerCase())) {
+                                existingIds.add(String(w.id).toLowerCase());
+                                wsList.push({ id: w.id, name: w.name || w.alias || w.displayName || w.id });
+                            }
+                        }
+                    }
+                }
+            }
+
+            const seen = new Set();
+            const realGroup = [];
+            const gtbSelectedGroup = [];
+            const otherRealGroup = [];
+
+            for (const w of wsList) {
+                if (w && w.id && !seen.has(String(w.id).toLowerCase())) {
+                    const idLower = String(w.id).toLowerCase();
+                    seen.add(idLower);
+                    const item = { id: w.id, name: w.name || w.alias || w.displayName || w.id, isReal: true };
+                    realGroup.push(item);
+                    if (selectedGtbIds.has(idLower)) {
+                        gtbSelectedGroup.push(item);
+                    } else {
+                        otherRealGroup.push(item);
+                    }
+                }
+            }
+
+            let html = '';
+            if (gtbSelectedGroup.length > 0) {
+                html += `<optgroup label="🌟 全局功能区选定工作区 (${gtbSelectedGroup.length} 个)">`;
+                for (const w of gtbSelectedGroup) {
+                    html += `<option value="${w.id}">🌟 ${w.name}</option>`;
+                }
+                html += '</optgroup>';
+            }
+
+            if (otherRealGroup.length > 0) {
+                html += `<optgroup label="🏢 真实租户其余工作区 (${otherRealGroup.length} 个)">`;
+                for (const w of otherRealGroup) {
+                    html += `<option value="${w.id}">${w.name}</option>`;
+                }
+                html += '</optgroup>';
+            } else if (gtbSelectedGroup.length === 0 && realGroup.length > 0) {
+                html += `<optgroup label="🏢 真实租户工作区 (${realGroup.length} 个)">`;
+                for (const w of realGroup) {
+                    html += `<option value="${w.id}">${w.name}</option>`;
+                }
+                html += '</optgroup>';
+            }
+
+            wsSelect.innerHTML = html;
+
+            // 严格优先对齐全局功能区预选工作区：GTB 已选 > localStorage 活跃工作区 > 当前选中 > 默认首个
+            const activeGlobalWsId = localStorage.getItem('pbi-active-workspace') || (document.getElementById('gtb-select-workspace') ? document.getElementById('gtb-select-workspace').value : '');
+            if (gtbSelectedGroup.length > 0 && wsSelect.querySelector(`option[value="${gtbSelectedGroup[0].id}"]`)) {
+                wsSelect.value = gtbSelectedGroup[0].id;
+                this.currentWorkspaceId = gtbSelectedGroup[0].id;
+                this.currentWorkspaceName = gtbSelectedGroup[0].name;
+            } else if (activeGlobalWsId && activeGlobalWsId !== 'all' && wsSelect.querySelector(`option[value="${activeGlobalWsId}"]`)) {
+                wsSelect.value = activeGlobalWsId;
+                this.currentWorkspaceId = activeGlobalWsId;
+                this.currentWorkspaceName = wsSelect.options[wsSelect.selectedIndex].text.replace(/^🌟\s*/, '');
+            } else if (this.currentWorkspaceId && wsSelect.querySelector(`option[value="${this.currentWorkspaceId}"]`)) {
+                wsSelect.value = this.currentWorkspaceId;
+            } else if (wsSelect.options.length > 0) {
+                this.currentWorkspaceId = wsSelect.value;
+                this.currentWorkspaceName = wsSelect.options[wsSelect.selectedIndex].text.replace(/^🌟\s*/, '');
+            }
+        }
+
+        selectWorkspace(wsId) {
+            this.currentWorkspaceId = wsId;
+            const wsSelect = document.getElementById('pb-ws-select');
+            if (wsSelect && wsSelect.selectedIndex >= 0) {
+                this.currentWorkspaceName = wsSelect.options[wsSelect.selectedIndex].text.replace(/^🌟\s*/, '');
+            }
+
+            const syncWsName = document.getElementById('pb-sync-ws-name');
+            if (syncWsName) {
+                syncWsName.innerHTML = `<strong style="color: #34d399;">${this.currentWorkspaceName}</strong>`;
+            }
+            const modelWsName = document.getElementById('pb-model-ws-name');
+            if (modelWsName) {
+                modelWsName.textContent = this.currentWorkspaceName;
+            }
+
+            const matchedModelKey = Object.keys(MODEL_DEFINITIONS).find(k => MODEL_DEFINITIONS[k].workspaceId === wsId || MODEL_DEFINITIONS[k].workspaceName === this.currentWorkspaceName);
+            if (matchedModelKey) {
+                this.selectModel(matchedModelKey);
+            } else {
+                this.renderEffectivePermissionsCard();
+            }
+
+            if (typeof window.showNotification === 'function') {
+                window.showNotification(`🏢 已切换目标工作区为：${this.currentWorkspaceName}`, 'info');
+            }
+        }
+
+        togglePermTier(titleEl) {
+            const tierEl = titleEl.closest('.pb-perm-tier');
+            if (!tierEl) return;
+            const tierKey = tierEl.getAttribute('data-tier');
+            this.collapsedTiers = this.collapsedTiers || new Set();
+            if (this.collapsedTiers.has(tierKey)) {
+                this.collapsedTiers.delete(tierKey);
+                tierEl.classList.remove('collapsed');
+            } else {
+                this.collapsedTiers.add(tierKey);
+                tierEl.classList.add('collapsed');
+            }
+        }
+
+        populateModelSelect() {
+            const selectEl = document.getElementById('pb-model-select');
+            if (!selectEl) return;
+
+            // 1. 自动从系统本地缓存 (pbi_datasets) 中动态注入所有真实语义模型并识别其真实运行模式
+            try {
+                const storedDs = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
+                if (Array.isArray(storedDs)) {
+                    for (const ds of storedDs) {
+                        if (!ds || !ds.id) continue;
+                        const dsName = ds.name || ds.displayName || ds.id;
+                        // 严格过滤：剔除含有“已选”或“个模型”等统计字符串的脏项
+                        if (dsName.includes('已选') || dsName.includes('个模型') || dsName.includes('个数据集')) continue;
+
+                        const mKey = `real_model_${ds.id}`;
+                        // 智能识别真实存储模式 (Storage Mode)
+                        let storageMode = 'Direct Lake 湖仓';
+                        if (ds.targetStorageMode && ds.targetStorageMode.toLowerCase().includes('import')) {
+                            storageMode = 'Import 导入';
+                        } else if (ds.isDirectQuery || (ds.targetStorageMode && ds.targetStorageMode.toLowerCase().includes('directquery'))) {
+                            storageMode = 'DirectQuery 直连';
+                        } else if (ds.isEffectiveIdentityRequired || ds.hasRLS) {
+                            storageMode = 'Direct Lake (RLS)';
+                        }
+
+                        MODEL_DEFINITIONS[mKey] = {
+                            id: mKey,
+                            name: `🟢 [${storageMode}] ${dsName}`,
+                            rawName: dsName,
+                            workspaceId: ds.workspaceId || '',
+                            workspaceName: ds.workspaceName || this.currentWorkspaceName || '生产工作区',
+                            capacity: ds.configuredBy ? 'Fabric F64 容量' : '组织共享容量',
+                            storageMode: storageMode,
+                            tables: ['Real_Facts', 'Dim_Customer', 'Security_RLS'],
+                            hasRLS: Boolean(ds.isEffectiveIdentityRequired || ds.hasRLS),
+                            hasOLS: false,
+                            isReal: true
+                        };
+                    }
+                }
+            } catch (e) {
+                // ignore
+            }
+
+            const allModels = Object.values(MODEL_DEFINITIONS);
+            const validModels = allModels.filter(m => {
+                if (!m || !m.name) return false;
+                const n = m.name;
+                return !n.includes('已选') && !n.includes('个模型') && !n.includes('个数据集');
+            });
+
+            const realModels = validModels.filter(m => m.id.startsWith('real_model_'));
+
+            let html = '';
+            if (realModels.length > 0) {
+                html += `<optgroup label="🏢 真实租户语义模型 (${realModels.length} 个)">`;
+                for (const m of realModels) {
+                    html += `<option value="${m.id}">${m.name} (${m.workspaceName || '生产工作区'})</option>`;
+                }
+                html += '</optgroup>';
+            } else {
+                html += '<option value="">-- 当前工作区暂未缓存真实模型，请点击右上方同步 --</option>';
+            }
+
+            selectEl.innerHTML = html;
+
+            // 严格对齐全局功能区已选数据集：GTB 已选 > 当前选中 > 默认首个真实模型
+            const activeGtbDsId = localStorage.getItem('pbi-active-dataset') || (document.getElementById('gtb-select-dataset') ? document.getElementById('gtb-select-dataset').value : '');
+            const targetRealKey = (activeGtbDsId && activeGtbDsId !== 'all') ? `real_model_${activeGtbDsId}` : '';
+
+            if (targetRealKey && selectEl.querySelector(`option[value="${targetRealKey}"]`)) {
+                selectEl.value = targetRealKey;
+                this.currentModelKey = targetRealKey;
+            } else if (this.currentModelKey && selectEl.querySelector(`option[value="${this.currentModelKey}"]`)) {
+                selectEl.value = this.currentModelKey;
+            } else if (selectEl.options.length > 0 && selectEl.options[0].value) {
+                this.currentModelKey = selectEl.options[0].value;
+                selectEl.value = this.currentModelKey;
+            }
+        }
+
+        // What-If 权限演练：切换指定层级开关
+        toggleWhatIfSetting(field, explicitVal) {
+            this.whatIfOverrides = this.whatIfOverrides || {};
+            const s = this.currentState;
+            let baseVal = s[field];
+            if (baseVal === undefined) {
+                const defaults = {
+                    shareExternal: !s.isGuestUser,
+                    xmlaEndpoint: true,
+                    largeDataset: s.capacityType === 'fabric_f64',
+                    autoScale: s.capacityType === 'fabric_f64',
+                    queryRate: s.capacityType === 'fabric_f64' ? '120/min' : '60/min',
+                    aiCopilot: s.capacityType === 'fabric_f64',
+                    directLake: s.capacityType === 'fabric_f64',
+                    manageMembers: s.workspaceRole === 'Admin',
+                    editDelete: ['Admin', 'Member', 'Contributor'].includes(s.workspaceRole),
+                    publishApp: ['Admin', 'Member'].includes(s.workspaceRole),
+                    gatewayAdmin: s.workspaceRole === 'Admin',
+                    canReadModel: ['Admin', 'Member', 'Contributor', 'Viewer'].includes(s.workspaceRole) || s.sharePermission !== 'None',
+                    writePermission: ['Admin', 'Member', 'Contributor'].includes(s.workspaceRole),
+                    resharePermission: ['Admin', 'Member'].includes(s.workspaceRole) || (s.sharePermission && String(s.sharePermission).includes('Reshare')),
+                    dataSourceAuth: s.hasAccessToAllDataConnections,
+                    crossFiltering: true,
+                    unassignedDenied: s.rlsRoleAssigned === 'Unassigned',
+                    gacMashupGate: !(s.isInStrictMode && !s.hasAccessToAllDataConnections),
+                    maskedFieldsActive: Boolean(s.olsEnabled && !['Admin', 'Member', 'Contributor'].includes(s.workspaceRole)),
+                    reportView: ['Admin', 'Member', 'Contributor', 'Viewer'].includes(s.workspaceRole) || s.sharePermission !== 'None' || s.hasAppAccess,
+                    reportEdit: ['Admin', 'Member', 'Contributor'].includes(s.workspaceRole),
+                    exportUnderlying: (['Admin', 'Member', 'Contributor'].includes(s.workspaceRole) || (s.sharePermission && String(s.sharePermission).includes('Build'))) && s.tenantAllowExport,
+                    powerQueryEdit: ['Admin', 'Member', 'Contributor'].includes(s.workspaceRole) && s.hasAccessToAllDataConnections && s.gatewayOnline
+                };
+                baseVal = defaults[field] !== undefined ? defaults[field] : true;
+            }
+            const currentEffectiveVal = (this.whatIfOverrides[field] !== undefined) ? this.whatIfOverrides[field] : baseVal;
+
+            let newVal;
+            if (explicitVal !== undefined) {
+                newVal = explicitVal;
+            } else if (typeof currentEffectiveVal === 'boolean') {
+                newVal = !currentEffectiveVal;
+            } else {
+                newVal = !Boolean(currentEffectiveVal);
+            }
+
+            // 若切回了原始基准值，彻底从 overrides 中清除，避免残留连线与波及影响
+            if (newVal === baseVal) {
+                delete this.whatIfOverrides[field];
+            } else {
+                this.whatIfOverrides[field] = newVal;
+            }
+
+            // 实时触发联动计算与界面全景重渲染
+            this.renderMatrix();
+            this.renderEffectivePermissionsCard();
+            this.updateAuditReport();
+
+            if (typeof window.showNotification === 'function') {
+                const labelMap = {
+                    tenantAllowExport: 'L1 导出策略',
+                    tenantAllowWebModeling: 'L1 Web建模',
+                    shareExternal: 'L1 组织外部共享',
+                    isGuestUser: 'L1 访客/内部身份',
+                    xmlaEndpoint: 'L1 XMLA读写终结点',
+                    isInStrictMode: 'L1 GAC策略模式',
+                    capacityType: 'L2 容量规格',
+                    largeDataset: 'L2 大数据集格式',
+                    autoScale: 'L2 弹性自动缩放',
+                    queryRate: 'L2 DirectQuery速率',
+                    aiCopilot: 'L2 Copilot/AI增强',
+                    directLake: 'L2 Direct Lake极速湖仓',
+                    workspaceRole: 'L3 工作区角色',
+                    manageMembers: 'L3 成员管理特许',
+                    editDelete: 'L3 资产增删改',
+                    publishApp: 'L3 发布组织应用',
+                    gatewayAdmin: 'L3 网关凭据托管',
+                    hasAccessToAllDataConnections: 'L3/L4 连接通道鉴权',
+                    canReadModel: 'L4 模型只读',
+                    sharePermission: 'L4 构建/衍生权限',
+                    writePermission: 'L4 模型架构写回',
+                    resharePermission: 'L4 第三方重新共享',
+                    dataSourceAuth: 'L4 数据源直连鉴权',
+                    gatewayOnline: 'L4 网关在线状态',
+                    rlsEnabled: 'L5 RLS规则总开关',
+                    rlsRoleAssigned: 'L5 生效过滤角色',
+                    daxIdentityType: 'L5 DAX主体身份',
+                    crossFiltering: 'L5 跨表双向过滤',
+                    unassignedDenied: 'L5 未授权行隔离',
+                    gacMashupGate: 'L5 Mashup数据门禁',
+                    olsEnabled: 'L6 OLS敏感列安全',
+                    maskedFieldsActive: 'L6 敏感列掩蔽',
+                    reportView: 'L6 报表查看',
+                    reportEdit: 'L6 视觉设计编辑',
+                    exportUnderlying: 'L6 底层明细导出',
+                    powerQueryEdit: 'L6 Power Query编辑'
+                };
+                const label = labelMap[field] || field;
+                window.showNotification(`⚡ What-If 演练变更: [${label}] -> ${newVal}，已计算联动波及影响！`, 'info');
+            }
+        }
+
+        // 重置全部 What-If 演练覆盖，恢复基准状态
+        resetWhatIf() {
+            this.whatIfOverrides = {};
+            this.renderMatrix();
+            this.renderEffectivePermissionsCard();
+            this.updateAuditReport();
+
+            if (typeof window.showNotification === 'function') {
+                window.showNotification('↺ 已重置全部 What-If 模拟演练，恢复初始基准权限设置', 'success');
+            }
+        }
+
+        // 计算当前 What-If 状态对各层级的具体级联波及效应
+        calculateWhatIfImpacts() {
+            const overrides = this.whatIfOverrides || {};
+            const s = this.currentState;
+            const eff = (k) => (overrides[k] !== undefined ? overrides[k] : s[k]);
+
+            const role = eff('workspaceRole');
+            const isPrivileged = ['Admin', 'Member', 'Contributor'].includes(role);
+            const canBuild = isPrivileged || (eff('sharePermission') && String(eff('sharePermission')).includes('Build'));
+            const tenantAllowExport = eff('tenantAllowExport');
+            const tenantAllowWebModeling = eff('tenantAllowWebModeling');
+            const gatewayOnline = eff('gatewayOnline');
+            const rlsEnabled = eff('rlsEnabled');
+            const olsEnabled = eff('olsEnabled');
+            const isFabric = eff('capacityType') === 'fabric_f64';
+            const isInStrictMode = eff('isInStrictMode');
+            const hasAccessToAllDataConnections = eff('hasAccessToAllDataConnections');
+            const isGuestUser = eff('isGuestUser');
+
+            const impacts = {};
+
+            // 1. 若 L1 租户禁止导出 -> 联动波及阻断 L6 明细导出
+            if (overrides['tenantAllowExport'] !== undefined) {
+                if (!tenantAllowExport) {
+                    impacts['exportUnderlying'] = { from: 'L1', fromTier: 1, fromField: 'tenantAllowExport', toTier: 6, type: 'danger', reason: 'L1 租户策略收紧强制阻断了 L6 导出底层明细数据' };
+                } else if (canBuild) {
+                    impacts['exportUnderlying'] = { from: 'L1', fromTier: 1, fromField: 'tenantAllowExport', toTier: 6, type: 'success', reason: 'L1 租户策略放行使得构建者可导出数据' };
+                }
+            }
+
+            // 2. 若 L1 Web 建模被禁用 -> 联动阻断 L6 报表编辑与建模
+            if (overrides['tenantAllowWebModeling'] !== undefined) {
+                if (!tenantAllowWebModeling) {
+                    impacts['reportEdit'] = { from: 'L1', fromTier: 1, fromField: 'tenantAllowWebModeling', toTier: 6, type: 'danger', reason: 'L1 租户禁止 Web 建模，阻断了浏览器端在线设计编辑' };
+                }
+            }
+
+            // 2.1 若 L1 XMLA 终结点读写支持发生 What-If 调整 -> 联动影响 L4 模型架构写回
+            if (overrides['xmlaEndpoint'] !== undefined) {
+                const xmla = eff('xmlaEndpoint');
+                if (!xmla) {
+                    impacts['writePermission'] = { from: 'L1', fromTier: 1, fromField: 'xmlaEndpoint', toTier: 4, type: 'danger', reason: 'L1 租户禁用 XMLA 终结点读写，阻断外部建模工具写回架构' };
+                } else if (isPrivileged) {
+                    impacts['writePermission'] = { from: 'L1', fromTier: 1, fromField: 'xmlaEndpoint', toTier: 4, type: 'success', reason: 'L1 租户启用 XMLA 终结点读写，允许特权主体外部客户端写回' };
+                }
+            }
+
+            // 3. 若 L1 访客主体发生变更 -> 联动影响 L1 外部共享与 L5 DAX 身份
+            if (overrides['isGuestUser'] !== undefined) {
+                if (isGuestUser) {
+                    impacts['shareExternal'] = { from: 'L1', fromTier: 1, fromField: 'isGuestUser', toTier: 1, type: 'warn', reason: '外部访客身份触发安全策略，组织外部共享被限制' };
+                    impacts['daxIdentity'] = { from: 'L1', fromTier: 1, fromField: 'isGuestUser', toTier: 5, type: 'warn', reason: '外部访客 UPN 含有外链标识，触发动态跨租户身份校验' };
+                }
+            }
+
+            // 3.1 若 L1 组织外部共享被调整 -> 联动波及 L4 向第三方重新共享
+            if (overrides['shareExternal'] !== undefined) {
+                const ext = eff('shareExternal');
+                if (!ext) {
+                    impacts['resharePermission'] = { from: 'L1', fromTier: 1, fromField: 'shareExternal', toTier: 4, type: 'warn', reason: 'L1 租户禁止组织外部共享，向外部第三方重新共享被阻断' };
+                }
+            }
+
+            // 4. 若 L1 GAC 隔离策略切换为严格门禁 -> 联动阻断工作区连接审查与数据源直连鉴权、L5 Mashup 门禁及 L6 Power Query 编辑
+            if (overrides['isInStrictMode'] !== undefined) {
+                if (isInStrictMode) {
+                    impacts['gacConnection'] = { from: 'L1', fromTier: 1, fromField: 'isInStrictMode', toTier: 3, type: 'warn', reason: 'L1 GAC 开启严格门禁，工作区数据连接通道处于严格审查隔离' };
+                    if (!isPrivileged) {
+                        impacts['dataSourceAuth'] = { from: 'L1', fromTier: 1, fromField: 'isInStrictMode', toTier: 4, type: 'danger', reason: 'L1 GAC 严格门禁启用，直连凭据鉴权受到隔离阻断' };
+                        impacts['gacMashupGate'] = { from: 'L1', fromTier: 1, fromField: 'isInStrictMode', toTier: 5, type: 'danger', reason: 'L1 GAC 细粒度隔离策略强制拦截了跨源数据流动' };
+                        impacts['powerQueryEdit'] = { from: 'L1', fromTier: 1, fromField: 'isInStrictMode', toTier: 6, type: 'danger', reason: 'L1 GAC 严格门禁阻断了跨数据源 Mashup，网页端 Power Query 无法执行' };
+                    }
+                } else {
+                    impacts['gacConnection'] = { from: 'L1', fromTier: 1, fromField: 'isInStrictMode', toTier: 3, type: 'success', reason: 'L1 GAC 切换为宽松模式，工作区连接通道放行' };
+                    impacts['dataSourceAuth'] = { from: 'L1', fromTier: 1, fromField: 'isInStrictMode', toTier: 4, type: 'success', reason: 'L1 切换为宽松模式，数据源直连鉴权放行' };
+                    impacts['gacMashupGate'] = { from: 'L1', fromTier: 1, fromField: 'isInStrictMode', toTier: 5, type: 'success', reason: 'L1 门禁放行，允许跨源数据融合流动' };
+                    impacts['powerQueryEdit'] = { from: 'L1', fromTier: 1, fromField: 'isInStrictMode', toTier: 6, type: 'success', reason: 'L1 门禁放行，恢复网页端在线编辑能力' };
+                }
+            }
+
+            // 5. 若 L2 容量规格发生 What-If 调整
+            if (overrides['capacityType'] !== undefined) {
+                if (!isFabric) {
+                    impacts['largeDataset'] = { from: 'L2', fromTier: 2, fromField: 'capacityType', toTier: 2, type: 'warn', reason: '降级为 Pro 共享容量，失去大数据集格式支持' };
+                    impacts['autoScale'] = { from: 'L2', fromTier: 2, fromField: 'capacityType', toTier: 2, type: 'warn', reason: 'Pro 共享容量不支持弹性按需自动缩放' };
+                    impacts['aiCopilot'] = { from: 'L2', fromTier: 2, fromField: 'capacityType', toTier: 2, type: 'warn', reason: 'Copilot 与 AI 增强功能仅在 Fabric F64+ 容量中可用' };
+                    impacts['directLake'] = { from: 'L2', fromTier: 2, fromField: 'capacityType', toTier: 2, type: 'warn', reason: 'Direct Lake 极速湖仓模式仅支持 Fabric 专用容量' };
+                } else {
+                    impacts['largeDataset'] = { from: 'L2', fromTier: 2, fromField: 'capacityType', toTier: 2, type: 'success', reason: '升级为 Fabric F64 容量，已解锁大数据集格式支持' };
+                    impacts['directLake'] = { from: 'L2', fromTier: 2, fromField: 'capacityType', toTier: 2, type: 'success', reason: '升级为 Fabric F64 容量，已启用 Direct Lake 极速湖仓' };
+                }
+            }
+
+            // 6. 若 L3 工作区角色发生 What-If 调整
+            if (overrides['workspaceRole'] !== undefined) {
+                if (!isPrivileged) {
+                    impacts['activeRlsRole'] = { from: 'L3', fromTier: 3, fromField: 'workspaceRole', toTier: 5, type: 'warn', reason: '降为非特权角色后丧失特权穿透，L5 RLS 行隔离重新生效' };
+                    impacts['maskedStatus'] = { from: 'L3', fromTier: 3, fromField: 'workspaceRole', toTier: 6, type: 'warn', reason: '降为非特权角色后无法旁路 OLS，L6 敏感列掩蔽生效' };
+                    impacts['editDelete'] = { from: 'L3', fromTier: 3, fromField: 'workspaceRole', toTier: 3, type: 'danger', reason: '工作区资产编辑与删除权限被立即撤销' };
+                    impacts['reportEdit'] = { from: 'L3', fromTier: 3, fromField: 'workspaceRole', toTier: 6, type: 'danger', reason: '报表设计与编辑权限被收回' };
+                    impacts['writePermission'] = { from: 'L3', fromTier: 3, fromField: 'workspaceRole', toTier: 4, type: 'danger', reason: '失去语义模型架构写回与重构权限' };
+                } else {
+                    impacts['activeRlsRole'] = { from: 'L3', fromTier: 3, fromField: 'workspaceRole', toTier: 5, type: 'success', reason: '晋升为工作区特权角色，L5 RLS 安全规则被特权穿透绕过' };
+                    impacts['maskedStatus'] = { from: 'L3', fromTier: 3, fromField: 'workspaceRole', toTier: 6, type: 'success', reason: '晋升为工作区特权角色，L6 敏感列全部无遮挡开放' };
+                    impacts['editDelete'] = { from: 'L3', fromTier: 3, fromField: 'workspaceRole', toTier: 3, type: 'success', reason: '获得工作区资产增删改完全权限' };
+                    impacts['reportEdit'] = { from: 'L3', fromTier: 3, fromField: 'workspaceRole', toTier: 6, type: 'success', reason: '获得报表在线与桌面端设计编辑权限' };
+                    impacts['writePermission'] = { from: 'L3', fromTier: 3, fromField: 'workspaceRole', toTier: 4, type: 'success', reason: '获得语义模型架构写回与重构特许' };
+                }
+            }
+
+            // 7. 若 L3 数据连接通道 / 凭据发生 What-If 调整 -> 联动波及 L4、L5、L6
+            if (overrides['hasAccessToAllDataConnections'] !== undefined) {
+                if (!hasAccessToAllDataConnections) {
+                    impacts['dataSourceAuth'] = { from: 'L3', fromTier: 3, fromField: 'hasAccessToAllDataConnections', toTier: 4, type: 'danger', reason: '数据连接通道收回导致直连凭据鉴权失败' };
+                    impacts['gacMashupGate'] = { from: 'L3', fromTier: 3, fromField: 'hasAccessToAllDataConnections', toTier: 5, type: 'danger', reason: '无直连凭据且处于严格门禁下，GAC Mashup 数据流被拦截' };
+                    impacts['powerQueryEdit'] = { from: 'L3', fromTier: 3, fromField: 'hasAccessToAllDataConnections', toTier: 6, type: 'danger', reason: '数据源凭据不完整导致网页端 Power Query 无法执行' };
+                } else {
+                    impacts['dataSourceAuth'] = { from: 'L3', fromTier: 3, fromField: 'hasAccessToAllDataConnections', toTier: 4, type: 'success', reason: '连接凭据恢复，数据源直连鉴权通过' };
+                    impacts['gacMashupGate'] = { from: 'L3', fromTier: 3, fromField: 'hasAccessToAllDataConnections', toTier: 5, type: 'success', reason: '直连通道畅通，Mashup 数据流通过门禁' };
+                    impacts['powerQueryEdit'] = { from: 'L3', fromTier: 3, fromField: 'hasAccessToAllDataConnections', toTier: 6, type: 'success', reason: '直连凭据已具备，允许网页端 Power Query 执行' };
+                }
+            }
+
+            // 7.1 若 L4 数据源直连鉴权发生 What-If 调整 -> 联动波及 L5、L6
+            if (overrides['dataSourceAuth'] !== undefined) {
+                const dsAuth = eff('dataSourceAuth');
+                if (!dsAuth) {
+                    impacts['gacMashupGate'] = { from: 'L4', fromTier: 4, fromField: 'dataSourceAuth', toTier: 5, type: 'danger', reason: '数据源直连鉴权失败，导致 L5 Mashup 门禁拦截' };
+                    impacts['powerQueryEdit'] = { from: 'L4', fromTier: 4, fromField: 'dataSourceAuth', toTier: 6, type: 'danger', reason: '数据源直连鉴权失败，网页端 Power Query 无法执行' };
+                }
+            }
+
+            // 7.2 若 L5 GAC Mashup 门禁发生 What-If 调整 -> 联动波及 L6
+            if (overrides['gacMashupGate'] !== undefined) {
+                const mashupGate = eff('gacMashupGate');
+                if (!mashupGate) {
+                    impacts['powerQueryEdit'] = { from: 'L5', fromTier: 5, fromField: 'gacMashupGate', toTier: 6, type: 'danger', reason: 'L5 GAC Mashup 数据门禁拦截，导致 L6 网页端编辑不可用' };
+                }
+            }
+
+            // 8. 若 L4 网关状态发生 What-If 调整
+            if (overrides['gatewayOnline'] !== undefined) {
+                if (!gatewayOnline) {
+                    impacts['powerQueryEdit'] = { from: 'L4', fromTier: 4, fromField: 'gatewayOnline', toTier: 6, type: 'danger', reason: '网关离线导致 L6 报表 Power Query 网页端编辑不可用' };
+                    impacts['dataSourceAuth'] = { from: 'L4', fromTier: 4, fromField: 'gatewayOnline', toTier: 4, type: 'danger', reason: '网关离线导致数据源直连鉴权不可达' };
+                } else {
+                    impacts['powerQueryEdit'] = { from: 'L4', fromTier: 4, fromField: 'gatewayOnline', toTier: 6, type: 'success', reason: '网关恢复在线，符合条件的主体可在线编辑查询' };
+                }
+            }
+
+            // 9. 若 L4 构建权限发生 What-If 调整
+            if (overrides['sharePermission'] !== undefined) {
+                if (!canBuild) {
+                    impacts['exportUnderlying'] = { from: 'L4', fromTier: 4, fromField: 'sharePermission', toTier: 6, type: 'danger', reason: '失去 Build 权限导致 L6 明细导出被立即阻断' };
+                    impacts['buildPermission'] = { from: 'L4', fromTier: 4, fromField: 'sharePermission', toTier: 4, type: 'danger', reason: '单品共享降级导致失去衍生报表构建能力' };
+                }
+            }
+
+            // 9.1 若 L4 语义模型读取权限发生 What-If 调整
+            if (overrides['canReadModel'] !== undefined) {
+                const canRead = eff('canReadModel');
+                if (!canRead) {
+                    impacts['reportView'] = { from: 'L4', fromTier: 4, fromField: 'canReadModel', toTier: 6, type: 'danger', reason: '失去模型 Read 权限，L6 报表前端渲染触发 403 拒绝访问' };
+                } else {
+                    impacts['reportView'] = { from: 'L4', fromTier: 4, fromField: 'canReadModel', toTier: 6, type: 'success', reason: '模型 Read 权限恢复，L6 报表允许打开' };
+                }
+            }
+
+            // 10. 若 L5 RLS 规则发生 What-If 调整
+            if (overrides['rlsEnabled'] !== undefined) {
+                if (!rlsEnabled) {
+                    impacts['activeRlsRole'] = { from: 'L5', fromTier: 5, fromField: 'rlsEnabled', toTier: 5, type: 'success', reason: 'RLS 停用后所有用户均可见模型全量数据行' };
+                } else {
+                    impacts['activeRlsRole'] = { from: 'L5', fromTier: 5, fromField: 'rlsEnabled', toTier: 5, type: 'warn', reason: 'RLS 启用后受限角色将根据分配安全角色执行行过滤' };
+                }
+            }
+
+            // 10.1 若 L5 RLS 安全角色分配发生 What-If 调整
+            if (overrides['rlsRoleAssigned'] !== undefined) {
+                const assigned = eff('rlsRoleAssigned');
+                if (assigned === 'Unassigned' && !isPrivileged) {
+                    impacts['reportView'] = { from: 'L5', fromTier: 5, fromField: 'rlsRoleAssigned', toTier: 6, type: 'danger', reason: 'L5 RLS 角色未分配，导致普通访客在 L6 查看报表时触发 403 拒绝访问' };
+                    impacts['unassignedDenied'] = { from: 'L5', fromTier: 5, fromField: 'rlsRoleAssigned', toTier: 5, type: 'danger', reason: '未分配任何有效 RLS 角色，行级别数据全部拦截' };
+                } else if (assigned !== 'Unassigned') {
+                    impacts['reportView'] = { from: 'L5', fromTier: 5, fromField: 'rlsRoleAssigned', toTier: 6, type: 'success', reason: `已分配 ${assigned} 安全角色，恢复报表行过滤查看` };
+                }
+            }
+
+            // 11. 若 L6 OLS 规则发生 What-If 调整
+            if (overrides['olsEnabled'] !== undefined) {
+                if (!olsEnabled) {
+                    impacts['maskedStatus'] = { from: 'L6', fromTier: 6, fromField: 'olsEnabled', toTier: 6, type: 'success', reason: 'OLS 停用后薪资、利润率等所有受控敏感列全面开放可见' };
+                } else {
+                    impacts['maskedStatus'] = { from: 'L6', fromTier: 6, fromField: 'olsEnabled', toTier: 6, type: 'warn', reason: 'OLS 启用后受限用户将无法查看或使用敏感受控字段' };
+                }
+            }
+
+            return impacts;
+        }
+
+        populatePresetSelect() {
+            const selectEl = document.getElementById('pb-user-preset-select');
+            if (!selectEl) return;
+
+            const allPresets = Object.values(USER_PRESETS);
+            const realUsers = allPresets.filter(u => u.id.startsWith('real_'));
+            const customUsers = allPresets.filter(u => u.id.startsWith('custom_'));
+            const presetUsers = allPresets.filter(u => !u.id.startsWith('real_') && !u.id.startsWith('custom_'));
+
+            let html = '';
+            if (realUsers.length > 0) {
+                html += '<option value="none">-- 请选择真实用户主体 --</option>';
+                html += '<optgroup label="🏢 真实租户/工作区现有授权用户">';
+                for (const u of realUsers) {
+                    html += `<option value="${u.id}">${u.name} (${u.roleTag}) - ${u.upn}</option>`;
+                }
+                html += '</optgroup>';
+            } else {
+                html += '<option value="none">-- 暂无已缓存真实成员，可直接输入企业 UPN 或点击右上角同步 --</option>';
+            }
+
+            if (customUsers.length > 0) {
+                html += '<optgroup label="✏️ 自定义指定用户">';
+                for (const u of customUsers) {
+                    html += `<option value="${u.id}">${u.name} (${u.upn})</option>`;
+                }
+                html += '</optgroup>';
+            }
+
+            html += '<option value="custom">✏️ 手动输入企业 UPN 账号...</option>';
+
+            const currentVal = this.activePresetKey || selectEl.value;
+            selectEl.innerHTML = html;
+            if (currentVal && selectEl.querySelector(`option[value="${currentVal}"]`)) {
+                selectEl.value = currentVal;
+            }
+        }
+
+        renderQuickUsersList() {
+            // 已合入主选择器下拉列表，此处保留空函数以提供向后兼容
+        }
+
+        toggleCustomInput() {
+            const box = document.getElementById('pb-custom-user-box');
+            if (!box) return;
+            const isHidden = box.style.display === 'none' || !box.style.display;
+            box.style.display = isHidden ? 'block' : 'none';
+            if (isHidden) {
+                const input = document.getElementById('pb-custom-upn');
+                if (input) input.focus();
+            }
+        }
+
+        applyCustomUpn() {
+            const input = document.getElementById('pb-custom-upn');
+            const val = input ? input.value.trim() : '';
+            if (!val) {
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification('请输入有效的企业邮箱或 UPN', 'warning');
+                }
+                return;
+            }
+
+            const cleanId = `custom_${val.replace(/[^a-zA-Z0-9_]/g, '_')}`;
+            USER_PRESETS[cleanId] = {
+                id: cleanId,
+                name: val.split('@')[0],
+                upn: val,
+                roleTag: 'Custom Principal (Guest/Viewer)',
+                roleColor: '#38bdf8',
+                description: '手动输入指定的测试主体 UPN',
+                state: {
+                    isGuestUser: val.includes('#ext#') || val.toLowerCase().includes('external') || val.includes('#'),
+                    tenantAllowExport: true,
+                    tenantAllowWebModeling: false,
+                    capacityType: 'fabric_f64',
+                    workspaceRole: 'Viewer',
+                    isModelOwner: false,
+                    isInStrictMode: false,
+                    hasAccessToAllDataConnections: false,
+                    gatewayOnline: true,
+                    sharePermission: 'Read',
+                    hasAppAccess: false,
+                    rlsEnabled: true,
+                    rlsRoleAssigned: 'Region_Assigned',
+                    olsEnabled: false,
+                    maskedFields: 'Salary, Margin'
+                }
+            };
+
+            this.populatePresetSelect();
+            this.selectUserPreset(cleanId);
+
+            if (typeof window.showNotification === 'function') {
+                window.showNotification(`已应用并模拟自定义用户: ${val}`, 'success');
             }
         }
 
@@ -743,11 +1590,18 @@
             const customBox = document.getElementById('pb-custom-user-box');
             if (presetKey === 'custom') {
                 if (customBox) customBox.style.display = 'block';
+                const input = document.getElementById('pb-custom-upn');
+                if (input) input.focus();
                 return;
             }
             if (customBox) customBox.style.display = 'none';
 
             this.activePresetKey = presetKey;
+            const selectEl = document.getElementById('pb-user-preset-select');
+            if (selectEl && selectEl.value !== presetKey) {
+                selectEl.value = presetKey;
+            }
+
             const preset = USER_PRESETS[presetKey];
             if (!preset) return;
 
@@ -760,10 +1614,23 @@
                 badgeTag.style.borderColor = `${preset.roleColor}40`;
             }
 
+            // 基础权限深拷贝
             this.currentState = JSON.parse(JSON.stringify(preset.state));
+
+            // 跨模型关联计算：如果该用户在当前选中的目标模型中有特定角色配置，实时生效该模型角色的特权或限制
+            const currentModel = MODEL_DEFINITIONS[this.currentModelKey];
+            if (currentModel && Array.isArray(currentModel.users)) {
+                const userInModel = currentModel.users.find(u => u.presetId === presetKey || u.upn.toLowerCase() === preset.upn.toLowerCase());
+                if (userInModel) {
+                    this.applyModelPermissionToState(userInModel.role, currentModel);
+                }
+            }
+
             this.renderNodes();
             this.recalculateAndRenderWires();
             this.updateAuditReport();
+            this.renderEffectivePermissionsCard();
+            this.renderModelUsersList();
 
             if (typeof window.showNotification === 'function') {
                 window.showNotification(`✨ 已切换模拟主体为：${preset.name} (${preset.roleTag})`, 'success');
@@ -774,6 +1641,7 @@
             const upnLabel = document.getElementById('pb-current-upn-label');
             if (upnLabel) upnLabel.textContent = val || 'custom.user@contoso.com';
             this.updateAuditReport();
+            this.renderEffectivePermissionsCard();
         }
 
         selectModel(modelKey) {
@@ -781,15 +1649,74 @@
             const model = MODEL_DEFINITIONS[modelKey];
             if (!model) return;
 
+            this.currentWorkspaceName = model.workspaceName;
             const wsLabel = document.getElementById('pb-model-ws-name');
             if (wsLabel) wsLabel.textContent = model.workspaceName;
 
-            this.exitModelUserDrilldown(false);
+            const wsSelect = document.getElementById('pb-ws-select');
+            if (wsSelect && model.workspaceId && wsSelect.querySelector(`option[value="${model.workspaceId}"]`)) {
+                wsSelect.value = model.workspaceId;
+            }
+
+            // 跨模型核心关联：当切换目标模型时，若当前正模拟某位用户，重算该用户在该模型中的有效权限
+            if (this.activePresetKey && USER_PRESETS[this.activePresetKey]) {
+                const preset = USER_PRESETS[this.activePresetKey];
+                this.currentState = JSON.parse(JSON.stringify(preset.state));
+
+                const userInModel = model.users ? model.users.find(u => u.presetId === this.activePresetKey || u.upn.toLowerCase() === preset.upn.toLowerCase()) : null;
+                if (userInModel) {
+                    this.applyModelPermissionToState(userInModel.role, model);
+                } else if (!['Admin', 'Member', 'Contributor'].includes(preset.state.workspaceRole)) {
+                    // 若非工作区特权角色且无此模型单品权限
+                    this.currentState.sharePermission = 'None';
+                }
+            }
+
+            const drillBanner = document.getElementById('pb-model-drill-banner');
+            if (drillBanner) drillBanner.style.display = 'none';
             this.renderModelUsersList();
+            this.renderNodes();
+            this.recalculateAndRenderWires();
             this.updateAuditReport();
+            this.renderEffectivePermissionsCard();
 
             if (typeof window.showNotification === 'function') {
-                window.showNotification(`🗄️ 已切换目标语义模型为：${model.name}`, 'info');
+                window.showNotification(`🗄️ 已切换目标语义模型为：${model.name}，并重算当前用户对该模型的有效权限`, 'info');
+            }
+        }
+
+        applyModelPermissionToState(role, model) {
+            if (role === 'Admin') {
+                this.currentState.workspaceRole = 'Admin';
+                this.currentState.isModelOwner = true;
+                this.currentState.sharePermission = 'ReadBuild';
+                this.currentState.rlsEnabled = false;
+                this.currentState.olsEnabled = false;
+            } else if (role === 'Contributor' || role === 'Editor') {
+                this.currentState.workspaceRole = 'Contributor';
+                this.currentState.isModelOwner = false;
+                this.currentState.sharePermission = 'ReadBuild';
+                this.currentState.rlsEnabled = false;
+                this.currentState.olsEnabled = false;
+            } else if (role === 'Member') {
+                this.currentState.workspaceRole = 'Member';
+                this.currentState.isModelOwner = false;
+                this.currentState.sharePermission = 'ReadBuild';
+                this.currentState.rlsEnabled = false;
+                this.currentState.olsEnabled = false;
+            } else if (role.includes('Build') || role.includes('Direct Share + Build')) {
+                this.currentState.sharePermission = 'ReadBuild';
+                this.currentState.rlsEnabled = !!model.hasRLS;
+                this.currentState.olsEnabled = !!model.hasOLS;
+            } else if (role.includes('Read') || role.includes('Direct Share')) {
+                this.currentState.sharePermission = 'Read';
+                this.currentState.rlsEnabled = !!model.hasRLS;
+                this.currentState.olsEnabled = !!model.hasOLS;
+            } else if (role.includes('Viewer')) {
+                this.currentState.workspaceRole = 'Viewer';
+                this.currentState.sharePermission = 'Read';
+                this.currentState.rlsEnabled = !!model.hasRLS;
+                this.currentState.olsEnabled = !!model.hasOLS;
             }
         }
 
@@ -799,51 +1726,116 @@
             const wsNameEl = document.getElementById('gtb-ws-display-text');
             const dsNameEl = document.getElementById('gtb-ds-display-text');
 
-            const wsId = wsIdInput ? wsIdInput.value : '';
-            const dsId = dsIdInput ? dsIdInput.value : '';
-            const wsName = (wsNameEl && wsNameEl.textContent !== '-- 选择工作区 --') ? wsNameEl.textContent : '';
-            const dsName = (dsNameEl && dsNameEl.textContent !== '-- 选择模型 --') ? dsNameEl.textContent : '';
+            let wsId = wsIdInput ? wsIdInput.value : '';
+            let dsId = dsIdInput ? dsIdInput.value : '';
+            let wsName = (wsNameEl && wsNameEl.textContent && !wsNameEl.textContent.includes('--')) ? wsNameEl.textContent.trim() : '';
+            let dsName = (dsNameEl && dsNameEl.textContent && !dsNameEl.textContent.includes('--')) ? dsNameEl.textContent.trim() : '';
 
-            if (!wsId) {
+            // 从 localStorage 读取工作区全集
+            let wsList = [];
+            try {
+                wsList = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+            } catch (e) {
+                wsList = [];
+            }
+
+            if (!wsId || wsId === 'all') {
+                if (window.selectedGtbWorkspaceIds && window.selectedGtbWorkspaceIds.size > 0) {
+                    wsId = Array.from(window.selectedGtbWorkspaceIds)[0];
+                } else if (localStorage.getItem('pbi-active-workspace')) {
+                    wsId = localStorage.getItem('pbi-active-workspace');
+                } else if (wsList.length > 0) {
+                    wsId = wsList[0].id;
+                }
+            }
+
+            let currentWsObj = wsList.find(w => w.id === wsId);
+            if (currentWsObj && !wsName) {
+                wsName = currentWsObj.name || currentWsObj.alias || wsId;
+            }
+
+            // 智能识别个人工作区与标准工作区
+            const isPersonal = (currentWsObj && currentWsObj.name && currentWsObj.name.startsWith('PersonalWorkspace')) || (wsName && wsName.startsWith('PersonalWorkspace'));
+            let targetWsId = wsId;
+            let targetWsName = wsName;
+
+            // 优先探测标准组织工作区 (如 WorkSpace_DEV) 以抓取完整多成员列表
+            if (isPersonal || !targetWsId) {
+                const groupWs = wsList.find(w => w.type === 'Workspace' || (!w.name?.startsWith('PersonalWorkspace') && w.id !== wsId));
+                if (groupWs) {
+                    targetWsId = groupWs.id;
+                    targetWsName = groupWs.name;
+                }
+            }
+
+            if (!targetWsId) {
                 if (typeof window.showNotification === 'function') {
                     window.showNotification('💡 请先在上方顶栏选择要审计的真实工作区（Workspace）！', 'warning');
                 }
                 return;
             }
 
+            const btnSync = document.getElementById('pb-btn-sync-real');
+            const originalBtnText = btnSync ? btnSync.innerHTML : '';
+            if (btnSync) {
+                btnSync.disabled = true;
+                btnSync.innerHTML = '<span class="spinner" style="display:inline-block;width:12px;height:12px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;"></span> 同步中...';
+            }
+
             if (typeof window.showNotification === 'function') {
-                window.showNotification(`🔄 正在连接微软 Power BI 真实环境抓取 [${wsName || wsId}] 的授权用户...`, 'info');
+                window.showNotification(`🔄 正在连接微软 Power BI 真实环境抓取 [${targetWsName || targetWsId}] 的所有授权用户...`, 'info');
             }
 
             try {
                 // 1. 调用 proxy 抓取工作区真实用户与直接角色
-                const res = await fetch('/api/proxy', {
+                let res = await fetch('/api/proxy', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        url: `https://api.powerbi.com/v1.0/myorg/groups/${wsId}/users`,
+                        endpoint: `/groups/${targetWsId}/users`,
                         method: 'GET'
                     })
                 });
-                const data = await res.json();
-                let realUsers = [];
+                let data = await res.json();
 
-                if (res.ok && data && Array.isArray(data.value) && data.value.length > 0) {
-                    realUsers = data.value.map(u => {
-                        const email = u.emailAddress || u.userPrincipalName || u.identifier || 'unknown@org.com';
+                // 容错回退机制：如果失败则尝试已知的组织空间 (WorkSpace_DEV)
+                if ((!res.ok || !data.success) && targetWsId !== '2c51e061-0f9f-4d02-bed0-c169019e5d83') {
+                    const fallbackWs = wsList.find(w => w.id === '2c51e061-0f9f-4d02-bed0-c169019e5d83') || wsList.find(w => !w.name?.startsWith('PersonalWorkspace'));
+                    if (fallbackWs) {
+                        targetWsId = fallbackWs.id;
+                        targetWsName = fallbackWs.name;
+                        res = await fetch('/api/proxy', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                endpoint: `/groups/${targetWsId}/users`,
+                                method: 'GET'
+                            })
+                        });
+                        data = await res.json();
+                    }
+                }
+
+                let realUsers = [];
+                const usersArray = (data && data.success && data.data && Array.isArray(data.data.value)) ? data.data.value : [];
+
+                if (usersArray.length > 0) {
+                    realUsers = usersArray.map(u => {
+                        const email = u.emailAddress || u.userPrincipalName || u.identifier || (u.displayName ? `${u.displayName}@tenant.com` : 'unknown@org.com');
                         const role = u.groupUserAccessRight || 'Viewer';
-                        const presetKey = `real_${email.replace(/[^a-zA-Z0-9_]/g, '_')}`;
+                        const isGroup = u.principalType === 'Group';
+                        const cleanKey = `real_${email.replace(/[^a-zA-Z0-9_]/g, '_')}`;
 
                         // 注册到 USER_PRESETS 中，供沙盒完整流转模拟
-                        USER_PRESETS[presetKey] = {
-                            id: presetKey,
+                        USER_PRESETS[cleanKey] = {
+                            id: cleanKey,
                             name: u.displayName || email.split('@')[0],
                             upn: email,
-                            roleTag: `${role} (真实租户)`,
+                            roleTag: `${role} (${isGroup ? 'Security Group' : 'Org Member'})`,
                             roleColor: role === 'Admin' ? '#60a5fa' : (role === 'Contributor' ? '#34d399' : (role === 'Member' ? '#818cf8' : '#fbbf24')),
-                            description: `真实组织工作区 [${wsName}] 中的直属授权主体`,
+                            description: `真实组织工作区 [${targetWsName}] 授权主体 (权限等级: ${role})`,
                             state: {
-                                isGuestUser: email.includes('#ext#') || email.toLowerCase().includes('external'),
+                                isGuestUser: email.includes('#ext#') || email.toLowerCase().includes('external') || email.includes('#'),
                                 tenantAllowExport: true,
                                 tenantAllowWebModeling: ['Admin', 'Member', 'Contributor'].includes(role),
                                 capacityType: 'fabric_f64',
@@ -854,7 +1846,7 @@
                                 gatewayOnline: true,
                                 sharePermission: 'ReadBuild',
                                 hasAppAccess: true,
-                                rlsEnabled: true,
+                                rlsEnabled: !['Admin', 'Member', 'Contributor'].includes(role),
                                 rlsRoleAssigned: 'Region_Assigned',
                                 olsEnabled: false,
                                 maskedFields: 'Salary, Margin'
@@ -864,23 +1856,73 @@
                         return {
                             upn: email,
                             role: `${role}`,
-                            presetId: presetKey
+                            presetId: cleanKey,
+                            isGroup: isGroup
                         };
                     });
                 }
 
+                // 补充从个人工作区中解析的所有拥有者用户 (例如 seven@carman.ccwu.cc)
+                wsList.forEach(w => {
+                    if (w.name && w.name.includes('@')) {
+                        const parts = w.name.split(' ');
+                        const emailPart = parts.find(p => p.includes('@'));
+                        if (emailPart) {
+                            const cleanKey = `real_${emailPart.replace(/[^a-zA-Z0-9_]/g, '_')}`;
+                            if (!USER_PRESETS[cleanKey]) {
+                                USER_PRESETS[cleanKey] = {
+                                    id: cleanKey,
+                                    name: emailPart.split('@')[0],
+                                    upn: emailPart,
+                                    roleTag: 'Admin (Workspace Owner)',
+                                    roleColor: '#60a5fa',
+                                    description: `真实工作区 [${w.name}] 所有者`,
+                                    state: {
+                                        isGuestUser: false,
+                                        tenantAllowExport: true,
+                                        tenantAllowWebModeling: true,
+                                        capacityType: 'fabric_f64',
+                                        workspaceRole: 'Admin',
+                                        isModelOwner: true,
+                                        isInStrictMode: false,
+                                        hasAccessToAllDataConnections: true,
+                                        gatewayOnline: true,
+                                        sharePermission: 'ReadBuild',
+                                        hasAppAccess: true,
+                                        rlsEnabled: false,
+                                        rlsRoleAssigned: 'Full_Access',
+                                        olsEnabled: false,
+                                        maskedFields: ''
+                                    }
+                                };
+                                if (!realUsers.some(ru => ru.upn === emailPart)) {
+                                    realUsers.push({
+                                        upn: emailPart,
+                                        role: 'Admin',
+                                        presetId: cleanKey,
+                                        isGroup: false
+                                    });
+                                }
+                            }
+                        }
+                    }
+                });
+
                 if (realUsers.length === 0) {
-                    throw new Error('未获取到工作区成员列表，可能需要管理员身份或个人 Delegated 授权凭据');
+                    throw new Error(data.error || '未获取到工作区成员列表，可能需要管理员身份或个人 Delegated 授权凭据');
                 }
 
                 // 2. 动态注册真实模型至 MODEL_DEFINITIONS
-                const modelKey = `real_model_${dsId || wsId}`;
-                const finalModelName = dsName ? `🟢 真实模型: ${dsName}` : `🟢 真实工作区资产 (${wsName})`;
+                const modelKey = `real_model_${dsId || targetWsId}`;
+                // 严格过滤：若 dsName 包含多选汇总文本（如“已选 2 个模型”），回退为精准资产命名
+                const isDirtyDsName = !dsName || dsName.includes('已选') || dsName.includes('个模型') || dsName.includes('个数据集');
+                const cleanDsName = isDirtyDsName ? '' : dsName;
+                const finalModelName = cleanDsName ? `🟢 真实模型: ${cleanDsName}` : `🟢 真实工作区资产 (${targetWsName})`;
 
                 MODEL_DEFINITIONS[modelKey] = {
                     id: modelKey,
                     name: finalModelName,
-                    workspaceName: wsName || '生产工作区',
+                    workspaceName: targetWsName || '生产工作区',
                     capacity: '真实租户环境 (Fabric / Premium)',
                     tables: ['Real_Model_Data', 'Security_Mapping'],
                     hasRLS: true,
@@ -888,47 +1930,61 @@
                     users: realUsers
                 };
 
-                // 3. 动态注入到模型下拉框
-                const selectEl = document.getElementById('pb-model-select');
-                if (selectEl) {
-                    let opt = selectEl.querySelector(`option[value="${modelKey}"]`);
-                    if (!opt) {
-                        opt = document.createElement('option');
-                        opt.value = modelKey;
-                        selectEl.insertBefore(opt, selectEl.firstChild);
-                    }
-                    opt.textContent = `${finalModelName} - ${wsName}`;
-                    selectEl.value = modelKey;
+                this.currentModelKey = modelKey;
+
+                // 3. 更新同步指示条与工作区标签
+                const wsLabel = document.getElementById('pb-model-ws-name');
+                if (wsLabel) wsLabel.textContent = targetWsName;
+
+                const syncWsNameEl = document.getElementById('pb-sync-ws-name');
+                if (syncWsNameEl) {
+                    syncWsNameEl.innerHTML = `<strong style="color: #34d399;">${targetWsName}</strong> (已载入 <strong>${realUsers.length}</strong> 位真实成员)`;
                 }
 
-                this.currentModelKey = modelKey;
-                const wsLabel = document.getElementById('pb-model-ws-name');
-                if (wsLabel) wsLabel.textContent = wsName;
-
-                this.exitModelUserDrilldown(false);
+                // 4. 刷新界面：更新工作区、模型与预设下拉框选项、多层级有效权限卡片与审计报告
+                this.populateWorkspaceSelect();
+                this.populateModelSelect();
+                this.populatePresetSelect();
                 this.renderModelUsersList();
+                this.renderEffectivePermissionsCard();
                 this.updateAuditReport();
 
                 if (typeof window.showNotification === 'function') {
-                    window.showNotification(`🎉 真实数据同步成功！已载入 ${realUsers.length} 位真实租户用户，可点击任意用户进行 6 层权限流转推演！`, 'success');
+                    window.showNotification(`🎉 真实数据同步成功！已载入 [${targetWsName}] 的 ${realUsers.length} 位真实租户成员，可直接在上方下拉选单中选取推演！`, 'success');
                 }
             } catch (err) {
                 console.warn('Fetch real model error:', err);
                 if (typeof window.showNotification === 'function') {
                     window.showNotification(`⚠️ 真实数据抓取提示: ${err.message || '网络或凭据异常'}，已保留预设环境供离线推演`, 'warning');
                 }
+            } finally {
+                if (btnSync) {
+                    btnSync.disabled = false;
+                    btnSync.innerHTML = originalBtnText;
+                }
             }
         }
 
-        syncGlobalModel() {
+        async syncGlobalModel(forceFetch = false) {
+            if (forceFetch) {
+                return await this.fetchRealModelAndUsers();
+            }
+
             const gtbModelNameEl = document.getElementById('gtb-ds-display-text');
             const gtbWsNameEl = document.getElementById('gtb-ws-display-text');
 
-            const mName = gtbModelNameEl ? gtbModelNameEl.textContent : '当前选中模型';
-            const wName = gtbWsNameEl ? gtbWsNameEl.textContent : '当前选中工作区';
+            let rawMName = gtbModelNameEl ? gtbModelNameEl.textContent.trim() : '';
+            const isDirty = !rawMName || rawMName.includes('已选') || rawMName.includes('个模型') || rawMName.includes('个数据集') || rawMName.includes('--');
+            const mName = isDirty ? '组织数据集' : rawMName;
+            const wName = gtbWsNameEl ? gtbWsNameEl.textContent.trim() : '当前选中工作区';
 
             const wsLabel = document.getElementById('pb-model-ws-name');
             if (wsLabel) wsLabel.textContent = wName;
+
+            const syncWsNameEl = document.getElementById('pb-sync-ws-name');
+            if (syncWsNameEl) syncWsNameEl.textContent = wName;
+
+            this.populateModelSelect();
 
             if (typeof window.showNotification === 'function') {
                 window.showNotification(`已同步全局上下文: ${mName} (${wName})`, 'info');
@@ -943,15 +1999,25 @@
             const model = MODEL_DEFINITIONS[this.currentModelKey] || MODEL_DEFINITIONS['model_sales'];
             if (countEl) countEl.textContent = `${model.users.length} 位关联用户`;
 
-            listEl.innerHTML = model.users.map(u => `
-                <div class="pb-model-user-row" onclick="window.PermissionBlueprint.loadUserFromModel('${u.presetId}')" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-radius: 6px; cursor: pointer; transition: all 0.2s;" title="点击下钻模拟该用户在当前模型中的 6 层有效权限">
+            const currentUpn = this.activePresetKey && USER_PRESETS[this.activePresetKey] ? USER_PRESETS[this.activePresetKey].upn.toLowerCase() : '';
+
+            listEl.innerHTML = model.users.map(u => {
+                const isSelected = (this.activePresetKey && u.presetId === this.activePresetKey) || (currentUpn && u.upn.toLowerCase() === currentUpn);
+                const activeStyle = isSelected ? 'border: 1px solid var(--accent); background: rgba(99, 102, 241, 0.16); box-shadow: 0 0 8px rgba(99, 102, 241, 0.3);' : '';
+
+                return `
+                <div class="pb-model-user-row ${isSelected ? 'active-simulated' : ''}" onclick="window.PermissionBlueprint.loadUserFromModel('${u.presetId}')" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-radius: 6px; cursor: pointer; transition: all 0.2s; ${activeStyle}" title="点击直接模拟该用户在当前模型中的 6 层有效权限">
                     <div style="display: flex; flex-direction: column; min-width: 0;">
-                        <span style="font-size: 0.73rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${u.upn}</span>
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <span style="font-size: 0.73rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${u.upn}</span>
+                            ${isSelected ? '<span style="color: var(--accent); font-size: 0.66rem; font-weight: bold;">✓ 模拟中</span>' : ''}
+                        </div>
                         <span style="font-size: 0.65rem; color: var(--text-secondary);">身份类别: ${USER_PRESETS[u.presetId] ? USER_PRESETS[u.presetId].name : u.role}</span>
                     </div>
                     <span class="gtb-auth-badge" style="font-size: 0.65rem; padding: 2px 6px;">${u.role}</span>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         loadUserFromModel(presetId) {
@@ -1017,12 +2083,14 @@
             this.renderNodes();
             this.recalculateAndRenderWires();
             this.updateAuditReport();
+            this.renderEffectivePermissionsCard();
         }
 
         updateStateField(key, val) {
             this.currentState[key] = val;
             this.recalculateAndRenderWires();
             this.updateAuditReport();
+            this.renderEffectivePermissionsCard();
         }
 
         renderNodes() {
@@ -1638,6 +2706,858 @@
                         ${exportResult}
                     </div>
                 </div>
+            `;
+        }
+
+        renderEffectivePermissionsCard() {
+            const container = document.getElementById('pb-effective-permissions-content');
+            const summaryBadge = document.getElementById('pb-perm-summary-badge');
+            if (!container) return;
+
+            const s = this.currentState;
+            const model = MODEL_DEFINITIONS[this.currentModelKey] || MODEL_DEFINITIONS['model_sales'];
+            const wsName = this.currentWorkspaceName || (model ? model.workspaceName : 'Production Analytics');
+
+            const role = s.workspaceRole; // 'Admin' | 'Member' | 'Contributor' | 'Viewer' | 'None'
+            const isAdmin = role === 'Admin';
+            const isMember = role === 'Member';
+            const isContributor = role === 'Contributor';
+            const isViewer = role === 'Viewer';
+            const isPrivileged = ['Admin', 'Member', 'Contributor'].includes(role);
+            const canBuild = isPrivileged || (s.sharePermission && s.sharePermission.includes('Build'));
+            const canReadModel = isPrivileged || s.sharePermission !== 'None' || isViewer;
+
+            // 顶栏概要标签
+            if (summaryBadge) {
+                if (isAdmin) {
+                    summaryBadge.textContent = '全权掌管 (Admin)';
+                    summaryBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+                    summaryBadge.style.color = '#f87171';
+                } else if (isPrivileged) {
+                    summaryBadge.textContent = '特权穿透 (Bypass)';
+                    summaryBadge.style.background = 'rgba(245, 158, 11, 0.15)';
+                    summaryBadge.style.color = '#fbbf24';
+                } else if (isViewer) {
+                    summaryBadge.textContent = '受限只读 (Viewer)';
+                    summaryBadge.style.background = 'rgba(56, 189, 248, 0.15)';
+                    summaryBadge.style.color = '#38bdf8';
+                } else {
+                    summaryBadge.textContent = '通用权限基准';
+                    summaryBadge.style.background = 'rgba(148, 163, 184, 0.15)';
+                    summaryBadge.style.color = '#94a3b8';
+                }
+            }
+
+            const capsule = this.activeFeatureCapsule || 'all';
+            let rowsHtml = '';
+
+            if (capsule === 'export') {
+                // 导出场景下各层级穿透判定
+                const t1Ok = s.tenantAllowExport;
+                const t2Ok = s.capacityType === 'fabric_f64';
+                const t3Ok = isPrivileged;
+                const t4Ok = canBuild;
+                const t5Ok = isPrivileged || !s.rlsEnabled || s.rlsRoleAssigned !== 'Unassigned';
+                const t6Ok = t1Ok && t4Ok;
+
+                rowsHtml = `
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">🏢 L1 租户导出策略</span>
+                        <span class="pb-matrix-status ${t1Ok ? 'enabled' : 'disabled'}">${t1Ok ? '✅ 策略允许' : '❌ 租户收紧阻断'}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">⚡ L2 底层导出吞吐</span>
+                        <span class="pb-matrix-status ${t2Ok ? 'enabled' : 'warn'}">${t2Ok ? '⚡ Direct Lake 高吞吐' : '💼 Pro 共享限流'}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">📁 L3 工作区导出特权</span>
+                        <span class="pb-matrix-status ${t3Ok ? 'enabled' : (isViewer ? 'warn' : 'disabled')}">${t3Ok ? '👑 协同导出' : (isViewer ? '👁️ 只读导出汇总' : '🚫 无权限')}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">🗄️ L4 Build 衍生构建</span>
+                        <span class="pb-matrix-status ${t4Ok ? 'enabled' : 'disabled'}">${t4Ok ? '⚡ 具备明细导出权' : '❌ 缺少 Build 权限'}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">🛡️ L5 RLS 导出受控行</span>
+                        <span class="pb-matrix-status ${t5Ok ? (isPrivileged ? 'bypassed' : 'warn') : 'disabled'}">${isPrivileged ? '⚡ 全量导出' : (s.rlsEnabled ? `🔒 仅限 ${s.rlsRoleAssigned}` : '✅ 全量数据')}</span>
+                    </div>
+                    <div class="pb-overview-row" style="background: rgba(99,102,241,0.06); border-radius: 4px; padding: 6px 4px;">
+                        <span class="pb-overview-tier" style="font-weight:700; color:var(--text-primary);">🎯 L6 最终底层导出能力</span>
+                        <span class="pb-matrix-status ${t6Ok ? 'enabled' : 'disabled'}">${t6Ok ? '✅ 最终放行导出' : '❌ 最终阻断导出'}</span>
+                    </div>
+                `;
+            } else if (capsule === 'gac') {
+                // GAC 细粒度访问控制各层级穿透判定
+                const inStrict = s.isInStrictMode;
+                const hasConn = s.hasAccessToAllDataConnections;
+                const dsAuth = hasConn && (!inStrict || isPrivileged);
+                const mashupOk = isPrivileged || (!inStrict || hasConn);
+                const pqOk = isPrivileged && hasConn && s.gatewayOnline;
+
+                rowsHtml = `
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">🏢 L1 GAC 隔离策略模式</span>
+                        <span class="pb-matrix-status ${inStrict ? 'enabled' : 'warn'}">${inStrict ? '🛡️ 严格门禁启用' : '⚠️ 宽松信任模式'}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">⚡ L2 容量网关通道</span>
+                        <span class="pb-matrix-status ${s.capacityType === 'fabric_f64' ? 'enabled' : 'warn'}">${s.capacityType === 'fabric_f64' ? '⚡ 专属租户通道' : '💼 共享网关通道'}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">📁 L3 网关直连凭据通道</span>
+                        <span class="pb-matrix-status ${hasConn ? 'enabled' : 'disabled'}">${hasConn ? '✅ 全权直连凭据' : '❌ 凭据隔离受限'}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">🗄️ L4 数据源凭据鉴权</span>
+                        <span class="pb-matrix-status ${dsAuth ? 'enabled' : 'disabled'}">${dsAuth ? '✅ 直连鉴权通过' : '❌ GAC 拦截阻断'}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">🛡️ L5 GAC Mashup 门禁</span>
+                        <span class="pb-matrix-status ${mashupOk ? (isPrivileged ? 'bypassed' : 'enabled') : 'disabled'}">${mashupOk ? (isPrivileged ? '⚡ 特权放行' : '✅ 门禁通过') : '❌ 门禁拦截'}</span>
+                    </div>
+                    <div class="pb-overview-row" style="background: rgba(99,102,241,0.06); border-radius: 4px; padding: 6px 4px;">
+                        <span class="pb-overview-tier" style="font-weight:700; color:var(--text-primary);">🎯 L6 网页端 Power Query</span>
+                        <span class="pb-matrix-status ${pqOk ? 'enabled' : 'disabled'}">${pqOk ? '✅ 凭据畅通允许' : '❌ GAC 隔离不可用'}</span>
+                    </div>
+                `;
+            } else if (capsule === 'rls') {
+                // RLS 行级数据安全
+                const isGuest = s.isGuestUser;
+                const rlsOn = s.rlsEnabled;
+                const rRole = s.rlsRoleAssigned;
+
+                rowsHtml = `
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">🏢 L1 主体合规源判定</span>
+                        <span class="pb-matrix-status ${isGuest ? 'warn' : 'enabled'}">${isGuest ? '⚠️ 外部访客 (B2B)' : '✅ 内部企业成员'}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">⚡ L2 动态 DAX 计算吞吐</span>
+                        <span class="pb-matrix-status ${s.capacityType === 'fabric_f64' ? 'enabled' : 'warn'}">${s.capacityType === 'fabric_f64' ? '⚡ 120次/分并发' : '⚠️ 60次/分并发'}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">📁 L3 工作区特权穿透</span>
+                        <span class="pb-matrix-status ${isPrivileged ? 'bypassed' : 'warn'}">${isPrivileged ? '⚡ 穿透免校验' : '🔒 受安全规则约束'}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">🗄️ L4 语义模型访问门禁</span>
+                        <span class="pb-matrix-status ${canReadModel ? 'enabled' : 'disabled'}">${canReadModel ? '✅ 模型读取通过' : '❌ 拒绝访问'}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">🛡️ L5 生效过滤安全角色</span>
+                        <span class="pb-matrix-status ${isPrivileged ? 'bypassed' : (rlsOn ? (rRole === 'Unassigned' ? 'disabled' : 'warn') : 'enabled')}">${isPrivileged ? '⚡ 特权穿透' : (rlsOn ? (rRole === 'Unassigned' ? '❌ 403 阻断' : `🔒 ${rRole}`) : '✅ 全量数据可见')}</span>
+                    </div>
+                    <div class="pb-overview-row" style="background: rgba(99,102,241,0.06); border-radius: 4px; padding: 6px 4px;">
+                        <span class="pb-overview-tier" style="font-weight:700; color:var(--text-primary);">🎯 L6 最终可视数据行</span>
+                        <span class="pb-matrix-status ${isPrivileged ? 'enabled' : (rlsOn ? (rRole === 'Unassigned' ? 'disabled' : 'warn') : 'enabled')}">${isPrivileged ? '✅ 完整全量行可见' : (rlsOn ? (rRole === 'Unassigned' ? '❌ 零数据阻断' : `🔒 仅限 ${rRole} 行`) : '✅ 全量数据可见')}</span>
+                    </div>
+                `;
+            } else if (capsule === 'ols') {
+                // OLS 列级与敏感字段安全
+                const olsOn = s.olsEnabled;
+                const masked = s.maskedFields || 'Salary, Margin';
+
+                rowsHtml = `
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">🏢 L1 租户数据导出管控</span>
+                        <span class="pb-matrix-status ${s.tenantAllowExport ? 'enabled' : 'disabled'}">${s.tenantAllowExport ? '✅ 允许导出' : '❌ 禁用导出'}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">⚡ L2 AI Copilot 字段索引</span>
+                        <span class="pb-matrix-status ${s.capacityType === 'fabric_f64' ? 'enabled' : 'warn'}">${s.capacityType === 'fabric_f64' ? '⚡ 自动剔除掩蔽列' : '💼 标准索引'}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">📁 L3 敏感列豁免特权</span>
+                        <span class="pb-matrix-status ${isPrivileged ? 'bypassed' : 'warn'}">${isPrivileged ? '⚡ 特权豁免可见' : '🔒 敏感列受控'}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">🗄️ L4 模型架构写回权限</span>
+                        <span class="pb-matrix-status ${isPrivileged ? 'enabled' : 'disabled'}">${isPrivileged ? '✅ 架构读写编辑' : '👁️ 只读架构'}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">🛡️ L5 行列双重隔离生效</span>
+                        <span class="pb-matrix-status ${s.rlsEnabled && olsOn ? 'warn' : 'enabled'}">${s.rlsEnabled && olsOn ? '🔒 行列双重安全' : '✅ 单层或无过滤'}</span>
+                    </div>
+                    <div class="pb-overview-row" style="background: rgba(99,102,241,0.06); border-radius: 4px; padding: 6px 4px;">
+                        <span class="pb-overview-tier" style="font-weight:700; color:var(--text-primary);">🎯 L6 敏感列最终状态</span>
+                        <span class="pb-matrix-status ${isPrivileged ? 'enabled' : (olsOn ? 'warn' : 'enabled')}">${isPrivileged ? '⚡ 敏感列全部可见' : (olsOn ? `🔒 掩蔽: ${masked}` : '✅ 全部列开放')}</span>
+                    </div>
+                `;
+            } else if (capsule === 'modeling') {
+                // 建模与构建
+                const webMod = s.tenantAllowWebModeling;
+                const canEditReport = isPrivileged && webMod;
+
+                rowsHtml = `
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">🏢 L1 Web 端数据建模策略</span>
+                        <span class="pb-matrix-status ${webMod ? 'enabled' : 'disabled'}">${webMod ? '✅ 策略放行' : '❌ 禁用网页端建模'}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">⚡ L2 XMLA 读写终结点</span>
+                        <span class="pb-matrix-status ${s.capacityType === 'fabric_f64' ? 'enabled' : 'warn'}">${s.capacityType === 'fabric_f64' ? '⚡ 完整 XMLA 读写' : '💼 仅只读或受限'}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">📁 L3 资产增删改编辑权</span>
+                        <span class="pb-matrix-status ${isPrivileged ? 'enabled' : 'disabled'}">${isPrivileged ? '✅ 允许架构变更' : '❌ 无编辑权限'}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">🗄️ L4 Build 衍生模型构建</span>
+                        <span class="pb-matrix-status ${canBuild ? 'enabled' : 'disabled'}">${canBuild ? '⚡ 允许创建下游资产' : '❌ 仅只读访问'}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">🛡️ L5 跨表双向过滤支持</span>
+                        <span class="pb-matrix-status enabled">✅ 关系引擎支持</span>
+                    </div>
+                    <div class="pb-overview-row" style="background: rgba(99,102,241,0.06); border-radius: 4px; padding: 6px 4px;">
+                        <span class="pb-overview-tier" style="font-weight:700; color:var(--text-primary);">🎯 L6 报表在线设计与保存</span>
+                        <span class="pb-matrix-status ${canEditReport ? 'enabled' : 'disabled'}">${canEditReport ? '✅ 允许在线设计保存' : '❌ 只读禁止设计编辑'}</span>
+                    </div>
+                `;
+            } else {
+                // 默认 all 全览
+                rowsHtml = `
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">🏢 L1 租户策略</span>
+                        <span class="pb-matrix-status ${s.tenantAllowExport ? 'enabled' : 'disabled'}">${s.tenantAllowExport ? '✅ 允许导出' : '❌ 禁用导出'}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">⚡ L2 计算容量</span>
+                        <span class="pb-matrix-status ${s.capacityType === 'fabric_f64' ? 'enabled' : 'warn'}">${s.capacityType === 'fabric_f64' ? '⚡ Fabric F64' : '💼 Pro 共享'}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">📁 L3 工作区角色</span>
+                        <span class="pb-matrix-status ${isAdmin ? 'enabled' : (isPrivileged ? 'bypassed' : (isViewer ? 'warn' : 'disabled'))}">${isAdmin ? '👑 Admin' : (isPrivileged ? `✏️ ${role}` : (isViewer ? '👁️ Viewer' : '🚫 无角色'))}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">🗄️ L4 语义模型</span>
+                        <span class="pb-matrix-status ${canBuild ? 'enabled' : (canReadModel ? 'warn' : 'disabled')}">${canBuild ? '⚡ 构建+分析' : (canReadModel ? '👁️ 仅模型只读' : '❌ 拒绝访问')}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">🛡️ L5 行级安全 (RLS)</span>
+                        <span class="pb-matrix-status ${isPrivileged ? 'bypassed' : (s.rlsEnabled ? (s.rlsRoleAssigned === 'Unassigned' ? 'disabled' : 'warn') : 'enabled')}">${isPrivileged ? '⚡ 特权穿透' : (s.rlsEnabled ? (s.rlsRoleAssigned === 'Unassigned' ? '❌ 阻断' : `🔒 ${s.rlsRoleAssigned}`) : '✅ 全量数据')}</span>
+                    </div>
+                    <div class="pb-overview-row">
+                        <span class="pb-overview-tier">🔒 L6 列级与资产 (OLS)</span>
+                        <span class="pb-matrix-status ${isPrivileged ? 'bypassed' : (s.olsEnabled ? 'warn' : 'enabled')}">${isPrivileged ? '⚡ 敏感列可见' : (s.olsEnabled ? `🔒 掩蔽: ${s.maskedFields}` : '✅ 资产全开放')}</span>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = rowsHtml;
+
+            // 同步激活当前胶囊按钮样式
+            const capsuleContainer = document.getElementById('pb-feature-capsules');
+            if (capsuleContainer) {
+                const btns = capsuleContainer.querySelectorAll('.pb-capsule-btn');
+                btns.forEach(b => {
+                    if (b.getAttribute('data-capsule') === capsule) {
+                        b.classList.add('active');
+                    } else {
+                        b.classList.remove('active');
+                    }
+                });
+            }
+
+            // 同步渲染主工作区的 6 大层级横向全景流转矩阵
+            this.renderMatrix();
+        }
+
+        renderMatrix() {
+            const matrixEl = document.getElementById('pb-matrix-container');
+            if (!matrixEl) return;
+
+            const s = this.currentState;
+            const model = MODEL_DEFINITIONS[this.currentModelKey] || MODEL_DEFINITIONS['model_sales'];
+            const wsName = this.currentWorkspaceName || (model ? model.workspaceName : 'Production Analytics');
+            const overrides = this.whatIfOverrides || {};
+            // 原生源头基础配置 (支持 What-If 覆盖)
+            const getRaw = (k, def) => (overrides[k] !== undefined ? overrides[k] : (s[k] !== undefined ? s[k] : def));
+
+            // L1 租户全局基础配置
+            const tenantAllowExport = getRaw('tenantAllowExport', true);
+            const tenantAllowWebModeling = getRaw('tenantAllowWebModeling', true);
+            const shareExternal = getRaw('shareExternal', !s.isGuestUser);
+            const isGuestUser = getRaw('isGuestUser', false);
+            const xmlaEndpoint = getRaw('xmlaEndpoint', true);
+            const isInStrictMode = getRaw('isInStrictMode', false);
+
+            // L2 容量基础配置
+            const capacityType = getRaw('capacityType', 'fabric_f64');
+            const isFabric = capacityType === 'fabric_f64';
+            const largeDataset = getRaw('largeDataset', isFabric);
+            const autoScale = getRaw('autoScale', isFabric);
+            const queryRate = getRaw('queryRate', isFabric ? '120/min' : '60/min');
+            const aiCopilot = getRaw('aiCopilot', isFabric);
+            const directLake = getRaw('directLake', isFabric);
+
+            // L3 工作区角色与凭据
+            const role = getRaw('workspaceRole', s.workspaceRole || 'Viewer');
+            const isAdmin = role === 'Admin';
+            const isMember = role === 'Member';
+            const isContributor = role === 'Contributor';
+            const isViewer = role === 'Viewer';
+            const isPrivileged = ['Admin', 'Member', 'Contributor'].includes(role);
+            const hasConnRaw = getRaw('hasAccessToAllDataConnections', s.hasAccessToAllDataConnections !== undefined ? s.hasAccessToAllDataConnections : true);
+
+            // L4 语义模型直接权限基础配置
+            const sharePermission = getRaw('sharePermission', s.sharePermission || 'Read');
+            const canBuild = isPrivileged || (sharePermission && String(sharePermission).includes('Build'));
+            const canReadModel = isPrivileged || isViewer || (sharePermission && sharePermission !== 'None');
+            const gatewayOnline = getRaw('gatewayOnline', true);
+
+            // L5 行级安全基础配置
+            const rlsEnabled = getRaw('rlsEnabled', false);
+            const activeRlsRole = getRaw('rlsRoleAssigned', 'Region_East');
+            const daxIdentityType = getRaw('daxIdentityType', isGuestUser ? 'Guest_EXT_UPN' : 'Internal_UPN');
+            const crossFiltering = getRaw('crossFiltering', true);
+
+            // L6 列级安全基础配置
+            const olsEnabled = getRaw('olsEnabled', false);
+
+            // 派生权限动态计算调度器：若用户显式通过 What-If 覆盖了该项则尊重覆盖，否则执行纯函数级联推导，彻底杜绝陈旧状态污染！
+            const getDerived = (field, deriveFn) => (overrides[field] !== undefined ? overrides[field] : deriveFn());
+
+            // 动态计算级联波及影响集合
+            const impacts = this.calculateWhatIfImpacts();
+            const overrideCount = Object.keys(overrides).length;
+
+            // 更新顶部主体徽章状态
+            const topBadge = document.getElementById('pb-top-simulated-badge');
+            if (topBadge) {
+                const preset = USER_PRESETS[this.activePresetKey];
+                if (preset && this.activePresetKey !== 'none') {
+                    topBadge.textContent = `当前主体: ${preset.name} (${preset.roleTag})`;
+                    topBadge.style.background = 'rgba(99, 102, 241, 0.15)';
+                    topBadge.style.color = '#818cf8';
+                } else {
+                    topBadge.textContent = '当前主体: 通用基准 (未模拟特定用户)';
+                    topBadge.style.background = 'rgba(148, 163, 184, 0.15)';
+                    topBadge.style.color = '#94a3b8';
+                }
+            }
+
+            // 置顶 What-If 演练诊断条 (极简紧凑单行设计)
+            let bannerHtml = '';
+            if (overrideCount > 0) {
+                const impactKeys = Object.keys(impacts);
+                const impactSummary = impactKeys.length > 0 
+                    ? `已实时联动引发 <strong>${impactKeys.length}</strong> 处跨层级连锁反应 (${impactKeys.map(k => impacts[k].from).filter((v, i, a) => a.indexOf(v) === i).join('、')} 受波及)` 
+                    : '已生效，暂无跨层阻断冲突';
+                bannerHtml = `
+                    <div class="pb-whatif-banner">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span>⚡</span>
+                            <span><strong>What-If 权限演练中</strong> (已覆盖 ${overrideCount} 项策略配置)：${impactSummary}</span>
+                        </div>
+                        <button onclick="window.PermissionBlueprint.resetWhatIf()" style="background: rgba(245, 158, 11, 0.2); border: 1px solid rgba(245, 158, 11, 0.5); color: #fbbf24; border-radius: 4px; padding: 1px 7px; font-size: 0.68rem; cursor: pointer; font-weight: 600;">↺ 恢复初始基准</button>
+                    </div>
+                `;
+            } else {
+                bannerHtml = `
+                    <div class="pb-whatif-banner pb-whatif-banner-idle">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span>⚡</span>
+                            <span><strong>What-If 演练</strong>：点击项右侧【切换】即时推演跨层连锁反应</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 辅助函数：生成设置行 HTML (支持 What-If 开关与联动受影响标签)
+            const renderRow = (propName, propKey, statusClass, statusText, whatIfField = null, options = null) => {
+                const isOverridden = whatIfField && (overrides[whatIfField] !== undefined);
+                const isImpacted = impacts[propKey] !== undefined;
+                const rowClass = `pb-col-row ${isImpacted ? 'impacted' : ''}`;
+                
+                let actionBtn = '';
+                if (whatIfField) {
+                    if (Array.isArray(options)) {
+                        // 循环切换选项 (如工作区角色)
+                        const currentIdx = options.indexOf(getRaw(whatIfField));
+                        const nextVal = options[(currentIdx + 1) % options.length];
+                        actionBtn = `<button class="pb-whatif-toggle-btn" onclick="window.PermissionBlueprint.toggleWhatIfSetting('${whatIfField}', '${nextVal}')" title="What-If 切换为: ${nextVal}">切换</button>`;
+                    } else {
+                        // 布尔切换
+                        actionBtn = `<button class="pb-whatif-toggle-btn" onclick="window.PermissionBlueprint.toggleWhatIfSetting('${whatIfField}')" title="What-If 切换开关">切换</button>`;
+                    }
+                }
+
+                let impactBadge = '';
+                if (isImpacted) {
+                    impactBadge = `<span class="pb-impact-tag" title="${impacts[propKey].reason}">⚡ 受 ${impacts[propKey].from} 联动: ${impacts[propKey].reason}</span>`;
+                }
+
+                return `
+                    <div class="${rowClass}" data-prop-key="${propKey}" data-whatif-field="${whatIfField || ''}">
+                        <div class="pb-col-prop">
+                            <span class="pb-col-prop-name" title="${propName}">${propName}</span>
+                            <span class="pb-col-prop-key">${propKey} ${isOverridden ? '<strong style="color: #fbbf24;">(What-If 覆盖)</strong>' : ''}</span>
+                            ${impactBadge}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 5px; flex-shrink: 0;">
+                            <span class="pb-matrix-status ${statusClass}">${statusText}</span>
+                            ${actionBtn}
+                        </div>
+                    </div>
+                `;
+            };
+
+            // Tier 1: 租户策略
+            const t1Status = tenantAllowExport ? 'enabled' : 'disabled';
+            const t1StatusText = tenantAllowExport ? '✅ 策略放行' : '❌ 策略收紧';
+            const col1Html = `
+                <div class="pb-tier-col" data-tier="1">
+                    <div class="pb-col-header">
+                        <div class="pb-col-title-row">
+                            <h4 class="pb-col-title">🏢 L1 租户全局策略</h4>
+                            <span class="pb-matrix-status ${t1Status}">${t1StatusText}</span>
+                        </div>
+                        <div class="pb-col-sub" title="租户管理员全局功能管控">租户全局策略池</div>
+                    </div>
+                    <div class="pb-col-body">
+                        ${renderRow('允许导出数据到 Excel/CSV', 'exportToExcel', tenantAllowExport ? 'enabled' : 'disabled', tenantAllowExport ? '✅ 启用' : '❌ 禁用', 'tenantAllowExport')}
+                        ${renderRow('Web 浏览器端数据建模', 'webModeling', tenantAllowWebModeling ? 'enabled' : 'disabled', tenantAllowWebModeling ? '✅ 启用' : '❌ 禁用', 'tenantAllowWebModeling')}
+                        ${renderRow('允许组织外部共享内容', 'shareExternal', shareExternal ? 'enabled' : 'disabled', shareExternal ? '✅ 启用' : '❌ 禁用', 'shareExternal')}
+                        ${renderRow('Azure AD B2B 外部访客', 'guestAccess', isGuestUser ? 'warn' : 'enabled', isGuestUser ? '⚠️ 外部访客' : '✅ 内部成员', 'isGuestUser')}
+                        ${renderRow('XMLA 终结点读写支持', 'xmlaEndpoint', xmlaEndpoint ? 'enabled' : 'disabled', xmlaEndpoint ? '✅ 启用' : '❌ 禁用', 'xmlaEndpoint')}
+                        ${renderRow('GAC 细粒度隔离策略', 'gacPolicy', isInStrictMode ? 'enabled' : 'warn', isInStrictMode ? '🛡️ 严格门禁' : '⚠️ 宽松模式', 'isInStrictMode')}
+                    </div>
+                </div>
+            `;
+
+            // Tier 2: 容量计算资源
+            const t2Status = isFabric ? 'enabled' : 'warn';
+            const t2StatusText = isFabric ? '⚡ F64 充足' : '💼 Pro 共享';
+            const col2Html = `
+                <div class="pb-tier-col" data-tier="2">
+                    <div class="pb-col-header">
+                        <div class="pb-col-title-row">
+                            <h4 class="pb-col-title">⚡ L2 容量计算资源</h4>
+                            <span class="pb-matrix-status ${t2Status}">${t2StatusText}</span>
+                        </div>
+                        <div class="pb-col-sub" title="Fabric / Power BI 容量承载">底层硬件算力池</div>
+                    </div>
+                    <div class="pb-col-body">
+                        ${renderRow('绑定的容量规格', 'capacitySku', isFabric ? 'enabled' : 'warn', isFabric ? '⚡ Fabric F64' : '💼 Pro 共享', 'capacityType', ['fabric_f64', 'pro_shared'])}
+                        ${renderRow('大数据集存储格式', 'largeDataset', largeDataset ? 'enabled' : 'disabled', largeDataset ? '✅ 启用' : '❌ 禁用', 'largeDataset')}
+                        ${renderRow('弹性自动缩放能力', 'autoScale', autoScale ? 'enabled' : 'disabled', autoScale ? '✅ 启用' : '❌ 禁用', 'autoScale')}
+                        ${renderRow('DirectQuery 刷新速率', 'queryRate', queryRate === '120/min' ? 'enabled' : 'warn', queryRate === '120/min' ? '✅ 120次/分' : '⚠️ 60次/分', 'queryRate', ['120/min', '60/min'])}
+                        ${renderRow('Copilot 与 AI 增强', 'aiCopilot', aiCopilot ? 'enabled' : 'disabled', aiCopilot ? '✅ 启用' : '❌ 禁用', 'aiCopilot')}
+                        ${renderRow('Direct Lake 极速湖仓', 'directLake', directLake ? 'enabled' : 'disabled', directLake ? '✅ 启用' : '❌ 禁用', 'directLake')}
+                    </div>
+                </div>
+            `;
+
+            // Tier 3: 工作区治理角色
+            const manageMembers = getDerived('manageMembers', () => isAdmin);
+            const editDelete = getDerived('editDelete', () => isPrivileged);
+            const publishApp = getDerived('publishApp', () => isAdmin || isMember);
+            const gatewayAdmin = getDerived('gatewayAdmin', () => isAdmin);
+            
+            // L3 GAC 网关数据连接通道：严格模式下非特权用户受到严格审查隔离
+            const gacConnPass = getDerived('hasAccessToAllDataConnections', () => {
+                if (isInStrictMode && !isPrivileged) return false;
+                return hasConnRaw;
+            });
+            let gacConnStatus = 'enabled';
+            let gacConnText = '✅ 共享直连';
+            if (isAdmin) {
+                gacConnStatus = 'enabled';
+                gacConnText = '✅ 全权直连';
+            } else if (isInStrictMode && !isPrivileged) {
+                gacConnStatus = 'disabled';
+                gacConnText = '❌ 严格门禁隔离';
+            } else if (!hasConnRaw) {
+                gacConnStatus = 'disabled';
+                gacConnText = '❌ 凭据隔离';
+            } else {
+                gacConnStatus = isPrivileged ? 'enabled' : 'warn';
+                gacConnText = isInStrictMode ? '✅ 严格特许直连' : '✅ 共享直连';
+            }
+
+            const t3Status = isAdmin ? 'enabled' : (isPrivileged ? 'bypassed' : (isViewer ? 'warn' : 'disabled'));
+            const t3StatusText = isAdmin ? '👑 完全掌控' : (isPrivileged ? '✏️ 协同编辑' : (isViewer ? '👁️ 只读查看' : '🚫 无权限'));
+            const col3Html = `
+                <div class="pb-tier-col" data-tier="3">
+                    <div class="pb-col-header">
+                        <div class="pb-col-title-row">
+                            <h4 class="pb-col-title">📁 L3 工作区治理角色</h4>
+                            <span class="pb-matrix-status ${t3Status}">${t3StatusText}</span>
+                        </div>
+                        <div class="pb-col-sub" title="${wsName}">${wsName}</div>
+                    </div>
+                    <div class="pb-col-body">
+                        ${renderRow('当前分配的工作区角色', 'workspaceRole', role === 'None' ? 'disabled' : 'enabled', role === 'None' ? '❌ 无角色' : `✅ ${role}`, 'workspaceRole', ['Admin', 'Member', 'Contributor', 'Viewer', 'None'])}
+                        ${renderRow('成员管理与权限授予', 'manageMembers', manageMembers ? 'enabled' : (isMember ? 'warn' : 'disabled'), manageMembers ? '✅ 允许' : (isMember ? '⚠️ 仅查看者' : '❌ 禁用'), 'manageMembers')}
+                        ${renderRow('工作区资产增删改', 'editDelete', editDelete ? 'enabled' : 'disabled', editDelete ? '✅ 允许' : '❌ 禁用', 'editDelete')}
+                        ${renderRow('发布与更新组织应用', 'publishApp', publishApp ? 'enabled' : (isContributor ? 'warn' : 'disabled'), publishApp ? '✅ 允许' : (isContributor ? '⚠️ 需特许' : '❌ 禁用'), 'publishApp')}
+                        ${renderRow('企业网关与凭据托管', 'gatewayAdmin', gatewayAdmin ? 'enabled' : 'disabled', gatewayAdmin ? '✅ 允许' : '❌ 禁用', 'gatewayAdmin')}
+                        ${renderRow('GAC 网关数据连接通道', 'gacConnection', gacConnStatus, gacConnText, 'hasAccessToAllDataConnections')}
+                    </div>
+                </div>
+            `;
+
+            // Tier 4: 语义模型直接权限
+            const writePermission = getDerived('writePermission', () => isPrivileged);
+            const resharePermission = getDerived('resharePermission', () => isAdmin || isMember || (sharePermission && String(sharePermission).includes('Reshare')));
+            
+            // L4 模型架构写回：受工作区编辑特权与 L1 XMLA 终结点双重管控
+            let writeStatus = writePermission ? 'enabled' : 'disabled';
+            let writeText = writePermission ? '✅ 启用' : '❌ 禁用';
+            if (writePermission && !xmlaEndpoint) {
+                writeStatus = 'warn';
+                writeText = '⚠️ 阻断外部写回';
+            }
+
+            // L4 向第三方重新共享：受角色及 L1 组织外部共享双重管控
+            let reshareStatus = resharePermission ? 'enabled' : 'disabled';
+            let reshareText = resharePermission ? '✅ 启用' : '❌ 禁用';
+            if (resharePermission && !shareExternal) {
+                reshareStatus = 'warn';
+                reshareText = '⚠️ 仅限组织内部';
+            }
+
+            // L4 数据源直连鉴权：受网关在线、L1 GAC 严格模式与 L3 凭据共同决定
+            const isDsAuthOk = getDerived('dataSourceAuth', () => {
+                if (!gatewayOnline) return false;
+                if (isInStrictMode && !isPrivileged) return false;
+                return hasConnRaw;
+            });
+            let dsAuthStatus = isDsAuthOk ? 'enabled' : 'disabled';
+            let dsAuthText = '✅ 凭据已鉴权';
+            if (!gatewayOnline) {
+                dsAuthStatus = 'disabled';
+                dsAuthText = '❌ 网关离线';
+            } else if (isInStrictMode && !isPrivileged) {
+                dsAuthStatus = 'disabled';
+                dsAuthText = '❌ GAC严格门禁阻断';
+            } else if (!hasConnRaw) {
+                dsAuthStatus = 'warn';
+                dsAuthText = '⚠️ 凭据受限放行';
+            }
+
+            const t4Status = canBuild ? 'enabled' : (canReadModel ? 'warn' : 'disabled');
+            const t4StatusText = canBuild ? '⚡ 构建+衍生' : (canReadModel ? '👁️ 仅只读' : '🚫 拒绝访问');
+            const col4Html = `
+                <div class="pb-tier-col" data-tier="4">
+                    <div class="pb-col-header">
+                        <div class="pb-col-title-row">
+                            <h4 class="pb-col-title">🗄️ L4 语义模型权限</h4>
+                            <span class="pb-matrix-status ${t4Status}">${t4StatusText}</span>
+                        </div>
+                        <div class="pb-col-sub" title="${model.name}">${model.name}</div>
+                    </div>
+                    <div class="pb-col-body">
+                        ${renderRow('模型只读权限 (Read)', 'readPermission', canReadModel ? 'enabled' : 'disabled', canReadModel ? '✅ 启用' : '❌ 禁用', 'canReadModel')}
+                        ${renderRow('构建衍生权限 (Build)', 'buildPermission', canBuild ? 'enabled' : 'disabled', canBuild ? '✅ 启用' : '❌ 禁用', 'sharePermission', ['ReadBuild', 'Read', 'None'])}
+                        ${renderRow('模型写回与架构重命名', 'writePermission', writeStatus, writeText, 'writePermission')}
+                        ${renderRow('向第三方重新共享 (Reshare)', 'resharePermission', reshareStatus, reshareText, 'resharePermission')}
+                        ${renderRow('数据源直连凭据鉴权', 'dataSourceAuth', dsAuthStatus, dsAuthText, 'dataSourceAuth')}
+                        ${renderRow('网关连通性状态', 'gatewayConnectivity', gatewayOnline ? 'enabled' : 'disabled', gatewayOnline ? '✅ 在线' : '❌ 离线', 'gatewayOnline')}
+                    </div>
+                </div>
+            `;
+
+            // Tier 5: 行级数据安全 (RLS)
+            const unassignedDenied = getDerived('unassignedDenied', () => !isPrivileged && activeRlsRole === 'Unassigned');
+            
+            // L5 GAC Mashup 数据门禁：特权穿透；严格模式下非特权强制拦截
+            const isMashupPass = getDerived('gacMashupGate', () => {
+                if (isPrivileged) return true;
+                if (isInStrictMode) return false;
+                return hasConnRaw && isDsAuthOk;
+            });
+            let mashupStatus = isMashupPass ? 'enabled' : 'disabled';
+            let mashupText = '✅ 门禁放行';
+            if (isPrivileged) {
+                mashupStatus = 'bypassed';
+                mashupText = '⚡ 特权穿透';
+            } else if (isInStrictMode) {
+                mashupStatus = 'disabled';
+                mashupText = '❌ GAC细粒度门禁拦截';
+            } else if (!hasConnRaw) {
+                mashupStatus = 'warn';
+                mashupText = '⚠️ 宽松放行';
+            }
+
+            let t5Status = 'enabled';
+            let t5StatusText = '✅ 全量数据';
+            if (isPrivileged) {
+                t5Status = 'bypassed';
+                t5StatusText = '⚡ 特权穿透';
+            } else if (rlsEnabled) {
+                if (activeRlsRole === 'Unassigned') {
+                    t5Status = 'disabled';
+                    t5StatusText = '❌ 403 阻断';
+                } else {
+                    t5Status = 'warn';
+                    t5StatusText = '🔒 行过滤生效';
+                }
+            }
+            const col5Html = `
+                <div class="pb-tier-col" data-tier="5">
+                    <div class="pb-col-header">
+                        <div class="pb-col-title-row">
+                            <h4 class="pb-col-title">🛡️ L5 行级数据安全</h4>
+                            <span class="pb-matrix-status ${t5Status}">${t5StatusText}</span>
+                        </div>
+                        <div class="pb-col-sub" title="Row-Level Security 动态过滤">DAX 行过滤隔离安全层</div>
+                    </div>
+                    <div class="pb-col-body">
+                        ${renderRow('RLS 安全规则总开关', 'rlsSwitch', rlsEnabled ? 'enabled' : 'disabled', rlsEnabled ? '✅ 启用' : '❌ 禁用', 'rlsEnabled')}
+                        ${renderRow('生效安全过滤角色', 'activeRlsRole', isPrivileged ? 'bypassed' : (rlsEnabled ? (activeRlsRole === 'Unassigned' ? 'disabled' : 'warn') : 'enabled'), isPrivileged ? '⚡ 特权穿透' : (rlsEnabled ? (activeRlsRole === 'Unassigned' ? '❌ 未分配' : `🔒 ${activeRlsRole}`) : '✅ 全量可见'), 'rlsRoleAssigned', ['Region_East', 'Region_North', 'Store_Managers', 'Unassigned'])}
+                        ${renderRow('动态安全主体 (DAX UPN)', 'daxIdentity', isPrivileged ? 'enabled' : (daxIdentityType === 'Guest_EXT_UPN' ? 'warn' : 'enabled'), isPrivileged ? '✅ 免校验' : (daxIdentityType === 'Guest_EXT_UPN' ? '⚠️ 外部访客' : '✅ 内部主体'), 'daxIdentityType', ['Internal_UPN', 'Guest_EXT_UPN'])}
+                        ${renderRow('跨表双向安全过滤', 'crossFiltering', crossFiltering ? 'enabled' : 'disabled', crossFiltering ? '✅ 启用' : '❌ 禁用', 'crossFiltering')}
+                        ${renderRow('未授权行隔离拦截', 'unassignedDenied', (!isPrivileged && unassignedDenied) ? 'disabled' : 'enabled', (!isPrivileged && unassignedDenied) ? '❌ 阻断' : '✅ 放行', 'unassignedDenied')}
+                        ${renderRow('GAC Mashup 数据门禁', 'gacMashupGate', mashupStatus, mashupText, 'gacMashupGate')}
+                    </div>
+                </div>
+            `;
+
+            // Tier 6: 列级安全与导出资产
+            const maskedFieldsActive = getDerived('maskedFieldsActive', () => olsEnabled && !isPrivileged);
+            const canReadModelEff = overrides['canReadModel'] !== undefined ? overrides['canReadModel'] : canReadModel;
+            const isRlsBlocked = !isPrivileged && rlsEnabled && activeRlsRole === 'Unassigned';
+            const isReportViewAllowed = canReadModelEff && !isRlsBlocked;
+            const reportView = getDerived('reportView', () => isReportViewAllowed);
+            let reportViewStatus = reportView ? 'enabled' : 'disabled';
+            let reportViewText = reportView ? '✅ 启用' : '❌ 禁用';
+            if (isRlsBlocked) {
+                reportViewStatus = 'disabled';
+                reportViewText = '❌ 403 角色未分配';
+            } else if (!canReadModelEff) {
+                reportViewStatus = 'disabled';
+                reportViewText = '❌ 403 无模型权限';
+            }
+            
+            // L6 视觉对象设计编辑：受租户策略与特权双重约束
+            const isReportEditPass = getDerived('reportEdit', () => isPrivileged && tenantAllowWebModeling);
+            let reportEditStatus = isReportEditPass ? 'enabled' : 'disabled';
+            let reportEditText = '✅ 允许编辑';
+            if (!tenantAllowWebModeling) {
+                reportEditStatus = 'disabled';
+                reportEditText = '❌ 租户禁止Web端在线编辑';
+            } else if (!isPrivileged) {
+                reportEditStatus = 'disabled';
+                reportEditText = '❌ 需协同编辑特权';
+            }
+
+            // L6 导出底层明细数据：必须同时拥有 Build 权限且 L1 租户策略放行
+            const isExportPass = getDerived('exportUnderlying', () => canBuild && tenantAllowExport);
+            let exportStatus = isExportPass ? 'enabled' : 'disabled';
+            let exportText = '✅ 允许导出';
+            if (!tenantAllowExport) {
+                exportStatus = 'disabled';
+                exportText = '❌ 租户策略收紧阻断';
+            } else if (!canBuild) {
+                exportStatus = 'disabled';
+                exportText = '❌ 缺少Build权限';
+            }
+
+            // L6 Power Query 网页端编辑：多层联动推导
+            const isPqPass = getDerived('powerQueryEdit', () => isPrivileged && tenantAllowWebModeling && gatewayOnline && (!isInStrictMode || hasConnRaw));
+            let pqStatus = isPqPass ? 'enabled' : 'disabled';
+            let pqText = '✅ 允许编辑';
+            if (isInStrictMode && !isPrivileged) {
+                pqStatus = 'disabled';
+                pqText = '❌ GAC严格门禁阻断';
+            } else if (!tenantAllowWebModeling) {
+                pqStatus = 'disabled';
+                pqText = '❌ 租户禁止Web建模';
+            } else if (!gatewayOnline) {
+                pqStatus = 'disabled';
+                pqText = '❌ 网关离线不可达';
+            } else if (!isPrivileged) {
+                pqStatus = 'disabled';
+                pqText = '❌ 需协同编辑特权';
+            }
+
+            let t6Status = 'enabled';
+            let t6StatusText = '✅ 资产全开放';
+            if (isPrivileged) {
+                t6Status = 'bypassed';
+                t6StatusText = '⚡ 特权全开放';
+            } else if (olsEnabled) {
+                t6Status = 'warn';
+                t6StatusText = '🔒 敏感列掩蔽';
+            }
+            const col6Html = `
+                <div class="pb-tier-col" data-tier="6">
+                    <div class="pb-col-header">
+                        <div class="pb-col-title-row">
+                            <h4 class="pb-col-title">🔒 L6 列级与资产安全</h4>
+                            <span class="pb-matrix-status ${t6Status}">${t6StatusText}</span>
+                        </div>
+                        <div class="pb-col-sub" title="Object-Level Security &amp; 导出管控">报表视觉与敏感列管控</div>
+                    </div>
+                    <div class="pb-col-body">
+                        ${renderRow('OLS 敏感列安全性', 'olsSwitch', olsEnabled ? 'enabled' : 'disabled', olsEnabled ? '✅ 启用' : '❌ 禁用', 'olsEnabled')}
+                        ${renderRow('敏感字段掩蔽状态', 'maskedStatus', isPrivileged ? 'bypassed' : (maskedFieldsActive ? 'warn' : 'enabled'), isPrivileged ? '⚡ 特权穿透' : (maskedFieldsActive ? `🔒 掩蔽: ${s.maskedFields}` : '✅ 全部列开放'), 'maskedFieldsActive')}
+                        ${renderRow('报表在线查看 (View)', 'reportView', reportViewStatus, reportViewText, 'reportView')}
+                        ${renderRow('视觉对象设计编辑 (Edit)', 'reportEdit', reportEditStatus, reportEditText, 'reportEdit')}
+                        ${renderRow('导出底层明细数据', 'exportUnderlying', exportStatus, exportText, 'exportUnderlying')}
+                        ${renderRow('Power Query 网页端编辑', 'powerQueryEdit', pqStatus, pqText, 'powerQueryEdit')}
+                    </div>
+                </div>
+            `;
+
+            matrixEl.innerHTML = bannerHtml + col1Html + col2Html + col3Html + col4Html + col5Html + col6Html;
+
+            // 渲染 What-If 动态影响指向线（DOM 更新后需 rAF 等待布局稳定）
+            requestAnimationFrame(() => this._renderImpactArrows(impacts));
+        }
+
+        // 渲染 6 层流转矩阵内部的 What-If 跨层级动态流向指向线 (带动态流光、箭头与流向药丸标签)
+        _renderImpactArrows(impacts) {
+            this._lastImpacts = impacts;
+            const matrixEl = document.getElementById('pb-matrix-container');
+            if (!matrixEl || matrixEl.style.display === 'none') return;
+
+            // 确保或创建用于矩阵连线的 SVG 画布
+            let svgEl = document.getElementById('pb-matrix-flow-svg');
+            if (!svgEl) {
+                svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svgEl.id = 'pb-matrix-flow-svg';
+                svgEl.setAttribute('class', 'pb-matrix-flow-svg');
+                matrixEl.appendChild(svgEl);
+
+                // 绑定全方位几何变动监听，确保全屏切换、Zen Mode、滚动与窗口重排时连线 100% 实时紧随卡片自适应吸附重绘
+                if (!this._matrixScrollBound) {
+                    this._matrixScrollBound = true;
+                    const triggerRedraw = () => {
+                        if (this.activeMainTab === 'matrix' && this._lastImpacts) {
+                            requestAnimationFrame(() => this._renderImpactArrows(this._lastImpacts));
+                        }
+                    };
+
+                    matrixEl.addEventListener('scroll', triggerRedraw, { passive: true });
+                    window.addEventListener('resize', triggerRedraw, { passive: true });
+                    window.addEventListener('zenmodechange', () => {
+                        // Zen Mode 展开/收回时多帧高频自适应对齐
+                        let start = performance.now();
+                        const animateRedraw = () => {
+                            triggerRedraw();
+                            if (performance.now() - start < 450) {
+                                requestAnimationFrame(animateRedraw);
+                            }
+                        };
+                        requestAnimationFrame(animateRedraw);
+                    }, { passive: true });
+
+                    document.addEventListener('fullscreenchange', triggerRedraw, { passive: true });
+                    document.addEventListener('webkitfullscreenchange', triggerRedraw, { passive: true });
+
+                    // 现代 ResizeObserver：监听容器尺寸变化
+                    if (window.ResizeObserver && !this._matrixResizeObserver) {
+                        this._matrixResizeObserver = new ResizeObserver(() => triggerRedraw());
+                        this._matrixResizeObserver.observe(matrixEl);
+                    }
+                }
+            }
+
+            const impactEntries = Object.entries(impacts || {});
+            const hasOverrides = this.whatIfOverrides && Object.keys(this.whatIfOverrides).length > 0;
+
+            if (!hasOverrides || impactEntries.length === 0) {
+                svgEl.innerHTML = '';
+                svgEl.style.display = 'none';
+                return;
+            }
+
+            svgEl.style.display = 'block';
+            svgEl.style.width = matrixEl.scrollWidth + 'px';
+            svgEl.style.height = matrixEl.scrollHeight + 'px';
+
+            const matrixRect = matrixEl.getBoundingClientRect();
+            const scrollLeft = matrixEl.scrollLeft;
+            const scrollTop = matrixEl.scrollTop;
+
+            let pathsHtml = '';
+            let dotsHtml = '';
+            let pillsHtml = '';
+
+            for (const [propKey, info] of impactEntries) {
+                // 查找目标受影响行
+                const targetRow = matrixEl.querySelector(`.pb-col-row[data-prop-key="${propKey}"]`);
+                if (!targetRow) continue;
+
+                // 查找源元素：优先匹配源字段行，若无则取源层级头部
+                let sourceRow = info.fromField ? matrixEl.querySelector(`.pb-col-row[data-whatif-field="${info.fromField}"]`) : null;
+                if (!sourceRow && info.fromTier) {
+                    sourceRow = matrixEl.querySelector(`.pb-tier-col[data-tier="${info.fromTier}"] .pb-col-header`);
+                }
+                if (!sourceRow) continue;
+
+                const srcRect = sourceRow.getBoundingClientRect();
+                const tgtRect = targetRow.getBoundingClientRect();
+
+                // 判断源与目标的左右相对位置
+                const isLeftToRight = srcRect.left < tgtRect.left;
+
+                // 源点坐标 (位于源元素边缘，向外延伸 4px 避免遮挡行内内容)
+                const x1 = (isLeftToRight ? (srcRect.right + 4) : (srcRect.left - 4)) - matrixRect.left + scrollLeft;
+                const y1 = (srcRect.top + srcRect.bottom) / 2 - matrixRect.top + scrollTop;
+
+                // 目标点坐标 (位于目标元素边缘，向外延伸 4px)
+                const x2 = (isLeftToRight ? (tgtRect.left - 4) : (tgtRect.right + 4)) - matrixRect.left + scrollLeft;
+                const y2 = (tgtRect.top + tgtRect.bottom) / 2 - matrixRect.top + scrollTop;
+
+                // 计算平滑三次贝塞尔曲线控制点 (彻底解除硬封顶，采用黄金自适应切线张力与纵向曲率补偿)
+                const dx = Math.abs(x2 - x1);
+                const dy = y2 - y1;
+                const tensionX = Math.max(40, dx * 0.45);
+                const tensionY = dy * 0.12;
+
+                const cx1 = isLeftToRight ? (x1 + tensionX) : (x1 - tensionX);
+                const cy1 = y1 + tensionY;
+                const cx2 = isLeftToRight ? (x2 - tensionX) : (x2 + tensionX);
+                const cy2 = y2 - tensionY;
+
+                const d = `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`;
+
+                const wireType = info.type || 'warn';
+                const markerId = wireType === 'danger' ? 'pb-flow-arrow-danger' : (wireType === 'success' ? 'pb-flow-arrow-success' : 'pb-flow-arrow-warn');
+                const dotColor = wireType === 'danger' ? '#ef4444' : (wireType === 'success' ? '#10b981' : '#f59e0b');
+
+                // 动态流动连线路径
+                pathsHtml += `<path class="pb-flow-wire ${wireType}" d="${d}" stroke-width="2.2" marker-end="url(#${markerId})" />`;
+
+                // 源点与目标点脉冲圆点
+                dotsHtml += `
+                    <circle cx="${x1}" cy="${y1}" r="3.5" fill="${dotColor}" class="pb-flow-dot" />
+                    <circle cx="${x2}" cy="${y2}" r="3.5" fill="${dotColor}" class="pb-flow-dot" />
+                `;
+
+                // 连线中点流向药丸标签
+                const midX = (x1 + x2) / 2;
+                const midY = (y1 + y2) / 2;
+                const tagText = `${info.from} ➔ ${info.toTier ? 'L' + info.toTier : '受波及'}`;
+                const textWidth = tagText.length * 6.8 + 12;
+                pillsHtml += `
+                    <g transform="translate(${midX}, ${midY})" style="pointer-events: auto; cursor: default;">
+                        <title>${info.reason}</title>
+                        <rect x="${-textWidth/2}" y="-9" width="${textWidth}" height="18" class="pb-flow-pill-bg" />
+                        <text x="0" y="0" class="pb-flow-pill-text">${tagText}</text>
+                    </g>
+                `;
+            }
+
+            svgEl.innerHTML = `
+                <defs>
+                    <marker id="pb-flow-arrow-warn" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#f59e0b" />
+                    </marker>
+                    <marker id="pb-flow-arrow-danger" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#ef4444" />
+                    </marker>
+                    <marker id="pb-flow-arrow-success" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10b981" />
+                    </marker>
+                </defs>
+                <g class="pb-flow-paths-group">${pathsHtml}</g>
+                <g class="pb-flow-dots-group">${dotsHtml}</g>
+                <g class="pb-flow-pills-group">${pillsHtml}</g>
             `;
         }
     }

@@ -1073,6 +1073,20 @@ async def set_kv(key: str, request: Request):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+@app.delete("/api/db/kv/{key}")
+async def delete_kv(key: str):
+    import sqlite3
+    try:
+        conn = sqlite3.connect('data/pbi_app.db')
+        c = conn.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS kv_store (key TEXT PRIMARY KEY, value TEXT)''')
+        c.execute('DELETE FROM kv_store WHERE key=?', (key,))
+        conn.commit()
+        conn.close()
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 @app.get("/api/bookmarks")
 async def get_bookmarks():
     import sqlite3

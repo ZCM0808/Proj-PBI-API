@@ -23110,13 +23110,22 @@ window.queryXmlaRefreshHistory = async function(scope = 'model') {
 window.toggleZenMode = function() {
     document.body.classList.add('is-toggling-zen');
     document.body.classList.toggle('zen-mode');
-    setTimeout(() => {
-        document.body.classList.remove('is-toggling-zen');
-    }, 400);
     
-    // Save state
     const isZen = document.body.classList.contains('zen-mode');
     try { localStorage.setItem('pbi-zen-mode', isZen ? '1' : '0'); } catch(e) {}
+    
+    window.dispatchEvent(new CustomEvent('zenmodechange', { detail: { isZen } }));
+
+    // 蓝图画布与侧边栏完全同步过渡动画 (300ms 同步缓动)
+    if (window.PermissionBlueprint && typeof window.PermissionBlueprint.onZenModeChange === 'function') {
+        window.PermissionBlueprint.onZenModeChange(isZen, 300);
+    }
+
+    setTimeout(() => {
+        document.body.classList.remove('is-toggling-zen');
+        window.dispatchEvent(new CustomEvent('zenmodechange', { detail: { isZen } }));
+        window.dispatchEvent(new Event('resize'));
+    }, 320);
 };
 
 // Restore Zen Mode on load

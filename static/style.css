@@ -167,6 +167,7 @@ body {
 /* Primary Navigation Rail (Leftmost - PBI Studio Sidebar) */
 #app-rail,
 .app-rail {
+    position: relative;
     width: 60px;
     display: flex;
     flex-direction: column;
@@ -176,9 +177,9 @@ body {
     margin-right: 6px;
     flex-shrink: 0;
     z-index: 25;
-    transition: width 0.38s cubic-bezier(0.22, 1, 0.36, 1), 
-                margin 0.38s cubic-bezier(0.22, 1, 0.36, 1), 
-                padding 0.38s cubic-bezier(0.22, 1, 0.36, 1), 
+    transition: width 0.3s cubic-bezier(0.2, 0, 0, 1), 
+                margin 0.3s cubic-bezier(0.2, 0, 0, 1), 
+                padding 0.3s cubic-bezier(0.2, 0, 0, 1), 
                 opacity 0.25s ease, 
                 background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
                 border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
@@ -414,7 +415,12 @@ body {
     box-sizing: border-box;
     background-color: var(--panel-bg);
     border-color: var(--panel-border);
-    transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+    transition: width 0.3s cubic-bezier(0.2, 0, 0, 1),
+                min-width 0.3s cubic-bezier(0.2, 0, 0, 1),
+                padding 0.3s cubic-bezier(0.2, 0, 0, 1),
+                margin 0.3s cubic-bezier(0.2, 0, 0, 1),
+                opacity 0.25s ease,
+                background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
                 border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
                 box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -6583,7 +6589,7 @@ body.light-theme .gtb-auth-card.selected,
 }
 
 /* SVG 贝塞尔曲线动效 */
-@keyframes pbFlowPulse {
+@keyframes pbWireFlowDash {
     from {
         stroke-dashoffset: 24;
     }
@@ -6594,7 +6600,7 @@ body.light-theme .gtb-auth-card.selected,
 
 .pb-wire-path {
     stroke-dasharray: 8, 4;
-    animation: pbFlowPulse 1.2s linear infinite;
+    animation: pbWireFlowDash 1.2s linear infinite;
 }
 
 .pb-wires-static .pb-wire-path {
@@ -6603,7 +6609,7 @@ body.light-theme .gtb-auth-card.selected,
 
 .pb-wire-bypass {
     stroke-dasharray: 10, 4 !important;
-    animation: pbFlowPulse 0.8s linear infinite !important;
+    animation: pbWireFlowDash 0.8s linear infinite !important;
     filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.9)) !important;
 }
 
@@ -6836,12 +6842,294 @@ body.light-theme .pb-audit-card-desc,
     color: #475569 !important;
 }
 
-/* 侧边栏专属面板亮色适配 */
+/* 侧边栏专属面板：覆盖式滚动条，彻底消除滚动条占位导致的子容器右边缘不对齐 */
+#sidebar-pane-permission_blueprint {
+    padding: 0;
+    box-sizing: border-box;
+    height: 100%;
+    overflow: hidden;
+}
+#sidebar-pane-permission_blueprint .pb-control-card {
+    padding: 8px 10px !important;
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid rgba(255, 255, 255, 0.07) !important;
+    border-radius: 8px !important;
+    box-sizing: border-box;
+}
+#sidebar-pane-permission_blueprint .pb-real-sync-card {
+    padding: 6px 10px !important;
+    box-sizing: border-box;
+}
+/* 滚动容器：overlay 覆盖式滚动条（不占布局宽度），padding-right 防遮挡，子卡片与 nav-header 精确右边缘对齐 */
+#sidebar-pane-permission_blueprint .pb-sidebar-scroll {
+    padding: 0 5px 0 0 !important;
+    gap: 8px !important;
+    /* overlay = 滚动条悬浮在内容上方，不推挤内容宽度 */
+    overflow-y: overlay;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+    box-sizing: border-box;
+}
+/* 子卡片全宽 = 与 nav-header / real-sync-card 精确对齐 */
+#sidebar-pane-permission_blueprint .pb-sidebar-scroll > * {
+    width: 100%;
+    box-sizing: border-box;
+    flex-shrink: 0;
+}
+#sidebar-pane-permission_blueprint .pb-sidebar-scroll::-webkit-scrollbar {
+    width: 4px;
+}
+#sidebar-pane-permission_blueprint .pb-sidebar-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+#sidebar-pane-permission_blueprint .pb-sidebar-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+#sidebar-pane-permission_blueprint .pb-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.35);
+}
+
+body.light-theme #sidebar-pane-permission_blueprint .pb-sidebar-scroll,
+[data-theme="light"] #sidebar-pane-permission_blueprint .pb-sidebar-scroll {
+    scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+body.light-theme #sidebar-pane-permission_blueprint .pb-sidebar-scroll::-webkit-scrollbar-thumb,
+[data-theme="light"] #sidebar-pane-permission_blueprint .pb-sidebar-scroll::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+}
+
 body.light-theme #sidebar-pane-permission_blueprint .pb-control-card,
 [data-theme="light"] #sidebar-pane-permission_blueprint .pb-control-card {
     background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+}
+
+/* 有效权限功能场景胶囊按钮 (全览、导出、GAC、RLS、OLS、建模构建) */
+.pb-feature-capsules {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+.pb-capsule-btn {
+    border: 1px solid var(--overlay-10);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
+    border-radius: 12px;
+    padding: 2px 7px;
+    font-size: 0.64rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+    outline: none;
+}
+.pb-capsule-btn:hover {
+    background: rgba(99, 102, 241, 0.15);
+    color: #a5b4fc;
+    border-color: rgba(99, 102, 241, 0.3);
+    transform: translateY(-1px);
+}
+.pb-capsule-btn.active {
+    background: #6366f1;
+    color: #ffffff;
+    border-color: #6366f1;
+    box-shadow: 0 1px 6px rgba(99, 102, 241, 0.4);
+    font-weight: 700;
+}
+body.light-theme .pb-capsule-btn,
+[data-theme="light"] .pb-capsule-btn {
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+    color: #64748b;
+}
+body.light-theme .pb-capsule-btn:hover,
+[data-theme="light"] .pb-capsule-btn:hover {
+    background: #e0e7ff;
+    color: #4338ca;
+    border-color: #c7d2fe;
+}
+body.light-theme .pb-capsule-btn.active,
+[data-theme="light"] .pb-capsule-btn.active {
+    background: #4f46e5;
+    color: #ffffff;
+    border-color: #4f46e5;
+    box-shadow: 0 1px 4px rgba(79, 70, 229, 0.3);
+}
+
+/* 第二面板有效权限极简速览行（彻底消除容器套容器线条过多的问题） */
+.pb-overview-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.70rem;
+    padding: 5px 2px;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
+}
+.pb-overview-row:last-child {
+    border-bottom: none;
+}
+body.light-theme .pb-overview-row,
+[data-theme="light"] .pb-overview-row {
+    border-bottom: 1px dashed #e2e8f0 !important;
+}
+.pb-overview-tier {
+    color: var(--text-secondary);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+body.light-theme .pb-overview-tier,
+[data-theme="light"] .pb-overview-tier {
+    color: #475569 !important;
+}
+.pb-overview-val {
+    font-size: 0.67rem;
+    font-weight: 600;
+}
+
+/* 关系连线层级置顶，卡片移动时绝不遮挡连线 */
+.pb-svg-wires {
+    z-index: 15 !important;
+    pointer-events: none !important;
+}
+
+/* 多层级有效权限透视卡片与折叠展开微动效 */
+.pb-perm-tier {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 6px 7px !important;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+body.light-theme .pb-perm-tier,
+[data-theme="light"] .pb-perm-tier {
+    background: #f8fafc !important;
     border-color: #e2e8f0 !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+.pb-perm-tier-title {
+    font-size: 0.70rem;
+    font-weight: 700;
+    color: var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    padding: 2px 0;
+    transition: color 0.2s ease;
+}
+.pb-perm-tier-title:hover {
+    color: var(--accent-hover, #818cf8) !important;
+}
+body.light-theme .pb-perm-tier-title,
+[data-theme="light"] .pb-perm-tier-title {
+    color: #4f46e5 !important;
+}
+body.light-theme .pb-perm-tier-title:hover,
+[data-theme="light"] .pb-perm-tier-title:hover {
+    color: #4338ca !important;
+}
+.pb-tier-toggle-icon {
+    display: inline-block;
+    font-size: 0.60rem;
+    color: var(--text-secondary);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s ease;
+}
+.pb-perm-tier-title:hover .pb-tier-toggle-icon {
+    color: var(--accent);
+}
+.pb-tier-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 5px;
+    overflow: hidden;
+    max-height: 500px;
+    opacity: 1;
+    transition: max-height 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease, margin-top 0.22s ease;
+}
+.pb-perm-tier.collapsed .pb-tier-toggle-icon {
+    transform: rotate(-90deg);
+}
+.pb-perm-tier.collapsed .pb-tier-body {
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+    pointer-events: none;
+}
+.pb-perm-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.67rem;
+    padding: 2px 0;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+}
+body.light-theme .pb-perm-row,
+[data-theme="light"] .pb-perm-row {
+    border-bottom-color: #e2e8f0 !important;
+}
+.pb-perm-row:last-child {
+    border-bottom: none;
+}
+.pb-perm-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+body.light-theme .pb-perm-label,
+[data-theme="light"] .pb-perm-label {
+    color: #475569 !important;
+}
+.pb-perm-pill {
+    font-size: 0.64rem;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+    text-align: right;
+}
+.pb-perm-pill.pass {
+    background: rgba(52, 211, 153, 0.15);
+    color: #34d399;
+}
+body.light-theme .pb-perm-pill.pass,
+[data-theme="light"] .pb-perm-pill.pass {
+    background: rgba(16, 185, 129, 0.12) !important;
+    color: #059669 !important;
+}
+.pb-perm-pill.fail {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+}
+body.light-theme .pb-perm-pill.fail,
+[data-theme="light"] .pb-perm-pill.fail {
+    background: rgba(239, 68, 68, 0.12) !important;
+    color: #dc2626 !important;
+}
+.pb-perm-pill.warn {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+}
+body.light-theme .pb-perm-pill.warn,
+[data-theme="light"] .pb-perm-pill.warn {
+    background: rgba(245, 158, 11, 0.12) !important;
+    color: #d97706 !important;
+}
+.pb-perm-pill.bypass {
+    background: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+}
+body.light-theme .pb-perm-pill.bypass,
+[data-theme="light"] .pb-perm-pill.bypass {
+    background: rgba(168, 85, 247, 0.12) !important;
+    color: #7c3aed !important;
 }
 
 /* ==========================================================================
@@ -7215,7 +7503,564 @@ body.light-theme .pb-radar-lost-notice span,
     color: #0f172a !important;
 }
 
+/* ==========================================================================
+   Power BI Blueprint Quick Users Chips & Topbar Sync Banner Adaptation
+   ========================================================================== */
 
+/* 现有用户快捷点选卡片 */
+.pb-user-chip {
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.pb-user-chip:hover {
+    transform: translateX(2px);
+    background: rgba(99, 102, 241, 0.12) !important;
+    border-color: rgba(99, 102, 241, 0.35) !important;
+}
+.pb-user-chip.active {
+    border: 1px solid var(--accent) !important;
+    background: rgba(99, 102, 241, 0.18) !important;
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.35) !important;
+}
 
+body.light-theme .pb-user-chip,
+[data-theme="light"] .pb-user-chip {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+}
+body.light-theme .pb-user-chip:hover,
+[data-theme="light"] .pb-user-chip:hover {
+    background: #eef2ff !important;
+    border-color: #c7d2fe !important;
+}
+body.light-theme .pb-user-chip.active,
+[data-theme="light"] .pb-user-chip.active {
+    background: #e0e7ff !important;
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.25) !important;
+}
 
+/* 顶栏真实租户常驻同步状态条 */
+body.light-theme .pb-real-sync-card,
+[data-theme="light"] .pb-real-sync-card {
+    background: #eef2ff !important;
+    border: 1px solid #c7d2fe !important;
+}
+body.light-theme .pb-real-sync-card span[style*="color: #a5b4fc"],
+[data-theme="light"] .pb-real-sync-card span[style*="color: #a5b4fc"] {
+    color: #4338ca !important;
+}
+
+/* ==========================================================================
+   Power BI Blueprint & Matrix Segmented Tabs (选项卡平滑切换)
+   ========================================================================== */
+.pb-view-tabs {
+    display: inline-flex;
+    padding: 3px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--overlay-10);
+    border-radius: 7px;
+    gap: 3px;
+}
+.pb-view-tab-btn {
+    padding: 4px 10px;
+    font-size: 0.73rem;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+.pb-view-tab-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+.pb-view-tab-btn.active,
+.pb-view-tabs .pb-view-tab-btn.active,
+.pb-view-tabs .pb-view-tab-btn.active span {
+    background: #4f46e5 !important;
+    color: #ffffff !important;
+    box-shadow: 0 1px 6px rgba(79, 70, 229, 0.4) !important;
+    font-weight: 700 !important;
+}
+body.light-theme .pb-view-tabs,
+[data-theme="light"] .pb-view-tabs {
+    background: #e2e8f0 !important;
+    border-color: #cbd5e1 !important;
+}
+body.light-theme .pb-view-tab-btn,
+[data-theme="light"] .pb-view-tab-btn {
+    color: #64748b !important;
+}
+body.light-theme .pb-view-tab-btn:hover,
+[data-theme="light"] .pb-view-tab-btn:hover {
+    color: #0f172a !important;
+    background: rgba(255, 255, 255, 0.6) !important;
+}
+body.light-theme .pb-view-tab-btn.active,
+[data-theme="light"] .pb-view-tab-btn.active {
+    background: #4f46e5 !important;
+    color: #ffffff !important;
+    box-shadow: 0 1px 4px rgba(79, 70, 229, 0.3) !important;
+}
+
+/* ==========================================================================
+   Power BI 6-Tier Permission Matrix (从左到右 6 大层级横向全景流转矩阵)
+   ========================================================================== */
+.pb-matrix-container {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-rows: auto 1fr;
+    gap: 10px;
+    height: calc(100% - 50px);
+    padding: 10px 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    box-sizing: border-box;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+.pb-matrix-container::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+}
+.pb-matrix-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+.pb-matrix-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+}
+body.light-theme .pb-matrix-container,
+[data-theme="light"] .pb-matrix-container {
+    scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+    background: #f8fafc;
+}
+body.light-theme .pb-matrix-container::-webkit-scrollbar-thumb,
+[data-theme="light"] .pb-matrix-container::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+}
+
+/* What-If 实时影响诊断顶部横幅 (跨 6 列置顶，超紧凑极简设计) */
+.pb-whatif-banner {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 10px;
+    min-height: 28px;
+    background: rgba(245, 158, 11, 0.10);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-radius: 6px;
+    color: #fbbf24;
+    font-size: 0.70rem;
+    font-weight: 500;
+    margin-bottom: 2px;
+    line-height: 1.2;
+}
+body.light-theme .pb-whatif-banner,
+[data-theme="light"] .pb-whatif-banner {
+    background: #fffbeb !important;
+    border-color: #fde68a !important;
+    color: #b45309 !important;
+}
+.pb-whatif-banner-idle {
+    background: rgba(99, 102, 241, 0.06);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    color: #a5b4fc;
+}
+body.light-theme .pb-whatif-banner-idle,
+[data-theme="light"] .pb-whatif-banner-idle {
+    background: #eff6ff !important;
+    border-color: #bfdbfe !important;
+    color: #1d4ed8 !important;
+}
+
+/* 6 大层级列卡片 */
+.pb-tier-col {
+    display: flex;
+    flex-direction: column;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    /* 明确放入第 2 行（banner 占第 1 行），并充满 1fr 高度 */
+    grid-row: 2;
+    min-height: 0;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
+}
+.pb-tier-col:hover {
+    border-color: rgba(99, 102, 241, 0.4);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+}
+body.light-theme .pb-tier-col,
+[data-theme="light"] .pb-tier-col {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05) !important;
+}
+body.light-theme .pb-tier-col:hover,
+[data-theme="light"] .pb-tier-col:hover {
+    border-color: #818cf8 !important;
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.12) !important;
+}
+
+/* 层级头部 */
+.pb-col-header {
+    padding: 6px 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex-shrink: 0;
+}
+body.light-theme .pb-col-header,
+[data-theme="light"] .pb-col-header {
+    background: #f8fafc !important;
+    border-bottom-color: #e2e8f0 !important;
+}
+.pb-col-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+}
+.pb-col-badge-line {
+    display: none;
+}
+.pb-col-tier-tag {
+    display: none !important;
+}
+.pb-col-title {
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+}
+body.light-theme .pb-col-title,
+[data-theme="light"] .pb-col-title {
+    color: #0f172a !important;
+}
+.pb-col-sub {
+    font-size: 0.62rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+body.light-theme .pb-col-sub,
+[data-theme="light"] .pb-col-sub {
+    color: #64748b !important;
+}
+
+/* 层级项内容列表 */
+.pb-col-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+.pb-col-body::-webkit-scrollbar {
+    width: 3px;
+}
+.pb-col-body::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+body.light-theme .pb-col-body,
+[data-theme="light"] .pb-col-body {
+    scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+}
+body.light-theme .pb-col-body::-webkit-scrollbar-thumb,
+[data-theme="light"] .pb-col-body::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.12);
+}
+
+/* 纯净设置项行 (名称换行彻底消除截断，支持 What-If 互动与波及动效) */
+.pb-col-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 5px 6px;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    gap: 6px;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.pb-col-row:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(99, 102, 241, 0.3);
+}
+body.light-theme .pb-col-row,
+[data-theme="light"] .pb-col-row {
+    background: #f8fafc !important;
+    border-color: #f1f5f9 !important;
+}
+body.light-theme .pb-col-row:hover,
+[data-theme="light"] .pb-col-row:hover {
+    background: #f1f5f9 !important;
+    border-color: #c7d2fe !important;
+}
+
+/* What-If 联动受影响高亮项 */
+.pb-col-row.impacted {
+    border: 1px solid rgba(245, 158, 11, 0.8) !important;
+    background: rgba(245, 158, 11, 0.12) !important;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.3) !important;
+}
+body.light-theme .pb-col-row.impacted,
+[data-theme="light"] .pb-col-row.impacted {
+    background: #fffbeb !important;
+    border-color: #f59e0b !important;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.2) !important;
+}
+.pb-impact-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: #f59e0b;
+    margin-top: 3px;
+    line-height: 1.25;
+}
+body.light-theme .pb-impact-tag,
+[data-theme="light"] .pb-impact-tag {
+    color: #b45309 !important;
+}
+
+.pb-col-prop {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.68rem;
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+body.light-theme .pb-col-prop,
+[data-theme="light"] .pb-col-prop {
+    color: #1e293b !important;
+}
+.pb-col-prop-name {
+    white-space: normal !important;
+    word-break: break-word !important;
+    line-height: 1.3 !important;
+    font-size: 0.70rem !important;
+    font-weight: 600 !important;
+    color: var(--text-primary);
+}
+.pb-col-prop-key {
+    font-size: 0.58rem;
+    color: var(--text-secondary);
+    font-family: monospace;
+    opacity: 0.8;
+}
+body.light-theme .pb-col-prop-key,
+[data-theme="light"] .pb-col-prop-key {
+    color: #64748b !important;
+}
+
+/* 紧凑启用/禁用徽章 */
+.pb-matrix-status {
+    font-size: 0.60rem;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 3px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+.pb-matrix-status.enabled {
+    background: rgba(52, 211, 153, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(52, 211, 153, 0.3);
+}
+body.light-theme .pb-matrix-status.enabled,
+[data-theme="light"] .pb-matrix-status.enabled {
+    background: #ecfdf5 !important;
+    color: #059669 !important;
+    border-color: #a7f3d0 !important;
+}
+.pb-matrix-status.disabled {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+body.light-theme .pb-matrix-status.disabled,
+[data-theme="light"] .pb-matrix-status.disabled {
+    background: #fef2f2 !important;
+    color: #dc2626 !important;
+    border-color: #fecaca !important;
+}
+.pb-matrix-status.bypassed {
+    background: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.3);
+}
+body.light-theme .pb-matrix-status.bypassed,
+[data-theme="light"] .pb-matrix-status.bypassed {
+    background: #faf5ff !important;
+    color: #7c3aed !important;
+    border-color: #e9d5ff !important;
+}
+.pb-matrix-status.warn {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+body.light-theme .pb-matrix-status.warn,
+[data-theme="light"] .pb-matrix-status.warn {
+    background: #fffbeb !important;
+    color: #d97706 !important;
+    border-color: #fde68a !important;
+}
+
+/* What-If 互动切换按钮微动效 */
+.pb-whatif-toggle-btn {
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    color: #a5b4fc;
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 0.62rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+}
+.pb-whatif-toggle-btn:hover {
+    background: rgba(99, 102, 241, 0.35);
+    border-color: #818cf8;
+    color: #ffffff;
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+    transform: translateY(-1px);
+}
+body.light-theme .pb-whatif-toggle-btn,
+[data-theme="light"] .pb-whatif-toggle-btn {
+    background: #eff6ff !important;
+    border-color: #93c5fd !important;
+    color: #1d4ed8 !important;
+}
+body.light-theme .pb-whatif-toggle-btn:hover,
+[data-theme="light"] .pb-whatif-toggle-btn:hover {
+    background: #dbeafe !important;
+    border-color: #3b82f6 !important;
+    color: #1e40af !important;
+}
+
+/* ==========================================================================
+   What-If 跨层级动态流向指向线 (Dynamic Impact Flow Wires)
+   ========================================================================== */
+.pb-matrix-flow-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 15;
+    overflow: visible;
+}
+
+@keyframes pbFlowDash {
+    from {
+        stroke-dashoffset: 48;
+    }
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes pbDotPulse {
+    0% {
+        r: 3.5px;
+        opacity: 0.95;
+    }
+    50% {
+        r: 6.5px;
+        opacity: 0.4;
+    }
+    100% {
+        r: 3.5px;
+        opacity: 0.95;
+    }
+}
+
+.pb-flow-wire {
+    fill: none;
+    stroke-linecap: round;
+    stroke-dasharray: 7 5;
+    animation: pbFlowDash 0.85s linear infinite;
+    transition: stroke 0.3s ease;
+}
+
+.pb-flow-wire.warn {
+    stroke: #f59e0b;
+    filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.75));
+}
+
+.pb-flow-wire.danger {
+    stroke: #ef4444;
+    filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.85));
+}
+
+.pb-flow-wire.success {
+    stroke: #10b981;
+    filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.75));
+}
+
+.pb-flow-wire.purple {
+    stroke: #a855f7;
+    filter: drop-shadow(0 0 5px rgba(168, 85, 247, 0.75));
+}
+
+.pb-flow-dot {
+    animation: pbDotPulse 1.2s ease-in-out infinite;
+    transform-origin: center;
+}
+
+.pb-flow-pill-bg {
+    fill: rgba(15, 23, 42, 0.92);
+    stroke: #f59e0b;
+    stroke-width: 1;
+    rx: 4;
+    ry: 4;
+}
+body.light-theme .pb-flow-pill-bg,
+[data-theme="light"] .pb-flow-pill-bg {
+    fill: #ffffff;
+    stroke: #d97706;
+}
+
+.pb-flow-pill-text {
+    font-size: 0.60rem;
+    font-weight: 700;
+    fill: #fbbf24;
+    dominant-baseline: central;
+    text-anchor: middle;
+}
+body.light-theme .pb-flow-pill-text,
+[data-theme="light"] .pb-flow-pill-text {
+    fill: #b45309;
+}
 

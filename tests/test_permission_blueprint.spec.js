@@ -27,138 +27,178 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         expect(blueprintBox.y).toBeGreaterThan(apiTreeBox.y);
     });
 
-    test('点击 Blueprint 菜单项能无缝切换侧边栏与主工作区，并渲染 8 大核心节点与连线', async ({ page }) => {
+    test('核心保障：完整保留交互式拓扑蓝图画布，并默认渲染 8 大核心节点、SVG 连线与浮动图例', async ({ page }) => {
         const blueprintBtn = page.locator('#rail-nav-permission_blueprint');
         await blueprintBtn.click();
 
         // 1. 验证 Rail 激活状态
         await expect(blueprintBtn).toHaveClass(/active/);
 
-        // 2. 验证二级侧边栏 Pane 切换
-        const blueprintSidePane = page.locator('#sidebar-pane-permission_blueprint');
-        await expect(blueprintSidePane).toBeVisible();
-        await expect(page.locator('#sidebar-pane-workflows')).toBeHidden();
-        await expect(page.locator('#sidebar-pane-api_tree')).toBeHidden();
-
-        // 3. 验证主工作区 View 切换
+        // 2. 验证主工作区 View 切换并默认显示蓝图画布
         const blueprintMainView = page.locator('#view-permission_blueprint');
         await expect(blueprintMainView).toBeVisible();
-        await expect(page.locator('#view-workflows')).toBeHidden();
-        await expect(page.locator('#view-api_tree')).toBeHidden();
 
-        // 4. 验证 8 大核心节点渲染
+        const canvasViewport = page.locator('#pb-canvas-viewport');
+        await expect(canvasViewport).toBeVisible();
+
+        // 3. 验证顶部 Tab 默认选中【🗺️ 权限流转蓝图】
+        const blueprintTabBtn = page.locator('#pb-tab-blueprint-btn');
+        await expect(blueprintTabBtn).toHaveClass(/active/);
+
+        // 4. 验证 8 大核心节点渲染呈现
         const nodes = page.locator('.pb-blueprint-node');
         await expect(nodes).toHaveCount(8);
 
-        // 5. 验证 SVG 连线生成
+        const nodeTenant = page.locator('#node_tenant');
+        await expect(nodeTenant).toBeVisible();
+
+        // 5. 验证 SVG 连线生成且置顶于卡片上层 (z-index >= 15, pointer-events: none)，彻底避免被卡片遮挡
+        const svgWires = page.locator('#pb-svg-wires');
+        const svgZIndex = await svgWires.evaluate(el => window.getComputedStyle(el).zIndex);
+        expect(parseInt(svgZIndex, 10)).toBeGreaterThanOrEqual(15);
+        const svgPointerEvents = await svgWires.evaluate(el => window.getComputedStyle(el).pointerEvents);
+        expect(svgPointerEvents).toBe('none');
+
         const wires = page.locator('#pb-wires-group .pb-wire-group');
         const wireCount = await wires.count();
         expect(wireCount).toBeGreaterThanOrEqual(8);
 
-        // 6. 验证最终有效权力报告抽屉与 6 项裁定卡片
-        const auditDrawer = page.locator('#pb-audit-drawer');
-        await expect(auditDrawer).toBeVisible();
-        const auditCards = page.locator('.pb-audit-card');
-        await expect(auditCards).toHaveCount(6);
+        // 6. 验证浮动图例卡片存在且可见
+        const legendCard = page.locator('.pb-legend-card');
+        await expect(legendCard).toBeVisible();
+        await expect(legendCard).toContainText('连线与流转图例：');
+
+        // 7. 验证蓝图专属画布工具栏可见
+        await expect(page.locator('#pb-blueprint-toolbar')).toBeVisible();
     });
 
-    test('What-If 假设推演：GAC 严格模式拦截与 Contributor 特权穿透测试', async ({ page }) => {
-        // 进入蓝图
+    test('平滑无缝切换：一键切换至【6 层流转矩阵】，从左到右依次排列 L1~L6 全景权限与启用/禁用徽章', async ({ page }) => {
         await page.locator('#rail-nav-permission_blueprint').click();
 
-        // 点击 What-If 场景：模拟 GAC 开启但缺连接
-        const scenarioGacBtn = page.locator('button:has-text("模拟：GAC开启但缺连接(阻断PQ)")');
-        await scenarioGacBtn.click();
+        // 点击切换到【🏛️ 6 层流转矩阵】Tab
+        const matrixTabBtn = page.locator('#pb-tab-matrix-btn');
+        await expect(matrixTabBtn).toBeVisible();
+        await matrixTabBtn.click();
 
-        // 验证第 3 项 Power Query 裁定卡片变为拦截状态
-        const pqAuditCard = page.locator('.pb-audit-card').nth(2);
-        await expect(pqAuditCard).toContainText('严格拦截');
-        await expect(pqAuditCard).toContainText('GAC 严格模式已启用，但用户缺少底层数据源连接凭据');
+        // 1. 验证 Tab 切换状态与视图切换
+        await expect(matrixTabBtn).toHaveClass(/active/);
+        await expect(page.locator('#pb-tab-blueprint-btn')).not.toHaveClass(/active/);
 
-        // 点击 What-If 场景：模拟 Contributor 特权穿透
-        const scenarioBypassBtn = page.locator('button:has-text("模拟：Contributor 特权穿透 RLS/OLS")');
-        await scenarioBypassBtn.click();
+        // 画布隐藏，矩阵呈现
+        await expect(page.locator('#pb-canvas-viewport')).toBeHidden();
+        const matrixContainer = page.locator('#pb-matrix-container');
+        await expect(matrixContainer).toBeVisible();
 
-        // 验证 RLS 与 OLS 均变为“全量穿透”
-        const rlsCard = page.locator('.pb-audit-card').nth(3);
-        const olsCard = page.locator('.pb-audit-card').nth(4);
-        await expect(rlsCard).toContainText('特权穿透');
-        await expect(olsCard).toContainText('特权穿透');
+        // 2. 验证 6 大层级横向依次排列
+        const tierCols = page.locator('.pb-tier-col');
+        await expect(tierCols).toHaveCount(6);
+
+        const colTitles = [
+            'L1 租户全局策略',
+            'L2 容量计算资源',
+            'L3 工作区治理角色',
+            'L4 语义模型权限',
+            'L5 行级数据安全',
+            'L6 列级与资产安全'
+        ];
+        for (let i = 0; i < colTitles.length; i++) {
+            const col = tierCols.nth(i);
+            await expect(col).toContainText(colTitles[i]);
+            await expect(col).not.toContainText(`Tier ${i + 1}`);
+        }
+
+        // 3. 验证各层级内仅展示设置名称与精简的启用/禁用徽章，绝无冗余段落描述
+        const statusBadges = page.locator('.pb-matrix-status');
+        const badgeCount = await statusBadges.count();
+        expect(badgeCount).toBeGreaterThanOrEqual(30);
+
+        // 4. 再次点击【🗺️ 权限流转蓝图】可瞬间切回蓝图画布且卡片与连线完好如初
+        await page.locator('#pb-tab-blueprint-btn').click();
+        await expect(page.locator('#pb-canvas-viewport')).toBeVisible();
+        await expect(matrixContainer).toBeHidden();
+        await expect(page.locator('.pb-blueprint-node')).toHaveCount(8);
     });
 
-    test('双向透视模式：按模型透视切换与用户载入，且支持明暗主题高对比视觉反馈', async ({ page }) => {
+    test('第二竖直面板：滚动条平滑无遮挡、消除容器嵌套过多线条，且呈现高阶综合速览', async ({ page }) => {
         await page.locator('#rail-nav-permission_blueprint').click();
 
-        const tabUser = page.locator('#pb-tab-user');
-        const tabModel = page.locator('#pb-tab-model');
+        // 1. 验证侧边栏滚动容器存在且已配置防遮挡 gutter
+        const scrollContainer = page.locator('#sidebar-pane-permission_blueprint .pb-sidebar-scroll');
+        await expect(scrollContainer).toBeVisible();
 
-        // 1. 默认暗色模式下，用户主体按钮处于激活态
-        await expect(tabUser).toHaveClass(/active/);
-        await expect(tabModel).not.toHaveClass(/active/);
+        // 2. 验证有效权限卡片内部已消除多重容器嵌套 (pb-perm-tier 折叠框已移除)
+        const oldNestedTiers = page.locator('.pb-perm-tier');
+        await expect(oldNestedTiers).toHaveCount(0);
 
-        // 2. 点击切换至“按目标模型”，验证强烈的视觉激活反馈
-        await tabModel.click();
-        await expect(tabModel).toHaveClass(/active/);
-        await expect(tabUser).not.toHaveClass(/active/);
+        // 3. 验证侧边栏有效权限卡片展现简洁的 6 行高阶速览
+        const overviewRows = page.locator('.pb-overview-row');
+        await expect(overviewRows).toHaveCount(6);
 
-        // 验证模型关联用户列表卡片展开
-        const modelUsersCard = page.locator('#pb-model-users-card');
-        await expect(modelUsersCard).toBeVisible();
-
-        // 3. 验证亮色模式下的按钮主题适配
-        const themeToggleBtn = page.locator('#theme-toggle-btn');
-        await themeToggleBtn.click();
-        await page.waitForTimeout(300);
-
-        // 亮色模式下 active 按钮为纯白底配深紫蓝文字 (#4338ca)
-        const lightModelColor = await tabModel.evaluate(el => window.getComputedStyle(el).color);
-        expect(lightModelColor).toMatch(/rgb\(67,\s*56,\s*202\)/); // #4338ca
-
-        // 切回暗色模式
-        await themeToggleBtn.click();
-        await page.waitForTimeout(300);
-
-        const userRows = page.locator('.pb-model-user-row');
-        await expect(userRows.first()).toBeVisible();
-
-        // 点击第一位管理员用户下钻
-        await userRows.first().click();
-
-        // 验证模型面板顶部出现下钻横条
-        const drillBanner = page.locator('#pb-model-drill-banner');
-        await expect(drillBanner).toBeVisible();
-        await expect(page.locator('#pb-drill-user-name')).toContainText('Sarah Connor');
-
-        // 验证：在按目标模型透视下，用户主体选择卡片必须彻底隐藏 (完全解决面板重叠混杂)
-        const userCard = page.locator('#pb-user-principal-card');
-        await expect(userCard).toBeHidden();
-
-        // 4. 切回“按用户主体”模式，验证用户选择卡片恢复显示
-        await tabUser.click();
-        await expect(userCard).toBeVisible();
-
-        // 5. 验证【✕ 取消模拟】按钮功能：点击后清空模拟用户，恢复通用基准
-        const clearUserBtn = page.locator('#pb-btn-clear-user');
-        await expect(clearUserBtn).toBeVisible();
-        await clearUserBtn.click();
-
-        const upnLabel = page.locator('#pb-current-upn-label');
-        await expect(upnLabel).toContainText('未选定模拟主体');
-        const roleTag = page.locator('#pb-badge-role-tag');
-        await expect(roleTag).toHaveText('通用基准');
+        const overviewCard = page.locator('#pb-effective-permissions-card');
+        await expect(overviewCard).toContainText('L1 租户策略');
+        await expect(overviewCard).toContainText('L2 计算容量');
+        await expect(overviewCard).toContainText('L3 工作区角色');
+        await expect(overviewCard).toContainText('L4 语义模型');
+        await expect(overviewCard).toContainText('L5 行级安全');
+        await expect(overviewCard).toContainText('L6 列级与资产');
     });
 
-    test('沙盒卡片向左拖拽无限制：解除 10px 边界，支持全向自由无级拖动', async ({ page }) => {
+    test('用户主体切换实时联动推演：Admin、Viewer 之间切换，蓝图连线、主矩阵与侧边速览同步重算', async ({ page }) => {
+        await page.locator('#rail-nav-permission_blueprint').click();
+
+        const userSelect = page.locator('#pb-user-preset-select');
+        const overviewCard = page.locator('#pb-effective-permissions-card');
+
+        // 1. 选择 Admin (Sarah Connor) 时的权限校验
+        await page.evaluate(() => window.PermissionBlueprint.selectUserPreset('preset_admin'));
+        await page.waitForTimeout(200);
+
+        // 侧边速览校验
+        await expect(overviewCard).toContainText('👑 Admin');
+        await expect(overviewCard).toContainText('⚡ 特权穿透');
+
+        // 切换到矩阵查看细节
+        await page.locator('#pb-tab-matrix-btn').click();
+        const matrixContainer = page.locator('#pb-matrix-container');
+
+        // 6 层矩阵校验：L3 工作区管理为【✅ 允许】
+        const col3 = matrixContainer.locator('.pb-tier-col[data-tier="3"]');
+        await expect(col3).toContainText('👑 完全掌控');
+        await expect(col3).toContainText('✅ 允许');
+
+        // L5 行级安全为【⚡ 特权穿透】
+        const col5 = matrixContainer.locator('.pb-tier-col[data-tier="5"]');
+        await expect(col5).toContainText('⚡ 特权穿透');
+
+        // 2. 切换至 Viewer (Emma Viewer) 时的受限校验
+        await page.evaluate(() => window.PermissionBlueprint.selectUserPreset('preset_viewer_rls'));
+        await page.waitForTimeout(200);
+
+        // 侧边速览校验
+        await expect(overviewCard).toContainText('👁️ Viewer');
+        await expect(overviewCard).toContainText('🔒 Region_East');
+
+        // L3 工作区管理权应为【❌ 禁用】
+        await expect(col3).toContainText('👁️ 只读查看');
+        await expect(col3).toContainText('❌ 禁用');
+
+        // L5 行级安全应为受限切片
+        await expect(col5).toContainText('Region_East');
+
+        // L6 列级安全敏感列掩蔽生效
+        await expect(matrixContainer.locator('.pb-tier-col[data-tier="6"]')).toContainText('🔒 掩蔽: Salary, Margin');
+    });
+
+    test('蓝图沙盒卡片无极自由拖拽：解除 10px 边界，支持突破限制向左自由移动', async ({ page }) => {
         await page.locator('#rail-nav-permission_blueprint').click();
 
         const nodeTenant = page.locator('#node_tenant');
         await expect(nodeTenant).toBeVisible();
 
-        // 初始位置 (DEFAULT_NODE_COORDS x=60)
         const initialLeft = await nodeTenant.evaluate(el => parseInt(el.style.left, 10));
         expect(initialLeft).toBe(60);
 
-        // 拖拽手柄向左拖动 200px
+        // 拖拽卡片头部向左移动 200px
         const header = nodeTenant.locator('.pb-node-header');
         const box = await header.boundingBox();
 
@@ -167,120 +207,379 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         await page.mouse.move(box.x + box.width / 2 - 200, box.y + box.height / 2, { steps: 5 });
         await page.mouse.up();
 
-        // 断言：新位置必须成功突破原本 10px 的硬限制（已拖到负坐标或远小于 10px）
+        // 断言：突破原有 10px 限制
         const newLeft = await nodeTenant.evaluate(el => parseInt(el.style.left, 10));
         expect(newLeft).toBeLessThan(10);
     });
 
-    test('明亮与黑暗双主题深度支持：主题切换后蓝图画布与节点自适应变色', async ({ page }) => {
+    test('一体化联合推演控制区：无冗余人员长列表，纯下拉直选、英文括号标注、纯SVG取消按钮与跨模型权限重算', async ({ page }) => {
         await page.locator('#rail-nav-permission_blueprint').click();
 
-        const viewport = page.locator('#pb-canvas-viewport');
+        // 1. 验证用户主体卡片与模型选择卡片常驻可见，且不再显示冗余的“当前模拟用户：”文本
+        const userCard = page.locator('#pb-user-principal-card');
+        const modelCard = page.locator('#pb-model-select-card');
+        await expect(userCard).toBeVisible();
+        await expect(modelCard).toBeVisible();
+        await expect(page.locator('text=当前模拟用户：')).toBeHidden();
+
+        // 2. 核心保障：验证该模型授权用户与权限分布列表卡片已彻底移除，界面零多余列表
+        const modelUsersCard = page.locator('#pb-model-users-card');
+        await expect(modelUsersCard).toHaveCount(0);
+
+        // 3. 验证选择 Viewer 预设，中括号已全部使用英文表述
+        await page.evaluate(() => window.PermissionBlueprint.selectUserPreset('preset_viewer_rls'));
+        const badgeTag = page.locator('#pb-badge-role-tag');
+        await expect(badgeTag).toHaveText('Viewer (RLS Restricted)');
+        const badgeText = await badgeTag.textContent();
+        expect(badgeText).not.toMatch(/[（(][\u4e00-\u9fa5]+[)）]/);
+
+        // 4. 验证纯 SVG 紧凑型取消按钮 (无文字)，点击后恢复通用基准
+        const clearBtn = page.locator('#pb-btn-clear-user');
+        await expect(clearBtn).toBeVisible();
+        await expect(clearBtn).toHaveText('');
+        await expect(clearBtn.locator('svg')).toBeVisible();
+
+        await clearBtn.click();
+        await expect(page.locator('#pb-current-upn-label')).toContainText('未选定模拟主体');
+        await expect(page.locator('#pb-badge-role-tag')).toHaveText('通用基准');
+    });
+
+    test('明亮与黑暗双主题深度支持：蓝图卡片、矩阵列与状态标签自适应变色且对比度优秀', async ({ page }) => {
+        await page.locator('#rail-nav-permission_blueprint').click();
+        await expect(page.locator('#pb-canvas-viewport')).toBeVisible();
+
         const node = page.locator('#node_tenant');
+        await expect(node).toBeVisible();
+
+        // 1. 点击主题切换为亮色模式 (Light Theme)
         const themeToggleBtn = page.locator('#theme-toggle-btn');
-
-        // 1. 默认暗色模式下：背景为深黑色系
-        const darkBg = await viewport.evaluate(el => window.getComputedStyle(el).backgroundColor);
-        expect(darkBg).toMatch(/rgb\(11,\s*15,\s*25\)/); // #0b0f19
-
-        // 2. 点击主题切换为亮色模式 (Light Theme)
+        await expect(themeToggleBtn).toBeVisible();
+        await themeToggleBtn.scrollIntoViewIfNeeded();
         await themeToggleBtn.click();
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(400);
 
-        // 验证 html 标记了 data-theme="light"
-        const htmlTheme = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
-        expect(htmlTheme).toBe('light');
-
-        // 验证亮色模式下视口变为浅白底 (#f8fafc -> rgb(248, 250, 252))
-        const lightBg = await viewport.evaluate(el => window.getComputedStyle(el).backgroundColor);
-        expect(lightBg).toMatch(/rgb\(248,\s*250,\s*252\)/);
+        // 验证 document 切换为亮色主题
+        const isLight = await page.evaluate(() => {
+            return document.documentElement.getAttribute('data-theme') === 'light' || document.body.classList.contains('light-theme');
+        });
+        expect(isLight).toBe(true);
 
         // 验证蓝图卡片变为纯白玻璃拟态底
         const nodeBg = await node.evaluate(el => window.getComputedStyle(el).backgroundColor);
         expect(nodeBg).toMatch(/rgba?\(255,\s*255,\s*255/);
 
+        // 2. 切换到 6 层流转矩阵，验证矩阵卡片白底
+        await page.locator('#pb-tab-matrix-btn').click();
+        const firstCol = page.locator('.pb-tier-col').first();
+        await expect(firstCol).toBeVisible();
+        const colBg = await firstCol.evaluate(el => window.getComputedStyle(el).backgroundColor);
+        expect(colBg).toMatch(/rgba?\(255,\s*255,\s*255/);
+
         // 3. 再次点击平滑切回暗色模式
         await themeToggleBtn.click();
-        await page.waitForTimeout(300);
-
-        const restoredDarkBg = await viewport.evaluate(el => window.getComputedStyle(el).backgroundColor);
-        expect(restoredDarkBg).toMatch(/rgb\(11,\s*15,\s*25\)/);
-    });
-
-    test('场景预设与Announced公告框在日夜模式下均具备高对比度且零发白', async ({ page }) => {
-        await page.locator('#rail-nav-permission_blueprint').click();
-        const themeToggleBtn = page.locator('#theme-toggle-btn');
-
-        // 切换为亮色白天模式
-        await themeToggleBtn.click();
-        await page.waitForTimeout(300);
-
-        // 1. 验证预设按钮文字在白底下的对比度（金黄色按钮文字应为深琥珀色 #b45309，而不是发白的浅黄）
-        const bypassBtn = page.locator('.pb-scenario-bypass');
-        const bypassTextColor = await bypassBtn.evaluate(el => window.getComputedStyle(el).color);
-        expect(bypassTextColor).toMatch(/rgb\(180,\s*83,\s*9\)/); // #b45309
-
-        // 2. 验证节点内的 Announced 公告框文本清晰易读
-        const nodeAlert = page.locator('.pb-node-alert').first();
-        await expect(nodeAlert).toBeVisible();
-        const alertColor = await nodeAlert.evaluate(el => window.getComputedStyle(el).color);
-        // 不应是几乎看不见的白色/极淡浅色
-        expect(alertColor).not.toMatch(/rgb\(255,\s*255,\s*255\)/);
-    });
-
-    test('防走失核心保障：当卡片漂移出视口时雷达提示自动浮现，点击一键找回瞬间居中', async ({ page }) => {
-        await page.locator('#rail-nav-permission_blueprint').click();
-
-        const radarNotice = page.locator('#pb-radar-notice');
-        const locateBtn = page.locator('#pb-btn-locate-all');
-
-        // 默认卡片在视口内，雷达提示必须隐藏
-        await expect(radarNotice).toBeHidden();
-
-        // 故意将画布平移到遥远坐标，制造“卡片丢失”场景
-        await page.evaluate(() => {
-            window.PermissionBlueprint.panX = 3500;
-            window.PermissionBlueprint.panY = 3500;
-            window.PermissionBlueprint.updateCanvasTransform();
-            window.PermissionBlueprint.checkRadarVisibility();
-        });
-
-        // 验证：雷达防丢提示气泡自动浮现
-        await expect(radarNotice).toBeVisible();
-        await expect(radarNotice).toContainText('卡片位于视口外部');
-
-        // 点击工具栏的“找回卡片”按钮
-        await locateBtn.click();
         await page.waitForTimeout(400);
 
-        // 验证：雷达提示自动隐藏，且节点重新回到可见视口
-        await expect(radarNotice).toBeHidden();
-        const nodeBox = await page.locator('#node_tenant').boundingBox();
-        expect(nodeBox).not.toBeNull();
-        expect(nodeBox.x).toBeGreaterThan(0);
-        expect(nodeBox.y).toBeGreaterThan(0);
+        const isDark = await page.evaluate(() => {
+            return document.documentElement.getAttribute('data-theme') !== 'light' && !document.body.classList.contains('light-theme');
+        });
+        expect(isDark).toBe(true);
     });
 
-    test('持久化跨刷新自愈保障：用户刷新页面 (F5 Reload) 后，8 大核心卡片 100% 自动自愈渲染且绝不消失', async ({ page }) => {
-        // 1. 进入蓝图沙盒
+    test('持久化跨刷新自愈保障：用户刷新页面 (F5 Reload) 后，蓝图沙盒卡片 100% 自动自愈渲染', async ({ page }) => {
+        // 1. 进入蓝图流转沙盒
         await page.locator('#rail-nav-permission_blueprint').click();
-        await expect(page.locator('#node_tenant')).toBeVisible();
+        await expect(page.locator('.pb-blueprint-node')).toHaveCount(8);
 
         // 2. 模拟真实用户执行页面全量刷新 (F5 Reload)
         await page.reload();
 
-        // 3. 断言：刷新后主视图依然保持在 Permission Blueprint，且 8 张卡片 100% 渲染呈现，绝不变成 0 张
+        // 3. 断言：刷新后主视图依然保持在 Permission Blueprint，且 8 大卡片 100% 自愈渲染
         const blueprintMainView = page.locator('#view-permission_blueprint');
         await expect(blueprintMainView).toBeVisible();
 
         const nodes = page.locator('.pb-blueprint-node');
         await expect(nodes).toHaveCount(8);
+        await expect(page.locator('#node_tenant')).toBeVisible();
+    });
 
-        const nodeTenant = page.locator('#node_tenant');
-        await expect(nodeTenant).toBeVisible();
-        const tenantBox = await nodeTenant.boundingBox();
-        expect(tenantBox).not.toBeNull();
-        expect(tenantBox.x).toBeGreaterThan(0);
-        expect(tenantBox.y).toBeGreaterThan(0);
+    test('真实租户环境联动：跨透视常驻同步条抓取真实数据，真实用户直接注入下拉选单', async ({ page }) => {
+        await page.locator('#rail-nav-permission_blueprint').click();
+
+        // 1. 验证真实数据同步条常驻呈现
+        const syncCard = page.locator('.pb-real-sync-card');
+        await expect(syncCard).toBeVisible();
+
+        const syncBtn = page.locator('#pb-btn-sync-real');
+        await expect(syncBtn).toBeVisible();
+
+        // 2. 模拟注入真实组织工作区 WorkSpace_DEV
+        await page.evaluate(() => {
+            localStorage.setItem('pbi_workspaces', JSON.stringify([
+                { id: '2c51e061-0f9f-4d02-bed0-c169019e5d83', name: 'WorkSpace_DEV', type: 'Workspace' }
+            ]));
+            localStorage.setItem('pbi-active-workspace', '2c51e061-0f9f-4d02-bed0-c169019e5d83');
+        });
+
+        // 3. 点击【同步】
+        await syncBtn.click();
+        await page.waitForTimeout(1000);
+
+        // 4. 验证同步状态条已更新为已载入成员，且工作区选择下拉框聚合真实工作区
+        const syncWsName = page.locator('#pb-sync-ws-name');
+        await expect(syncWsName).toContainText('WorkSpace_DEV');
+
+        const wsSelect = page.locator('#pb-ws-select');
+        await expect(wsSelect).toBeVisible();
+        const wsSelectHtml = await wsSelect.innerHTML();
+        expect(wsSelectHtml).toContain('WorkSpace_DEV');
+
+        // 5. 验证同步后，真实租户用户直接注入到用户主体下拉框中，无需额外长列表
+        const userSelect = page.locator('#pb-user-preset-select');
+        await expect(userSelect).toBeVisible();
+        const selectHtml = await userSelect.innerHTML();
+        expect(selectHtml).toMatch(/carman\.ccwu\.cc|sina\.cn|Automation/);
+
+        // 验证用户可直接从下拉框选择真实租户成员进行推演
+        const realOption = userSelect.locator('option:has-text("carman.ccwu.cc"), option:has-text("sina.cn")').first();
+        if (await realOption.count() > 0) {
+            const realVal = await realOption.getAttribute('value');
+            if (realVal) {
+                await userSelect.selectOption(realVal);
+                const upnLabel = page.locator('#pb-current-upn-label');
+                const labelText = await upnLabel.textContent();
+                expect(labelText).toMatch(/carman\.ccwu\.cc|sina\.cn/);
+            }
+        }
+
+        // 再次断言模型用户长列表卡片不存在
+        await expect(page.locator('#pb-model-users-card')).toHaveCount(0);
+    });
+
+    test('目标模型下拉选单纯净化：零“已选”脏数据，仅显示纯正真实模型与经典场景', async ({ page }) => {
+        await page.locator('#rail-nav-permission_blueprint').click();
+
+        const modelSelect = page.locator('#pb-model-select');
+        await expect(modelSelect).toBeVisible();
+
+        const options = modelSelect.locator('option');
+        const count = await options.count();
+        expect(count).toBeGreaterThan(0);
+
+        for (let i = 0; i < count; i++) {
+            const optText = await options.nth(i).textContent();
+            // 严禁出现“已选 X 个模型”等顶栏临时统计文本
+            expect(optText).not.toContain('已选 2 个模型');
+            expect(optText).not.toContain('已选 5 个模型');
+            expect(optText).not.toContain('已选');
+            expect(optText).not.toContain('个模型');
+        }
+    });
+
+    test('6 层流转矩阵权限文本自适应换行：长文本完整展示，无省略号截断', async ({ page }) => {
+        await page.locator('#rail-nav-permission_blueprint').click();
+        await page.locator('#pb-tab-matrix-btn').click();
+
+        const propNames = page.locator('.pb-col-prop-name');
+        const count = await propNames.count();
+        expect(count).toBeGreaterThanOrEqual(30);
+
+        // 验证首个关键长文本项（如“允许导出数据到 Excel/CSV”）
+        const exportProp = propNames.filter({ hasText: '允许导出数据到 Excel/CSV' }).first();
+        await expect(exportProp).toBeVisible();
+
+        // 验证 CSS 计算样式：必须是 normal 且无省略号
+        const whiteSpace = await exportProp.evaluate(el => window.getComputedStyle(el).whiteSpace);
+        expect(whiteSpace).toBe('normal');
+
+        const textOverflow = await exportProp.evaluate(el => window.getComputedStyle(el).textOverflow);
+        expect(textOverflow).toBe('clip');
+    });
+
+    test('What-If 策略演练：点击切换触发连锁反应，实时高亮联动波及层级与诊断横幅', async ({ page }) => {
+        await page.locator('#rail-nav-permission_blueprint').click();
+        await page.locator('#pb-tab-matrix-btn').click();
+
+        // 1. 初始状态：显示 What-If 紧凑提示横幅
+        const banner = page.locator('.pb-whatif-banner');
+        await expect(banner).toBeVisible();
+        await expect(banner).toContainText('What-If 演练');
+
+        // 验证 6 大层级共 36 个设置项已 100% 配备【切换】按钮
+        const toggleBtns = page.locator('.pb-whatif-toggle-btn');
+        await expect(toggleBtns).toHaveCount(36);
+
+        // 2. 找到 L1 租户“允许导出数据到 Excel/CSV”项旁的【切换】按钮并点击
+        const exportRow = page.locator('.pb-col-row', { hasText: '允许导出数据到 Excel/CSV' });
+        const toggleBtn = exportRow.locator('.pb-whatif-toggle-btn');
+        await expect(toggleBtn).toBeVisible();
+
+        // 点击切换 L1 导出策略
+        await toggleBtn.click();
+
+        // 3. 验证 What-If 诊断横幅实时更新为演练状态并提示跨层级联动
+        await expect(banner).toContainText('What-If 权限演练中');
+        await expect(banner).toContainText('已实时联动引发');
+
+        // 4. 验证 L6 层的“导出底层明细数据”被实时波及，产生 .impacted 高亮与联动徽章
+        const exportUnderlyingRow = page.locator('.pb-col-row', { hasText: '导出底层明细数据' });
+        await expect(exportUnderlyingRow).toHaveClass(/impacted/);
+        await expect(exportUnderlyingRow).toContainText('⚡ 受 L1 联动');
+
+        // 验证动态流动指向连线 (pb-flow-wire) 实时生成并展现动态流动动画
+        const flowWires = page.locator('.pb-flow-wire');
+        const wireCount = await flowWires.count();
+        expect(wireCount).toBeGreaterThanOrEqual(1);
+
+        // 5. 验证核心需求：再次点击【切换】按钮切回原始值时，连线必须自动销毁
+        await toggleBtn.click();
+        await expect(exportUnderlyingRow).not.toHaveClass(/impacted/);
+        await expect(page.locator('.pb-flow-wire')).toHaveCount(0);
+
+        // 6. 验证功能预设胶囊按钮 (导出、GAC、RLS、OLS、建模)
+        const capsuleContainer = page.locator('#pb-feature-capsules');
+        await expect(capsuleContainer).toBeVisible();
+        const exportCapsule = capsuleContainer.locator('button[data-capsule="export"]');
+        await expect(exportCapsule).toBeVisible();
+        await exportCapsule.click();
+        await expect(exportCapsule).toHaveClass(/active/);
+
+        // 验证选中“导出”胶囊后，下方呈现针对导出能力的 6 大层级穿透判定
+        const overviewContent = page.locator('#pb-effective-permissions-content');
+        await expect(overviewContent).toContainText('L1 租户导出策略');
+        await expect(overviewContent).toContainText('L6 最终底层导出能力');
+
+        // 切换回“GAC”胶囊
+        const gacCapsule = capsuleContainer.locator('button[data-capsule="gac"]');
+        await gacCapsule.click();
+        await expect(gacCapsule).toHaveClass(/active/);
+        await expect(overviewContent).toContainText('L1 GAC 隔离策略模式');
+        await expect(overviewContent).toContainText('L5 GAC Mashup 门禁');
+    });
+
+    test('深度保障：暗黑模式 Tab 高对比度与 L1 GAC 切换全链路流转至 L3 工作区及 L4/L5/L6 下游阻断', async ({ page }) => {
+        await page.locator('#rail-nav-permission_blueprint').click();
+
+        // 1. 切换到 6 层流转矩阵 Tab 并验证可见
+        const matrixTabBtn = page.locator('#pb-tab-matrix-btn');
+        await matrixTabBtn.click();
+        await expect(matrixTabBtn).toHaveClass(/active/);
+        await expect(page.locator('#pb-matrix-container')).toBeVisible();
+
+        // 2. 确保处于通用基准状态 (未模拟特定主体，初始为宽松模式)
+        await page.locator('#pb-btn-clear-user').click();
+        await page.waitForTimeout(300);
+
+        // 3. 暗黑模式下 Tab 高对比度校验：确保绝非黄底白字
+        const tabBg = await matrixTabBtn.evaluate(el => window.getComputedStyle(el).backgroundColor);
+        const tabColor = await matrixTabBtn.locator('span').evaluate(el => window.getComputedStyle(el).color);
+
+        // 验证不是黄色背景 (rgba(251, 191, 36) 或 rgb(245, 158, 11))
+        expect(tabBg).not.toContain('251, 191, 36');
+        expect(tabBg).not.toContain('245, 158, 11');
+        // 验证字体颜色为明亮清晰白字 (rgb(255, 255, 255))
+        expect(tabColor).toBe('rgb(255, 255, 255)');
+
+        // 4. 找到 L1 GAC 细粒度隔离策略项旁的【切换】按钮
+        const gacRow = page.locator('.pb-col-row[data-prop-key="gacPolicy"]');
+        await expect(gacRow).toBeVisible();
+        await expect(gacRow).toContainText('⚠️ 宽松模式');
+        const gacToggleBtn = gacRow.locator('.pb-whatif-toggle-btn');
+        await expect(gacToggleBtn).toBeVisible();
+
+        // 切换 L1 GAC 为严格模式
+        await gacToggleBtn.click();
+        await page.waitForTimeout(200);
+
+        // 验证 L1 变为严格门禁
+        await expect(gacRow).toContainText('🛡️ 严格门禁');
+
+        // 3. 核心断言：验证 L1 GAC 切换真正流转到工作区级别 (L3)
+        const l3GacConnRow = page.locator('.pb-col-row[data-prop-key="gacConnection"]');
+        await expect(l3GacConnRow).toBeVisible();
+        await expect(l3GacConnRow).toHaveClass(/impacted/);
+        await expect(l3GacConnRow).toContainText('❌ 严格门禁隔离');
+        await expect(l3GacConnRow).toContainText('⚡ 受 L1 联动');
+
+        // 4. 核心断言：验证下游 L4、L5、L6 同步产生连锁阻断反应
+        const l4DsAuthRow = page.locator('.pb-col-row[data-prop-key="dataSourceAuth"]');
+        await expect(l4DsAuthRow).toHaveClass(/impacted/);
+        await expect(l4DsAuthRow).toContainText('❌ GAC严格门禁阻断');
+
+        const l5MashupRow = page.locator('.pb-col-row[data-prop-key="gacMashupGate"]');
+        await expect(l5MashupRow).toHaveClass(/impacted/);
+        await expect(l5MashupRow).toContainText('❌ GAC细粒度门禁拦截');
+
+        const l6PqRow = page.locator('.pb-col-row[data-prop-key="powerQueryEdit"]');
+        await expect(l6PqRow).toHaveClass(/impacted/);
+        await expect(l6PqRow).toContainText('❌ GAC严格门禁阻断');
+
+        // 5. 验证跨层级动态流向连线产生 (从 L1 连接到 L3、L4、L5、L6)
+        const wires = page.locator('.pb-flow-wire');
+        const wireCount = await wires.count();
+        expect(wireCount).toBeGreaterThanOrEqual(4);
+
+        // 6. 验证再次点击切换切回基准时，连线瞬间销毁，状态恢复
+        await gacToggleBtn.click();
+        await page.waitForTimeout(200);
+        await expect(l3GacConnRow).not.toHaveClass(/impacted/);
+        await expect(page.locator('.pb-flow-wire')).toHaveCount(0);
+    });
+
+    test('节点坐标手动拖拽持久化与重置：拖拽节点位置后刷新保持，点击【重置排版】恢复默认', async ({ page }) => {
+        await page.locator('#rail-nav-permission_blueprint').click();
+        const tenantNode = page.locator('#node_tenant');
+        await expect(tenantNode).toBeVisible();
+
+        // 1. 记录移动前的初始位置
+        const boxBefore = await tenantNode.boundingBox();
+        expect(boxBefore).not.toBeNull();
+
+        // 2. 模拟拖拽移动租户节点
+        const header = tenantNode.locator('.pb-node-header');
+        await header.hover();
+        await page.mouse.down();
+        await page.mouse.move(boxBefore.x + 120, boxBefore.y + 80, { steps: 5 });
+        await page.mouse.up();
+        await page.waitForTimeout(100);
+
+        // 验证 localStorage 中已保存坐标
+        const storedCoords = await page.evaluate(() => localStorage.getItem('pbi-blueprint-node-positions'));
+        expect(storedCoords).not.toBeNull();
+        const parsed = JSON.parse(storedCoords);
+        expect(parsed.node_tenant).toBeDefined();
+
+        // 验证 SQLite 数据库已通过双写 API 成功持久化
+        await page.waitForTimeout(300);
+        const dbResp = await page.request.get('/api/db/kv/pbi-blueprint-node-positions');
+        expect(dbResp.ok()).toBeTruthy();
+        const dbJson = await dbResp.json();
+        expect(dbJson.success).toBe(true);
+        expect(dbJson.data).not.toBeNull();
+        const dbParsed = typeof dbJson.data === 'string' ? JSON.parse(dbJson.data) : dbJson.data;
+        expect(dbParsed.node_tenant).toBeDefined();
+
+        // 3. 模拟全量刷新 (F5 Reload)
+        await page.reload();
+        await expect(tenantNode).toBeVisible();
+
+        // 断言：刷新后 localStorage 仍然存在，并且内存中已自动加载持久化坐标
+        const reloadedCoords = await page.evaluate(() => localStorage.getItem('pbi-blueprint-node-positions'));
+        expect(reloadedCoords).toBe(storedCoords);
+
+        // 4. 点击【重置排版】按钮
+        const resetBtn = page.locator('button[onclick*="resetLayout"]');
+        await expect(resetBtn).toBeVisible();
+        await resetBtn.click();
+        await page.waitForTimeout(300);
+
+        // 断言：点击重置后，localStorage 缓存被彻底清除
+        const clearedCoords = await page.evaluate(() => localStorage.getItem('pbi-blueprint-node-positions'));
+        expect(clearedCoords).toBeNull();
+
+        // 断言：点击重置后，SQLite 数据库中的键值记录也被同步清除
+        const dbResetResp = await page.request.get('/api/db/kv/pbi-blueprint-node-positions');
+        const dbResetJson = await dbResetResp.json();
+        expect(dbResetJson.data).toBeNull();
     });
 });
+
