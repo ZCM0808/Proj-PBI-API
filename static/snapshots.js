@@ -157,6 +157,22 @@
             item.appendChild(actions);
             menu.appendChild(item);
         });
+
+        // 动态同步更新按钮可用性
+        const btnUpdate = document.getElementById('btn-update-snapshot');
+        if (btnUpdate) {
+            if (activeSnap) {
+                btnUpdate.disabled = false;
+                btnUpdate.style.opacity = '1';
+                btnUpdate.style.cursor = 'pointer';
+                btnUpdate.title = `更新覆盖当前快照: ${activeSnap.name} (Update Current Profile)`;
+            } else {
+                btnUpdate.disabled = true;
+                btnUpdate.style.opacity = '0.38';
+                btnUpdate.style.cursor = 'not-allowed';
+                btnUpdate.title = '未选定任何快照（请先从下拉菜单选择一个快照进行更新）';
+            }
+        }
     }
 
     function toggleDropdown(e) {
@@ -252,16 +268,80 @@
         renderSnapshots();
     };
 
+    window.updateCurrentAuthSnapshot = function() {
+        if (!activeSnapshotId) {
+            if (typeof window.showNotification === 'function') {
+                window.showNotification('请先在下拉列表中选择一个要更新的快照！', 'warning');
+            } else {
+                alert('请先在下拉列表中选择一个要更新的快照！');
+            }
+            return;
+        }
+        const snap = snapshots.find(s => s.id === activeSnapshotId);
+        if (!snap) return;
+
+        const config = getCurrentConfig();
+        if (!config.clientId || !config.tenantId) {
+            alert('更新失败：TENANT_ID 和 CLIENT_ID 不能为空！');
+            return;
+        }
+
+        // 原地覆盖更新配置（保留原 snap.name 与 snap.id）
+        Object.assign(snap, config);
+        saveSnapshots();
+        renderSnapshots();
+
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(`✅ 已成功更新快照 [${snap.name}] 的凭据配置！`, 'success');
+        } else {
+            alert(`✅ 已成功更新快照 [${snap.name}] 的凭据配置！`);
+        }
+
+        const btnUpdate = document.getElementById('btn-update-snapshot');
+        if (btnUpdate) {
+            btnUpdate.style.transform = 'scale(1.18)';
+            setTimeout(() => { btnUpdate.style.transform = ''; }, 220);
+        }
+    };
+
+    window.saveNewAuthSnapshot = async function() {
+        const config = getCurrentConfig();
+        if (!config.clientId || !config.tenantId) {
+            alert('保存失败：TENANT_ID 和 CLIENT_ID 不能为空！');
+            return;
+        }
+        const defaultName = `Profile ${snapshots.length + 1}`;
+        const name = window.showCustomPrompt 
+            ? await window.showCustomPrompt('为新快照输入名称:', defaultName)
+            : prompt('为新快照输入名称:', defaultName);
+        if (name !== null) {
+            window.saveAuthSnapshot(name.trim() || undefined, true);
+            if (typeof window.showNotification === 'function') {
+                window.showNotification(`✅ 已成功创建新快照 [${name.trim() || defaultName}]！`, 'success');
+            }
+            const btnCreate = document.getElementById('btn-create-snapshot');
+            if (btnCreate) {
+                btnCreate.style.transform = 'scale(1.18)';
+                setTimeout(() => { btnCreate.style.transform = ''; }, 220);
+            }
+        }
+    };
+
     // Initialize
     setTimeout(() => {
+        const btnUpdate = document.getElementById('btn-update-snapshot');
+        if (btnUpdate) {
+            btnUpdate.onclick = window.updateCurrentAuthSnapshot;
+        }
+
+        const btnCreate = document.getElementById('btn-create-snapshot');
+        if (btnCreate) {
+            btnCreate.onclick = window.saveNewAuthSnapshot;
+        }
+
         const btnSave = document.getElementById('btn-save-snapshot');
         if (btnSave) {
-            btnSave.onclick = async () => {
-                const name = window.showCustomPrompt 
-                    ? await window.showCustomPrompt('为当前配置起一个名字:', `Profile ${snapshots.length + 1}`)
-                    : prompt('为当前配置起一个名字:', `Profile ${snapshots.length + 1}`);
-                if (name !== null) window.saveAuthSnapshot(name.trim() || undefined, true);
-            };
+            btnSave.onclick = window.saveNewAuthSnapshot;
         }
         
         const trigger = document.getElementById('snapshot-dropdown-trigger');

@@ -319,6 +319,7 @@
             this.hasCenteredOnce = false;
             this.whatIfOverrides = {};
             this.activeFeatureCapsule = 'all';
+            this.syncSeq = 0;
         }
 
         // 统一顶栏与蓝图模型的同步入口
@@ -747,17 +748,19 @@
         }
 
         async syncNodePositionsFromDatabase() {
+            const syncSeq = ++this.syncSeq;
             try {
                 const resp = await fetch('/api/db/kv/pbi-blueprint-node-positions');
-                if (!resp.ok) return;
+                if (!resp.ok || syncSeq !== this.syncSeq) return;
                 const json = await resp.json();
+                if (syncSeq !== this.syncSeq) return;
                 if (json.success && json.data) {
                     const parsed = typeof json.data === 'string' ? JSON.parse(json.data) : json.data;
                     if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
                         const merged = Object.assign(JSON.parse(JSON.stringify(DEFAULT_NODE_COORDS)), parsed);
                         const currentStr = JSON.stringify(this.nodePositions);
                         const newStr = JSON.stringify(merged);
-                        if (currentStr !== newStr) {
+                        if (currentStr !== newStr && syncSeq === this.syncSeq) {
                             this.nodePositions = merged;
                             localStorage.setItem('pbi-blueprint-node-positions', newStr);
                             this.renderNodes();
@@ -787,7 +790,8 @@
             }
         }
 
-        resetNodePositions() {
+        async resetNodePositions() {
+            this.syncSeq = (this.syncSeq || 0) + 1;
             if (!this.isInitialized) {
                 this.initDOM();
                 this.isInitialized = true;
@@ -797,10 +801,12 @@
             } catch (e) {}
             // 同步清空后端 SQLite 数据库对应记录
             try {
-                fetch('/api/db/kv/pbi-blueprint-node-positions', {
+                await fetch('/api/db/kv/pbi-blueprint-node-positions', {
                     method: 'DELETE'
-                }).catch(err => console.warn('Failed to delete node positions from DB:', err));
-            } catch (e) {}
+                });
+            } catch (e) {
+                console.warn('Failed to delete node positions from DB:', e);
+            }
             this.nodePositions = JSON.parse(JSON.stringify(DEFAULT_NODE_COORDS));
             this.renderNodes();
             this.recalculateAndRenderWires();

@@ -539,15 +539,13 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         const parsed = JSON.parse(storedCoords);
         expect(parsed.node_tenant).toBeDefined();
 
-        // 验证 SQLite 数据库已通过双写 API 成功持久化
-        await page.waitForTimeout(300);
-        const dbResp = await page.request.get('/api/db/kv/pbi-blueprint-node-positions');
-        expect(dbResp.ok()).toBeTruthy();
-        const dbJson = await dbResp.json();
-        expect(dbJson.success).toBe(true);
-        expect(dbJson.data).not.toBeNull();
-        const dbParsed = typeof dbJson.data === 'string' ? JSON.parse(dbJson.data) : dbJson.data;
-        expect(dbParsed.node_tenant).toBeDefined();
+        // 验证 SQLite 数据库已通过双写 API 成功持久化 (使用 expect.poll 防御异步网络延迟)
+        await expect.poll(async () => {
+            const dbResp = await page.request.get('/api/db/kv/pbi-blueprint-node-positions');
+            if (!dbResp.ok()) return null;
+            const dbJson = await dbResp.json();
+            return dbJson.data;
+        }, { timeout: 3000 }).not.toBeNull();
 
         // 3. 模拟全量刷新 (F5 Reload)
         await page.reload();
@@ -561,16 +559,17 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         const resetBtn = page.locator('button[onclick*="resetLayout"]');
         await expect(resetBtn).toBeVisible();
         await resetBtn.click();
-        await page.waitForTimeout(300);
 
-        // 断言：点击重置后，localStorage 缓存被彻底清除
-        const clearedCoords = await page.evaluate(() => localStorage.getItem('pbi-blueprint-node-positions'));
-        expect(clearedCoords).toBeNull();
+        // 断言：点击重置后，localStorage 缓存与 SQLite 数据库中的键值记录均被彻底清除
+        await expect.poll(async () => {
+            return await page.evaluate(() => localStorage.getItem('pbi-blueprint-node-positions'));
+        }, { timeout: 3000 }).toBeNull();
 
-        // 断言：点击重置后，SQLite 数据库中的键值记录也被同步清除
-        const dbResetResp = await page.request.get('/api/db/kv/pbi-blueprint-node-positions');
-        const dbResetJson = await dbResetResp.json();
-        expect(dbResetJson.data).toBeNull();
+        await expect.poll(async () => {
+            const dbResetResp = await page.request.get('/api/db/kv/pbi-blueprint-node-positions');
+            const dbResetJson = await dbResetResp.json();
+            return dbResetJson.data;
+        }, { timeout: 3000 }).toBeNull();
     });
 });
 

@@ -782,4 +782,62 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     expect(styleAttr).toContain('position: sticky');
     expect(styleAttr).toContain('left: 0px');
   });
+
+  test('Azure App Authentication 双按钮操作闭环：未选择时禁用更新按钮，新建快照后启用更新并支持原地覆盖更新', async ({ page }) => {
+    // 0. 清空快照缓存以验证零快照初始状态
+    await page.evaluate(() => {
+      localStorage.removeItem('pbi_auth_snapshots');
+      localStorage.removeItem('pbi_active_snapshot_id');
+    });
+    await page.reload();
+
+    // 1. 打开全局配置弹窗
+    const settingsBtn = page.locator('#btn-settings');
+    await settingsBtn.click();
+    const settingsModal = page.locator('#settings-modal');
+    await expect(settingsModal).toBeVisible();
+
+    // 2. 验证双按钮渲染状态
+    const updateBtn = page.locator('#btn-update-snapshot');
+    const createBtn = page.locator('#btn-create-snapshot');
+    await expect(updateBtn).toBeVisible();
+    await expect(createBtn).toBeVisible();
+
+    // 初始状态：未选择任何快照，更新按钮应处于 disabled 状态
+    await expect(updateBtn).toBeDisabled();
+
+    // 3. 填写表单并调用另存为新快照
+    await page.locator('#set-tenant').fill('tenant-test-1111');
+    await page.locator('#set-client').fill('client-test-2222');
+    await page.locator('#set-secret').fill('secret-v1');
+
+    await page.evaluate(() => {
+      window.saveAuthSnapshot('Test Profile A', true);
+    });
+
+    // 验证更新按钮变为 enabled，且活跃快照为 Test Profile A
+    await expect(updateBtn).toBeEnabled();
+    const activeText = page.locator('#active-snapshot-text');
+    await expect(activeText).toHaveText('Test Profile A');
+
+    // 4. 修改输入框内容，点击【更新覆盖当前快照】
+    await page.locator('#set-secret').fill('secret-v2-updated');
+    await updateBtn.click();
+
+    // 断言：localStorage 中依然只有一个快照，且内容已成功原地更新为 secret-v2-updated
+    const snapshotsJson = await page.evaluate(() => localStorage.getItem('pbi_auth_snapshots'));
+    const snapshots = JSON.parse(snapshotsJson || '[]');
+    expect(snapshots.length).toBe(1);
+    expect(snapshots[0].name).toBe('Test Profile A');
+    expect(snapshots[0].clientSecret).toBe('secret-v2-updated');
+
+    // 5. 另存为新快照：验证新生成快照而不是覆盖
+    await page.evaluate(() => {
+      window.saveAuthSnapshot('Test Profile B', true);
+    });
+    const snapshotsJson2 = await page.evaluate(() => localStorage.getItem('pbi_auth_snapshots'));
+    const snapshots2 = JSON.parse(snapshotsJson2 || '[]');
+    expect(snapshots2.length).toBe(2);
+    expect(snapshots2[1].name).toBe('Test Profile B');
+  });
 });
