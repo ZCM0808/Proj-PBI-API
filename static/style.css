@@ -8269,9 +8269,10 @@ body.light-theme .pb-asset-tier-card .pb-card-header,
     font-weight: 700;
     color: var(--text-primary);
     line-height: 1.3;
-    word-break: break-word;
-    white-space: normal;
-    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1 1 auto;
     min-width: 0;
 }
 .pb-card-sub {
@@ -8279,6 +8280,7 @@ body.light-theme .pb-asset-tier-card .pb-card-header,
     color: var(--text-secondary);
     line-height: 1.4;
     word-break: break-word;
+    overflow-wrap: break-word;
     white-space: normal;
     width: 100%;
 }
@@ -8298,6 +8300,9 @@ body.light-theme .pb-asset-tier-card .pb-card-header,
     border: none;
     flex-shrink: 0;
     white-space: nowrap;
+    max-width: 45%;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .pb-status-indicator-dot {
     width: 6px;
@@ -8451,13 +8456,14 @@ body.light-theme .pb-asset-card-row:hover,
     justify-content: space-between;
     gap: 6px;
     min-width: 0;
+    flex-wrap: wrap;
 }
 .pb-asset-row-title-area {
     display: flex;
     align-items: flex-start;
     gap: 6px;
-    min-width: 0;
-    flex: 1;
+    min-width: 110px;
+    flex: 1 1 110px;
 }
 .pb-row-drag-handle {
     display: inline-flex;
@@ -8477,18 +8483,19 @@ body.light-theme .pb-asset-card-row:hover,
     color: var(--accent);
 }
 .pb-asset-prop-name {
-    font-size: 0.88rem;
-    font-weight: 700;
+    font-size: 0.86rem;
+    font-weight: 750;
     color: var(--text-primary);
     line-height: 1.35;
-    word-break: break-word;
+    word-break: normal;
+    overflow-wrap: break-word;
     white-space: normal;
 }
 
 /* 状态药丸胶囊 */
 .pb-asset-status-pill {
-    font-size: 0.64rem;
-    font-weight: 600;
+    font-size: 0.62rem;
+    font-weight: 700;
     padding: 2px 6px;
     border-radius: 4px;
     white-space: nowrap;
@@ -8496,6 +8503,7 @@ body.light-theme .pb-asset-card-row:hover,
     align-items: center;
     gap: 3px;
     flex-shrink: 0;
+    margin-left: auto;
 }
 .pb-asset-status-pill.status-enabled {
     background: rgba(52, 211, 153, 0.12);

@@ -4642,8 +4642,11 @@
                         const hasGw = Boolean(gwName || (ds.gatewayId && ds.gatewayId !== '-'));
                         const gwStatus = (ds.gatewayStatus || detectedGateways[0]?.status || 'LIVE').toUpperCase();
 
-                        // 提炼大写官方 Connection 名字
-                        const connName = rawConnName ? rawConnName.toUpperCase() : `${dsType} (${server})`;
+                        // 提炼大写官方 Connection 名字 (避免将超长 URL 作为标题挤压布局)
+                        let connName = rawConnName ? rawConnName.toUpperCase() : '';
+                        if (!connName) {
+                            connName = db ? `${dsType}: ${db}`.toUpperCase() : (dsType ? `${dsType} CONNECTION` : 'PRIMARY CONNECTION');
+                        }
                         if (!primaryConnName) {
                             primaryConnName = connName;
                             primaryDsType = dsType;
@@ -4660,7 +4663,7 @@
                             name: displayName,
                             desc: displayDesc,
                             statusClass: 'enabled',
-                            statusText: hasGw ? `✅ ${gwStatus} 在线` : '✅ CONNECTED',
+                            statusText: hasGw ? `✅ ${gwStatus}` : '✅ CONNECTED',
                             badge: dsType
                         };
                     });
@@ -4739,9 +4742,9 @@
 
             const activeGwName = (inspectCache?.gateways && inspectCache.gateways[0]?.name) || (inspectCache?.datasources?.find(d => d.gatewayName)?.gatewayName) || '';
             const connTitleUpper = primaryConnName ? primaryConnName.toUpperCase() : '数据源连接';
-            const connTitleText = `🔌 5. CONNECTION (${connTitleUpper})`;
+            const connTitleText = '🔌 5. CONNECTION (连接)';
             const connSubText = `连接: ${connTitleUpper} · 经由网关: ${activeGwName ? activeGwName.toUpperCase() : '云端直连'}`;
-            const connStatusLabel = !hasSelectedWs ? '⚠️ 未选' : (!hasSelectedModel ? '⚠️ 未选模型' : `✅ ${connTitleUpper}`);
+            const connStatusLabel = !hasSelectedWs ? '⚠️ 未选' : (!hasSelectedModel ? '⚠️ 未选模型' : '✅ CONNECTED');
             const connStatusClass = !hasSelectedWs ? 'disabled' : (!hasSelectedModel ? 'warn' : 'enabled');
 
             // Module 6: Pipeline (部署管道与 ALM 治理层)
