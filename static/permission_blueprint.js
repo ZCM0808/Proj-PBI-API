@@ -4274,20 +4274,24 @@
                 `;
             };
 
-            // 单个卡片组装辅助函数 (集成拖拽手柄、卡片标题与内容)
+            // 0. 读取本地持久化的各卡片 Y 轴高度错落位移 (支持上下拖拽微调位置，各列独立占位天然零重叠)
+            let cardYOffsets = {};
+            try {
+                cardYOffsets = JSON.parse(localStorage.getItem('pbi-user-assets-card-y-offsets') || '{}');
+            } catch (e) {}
+
+            // 单个卡片组装辅助函数 (集成上下拖拽手柄、卡片标题与内容，物理零重叠)
             const buildTierCardHtml = (tierId, title, sub, statusClass, statusText, bodyHtml) => {
+                const yOffset = Number(cardYOffsets[tierId]) || 0;
                 return `
-                    <div class="pb-asset-tier-card" data-tier-id="${tierId}" draggable="true">
+                    <div class="pb-asset-tier-card" data-tier-id="${tierId}" style="transform: translateY(${yOffset}px);">
                         <div class="pb-card-header">
                             <div class="pb-card-header-left">
-                                <span class="pb-card-drag-handle" title="按住上下拖拽调整卡片位置 (拖拽重排)">
+                                <span class="pb-card-drag-handle" title="按住上下拖拽调整卡片位置 (各列独立占位，天然零重叠)">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                        <circle cx="9" cy="5" r="1.5"></circle>
-                                        <circle cx="9" cy="12" r="1.5"></circle>
-                                        <circle cx="9" cy="19" r="1.5"></circle>
-                                        <circle cx="15" cy="5" r="1.5"></circle>
-                                        <circle cx="15" cy="12" r="1.5"></circle>
-                                        <circle cx="15" cy="19" r="1.5"></circle>
+                                        <polyline points="8 17 12 21 16 17"></polyline>
+                                        <polyline points="8 7 12 3 16 7"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="21"></line>
                                     </svg>
                                 </span>
                                 <div class="pb-card-title-group">
@@ -4536,73 +4540,114 @@
 
             container.innerHTML = cardOrder.map(k => cardsMap[k]).join('');
 
-            // 初始化卡片上下拖拽防重叠排序事件
-            this.initUserAssetsCardDrag(container);
+            // 初始化卡片上下拖拽防重叠位移引擎 (各列独立占位，天然零重叠)
+            this.initUserAssetsCardVerticalDrag(container);
         }
 
-        // ⚡ 初始化卡片上下拖拽防重叠排序引擎 (Zero-Overlap Guaranteed Drag-and-Drop Reordering)
-        initUserAssetsCardDrag(container) {
+        // ⚡ 初始化卡片上下拖拽位置引擎 (Zero-Overlap Guaranteed Vertical Dragging)
+        initUserAssetsCardVerticalDrag(container) {
             if (!container) return;
             const cards = container.querySelectorAll('.pb-asset-tier-card');
-            let draggedCard = null;
 
             cards.forEach(card => {
-                card.addEventListener('dragstart', (e) => {
-                    draggedCard = card;
-                    card.classList.add('pb-card-dragging');
-                    e.dataTransfer.effectAllowed = 'move';
-                    e.dataTransfer.setData('text/plain', card.getAttribute('data-tier-id') || '');
-                    setTimeout(() => {
-                        if (draggedCard) draggedCard.style.opacity = '0.45';
-                    }, 0);
-                });
+                const header = card.querySelector('.pb-card-header');
+                if (!header) return;
 
-                card.addEventListener('dragend', () => {
-                    if (draggedCard) {
-                        draggedCard.style.opacity = '';
-                        draggedCard.classList.remove('pb-card-dragging');
-                    }
-                    draggedCard = null;
+                let isDragging = false;
+                let startY = 0;
+                let initialY = 0;
 
-                    // 拖拽落位后立即持久化卡片排序至本地缓存
-                    const currentOrder = Array.from(container.querySelectorAll('.pb-asset-tier-card'))
-                        .map(c => c.getAttribute('data-tier-id'))
-                        .filter(Boolean);
-                    if (currentOrder.length > 0) {
-                        try {
-                            localStorage.setItem('pbi-user-assets-card-order', JSON.stringify(currentOrder));
-                        } catch(e) {}
-                    }
-                });
+                const onPointerDown = (e) => {
+                    // 若点击内部可交互元素，不触发拖动
+                    if (e.target.closest('button, a, input, select')) return;
 
-                card.addEventListener('dragover', (e) => {
+                    isDragging = true;
+                    startY = e.clientY;
+
+                    // 从当前行内样式中提取当前的 translateY 值
+                    const match = /translateY\((-?\d+(?:\.\d+)?)px\)/.exec(card.style.transform || '');
+                    initialY = match ? parseFloat(match[1]) : 0;
+
+                    card.classList.add('pb-card-dragging-y');
+                    try {
+                        header.setPointerCapture(e.pointerId);
+                    } catch (err) {}
+
+                    header.addEventListener('pointermove', onPointerMove);
+                    header.addEventListener('pointerup', onPointerUp);
+                    header.addEventListener('pointercancel', onPointerUp);
                     e.preventDefault();
-                    e.dataTransfer.dropEffect = 'move';
-                    if (!draggedCard || draggedCard === card) return;
+                };
 
-                    const rect = card.getBoundingClientRect();
-                    const midpoint = rect.top + rect.height / 2;
-                    const isAfter = (e.clientY > midpoint);
+                const onPointerMove = (e) => {
+                    if (!isDragging) return;
+                    const deltaY = e.clientY - startY;
+                    // 物理零重叠范围控制：限制在 -80px 至 +160px 之间，避免移出视口
+                    const clampedY = Math.round(Math.max(-80, Math.min(160, initialY + deltaY)));
+                    card.style.transform = `translateY(${clampedY}px)`;
+                };
 
-                    // 零重叠防御：DOM 原生上下插入，顺次文档流物理杜绝重叠
-                    if (isAfter) {
-                        container.insertBefore(draggedCard, card.nextSibling);
-                    } else {
-                        container.insertBefore(draggedCard, card);
-                    }
-                });
+                const onPointerUp = (e) => {
+                    if (!isDragging) return;
+                    isDragging = false;
+                    card.classList.remove('pb-card-dragging-y');
+
+                    try {
+                        header.releasePointerCapture(e.pointerId);
+                    } catch (err) {}
+                    header.removeEventListener('pointermove', onPointerMove);
+                    header.removeEventListener('pointerup', onPointerUp);
+                    header.removeEventListener('pointercancel', onPointerUp);
+
+                    // 拖动落位后立即持久化卡片 Y 轴位置至本地缓存
+                    this.persistCardYOffsets(container);
+                };
+
+                header.addEventListener('pointerdown', onPointerDown);
             });
         }
 
-        // 重置用户全景链路卡片排序为默认
-        resetUserAssetsCardOrder() {
+        // 持久化卡片 Y 轴位置
+        persistCardYOffsets(container) {
+            const offsets = {};
+            const cards = container.querySelectorAll('.pb-asset-tier-card');
+            cards.forEach(card => {
+                const tierId = card.getAttribute('data-tier-id');
+                const match = /translateY\((-?\d+(?:\.\d+)?)px\)/.exec(card.style.transform || '');
+                if (tierId && match) {
+                    offsets[tierId] = parseFloat(match[1]);
+                }
+            });
             try {
+                localStorage.setItem('pbi-user-assets-card-y-offsets', JSON.stringify(offsets));
+            } catch (e) {}
+        }
+
+        // 重置用户全景链路卡片垂直位置为统一居中平齐
+        resetUserAssetsCardPositions() {
+            try {
+                localStorage.removeItem('pbi-user-assets-card-y-offsets');
                 localStorage.removeItem('pbi-user-assets-card-order');
             } catch(e) {}
-            this.renderUserAssetsMatrix();
-            if (window.showNotification) {
-                window.showNotification('卡片顺序已重置为默认标准链路 (Tenant -> Pipeline)', 'info', 2000);
+            const container = document.getElementById('pb-user-assets-container');
+            if (container) {
+                const cards = container.querySelectorAll('.pb-asset-tier-card');
+                cards.forEach(card => {
+                    card.style.transition = 'transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1)';
+                    card.style.transform = 'translateY(0px)';
+                    setTimeout(() => {
+                        card.style.transition = '';
+                    }, 350);
+                });
             }
+            if (typeof window.showNotification === 'function') {
+                window.showNotification('✨ 已将所有资产卡片垂直位置重置平齐', 'info', 2000);
+            }
+        }
+
+        // 兼容重置入口
+        resetUserAssetsCardOrder() {
+            this.resetUserAssetsCardPositions();
         }
     }
 

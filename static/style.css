@@ -8189,42 +8189,56 @@ body.light-theme .pb-flow-pill-text,
 #pb-user-assets-container {
     position: relative;
     display: flex;
-    flex-direction: column;
-    gap: 14px;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 16px;
     height: calc(100% - 44px);
-    padding: 10px 24px 36px 24px;
-    overflow-y: auto;
-    overflow-x: hidden;
+    padding: 20px 24px 30px 24px;
+    overflow-x: auto;
+    overflow-y: hidden;
     box-sizing: border-box;
     scrollbar-width: thin;
-    max-width: 1100px;
-    margin: 0 auto;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
     width: 100%;
 }
+#pb-user-assets-container::-webkit-scrollbar {
+    height: 7px;
+    width: 7px;
+}
+#pb-user-assets-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+#pb-user-assets-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+}
 
-/* 单个资产层级卡片 */
+/* 单个资产层级卡片 - 横向独立列卡片 (X 轴物理隔离，上下拖动天然零重叠) */
 .pb-asset-tier-card {
     display: flex;
     flex-direction: column;
-    background: rgba(15, 23, 42, 0.65);
-    backdrop-filter: blur(12px);
+    flex: 0 0 340px;
+    width: 340px;
+    max-height: calc(100% - 10px);
+    background: rgba(15, 23, 42, 0.70);
+    backdrop-filter: blur(14px);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
-    overflow: hidden;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-    transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease, opacity 0.2s ease;
-    width: 100%;
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
     box-sizing: border-box;
+    user-select: none;
+    position: relative;
+    will-change: transform;
 }
 .pb-asset-tier-card:hover {
     border-color: rgba(99, 102, 241, 0.35);
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
 }
-.pb-asset-tier-card.pb-card-dragging {
-    opacity: 0.5;
-    border: 1px dashed rgba(99, 102, 241, 0.8);
-    box-shadow: 0 12px 32px rgba(99, 102, 241, 0.25);
-    transform: scale(0.995);
+.pb-asset-tier-card.pb-card-dragging-y {
+    box-shadow: 0 16px 40px rgba(99, 102, 241, 0.4), 0 0 0 2px rgba(99, 102, 241, 0.7);
+    z-index: 20;
+    transition: none !important;
 }
 
 body.light-theme .pb-asset-tier-card,
@@ -8239,16 +8253,20 @@ body.light-theme .pb-asset-tier-card:hover,
     box-shadow: 0 4px 16px rgba(99, 102, 241, 0.12) !important;
 }
 
-/* 卡片头部 */
+/* 卡片头部 - 支持鼠标上下拖动位置 */
 .pb-asset-tier-card .pb-card-header {
-    padding: 10px 16px;
+    padding: 10px 14px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(255, 255, 255, 0.02);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
     user-select: none;
+    cursor: grab;
+}
+.pb-asset-tier-card .pb-card-header:active {
+    cursor: grabbing;
 }
 body.light-theme .pb-asset-tier-card .pb-card-header,
 [data-theme="light"] .pb-asset-tier-card .pb-card-header {
@@ -8259,7 +8277,7 @@ body.light-theme .pb-asset-tier-card .pb-card-header,
 .pb-card-header-left {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     min-width: 0;
     flex: 1;
 }
@@ -8269,19 +8287,19 @@ body.light-theme .pb-asset-tier-card .pb-card-header,
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 6px;
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
     color: var(--text-secondary);
-    cursor: grab;
+    cursor: ns-resize;
     transition: all 0.2s ease;
-    opacity: 0.5;
+    opacity: 0.6;
     flex-shrink: 0;
 }
 .pb-card-drag-handle:hover {
     opacity: 1;
     color: var(--accent);
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.08);
 }
 .pb-card-drag-handle:active {
     cursor: grabbing;
@@ -8386,6 +8404,17 @@ body.light-theme .pb-card-header-status.status-bypassed .pb-status-indicator-tex
     display: flex;
     flex-direction: column;
     gap: 6px;
+    overflow-y: auto;
+    max-height: calc(100vh - 270px);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+.pb-asset-tier-card .pb-card-body::-webkit-scrollbar {
+    width: 5px;
+}
+.pb-asset-tier-card .pb-card-body::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
 }
 
 /* 单条权限规则行 - 紧凑双栏对齐，拒绝散乱 */
