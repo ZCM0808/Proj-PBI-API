@@ -462,7 +462,7 @@
             if (this.activeMainTab === 'user_assets') {
                 if (canvasEl) canvasEl.style.display = 'none';
                 if (matrixEl) matrixEl.style.display = 'none';
-                if (userAssetsEl) userAssetsEl.style.display = 'grid';
+                if (userAssetsEl) userAssetsEl.style.display = 'flex';
                 if (bpTabBtn) bpTabBtn.classList.remove('active');
                 if (mxTabBtn) mxTabBtn.classList.remove('active');
                 if (userAssetsTabBtn) userAssetsTabBtn.classList.add('active');
@@ -4246,19 +4246,61 @@
                 topBadge.style.color = hasSelectedWs ? '#818cf8' : '#94a3b8';
             }
 
-            // 辅助行渲染函数
+            // 标题处只读状态指示器渲染辅助函数 (去按钮化设计：呼吸微点 + 纯净状态文字)
+            const renderHeaderStatus = (statusClass, statusText) => {
+                return `
+                    <div class="pb-card-header-status status-${statusClass}">
+                        <span class="pb-status-indicator-dot"></span>
+                        <span class="pb-status-indicator-text">${statusText}</span>
+                    </div>
+                `;
+            };
+
+            // 属性规则行渲染函数 (紧凑高内聚双栏设计：左侧属性与描述，右侧垂直居中对齐权限状态药丸)
             const renderAssetRow = (propName, propDesc, statusClass, statusText, badgeText = '') => {
                 return `
-                    <div class="pb-col-row" style="padding: 10px 12px; margin-bottom: 8px;">
-                        <div class="pb-col-row-title-area" style="width: 100%;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 3px;">
-                                <span class="pb-col-prop-name" title="${propName}" style="font-weight: 600; font-size: 0.78rem;">${propName}</span>
-                                ${badgeText ? `<span class="gtb-auth-badge" style="font-size: 0.60rem; padding: 1px 5px;">${badgeText}</span>` : ''}
+                    <div class="pb-asset-card-row">
+                        <div class="pb-asset-row-left">
+                            <div class="pb-asset-row-header">
+                                <span class="pb-asset-prop-name" title="${propName}">${propName}</span>
+                                ${badgeText ? `<span class="pb-asset-tag-pill">${badgeText}</span>` : ''}
                             </div>
-                            <span class="pb-col-prop-key" style="font-size: 0.68rem; color: var(--text-secondary); line-height: 1.35; white-space: normal; display: block;">${propDesc}</span>
+                            <div class="pb-asset-prop-desc" title="${propDesc}">${propDesc}</div>
                         </div>
-                        <div class="pb-col-row-toolbar" style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255, 255, 255, 0.07); width: 100%; display: flex; justify-content: flex-end;">
-                            <span class="pb-matrix-status ${statusClass}" style="font-size: 0.70rem; padding: 2px 8px;">${statusText}</span>
+                        <div class="pb-asset-row-right">
+                            <span class="pb-asset-status-pill status-${statusClass}">${statusText}</span>
+                        </div>
+                    </div>
+                `;
+            };
+
+            // 单个卡片组装辅助函数 (集成拖拽手柄、卡片标题与内容)
+            const buildTierCardHtml = (tierId, title, sub, statusClass, statusText, bodyHtml) => {
+                return `
+                    <div class="pb-asset-tier-card" data-tier-id="${tierId}" draggable="true">
+                        <div class="pb-card-header">
+                            <div class="pb-card-header-left">
+                                <span class="pb-card-drag-handle" title="按住上下拖拽调整卡片位置 (拖拽重排)">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="9" cy="5" r="1.5"></circle>
+                                        <circle cx="9" cy="12" r="1.5"></circle>
+                                        <circle cx="9" cy="19" r="1.5"></circle>
+                                        <circle cx="15" cy="5" r="1.5"></circle>
+                                        <circle cx="15" cy="12" r="1.5"></circle>
+                                        <circle cx="15" cy="19" r="1.5"></circle>
+                                    </svg>
+                                </span>
+                                <div class="pb-card-title-group">
+                                    <h4 class="pb-card-title">${title}</h4>
+                                    <span class="pb-card-sub" title="${sub}">${sub}</span>
+                                </div>
+                            </div>
+                            <div class="pb-card-header-right">
+                                ${renderHeaderStatus(statusClass, statusText)}
+                            </div>
+                        </div>
+                        <div class="pb-card-body">
+                            ${bodyHtml}
                         </div>
                     </div>
                 `;
@@ -4267,37 +4309,30 @@
             // Module 1: Tenant (租户全局策略层)
             const tenantTitleSub = tenantId ? `租户 ID: ${tenantId.length > 18 ? tenantId.slice(0, 18) + '...' : tenantId}` : '租户 ID 未配置';
             const userSub = user ? `主体: ${user.upn}` : '未指定具体用户主体';
-            const colTenant = `
-                <div class="pb-tier-col" data-tier="1">
-                    <div class="pb-col-header">
-                        <div class="pb-col-title-row">
-                            <h4 class="pb-col-title">🏢 1. Tenant (租户层)</h4>
-                            <span class="pb-matrix-status ${user ? (isGuest ? 'warn' : 'enabled') : 'disabled'}">${user ? (isGuest ? '⚠️ B2B 外部访客' : '✅ 认证有效') : '⚠️ 未选主体'}</span>
-                        </div>
-                        <div class="pb-col-sub" title="${tenantTitleSub} · ${userSub}">${userSub}</div>
-                    </div>
-                    <div class="pb-col-body">
-                        ${renderAssetRow('企业具体租户凭据', tenantId ? `已挂载租户 ID: ${tenantId}` : '系统未配置 TENANT_ID，请在设置中输入', tenantId ? 'enabled' : 'warn', tenantId ? '✅ 租户已加载' : '⚠️ 缺少租户ID', 'Tenant ID')}
-                        ${renderAssetRow('目标用户主体与域名', user ? `主体: ${user.name} (${user.roleTag})` : '请在左侧主体面板选择需要审计的真实企业成员', user ? 'enabled' : 'disabled', user ? '✅ 身份有效' : '❌ 未选择用户', 'Principal')}
-                        ${renderAssetRow('组织外部内容共享', user ? (isGuest ? '当前属于外部访客账号，默认禁用外发' : '租户策略放行组织外部报告共享') : '需选定用户后推导策略', isGuest ? 'disabled' : (user ? 'enabled' : 'disabled'), isGuest ? '❌ 禁止外发' : (user ? '✅ 租户放行' : '⚠️ 等待主体'), 'External Share')}
-                        ${renderAssetRow('客户端明细数据导出', '租户管理员已配置允许导出至 Excel/CSV 文件', user ? 'enabled' : 'disabled', user ? '✅ 租户策略放行' : '⚠️ 等待主体', 'Export Data')}
-                        ${renderAssetRow('Web 浏览器在线建模', '租户是否放行语义模型网页端建模与度量值设计', user?.state?.tenantAllowWebModeling ? 'enabled' : 'disabled', user?.state?.tenantAllowWebModeling ? '✅ 策略允许' : '❌ 租户策略收紧', 'Web Modeling')}
-                        ${renderAssetRow('XMLA 终结点全局读写', '允许 SSMS/DAX Studio/Tabular Editor 跨客户端直连', 'enabled', '✅ 读写已启用', 'XMLA Endpoint')}
-                    </div>
-                </div>
+            const tenantHeaderStatusClass = user ? (isGuest ? 'warn' : 'enabled') : 'disabled';
+            const tenantHeaderStatusText = user ? (isGuest ? '⚠️ B2B 外部访客' : '✅ 认证有效') : '⚠️ 未选主体';
+            const colTenantBody = `
+                ${renderAssetRow('企业具体租户凭据', tenantId ? `已挂载租户 ID: ${tenantId}` : '系统未配置 TENANT_ID，请在设置中输入', tenantId ? 'enabled' : 'warn', tenantId ? '✅ 租户已加载' : '⚠️ 缺少租户ID', 'Tenant ID')}
+                ${renderAssetRow('目标用户主体与域名', user ? `主体: ${user.name} (${user.roleTag})` : '请在左侧主体面板选择需要审计的真实企业成员', user ? 'enabled' : 'disabled', user ? '✅ 身份有效' : '❌ 未选择用户', 'Principal')}
+                ${renderAssetRow('组织外部内容共享', user ? (isGuest ? '当前属于外部访客账号，默认禁用外发' : '租户策略放行组织外部报告共享') : '需选定用户后推导策略', isGuest ? 'disabled' : (user ? 'enabled' : 'disabled'), isGuest ? '❌ 禁止外发' : (user ? '✅ 租户放行' : '⚠️ 等待主体'), 'External Share')}
+                ${renderAssetRow('客户端明细数据导出', '租户管理员已配置允许导出至 Excel/CSV 文件', user ? 'enabled' : 'disabled', user ? '✅ 租户策略放行' : '⚠️ 等待主体', 'Export Data')}
+                ${renderAssetRow('Web 浏览器在线建模', '租户是否放行语义模型网页端建模与度量值设计', user?.state?.tenantAllowWebModeling ? 'enabled' : 'disabled', user?.state?.tenantAllowWebModeling ? '✅ 策略允许' : '❌ 租户策略收紧', 'Web Modeling')}
+                ${renderAssetRow('XMLA 终结点全局读写', '允许 SSMS/DAX Studio/Tabular Editor 跨客户端直连', 'enabled', '✅ 读写已启用', 'XMLA Endpoint')}
             `;
 
             // Module 2: Workspace (工作区治理角色层)
             let colWorkspaceBody = '';
+            const wsHeaderStatusClass = hasSelectedWs ? 'enabled' : 'disabled';
+            const wsHeaderStatusText = hasSelectedWs ? `治理角色: ${wsRole}` : '⚠️ 未选择';
             if (!hasSelectedWs) {
                 colWorkspaceBody = `
-                    <div class="pb-col-row" style="padding: 24px 12px; text-align: center;">
-                        <div style="font-size: 1.8rem; margin-bottom: 10px;">🏢</div>
-                        <div style="font-weight: 700; font-size: 0.84rem; color: #f59e0b; margin-bottom: 6px;">尚未选择目标工作区</div>
-                        <div style="font-size: 0.70rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;">
-                            工作区是模型、报表与凭据的载体。请在顶部功能区或左侧面板选择具体的目标工作区。
+                    <div style="padding: 24px 16px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
+                        <div style="font-size: 1.6rem; margin-bottom: 8px;">🏢</div>
+                        <div style="font-weight: 700; font-size: 0.84rem; color: #f59e0b; margin-bottom: 4px;">尚未选择目标工作区</div>
+                        <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 8px;">
+                            工作区是模型、报表与凭据的载体。请在顶部控制台或下拉菜单指定目标工作区。
                         </div>
-                        <div style="font-size: 0.65rem; color: var(--text-secondary);">当前可用组织工作区共 ${rawWsData.length} 个</div>
+                        <div style="font-size: 0.68rem; color: var(--text-secondary);">当前可用组织工作区共 ${rawWsData.length} 个</div>
                     </div>
                 `;
             } else {
@@ -4311,22 +4346,8 @@
                     ${renderAssetRow('底层算力容量绑定', '承载当前工作区资产运行的计算节点规格', 'enabled', '⚡ Fabric F64 弹性专用容量', 'Capacity')}
                 `;
             }
-            const colWorkspace = `
-                <div class="pb-tier-col" data-tier="2">
-                    <div class="pb-col-header">
-                        <div class="pb-col-title-row">
-                            <h4 class="pb-col-title">📁 2. Workspace (工作区)</h4>
-                            <span class="pb-matrix-status ${hasSelectedWs ? 'enabled' : 'disabled'}">${hasSelectedWs ? `角色: ${wsRole}` : '⚠️ 未选择'}</span>
-                        </div>
-                        <div class="pb-col-sub" title="${wsName}">${wsName}</div>
-                    </div>
-                    <div class="pb-col-body">
-                        ${colWorkspaceBody}
-                    </div>
-                </div>
-            `;
 
-            // Module 3: Model (语义模型资产权限层) —— 完全依赖顶栏，不内嵌选择列表
+            // Module 3: Model (语义模型资产权限层)
             let colModelBody = '';
             let modelTitleText = '🗄️ 3. Model (语义模型)';
             let modelStatusBadge = '⚠️ 等待工作区';
@@ -4335,11 +4356,11 @@
 
             if (!hasSelectedWs) {
                 colModelBody = `
-                    <div class="pb-col-row" style="padding: 24px 12px; text-align: center;">
-                        <div style="font-size: 1.8rem; margin-bottom: 10px;">🗄️</div>
-                        <div style="font-weight: 700; font-size: 0.84rem; color: #94a3b8; margin-bottom: 6px;">等待指定目标工作区</div>
-                        <div style="font-size: 0.70rem; color: var(--text-secondary); line-height: 1.5;">
-                            语义模型归属于工作区。请先在顶栏指定目标工作区。
+                    <div style="padding: 24px 16px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
+                        <div style="font-size: 1.6rem; margin-bottom: 8px;">🗄️</div>
+                        <div style="font-weight: 700; font-size: 0.84rem; color: #94a3b8; margin-bottom: 4px;">等待指定目标工作区</div>
+                        <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.5;">
+                            语义模型归属于工作区。请先在顶栏指定目标工作区以加载其名下模型。
                         </div>
                     </div>
                 `;
@@ -4349,15 +4370,13 @@
                 modelStatusClass = 'warn';
                 modelSubText = '请在顶栏模型选择器中选择具体模型';
                 colModelBody = `
-                    <div class="pb-col-row" style="padding: 20px 12px; text-align: center;">
-                        <div style="font-size: 1.8rem; margin-bottom: 10px;">🗄️</div>
-                        <div style="font-weight: 700; font-size: 0.84rem; color: #f59e0b; margin-bottom: 8px;">尚未在顶栏选择具体模型</div>
-                        <div style="font-size: 0.70rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 10px;">
-                            请点击顶栏「模型」下拉框，从当前工作区 <strong style="color: #60a5fa;">${wsName}</strong> 的模型列表中选择目标语义模型。
+                    <div style="padding: 20px 16px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
+                        <div style="font-size: 1.6rem; margin-bottom: 8px;">🗄️</div>
+                        <div style="font-weight: 700; font-size: 0.84rem; color: #f59e0b; margin-bottom: 4px;">尚未在顶栏选择具体模型</div>
+                        <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 6px;">
+                            请点击顶栏「模型」下拉框，从当前工作区 <strong style="color: #60a5fa;">${wsName}</strong> 中挑选语义模型。
                         </div>
-                        <div style="font-size: 0.68rem; color: var(--text-secondary); opacity: 0.7;">
-                            当前工作区共缓存 ${scopedModels.length} 个模型
-                        </div>
+                        <div style="font-size: 0.68rem; color: var(--text-secondary); opacity: 0.7;">当前工作区共缓存 ${scopedModels.length} 个模型</div>
                     </div>
                 `;
             } else {
@@ -4377,22 +4396,8 @@
                     ${renderAssetRow('向第三方重新共享模型', '是否可将该具体模型二次授权给企业内其他同事', (isAdmin || isMember) ? 'enabled' : 'disabled', (isAdmin || isMember) ? '✅ 允许重新共享' : '❌ 禁止二次共享', 'Reshare')}
                 `;
             }
-            const colModel = `
-                <div class="pb-tier-col" data-tier="3">
-                    <div class="pb-col-header">
-                        <div class="pb-col-title-row">
-                            <h4 class="pb-col-title">${modelTitleText}</h4>
-                            <span class="pb-matrix-status ${modelStatusClass}">${modelStatusBadge}</span>
-                        </div>
-                        <div class="pb-col-sub" title="${modelSubText}">${modelSubText}</div>
-                    </div>
-                    <div class="pb-col-body">
-                        ${colModelBody}
-                    </div>
-                </div>
-            `;
 
-            // Module 4: Report (报表视图与交互权限层) —— 完全依赖顶栏，不内嵌选择列表
+            // Module 4: Report (报表视图与交互权限层)
             let colReportBody = '';
             let reportTitleText = '📊 4. Report (报表)';
             let reportStatusBadge = '⚠️ 等待工作区';
@@ -4401,11 +4406,11 @@
 
             if (!hasSelectedWs) {
                 colReportBody = `
-                    <div class="pb-col-row" style="padding: 24px 12px; text-align: center;">
-                        <div style="font-size: 1.8rem; margin-bottom: 10px;">📊</div>
-                        <div style="font-weight: 700; font-size: 0.84rem; color: #94a3b8; margin-bottom: 6px;">等待指定目标工作区</div>
-                        <div style="font-size: 0.70rem; color: var(--text-secondary); line-height: 1.5;">
-                            报表资产归属于工作区。请先在顶栏指定目标工作区。
+                    <div style="padding: 24px 16px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
+                        <div style="font-size: 1.6rem; margin-bottom: 8px;">📊</div>
+                        <div style="font-weight: 700; font-size: 0.84rem; color: #94a3b8; margin-bottom: 4px;">等待指定目标工作区</div>
+                        <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.5;">
+                            报表资产归属于工作区。请先在顶栏指定目标工作区以联动加载其名下报表。
                         </div>
                     </div>
                 `;
@@ -4415,15 +4420,13 @@
                 reportStatusClass = 'warn';
                 reportSubText = '请在顶栏报表选择器中选择具体报表';
                 colReportBody = `
-                    <div class="pb-col-row" style="padding: 20px 12px; text-align: center;">
-                        <div style="font-size: 1.8rem; margin-bottom: 10px;">📊</div>
-                        <div style="font-weight: 700; font-size: 0.84rem; color: #f59e0b; margin-bottom: 8px;">尚未在顶栏选择具体报表</div>
-                        <div style="font-size: 0.70rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 10px;">
-                            请点击顶栏「报表」下拉框，从当前工作区 <strong style="color: #60a5fa;">${wsName}</strong> 的报表列表中选择目标报表。
+                    <div style="padding: 20px 16px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
+                        <div style="font-size: 1.6rem; margin-bottom: 8px;">📊</div>
+                        <div style="font-weight: 700; font-size: 0.84rem; color: #f59e0b; margin-bottom: 4px;">尚未在顶栏选择具体报表</div>
+                        <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 6px;">
+                            请点击顶栏「报表」下拉框，从当前工作区 <strong style="color: #60a5fa;">${wsName}</strong> 中挑选分析报表。
                         </div>
-                        <div style="font-size: 0.68rem; color: var(--text-secondary); opacity: 0.7;">
-                            当前工作区共缓存 ${scopedReports.length} 个报表
-                        </div>
+                        <div style="font-size: 0.68rem; color: var(--text-secondary); opacity: 0.7;">当前工作区共缓存 ${scopedReports.length} 个报表</div>
                     </div>
                 `;
             } else {
@@ -4443,40 +4446,26 @@
                     ${renderAssetRow('报表分发与链接共享', '生成该报表的安全嵌入链接向授权受众分发', (isAdmin || isMember) ? 'enabled' : 'disabled', (isAdmin || isMember) ? '✅ 允许生成共享链接' : '❌ 需工作区成员权限', 'Share')}
                 `;
             }
-            const colReport = `
-                <div class="pb-tier-col" data-tier="4">
-                    <div class="pb-col-header">
-                        <div class="pb-col-title-row">
-                            <h4 class="pb-col-title">${reportTitleText}</h4>
-                            <span class="pb-matrix-status ${reportStatusClass}">${reportStatusBadge}</span>
-                        </div>
-                        <div class="pb-col-sub" title="${reportSubText}">${reportSubText}</div>
-                    </div>
-                    <div class="pb-col-body">
-                        ${colReportBody}
-                    </div>
-                </div>
-            `;
 
-            // Module 5: Connection (网关连接与凭据鉴权层) —— 未选工作区/模型时如实呈现未知状态
+            // Module 5: Connection (网关连接与凭据鉴权层)
             let colConnectionBody = '';
             if (!hasSelectedWs) {
                 colConnectionBody = `
-                    <div class="pb-col-row" style="padding: 24px 12px; text-align: center;">
-                        <div style="font-size: 1.8rem; margin-bottom: 10px;">🔌</div>
-                        <div style="font-weight: 700; font-size: 0.84rem; color: #94a3b8; margin-bottom: 6px;">等待指定目标工作区</div>
-                        <div style="font-size: 0.70rem; color: var(--text-secondary); line-height: 1.5;">
-                            数据源通道与网关凭据需基于具体工作区和语义模型解析。
+                    <div style="padding: 24px 16px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
+                        <div style="font-size: 1.6rem; margin-bottom: 8px;">🔌</div>
+                        <div style="font-weight: 700; font-size: 0.84rem; color: #94a3b8; margin-bottom: 4px;">等待指定目标工作区</div>
+                        <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.5;">
+                            数据源通道与网关凭据需基于具体工作区和语义模型进行链路推导。
                         </div>
                     </div>
                 `;
             } else if (!hasSelectedModel) {
                 colConnectionBody = `
-                    <div class="pb-col-row" style="padding: 20px 12px; text-align: center;">
-                        <div style="font-size: 1.8rem; margin-bottom: 10px;">🔌</div>
-                        <div style="font-weight: 700; font-size: 0.84rem; color: #f59e0b; margin-bottom: 8px;">未关联具体语义模型</div>
-                        <div style="font-size: 0.70rem; color: var(--text-secondary); line-height: 1.6;">
-                            数据源凭据与网关连通性需绑定到具体语义模型才可推导。<br>请先在顶栏选择目标语义模型。
+                    <div style="padding: 20px 16px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
+                        <div style="font-size: 1.6rem; margin-bottom: 8px;">🔌</div>
+                        <div style="font-weight: 700; font-size: 0.84rem; color: #f59e0b; margin-bottom: 4px;">未关联具体语义模型</div>
+                        <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.5;">
+                            数据源凭据与网关连通性需绑定到具体语义模型才可推导，请先在顶栏选择目标语义模型。
                         </div>
                     </div>
                 `;
@@ -4495,67 +4484,125 @@
             }
             const connStatusLabel = !hasSelectedWs ? '⚠️ 未选择' : (!hasSelectedModel ? '⚠️ 未关联模型' : (gatewayOnline ? '✅ 网关在线' : '❌ 网关离线'));
             const connStatusClass = !hasSelectedWs ? 'disabled' : (!hasSelectedModel ? 'warn' : (gatewayOnline ? 'enabled' : 'disabled'));
-            const colConnection = `
-                <div class="pb-tier-col" data-tier="5">
-                    <div class="pb-col-header">
-                        <div class="pb-col-title-row">
-                            <h4 class="pb-col-title">🔌 5. Connection (连接)</h4>
-                            <span class="pb-matrix-status ${connStatusClass}">${connStatusLabel}</span>
-                        </div>
-                        <div class="pb-col-sub" title="数据源通道与网关凭据">网关与连接凭据池</div>
-                    </div>
-                    <div class="pb-col-body">
-                        ${colConnectionBody}
-                    </div>
-                </div>
-            `;
 
-            // Module 6: Pipeline (部署管道与 ALM 治理层) —— 未绑定时如实标注"未检测到关联管道"
+            // Module 6: Pipeline (部署管道与 ALM 治理层)
             let colPipelineBody = '';
             if (!hasSelectedWs) {
                 colPipelineBody = `
-                    <div class="pb-col-row" style="padding: 24px 12px; text-align: center;">
-                        <div style="font-size: 1.8rem; margin-bottom: 10px;">🚀</div>
-                        <div style="font-weight: 700; font-size: 0.84rem; color: #94a3b8; margin-bottom: 6px;">等待指定目标工作区</div>
-                        <div style="font-size: 0.70rem; color: var(--text-secondary); line-height: 1.5;">
-                            部署管道需关联具体工作区以呈现阶段流转。
+                    <div style="padding: 24px 16px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
+                        <div style="font-size: 1.6rem; margin-bottom: 8px;">🚀</div>
+                        <div style="font-weight: 700; font-size: 0.84rem; color: #94a3b8; margin-bottom: 4px;">等待指定目标工作区</div>
+                        <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.5;">
+                            部署管道需关联具体工作区以呈现各生命周期阶段流转。
                         </div>
                     </div>
                 `;
             } else {
-                // pipelineBound = false：保守标注，实际绑定需 /api/proxy → /pipelines 确认
                 colPipelineBody = `
-                    <div class="pb-col-row" style="padding: 20px 12px; text-align: center;">
-                        <div style="font-size: 1.8rem; margin-bottom: 10px;">🚀</div>
-                        <div style="font-weight: 700; font-size: 0.84rem; color: #f59e0b; margin-bottom: 8px;">未检测到关联的 ALM 部署管道</div>
-                        <div style="font-size: 0.70rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 8px;">
+                    <div style="padding: 20px 16px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
+                        <div style="font-size: 1.6rem; margin-bottom: 8px;">🚀</div>
+                        <div style="font-weight: 700; font-size: 0.84rem; color: #f59e0b; margin-bottom: 4px;">未检测到关联的 ALM 部署管道</div>
+                        <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 6px;">
                             工作区 <strong style="color: #60a5fa;">${wsName}</strong> 当前未绑定任何 Dev ➔ Test ➔ Prod 部署管道。<br>
-                            如需查看管道权限，请先在 Power BI Service 中将该工作区关联到具体部署管道。
+                            如需查看管道权限，请在 Power BI Service 中将该工作区关联至具体部署管道。
                         </div>
                         <div style="font-size: 0.68rem; color: var(--text-secondary); opacity: 0.7;">
-                            需要通过 ALM (Application Lifecycle Management) API 实时验证管道绑定状态
+                            需通过 ALM (Application Lifecycle Management) API 实时验证管道绑定状态
                         </div>
                     </div>
                 `;
             }
             const pipelineStatusLabel = !hasSelectedWs ? '⚠️ 未选择' : '❌ 未绑定管道';
             const pipelineStatusClass = !hasSelectedWs ? 'disabled' : 'warn';
-            const colPipeline = `
-                <div class="pb-tier-col" data-tier="6">
-                    <div class="pb-col-header">
-                        <div class="pb-col-title-row">
-                            <h4 class="pb-col-title">🚀 6. Pipeline (部署管道)</h4>
-                            <span class="pb-matrix-status ${pipelineStatusClass}">${pipelineStatusLabel}</span>
-                        </div>
-                        <div class="pb-col-sub" title="${hasSelectedWs ? wsName + ' 关联管道' : '未绑定部署管道'}">${hasSelectedWs ? '未检测到关联管道' : '等待工作区'}</div>
-                    </div>
-                    <div class="pb-col-body">
-                        ${colPipelineBody}
-                    </div>
-                </div>
-            `;
 
-            container.innerHTML = colTenant + colWorkspace + colModel + colReport + colConnection + colPipeline;
+            // 资产模块卡片全集字典映射
+            const cardsMap = {
+                'tenant': buildTierCardHtml('tenant', '🏢 1. Tenant (租户全局策略层)', userSub, tenantHeaderStatusClass, tenantHeaderStatusText, colTenantBody),
+                'workspace': buildTierCardHtml('workspace', '📁 2. Workspace (工作区治理角色层)', wsName, wsHeaderStatusClass, wsHeaderStatusText, colWorkspaceBody),
+                'model': buildTierCardHtml('model', modelTitleText, modelSubText, modelStatusClass, modelStatusBadge, colModelBody),
+                'report': buildTierCardHtml('report', reportTitleText, reportSubText, reportStatusClass, reportStatusBadge, colReportBody),
+                'connection': buildTierCardHtml('connection', '🔌 5. Connection (网关与连接凭据层)', hasSelectedWs ? '数据源通道与网关凭据池' : '等待工作区', connStatusClass, connStatusLabel, colConnectionBody),
+                'pipeline': buildTierCardHtml('pipeline', '🚀 6. Pipeline (部署管道治理层)', hasSelectedWs ? '未检测到关联管道' : '等待工作区', pipelineStatusClass, pipelineStatusLabel, colPipelineBody)
+            };
+
+            // 优先加载用户自定义的卡片拖拽排版顺序
+            let cardOrder = ['tenant', 'workspace', 'model', 'report', 'connection', 'pipeline'];
+            try {
+                const savedOrder = JSON.parse(localStorage.getItem('pbi-user-assets-card-order') || '[]');
+                if (Array.isArray(savedOrder) && savedOrder.length === 6 && savedOrder.every(k => cardsMap[k])) {
+                    cardOrder = savedOrder;
+                }
+            } catch(e) {}
+
+            container.innerHTML = cardOrder.map(k => cardsMap[k]).join('');
+
+            // 初始化卡片上下拖拽防重叠排序事件
+            this.initUserAssetsCardDrag(container);
+        }
+
+        // ⚡ 初始化卡片上下拖拽防重叠排序引擎 (Zero-Overlap Guaranteed Drag-and-Drop Reordering)
+        initUserAssetsCardDrag(container) {
+            if (!container) return;
+            const cards = container.querySelectorAll('.pb-asset-tier-card');
+            let draggedCard = null;
+
+            cards.forEach(card => {
+                card.addEventListener('dragstart', (e) => {
+                    draggedCard = card;
+                    card.classList.add('pb-card-dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', card.getAttribute('data-tier-id') || '');
+                    setTimeout(() => {
+                        if (draggedCard) draggedCard.style.opacity = '0.45';
+                    }, 0);
+                });
+
+                card.addEventListener('dragend', () => {
+                    if (draggedCard) {
+                        draggedCard.style.opacity = '';
+                        draggedCard.classList.remove('pb-card-dragging');
+                    }
+                    draggedCard = null;
+
+                    // 拖拽落位后立即持久化卡片排序至本地缓存
+                    const currentOrder = Array.from(container.querySelectorAll('.pb-asset-tier-card'))
+                        .map(c => c.getAttribute('data-tier-id'))
+                        .filter(Boolean);
+                    if (currentOrder.length > 0) {
+                        try {
+                            localStorage.setItem('pbi-user-assets-card-order', JSON.stringify(currentOrder));
+                        } catch(e) {}
+                    }
+                });
+
+                card.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    if (!draggedCard || draggedCard === card) return;
+
+                    const rect = card.getBoundingClientRect();
+                    const midpoint = rect.top + rect.height / 2;
+                    const isAfter = (e.clientY > midpoint);
+
+                    // 零重叠防御：DOM 原生上下插入，顺次文档流物理杜绝重叠
+                    if (isAfter) {
+                        container.insertBefore(draggedCard, card.nextSibling);
+                    } else {
+                        container.insertBefore(draggedCard, card);
+                    }
+                });
+            });
+        }
+
+        // 重置用户全景链路卡片排序为默认
+        resetUserAssetsCardOrder() {
+            try {
+                localStorage.removeItem('pbi-user-assets-card-order');
+            } catch(e) {}
+            this.renderUserAssetsMatrix();
+            if (window.showNotification) {
+                window.showNotification('卡片顺序已重置为默认标准链路 (Tenant -> Pipeline)', 'info', 2000);
+            }
         }
     }
 

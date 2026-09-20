@@ -8183,3 +8183,342 @@ body.light-theme .pb-flow-pill-text,
     fill: #b45309;
 }
 
+/* ==========================================================================
+   用户全景资产权限链路卡片专属样式 (User Assets Matrix Cards)
+   ========================================================================== */
+#pb-user-assets-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    height: calc(100% - 44px);
+    padding: 10px 24px 36px 24px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
+    scrollbar-width: thin;
+    max-width: 1100px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* 单个资产层级卡片 */
+.pb-asset-tier-card {
+    display: flex;
+    flex-direction: column;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease, opacity 0.2s ease;
+    width: 100%;
+    box-sizing: border-box;
+}
+.pb-asset-tier-card:hover {
+    border-color: rgba(99, 102, 241, 0.35);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+}
+.pb-asset-tier-card.pb-card-dragging {
+    opacity: 0.5;
+    border: 1px dashed rgba(99, 102, 241, 0.8);
+    box-shadow: 0 12px 32px rgba(99, 102, 241, 0.25);
+    transform: scale(0.995);
+}
+
+body.light-theme .pb-asset-tier-card,
+[data-theme="light"] .pb-asset-tier-card {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05) !important;
+}
+body.light-theme .pb-asset-tier-card:hover,
+[data-theme="light"] .pb-asset-tier-card:hover {
+    border-color: #818cf8 !important;
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.12) !important;
+}
+
+/* 卡片头部 */
+.pb-asset-tier-card .pb-card-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    user-select: none;
+}
+body.light-theme .pb-asset-tier-card .pb-card-header,
+[data-theme="light"] .pb-asset-tier-card .pb-card-header {
+    background: #f8fafc !important;
+    border-bottom-color: #e2e8f0 !important;
+}
+
+.pb-card-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+}
+
+/* 拖拽手柄 */
+.pb-card-drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: grab;
+    transition: all 0.2s ease;
+    opacity: 0.5;
+    flex-shrink: 0;
+}
+.pb-card-drag-handle:hover {
+    opacity: 1;
+    color: var(--accent);
+    background: rgba(255, 255, 255, 0.06);
+}
+.pb-card-drag-handle:active {
+    cursor: grabbing;
+}
+
+.pb-card-title-group {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+    flex-wrap: wrap;
+}
+.pb-card-title {
+    margin: 0;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+.pb-card-sub {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 标题处非按钮化状态指示文本 (Status Indicator - Non-Button Design) */
+.pb-card-header-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    cursor: default;
+    user-select: none;
+    padding: 3px 8px;
+    border-radius: 20px;
+    background: transparent;
+    border: none;
+    flex-shrink: 0;
+}
+.pb-status-indicator-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.pb-card-header-status.status-enabled .pb-status-indicator-dot {
+    background: #10b981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+.pb-card-header-status.status-enabled .pb-status-indicator-text {
+    color: #34d399;
+}
+body.light-theme .pb-card-header-status.status-enabled .pb-status-indicator-text,
+[data-theme="light"] .pb-card-header-status.status-enabled .pb-status-indicator-text {
+    color: #059669;
+}
+
+.pb-card-header-status.status-warn .pb-status-indicator-dot {
+    background: #f59e0b;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+}
+.pb-card-header-status.status-warn .pb-status-indicator-text {
+    color: #fbbf24;
+}
+body.light-theme .pb-card-header-status.status-warn .pb-status-indicator-text,
+[data-theme="light"] .pb-card-header-status.status-warn .pb-status-indicator-text {
+    color: #d97706;
+}
+
+.pb-card-header-status.status-disabled .pb-status-indicator-dot {
+    background: #ef4444;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+.pb-card-header-status.status-disabled .pb-status-indicator-text {
+    color: #f87171;
+}
+body.light-theme .pb-card-header-status.status-disabled .pb-status-indicator-text,
+[data-theme="light"] .pb-card-header-status.status-disabled .pb-status-indicator-text {
+    color: #dc2626;
+}
+
+.pb-card-header-status.status-bypassed .pb-status-indicator-dot {
+    background: #a855f7;
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
+}
+.pb-card-header-status.status-bypassed .pb-status-indicator-text {
+    color: #c084fc;
+}
+body.light-theme .pb-card-header-status.status-bypassed .pb-status-indicator-text,
+[data-theme="light"] .pb-card-header-status.status-bypassed .pb-status-indicator-text {
+    color: #7c3aed;
+}
+
+/* 卡片内部网格/列表内容 */
+.pb-asset-tier-card .pb-card-body {
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* 单条权限规则行 - 紧凑双栏对齐，拒绝散乱 */
+.pb-asset-card-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+.pb-asset-card-row:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(99, 102, 241, 0.25);
+    transform: translateX(2px);
+}
+body.light-theme .pb-asset-card-row,
+[data-theme="light"] .pb-asset-card-row {
+    background: #f8fafc !important;
+    border-color: #edf2f7 !important;
+}
+body.light-theme .pb-asset-card-row:hover,
+[data-theme="light"] .pb-asset-card-row:hover {
+    background: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+}
+
+.pb-asset-row-left {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.pb-asset-row-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.pb-asset-prop-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.pb-asset-tag-pill {
+    font-size: 0.60rem;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-family: monospace;
+    white-space: nowrap;
+}
+body.light-theme .pb-asset-tag-pill,
+[data-theme="light"] .pb-asset-tag-pill {
+    background: #e2e8f0 !important;
+    color: #475569 !important;
+    border-color: #cbd5e1 !important;
+}
+
+.pb-asset-prop-desc {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.pb-asset-row-right {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+.pb-asset-status-pill {
+    font-size: 0.70rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.pb-asset-status-pill.status-enabled {
+    background: rgba(52, 211, 153, 0.12);
+    color: #34d399;
+    border: 1px solid rgba(52, 211, 153, 0.25);
+}
+body.light-theme .pb-asset-status-pill.status-enabled,
+[data-theme="light"] .pb-asset-status-pill.status-enabled {
+    background: #ecfdf5 !important;
+    color: #059669 !important;
+    border-color: #a7f3d0 !important;
+}
+
+.pb-asset-status-pill.status-warn {
+    background: rgba(245, 158, 11, 0.12);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}
+body.light-theme .pb-asset-status-pill.status-warn,
+[data-theme="light"] .pb-asset-status-pill.status-warn {
+    background: #fffbeb !important;
+    color: #d97706 !important;
+    border-color: #fde68a !important;
+}
+
+.pb-asset-status-pill.status-disabled {
+    background: rgba(239, 68, 68, 0.12);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+}
+body.light-theme .pb-asset-status-pill.status-disabled,
+[data-theme="light"] .pb-asset-status-pill.status-disabled {
+    background: #fef2f2 !important;
+    color: #dc2626 !important;
+    border-color: #fecaca !important;
+}
+
+.pb-asset-status-pill.status-bypassed {
+    background: rgba(168, 85, 247, 0.12);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.25);
+}
+body.light-theme .pb-asset-status-pill.status-bypassed,
+[data-theme="light"] .pb-asset-status-pill.status-bypassed {
+    background: #faf5ff !important;
+    color: #7c3aed !important;
+    border-color: #e9d5ff !important;
+}
+

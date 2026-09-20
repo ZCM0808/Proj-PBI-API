@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260920_v1715">
+    <link rel="stylesheet" href="/static/style.css?v=20260920_v2110">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -2565,6 +2565,10 @@
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
                             <span>刷新链路</span>
                         </button>
+                        <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.resetUserAssetsCardOrder()" title="恢复默认自上而下资产流转顺序 (1-6)" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                            <span>重置排序</span>
+                        </button>
                         <button type="button" class="icon-btn zen-mode-btn" onclick="window.toggleZenMode()" title="沉浸全屏模式 (Zen Mode)" style="width: 28px; height: 28px; padding: 0; border-radius: 6px; border: 1px solid var(--overlay-10); background: transparent; transition: all 0.2s; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-expand"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-collapse" style="display: none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
@@ -2642,8 +2646,8 @@
                 </div>
 
                 <!-- 3. 用户全景资产权限流转矩阵 (Tenant -> Workspace -> Model -> Report -> Connection -> Pipeline) -->
-                <div id="pb-user-assets-container" class="pb-matrix-container" style="display: none;">
-                    <!-- 动态注入从左到右 6 大资产模块权限列 -->
+                <div id="pb-user-assets-container" style="display: none;">
+                    <!-- 动态注入支持上下拖拽防重叠的 6 大资产模块权限卡片 -->
                 </div>
 
                 <!-- 隐藏的旧抽屉占位，确保兼容 -->
@@ -3162,7 +3166,7 @@
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260919_v1440"></script>
     <script src="/static/script.js?v=20260920_v2100"></script>
-    <script src="/static/permission_blueprint.js?v=20260920_v2040"></script>
+    <script src="/static/permission_blueprint.js?v=20260920_v2110"></script>
 
 
 
