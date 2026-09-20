@@ -4782,7 +4782,12 @@
 
             // 6 个大卡片固定按照 1-6 标准流转顺序平分屏幕宽，不能移动
             const fixedOrder = ['tenant', 'workspace', 'model', 'report', 'connection', 'pipeline'];
-            container.innerHTML = fixedOrder.map(k => cardsMap[k]).join('');
+            container.innerHTML = fixedOrder.map(k => cardsMap[k]).join('') +
+                `<div class="pb-category-legend">
+                    <div class="pb-legend-item"><span class="pb-legend-dot dot-assigned"></span>ASSIGNED</div>
+                    <div class="pb-legend-item"><span class="pb-legend-dot dot-derived"></span>CAPABILITY</div>
+                    <div class="pb-legend-item"><span class="pb-legend-dot dot-env"></span>ENV</div>
+                </div>`;
 
             // 初始化卡片内部各个权限小卡片上下拖拽移动排序引擎 (物理零重叠)
             this.initUserAssetsItemDrag(container);
