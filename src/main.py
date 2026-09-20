@@ -2343,9 +2343,29 @@ async def apply_device_code_token(req: DeviceCodeApplyRequest):
     """将设备代码流获取到的 Token 和租户信息持久化并热重载注入后端 Client"""
     try:
         from src.pbi_client import set_manual_token
+        token = (req.token or "").strip()
+        if token.lower().startswith("bearer "):
+            token = token[7:].strip()
+            
         tenant_id = (req.tenant_id or "").strip()
         username = (req.username or "").strip()
-        token = (req.token or "").strip()
+        
+        # 如果未提供 tenant_id 或 username，尝试从 token JWT 解码提取
+        if token and (not tenant_id or not username):
+            try:
+                import json
+                import base64
+                parts = token.split(".")
+                if len(parts) >= 2:
+                    padding = 4 - len(parts[1]) % 4
+                    payload_b64 = parts[1] + ("=" * padding)
+                    payload_json = json.loads(base64.urlsafe_b64decode(payload_b64.encode("ascii")).decode("utf-8"))
+                    if not tenant_id:
+                        tenant_id = payload_json.get("tid", "")
+                    if not username:
+                        username = payload_json.get("upn", "") or payload_json.get("unique_name", "") or payload_json.get("email", "")
+            except Exception:
+                pass
         
         updates = {
             "AUTH_MODE": "personal",

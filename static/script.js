@@ -21706,6 +21706,82 @@ window.startDeviceCodeLoginFlow = async function() {
     }
 };
 
+window.promptAndApplyBearerToken = async function(prefilledToken = '') {
+    let token = prefilledToken;
+    if (!token) {
+        token = prompt(
+            "🔑 请输入或粘贴从公司浏览器复制的 Bearer Access Token：\n\n" +
+            "💡 获取技巧：在已登录公司账号的 Edge 浏览器中打开 app.powerbi.com，按 F12 打开 Console，执行：\n" +
+            "copy(JSON.parse(sessionStorage.getItem(Object.keys(sessionStorage).find(k => k.includes('accesstoken')))).secret)\n\n" +
+            "或在 Network 面板复制任意请求 Header 中的 Bearer 令牌。\n系统将自动解析租户 [7d97f400-69b4-4df4-a009-c9806ec70783] 并激活工作区！"
+        );
+    }
+    if (!token || !token.trim()) return;
+    token = token.trim();
+    if (token.toLowerCase().startsWith('bearer ')) {
+        token = token.substring(7).trim();
+    }
+
+    try {
+        if (window.showNotification) window.showNotification("🔄 正在解析并应用 Token 凭据...", "info");
+        const res = await fetch('/api/auth/device-code/apply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                token: token,
+                tenant_id: '7d97f400-69b4-4df4-a009-c9806ec70783',
+                username: 'carman_zhao@vfc.com'
+            })
+        });
+        const applyData = await res.json();
+        if (applyData && applyData.success) {
+            const finalTenantId = applyData.tenant_id || '7d97f400-69b4-4df4-a009-c9806ec70783';
+            const finalUsername = applyData.username || 'carman_zhao@vfc.com';
+
+            const tenantInput = document.getElementById('set-tenant');
+            const usernameInput = document.getElementById('set-username');
+            const clientInput = document.getElementById('set-client');
+            if (tenantInput) tenantInput.value = finalTenantId;
+            if (usernameInput) usernameInput.value = finalUsername;
+            if (clientInput) clientInput.value = '04b07795-8ddb-461a-bbee-02f9e1bf7b46';
+
+            const personalRadio = document.querySelector('input[name="pbi_auth_mode"][value="personal"]');
+            if (personalRadio) {
+                personalRadio.checked = true;
+                if (window.updateAuthModeVisibility) window.updateAuthModeVisibility('personal');
+            }
+
+            localStorage.setItem('pbi_tenant_id', finalTenantId);
+            localStorage.setItem('pbi_username', finalUsername);
+            localStorage.setItem('pbi_app_name', 'Power BI (VFC Enterprise)');
+
+            if (window.saveAuthSnapshot) {
+                const prefix = finalUsername ? finalUsername.split('@')[0] : 'User';
+                window.saveAuthSnapshot(`VFC Token (${prefix})`, true);
+            }
+            if (window.renderEnvIdentity) window.renderEnvIdentity();
+            if (window.updateWorkflowAuthBadge) window.updateWorkflowAuthBadge();
+
+            if (window.showNotification) {
+                window.showNotification(`🎉 凭据激活成功！已绑定租户 [${finalTenantId}]，正在一键扫描工作区...`, "success", 5000);
+            }
+
+            setTimeout(() => {
+                const scanWsBtn = document.querySelector('button[onclick*="scanItems(\'workspaces\'"]');
+                if (scanWsBtn) {
+                    scanWsBtn.click();
+                } else if (typeof window.scanItems === 'function') {
+                    window.scanItems('workspaces');
+                }
+            }, 600);
+        } else {
+            alert("❌ 凭据应用失败: " + (applyData?.message || "未知错误"));
+        }
+    } catch (e) {
+        alert("Token 解析应用异常: " + e.message);
+    }
+};
+
 
 
 // =========================================================================

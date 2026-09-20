@@ -969,5 +969,65 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     // 验证自动触发了工作区扫描
     await expect.poll(() => scanCalled, { timeout: 8000 }).toBe(true);
   });
+
+  test('绕过企业条件访问(CA)：支持直接粘贴 Bearer Token 快速激活与工作区扫描', async ({ page }) => {
+    let applyCalled = false;
+    let scanCalled = false;
+
+    await page.route('**/api/auth/device-code/apply', async route => {
+      applyCalled = true;
+      const postData = JSON.parse(route.request().postData() || '{}');
+      expect(postData.token).toBe('mock-bearer-token-from-browser');
+      expect(postData.tenant_id).toBe('7d97f400-69b4-4df4-a009-c9806ec70783');
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          tenant_id: '7d97f400-69b4-4df4-a009-c9806ec70783',
+          username: 'carman_zhao@vfc.com',
+          message: '已成功切换并激活免租户个人凭据！'
+        })
+      });
+    });
+
+    await page.route('**/api/scan/workspaces', async route => {
+      scanCalled = true;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: 'success',
+          data: [{ id: 'ws-vfc-01', name: 'VFC Global Analytics Workspace' }]
+        })
+      });
+    });
+
+    // 等待页面完全初始化
+    await expect(page.locator('#api-tree')).toBeVisible();
+
+    // 打开全局设置弹窗
+    const settingsBtn = page.locator('#btn-settings');
+    await settingsBtn.click();
+    const settingsModal = page.locator('#settings-modal');
+    await expect(settingsModal).toBeVisible();
+
+    const pasteBtn = page.locator('#btn-paste-token-login');
+    await expect(pasteBtn).toBeVisible();
+
+    // 直接调用 promptAndApplyBearerToken 传入 Token
+    await page.evaluate(() => {
+      window.promptAndApplyBearerToken('Bearer mock-bearer-token-from-browser');
+    });
+
+    // 断言接口被正确调用且表单与状态被正确填充
+    await expect.poll(() => applyCalled, { timeout: 5000 }).toBe(true);
+    await expect(page.locator('#set-tenant')).toHaveValue('7d97f400-69b4-4df4-a009-c9806ec70783');
+    await expect(page.locator('#set-username')).toHaveValue('carman_zhao@vfc.com');
+
+    // 验证自动触发了工作区扫描
+    await expect.poll(() => scanCalled, { timeout: 8000 }).toBe(true);
+  });
 });
+
 
