@@ -4375,7 +4375,6 @@
                                             <circle cx="15" cy="19" r="1.5"></circle>
                                         </svg>
                                     </span>
-                                    <span class="pb-cat-label">${item.cat === 'assigned' ? 'ASSIGNED' : (item.cat === 'env' ? 'ENV' : '↳ CAPABILITY')}</span>
                                     <span class="pb-asset-prop-name" title="${item.name}">${item.name}</span>
                                 </div>
                                 <span class="pb-asset-status-pill status-${item.statusClass}">${item.statusText}</span>
