@@ -10021,29 +10021,24 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
                     container.innerHTML = '';
 
-                    
-
                     let items = [];
-
-                    // Prefer server list if available and local is empty
 
                     const localItems = JSON.parse(localStorage.getItem(key) || '[]');
 
-                    if (localItems.length > 0) {
-
-                        items = localItems;
-
-                    } else if (serverList && serverList.length > 0) {
-
+                    if (containerId === 'workspace-list' && serverList && serverList.length > 0) {
+                        // 工作区列表：强制以服务端已净化数据为准，覆写 localStorage
+                        // 防止 cascadeScan / 跨域扫描写入的脏数据通过 localStorage 持久化
                         items = serverList;
-
                         localStorage.setItem(key, JSON.stringify(items));
-
                         window.renderContextDropdowns();
-
+                    } else if (localItems.length > 0) {
+                        // 其他列表（dataset/report）：保留 localStorage 优先，允许用户自定义
+                        items = localItems;
+                    } else if (serverList && serverList.length > 0) {
+                        items = serverList;
+                        localStorage.setItem(key, JSON.stringify(items));
+                        window.renderContextDropdowns();
                     }
-
-                    
 
                     if (items.length === 0) {
 
@@ -14337,9 +14332,10 @@ window.wfInspectRefreshWorkspace = async function(btn) {
     }
 
     try {
-        // 1. 读取本地已配置/缓存的工作区全集
-        const savedWorkspaces = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
-        
+        // 1. 读取本地已配置/缓存的工作区全集（应用清洗器，移除跨域脏数据）
+        const rawSaved = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+        const savedWorkspaces = window.cleanseCrossDomainWorkspaces ? window.cleanseCrossDomainWorkspaces(rawSaved) : rawSaved;
+
         // 2. 同时向后端 /groups 探查最新在线工作区
         let liveGroups = [];
         try {
@@ -14349,12 +14345,14 @@ window.wfInspectRefreshWorkspace = async function(btn) {
                 body: JSON.stringify({ endpoint: '/groups', method: 'GET' })
             });
             const json = await res.json();
-            liveGroups = (json.data && json.data.value) ? json.data.value : [];
+            const rawLive = (json.data && json.data.value) ? json.data.value : [];
+            // ⚡ 拿到 API 响应后立即清洗，剔除跨域/个人工作区，防止跨域数据反哺 localStorage
+            liveGroups = window.cleanseCrossDomainWorkspaces ? window.cleanseCrossDomainWorkspaces(rawLive) : rawLive;
         } catch (netErr) {
             console.warn('Probe /groups failed, fallback to local settings:', netErr);
         }
 
-        // 3. 智能全集去重合并 (保证已配置的全部工作区与远端新工作区均完整呈现)
+        // 3. 智能全集去重合并 (已清洗的 savedWorkspaces + 已清洗的 liveGroups)
         const map = new Map();
         savedWorkspaces.forEach(w => {
             if (w && w.id) {
@@ -19184,9 +19182,11 @@ window.runGlobalUserManager = async function() {
             const wsData = await wsRes.json();
             const wsPayload = wsData.data || wsData;
             const workspaces = Array.isArray(wsPayload) ? wsPayload : (wsPayload.value || []);
-            window.gumWorkspaces = workspaces;
+            window.gumWorkspaces = window.cleanseCrossDomainWorkspaces
+                ? window.cleanseCrossDomainWorkspaces(workspaces)
+                : workspaces;
 
-            for (const ws of workspaces) {
+            for (const ws of window.gumWorkspaces) {
                 const users = ws.users || [];
                 for (const u of users) {
                     const ident = u.identifier || u.emailAddress;
