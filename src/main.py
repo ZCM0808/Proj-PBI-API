@@ -1468,31 +1468,40 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
         if body_workspace_id:
             workspace_id = body_workspace_id
         
-        if not all([client_id, client_secret, tenant_id]):
-            return {"success": False, "error": "Missing credentials. Please fill TENANT_ID, CLIENT_ID, and CLIENT_SECRET."}
+        auth_mode = data.get("auth_mode") or Config.AUTH_MODE
+        is_personal = (auth_mode == "personal" or client_id == "04b07795-8ddb-461a-bbee-02f9e1bf7b46" or not client_secret)
 
-        authority_url = f"https://login.microsoftonline.com/{tenant_id}"
-        from msal import ConfidentialClientApplication  # type: ignore[import-untyped]
-        app = ConfidentialClientApplication(
-            client_id=client_id,
-            client_credential=client_secret,
-            authority=authority_url,
-        )
+        if is_personal:
+            try:
+                access_token = client._get_token("powerbi")
+            except Exception as ex:
+                return {"success": False, "error": f"个人凭据获取失败: {str(ex)}，请重新完成登录认证"}
+        else:
+            if not all([client_id, client_secret, tenant_id]):
+                return {"success": False, "error": "Missing credentials. Please fill TENANT_ID, CLIENT_ID, and CLIENT_SECRET."}
+
+            authority_url = f"https://login.microsoftonline.com/{tenant_id}"
+            from msal import ConfidentialClientApplication  # type: ignore[import-untyped]
+            app_conf = ConfidentialClientApplication(
+                client_id=client_id,
+                client_credential=client_secret,
+                authority=authority_url,
+            )
+            
+            scope = ["https://analysis.windows.net/powerbi/api/.default"]
+            result = await asyncio.to_thread(app_conf.acquire_token_for_client, scopes=scope)
+            
+            if "access_token" not in result:
+                return {"success": False, "error": f"Auth failed: {result.get('error_description', 'Unknown Error')}"}
+            
+            access_token = result["access_token"]
         
-        scope = ["https://analysis.windows.net/powerbi/api/.default"]
-        result = await asyncio.to_thread(app.acquire_token_for_client, scopes=scope)
-        
-        if "access_token" not in result:
-            return {"success": False, "error": f"Auth failed: {result.get('error_description', 'Unknown Error')}"}
-        
-        access_token = result["access_token"]
-        
-        # Candidate endpoints to try in order (Note: Service Principals cannot use /myorg/datasets or /myorg/reports, so we use Admin endpoints or /groups/{id}/ endpoints)
+        # Candidate endpoints to try in order
         endpoints_to_try = []
         if item_type == "workspaces":
             endpoints_to_try = [
-                "https://api.powerbi.com/v1.0/myorg/admin/groups?%24top=5000",
-                "https://api.powerbi.com/v1.0/myorg/groups"
+                "https://api.powerbi.com/v1.0/myorg/groups",
+                "https://api.powerbi.com/v1.0/myorg/admin/groups?%24top=5000"
             ]
         elif item_type == "datasets":
             if workspace_id:

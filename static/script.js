@@ -1918,26 +1918,19 @@ window.scanItems = async function(type, btn) {
 
     try {
 
+        const authMode = document.querySelector('input[name="pbi_auth_mode"]:checked')?.value || (localStorage.getItem('pbi_auth_mode') || 'service_principal');
+        const clientSecret = authMode === 'personal' ? '' : (document.getElementById('set-secret')?.value || '').trim();
         const res = await fetch(`/api/scan/${type}`, {
-
             method: 'POST',
-
             headers: { 'Content-Type': 'application/json' },
-
             body: JSON.stringify({
-
-                pbi_client_id: document.getElementById('set-client').value.trim(),
-
-                pbi_client_secret: document.getElementById('set-secret').value.trim(),
-
-                pbi_tenant_id: document.getElementById('set-tenant').value.trim(),
-
-                  pbi_tenant_name: document.getElementById('set-tenant-name') ? document.getElementById('set-tenant-name').value.trim() : '',
-
+                auth_mode: authMode,
+                pbi_client_id: document.getElementById('set-client') ? document.getElementById('set-client').value.trim() : '',
+                pbi_client_secret: clientSecret,
+                pbi_tenant_id: document.getElementById('set-tenant') ? document.getElementById('set-tenant').value.trim() : '',
+                pbi_tenant_name: document.getElementById('set-tenant-name') ? document.getElementById('set-tenant-name').value.trim() : '',
                 workspace_id: workspaceId
-
             })
-
         });
 
         const data = await res.json();
