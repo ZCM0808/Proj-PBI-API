@@ -8421,11 +8421,14 @@ body.light-theme .pb-card-header-status.status-bypassed .pb-status-indicator-tex
     box-shadow: 0 4px 14px rgba(99, 102, 241, 0.18) !important;
 }
 .pb-asset-card-row.is-hero-role .pb-asset-prop-name {
-    font-size: 1.02rem !important;
-    font-weight: 900 !important;
-    color: #c7d2fe !important;
+    font-size: 0.88rem !important;
+    font-weight: 850 !important;
+    color: #e0e7ff !important;
     letter-spacing: 0.3px;
-    line-height: 1.35;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 body.light-theme .pb-asset-card-row.is-hero-role,
 [data-theme="light"] .pb-asset-card-row.is-hero-role {

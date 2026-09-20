@@ -4417,7 +4417,7 @@
             const tenantHeaderStatusText = user ? (isGuest ? '⚠️ B2B GUEST' : '✅ AUTH VALID') : '⚠️ NO PRINCIPAL';
             const tenantRoleName = isAdmin ? 'POWER BI ADMINISTRATOR' : (isGuest ? 'B2B GUEST USER' : 'TENANT MEMBER');
             const tenantItems = [
-                { id: 'tenant_principal_role', isHero: true, name: `TENANT ROLE: ${tenantRoleName}`, desc: user ? `【当前分配身份】主体 [${user.name}] (${user.upn}) · 组织租户治理身份` : '【等待配置】请在左侧主体面板指定具体企业成员', statusClass: user ? (isAdmin ? 'bypassed' : (isGuest ? 'warn' : 'enabled')) : 'disabled', statusText: user ? (isAdmin ? '⚡ FULL ADMIN' : (isGuest ? '⚠️ B2B GUEST' : '✅ TENANT MEMBER')) : '❌ NO USER', badge: 'ROLE' },
+                { id: 'tenant_principal_role', isHero: true, name: tenantRoleName, desc: user ? `【当前分配身份】主体 [${user.name}] (${user.upn}) · 组织租户治理身份` : '【等待配置】请在左侧主体面板指定具体企业成员', statusClass: user ? (isAdmin ? 'bypassed' : (isGuest ? 'warn' : 'enabled')) : 'disabled', statusText: user ? (isAdmin ? '⚡ ADMIN' : (isGuest ? '⚠️ B2B GUEST' : '✅ MEMBER')) : '❌ NO USER', badge: 'ROLE' },
                 { id: 'tenant_gac_policy', name: `GAC POLICY: ${user?.state?.isInStrictMode ? 'STRICT MODE (严格隔离)' : 'PERMISSIVE (策略放行)'}`, desc: user?.state?.isInStrictMode ? '【限制】租户开启 GAC(Granular Access Control / 细粒度访问控制) 严格审查模式，非特权成员必须具备显式数据连接授权' : '【可以】租户 GAC 跨源策略处于放行模式，未对非特权成员实施全局数据源物理隔离', statusClass: user?.state?.isInStrictMode ? 'warn' : 'enabled', statusText: user?.state?.isInStrictMode ? '🔒 STRICT' : '✅ CAN ACCESS', badge: 'GAC' },
                 { id: 'tenant_export', name: 'EXPORT DATA (明细数据导出策略)', desc: user ? '【可以】租户全局策略放行，允许将报表与模型数据导出至本地 Excel/CSV' : '【等待配置】需选定具体登录主体后生效策略', statusClass: user ? 'enabled' : 'disabled', statusText: user ? '✅ CAN EXPORT' : '❌ CANNOT EXPORT', badge: 'EXPORT' },
                 { id: 'tenant_web_modeling', name: 'WEB MODELING (浏览器在线建模)', desc: user?.state?.tenantAllowWebModeling ? '【可以】租户策略允许在浏览器端直接设计、编辑语义模型架构与度量值' : '【禁止】租户策略禁用网页在线建模，只能通过客户端工具操作', statusClass: user?.state?.tenantAllowWebModeling ? 'enabled' : 'disabled', statusText: user?.state?.tenantAllowWebModeling ? '✅ CAN MODEL' : '❌ CANNOT MODEL', badge: 'WEB MODEL' },
@@ -4445,7 +4445,7 @@
             } else {
                 const t2Status = isAdmin ? 'bypassed' : (isPrivileged ? 'enabled' : (isViewer ? 'warn' : 'disabled'));
                 const wsItems = [
-                    { id: 'ws_role', isHero: true, name: `WORKSPACE ROLE: ${wsRoleCaps}`, desc: `【当前分配角色】在工作区 [${wsName}] 被官方授予 [${wsRoleCaps}] 治理身份`, statusClass: t2Status, statusText: `✅ ASSIGNED: ${wsRoleCaps}`, badge: 'ROLE' },
+                    { id: 'ws_role', isHero: true, name: wsRoleCaps, desc: `【当前分配角色】在工作区 [${wsName}] 被官方授予 [${wsRoleCaps}] 治理身份`, statusClass: t2Status, statusText: wsRoleCaps === 'ADMIN' ? '⚡ ADMIN' : `✅ ${wsRoleCaps}`, badge: 'ROLE' },
                     { id: 'ws_members', name: 'MANAGE PERMISSIONS (管理与成员委派)', desc: isAdmin ? '【可以】拥有最高管理权，可向组织成员分配、修改或撤销工作区各级角色' : (isMember ? '【限制】仅允许向他人授予 Viewer(查看者) 角色，无法分配更高权限' : '【禁止】无成员管理权限，禁止变更工作区成员名单与权限'), statusClass: isAdmin ? 'enabled' : (isMember ? 'warn' : 'disabled'), statusText: isAdmin ? '✅ CAN MANAGE' : (isMember ? '⚠️ CAN INVITE VIEWERS' : '❌ CANNOT MANAGE'), badge: 'PERMISSIONS' },
                     { id: 'ws_edit', name: 'CREATE & EDIT ASSETS (资产协同增删改)', desc: isPrivileged ? '【可以】拥有资产编辑特权，允许新建、修改、重命名或删除模型与报表' : '【禁止】当前为 Viewer 只读角色，禁止修改或新增工作区任何资产', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ CAN EDIT' : '❌ CANNOT EDIT', badge: 'ASSETS' },
                     { id: 'ws_app', name: 'PUBLISH APP (组织应用打包发布)', desc: (isAdmin || isMember) ? '【可以】允许将该工作区报表打包发布或更新为企业级应用程序 (App)' : '【禁止】仅 Admin/Member 角色具备组织应用发布与受众打包权限', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ CAN PUBLISH' : '❌ CANNOT PUBLISH', badge: 'APP' },
@@ -4496,7 +4496,7 @@
                 modelSubText = `模型 ID: ${curModel.id}`;
 
                 const modelItems = [
-                    { id: 'model_permission', isHero: true, name: `MODEL PERMISSION: ${modelPermLabel}`, desc: `【当前分配权限】当前用户对语义模型 [${curModel.alias || curModel.name}] 的官方有效权限集合`, statusClass: canBuild ? 'enabled' : (canReadModel ? 'warn' : 'disabled'), statusText: canBuild ? '⚡ READ + BUILD' : (canReadModel ? '👁️ READ ONLY' : '🚫 NO ACCESS'), badge: 'PERMISSION' },
+                    { id: 'model_permission', isHero: true, name: modelPermLabel, desc: `【当前分配权限】当前用户对语义模型 [${curModel.alias || curModel.name}] 的官方有效权限集合`, statusClass: canBuild ? 'enabled' : (canReadModel ? 'warn' : 'disabled'), statusText: canBuild ? '⚡ BUILD' : (canReadModel ? '👁️ READ' : '🚫 DENIED'), badge: 'PERMISSION' },
                     { id: 'model_read', name: 'READ (模型直接读取权限)', desc: canReadModel ? '【可以】执行 DAX 查询与模型基础刷新，下游报表正常取数渲染' : '【禁止】无 READ 权限，DAX 查询将被 403 阻断，报表将拒绝加载', statusClass: canReadModel ? 'enabled' : 'disabled', statusText: canReadModel ? '✅ CAN READ' : '❌ CANNOT READ', badge: 'READ' },
                     { id: 'model_build', name: 'BUILD (衍生构建与自助探索)', desc: canBuild ? '【可以】允许以该模型为基础使用 Excel 透视分析、新建独立衍生报表' : '【禁止】无 BUILD 权限，无法新建下游衍生报表或在 Excel 中连接探索', statusClass: canBuild ? 'enabled' : 'disabled', statusText: canBuild ? '✅ CAN BUILD' : '❌ CANNOT BUILD', badge: 'BUILD' },
                     { id: 'model_write', name: 'WRITE (架构与度量值写回)', desc: isPrivileged ? '【可以】通过 XMLA 端点或浏览器在线修改表结构、新建度量值与关系模型' : '【禁止】非 Admin/Member/Contributor 角色，禁止写回模型架构或修改度量值', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ CAN WRITE' : '❌ CANNOT WRITE', badge: 'WRITE' },
@@ -4548,7 +4548,7 @@
                 reportSubText = `报表 ID: ${curReport.id}`;
 
                 const reportItems = [
-                    { id: 'report_access', isHero: true, name: `REPORT ACCESS: ${reportAccessLabel}`, desc: `【当前分配权限】当前用户对报表 [${curReport.alias || curReport.name}] 的官方有效访问级别`, statusClass: canEditReport ? 'enabled' : 'warn', statusText: canEditReport ? '✏️ EDIT + VIEW' : '👁️ VIEW ONLY', badge: 'ACCESS' },
+                    { id: 'report_access', isHero: true, name: reportAccessLabel, desc: `【当前分配权限】当前用户对报表 [${curReport.alias || curReport.name}] 的官方有效访问级别`, statusClass: canEditReport ? 'enabled' : 'warn', statusText: canEditReport ? '✏️ EDIT' : '👁️ VIEW', badge: 'ACCESS' },
                     { id: 'report_view', name: 'VIEW & INTERACT (报表在线交互)', desc: '【可以】在线访问报表页面、切片器联动与图表多维钻取浏览', statusClass: 'enabled', statusText: '✅ CAN VIEW', badge: 'VIEW' },
                     { id: 'report_edit', name: 'EDIT VISUALS (视觉对象在线编辑)', desc: canEditReport ? '【可以】在线修改报表图表、调整页面布局与另存副本' : '【禁止】未被授予编辑权限，报表处于纯只读交互模式，无法修改布局', statusClass: canEditReport ? 'enabled' : 'disabled', statusText: canEditReport ? '✅ CAN EDIT' : '❌ CANNOT EDIT', badge: 'EDIT' },
                     { id: 'report_export', name: 'EXPORT DATA (底层明细数据导出)', desc: canExportUnderlying ? '【可以】允许导出底层原始颗粒度数据明细至本地 Excel/CSV' : '【限制】缺少 BUILD 权限或受租户策略限制，仅允许导出带格式汇总数据', statusClass: canExportUnderlying ? 'enabled' : 'warn', statusText: canExportUnderlying ? '✅ CAN EXPORT' : '⚠️ SUMMARY ONLY', badge: 'EXPORT' },
@@ -4654,7 +4654,7 @@
                             primaryDb = db;
                         }
 
-                        const displayName = `CONNECTION: ${connName}`;
+                        const displayName = connName;
                         const displayDesc = `【当前模型绑定的官方连接】数据源: ${dsType} · 服务器: ${server}${db ? ' · 数据库: ' + db : ''}${hasGw ? ' · 经由网关: ' + gwName : ' · 云端直连通道'}`;
 
                         return {
@@ -4682,7 +4682,7 @@
                     connItems.push({
                         id: 'conn_inspecting',
                         isHero: true,
-                        name: 'CONNECTION: 正在穿透探测官方连接...',
+                        name: '正在穿透探测官方连接...',
                         desc: `【连接探测中】正在向数据源分析引擎拉取模型 [${curModel.alias || curModel.name}] 底层官方连接名称与网关`,
                         statusClass: 'warn',
                         statusText: '⏳ SCANNING',
@@ -4694,7 +4694,7 @@
                     connItems.push({
                         id: 'conn_default_ds',
                         isHero: true,
-                        name: `CONNECTION: ${fallbackConnName}`,
+                        name: fallbackConnName,
                         desc: `【当前模型绑定的官方连接】模型 [${curModel.alias || curModel.name}] 已挂载官方数据源连接通道 · 运行正常`,
                         statusClass: 'enabled',
                         statusText: '✅ CONNECTED',
@@ -4749,9 +4749,9 @@
 
             // Module 6: Pipeline (部署管道与 ALM 治理层)
             let colPipelineBody = '';
-            const pipelineRoleName = isPipelineAdmin ? 'ADMIN' : (hasSelectedWs ? 'DEPLOYER' : 'NONE');
+            const pipelineRoleName = isPipelineAdmin ? 'PIPELINE ADMIN' : (hasSelectedWs ? 'DEPLOYER' : 'NO ACCESS');
             const pipelineItems = [
-                { id: 'pipeline_role', isHero: true, name: `PIPELINE ROLE: ${pipelineRoleName}`, desc: hasSelectedWs ? `【当前分配角色】在工作区 [${wsName}] 部署管道 ALM 生命周期中的官方治理身份` : '【未关联】需选择目标工作区以呈现部署管道身份', statusClass: hasSelectedWs ? (isPipelineAdmin ? 'enabled' : 'warn') : 'disabled', statusText: hasSelectedWs ? (isPipelineAdmin ? '✅ FULL ADMIN' : '⚠️ DEPLOYER') : '❌ NO ACCESS', badge: 'ALM' },
+                { id: 'pipeline_role', isHero: true, name: pipelineRoleName, desc: hasSelectedWs ? `【当前分配角色】在工作区 [${wsName}] 部署管道 ALM 生命周期中的官方治理身份` : '【未关联】需选择目标工作区以呈现部署管道身份', statusClass: hasSelectedWs ? (isPipelineAdmin ? 'enabled' : 'warn') : 'disabled', statusText: hasSelectedWs ? (isPipelineAdmin ? '✅ ADMIN' : '⚠️ DEPLOY') : '❌ NONE', badge: 'ALM' },
                 { id: 'pipeline_deploy', name: 'STAGE DEPLOYMENT (阶段流转部署)', desc: isPipelineAdmin ? '【可以】允许将开发阶段的模型与报表一键晋升部署至测试 (Test) 或生产 (Prod) 环境' : '【禁止】尚未绑定专用管道或缺少部署者权限，无法执行阶段流转', statusClass: isPipelineAdmin ? 'enabled' : 'warn', statusText: isPipelineAdmin ? '✅ CAN DEPLOY' : '⚠️ CANNOT DEPLOY', badge: 'DEPLOY' },
                 { id: 'pipeline_diff', name: 'SCHEMA DIFF (阶段架构差异比对)', desc: isPipelineAdmin ? '【可以】自动比对各阶段模型架构、表字段变更及度量值元数据差异' : '【禁止】需绑定部署管道以启用自动化架构差异比对检测引擎', statusClass: isPipelineAdmin ? 'enabled' : 'warn', statusText: isPipelineAdmin ? '✅ CAN COMPARE' : '⚠️ CANNOT COMPARE', badge: 'DIFF' }
             ];
