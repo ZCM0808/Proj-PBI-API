@@ -3843,12 +3843,12 @@ window.filterGtbDsOptions = function(term = '') {
 // ⚡ 全局已选报表 ID 集合 (Set<string> - 支持单选、多选与全选)
 window.selectedGtbReportIds = new Set();
 try {
-    const savedRp = JSON.parse(localStorage.getItem('pbi-selected-reports') || '[]');
-    if (Array.isArray(savedRp) && savedRp.length > 0) {
-        savedRp.forEach(id => { if (id) window.selectedGtbReportIds.add(String(id)); });
-    } else {
-        const activeRp = localStorage.getItem('pbi-active-report') || document.getElementById('active-report')?.value;
-        if (activeRp) window.selectedGtbReportIds.add(String(activeRp));
+    const savedRpRaw = localStorage.getItem('pbi-selected-reports');
+    if (savedRpRaw !== null) {
+        const savedRp = JSON.parse(savedRpRaw);
+        if (Array.isArray(savedRp)) {
+            savedRp.forEach(id => { if (id) window.selectedGtbReportIds.add(String(id)); });
+        }
     }
 } catch(e) {}
 
@@ -4279,14 +4279,14 @@ window.updateGlobalTopbarDropdowns = function() {
         }
     }
 
-    // 4. 根据所选工作区严格过滤报表 (彻底杜绝跨域混杂)
+    // 4. 根据所选工作区严格过滤报表 (彻底杜绝跨域混杂，严禁放行无工作区归属的孤儿报表)
     const filteredRp = rpData.filter(r => {
         if (!r || !r.id) return false;
         const rWid = String(r.workspaceId || '').trim().toLowerCase();
         if (hasWsFilter) {
             return rWid && selectedWsSet.has(rWid);
         }
-        return !rWid || validWsIdSet.has(rWid);
+        return rWid && validWsIdSet.has(rWid);
     });
 
     // 清理超出范围的已选报表
@@ -4297,12 +4297,9 @@ window.updateGlobalTopbarDropdowns = function() {
         }
     }
 
-    if (window.selectedGtbReportIds.size === 0 && filteredRp.length > 0) {
-        if (curRpId && validScopedRpIds.has(String(curRpId).toLowerCase())) {
-            window.selectedGtbReportIds.add(String(curRpId));
-        } else if (filteredRp[0] && filteredRp[0].id) {
-            window.selectedGtbReportIds.add(String(filteredRp[0].id));
-        }
+    // 🚨 严禁强制自动勾选首项：允许用户处于 0 项选中状态 (-- 选择报表 (0) --)，杜绝清空与取消勾选失效
+    if (window.selectedGtbReportIds.size === 0 && curRpId && validScopedRpIds.has(String(curRpId).toLowerCase())) {
+        window.selectedGtbReportIds.add(String(curRpId));
     }
 
     const selectedRpList = Array.from(window.selectedGtbReportIds);
