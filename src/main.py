@@ -43,23 +43,23 @@ async def lifespan(app: FastAPI):
         if not valid_keys:
             return
         
-        print("Warming up AI connection in background...")
         for api_key in valid_keys:
-            try:
-                genai.configure(api_key=api_key)
-                _model_instance = genai.GenerativeModel("gemini-3.5-flash")
-                # 尝试一个请求，禁用 retry 以便快速失败
-                await _model_instance.generate_content_async(
-                    "ping", 
-                    request_options={"timeout": 5.0}
-                )
-                _current_api_key = api_key
-                print(f"AI connection warmed up successfully with key: {api_key[:5]}***")
-                return
-            except Exception as e:
-                print(f"Key {api_key[:5]}*** failed during warmup: {e}. Trying next...")
-                
-        print("All keys failed during warmup. Will retry on user request.")
+            for model_name in ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-3.5-flash"]:
+                try:
+                    genai.configure(api_key=api_key)
+                    model = genai.GenerativeModel(model_name)
+                    await model.generate_content_async(
+                        "ping", 
+                        request_options={"timeout": 2.0}
+                    )
+                    _model_instance = model
+                    _current_api_key = api_key
+                    print(f"AI connection warmed up successfully ({model_name}) with key: {api_key[:5]}***")
+                    return
+                except Exception:
+                    continue
+                    
+        print("AI helper initialized in on-demand mode.")
             
     asyncio.create_task(_warmup())
     yield
