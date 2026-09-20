@@ -226,22 +226,13 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         const modelUsersCard = page.locator('#pb-model-users-card');
         await expect(modelUsersCard).toHaveCount(0);
 
-        // 3. 验证选择 Viewer 预设，中括号已全部使用英文表述
-        await page.evaluate(() => window.PermissionBlueprint.selectUserPreset('preset_viewer_rls'));
-        const badgeTag = page.locator('#pb-badge-role-tag');
-        await expect(badgeTag).toHaveText('Viewer (RLS Restricted)');
-        const badgeText = await badgeTag.textContent();
-        expect(badgeText).not.toMatch(/[（(][\u4e00-\u9fa5]+[)）]/);
+        // 3. 核心保障：验证取消选中按钮与真实用户标签已彻底移除，界面纯粹极简
+        await expect(page.locator('#pb-badge-role-tag')).toHaveCount(0);
+        await expect(page.locator('#pb-btn-clear-user')).toHaveCount(0);
 
-        // 4. 验证纯 SVG 紧凑型取消按钮 (无文字)，点击后恢复通用基准
-        const clearBtn = page.locator('#pb-btn-clear-user');
-        await expect(clearBtn).toBeVisible();
-        await expect(clearBtn).toHaveText('');
-        await expect(clearBtn.locator('svg')).toBeVisible();
-
-        await clearBtn.click();
+        // 4. 验证通过下拉选单或 API 切换回 none 时，自动恢复通用基准流向
+        await page.evaluate(() => window.PermissionBlueprint.selectUserPreset('none'));
         await expect(page.locator('#pb-current-upn-label')).toContainText('未选定模拟主体');
-        await expect(page.locator('#pb-badge-role-tag')).toHaveText('通用基准');
     });
 
     test('明亮与黑暗双主题深度支持：蓝图卡片、矩阵列与状态标签自适应变色且对比度优秀', async ({ page }) => {
@@ -466,7 +457,7 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         await expect(page.locator('#pb-matrix-container')).toBeVisible();
 
         // 2. 确保处于通用基准状态 (未模拟特定主体，初始为宽松模式)
-        await page.locator('#pb-btn-clear-user').click();
+        await page.evaluate(() => window.PermissionBlueprint.clearSimulatedUser());
         await page.waitForTimeout(300);
 
         // 3. 暗黑模式下 Tab 高对比度校验：确保绝非黄底白字
