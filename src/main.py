@@ -680,8 +680,10 @@ def get_login_ui(request: Request):
     return resp
 
 @app.get("/", response_class=HTMLResponse)
-def get_ui():
-    """返回 Web UI 主页"""
+async def get_ui(request: Request):
+    """返回 Web UI 主页，如果是 OAuth 回调则自动处理授权凭据"""
+    if "code" in request.query_params or "error" in request.query_params:
+        return await handle_oauth_callback(request)
     with open("static/index.html", "r", encoding="utf-8") as f:
         return f.read()
 
@@ -2416,7 +2418,7 @@ async def init_interactive_login(req: Optional[InteractiveLoginInitRequest] = No
         
         authority = f"https://login.microsoftonline.com/{tenant.strip()}"
         client_id = "04b07795-8ddb-461a-bbee-02f9e1bf7b46"
-        redirect_uri = f"http://localhost:{port}/api/auth/callback"
+        redirect_uri = f"http://localhost:{port}"
         
         from msal import PublicClientApplication  # type: ignore[import-untyped]
         app_msal = PublicClientApplication(
@@ -2552,7 +2554,15 @@ async def handle_oauth_callback(request: Request):
                             if (el) el.textContent = remaining;
                             if (remaining <= 0) {{
                                 clearInterval(timer);
-                                window.close();
+                                try {{
+                                    if (window.opener) {{
+                                        window.close();
+                                    }} else {{
+                                        window.location.href = '/';
+                                    }}
+                                }} catch (_) {{
+                                    window.location.href = '/';
+                                }}
                             }}
                         }}, 1000);
                     }})();
