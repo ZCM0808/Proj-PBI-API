@@ -872,4 +872,102 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
       return await verifyBtn.locator('svg').count();
     }, { timeout: 5000 }).toBe(1);
   });
+
+  test('免租户扫码 / 通行密钥登录与真实租户自动识别、信息扫描闭环测试', async ({ page }) => {
+    let applyCalled = false;
+    let scanCalled = false;
+
+    // 1. Mock 设备流与凭据应用 API
+    await page.route('**/api/auth/device-code/init', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        flow_id: 'mock-flow-device-888',
+        user_code: 'PASS-KEY8',
+        verification_uri: 'https://microsoft.com/devicelogin',
+        message: 'Please sign in'
+      })
+    }));
+
+    await page.route('**/api/auth/device-code/poll*', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'completed',
+        token: 'mock-bearer-token-passkey-xyz',
+        tenant_id: 'auto-discovered-tenant-9999',
+        username: 'admin.user@enterprise.com',
+        user_name: 'Enterprise Admin'
+      })
+    }));
+
+    await page.route('**/api/auth/device-code/apply', async route => {
+      applyCalled = true;
+      const postData = JSON.parse(route.request().postData() || '{}');
+      expect(postData.tenant_id).toBe('auto-discovered-tenant-9999');
+      expect(postData.username).toBe('admin.user@enterprise.com');
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          tenant_id: 'auto-discovered-tenant-9999',
+          username: 'admin.user@enterprise.com',
+          message: '已成功切换并激活免租户个人凭据！'
+        })
+      });
+    });
+
+    await page.route('**/api/scan/workspaces', async route => {
+      scanCalled = true;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: 'success',
+          data: [
+            { id: 'ws-e2e-001', name: 'Enterprise PowerBI Production Workspace' }
+          ]
+        })
+      });
+    });
+
+    // 2. 打开全局设置弹窗
+    const settingsBtn = page.locator('#btn-settings');
+    await settingsBtn.click();
+    const settingsModal = page.locator('#settings-modal');
+    await expect(settingsModal).toBeVisible();
+
+    // 3. 找到并点击免租户扫码登录按钮
+    const deviceLoginBtn = page.locator('#btn-device-code-login');
+    await expect(deviceLoginBtn).toBeVisible();
+    await deviceLoginBtn.click();
+
+    // 4. 断言设备流弹窗展现，验证码渲染正确
+    const deviceModal = page.locator('#device-code-modal');
+    await expect(deviceModal).toBeVisible();
+    await expect(page.locator('#device-code-value')).toHaveText('PASS-KEY8');
+
+    // 5. 轮询完成后，断言 apply 接口已被调用，表单与凭据被全自动回填
+    await expect.poll(() => applyCalled, { timeout: 8000 }).toBe(true);
+
+    await expect(page.locator('#set-tenant')).toHaveValue('auto-discovered-tenant-9999');
+    await expect(page.locator('#set-username')).toHaveValue('admin.user@enterprise.com');
+    await expect(page.locator('#set-client')).toHaveValue('04b07795-8ddb-461a-bbee-02f9e1bf7b46');
+
+    // 验证 Auth Mode Radio 自动切到 personal
+    const personalRadio = page.locator('input[name="pbi_auth_mode"][value="personal"]');
+    await expect(personalRadio).toBeChecked();
+
+    // 验证 localStorage 是否自动更新持久化
+    const storedTenant = await page.evaluate(() => localStorage.getItem('pbi_tenant_id'));
+    const storedUser = await page.evaluate(() => localStorage.getItem('pbi_username'));
+    expect(storedTenant).toBe('auto-discovered-tenant-9999');
+    expect(storedUser).toBe('admin.user@enterprise.com');
+
+    // 验证自动触发了工作区扫描
+    await expect.poll(() => scanCalled, { timeout: 8000 }).toBe(true);
+  });
 });
+

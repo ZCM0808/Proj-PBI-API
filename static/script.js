@@ -1886,12 +1886,11 @@ window.verifySelectedGuid = async function(type, containerId, btn) {
 
 
 window.scanItems = async function(type, btn) {
-
-    const originalContent = btn.innerHTML;
-
-    btn.disabled = true;
-
-    btn.innerHTML = `<svg class="spinning" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation: spin 1s linear infinite;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>`;
+    const originalContent = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<svg class="spinning" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation: spin 1s linear infinite;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>`;
+    }
 
     let workspaceId = document.getElementById('active-workspace')?.value || '';
 
@@ -2160,11 +2159,10 @@ window.scanItems = async function(type, btn) {
         alert('Scan Error: ' + e);
 
     } finally {
-
-        btn.innerHTML = originalContent;
-
-        btn.disabled = false;
-
+        if (btn) {
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+        }
     }
 
 };
@@ -21588,8 +21586,8 @@ window.acquireMfaTokenWithFallback = async function(targetInputId = 'wf-xmla-tok
                         const badge = document.getElementById('wf-xmla-token-badge');
                         if (badge) badge.style.display = 'inline-flex';
                         if (window.showNotification) window.showNotification("🎉 个人 MFA 验证成功，Token 已自动填入！", "success");
-                        if (onTokenAcquired) onTokenAcquired(token);
-                        resolve(token);
+                        if (onTokenAcquired) onTokenAcquired(token, pollData);
+                        resolve({ token, pollData });
                     } else if (pollData.status === 'error') {
                         clearInterval(_currentDevicePollTimer);
                         _currentDevicePollTimer = null;
@@ -21604,6 +21602,107 @@ window.acquireMfaTokenWithFallback = async function(targetInputId = 'wf-xmla-tok
     } catch (err) {
         alert("❌ 发起认证异常: " + err.message);
         return null;
+    }
+};
+
+window.startDeviceCodeLoginFlow = async function() {
+    const btn = document.getElementById('btn-device-code-login');
+    const originalHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="animate-spin" style="display:inline-block;animation:spin 1s linear infinite;">⏳</span> 正在启动...';
+    }
+
+    try {
+        let capturedPollData = null;
+        const res = await window.acquireMfaTokenWithFallback('set-password', (token, pollData) => {
+            capturedPollData = pollData;
+        });
+
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+
+        if (!res || !res.token) return;
+        const token = res.token;
+        const pollData = res.pollData || capturedPollData || {};
+        const tenantId = pollData.tenant_id || '';
+        const username = pollData.username || '';
+
+        if (window.showNotification) {
+            window.showNotification("🔄 正在自动解析租户与账号信息并同步后端...", "info");
+        }
+
+        // 调用后端应用凭据与热重载
+        const applyRes = await fetch('/api/auth/device-code/apply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                flow_id: _currentDeviceFlowId,
+                token: token,
+                tenant_id: tenantId,
+                username: username
+            })
+        });
+        const applyData = await applyRes.json();
+
+        if (applyData && applyData.success) {
+            const finalTenantId = applyData.tenant_id || tenantId;
+            const finalUsername = applyData.username || username;
+
+            // 自动回填并切换 UI 表单
+            const tenantInput = document.getElementById('set-tenant');
+            const usernameInput = document.getElementById('set-username');
+            const clientInput = document.getElementById('set-client');
+            if (tenantInput && finalTenantId) tenantInput.value = finalTenantId;
+            if (usernameInput && finalUsername) usernameInput.value = finalUsername;
+            if (clientInput) clientInput.value = '04b07795-8ddb-461a-bbee-02f9e1bf7b46';
+
+            // 切换 Radio 为 Personal
+            const personalRadio = document.querySelector('input[name="pbi_auth_mode"][value="personal"]');
+            if (personalRadio) {
+                personalRadio.checked = true;
+                if (window.updateAuthModeVisibility) window.updateAuthModeVisibility('personal');
+            }
+
+            // 本地缓存同步
+            if (finalTenantId) localStorage.setItem('pbi_tenant_id', finalTenantId);
+            if (finalUsername) localStorage.setItem('pbi_username', finalUsername);
+            localStorage.setItem('pbi_app_name', 'Power BI Official Client (Device Code)');
+
+            // 自动将新探测到的租户配置保存为快照
+            if (window.saveAuthSnapshot) {
+                const prefix = finalUsername ? finalUsername.split('@')[0] : 'User';
+                window.saveAuthSnapshot(`Device Auth (${prefix})`, true);
+            }
+
+            // 更新顶栏身份
+            if (window.renderEnvIdentity) window.renderEnvIdentity();
+            if (window.updateWorkflowAuthBadge) window.updateWorkflowAuthBadge();
+
+            if (window.showNotification) {
+                window.showNotification(`🎉 登录成功！已自动识别并绑定租户 [${finalTenantId}]，正在一键扫描工作区...`, "success", 5000);
+            }
+
+            // 自动触发工作区扫描
+            setTimeout(() => {
+                const scanWsBtn = document.querySelector('button[onclick*="scanItems(\'workspaces\'"]');
+                if (scanWsBtn) {
+                    scanWsBtn.click();
+                } else if (typeof window.scanItems === 'function') {
+                    window.scanItems('workspaces');
+                }
+            }, 600);
+        } else {
+            alert("❌ 凭据应用失败: " + (applyData?.message || "未知错误"));
+        }
+    } catch (e) {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+        alert("登录流程异常: " + e.message);
     }
 };
 

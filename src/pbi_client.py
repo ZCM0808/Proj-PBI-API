@@ -40,6 +40,17 @@ def reset_shared_session() -> None:
         _GLOBAL_HTTP_SESSION = None
 
 
+def set_manual_token(token: str, auth_mode: str = "personal", identity: str = "", expires_in: int = 3600) -> None:
+    """手动注入外部（如设备流）获取的有效 Access Token 到内存缓存中"""
+    now = time.time()
+    for api_type in ["powerbi", "fabric"]:
+        cache_key = f"{auth_mode}_{api_type}_{identity}"
+        _GLOBAL_TOKEN_CACHE[cache_key] = {
+            "token": token,
+            "expires_at": now + expires_in
+        }
+
+
 class PBIClient:
     """Power BI API 客户端封装"""
 

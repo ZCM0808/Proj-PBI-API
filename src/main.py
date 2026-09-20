@@ -2289,7 +2289,7 @@ async def init_device_code_flow(req: Optional[DeviceCodeInitRequest] = None):
 
 @app.get("/api/auth/device-code/poll")
 async def poll_device_code_flow(flow_id: str):
-    """轮询 Device Code Flow 认证状态"""
+    """轮询 Device Code Flow 认证状态并自动解析租户与用户信息"""
     if flow_id not in _active_device_flows:
         return {"status": "error", "message": "无效或已过期的 Flow ID"}
     
@@ -2297,11 +2297,80 @@ async def poll_device_code_flow(flow_id: str):
     status = record.get("status", "pending")
     if status == "completed":
         token = record.get("token", "")
-        return {"status": "completed", "token": token}
+        res = record.get("result", {}) or {}
+        id_claims = res.get("id_token_claims", {}) or {}
+        tenant_id = id_claims.get("tid", "")
+        username = id_claims.get("preferred_username", "") or id_claims.get("upn", "")
+        user_name = id_claims.get("name", "")
+        
+        # 如果从 claims 没取到，尝试从 token JWT payload 解码
+        if (not tenant_id or not username) and token:
+            try:
+                import json
+                import base64
+                parts = token.split(".")
+                if len(parts) >= 2:
+                    padding = 4 - len(parts[1]) % 4
+                    payload_b64 = parts[1] + ("=" * padding)
+                    payload_json = json.loads(base64.urlsafe_b64decode(payload_b64.encode("ascii")).decode("utf-8"))
+                    if not tenant_id:
+                        tenant_id = payload_json.get("tid", "")
+                    if not username:
+                        username = payload_json.get("upn", "") or payload_json.get("unique_name", "")
+            except Exception:
+                pass
+        
+        return {
+            "status": "completed",
+            "token": token,
+            "tenant_id": tenant_id,
+            "username": username,
+            "user_name": user_name
+        }
     elif status == "error":
         return {"status": "error", "message": record.get("error", "认证失败")}
     else:
         return {"status": "pending"}
+
+class DeviceCodeApplyRequest(BaseModel):
+    flow_id: Optional[str] = None
+    token: Optional[str] = None
+    tenant_id: Optional[str] = None
+    username: Optional[str] = None
+
+@app.post("/api/auth/device-code/apply")
+async def apply_device_code_token(req: DeviceCodeApplyRequest):
+    """将设备代码流获取到的 Token 和租户信息持久化并热重载注入后端 Client"""
+    try:
+        from src.pbi_client import set_manual_token
+        tenant_id = (req.tenant_id or "").strip()
+        username = (req.username or "").strip()
+        token = (req.token or "").strip()
+        
+        updates = {
+            "AUTH_MODE": "personal",
+            "CLIENT_ID": "04b07795-8ddb-461a-bbee-02f9e1bf7b46"
+        }
+        if tenant_id:
+            updates["TENANT_ID"] = tenant_id
+        if username:
+            updates["USERNAME"] = username
+            
+        Config.update_config(updates)
+        
+        if token:
+            set_manual_token(token, auth_mode="personal", identity=username or Config.USERNAME)
+            
+        global client
+        client = PBIClient(Config())
+        return {
+            "success": True,
+            "tenant_id": tenant_id or Config.TENANT_ID,
+            "username": username or Config.USERNAME,
+            "message": "已成功切换并激活免租户个人凭据！"
+        }
+    except Exception as e:
+        return {"success": False, "message": f"应用凭据失败: {str(e)}"}
 
 @app.post("/api/auth/device-code/cancel")
 async def cancel_device_code_flow(flow_id: str):
