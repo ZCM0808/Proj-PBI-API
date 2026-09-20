@@ -707,13 +707,28 @@ async def update_settings(request: Request):
 
 @app.post("/api/auth-mode")
 async def set_auth_mode(request: Request):
-    """快速切换全局认证模式 (service_principal / personal)"""
+    """快速切换全局认证模式 (service_principal / personal / interactive)"""
     try:
         data = await request.json()
         mode = data.get("auth_mode", "service_principal")
-        if mode not in ["service_principal", "personal"]:
+        if mode not in ["service_principal", "personal", "interactive"]:
             return {"success": False, "message": "无效的认证模式"}
-        Config.update_config({"AUTH_MODE": mode})
+        
+        settings = load_settings()
+        if mode == "interactive":
+            Config.update_config({
+                "AUTH_MODE": "personal",
+                "CLIENT_ID": "04b07795-8ddb-461a-bbee-02f9e1bf7b46"
+            })
+        elif mode == "service_principal":
+            saved_client = settings.get("PBI_CLIENT_ID") or Config.CLIENT_ID
+            Config.update_config({
+                "AUTH_MODE": "service_principal",
+                "CLIENT_ID": saved_client
+            })
+        else:
+            Config.update_config({"AUTH_MODE": "personal"})
+            
         global client
         client = PBIClient(Config())
         return {"success": True, "auth_mode": mode, "message": f"已切换至 {mode} 认证模式"}
@@ -2225,19 +2240,52 @@ async def get_auth_info():
         username = settings.get("PBI_USERNAME", Config.USERNAME)
         tenant_id = settings.get("PBI_TENANT_ID", Config.TENANT_ID)
         tenant_name = settings.get("PBI_TENANT_NAME", Config.TENANT_NAME)
+        app_name = settings.get("PBI_APP_NAME") or os.getenv("PBI_APP_NAME", "")
         
-        app_name = settings.get("PBI_APP_NAME") or os.getenv("PBI_APP_NAME", "APP_Automation")
-        if client_id and not app_name:
-            app_name = f"App ({client_id[:8]}...)"
+        # 判断是否处于微软现代长效交互认证
+        from src.pbi_client import _GLOBAL_TOKEN_CACHE
+        now = time.time()
+        has_active_token = any(
+            k.startswith("personal_") and v.get("expires_at", 0) > now
+            for k, v in _GLOBAL_TOKEN_CACHE.items()
+        )
+        is_interactive = False
+        if auth_mode == "personal":
+            if client_id == "04b07795-8ddb-461a-bbee-02f9e1bf7b46" or has_active_token or "OAuth" in (app_name or "") or not settings.get("PBI_PASSWORD"):
+                is_interactive = True
+
+        if is_interactive:
+            active_type = "interactive"
+            active_label = "微软现代交互认证"
+            active_desc = "OAuth 2.0 PKCE · 90天自动续期 · 手机扫码与通行密钥"
+            if not app_name:
+                app_name = "Power BI (Microsoft Interactive)"
+        elif auth_mode == "personal":
+            active_type = "personal"
+            active_label = "传统个人账密认证"
+            active_desc = "Legacy Username + Password"
+            if not app_name:
+                app_name = f"Personal ({username})" if username else "Personal"
+        else:
+            active_type = "service_principal"
+            active_label = "Azure 应用程序认证"
+            active_desc = "Service Principal · 客户端机密"
+            if not app_name:
+                app_name = f"App ({client_id[:8]}...)" if client_id else "APP_Automation"
             
         return {
             "success": True,
             "auth_mode": auth_mode,
+            "is_interactive": is_interactive,
+            "active_type": active_type,
+            "active_label": active_label,
+            "active_desc": active_desc,
             "client_id": client_id,
             "username": username,
             "tenant_id": tenant_id,
             "tenant_name": tenant_name,
-            "app_name": app_name
+            "app_name": app_name,
+            "has_active_token": has_active_token
         }
     except Exception as e:
         return {"success": False, "error": str(e)}

@@ -2765,53 +2765,36 @@ window.renderEnvIdentity = async function() {
 
 
     // Fetch and render auth mode badge (same data source as Workflow title)
-
     if (authModeEl) {
-
         try {
-
             const res = await fetch('/api/auth-info');
-
             const data = await res.json();
-
             if (data && data.success) {
-
-                const isPersonal = data.auth_mode === 'personal';
-
-                if (isPersonal) {
-
+                if (data.is_interactive) {
                     const userName = data.username || 'User';
-
-                    if (authModeIcon) authModeIcon.textContent = '👤';
-
+                    if (authModeIcon) authModeIcon.textContent = '🌐';
                     if (authModeText) {
-
-                        authModeText.textContent = 'Personal';
-
+                        authModeText.textContent = '现代交互认证';
                         authModeText.style.color = '#38bdf8';
-
                     }
-
-                    authModeEl.title = `当前认证: Personal Auth (个人委派用户认证) - ${userName}`;
-
-                } else {
-
-                    if (authModeIcon) authModeIcon.textContent = '🛡️';
-
+                    authModeEl.title = `当前认证: 微软现代交互认证 (OAuth 2.0 PKCE · 90天自动续期) - ${userName}`;
+                } else if (data.auth_mode === 'personal') {
+                    const userName = data.username || 'User';
+                    if (authModeIcon) authModeIcon.textContent = '👤';
                     if (authModeText) {
-
-                        authModeText.textContent = 'Service Principal';
-
-                        authModeText.style.color = 'var(--accent)';
-
+                        authModeText.textContent = '个人账密认证';
+                        authModeText.style.color = '#06b6d4';
                     }
-
+                    authModeEl.title = `当前认证: Personal Auth (传统个人账密认证) - ${userName}`;
+                } else {
+                    if (authModeIcon) authModeIcon.textContent = '🛡️';
+                    if (authModeText) {
+                        authModeText.textContent = 'Service Principal';
+                        authModeText.style.color = 'var(--accent)';
+                    }
                     const appDisplayName = data.app_name || data.client_id || '';
-
                     authModeEl.title = `当前认证: Service Principal (Azure 应用程序认证)${appDisplayName ? ' - ' + appDisplayName : ''}`;
-
                 }
-
                 authModeEl.style.display = 'inline-flex';
 
             } else {
@@ -2902,24 +2885,39 @@ window.renderGlobalTopbar = async function() {
         const authIcon = document.getElementById('gtb-auth-icon');
         const authList = document.getElementById('gtb-auth-list');
 
+        const isInteractive = Boolean(authInfo && authInfo.is_interactive);
+        const activeType = isInteractive ? 'interactive' : (authMode === 'personal' ? 'personal' : 'service_principal');
         const spLabel = appName ? `Service Principal (${appName})` : (clientId ? `Service Principal (${clientId.slice(0, 8)}...)` : 'Service Principal');
         const personalLabel = username ? `Personal (${username})` : 'Personal (Delegated User)';
+        const interactiveLabel = username ? `现代交互 (${username})` : '微软现代交互 (90天长效)';
 
         if (authHidden) {
-            authHidden.value = authMode;
+            authHidden.value = activeType;
         }
         if (authDisplayText) {
-            authDisplayText.textContent = authMode === 'personal' ? personalLabel : spLabel;
+            authDisplayText.textContent = isInteractive ? interactiveLabel : (authMode === 'personal' ? personalLabel : spLabel);
         }
         if (authIcon) {
-            authIcon.innerHTML = authMode === 'personal' 
-                ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`
-                : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`;
+            authIcon.innerHTML = isInteractive
+                ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`
+                : (authMode === 'personal' 
+                    ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`
+                    : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`);
         }
 
         if (authList) {
             authList.innerHTML = `
-                <div class="gtb-auth-card ${authMode === 'service_principal' ? 'selected' : ''}" onclick="window.selectGtbAuthMode('service_principal')">
+                <div class="gtb-auth-card ${isInteractive ? 'selected' : ''}" onclick="window.selectGtbAuthMode('interactive')">
+                    <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                        <span style="color: #38bdf8; font-size: 1rem;">🌐</span>
+                        <div style="display: flex; flex-direction: column; min-width: 0;">
+                            <span style="font-size: 0.74rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">微软现代交互认证</span>
+                            <span style="font-size: 0.65rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${username || '90天自动续期 · Passkey/扫码'}</span>
+                        </div>
+                    </div>
+                    <span class="gtb-auth-badge" style="background: ${isInteractive ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.05)'}; color: ${isInteractive ? '#38bdf8' : 'var(--text-secondary)'};">${isInteractive ? '✓ 激活中' : '切换'}</span>
+                </div>
+                <div class="gtb-auth-card ${(!isInteractive && authMode === 'service_principal') ? 'selected' : ''}" onclick="window.selectGtbAuthMode('service_principal')">
                     <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
                         <span style="color: #60a5fa; font-size: 1rem;">🛡️</span>
                         <div style="display: flex; flex-direction: column; min-width: 0;">
@@ -2927,17 +2925,17 @@ window.renderGlobalTopbar = async function() {
                             <span style="font-size: 0.65rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${appName || clientId || 'Azure AD Client App'}</span>
                         </div>
                     </div>
-                    <span class="gtb-auth-badge" style="background: rgba(96, 165, 250, 0.15); color: #60a5fa;">${authMode === 'service_principal' ? '✓ 激活中' : '切换'}</span>
+                    <span class="gtb-auth-badge" style="background: ${(!isInteractive && authMode === 'service_principal') ? 'rgba(96, 165, 250, 0.15)' : 'rgba(255, 255, 255, 0.05)'}; color: ${(!isInteractive && authMode === 'service_principal') ? '#60a5fa' : 'var(--text-secondary)'};">${(!isInteractive && authMode === 'service_principal') ? '✓ 激活中' : '切换'}</span>
                 </div>
-                <div class="gtb-auth-card ${authMode === 'personal' ? 'selected' : ''}" onclick="window.selectGtbAuthMode('personal')">
+                <div class="gtb-auth-card ${(!isInteractive && authMode === 'personal') ? 'selected' : ''}" onclick="window.selectGtbAuthMode('personal')">
                     <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
                         <span style="color: #34d399; font-size: 1rem;">👤</span>
                         <div style="display: flex; flex-direction: column; min-width: 0;">
                             <span style="font-size: 0.74rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Personal Delegated</span>
-                            <span style="font-size: 0.65rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${username || '个人委托用户'}</span>
+                            <span style="font-size: 0.65rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${username || '常规个人账密'}</span>
                         </div>
                     </div>
-                    <span class="gtb-auth-badge" style="background: rgba(52, 211, 153, 0.15); color: #34d399;">${authMode === 'personal' ? '✓ 激活中' : '切换'}</span>
+                    <span class="gtb-auth-badge" style="background: ${(!isInteractive && authMode === 'personal') ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.05)'}; color: ${(!isInteractive && authMode === 'personal') ? '#34d399' : 'var(--text-secondary)'};">${(!isInteractive && authMode === 'personal') ? '✓ 激活中' : '切换'}</span>
                 </div>
             `;
         }
@@ -3127,9 +3125,15 @@ window.selectGtbAuthMode = async function(mode) {
         });
         const ret = await res.json();
         if (ret && ret.success) {
+            let label = 'Service Principal (应用主体)';
+            if (mode === 'interactive') label = '微软现代交互认证 (OAuth 90天长效)';
+            else if (mode === 'personal') label = 'Personal User (传统个人账密)';
             if (window.showNotification) {
-                window.showNotification(`认证模式已切换为: ${mode === 'personal' ? 'Personal User (个人委派)' : 'Service Principal (应用主体)'}`, 'success');
+                window.showNotification(`认证模式已成功切换为: ${label}`, 'success');
             }
+            if (window.renderEnvIdentity) await window.renderEnvIdentity();
+            if (window.updateWorkflowAuthBadge) await window.updateWorkflowAuthBadge();
+            if (window.updateAuthCardsVisualStatus) await window.updateAuthCardsVisualStatus();
             if (window.refreshGlobalContext) {
                 await window.refreshGlobalContext();
             }
@@ -9902,8 +9906,7 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                 }
 
                 window.updateAuthModeVisibility(activeAuthMode);
-
-
+                if (window.updateAuthCardsVisualStatus) await window.updateAuthCardsVisualStatus();
 
             } catch (err) {
 
@@ -10021,7 +10024,94 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
         };
 
+        window.updateAuthCardsVisualStatus = async function(prefetchedInfo) {
+            try {
+                let info = prefetchedInfo;
+                if (!info) {
+                    const res = await fetch('/api/auth-info');
+                    info = await res.json();
+                }
+                if (!info || !info.success) return;
 
+                const cardInteractive = document.getElementById('auth-card-interactive');
+                const badgeInteractive = document.getElementById('auth-status-badge-interactive');
+                const infoInteractive = document.getElementById('auth-interactive-active-info');
+
+                const cardLegacy = document.getElementById('auth-card-legacy');
+                const badgeLegacy = document.getElementById('auth-status-badge-legacy');
+                const tipLegacy = document.getElementById('auth-legacy-inactive-tip');
+
+                if (info.is_interactive) {
+                    // Card 1: 现代交互认证激活
+                    if (cardInteractive) {
+                        cardInteractive.style.border = '1.5px solid #0284c7';
+                        cardInteractive.style.boxShadow = '0 0 14px rgba(14, 165, 233, 0.22)';
+                        cardInteractive.style.background = 'rgba(14, 165, 233, 0.05)';
+                    }
+                    if (badgeInteractive) {
+                        badgeInteractive.innerHTML = '<span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px #22c55e; margin-right: 4px;"></span> 当前生效中 (Active · 90天自动续期)';
+                        badgeInteractive.style.background = 'rgba(34, 197, 94, 0.15)';
+                        badgeInteractive.style.color = '#22c55e';
+                        badgeInteractive.style.border = '1px solid rgba(34, 197, 94, 0.35)';
+                    }
+                    if (infoInteractive) {
+                        infoInteractive.style.display = 'block';
+                        infoInteractive.innerHTML = `🟢 <strong>微软现代交互凭据运行中</strong>：当前登录账号为 <strong style="color: #38bdf8;">${info.username || 'carman_zhao@vfc.com'}</strong>。微软签发之 Refresh Token 已安全就绪，API 与后台扫描均处于此个人授权模式下运行。`;
+                    }
+
+                    // Card 2: 常规认证未激活 (备用)
+                    if (cardLegacy) {
+                        cardLegacy.style.border = '1px solid var(--panel-border)';
+                        cardLegacy.style.boxShadow = 'none';
+                        cardLegacy.style.background = 'var(--input-bg-light)';
+                    }
+                    if (badgeLegacy) {
+                        badgeLegacy.innerHTML = '⚪ 未启用 (备用)';
+                        badgeLegacy.style.background = 'rgba(255, 255, 255, 0.06)';
+                        badgeLegacy.style.color = 'var(--text-secondary)';
+                        badgeLegacy.style.border = '1px solid var(--panel-border)';
+                    }
+                    if (tipLegacy) {
+                        tipLegacy.style.display = 'block';
+                    }
+                } else {
+                    // Card 1: 现代交互认证未激活 (备用)
+                    if (cardInteractive) {
+                        cardInteractive.style.border = '1px solid rgba(56, 189, 248, 0.25)';
+                        cardInteractive.style.boxShadow = 'none';
+                        cardInteractive.style.background = 'var(--input-bg-light)';
+                    }
+                    if (badgeInteractive) {
+                        badgeInteractive.innerHTML = '⚪ 未启用 (备用)';
+                        badgeInteractive.style.background = 'rgba(255, 255, 255, 0.06)';
+                        badgeInteractive.style.color = 'var(--text-secondary)';
+                        badgeInteractive.style.border = '1px solid var(--panel-border)';
+                    }
+                    if (infoInteractive) {
+                        infoInteractive.style.display = 'none';
+                    }
+
+                    // Card 2: 常规认证激活
+                    const activeModeText = info.auth_mode === 'personal' ? '个人账密' : '应用服务主体';
+                    if (cardLegacy) {
+                        cardLegacy.style.border = '1.5px solid rgba(99, 102, 241, 0.8)';
+                        cardLegacy.style.boxShadow = '0 0 14px rgba(99, 102, 241, 0.2)';
+                        cardLegacy.style.background = 'rgba(99, 102, 241, 0.04)';
+                    }
+                    if (badgeLegacy) {
+                        badgeLegacy.innerHTML = `<span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px #22c55e; margin-right: 4px;"></span> 当前生效中 (Active · ${activeModeText})`;
+                        badgeLegacy.style.background = 'rgba(34, 197, 94, 0.15)';
+                        badgeLegacy.style.color = '#22c55e';
+                        badgeLegacy.style.border = '1px solid rgba(34, 197, 94, 0.35)';
+                    }
+                    if (tipLegacy) {
+                        tipLegacy.style.display = 'none';
+                    }
+                }
+            } catch (err) {
+                console.warn('Failed to update auth cards visual status:', err);
+            }
+        };
 
         setupFLIPModal(btnSettings, closeSettingsBtn, settingsModal, loadSettings);
 
@@ -10392,6 +10482,8 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                     // Trigger UI updates for auth badges
                     if (window.renderEnvIdentity) window.renderEnvIdentity();
                     if (window.updateWorkflowAuthBadge) window.updateWorkflowAuthBadge();
+                    if (window.updateAuthCardsVisualStatus) window.updateAuthCardsVisualStatus();
+                    if (window.updateGlobalTopbarDropdowns) window.updateGlobalTopbarDropdowns();
 
                     setTimeout(() => {
                         window.closeModalWithAnimation('settings-modal');
@@ -21416,37 +21508,27 @@ window.updateWorkflowAuthBadge = async function() {
     try {
 
         const res = await fetch('/api/auth-info');
-
         const data = await res.json();
-
         if (data && data.success) {
-
-            const isPersonal = data.auth_mode === 'personal';
-
-            if (isPersonal) {
-
+            if (data.is_interactive) {
                 const userDisplayName = data.username ? data.username : 'User';
-
-                badgeEl.textContent = `· Personal (${userDisplayName})`;
-
-                badgeEl.title = `当前认证: Personal Auth (个人委派用户认证) - ${data.username || ''}`;
-
+                badgeEl.textContent = `· 现代交互 (${userDisplayName})`;
+                badgeEl.title = `当前认证: 微软现代交互认证 (OAuth 2.0 PKCE · 90天自动续期) - ${data.username || ''}`;
+                badgeEl.style.color = '#38bdf8';
+            } else if (data.auth_mode === 'personal') {
+                const userDisplayName = data.username ? data.username : 'User';
+                badgeEl.textContent = `· 个人账密 (${userDisplayName})`;
+                badgeEl.title = `当前认证: Personal Auth (传统个人账密认证) - ${data.username || ''}`;
+                badgeEl.style.color = '#06b6d4';
             } else {
-
                 const appDisplayName = data.app_name || (data.client_id ? `App (${data.client_id.substring(0, 8)}...)` : 'App');
-
                 badgeEl.textContent = `· Service Principal (${appDisplayName})`;
-
                 badgeEl.title = `当前认证: Service Principal (Azure 应用程序认证) - ${data.client_id || ''}`;
-
+                badgeEl.style.color = 'var(--accent)';
             }
-
         }
-
     } catch (e) {
-
         console.warn('Failed to load auth info badge:', e);
-
     }
 
 };
@@ -21667,6 +21749,8 @@ window.startDeviceCodeLoginFlow = async function() {
             // 更新顶栏身份
             if (window.renderEnvIdentity) window.renderEnvIdentity();
             if (window.updateWorkflowAuthBadge) window.updateWorkflowAuthBadge();
+            if (window.updateAuthCardsVisualStatus) window.updateAuthCardsVisualStatus();
+            if (window.updateGlobalTopbarDropdowns) window.updateGlobalTopbarDropdowns();
 
             if (window.showNotification) {
                 window.showNotification(`🎉 登录成功！已自动识别并绑定租户 [${finalTenantId}]，正在一键扫描工作区...`, "success", 5000);
@@ -21744,6 +21828,8 @@ window.promptAndApplyBearerToken = async function(prefilledToken = '') {
 
             if (window.renderEnvIdentity) window.renderEnvIdentity();
             if (window.updateWorkflowAuthBadge) window.updateWorkflowAuthBadge();
+            if (window.updateAuthCardsVisualStatus) window.updateAuthCardsVisualStatus();
+            if (window.updateGlobalTopbarDropdowns) window.updateGlobalTopbarDropdowns();
 
             if (window.showNotification) {
                 window.showNotification(`🎉 凭据激活成功！已绑定租户 [${finalTenantId}]，正在一键扫描工作区...`, "success", 5000);
@@ -21841,6 +21927,8 @@ window.addEventListener('message', (event) => {
 
         if (window.renderEnvIdentity) window.renderEnvIdentity();
         if (window.updateWorkflowAuthBadge) window.updateWorkflowAuthBadge();
+        if (window.updateAuthCardsVisualStatus) window.updateAuthCardsVisualStatus();
+        if (window.updateGlobalTopbarDropdowns) window.updateGlobalTopbarDropdowns();
 
         if (window.showNotification) {
             window.showNotification(`🎉 微软长效 OAuth 登录成功！支持 90 天自动静默续期，正在一键扫描工作区...`, "success", 6000);
