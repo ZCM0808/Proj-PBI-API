@@ -4366,7 +4366,7 @@
                         .replace(/^【载体就绪】/, '<strong class="pb-desc-tag tag-ok">【载体就绪】</strong>');
 
                     return `
-                        <div class="pb-asset-card-row ${item.isHero ? 'is-hero-role' : ''}" data-row-id="${item.id}" data-tier-id="${tierId}" draggable="true" title="按住可上下拖拽移动调整顺序 (绝无重叠)">
+                        <div class="pb-asset-card-row ${item.isHero ? 'is-hero-role' : ''}" data-row-id="${item.id}" data-tier-id="${tierId}" draggable="true">
                             <div class="pb-asset-row-top">
                                 <div class="pb-asset-row-title-area">
                                     <span class="pb-row-drag-handle">
