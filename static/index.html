@@ -237,43 +237,11 @@
                     </div>
                 </div>
 
-                <!-- 2. XMLA 终结点 (XMLA Endpoint - 下拉面板选择历史与工作区端点) -->
-                <div class="gtb-item gtb-workspace-box gtb-xmla-box" id="gtb-xmla-box" onclick="if(!event.target.closest('#gtb-xmla-dropdown') && !event.target.closest('.gtb-copy-btn')) window.toggleGtbXmlaDropdown(event);" title="XMLA 端点 (点击展开选择历史与工作区端点，右侧一键复制)">
-                    <div class="gtb-label">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent); flex-shrink: 0;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                        <span>XMLA</span>
-                    </div>
-                    <div class="gtb-ws-trigger gtb-xmla-trigger" id="gtb-xmla-trigger">
-                        <span id="gtb-xmla-display-text" class="gtb-ws-display-text" style="font-family: 'Fira Code', monospace; font-size: 0.70rem;">-- 选择 XMLA 端点 --</span>
-                        <svg class="gtb-ws-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </div>
-                    <input type="hidden" id="gtb-select-xmla-history" value="">
-                    <input type="hidden" id="gtb-input-xmla" value="">
-                    <button type="button" class="gtb-copy-btn" onclick="window.copyGlobalXmlaEndpoint(this)" title="复制当前选中的 XMLA 连接串">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                    </button>
+                <!-- 隐藏的 XMLA 终结点数据域 (供下游工作流动态推导消费，无需前端独立展示下拉框) -->
+                <input type="hidden" id="gtb-input-xmla" value="">
+                <input type="hidden" id="gtb-select-xmla-history" value="">
 
-                    <!-- 全局 XMLA 浮层面板 (XMLA Popover) -->
-                    <div class="gtb-ws-dropdown gtb-xmla-dropdown" id="gtb-xmla-dropdown" style="display: none; width: 360px;" onclick="event.stopPropagation()">
-                        <div class="gtb-ws-header">
-                            <div class="gtb-ws-search-box">
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                                <input type="text" id="gtb-xmla-search-input" placeholder="筛选 XMLA 端点或工作区..." oninput="window.filterGtbXmlaOptions(this.value)" autocomplete="off">
-                            </div>
-                            <div class="gtb-ws-actions">
-                                <button type="button" class="gtb-ws-btn-sm" onclick="window.clearGtbXmlaHistory()">清空历史</button>
-                            </div>
-                        </div>
-                        <div class="gtb-ws-list gtb-xmla-list" id="gtb-xmla-list">
-                            <!-- 动态加载历史 XMLA 与可用工作区端点 -->
-                        </div>
-                        <div class="gtb-ws-footer">
-                            <span id="gtb-xmla-stat-text">共 0 个可用端点</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 3. 工作区选择 (Workspace - 支持单选/多选/全选) -->
+                <!-- 2. 工作区选择 (Workspace - 支持单选/多选/全选，并可一键复制名称或 XMLA 连接串) -->
                 <div class="gtb-item gtb-workspace-box" id="gtb-workspace-box" onclick="if(!event.target.closest('#gtb-ws-dropdown') && !event.target.closest('.gtb-copy-btn')) window.toggleGtbWsDropdown(event);" title="全局活动工作区 (点击展开多选/全选/单选)">
                     <div class="gtb-label">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #60a5fa; flex-shrink: 0;"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="22" x2="9" y2="22.01"></line><line x1="15" y1="22" x2="15" y2="22.01"></line><line x1="9" y1="6" x2="9" y2="6.01"></line><line x1="15" y1="6" x2="15" y2="6.01"></line><line x1="9" y1="10" x2="9" y2="10.01"></line><line x1="15" y1="10" x2="15" y2="10.01"></line><line x1="9" y1="14" x2="9" y2="14.01"></line><line x1="15" y1="14" x2="15" y2="14.01"></line><line x1="9" y1="18" x2="9" y2="18.01"></line><line x1="15" y1="18" x2="15" y2="18.01"></line></svg>
@@ -287,6 +255,9 @@
                     <input type="hidden" id="gtb-select-workspace" value="">
                     <button type="button" class="gtb-copy-btn" onclick="window.copyGtbItem(this, 'workspace')" title="复制当前选中的工作区名称与 ID">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    </button>
+                    <button type="button" class="gtb-copy-btn" onclick="window.copyGlobalXmlaEndpoint(this)" title="一键复制当前工作区对应的标准 XMLA 终结点连接串 (SSMS / DAX Studio)">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent);"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
                     </button>
 
                     <!-- 全局工作区多选/全选浮层面板 (Workspace Multi-Select Popover) -->
@@ -3192,8 +3163,8 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260919_v1440"></script>
-    <script src="/static/script.js?v=20260920_v2025"></script>
-    <script src="/static/permission_blueprint.js?v=20260920_v2025"></script>
+    <script src="/static/script.js?v=20260920_v2030"></script>
+    <script src="/static/permission_blueprint.js?v=20260920_v2030"></script>
 
 
 

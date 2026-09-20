@@ -4415,29 +4415,17 @@ window.updateGlobalTopbarDropdowns = function() {
         }
     }
 
-    // 5. 计算并更新 XMLA 终结点连接串 (纯净化：严格使用合法组织工作区，清洗历史脏数据)
+    // 5. 动态推导并同步 XMLA 终结点连接串 (纯净化：基于当前工作区名称即时生成，供后端与工作流无缝消费)
     if (xmlaInput) {
         let currentEndpoint = '';
-        const curSelectedWs = wsData.find(w => String(w.id).toLowerCase() === selectedList[0]?.toLowerCase());
-        const validWsName = curSelectedWs ? (curSelectedWs.alias || curSelectedWs.name) : '';
-        if (validWsName) {
-            currentEndpoint = `powerbi://api.powerbi.com/v1.0/myorg/${validWsName}`;
+        if (selectedList.length > 0) {
+            const curSelectedWs = wsData.find(w => String(w.id).toLowerCase() === selectedList[0]?.toLowerCase());
+            const validWsName = curSelectedWs ? (curSelectedWs.alias || curSelectedWs.name) : '';
+            if (validWsName) {
+                currentEndpoint = `powerbi://api.powerbi.com/v1.0/myorg/${validWsName}`;
+            }
         }
         xmlaInput.value = currentEndpoint;
-
-        if (currentEndpoint) {
-            try {
-                let history = JSON.parse(localStorage.getItem('pbi-xmla-history') || '[]');
-                // 清洗历史记录：彻底剔除包含 WorkSpace_DEV 或 myorg/my 的历史脏项
-                history = history.filter(url => !url.includes('/myorg/my') && !url.toLowerCase().includes('workspace_dev'));
-                if (!history.includes(currentEndpoint)) {
-                    history.unshift(currentEndpoint);
-                    if (history.length > 20) history = history.slice(0, 20);
-                }
-                localStorage.setItem('pbi-xmla-history', JSON.stringify(history));
-            } catch(e) {}
-        }
-        window.renderGlobalXmlaHistoryOptions();
     }
 
     // 联动 GUM 目标范围展示与候选人员状态
@@ -4450,134 +4438,25 @@ window.updateGlobalTopbarDropdowns = function() {
     }
 };
 
-// 渲染 XMLA 历史下拉选项 (严格限定于当前合法组织工作区名单，彻底根除任何跨域项目)
-window.renderGlobalXmlaHistoryOptions = function() {
-    const xmlaHistorySelect = document.getElementById('gtb-select-xmla-history');
-    const xmlaDisplayText = document.getElementById('gtb-xmla-display-text');
-    const xmlaListContainer = document.getElementById('gtb-xmla-list');
-    const xmlaStatText = document.getElementById('gtb-xmla-stat-text');
+// 获取全局当前推导出的标准 XMLA 终结点
+window.getGlobalXmlaEndpoint = function() {
     const xmlaInput = document.getElementById('gtb-input-xmla');
-
+    if (xmlaInput && xmlaInput.value) return xmlaInput.value;
+    const selectedWsIds = Array.from(window.selectedGtbWorkspaceIds || []);
+    if (selectedWsIds.length === 0) return '';
     const rawWsData = window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
-    const cleanWsData = window.cleanseCrossDomainWorkspaces ? window.cleanseCrossDomainWorkspaces(rawWsData) : rawWsData;
-
-    // 建立合法组织工作区名称集合
-    const validWsNames = new Set();
-    cleanWsData.forEach(w => {
-        if (!w) return;
-        if (w.alias) validWsNames.add(w.alias.toLowerCase().trim());
-        if (w.name) validWsNames.add(w.name.toLowerCase().trim());
-    });
-
-    const isEndpointValid = (url) => {
-        if (!url || typeof url !== 'string') return false;
-        const cleanUrl = url.trim();
-        if (!cleanUrl.startsWith('powerbi://api.powerbi.com/v1.0/myorg/')) return false;
-        const wsName = cleanUrl.replace('powerbi://api.powerbi.com/v1.0/myorg/', '').trim().toLowerCase();
-        if (!wsName || wsName === 'my' || wsName === 'workspace_dev' || wsName.includes('personal') || wsName.includes('2c51e061-0f9f-4d02-bed0-c169019e5d83')) {
-            return false;
-        }
-        return validWsNames.has(wsName);
-    };
-
-    let history = [];
-    try {
-        history = JSON.parse(localStorage.getItem('pbi-xmla-history') || '[]');
-        history = history.filter(isEndpointValid);
-        localStorage.setItem('pbi-xmla-history', JSON.stringify(history));
-    } catch(e) { history = []; }
-
-    const selectedWsList = Array.from(window.selectedGtbWorkspaceIds || []);
-    let currentVal = xmlaInput?.value || '';
-    if (selectedWsList.length === 0 || !isEndpointValid(currentVal)) {
-        currentVal = '';
-        if (xmlaInput) xmlaInput.value = '';
-    }
-
-    // 仅基于合法组织工作区生成纯正组织端点
-    const allEndpoints = [];
-    cleanWsData.forEach(w => {
-        const name = (w.alias || w.name || '').trim();
-        if (name) {
-            const ep = `powerbi://api.powerbi.com/v1.0/myorg/${name}`;
-            if (isEndpointValid(ep) && !allEndpoints.includes(ep)) {
-                allEndpoints.push(ep);
-            }
-        }
-    });
-
-    // 更新顶栏触发器文本
-    if (xmlaDisplayText) {
-        if (currentVal && isEndpointValid(currentVal)) {
-            const targetName = currentVal.split('/').pop() || currentVal;
-            xmlaDisplayText.textContent = targetName ? `myorg/${targetName}` : currentVal;
-            xmlaDisplayText.setAttribute('title', currentVal);
-        } else {
-            xmlaDisplayText.textContent = '-- 选择 XMLA 终结点 --';
-            xmlaDisplayText.removeAttribute('title');
-        }
-    }
-
-    if (xmlaStatText) {
-        xmlaStatText.textContent = `共 ${allEndpoints.length} 个组织端点`;
-    }
-
-    if (xmlaHistorySelect) {
-        let selectHtml = '<option value="">-- 选择已有 XMLA 终结点 --</option>';
-        allEndpoints.forEach(ep => {
-            selectHtml += `<option value="${ep}" ${ep === currentVal ? 'selected' : ''}>${ep}</option>`;
-        });
-        xmlaHistorySelect.innerHTML = selectHtml;
-    }
-
-    // 渲染 XMLA Popover 下拉列表
-    if (xmlaListContainer) {
-        if (allEndpoints.length === 0) {
-            xmlaListContainer.innerHTML = '<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 16px 0;">暂无可用的 XMLA 终结点</div>';
-        } else {
-            let listHtml = '';
-            allEndpoints.forEach(ep => {
-                const isSelected = (ep === currentVal);
-                const targetName = ep.split('/').pop() || ep;
-                listHtml += `
-                    <div class="gtb-ws-item gtb-xmla-item ${isSelected ? 'selected' : ''}" data-search-text="${ep.toLowerCase()}" onclick="window.selectGtbXmlaEndpoint('${ep}')">
-                        <div class="gtb-ws-item-left">
-                            <div class="gtb-ws-item-names">
-                                <div class="gtb-ws-item-title" title="${ep}">${targetName}</div>
-                                <div class="gtb-ws-item-sub" title="${ep}">${ep}</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            xmlaListContainer.innerHTML = listHtml;
-        }
-    }
+    const targetWs = rawWsData.find(w => String(w.id).toLowerCase() === selectedWsIds[0].toLowerCase());
+    const wsName = targetWs ? (targetWs.alias || targetWs.name) : '';
+    return wsName ? `powerbi://api.powerbi.com/v1.0/myorg/${wsName}` : '';
 };
-window.selectGtbXmlaOption = window.selectGtbXmlaEndpoint;
 
-// 选择 XMLA 历史记录
-window.handleGlobalXmlaHistoryChange = function(ep) {
-    const xmlaInput = document.getElementById('gtb-input-xmla');
-    const xmlaHistorySelect = document.getElementById('gtb-select-xmla-history');
-    if (xmlaInput) {
-        xmlaInput.value = ep || '';
-    }
-    if (xmlaHistorySelect) {
-        xmlaHistorySelect.value = ep || '';
-    }
-    if (!ep) return;
-    // 尝试反向联动匹配对应工作区
-    const wsData = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
-    const targetWsName = ep.split('/').pop();
-    const matchedWs = wsData.find(w => (w.alias || w.name || '').toLowerCase() === targetWsName.toLowerCase());
-    if (matchedWs) {
-        window.handleGlobalWorkspaceChange(matchedWs.id);
-    } else {
-        if (window.showNotification) window.showNotification(`已切换当前 XMLA 端点: ${ep}`, 'info');
-    }
-    window.renderGlobalXmlaHistoryOptions();
-};
+// 兼容空函数以防其他脚本调用报错
+window.renderGlobalXmlaHistoryOptions = function() {};
+window.toggleGtbXmlaDropdown = function() {};
+window.closeGtbXmlaDropdown = function() {};
+window.filterGtbXmlaOptions = function() {};
+window.clearGtbXmlaHistory = function() {};
+window.selectGtbXmlaEndpoint = function() {};
 
 // 通用 GTB 选项悬浮复制函数 (Workspace / Dataset / Report / Tenant) - 复制名称与对应的 ID
 window.copyGtbItem = function(btn, type) {
@@ -4654,13 +4533,13 @@ window.copyGtbItem = function(btn, type) {
     });
 };
 
-// 复制全局 XMLA 终结点连接串
+// 复制当前选中的工作区对应的标准 XMLA 终结点连接串
 window.copyGlobalXmlaEndpoint = function(btn) {
-    const xmlaSelect = document.getElementById('gtb-select-xmla-history');
-    const xmlaInput = document.getElementById('gtb-input-xmla');
-    const val = xmlaSelect?.value || xmlaInput?.value || '';
+    const val = (typeof window.getGlobalXmlaEndpoint === 'function')
+        ? window.getGlobalXmlaEndpoint()
+        : (document.getElementById('gtb-input-xmla')?.value || '');
     if (!val) {
-        if (window.showNotification) window.showNotification('当前暂未选择具备 XMLA 终结点的工作区', 'warning');
+        if (window.showNotification) window.showNotification('请先在顶栏选择具体工作区，以推导其对应的 XMLA 终结点', 'warning');
         return;
     }
     navigator.clipboard.writeText(val).then(() => {
