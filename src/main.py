@@ -2480,9 +2480,39 @@ class InteractiveLoginInitRequest(BaseModel):
 
 _active_interactive_flows: dict[str, dict] = {}
 
+def _generate_pkce_auth_flow(tenant_id: str, client_id: str, redirect_uri: str, username: str, scopes: list[str]) -> tuple[str, str, dict]:
+    import base64
+    import hashlib
+    import secrets
+    import urllib.parse
+    code_verifier = secrets.token_urlsafe(64)
+    code_challenge = base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode()).digest()).decode().rstrip("=")
+    state = secrets.token_urlsafe(32)
+    query_params = {
+        "client_id": client_id,
+        "response_type": "code",
+        "redirect_uri": redirect_uri,
+        "response_mode": "query",
+        "scope": " ".join(scopes),
+        "state": state,
+        "code_challenge": code_challenge,
+        "code_challenge_method": "S256",
+        "login_hint": username
+    }
+    url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize?{urllib.parse.urlencode(query_params)}"
+    flow = {
+        "auth_uri": url,
+        "state": state,
+        "code_verifier": code_verifier,
+        "redirect_uri": redirect_uri,
+        "scope": scopes
+    }
+    return url, state, flow
+
 @app.post("/api/auth/interactive/init")
 async def init_interactive_login(req: Optional[InteractiveLoginInitRequest] = None):
     """初始化微软 OAuth 2.0 浏览器交互登录 (PKCE 授权码模式，支持手机扫码/通行密钥与长效自动刷新)"""
+    import asyncio
     try:
         tenant = (req.tenant_id if req and req.tenant_id else Config.TENANT_ID) or "7d97f400-69b4-4df4-a009-c9806ec70783"
         username = (req.username if req and req.username else Config.USERNAME) or "carman_zhao@vfc.com"
@@ -2500,15 +2530,31 @@ async def init_interactive_login(req: Optional[InteractiveLoginInitRequest] = No
         )
         
         scopes = ["https://analysis.windows.net/powerbi/api/.default"]
-        flow = app_msal.initiate_auth_code_flow(
-            scopes=scopes,
-            redirect_uri=redirect_uri,
-            login_hint=username
-        )
         
-        state = flow.get("state")
-        if not state or not flow.get("auth_uri"):
-            return {"success": False, "message": "生成微软交互式认证授权链接失败"}
+        flow = None
+        state = None
+        auth_url = None
+        
+        try:
+            # 限制 MSAL 在线元数据探测不超过 2.5 秒，超时自动降级到本地即时 PKCE 生成
+            flow = await asyncio.wait_for(
+                asyncio.to_thread(
+                    app_msal.initiate_auth_code_flow,
+                    scopes=scopes,
+                    redirect_uri=redirect_uri,
+                    login_hint=username
+                ),
+                timeout=2.5
+            )
+            if flow and flow.get("auth_uri"):
+                state = flow.get("state")
+                auth_url = flow.get("auth_uri")
+        except Exception:
+            pass
+            
+        if not flow or not auth_url or not state:
+            # 离线极速 PKCE 构建，0ms 瞬间生成微软官方登录 URL，免疫网络连接延迟
+            auth_url, state, flow = _generate_pkce_auth_flow(tenant.strip(), client_id, redirect_uri, username, scopes)
             
         _active_interactive_flows[state] = {
             "flow": flow,
@@ -2520,7 +2566,7 @@ async def init_interactive_login(req: Optional[InteractiveLoginInitRequest] = No
         
         return {
             "success": True,
-            "auth_url": flow["auth_uri"],
+            "auth_url": auth_url,
             "state": state,
             "tenant_id": tenant,
             "username": username

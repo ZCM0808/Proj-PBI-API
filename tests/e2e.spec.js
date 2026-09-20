@@ -1109,6 +1109,70 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     // 验证自动触发了工作区扫描
     await expect.poll(() => scanCalled, { timeout: 8000 }).toBe(true);
   });
+
+  test('认证中心重构断言：支持双认证体系独立 Tab、控制条一键激活与废弃提示彻底移除', async ({ page }) => {
+    // 监听 auth-mode 切换请求
+    let authModeCalledWith = null;
+    await page.route('**/api/auth-mode', async route => {
+      authModeCalledWith = route.request().postDataJSON();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          auth_mode: authModeCalledWith?.auth_mode || 'interactive',
+          message: '已切换认证模式'
+        })
+      });
+    });
+
+    await page.goto('http://127.0.0.1:8081');
+    await expect(page.locator('#api-tree')).toBeVisible();
+
+    // 打开全局设置弹窗
+    const settingsBtn = page.locator('#btn-settings');
+    const settingsModal = page.locator('#settings-modal');
+    await expect.poll(async () => {
+      if (!await settingsModal.isVisible()) {
+        await settingsBtn.click().catch(() => {});
+      }
+      return await settingsModal.isVisible();
+    }, { timeout: 8000 }).toBe(true);
+
+    // 1. 断言废弃提示文字已彻底移除
+    const modalContent = await settingsModal.innerText();
+    expect(modalContent).not.toContain('在此配置的所有参数将立即生效，且会在整个项目 (API & Pipeline) 中共享。');
+
+    // 2. 断言双 Tab 与控制栏存在
+    const tabInteractive = page.locator('#tab-btn-interactive');
+    const tabLegacy = page.locator('#tab-btn-legacy');
+    await expect(tabInteractive).toBeVisible();
+    await expect(tabLegacy).toBeVisible();
+
+    const panelInteractive = page.locator('#panel-auth-interactive');
+    const panelLegacy = page.locator('#panel-auth-legacy');
+    const btnActInteractive = page.locator('#btn-activate-interactive');
+    const btnActLegacy = page.locator('#btn-activate-legacy');
+
+    // 3. 点击常规认证 Tab 并断言面板切换
+    await tabLegacy.click();
+    await expect(panelLegacy).toBeVisible();
+    await expect(panelInteractive).toBeHidden();
+    await expect(btnActLegacy).toBeVisible();
+
+    // 4. 点击交互认证 Tab 并断言面板切换与一键启用按钮
+    await tabInteractive.click();
+    await expect(panelInteractive).toBeVisible();
+    await expect(panelLegacy).toBeHidden();
+    await expect(btnActInteractive).toBeVisible();
+
+    // 5. 点击常规认证面板的一键启用按钮测试 API 交互
+    await tabLegacy.click();
+    if (await btnActLegacy.isEnabled()) {
+      await btnActLegacy.click();
+      await expect.poll(() => authModeCalledWith, { timeout: 5000 }).toBeTruthy();
+    }
+  });
 });
 
 

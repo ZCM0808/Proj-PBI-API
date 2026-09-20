@@ -10070,11 +10070,15 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                 const badgeInteractive = document.getElementById('auth-status-badge-interactive');
                 const infoInteractive = document.getElementById('auth-interactive-active-info');
                 const tabBadgeInteractive = document.getElementById('tab-badge-interactive');
+                const lblActInteractive = document.getElementById('auth-interactive-state-label');
+                const btnActInteractive = document.getElementById('btn-activate-interactive');
 
                 const cardLegacy = document.getElementById('auth-card-legacy');
                 const badgeLegacy = document.getElementById('auth-status-badge-legacy');
                 const tipLegacy = document.getElementById('auth-legacy-inactive-tip');
                 const tabBadgeLegacy = document.getElementById('tab-badge-legacy');
+                const lblActLegacy = document.getElementById('auth-legacy-state-label');
+                const btnActLegacy = document.getElementById('btn-activate-legacy');
 
                 if (info.is_interactive) {
                     // Card 1: 现代交互认证激活
@@ -10103,6 +10107,20 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                         infoInteractive.style.display = 'block';
                         infoInteractive.innerHTML = `🟢 <strong>微软现代交互凭据运行中</strong>：当前登录账号为 <strong style="color: #38bdf8;">${info.username || 'carman_zhao@vfc.com'}</strong>。微软签发之 Refresh Token 已安全就绪，API 与后台扫描均处于此个人授权模式下运行。`;
                     }
+                    if (lblActInteractive) {
+                        lblActInteractive.innerHTML = '🟢 当前已启用 (Active)';
+                        lblActInteractive.style.color = '#22c55e';
+                    }
+                    if (btnActInteractive) {
+                        btnActInteractive.disabled = true;
+                        btnActInteractive.innerHTML = '✅ 当前已启用';
+                        btnActInteractive.style.opacity = '0.7';
+                        btnActInteractive.style.cursor = 'default';
+                        btnActInteractive.style.background = 'rgba(34, 197, 94, 0.18)';
+                        btnActInteractive.style.color = '#22c55e';
+                        btnActInteractive.style.border = '1px solid rgba(34, 197, 94, 0.35)';
+                        btnActInteractive.style.boxShadow = 'none';
+                    }
 
                     // Card 2: 常规认证未激活 (备用)
                     if (cardLegacy) {
@@ -10118,6 +10136,20 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                     }
                     if (tipLegacy) {
                         tipLegacy.style.display = 'block';
+                    }
+                    if (lblActLegacy) {
+                        lblActLegacy.innerHTML = '⚪ 未启用 (备用)';
+                        lblActLegacy.style.color = 'var(--text-secondary)';
+                    }
+                    if (btnActLegacy) {
+                        btnActLegacy.disabled = false;
+                        btnActLegacy.innerHTML = '⚡ 设为当前活动认证';
+                        btnActLegacy.style.opacity = '1';
+                        btnActLegacy.style.cursor = 'pointer';
+                        btnActLegacy.style.background = 'linear-gradient(135deg, #4f46e5, #6366f1)';
+                        btnActLegacy.style.color = '#fff';
+                        btnActLegacy.style.border = 'none';
+                        btnActLegacy.style.boxShadow = '0 1px 4px rgba(79, 70, 229, 0.3)';
                     }
                 } else {
                     // Card 1: 现代交互认证未激活 (备用)
@@ -10145,6 +10177,20 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                     if (infoInteractive) {
                         infoInteractive.style.display = 'none';
                     }
+                    if (lblActInteractive) {
+                        lblActInteractive.innerHTML = '⚪ 未启用 (备用)';
+                        lblActInteractive.style.color = 'var(--text-secondary)';
+                    }
+                    if (btnActInteractive) {
+                        btnActInteractive.disabled = false;
+                        btnActInteractive.innerHTML = '⚡ 设为当前活动认证';
+                        btnActInteractive.style.opacity = '1';
+                        btnActInteractive.style.cursor = 'pointer';
+                        btnActInteractive.style.background = 'linear-gradient(135deg, #0284c7, #0ea5e9)';
+                        btnActInteractive.style.color = '#fff';
+                        btnActInteractive.style.border = 'none';
+                        btnActInteractive.style.boxShadow = '0 1px 4px rgba(2, 132, 199, 0.3)';
+                    }
 
                     // Card 2: 常规认证激活
                     const activeModeText = info.auth_mode === 'personal' ? '个人账密' : '应用服务主体';
@@ -10162,9 +10208,76 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                     if (tipLegacy) {
                         tipLegacy.style.display = 'none';
                     }
+                    if (lblActLegacy) {
+                        lblActLegacy.innerHTML = `🟢 当前已启用 (Active · ${activeModeText})`;
+                        lblActLegacy.style.color = '#22c55e';
+                    }
+                    if (btnActLegacy) {
+                        btnActLegacy.disabled = true;
+                        btnActLegacy.innerHTML = '✅ 当前已启用';
+                        btnActLegacy.style.opacity = '0.7';
+                        btnActLegacy.style.cursor = 'default';
+                        btnActLegacy.style.background = 'rgba(34, 197, 94, 0.18)';
+                        btnActLegacy.style.color = '#22c55e';
+                        btnActLegacy.style.border = '1px solid rgba(34, 197, 94, 0.35)';
+                        btnActLegacy.style.boxShadow = 'none';
+                    }
                 }
             } catch (err) {
                 console.warn('Failed to update auth cards visual status:', err);
+            }
+        };
+
+        window.activateAuthMode = async function(target) {
+            const btn = target === 'interactive' ? document.getElementById('btn-activate-interactive') : document.getElementById('btn-activate-legacy');
+            const origText = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="animate-spin" style="display:inline-block;animation:spin 1s linear infinite;">⏳</span> 正在切换...';
+            }
+
+            try {
+                let payload = {};
+                if (target === 'interactive') {
+                    payload.auth_mode = 'interactive';
+                    payload.tenant_id = document.getElementById('set-interactive-tenant')?.value.trim() || document.getElementById('set-tenant')?.value.trim() || '7d97f400-69b4-4df4-a009-c9806ec70783';
+                    payload.username = document.getElementById('set-interactive-username')?.value.trim() || document.getElementById('set-username')?.value.trim() || 'carman_zhao@vfc.com';
+                } else {
+                    const checked = document.querySelector('input[name="pbi_auth_mode"]:checked');
+                    payload.auth_mode = checked ? checked.value : 'service_principal';
+                    payload.tenant_id = document.getElementById('set-tenant')?.value.trim();
+                    payload.username = document.getElementById('set-username')?.value.trim();
+                }
+
+                const res = await fetch('/api/auth-mode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const ret = await res.json();
+                if (ret && ret.success) {
+                    if (window.showNotification) {
+                        window.showNotification(`🎉 已成功激活并生效: ${target === 'interactive' ? '🌐 微软现代交互认证' : '🛡️ 常规应用/个人账密认证'}`, 'success');
+                    }
+                    if (window.renderGlobalTopbar) await window.renderGlobalTopbar();
+                    if (window.renderEnvIdentity) window.renderEnvIdentity();
+                    if (window.updateWorkflowAuthBadge) window.updateWorkflowAuthBadge();
+                    if (window.updateAuthCardsVisualStatus) await window.updateAuthCardsVisualStatus();
+                    if (window.syncWorkspacesAfterAuthSwitch) await window.syncWorkspacesAfterAuthSwitch();
+                } else {
+                    alert('切换认证模式失败: ' + (ret?.message || '未知错误'));
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = origText;
+                    }
+                }
+            } catch (err) {
+                console.error('activateAuthMode error:', err);
+                alert('切换认证模式异常: ' + (err.message || err));
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = origText;
+                }
             }
         };
 
@@ -21927,45 +22040,55 @@ window.startInteractiveBrowserLogin = async function() {
         btn.innerHTML = '<span class="animate-spin" style="display:inline-block;animation:spin 1s linear infinite;">⏳</span> 正在打开...';
     }
 
+    const abortCtrl = new AbortController();
+    const timeoutTimer = setTimeout(() => abortCtrl.abort(), 8000);
+
     try {
         if (window.showNotification) window.showNotification("🌐 正在初始化微软官方浏览器交互授权...", "info");
-        const tenantId = document.getElementById('set-tenant')?.value.trim() || '7d97f400-69b4-4df4-a009-c9806ec70783';
-        const username = document.getElementById('set-username')?.value.trim() || 'carman_zhao@vfc.com';
+        const tenantId = document.getElementById('set-interactive-tenant')?.value.trim() || document.getElementById('set-tenant')?.value.trim() || '7d97f400-69b4-4df4-a009-c9806ec70783';
+        const username = document.getElementById('set-interactive-username')?.value.trim() || document.getElementById('set-username')?.value.trim() || 'carman_zhao@vfc.com';
         const port = window.location.port || (window.location.protocol === 'https:' ? 443 : 80);
 
         const res = await fetch('/api/auth/interactive/init', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            signal: abortCtrl.signal,
             body: JSON.stringify({
                 tenant_id: tenantId,
                 username: username,
                 redirect_port: parseInt(port, 10)
             })
         });
+        clearTimeout(timeoutTimer);
         const data = await res.json();
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-        }
 
         if (data && data.success && data.auth_url) {
             const width = 560;
             const height = 680;
             const left = Math.max(0, Math.floor((window.screen.width - width) / 2));
             const top = Math.max(0, Math.floor((window.screen.height - height) / 2));
-            window.open(data.auth_url, 'msft_auth_popup', `width=${width},height=${height},left=${left},top=${top},status=no,toolbar=no,menubar=no`);
-            if (window.showNotification) {
+            const popup = window.open(data.auth_url, 'msft_auth_popup', `width=${width},height=${height},left=${left},top=${top},status=no,toolbar=no,menubar=no`);
+            if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+                alert("⚠️ 微软登录窗口被浏览器弹窗拦截器阻止！\n请在浏览器地址栏右侧点击“始终允许弹出式窗口”，或使用下方【设备码】/【粘贴 Token】快捷通道。");
+            } else if (window.showNotification) {
                 window.showNotification("🔑 请在弹出的微软登录窗口中完成扫码或通行密钥认证，完成后将自动同步！", "info", 6000);
             }
         } else {
             alert("❌ 无法生成登录链接: " + (data?.message || "未知错误"));
         }
     } catch (e) {
+        clearTimeout(timeoutTimer);
+        if (e.name === 'AbortError') {
+            alert("⚠️ 初始化微软登录超时（8秒），请检查网络连接或直接使用【设备码】/【粘贴 Token】通道。");
+        } else {
+            alert("调起浏览器登录异常: " + (e.message || e));
+        }
+    } finally {
+        clearTimeout(timeoutTimer);
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = originalHtml;
         }
-        alert("调起浏览器登录异常: " + e.message);
     }
 };
 
