@@ -366,13 +366,14 @@
         syncFromGtb() {
             const selectedWsIds = Array.from(window.selectedGtbWorkspaceIds || []);
             const selectedDsIds = Array.from(window.selectedGtbDatasetIds || []);
-            const wsId = selectedWsIds[0] || localStorage.getItem('pbi-active-workspace') || '';
-            const dsId = selectedDsIds[0] || localStorage.getItem('pbi-active-dataset') || '';
+            // 🚨 严格以顶栏选择为唯一依据：顶栏没选就是没选，绝不背着顶栏从 localStorage 偷取旧工作区
+            const wsId = selectedWsIds.length > 0 ? selectedWsIds[0] : '';
+            const dsId = selectedDsIds.length > 0 ? selectedDsIds[0] : '';
 
             const wsList = window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
-            const wsObj = wsList.find(w => String(w.id).toLowerCase() === String(wsId).toLowerCase());
+            const wsObj = wsId ? wsList.find(w => String(w.id).toLowerCase() === String(wsId).toLowerCase()) : null;
             this.currentWorkspaceId = wsId;
-            this.currentWorkspaceName = wsObj ? (wsObj.alias || wsObj.name || wsObj.displayName || wsObj.id) : (wsId || '');
+            this.currentWorkspaceName = wsObj ? (wsObj.alias || wsObj.name || wsObj.displayName || wsObj.id) : '';
 
             const dsList = window.getMergedGtbDatasets ? window.getMergedGtbDatasets() : JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
             const dsObj = dsList.find(d => String(d.id).toLowerCase() === String(dsId).toLowerCase());
@@ -1160,11 +1161,7 @@
                 }
             }
 
-            const activeGlobalWsId = localStorage.getItem('pbi-active-workspace') || (document.getElementById('gtb-select-workspace') ? document.getElementById('gtb-select-workspace').value : '');
-            if (selectedGtbIds.size === 0 && activeGlobalWsId && activeGlobalWsId !== 'all') {
-                selectedGtbIds.add(String(activeGlobalWsId).toLowerCase().trim());
-            }
-
+            // 🚨 严禁在未选择时自动添加旧工作区兜底，严格遵从顶栏选择结果
             const seen = new Set();
             const realGroup = [];
             const gtbSelectedGroup = [];
@@ -2401,38 +2398,21 @@
                 wsList = [];
             }
 
-            const activeStorageWsId = localStorage.getItem('pbi-active-workspace');
+            // 🚨 严格以顶栏当前真实勾选的工作区为准！未选则坚决为空，绝不擅自 fallback
             const gtbSelectedWsId = (window.selectedGtbWorkspaceIds && window.selectedGtbWorkspaceIds.size > 0) ? Array.from(window.selectedGtbWorkspaceIds)[0] : '';
-            const wsIdInput = document.getElementById('gtb-select-workspace');
-            const dsIdInput = document.getElementById('gtb-select-dataset');
-            const wsNameEl = document.getElementById('gtb-ws-display-text');
-            const dsNameEl = document.getElementById('gtb-ds-display-text');
+            let wsId = gtbSelectedWsId || '';
+            let dsId = (window.selectedGtbDatasetIds && window.selectedGtbDatasetIds.size > 0) ? Array.from(window.selectedGtbDatasetIds)[0] : '';
+            let wsName = '';
+            let dsName = '';
 
-            let wsId = this.currentWorkspaceId || gtbSelectedWsId || activeStorageWsId || (wsIdInput ? wsIdInput.value : '');
-            let dsId = dsIdInput ? dsIdInput.value : '';
-            let wsName = this.currentWorkspaceName || '';
-            let dsName = (dsNameEl && dsNameEl.textContent && !dsNameEl.textContent.includes('--')) ? dsNameEl.textContent.trim() : '';
-
-            if (!wsId || wsId === 'all') {
-                if (gtbSelectedWsId) {
-                    wsId = gtbSelectedWsId;
-                } else if (activeStorageWsId) {
-                    wsId = activeStorageWsId;
-                } else if (wsList.length > 0) {
-                    wsId = wsList[0].id;
-                }
-            }
-
-            let currentWsObj = wsList.find(w => String(w.id).toLowerCase() === String(wsId).toLowerCase());
+            let currentWsObj = wsId ? wsList.find(w => String(w.id).toLowerCase() === String(wsId).toLowerCase()) : null;
             if (currentWsObj) {
-                wsName = currentWsObj.name || currentWsObj.alias || currentWsObj.displayName || wsName;
-            } else if (!wsName && wsNameEl && wsNameEl.textContent && !wsNameEl.textContent.includes('--')) {
-                wsName = wsNameEl.textContent.trim();
+                wsName = currentWsObj.name || currentWsObj.alias || currentWsObj.displayName || wsId;
             }
 
             // 同步回写引擎状态，保持界面展示绝对一致
             this.currentWorkspaceId = wsId;
-            this.currentWorkspaceName = wsName || wsId;
+            this.currentWorkspaceName = wsName;
 
             let targetWsId = wsId;
             let targetWsName = wsName || wsId;
@@ -4202,15 +4182,14 @@
             // 2. 严格检查是否选择了具体工作区 (绝无盲目取第一项的非预期兜底)
             const rawWsData = window.cleanseCrossDomainWorkspaces ? window.cleanseCrossDomainWorkspaces(window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : []) : [];
             const selectedWsIds = Array.from(window.selectedGtbWorkspaceIds || []);
+            // 🚨 严格以顶栏当前选中的工作区为唯一权威依据：顶栏没选就是没选，绝不回退到任何旧状态
             let curWsId = '';
-            if (this.currentWorkspaceId && rawWsData.some(w => String(w.id).toLowerCase() === this.currentWorkspaceId.toLowerCase())) {
-                curWsId = this.currentWorkspaceId;
-            } else if (selectedWsIds.length > 0) {
+            if (selectedWsIds.length > 0 && rawWsData.some(w => String(w.id).toLowerCase() === selectedWsIds[0].toLowerCase())) {
                 curWsId = selectedWsIds[0];
             }
             const curWs = curWsId ? rawWsData.find(w => String(w.id).toLowerCase() === curWsId.toLowerCase()) : null;
             const hasSelectedWs = Boolean(curWs);
-            const wsName = curWs ? (curWs.alias || curWs.name) : '未选择工作区';
+            const wsName = curWs ? (curWs.alias || curWs.name) : '未选择';
 
             // 3. 严格检查是否选择了具体语义模型 —— 完全依赖顶栏已选模型，不在卡片内部提供选择
             const allDatasets = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');

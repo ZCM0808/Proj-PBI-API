@@ -3476,8 +3476,11 @@ window.persistGtbWorkspacesAndSync = function(triggerCascade = true) {
     const firstWsId = selectedArray[0] || '';
     try {
         localStorage.setItem('pbi-selected-workspaces', JSON.stringify(selectedArray));
-        // 同时维护单个主工作区 ID（取首个选中的，以向下兼容原 active-workspace 机制）
-        localStorage.setItem('pbi-active-workspace', firstWsId);
+        if (firstWsId) {
+            localStorage.setItem('pbi-active-workspace', firstWsId);
+        } else {
+            localStorage.removeItem('pbi-active-workspace');
+        }
         const activeWsInput = document.getElementById('active-workspace');
         if (activeWsInput) activeWsInput.value = firstWsId;
     } catch(e) {}
@@ -3488,6 +3491,10 @@ window.persistGtbWorkspacesAndSync = function(triggerCascade = true) {
     if (window.syncAllWorkflowSelectors) window.syncAllWorkflowSelectors();
     // 联动 GUM 目标范围展示
     if (window.syncGumScopeDisplay) window.syncGumScopeDisplay();
+    // 联动权限蓝图引擎实时同步
+    if (window.PermissionBlueprint && typeof window.PermissionBlueprint.syncFromGtb === 'function') {
+        window.PermissionBlueprint.syncFromGtb();
+    }
 
     // ⚡ 若主工作区发生变更，自动级联拉取该工作区名下的最新 Datasets 和 Reports
     if (triggerCascade && firstWsId && firstWsId !== oldFirstWsId && window.cascadeScanWorkspacesAndAssets) {
