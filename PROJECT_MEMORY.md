@@ -2496,3 +2496,30 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
   - `python -m ruff check src/`：零警告通过；
   - `python -m mypy src/main.py --ignore-missing-imports`：零类型错误通过；
   - `node -c static/script.js`：语法 100% 正确。
+
+---
+
+## 67. 权限流转蓝图全屏/侧栏自适应无抖动居中与节点坐标 SQLite 数据库双写持久化闭环
+
+### 67.1 核心体验突破：质心刚体锁定法 (Rigid Centroid Lock)
+1. **彻底解决瞬间闪烁与左右抖动痛点**：
+   - 历史痛点：侧边栏展开/收起或全屏切换时，因 `requestAnimationFrame` 延迟、`transition` 动画干扰以及 `zoom` 步进重新计算，导致卡片节点出现瞬间闪烁和左右抖动。
+   - 解决方案：采用刚体质心映射公式 $\text{panX} = \text{round}(\text{vpW} / 2 - \text{boxCenterX} \cdot \text{zoom})$，在任何视口尺寸突变期间锁定当前缩放比，逐帧 0 延迟对准视口几何中心，消除所有视觉颤抖。
+
+### 67.2 节点排版数据 SQLite 数据库双写与 GitHub 同步闭环
+1. **双写架构机制**：
+   - **拖拽即写**：鼠标松开（`mouseup`）时，即时写入前端 `localStorage`（0 延迟即时生效），并后台异步调用 `POST /api/db/kv/pbi-blueprint-node-positions` 将坐标数据存入后端的 SQLite 数据库（`data/pbi_app.db` -> `kv_store` 表）。
+   - **自动拉齐**：页面初次加载或跨设备拉取代码时，自动请求 `GET /api/db/kv/pbi-blueprint-node-positions`，将数据库中保存的坐标与前端拉齐。
+   - **一键重置**：点击【重置排版】按钮，前端自动清除 `localStorage`，同时发送 `DELETE /api/db/kv/pbi-blueprint-node-positions` 清空数据库，瞬间恢复默认舒展网格排版。
+2. **Git 版本控制同步**：
+   - 本项目为无租户隔离的开发者控制台，`data/pbi_app.db` 文件已被 Git 跟踪纳管。
+   - 节点坐标写入数据库后随代码一同提交推送到 GitHub 远端仓库，达成真正意义上的跨设备、多端排版固化与全局共享。
+
+### 67.3 自动化测试与质量闭环 (Automated Playwright QA Loop)
+- **Playwright 全量端到端测试覆盖**：
+  - `tests/test_permission_blueprint.spec.js` **15/15 全部绿色通过 (1.4m)**；
+  - 重点验证了“节点拖拽 -> `localStorage` 保存 -> SQLite 数据库存入 -> 刷新保持 -> 点击重置 -> 本地与数据库彻底清空”全流程。
+- **静态代码检查与质量校验**：
+  - `python -m ruff check src/`：All checks passed!
+  - `python -m mypy src/`：Success: no issues found in 10 source files!
+
