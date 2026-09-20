@@ -443,12 +443,22 @@
                 });
             }
 
-            // 恢复或默认激活主视图 Tab（默认保留并优先展示交互蓝图）
-            this.switchMainTab(this.activeMainTab || 'blueprint');
+            // 恢复或默认激活主视图 Tab（支持记忆上次所选视图，如全景资产链路）
+            let initialTab = this.activeMainTab || 'blueprint';
+            try {
+                const savedTab = localStorage.getItem('pb-active-main-tab');
+                if (savedTab && ['blueprint', 'matrix', 'user_assets'].includes(savedTab)) {
+                    initialTab = savedTab;
+                }
+            } catch(e) {}
+            this.switchMainTab(initialTab);
         }
 
         switchMainTab(tab) {
             this.activeMainTab = tab || 'blueprint';
+            try {
+                localStorage.setItem('pb-active-main-tab', this.activeMainTab);
+            } catch(e) {}
             const canvasEl = document.getElementById('pb-canvas-viewport');
             const matrixEl = document.getElementById('pb-matrix-container');
             const userAssetsEl = document.getElementById('pb-user-assets-container');
@@ -4139,12 +4149,19 @@
             `;
         }
 
-        // ⚡ 异步穿透检测指定语义模型底层使用的真实数据源与连接 (REST / XMLA / Scanner)
-        async fetchModelConnections(workspaceId, datasetId) {
+        // ⚡ 异步穿透检测指定语义模型底层使用的真实数据源与企业网关连接 (REST / Scanner / Gateway Topology)
+        async fetchModelConnections(workspaceId, datasetId, forceRefresh = false) {
             if (!datasetId) return null;
-            window._modelDatasourcesCache = window._modelDatasourcesCache || {};
+            if (!window._modelDatasourcesCache) {
+                try {
+                    const cached = sessionStorage.getItem('pbi_model_datasources_cache');
+                    window._modelDatasourcesCache = cached ? JSON.parse(cached) : {};
+                } catch(e) {
+                    window._modelDatasourcesCache = {};
+                }
+            }
             const cacheKey = `${workspaceId || 'global'}_${datasetId}`;
-            if (window._modelDatasourcesCache[cacheKey]) {
+            if (!forceRefresh && window._modelDatasourcesCache[cacheKey]) {
                 return window._modelDatasourcesCache[cacheKey];
             }
 
@@ -4168,8 +4185,11 @@
                     const data = await res.json();
                     if (data && data.success && Array.isArray(data.datasources)) {
                         window._modelDatasourcesCache[cacheKey] = data;
+                        try {
+                            sessionStorage.setItem('pbi_model_datasources_cache', JSON.stringify(window._modelDatasourcesCache));
+                        } catch(e) {}
                         delete this._fetchingConnections[cacheKey];
-                        // 静默刷新用户全景资产链路，展示真实连接
+                        // 静默刷新用户全景资产链路，展示真实连接与企业网关
                         if (this.activeMainTab === 'user_assets') {
                             this.renderUserAssetsMatrix();
                         }
@@ -4239,39 +4259,40 @@
             const wsName = curWs ? (curWs.alias || curWs.name) : '未选择';
 
             // 3. 严格检查是否选择了具体语义模型 —— 完全依赖顶栏已选模型，不在卡片内部提供选择
-            const allDatasets = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
-            const scopedModels = hasSelectedWs ? allDatasets.filter(d => String(d.workspaceId || '').toLowerCase() === String(curWs.id).toLowerCase()) : [];
+            const allDatasets = window.getMergedGtbDatasets ? window.getMergedGtbDatasets() : JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
             const selectedDsIds = Array.from(window.selectedGtbDatasetIds || []);
-            // 优先取顶栏已选模型中属于当前工作区的那个
-            let curModelId = '';
-            for (const dsId of selectedDsIds) {
-                if (scopedModels.some(m => String(m.id).toLowerCase() === dsId.toLowerCase())) {
-                    curModelId = dsId;
-                    break;
+            let curModel = null;
+            // 优先通过顶栏已选模型 ID 精准匹配
+            if (selectedDsIds.length > 0) {
+                curModel = allDatasets.find(d => String(d.id).toLowerCase() === selectedDsIds[0].toLowerCase());
+            }
+            // 其次在当前工作区限定范围内检索已选模型
+            if (!curModel && hasSelectedWs) {
+                const scopedModels = allDatasets.filter(d => String(d.workspaceId || '').toLowerCase() === String(curWs.id).toLowerCase());
+                if (scopedModels.length > 0 && selectedDsIds.length > 0) {
+                    curModel = scopedModels.find(m => selectedDsIds.some(sid => sid.toLowerCase() === String(m.id).toLowerCase()));
                 }
             }
-            // 兜底：尝试 currentModelKey（蓝图引擎自身保存的，也必须属于当前工作区）
-            if (!curModelId && this.currentModelKey) {
-                const mIdLower = this.currentModelKey.toLowerCase();
-                if (scopedModels.some(m => String(m.id).toLowerCase() === mIdLower || m.name === this.currentModelKey)) {
-                    curModelId = this.currentModelKey;
-                }
+            // 兜底：尝试 currentModelKey（蓝图引擎自身保存的键名）
+            if (!curModel && this.currentModelKey) {
+                const mKeyLower = this.currentModelKey.replace(/^real_model_/, '').toLowerCase();
+                curModel = allDatasets.find(m => String(m.id).toLowerCase() === mKeyLower || m.name === this.currentModelKey || m.alias === this.currentModelKey);
             }
-            const curModel = curModelId ? scopedModels.find(m => String(m.id).toLowerCase() === String(curModelId).toLowerCase() || m.name === curModelId || m.alias === curModelId) : null;
             const hasSelectedModel = Boolean(curModel);
 
             // 4. 严格检查是否选择了具体报表 —— 完全依赖顶栏已选报表，不在卡片内部提供选择
-            const allReports = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
-            const scopedReports = hasSelectedWs ? allReports.filter(r => String(r.workspaceId || '').toLowerCase() === String(curWs.id).toLowerCase()) : [];
+            const allReports = window.getMergedGtbReports ? window.getMergedGtbReports() : JSON.parse(localStorage.getItem('pbi_reports') || '[]');
             const selectedRpIds = Array.from(window.selectedGtbReportIds || []);
-            let curReportId = '';
-            for (const rpId of selectedRpIds) {
-                if (scopedReports.some(r => String(r.id).toLowerCase() === rpId.toLowerCase())) {
-                    curReportId = rpId;
-                    break;
+            let curReport = null;
+            if (selectedRpIds.length > 0) {
+                curReport = allReports.find(r => String(r.id).toLowerCase() === selectedRpIds[0].toLowerCase());
+            }
+            if (!curReport && hasSelectedWs) {
+                const scopedReports = allReports.filter(r => String(r.workspaceId || '').toLowerCase() === String(curWs.id).toLowerCase());
+                if (scopedReports.length > 0 && selectedRpIds.length > 0) {
+                    curReport = scopedReports.find(r => selectedRpIds.some(sid => sid.toLowerCase() === String(r.id).toLowerCase()));
                 }
             }
-            const curReport = curReportId ? scopedReports.find(r => String(r.id).toLowerCase() === String(curReportId).toLowerCase() || r.name === curReportId || r.alias === curReportId) : null;
             const hasSelectedReport = Boolean(curReport);
 
             // 5. 网关与连接：只有在选定模型后才推导；未选模型时保守标注"未关联"
@@ -4513,10 +4534,18 @@
                 colReportBody = renderTierItemsHtml('report', reportItems);
             }
 
-            // Module 5: Connection (网关连接与凭据鉴权层 - 明确展示当前模型使用的具体连接)
+            // Module 5: Connection (网关连接与凭据鉴权层 - 明确展示当前模型使用的具体连接与网关)
             let colConnectionBody = '';
             let modelConnections = [];
             const connCacheKey = `${curWs?.id || 'global'}_${curModel?.id || ''}`;
+            if (!window._modelDatasourcesCache) {
+                try {
+                    const cached = sessionStorage.getItem('pbi_model_datasources_cache');
+                    window._modelDatasourcesCache = cached ? JSON.parse(cached) : {};
+                } catch(e) {
+                    window._modelDatasourcesCache = {};
+                }
+            }
             const inspectCache = (window._modelDatasourcesCache && curModel?.id) ? window._modelDatasourcesCache[connCacheKey] : null;
 
             if (!hasSelectedWs) {
@@ -4535,7 +4564,7 @@
                         <div style="font-size: 1.3rem; margin-bottom: 6px;">🔌</div>
                         <div style="font-weight: 700; font-size: 0.76rem; color: #f59e0b; margin-bottom: 3px;">未关联具体语义模型</div>
                         <div style="font-size: 0.65rem; color: var(--text-secondary); line-height: 1.4;">
-                            请在顶栏选择模型以呈现其具体使用的连接通道。
+                            请在顶栏选择模型以呈现其具体使用的连接通道与网关。
                         </div>
                     </div>
                 `;
@@ -4565,20 +4594,25 @@
                     ]
                 };
 
-                // 3. 提取当前模型所使用的具体连接项
+                // 3. 提取当前模型所使用的具体连接项与绑定的真实网关拓扑
+                const detectedGateways = (inspectCache && Array.isArray(inspectCache.gateways)) ? inspectCache.gateways : [];
+
                 if (inspectCache && Array.isArray(inspectCache.datasources) && inspectCache.datasources.length > 0) {
                     modelConnections = inspectCache.datasources.map((ds, idx) => {
                         const dsType = ds.datasourceType || 'Database';
-                        const server = ds.server || (ds.url ? (function(){ try { return new URL(ds.url).hostname; } catch(e){ return ds.url; } })() : '云端数据库连接');
+                        const server = ds.server || ds.url || '云端数据库连接';
+                        const cleanServer = server.length > 26 ? server.slice(0, 24) + '...' : server;
                         const db = ds.database || '';
-                        const hasGw = Boolean(ds.gatewayId && ds.gatewayId !== '-');
+                        const gwName = ds.gatewayName || (detectedGateways[0]?.name) || '';
+                        const hasGw = Boolean(gwName || (ds.gatewayId && ds.gatewayId !== '-'));
+                        const gwStatus = ds.gatewayStatus || detectedGateways[0]?.status || 'Live';
                         return {
                             id: `conn_real_ds_${idx}`,
-                            name: `${dsType}: ${server.length > 24 ? server.slice(0, 22) + '...' : server}`,
-                            desc: `${db ? '库: ' + db + ' · ' : ''}${hasGw ? '已绑定本地网关 (' + ds.gatewayId.slice(0, 8) + '...)' : '云端直连通道 (无需网关)'}`,
+                            name: `${dsType}: ${cleanServer}`,
+                            desc: `${db ? '库: ' + db + ' · ' : ''}${hasGw ? '网关: ' + (gwName.length > 18 ? gwName.slice(0, 16) + '...' : gwName) + ' (' + gwStatus + ')' : '云端直连通道 (无需本地网关)'}`,
                             statusClass: 'enabled',
-                            statusText: hasGw ? '✅ 网关已连通' : '✅ 直连通道有效',
-                            badge: dsType
+                            statusText: hasGw ? `✅ ${gwStatus} 在线` : '✅ 直连通道有效',
+                            badge: hasGw ? 'Gateway' : dsType
                         };
                     });
                 } else if (PRESET_CONNS_MAP[curModel?.id] || (this.currentModelKey && PRESET_CONNS_MAP[this.currentModelKey])) {
@@ -4593,7 +4627,7 @@
                     connItems.push({
                         id: 'conn_inspecting',
                         name: '正在穿透检测模型连接...',
-                        desc: `正在调用数据源分析引擎获取模型 [${curModel.alias || curModel.name}] 底层连接通道`,
+                        desc: `正在调用数据源分析引擎获取模型 [${curModel.alias || curModel.name}] 底层连接通道与网关`,
                         statusClass: 'warn',
                         statusText: '⏳ 穿透检测中',
                         badge: 'Scanning'
@@ -4609,10 +4643,34 @@
                     });
                 }
 
-                const gwStatus = gatewayOnline === true ? 'enabled' : (gatewayOnline === false ? 'disabled' : 'warn');
-                const gwText = gatewayOnline === true ? '✅ 网关在线' : (gatewayOnline === false ? '❌ 网关离线' : '⚠️ 状态未知');
+                // 解析企业数据网关的具体运行态
+                const activeGw = detectedGateways[0] || (inspectCache?.datasources?.find(d => d.gatewayName) ? {
+                    name: inspectCache.datasources.find(d => d.gatewayName).gatewayName,
+                    status: inspectCache.datasources.find(d => d.gatewayName).gatewayStatus || 'Live'
+                } : null);
+
+                let gwItemName = '企业数据网关连通性';
+                let gwItemDesc = '该工作区绑定的本地数据网关 (On-Premises Gateway) 状态';
+                let gwItemStatusClass = 'warn';
+                let gwItemStatusText = '⚠️ 状态未知';
+                let gwItemBadge = 'Gateway';
+
+                if (activeGw) {
+                    gwItemName = `企业网关: ${activeGw.name}`;
+                    gwItemDesc = `网关集群: ${activeGw.name} · 状态: ${activeGw.status || 'Live'} 在线`;
+                    gwItemStatusClass = 'enabled';
+                    gwItemStatusText = `✅ ${activeGw.status || 'Live'} 在线`;
+                    gwItemBadge = 'Live Cluster';
+                } else if (gatewayOnline === true) {
+                    gwItemStatusClass = 'enabled';
+                    gwItemStatusText = '✅ 网关在线';
+                } else if (gatewayOnline === false) {
+                    gwItemStatusClass = 'disabled';
+                    gwItemStatusText = '❌ 网关离线';
+                }
+
                 connItems.push(
-                    { id: 'conn_gw', name: '企业数据网关连通性', desc: '该工作区绑定的本地数据网关 (On-Premises Gateway) 状态', statusClass: gwStatus, statusText: gwText, badge: 'Gateway' },
+                    { id: 'conn_gw', name: gwItemName, desc: gwItemDesc, statusClass: gwItemStatusClass, statusText: gwItemStatusText, badge: gwItemBadge },
                     { id: 'conn_gac', name: 'GAC 细粒度访问控制', desc: '网关与 DirectQuery 跨源 Mashup 细粒度数据门禁隔离', statusClass: isPrivileged ? 'bypassed' : 'enabled', statusText: isPrivileged ? '⚡ 管理员直通' : '🛡️ 门禁通过', badge: 'GAC' },
                     { id: 'conn_sso', name: 'SSO 单点登录凭据委派', desc: 'DirectQuery 运行时使用当前用户 Entra ID 身份穿透鉴权', statusClass: 'enabled', statusText: '✅ 委派生效', badge: 'SSO' },
                     { id: 'conn_refresh', name: '动态数据刷新通道调度', desc: '定时增量刷新与 XMLA 交互式微批次数据刷新触发权', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ 允许刷新' : '❌ 需协作者', badge: 'Refresh' }
@@ -4621,10 +4679,11 @@
                 colConnectionBody = renderTierItemsHtml('connection', connItems);
             }
 
+            const activeGwName = (inspectCache?.gateways && inspectCache.gateways[0]?.name) || (inspectCache?.datasources?.find(d => d.gatewayName)?.gatewayName) || '';
             const connCountText = modelConnections.length > 0 ? `(${modelConnections.length} 连接)` : '';
-            const connSubText = modelConnections.length > 0 ? `已挂载 ${modelConnections.length} 个数据源连接` : (hasSelectedModel ? `模型: ${curModel.alias || curModel.name}` : '等待工作区');
-            const connStatusLabel = !hasSelectedWs ? '⚠️ 未选' : (!hasSelectedModel ? '⚠️ 未选模型' : (modelConnections.length > 0 ? `✅ ${modelConnections.length} 连接` : (gatewayOnline ? '✅ 网关在线' : '❌ 网关离线')));
-            const connStatusClass = !hasSelectedWs ? 'disabled' : (!hasSelectedModel ? 'warn' : (gatewayOnline ? 'enabled' : 'disabled'));
+            const connSubText = activeGwName ? `网关: ${activeGwName.length > 16 ? activeGwName.slice(0, 14) + '...' : activeGwName}` : (modelConnections.length > 0 ? `已挂载 ${modelConnections.length} 个数据源连接` : (hasSelectedModel ? `模型: ${curModel.alias || curModel.name}` : '等待工作区'));
+            const connStatusLabel = !hasSelectedWs ? '⚠️ 未选' : (!hasSelectedModel ? '⚠️ 未选模型' : (activeGwName ? '✅ 网关已连通' : (modelConnections.length > 0 ? `✅ ${modelConnections.length} 连接` : (gatewayOnline ? '✅ 网关在线' : '❌ 网关离线'))));
+            const connStatusClass = !hasSelectedWs ? 'disabled' : (!hasSelectedModel ? 'warn' : 'enabled');
 
             // Module 6: Pipeline (部署管道与 ALM 治理层)
             let colPipelineBody = '';
@@ -4728,6 +4787,53 @@
                     });
                 });
             });
+        }
+
+        // ⚡ 穿透刷新用户全景资产权限链路与底层网关连接 (提供全链路显式动效与即时反馈)
+        async refreshUserAssetsLineage(btnEl) {
+            const icon = btnEl?.querySelector('.pb-refresh-icon');
+            const label = btnEl?.querySelector('.pb-refresh-label');
+            if (icon) icon.style.animation = 'pb-spin 0.8s linear infinite';
+            if (label) label.textContent = '穿透刷新中...';
+            if (btnEl) btnEl.disabled = true;
+
+            try {
+                this.syncFromGtb();
+                const curWsId = this.currentWorkspaceId;
+                const selectedDsIds = Array.from(window.selectedGtbDatasetIds || []);
+                const curDsId = selectedDsIds[0] || (this.currentModelKey ? this.currentModelKey.replace(/^real_model_/, '') : '');
+
+                if (curDsId) {
+                    const cacheKey = `${curWsId || 'global'}_${curDsId}`;
+                    if (window._modelDatasourcesCache) {
+                        delete window._modelDatasourcesCache[cacheKey];
+                    }
+                    try {
+                        sessionStorage.removeItem('pbi_model_datasources_cache');
+                    } catch(e) {}
+                    await this.fetchModelConnections(curWsId, curDsId, true);
+                }
+                this.renderUserAssetsMatrix();
+
+                // 弹出轻量反馈提示或临时更新顶部主体状态栏
+                const topBadge = document.getElementById('pb-top-simulated-badge');
+                if (topBadge) {
+                    const originalText = topBadge.textContent;
+                    topBadge.textContent = '⚡ 已完成全景权限链路与数据网关状态穿透刷新！';
+                    setTimeout(() => { if (topBadge.textContent.startsWith('⚡')) topBadge.textContent = originalText; }, 2500);
+                }
+                if (typeof window.showToast === 'function') {
+                    window.showToast('✅ 用户全景权限链路与底层数据网关已穿透更新！', 'success');
+                }
+            } catch (err) {
+                console.error('刷新链路失败:', err);
+            } finally {
+                setTimeout(() => {
+                    if (icon) icon.style.animation = '';
+                    if (label) label.textContent = '刷新链路';
+                    if (btnEl) btnEl.disabled = false;
+                }, 400);
+            }
         }
 
         // 重置所有卡片内部权限小条目的上下排列顺序为默认

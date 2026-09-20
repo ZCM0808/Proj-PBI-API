@@ -8570,3 +8570,14 @@ body.light-theme .pb-asset-status-pill.status-bypassed,
     border-color: #e9d5ff !important;
 }
 
+@keyframes pb-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.pb-refresh-icon {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+

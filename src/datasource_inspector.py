@@ -439,7 +439,126 @@ async def inspect_datasource_full(
             except Exception as e:
                 log(f"  ⚠️ REST Tables 兜底异常: {e}")
 
-    log(f"[COMPLETE] ✅ 穿透完成！连接模式判定: 【{overall_mode}】，执行引擎: 【{engine_used}】")
+    # =========================================================================
+    # STEP 4: 数据源清洗、驱动精细化归一化与企业网关集群拓扑反向解析
+    # =========================================================================
+    log("[STEP 4] 🔌 解析底层数据源驱动特征并探测绑定的本地数据网关 (On-Premises Gateway)...")
+    for ds in dataset_datasources:
+        # 1. 从 url 提炼 server 与 database (如 host:5439;dbname)
+        if not ds.get("server") and ds.get("url"):
+            url_str = str(ds["url"])
+            if ";" in url_str:
+                parts = url_str.split(";", 1)
+                ds["server"] = parts[0]
+                if not ds.get("database") and len(parts) > 1:
+                    ds["database"] = parts[1]
+            elif not url_str.startswith("http"):
+                ds["server"] = url_str
+
+        # 2. 修正 Extension 泛类型为具体云数据源或数据库
+        if ds.get("datasourceType") in ("Extension", "Unknown", None):
+            combined_text = f"{ds.get('server', '')} {ds.get('url', '')} {ds.get('connectionString', '')}".lower()
+            if "redshift" in combined_text:
+                ds["datasourceType"] = "Amazon Redshift"
+            elif "databricks" in combined_text:
+                ds["datasourceType"] = "Azure Databricks"
+            elif "s3" in combined_text:
+                ds["datasourceType"] = "Amazon S3"
+            elif "snowflake" in combined_text:
+                ds["datasourceType"] = "Snowflake"
+            elif "mysql" in combined_text:
+                ds["datasourceType"] = "MySQL"
+            elif "sharepoint" in combined_text:
+                ds["datasourceType"] = "SharePoint"
+
+    detected_gateways: List[Dict[str, Any]] = []
+    if dataset_datasources and token:
+        try:
+            gw_url = "https://api.powerbi.com/v1.0/myorg/gateways"
+            r_gw = await asyncio.to_thread(requests.get, gw_url, headers=headers, timeout=8)
+            if r_gw.status_code == 200:
+                gw_list = r_gw.json().get("value", [])
+                for gw in gw_list:
+                    gw_id = str(gw.get("id") or "")
+                    gw_name = str(gw.get("name") or "Enterprise Gateway")
+                    if not gw_id:
+                        continue
+
+                    # 探测网关在线状态 (Live)
+                    gw_status = "Live"
+                    try:
+                        st_url = f"https://api.powerbi.com/v1.0/myorg/gateways/{gw_id}/status"
+                        r_st = await asyncio.to_thread(requests.get, st_url, headers=headers, timeout=5)
+                        if r_st.status_code == 200:
+                            st_val = r_st.json().get("value", "Live")
+                            gw_status = "Live" if st_val in ("Live", "Online") else str(st_val)
+                    except Exception:
+                        pass
+
+                    # 查询该网关下绑定的物理数据源
+                    gw_ds_url = f"https://api.powerbi.com/v1.0/myorg/gateways/{gw_id}/datasources"
+                    r_gw_ds = await asyncio.to_thread(requests.get, gw_ds_url, headers=headers, timeout=8)
+                    matched_with_this_gw = False
+                    if r_gw_ds.status_code == 200:
+                        gw_datasources = r_gw_ds.json().get("value", [])
+                        for g_ds in gw_datasources:
+                            g_cd = g_ds.get("connectionDetails", {})
+                            if isinstance(g_cd, str):
+                                try:
+                                    g_cd = json.loads(g_cd)
+                                except Exception:
+                                    g_cd = {}
+
+                            g_server = str(g_cd.get("server") or "").lower()
+                            g_db = str(g_cd.get("database") or "").lower()
+                            g_path = str(g_cd.get("extensionDataSourcePath") or g_cd.get("url") or g_cd.get("path") or "").lower()
+                            g_conn = str(g_ds.get("connectionString") or "").lower()
+
+                            for m_ds in dataset_datasources:
+                                m_server = str(m_ds.get("server") or "").lower()
+                                m_db = str(m_ds.get("database") or "").lower()
+                                m_url = str(m_ds.get("url") or "").lower()
+                                m_conn = str(m_ds.get("connectionString") or "").lower()
+
+                                is_matched = False
+                                if m_ds.get("gatewayId") == gw_id:
+                                    is_matched = True
+                                elif g_server and m_server and (g_server in m_server or m_server in g_server):
+                                    if not g_db or not m_db or g_db == m_db:
+                                        is_matched = True
+                                elif g_path and m_url and (g_path in m_url or m_url in g_path):
+                                    is_matched = True
+                                elif g_conn and m_conn and (g_conn in m_conn or m_conn in g_conn):
+                                    is_matched = True
+
+                                if is_matched:
+                                    m_ds["gatewayId"] = gw_id
+                                    m_ds["gatewayName"] = gw_name
+                                    m_ds["gatewayStatus"] = gw_status
+                                    m_ds["gatewayType"] = gw.get("type", "Resource")
+                                    if g_ds.get("id"):
+                                        m_ds["datasourceId"] = g_ds.get("id")
+                                    matched_with_this_gw = True
+                                    log(f"  🔗 成功关联企业网关: 「{gw_name}」 (状态: {gw_status}) -> {m_ds.get('server') or m_ds.get('url')}")
+
+                    # 若匹配成功或为租户单一主网关兜底
+                    if matched_with_this_gw or (len(gw_list) == 1 and not any(d.get("gatewayName") for d in dataset_datasources)):
+                        if not any(d.get("gatewayName") for d in dataset_datasources) and len(gw_list) == 1:
+                            for m_ds in dataset_datasources:
+                                m_ds["gatewayId"] = gw_id
+                                m_ds["gatewayName"] = gw_name
+                                m_ds["gatewayStatus"] = gw_status
+                                m_ds["gatewayType"] = gw.get("type", "Resource")
+                        detected_gateways.append({
+                            "id": gw_id,
+                            "name": gw_name,
+                            "type": gw.get("type", "Resource"),
+                            "status": gw_status
+                        })
+        except Exception as e:
+            log(f"  ⚠️ 企业数据网关拓扑探测异常: {e}")
+
+    log(f"[COMPLETE] ✅ 穿透完成！连接模式判定: 【{overall_mode}】，执行引擎: 【{engine_used}】，发现网关: {len(detected_gateways)} 个")
 
     return {
         "success": True,
@@ -452,6 +571,7 @@ async def inspect_datasource_full(
         "dataset_id": dataset_id,
         "dataset_name": dataset_name,
         "datasources": dataset_datasources,
+        "gateways": detected_gateways,
         "tables": tables_result,
         "relationships": dataset_relationships,
         "logs": logs
