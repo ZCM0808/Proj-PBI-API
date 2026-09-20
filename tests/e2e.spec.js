@@ -840,4 +840,36 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     expect(snapshots2.length).toBe(2);
     expect(snapshots2[1].name).toBe('Test Profile B');
   });
+
+  test('Azure App Authentication 的 verify 按钮在点击验证并重置后，SVG 图标始终完整保留不消失', async ({ page }) => {
+    // 拦截 /api/settings/verify 返回 success
+    await page.route('**/api/settings/verify', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, app_name: 'Test App', tenant_name: 'Test Tenant' })
+    }));
+
+    // 1. 打开全局配置弹窗
+    const settingsBtn = page.locator('#btn-settings');
+    await settingsBtn.click();
+    const settingsModal = page.locator('#settings-modal');
+    await expect(settingsModal).toBeVisible();
+
+    // 2. 获取 verify 按钮并断言初始包含 svg
+    const verifyBtn = page.locator('#verify-settings-btn');
+    await expect(verifyBtn).toBeVisible();
+    await expect(verifyBtn.locator('svg')).toHaveCount(1);
+
+    // 3. 填入必填字段并点击验证
+    await page.locator('#set-tenant').fill('tenant-1234');
+    await page.locator('#set-client').fill('client-1234');
+    await page.locator('#set-secret').fill('secret-1234');
+
+    await verifyBtn.click();
+
+    // 4. 等待动画结束并重置，断言 SVG 图标完整恢复且数量为 1
+    await expect.poll(async () => {
+      return await verifyBtn.locator('svg').count();
+    }, { timeout: 5000 }).toBe(1);
+  });
 });

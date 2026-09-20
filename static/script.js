@@ -10118,13 +10118,13 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
 
 
-                const originalText = verifySettingsBtn.textContent;
+                const originalHtml = verifySettingsBtn.innerHTML;
 
                 const originalWidth = verifySettingsBtn.style.width;
 
                 verifySettingsBtn.disabled = true;
 
-                verifySettingsBtn.textContent = '⏳';
+                verifySettingsBtn.innerHTML = '⏳';
 
                 verifySettingsBtn.style.transition = 'all 0.3s ease';
 
@@ -10134,7 +10134,7 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
                 const resetBtn = () => {
 
-                    verifySettingsBtn.textContent = originalText;
+                    verifySettingsBtn.innerHTML = originalHtml;
 
                     verifySettingsBtn.style.width = originalWidth;
 
