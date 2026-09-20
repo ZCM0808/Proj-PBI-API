@@ -79,8 +79,8 @@ def run_dax_query(port: str, query: str):
             clr.AddReference("Microsoft.PowerBI.AdomdClient")
         except Exception:
             pass # might be already loaded
-        from Microsoft.AnalysisServices.AdomdClient import (
-            AdomdConnection,  # type: ignore
+        from Microsoft.AnalysisServices.AdomdClient import (  # type: ignore[import-not-found]
+            AdomdConnection,
         )
 
         conn_str = f"Data Source=localhost:{port};"

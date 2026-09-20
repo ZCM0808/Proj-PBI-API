@@ -4171,6 +4171,11 @@
             }
             this._fetchingConnections[cacheKey] = true;
 
+            let token = '';
+            try {
+                token = window.currentPbiToken || (window.getEffectiveAccessToken ? window.getEffectiveAccessToken() : '') || localStorage.getItem('pbi_token') || sessionStorage.getItem('pbi_token') || '';
+            } catch(e) {}
+
             try {
                 const res = await fetch('/api/datasource/inspect', {
                     method: 'POST',
@@ -4178,7 +4183,8 @@
                     body: JSON.stringify({
                         workspace_id: workspaceId || '',
                         dataset_id: datasetId,
-                        report_id: null
+                        report_id: null,
+                        access_token: token
                     })
                 });
                 if (res.ok) {
@@ -4344,30 +4350,46 @@
                     orderedItems = [...prioritized, ...itemMap.values()];
                 }
 
-                return orderedItems.map(item => `
-                    <div class="pb-asset-card-row ${item.isHero ? 'is-hero-role' : ''}" data-row-id="${item.id}" data-tier-id="${tierId}" draggable="true" title="按住可上下拖拽移动调整顺序 (绝无重叠)">
-                        <div class="pb-asset-row-top">
-                            <div class="pb-asset-row-title-area">
-                                <span class="pb-row-drag-handle">
-                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                        <circle cx="9" cy="5" r="1.5"></circle>
-                                        <circle cx="9" cy="12" r="1.5"></circle>
-                                        <circle cx="9" cy="19" r="1.5"></circle>
-                                        <circle cx="15" cy="5" r="1.5"></circle>
-                                        <circle cx="15" cy="12" r="1.5"></circle>
-                                        <circle cx="15" cy="19" r="1.5"></circle>
-                                    </svg>
-                                </span>
-                                <span class="pb-asset-prop-name" title="${item.name}">${item.name}</span>
+                return orderedItems.map(item => {
+                    let formattedDesc = item.desc || '';
+                    formattedDesc = formattedDesc
+                        .replace(/^【可以】/, '<strong class="pb-desc-tag tag-can">【可以】</strong>')
+                        .replace(/^【禁止】/, '<strong class="pb-desc-tag tag-cannot">【禁止】</strong>')
+                        .replace(/^【限制】/, '<strong class="pb-desc-tag tag-limit">【限制】</strong>')
+                        .replace(/^【特权】/, '<strong class="pb-desc-tag tag-priv">【特权】</strong>')
+                        .replace(/^【当前分配身份】/, '<strong class="pb-desc-tag tag-role">【分配身份】</strong>')
+                        .replace(/^【当前分配角色】/, '<strong class="pb-desc-tag tag-role">【分配角色】</strong>')
+                        .replace(/^【当前分配权限】/, '<strong class="pb-desc-tag tag-role">【分配权限】</strong>')
+                        .replace(/^【当前模型绑定的官方连接】/, '<strong class="pb-desc-tag tag-conn">【官方连接】</strong>')
+                        .replace(/^【承载通道】/, '<strong class="pb-desc-tag tag-gw">【承载通道】</strong>')
+                        .replace(/^【环境就绪】/, '<strong class="pb-desc-tag tag-ok">【环境就绪】</strong>')
+                        .replace(/^【载体就绪】/, '<strong class="pb-desc-tag tag-ok">【载体就绪】</strong>');
+
+                    return `
+                        <div class="pb-asset-card-row ${item.isHero ? 'is-hero-role' : ''}" data-row-id="${item.id}" data-tier-id="${tierId}" draggable="true" title="按住可上下拖拽移动调整顺序 (绝无重叠)">
+                            <div class="pb-asset-row-top">
+                                <div class="pb-asset-row-title-area">
+                                    <span class="pb-row-drag-handle">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                            <circle cx="9" cy="5" r="1.5"></circle>
+                                            <circle cx="9" cy="12" r="1.5"></circle>
+                                            <circle cx="9" cy="19" r="1.5"></circle>
+                                            <circle cx="15" cy="5" r="1.5"></circle>
+                                            <circle cx="15" cy="12" r="1.5"></circle>
+                                            <circle cx="15" cy="19" r="1.5"></circle>
+                                        </svg>
+                                    </span>
+                                    <span class="pb-asset-prop-name" title="${item.name}">${item.name}</span>
+                                </div>
+                                <span class="pb-asset-status-pill status-${item.statusClass}">${item.statusText}</span>
                             </div>
-                            <span class="pb-asset-status-pill status-${item.statusClass}">${item.statusText}</span>
+                            <div class="pb-asset-row-bottom">
+                                <span class="pb-asset-prop-desc">${formattedDesc}</span>
+                                ${item.badge ? `<span class="pb-asset-tag-pill">${item.badge}</span>` : ''}
+                            </div>
                         </div>
-                        <div class="pb-asset-row-bottom">
-                            <span class="pb-asset-prop-desc" title="${item.desc}">${item.desc}</span>
-                            ${item.badge ? `<span class="pb-asset-tag-pill">${item.badge}</span>` : ''}
-                        </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             };
 
             // 6 个大卡片组装辅助函数 (横向固定不超出屏幕，固定不能移动，内部小卡片可上下移动)
@@ -4392,21 +4414,23 @@
             const tenantTitleSub = tenantId ? `租户 ID: ${tenantId}` : '租户 ID 未配置';
             const userSub = user ? `主体: ${user.name} (${user.roleTag})` : '未指定具体用户主体';
             const tenantHeaderStatusClass = user ? (isGuest ? 'warn' : 'enabled') : 'disabled';
-            const tenantHeaderStatusText = user ? (isGuest ? '⚠️ B2B 访客' : '✅ 认证有效') : '⚠️ 未选主体';
+            const tenantHeaderStatusText = user ? (isGuest ? '⚠️ B2B GUEST' : '✅ AUTH VALID') : '⚠️ NO PRINCIPAL';
+            const tenantRoleName = isAdmin ? 'POWER BI ADMINISTRATOR' : (isGuest ? 'B2B GUEST USER' : 'TENANT MEMBER');
             const tenantItems = [
-                { id: 'tenant_principal_role', isHero: true, name: `Tenant Role: ${isAdmin ? 'Power BI Administrator' : (isGuest ? 'B2B Guest User' : 'Tenant Member')}`, desc: user ? `当前认证主体 [${user.name}] (${user.upn}) · 组织租户治理身份` : '请在左侧主体面板指定具体企业成员', statusClass: user ? (isGuest ? 'warn' : 'enabled') : 'disabled', statusText: user ? (isGuest ? '⚠️ B2B 访客' : '✅ 租户认证') : '❌ 未选用户', badge: 'Role' },
-                { id: 'tenant_export', name: 'Export Data (明细数据导出策略)', desc: '租户全局开关，控制是否允许将报表与模型明细导出至本地 Excel/CSV', statusClass: user ? 'enabled' : 'disabled', statusText: user ? '✅ 策略放行' : '⚠️ 等待主体', badge: 'Export' },
-                { id: 'tenant_web_modeling', name: 'Web Modeling (浏览器在线建模)', desc: '租户全局开关，控制是否放行网页端编辑模型架构与度量值设计', statusClass: user?.state?.tenantAllowWebModeling ? 'enabled' : 'disabled', statusText: user?.state?.tenantAllowWebModeling ? '✅ 允许建模' : '❌ 策略收紧', badge: 'Web Model' },
-                { id: 'tenant_xmla', name: 'XMLA Endpoint (终结点全局读写)', desc: '允许 SSMS、DAX Studio 与 Tabular Editor 跨客户端直连模型读写', statusClass: 'enabled', statusText: '✅ 读写启用', badge: 'XMLA' },
-                { id: 'tenant_external', name: 'External Sharing (外部内容共享)', desc: user ? (isGuest ? '当前属于外部访客账号，默认受限禁止外部二次外发' : '租户策略放行组织外部跨域报告共享') : '需选定用户后推导策略', statusClass: isGuest ? 'disabled' : (user ? 'enabled' : 'disabled'), statusText: isGuest ? '❌ 禁止外发' : (user ? '✅ 策略放行' : '⚠️ 等待主体'), badge: 'External' },
-                { id: 'tenant_id', name: `Tenant: ${tenantId ? (tenantId.length > 20 ? tenantId.slice(0, 18) + '...' : tenantId) : '未配置'}`, desc: tenantId ? `已挂载租户 ID: ${tenantId}` : '系统未配置 TENANT_ID，请在设置中输入', statusClass: tenantId ? 'enabled' : 'warn', statusText: tenantId ? '✅ 租户就绪' : '⚠️ 缺少租户ID', badge: 'Tenant ID' }
+                { id: 'tenant_principal_role', isHero: true, name: `TENANT ROLE: ${tenantRoleName}`, desc: user ? `【当前分配身份】主体 [${user.name}] (${user.upn}) · 组织租户治理身份` : '【等待配置】请在左侧主体面板指定具体企业成员', statusClass: user ? (isAdmin ? 'bypassed' : (isGuest ? 'warn' : 'enabled')) : 'disabled', statusText: user ? (isAdmin ? '⚡ FULL ADMIN' : (isGuest ? '⚠️ B2B GUEST' : '✅ TENANT MEMBER')) : '❌ NO USER', badge: 'ROLE' },
+                { id: 'tenant_export', name: 'EXPORT DATA (明细数据导出策略)', desc: user ? '【可以】租户全局策略放行，允许将报表与模型数据导出至本地 Excel/CSV' : '【等待配置】需选定具体登录主体后生效策略', statusClass: user ? 'enabled' : 'disabled', statusText: user ? '✅ CAN EXPORT' : '❌ CANNOT EXPORT', badge: 'EXPORT' },
+                { id: 'tenant_web_modeling', name: 'WEB MODELING (浏览器在线建模)', desc: user?.state?.tenantAllowWebModeling ? '【可以】租户策略允许在浏览器端直接设计、编辑语义模型架构与度量值' : '【禁止】租户策略禁用网页在线建模，只能通过客户端工具操作', statusClass: user?.state?.tenantAllowWebModeling ? 'enabled' : 'disabled', statusText: user?.state?.tenantAllowWebModeling ? '✅ CAN MODEL' : '❌ CANNOT MODEL', badge: 'WEB MODEL' },
+                { id: 'tenant_xmla', name: 'XMLA ENDPOINT (终结点全局读写)', desc: '【可以】终结点已开启读写，允许 SSMS、DAX Studio 与 Tabular Editor 跨客户端直连', statusClass: 'enabled', statusText: '✅ CAN CONNECT', badge: 'XMLA' },
+                { id: 'tenant_external', name: 'EXTERNAL SHARING (跨组织外部共享)', desc: user ? (isGuest ? '【禁止】当前属于外部访客账号，默认受限禁止跨租户二次外发共享' : '【可以】租户策略放行组织外部跨域报告共享') : '【等待配置】需选定用户主体后推导策略', statusClass: isGuest ? 'disabled' : (user ? 'enabled' : 'disabled'), statusText: isGuest ? '❌ CANNOT SHARE' : (user ? '✅ CAN SHARE' : '⚠️ WAITING'), badge: 'EXTERNAL' },
+                { id: 'tenant_id', name: `TENANT: ${tenantId ? (tenantId.length > 20 ? tenantId.slice(0, 18) + '...' : tenantId) : '未配置'}`, desc: tenantId ? `【环境就绪】挂载组织目录租户 ID: ${tenantId}` : '【未配置】系统未配置 TENANT_ID，请在设置中输入', statusClass: tenantId ? 'enabled' : 'warn', statusText: tenantId ? '✅ READY' : '⚠️ MISSING ID', badge: 'TENANT ID' }
             ];
             const colTenantBody = renderTierItemsHtml('tenant', tenantItems);
 
             // Module 2: Workspace (工作区治理角色层)
             let colWorkspaceBody = '';
             const wsHeaderStatusClass = hasSelectedWs ? 'enabled' : 'disabled';
-            const wsHeaderStatusText = hasSelectedWs ? `角色: ${wsRole}` : '⚠️ 未选择';
+            const wsRoleCaps = (wsRole || 'VIEWER').toUpperCase();
+            const wsHeaderStatusText = hasSelectedWs ? `ROLE: ${wsRoleCaps}` : '⚠️ 未选择';
             if (!hasSelectedWs) {
                 colWorkspaceBody = `
                     <div style="padding: 16px 10px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
@@ -4418,21 +4442,21 @@
                     </div>
                 `;
             } else {
-                const t2Status = isAdmin ? 'enabled' : (isPrivileged ? 'bypassed' : (isViewer ? 'warn' : 'disabled'));
+                const t2Status = isAdmin ? 'bypassed' : (isPrivileged ? 'enabled' : (isViewer ? 'warn' : 'disabled'));
                 const wsItems = [
-                    { id: 'ws_role', isHero: true, name: `Workspace Role: ${wsRole}`, desc: `当前用户在工作区 [${wsName}] 被授予的官方治理角色为 [${wsRole}]`, statusClass: t2Status, statusText: `✅ 赋予 ${wsRole}`, badge: 'Role' },
-                    { id: 'ws_members', name: 'Manage Permissions (成员权限委派)', desc: '向其他企业成员分配或回收该工作区访问权限与管理角色', statusClass: isAdmin ? 'enabled' : (isMember ? 'warn' : 'disabled'), statusText: isAdmin ? '✅ 完全管理' : (isMember ? '⚠️ 查看者委派' : '❌ 禁用'), badge: 'Permissions' },
-                    { id: 'ws_edit', name: 'Create & Edit Assets (资产协同增删改)', desc: '新建、修改、重命名或删除该工作区名下的语义模型与分析报表', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ 编辑特权' : '❌ 仅只读', badge: 'Assets' },
-                    { id: 'ws_app', name: 'Publish App (组织应用打包发布)', desc: '将该工作区报表打包发布更新为组织企业应用程序 (App)', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ 允许发布' : '❌ 需成员', badge: 'App' },
-                    { id: 'ws_capacity', name: 'Fabric Capacity (算力容量绑定)', desc: '承载当前工作区资产运行的计算节点规格与专用容量', statusClass: 'enabled', statusText: '⚡ Fabric F64 专用容量', badge: 'Capacity' },
-                    { id: 'ws_target', name: `Workspace: ${wsName}`, desc: `工作区 ID: ${curWs.id} · 资源容器就绪`, statusClass: 'enabled', statusText: '✅ 目标就绪', badge: 'Workspace' }
+                    { id: 'ws_role', isHero: true, name: `WORKSPACE ROLE: ${wsRoleCaps}`, desc: `【当前分配角色】在工作区 [${wsName}] 被官方授予 [${wsRoleCaps}] 治理身份`, statusClass: t2Status, statusText: `✅ ASSIGNED: ${wsRoleCaps}`, badge: 'ROLE' },
+                    { id: 'ws_members', name: 'MANAGE PERMISSIONS (管理与成员委派)', desc: isAdmin ? '【可以】拥有最高管理权，可向组织成员分配、修改或撤销工作区各级角色' : (isMember ? '【限制】仅允许向他人授予 Viewer(查看者) 角色，无法分配更高权限' : '【禁止】无成员管理权限，禁止变更工作区成员名单与权限'), statusClass: isAdmin ? 'enabled' : (isMember ? 'warn' : 'disabled'), statusText: isAdmin ? '✅ CAN MANAGE' : (isMember ? '⚠️ CAN INVITE VIEWERS' : '❌ CANNOT MANAGE'), badge: 'PERMISSIONS' },
+                    { id: 'ws_edit', name: 'CREATE & EDIT ASSETS (资产协同增删改)', desc: isPrivileged ? '【可以】拥有资产编辑特权，允许新建、修改、重命名或删除模型与报表' : '【禁止】当前为 Viewer 只读角色，禁止修改或新增工作区任何资产', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ CAN EDIT' : '❌ CANNOT EDIT', badge: 'ASSETS' },
+                    { id: 'ws_app', name: 'PUBLISH APP (组织应用打包发布)', desc: (isAdmin || isMember) ? '【可以】允许将该工作区报表打包发布或更新为企业级应用程序 (App)' : '【禁止】仅 Admin/Member 角色具备组织应用发布与受众打包权限', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ CAN PUBLISH' : '❌ CANNOT PUBLISH', badge: 'APP' },
+                    { id: 'ws_capacity', name: 'FABRIC CAPACITY (算力容量绑定)', desc: '【可以】挂载企业专用容量 (Fabric F64)，享有独立计算算力与大模型加速', statusClass: 'enabled', statusText: '⚡ CAN ACCESS', badge: 'CAPACITY' },
+                    { id: 'ws_target', name: `WORKSPACE: ${wsName.toUpperCase()}`, desc: `【载体就绪】工作区名称: ${wsName} · 容器 ID: ${curWs.id}`, statusClass: 'enabled', statusText: '✅ READY', badge: 'WORKSPACE' }
                 ];
                 colWorkspaceBody = renderTierItemsHtml('workspace', wsItems);
             }
 
             // Module 3: Model (语义模型资产权限层)
             let colModelBody = '';
-            let modelTitleText = '🗄️ 3. Model (模型)';
+            let modelTitleText = '🗄️ 3. MODEL';
             let modelStatusBadge = '⚠️ 等待工作区';
             let modelStatusClass = 'disabled';
             let modelSubText = '未选择模型';
@@ -4448,7 +4472,7 @@
                     </div>
                 `;
             } else if (!hasSelectedModel) {
-                modelTitleText = '🗄️ 3. Model (未加载)';
+                modelTitleText = '🗄️ 3. MODEL (未加载)';
                 modelStatusBadge = '⚠️ 尚未选择';
                 modelStatusClass = 'warn';
                 modelSubText = '请在顶栏挑选模型';
@@ -4464,25 +4488,26 @@
             } else {
                 const canReadModel = isPrivileged || isViewer;
                 const canBuild = isPrivileged || Boolean(user?.state?.sharePermission && String(user?.state?.sharePermission).includes('Build'));
-                modelTitleText = `🗄️ 3. Model (${curModel.alias || curModel.name})`;
-                modelStatusBadge = canBuild ? '⚡ 构建+衍生' : (canReadModel ? '👁️ 只读' : '🚫 拒绝');
+                const modelPermLabel = canBuild ? 'READ + BUILD' : (canReadModel ? 'READ ONLY' : 'NO ACCESS');
+                modelTitleText = `🗄️ 3. MODEL (${(curModel.alias || curModel.name).toUpperCase()})`;
+                modelStatusBadge = canBuild ? '⚡ READ + BUILD' : (canReadModel ? '👁️ READ ONLY' : '🚫 NO ACCESS');
                 modelStatusClass = canBuild ? 'enabled' : (canReadModel ? 'warn' : 'disabled');
                 modelSubText = `模型 ID: ${curModel.id}`;
 
                 const modelItems = [
-                    { id: 'model_permission', isHero: true, name: `Model Permission: ${canBuild ? 'Read + Build' : (canReadModel ? 'Read Only' : 'No Access')}`, desc: `当前用户对语义模型 [${curModel.alias || curModel.name}] 的官方有效权限集合`, statusClass: canBuild ? 'enabled' : (canReadModel ? 'warn' : 'disabled'), statusText: canBuild ? '⚡ 读写构建' : (canReadModel ? '👁️ 仅读取' : '🚫 拒绝访问'), badge: 'Permission' },
-                    { id: 'model_read', name: 'Read (直接读取权限)', desc: '允许执行 DAX 查询、报表取数渲染与模型基础刷新 (Read 权限)', statusClass: canReadModel ? 'enabled' : 'disabled', statusText: canReadModel ? '✅ 授权读取' : '❌ 403 阻断', badge: 'Read' },
-                    { id: 'model_build', name: 'Build (衍生构建与探索)', desc: '允许以该模型为基础使用 Excel 透视分析、新建衍生报表 (Build 权限)', statusClass: canBuild ? 'enabled' : 'disabled', statusText: canBuild ? '⚡ 允许构建' : '❌ 仅只读', badge: 'Build' },
-                    { id: 'model_write', name: 'Write (模型架构与度量值写回)', desc: '允许通过 XMLA 端点或浏览器修改表结构、新建度量值与关联关系', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ 允许写入' : '❌ 写回阻断', badge: 'Write' },
-                    { id: 'model_rls', name: 'RLS (Row-Level Security / 行级安全)', desc: '针对该模型的 DAX 安全角色行过滤隔离状态；管理员穿透，访客受限', statusClass: isPrivileged ? 'bypassed' : 'warn', statusText: isPrivileged ? '⚡ 特权穿透' : '🔒 RLS 隔离', badge: 'RLS' },
-                    { id: 'model_reshare', name: 'Reshare (向第三方重新共享)', desc: '是否可将该具体语义模型二次授权给企业内其他受众成员', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ 允许共享' : '❌ 禁止共享', badge: 'Reshare' }
+                    { id: 'model_permission', isHero: true, name: `MODEL PERMISSION: ${modelPermLabel}`, desc: `【当前分配权限】当前用户对语义模型 [${curModel.alias || curModel.name}] 的官方有效权限集合`, statusClass: canBuild ? 'enabled' : (canReadModel ? 'warn' : 'disabled'), statusText: canBuild ? '⚡ READ + BUILD' : (canReadModel ? '👁️ READ ONLY' : '🚫 NO ACCESS'), badge: 'PERMISSION' },
+                    { id: 'model_read', name: 'READ (模型直接读取权限)', desc: canReadModel ? '【可以】执行 DAX 查询与模型基础刷新，下游报表正常取数渲染' : '【禁止】无 READ 权限，DAX 查询将被 403 阻断，报表将拒绝加载', statusClass: canReadModel ? 'enabled' : 'disabled', statusText: canReadModel ? '✅ CAN READ' : '❌ CANNOT READ', badge: 'READ' },
+                    { id: 'model_build', name: 'BUILD (衍生构建与自助探索)', desc: canBuild ? '【可以】允许以该模型为基础使用 Excel 透视分析、新建独立衍生报表' : '【禁止】无 BUILD 权限，无法新建下游衍生报表或在 Excel 中连接探索', statusClass: canBuild ? 'enabled' : 'disabled', statusText: canBuild ? '✅ CAN BUILD' : '❌ CANNOT BUILD', badge: 'BUILD' },
+                    { id: 'model_write', name: 'WRITE (架构与度量值写回)', desc: isPrivileged ? '【可以】通过 XMLA 端点或浏览器在线修改表结构、新建度量值与关系模型' : '【禁止】非 Admin/Member/Contributor 角色，禁止写回模型架构或修改度量值', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ CAN WRITE' : '❌ CANNOT WRITE', badge: 'WRITE' },
+                    { id: 'model_rls', name: 'RLS (行级数据安全过滤)', desc: isPrivileged ? '【特权】工作区管理员特权穿透，直接跳过所有 DAX 行级安全过滤规则' : '【限制】受 DAX 角色策略约束，仅能查看授权给当前身份的切片行数据', statusClass: isPrivileged ? 'bypassed' : 'warn', statusText: isPrivileged ? '⚡ ADMIN BYPASS' : '🔒 RLS RESTRICTED', badge: 'RLS' },
+                    { id: 'model_reshare', name: 'RESHARE (向第三方重新共享)', desc: (isAdmin || isMember) ? '【可以】允许将该具体语义模型的访问权限二次授权给其他组织成员' : '【禁止】无 RESHARE 权限，禁止向第三方组织成员分发或再授权该模型', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ CAN RESHARE' : '❌ CANNOT RESHARE', badge: 'RESHARE' }
                 ];
                 colModelBody = renderTierItemsHtml('model', modelItems);
             }
 
             // Module 4: Report (报表视图与交互权限层)
             let colReportBody = '';
-            let reportTitleText = '📊 4. Report (报表)';
+            let reportTitleText = '📊 4. REPORT';
             let reportStatusBadge = '⚠️ 等待工作区';
             let reportStatusClass = 'disabled';
             let reportSubText = '未选择报表';
@@ -4498,7 +4523,7 @@
                     </div>
                 `;
             } else if (!hasSelectedReport) {
-                reportTitleText = '📊 4. Report (未加载)';
+                reportTitleText = '📊 4. REPORT (未加载)';
                 reportStatusBadge = '⚠️ 尚未选择';
                 reportStatusClass = 'warn';
                 reportSubText = '请在顶栏挑选报表';
@@ -4514,23 +4539,24 @@
             } else {
                 const canEditReport = isPrivileged && user?.state?.tenantAllowWebModeling;
                 const canExportUnderlying = Boolean(user?.state?.sharePermission?.includes('Build') || isPrivileged) && Boolean(user?.state?.tenantAllowExport);
-                reportTitleText = `📊 4. Report (${curReport.alias || curReport.name})`;
-                reportStatusBadge = canEditReport ? '✏️ 协同编辑' : '👁️ 浏览交互';
+                const reportAccessLabel = canEditReport ? 'EDIT + VIEW' : 'VIEW ONLY';
+                reportTitleText = `📊 4. REPORT (${(curReport.alias || curReport.name).toUpperCase()})`;
+                reportStatusBadge = canEditReport ? '✏️ EDIT + VIEW' : '👁️ VIEW ONLY';
                 reportStatusClass = canEditReport ? 'enabled' : 'warn';
                 reportSubText = `报表 ID: ${curReport.id}`;
 
                 const reportItems = [
-                    { id: 'report_access', isHero: true, name: `Report Access: ${canEditReport ? 'Edit + View' : 'View Only'}`, desc: `当前用户对报表 [${curReport.alias || curReport.name}] 的官方有效访问级别`, statusClass: canEditReport ? 'enabled' : 'warn', statusText: canEditReport ? '✏️ 编辑+浏览' : '👁️ 仅浏览', badge: 'Access' },
-                    { id: 'report_view', name: 'View & Interact (报表在线交互)', desc: '访问该报表页面、切片器联动与图表多维钻取浏览', statusClass: 'enabled', statusText: '✅ 完整浏览', badge: 'View' },
-                    { id: 'report_edit', name: 'Edit Visuals (视觉对象编辑与另存)', desc: '编辑现有报表页面布局、增删视觉对象或另存为独立报表副本', statusClass: canEditReport ? 'enabled' : 'disabled', statusText: canEditReport ? '✅ 允许编辑' : '❌ 仅只读', badge: 'Edit' },
-                    { id: 'report_export', name: 'Export Data (导出底层明细数据)', desc: '允许将该报表图表底层原始颗粒度明细导出至本地 Excel/CSV', statusClass: canExportUnderlying ? 'enabled' : 'warn', statusText: canExportUnderlying ? '✅ 允许导出' : '⚠️ 仅汇总', badge: 'Export' },
-                    { id: 'report_sub', name: 'Subscribe & Alert (订阅与指标警报)', desc: '设置该报表关键 KPI 阈值自动化警报及定时邮件快照推送', statusClass: 'enabled', statusText: '✅ 允许订阅', badge: 'Subscribe' },
-                    { id: 'report_share', name: 'Share Report (报表链接分发共享)', desc: '生成该报表的组织安全嵌入链接向授权受众分发', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ 允许共享' : '❌ 需成员', badge: 'Share' }
+                    { id: 'report_access', isHero: true, name: `REPORT ACCESS: ${reportAccessLabel}`, desc: `【当前分配权限】当前用户对报表 [${curReport.alias || curReport.name}] 的官方有效访问级别`, statusClass: canEditReport ? 'enabled' : 'warn', statusText: canEditReport ? '✏️ EDIT + VIEW' : '👁️ VIEW ONLY', badge: 'ACCESS' },
+                    { id: 'report_view', name: 'VIEW & INTERACT (报表在线交互)', desc: '【可以】在线访问报表页面、切片器联动与图表多维钻取浏览', statusClass: 'enabled', statusText: '✅ CAN VIEW', badge: 'VIEW' },
+                    { id: 'report_edit', name: 'EDIT VISUALS (视觉对象在线编辑)', desc: canEditReport ? '【可以】在线修改报表图表、调整页面布局与另存副本' : '【禁止】未被授予编辑权限，报表处于纯只读交互模式，无法修改布局', statusClass: canEditReport ? 'enabled' : 'disabled', statusText: canEditReport ? '✅ CAN EDIT' : '❌ CANNOT EDIT', badge: 'EDIT' },
+                    { id: 'report_export', name: 'EXPORT DATA (底层明细数据导出)', desc: canExportUnderlying ? '【可以】允许导出底层原始颗粒度数据明细至本地 Excel/CSV' : '【限制】缺少 BUILD 权限或受租户策略限制，仅允许导出带格式汇总数据', statusClass: canExportUnderlying ? 'enabled' : 'warn', statusText: canExportUnderlying ? '✅ CAN EXPORT' : '⚠️ SUMMARY ONLY', badge: 'EXPORT' },
+                    { id: 'report_sub', name: 'SUBSCRIBE & ALERT (订阅与数据警报)', desc: '【可以】设置报表关键 KPI 阈值自动化警报及定时邮件快照推送', statusClass: 'enabled', statusText: '✅ CAN SUBSCRIBE', badge: 'SUBSCRIBE' },
+                    { id: 'report_share', name: 'SHARE REPORT (报表安全链接共享)', desc: (isAdmin || isMember) ? '【可以】生成组织安全共享链接向授权受众分发报表' : '【禁止】仅 Admin/Member 具备报表受众共享与链接分发权限', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ CAN SHARE' : '❌ CANNOT SHARE', badge: 'SHARE' }
                 ];
                 colReportBody = renderTierItemsHtml('report', reportItems);
             }
 
-            // Module 5: Connection (网关连接与凭据鉴权层 - 明确展示当前模型使用的具体连接与网关)
+            // Module 5: Connection (网关连接与凭据鉴权层 - 官方 Connection 名称高亮突出，严格区分网关通道)
             let colConnectionBody = '';
             let modelConnections = [];
             const connCacheKey = `${curWs?.id || 'global'}_${curModel?.id || ''}`;
@@ -4545,7 +4571,7 @@
             const inspectCache = (window._modelDatasourcesCache && curModel?.id) ? window._modelDatasourcesCache[connCacheKey] : null;
 
             let primaryConnName = '';
-            let primaryDsType = 'Database';
+            let primaryDsType = 'DATABASE';
             let primaryServer = '';
             let primaryDb = '';
 
@@ -4565,7 +4591,7 @@
                         <div style="font-size: 1.3rem; margin-bottom: 6px;">🔌</div>
                         <div style="font-weight: 700; font-size: 0.76rem; color: #f59e0b; margin-bottom: 3px;">未关联具体语义模型</div>
                         <div style="font-size: 0.65rem; color: var(--text-secondary); line-height: 1.4;">
-                            请在顶栏选择模型以呈现其具体使用的连接通道与网关。
+                            请在顶栏选择模型以呈现其具体使用的官方连接与底层网关。
                         </div>
                     </div>
                 `;
@@ -4574,7 +4600,6 @@
                 if (!inspectCache && curWs?.id && curModel?.id) {
                     this.fetchModelConnections(curWs.id, curModel.id);
                 } else if (inspectCache && Array.isArray(inspectCache.datasources) && inspectCache.datasources.length > 0) {
-                    // 自愈机制：如果缓存数据缺少 connectionName 属性，主动重拉
                     const hasConnNameProp = inspectCache.datasources.some(d => 'connectionName' in d);
                     if (!hasConnNameProp && curWs?.id && curModel?.id) {
                         delete window._modelDatasourcesCache[connCacheKey];
@@ -4582,23 +4607,23 @@
                     }
                 }
 
-                // 2. 预设基础模型的底层连接映射表 (沙盒模型直观展示)
+                // 2. 预设模型的官方 Connection 映射表 (大写醒目突出官方连接名称)
                 const PRESET_CONNS_MAP = {
                     'model_sales': [
-                        { id: 'conn_ds_sales_sql', isHero: true, name: 'Connection: AWS REDSHIFT (示例数据源)', desc: '数据源: Amazon Redshift · vf-uap-apac-redshift.amazonaws.com:5439 · 库: vfuap · DirectQuery 模式', statusClass: 'enabled', statusText: '✅ 凭据有效', badge: 'AWS Redshift' },
-                        { id: 'conn_ds_sales_adls', isHero: true, name: 'Connection: ADLS Gen2 (日志数据湖)', desc: '数据源: Azure Data Lake · adlsapacprod.dfs.core.windows.net · 路径: /telemetry_logs · Import 模式', statusClass: 'enabled', statusText: '✅ Key 有效', badge: 'Data Lake' }
+                        { id: 'conn_ds_sales_sql', isHero: true, name: 'CONNECTION: AWS REDSHIFT', desc: '【当前模型绑定的官方连接】数据源: Amazon Redshift · vf-uap-apac-redshift.amazonaws.com:5439 · 库: vfuap · 模式: DirectQuery', statusClass: 'enabled', statusText: '✅ CONNECTED', badge: 'REDSHIFT' },
+                        { id: 'conn_ds_sales_adls', isHero: true, name: 'CONNECTION: ADLS GEN2', desc: '【当前模型绑定的官方连接】数据源: Azure Data Lake · adlsapacprod.dfs.core.windows.net · 路径: /telemetry_logs · 模式: Import', statusClass: 'enabled', statusText: '✅ CONNECTED', badge: 'DATA LAKE' }
                     ],
                     'model_finance': [
-                        { id: 'conn_ds_fin_hana', isHero: true, name: 'Connection: SAP HANA PROD (核心总账)', desc: '数据源: SAP HANA · saphana-corp.internal:30015 · 库: S4H_FIN_CORE · DirectQuery', statusClass: 'enabled', statusText: '✅ 网关穿透', badge: 'SAP HANA' },
-                        { id: 'conn_ds_fin_sql', isHero: true, name: 'Connection: SQL Server CORP (内部结算)', desc: '数据源: SQL Server · corp-sql-fin01 · 库: FIN_LEDGER_DB · Import 模式', statusClass: 'enabled', statusText: '✅ 凭据已加载', badge: 'SQL Server' }
+                        { id: 'conn_ds_fin_hana', isHero: true, name: 'CONNECTION: SAP HANA PROD', desc: '【当前模型绑定的官方连接】数据源: SAP HANA · saphana-corp.internal:30015 · 库: S4H_FIN_CORE · 模式: DirectQuery', statusClass: 'enabled', statusText: '✅ CONNECTED', badge: 'SAP HANA' },
+                        { id: 'conn_ds_fin_sql', isHero: true, name: 'CONNECTION: SQL SERVER CORP', desc: '【当前模型绑定的官方连接】数据源: SQL Server · corp-sql-fin01 · 库: FIN_LEDGER_DB · 模式: Import', statusClass: 'enabled', statusText: '✅ CONNECTED', badge: 'SQL SERVER' }
                     ],
                     'model_hr': [
-                        { id: 'conn_ds_hr_api', isHero: true, name: 'Connection: Workday REST API (薪酬接口)', desc: '数据源: REST API · services.workday.com/ccx/api · OAuth 2.0 委派', statusClass: 'enabled', statusText: '✅ 令牌授权', badge: 'REST API' },
-                        { id: 'conn_ds_hr_sql', isHero: true, name: 'Connection: HR Confidential SQL (档案库)', desc: '数据源: Azure SQL · sqlsrv-hr-confidential.windows.net · 托管标识直连', statusClass: 'enabled', statusText: '✅ 凭据已加载', badge: 'Azure SQL' }
+                        { id: 'conn_ds_hr_api', isHero: true, name: 'CONNECTION: WORKDAY REST API', desc: '【当前模型绑定的官方连接】数据源: REST API · services.workday.com/ccx/api · 协议: OAuth 2.0 身份委派', statusClass: 'enabled', statusText: '✅ CONNECTED', badge: 'REST API' },
+                        { id: 'conn_ds_hr_sql', isHero: true, name: 'CONNECTION: AZURE SQL CONFIDENTIAL', desc: '【当前模型绑定的官方连接】数据源: Azure SQL · sqlsrv-hr-confidential.windows.net · 凭据: 托管标识直连', statusClass: 'enabled', statusText: '✅ CONNECTED', badge: 'AZURE SQL' }
                     ],
                     'model_inventory': [
-                        { id: 'conn_ds_inv_oracle', isHero: true, name: 'Connection: Oracle WMS (仓储管理)', desc: '数据源: Oracle · ora-logistics-db.corp:1521/ORCL · 经网关 OPS_Gateway · DirectQuery', statusClass: 'enabled', statusText: '✅ 网关连通', badge: 'Oracle' },
-                        { id: 'conn_ds_inv_sp', isHero: true, name: 'Connection: SharePoint Online (物料清单)', desc: '数据源: SharePoint · contoso.sharepoint.com · 列表: Stock_Levels · Import', statusClass: 'enabled', statusText: '✅ 凭据已加载', badge: 'SharePoint' }
+                        { id: 'conn_ds_inv_oracle', isHero: true, name: 'CONNECTION: ORACLE WMS', desc: '【当前模型绑定的官方连接】数据源: Oracle · ora-logistics-db.corp:1521/ORCL · 模式: DirectQuery', statusClass: 'enabled', statusText: '✅ CONNECTED', badge: 'ORACLE' },
+                        { id: 'conn_ds_inv_sp', isHero: true, name: 'CONNECTION: SHAREPOINT ONLINE', desc: '【当前模型绑定的官方连接】数据源: SharePoint · contoso.sharepoint.com · 列表: Stock_Levels · 模式: Import', statusClass: 'enabled', statusText: '✅ CONNECTED', badge: 'SHAREPOINT' }
                     ]
                 };
 
@@ -4607,24 +4632,25 @@
 
                 if (inspectCache && Array.isArray(inspectCache.datasources) && inspectCache.datasources.length > 0) {
                     modelConnections = inspectCache.datasources.map((ds, idx) => {
-                        const connName = ds.connectionName || ds.datasourceName || '';
-                        const dsType = ds.datasourceType || 'Database';
+                        const rawConnName = ds.connectionName || ds.datasourceName || '';
+                        const dsType = (ds.datasourceType || 'Database').toUpperCase();
                         const server = ds.server || ds.url || '云端数据库连接';
                         const db = ds.database || '';
                         const gwName = ds.gatewayName || (detectedGateways[0]?.name) || '';
                         const hasGw = Boolean(gwName || (ds.gatewayId && ds.gatewayId !== '-'));
-                        const gwStatus = ds.gatewayStatus || detectedGateways[0]?.status || 'Live';
+                        const gwStatus = (ds.gatewayStatus || detectedGateways[0]?.status || 'LIVE').toUpperCase();
 
-                        if (!primaryConnName && connName) {
+                        // 提炼大写官方 Connection 名字
+                        const connName = rawConnName ? rawConnName.toUpperCase() : `${dsType} (${server})`;
+                        if (!primaryConnName) {
                             primaryConnName = connName;
                             primaryDsType = dsType;
                             primaryServer = server;
                             primaryDb = db;
                         }
 
-                        // 官方连接名称醒目突出！
-                        const displayName = connName ? `Connection: ${connName}` : `Connection: ${dsType} (${server})`;
-                        const displayDesc = `数据源类型: ${dsType} · 服务器: ${server}${db ? ' · 数据库: ' + db : ''}${hasGw ? ' · 经网关: ' + gwName + ' (' + gwStatus + ')' : ' · 云端直连通道'}`;
+                        const displayName = `CONNECTION: ${connName}`;
+                        const displayDesc = `【当前模型绑定的官方连接】数据源: ${dsType} · 服务器: ${server}${db ? ' · 数据库: ' + db : ''}${hasGw ? ' · 经由网关: ' + gwName : ' · 云端直连通道'}`;
 
                         return {
                             id: `conn_real_ds_${idx}`,
@@ -4632,92 +4658,96 @@
                             name: displayName,
                             desc: displayDesc,
                             statusClass: 'enabled',
-                            statusText: hasGw ? `✅ ${gwStatus} 在线` : '✅ 直连通道有效',
-                            badge: hasGw ? 'Gateway' : dsType
+                            statusText: hasGw ? `✅ ${gwStatus} 在线` : '✅ CONNECTED',
+                            badge: dsType
                         };
                     });
                 } else if (PRESET_CONNS_MAP[curModel?.id] || (this.currentModelKey && PRESET_CONNS_MAP[this.currentModelKey])) {
                     modelConnections = PRESET_CONNS_MAP[curModel?.id] || PRESET_CONNS_MAP[this.currentModelKey];
                     if (modelConnections.length > 0 && modelConnections[0].name) {
-                        primaryConnName = modelConnections[0].name.replace(/^Connection:\s*/, '');
+                        primaryConnName = modelConnections[0].name.replace(/^CONNECTION:\s*/i, '');
                     }
                 }
 
-                // 4. 组装条目列表：先放入当前模型具体使用的连接通道，再附加通道与安全治理规则
+                // 4. 组装条目列表：先放入当前模型具体使用的官方 Connection 通道
                 const connItems = [];
                 if (modelConnections.length > 0) {
                     modelConnections.forEach(mc => connItems.push(mc));
                 } else if (this._fetchingConnections && this._fetchingConnections[connCacheKey]) {
                     connItems.push({
                         id: 'conn_inspecting',
-                        name: '正在穿透检测模型连接...',
-                        desc: `正在调用数据源分析引擎获取模型 [${curModel.alias || curModel.name}] 底层连接通道与网关`,
+                        isHero: true,
+                        name: 'CONNECTION: 正在穿透探测官方连接...',
+                        desc: `【连接探测中】正在向数据源分析引擎拉取模型 [${curModel.alias || curModel.name}] 底层官方连接名称与网关`,
                         statusClass: 'warn',
-                        statusText: '⏳ 穿透检测中',
-                        badge: 'Scanning'
+                        statusText: '⏳ SCANNING',
+                        badge: 'SCANNING'
                     });
                 } else {
+                    const fallbackConnName = `${(curModel.alias || curModel.name).toUpperCase()} PRIMARY CONNECTION`;
+                    primaryConnName = fallbackConnName;
                     connItems.push({
                         id: 'conn_default_ds',
                         isHero: true,
-                        name: `Connection: 模型默认数据连接`,
-                        desc: `模型 [${curModel.alias || curModel.name}] 已挂载默认数据源通道 · 状态稳定`,
+                        name: `CONNECTION: ${fallbackConnName}`,
+                        desc: `【当前模型绑定的官方连接】模型 [${curModel.alias || curModel.name}] 已挂载官方数据源连接通道 · 运行正常`,
                         statusClass: 'enabled',
-                        statusText: '✅ 凭据鉴权有效',
-                        badge: 'Datasource'
+                        statusText: '✅ CONNECTED',
+                        badge: 'DATASOURCE'
                     });
                 }
 
-                // 解析企业数据网关的具体运行态
+                // 解析企业数据网关的具体运行态 (作为承载通道，绝不喧宾夺主)
                 const activeGw = detectedGateways[0] || (inspectCache?.datasources?.find(d => d.gatewayName) ? {
                     name: inspectCache.datasources.find(d => d.gatewayName).gatewayName,
                     status: inspectCache.datasources.find(d => d.gatewayName).gatewayStatus || 'Live'
                 } : null);
 
-                let gwItemName = 'Enterprise Gateway: 本地数据网关';
-                let gwItemDesc = '该工作区绑定的本地企业数据网关 (On-Premises Data Gateway) 拓扑';
+                let gwItemName = 'GATEWAY: 企业本地数据网关 (承载通道)';
+                let gwItemDesc = '【承载通道】该工作区绑定的本地企业数据网关 (On-Premises Data Gateway) 集群拓扑';
                 let gwItemStatusClass = 'warn';
-                let gwItemStatusText = '⚠️ 状态未知';
-                let gwItemBadge = 'Gateway';
+                let gwItemStatusText = '⚠️ UNKNOWN';
+                let gwItemBadge = 'GATEWAY';
 
                 if (activeGw) {
-                    gwItemName = `Enterprise Gateway: ${activeGw.name}`;
-                    gwItemDesc = `本地网关集群: ${activeGw.name} · 状态: ${activeGw.status || 'Live'} 在线 · 驱动内网穿透`;
+                    gwItemName = `GATEWAY: ${activeGw.name.toUpperCase()} (承载网关)`;
+                    gwItemDesc = `【承载通道】经由企业本地数据网关集群 [${activeGw.name}] 穿透内网访问底层物理数据库`;
                     gwItemStatusClass = 'enabled';
-                    gwItemStatusText = `✅ ${activeGw.status || 'Live'} 在线`;
-                    gwItemBadge = 'Live Cluster';
+                    gwItemStatusText = `✅ ${(activeGw.status || 'LIVE').toUpperCase()} ONLINE`;
+                    gwItemBadge = 'LIVE CLUSTER';
                 } else if (gatewayOnline === true) {
                     gwItemStatusClass = 'enabled';
-                    gwItemStatusText = '✅ 网关在线';
+                    gwItemStatusText = '✅ LIVE ONLINE';
                 } else if (gatewayOnline === false) {
                     gwItemStatusClass = 'disabled';
-                    gwItemStatusText = '❌ 网关离线';
+                    gwItemStatusText = '❌ GATEWAY OFFLINE';
                 }
 
                 connItems.push(
-                    { id: 'conn_user_perm', name: 'Connection User (连接使用权)', desc: '官方连接凭据授权，允许模型在刷新与 DirectQuery 查询时复用凭据', statusClass: hasDataConn ? 'enabled' : 'disabled', statusText: hasDataConn ? '✅ 凭据授权' : '❌ 缺少权限', badge: 'Credentials' },
+                    { id: 'conn_user_perm', name: 'CONNECTION USER (连接凭据使用权)', desc: hasDataConn ? '【可以】具备 Connection User 授权，模型在刷新与 DirectQuery 取数时可复用此凭据' : '【禁止】未被分配 Connection User 角色，无法调用或复用该连接凭据', statusClass: hasDataConn ? 'enabled' : 'disabled', statusText: hasDataConn ? '✅ CAN USE' : '❌ CANNOT USE', badge: 'CREDENTIALS' },
                     { id: 'conn_gw', name: gwItemName, desc: gwItemDesc, statusClass: gwItemStatusClass, statusText: gwItemStatusText, badge: gwItemBadge },
-                    { id: 'conn_sso', name: 'DirectQuery SSO (单点登录凭据委派)', desc: 'DirectQuery 运行时使用当前用户 Entra ID 身份穿透鉴权访问底层数据库', statusClass: 'enabled', statusText: '✅ 委派生效', badge: 'SSO' },
-                    { id: 'conn_gac', name: 'GAC (Granular Access Control / 细粒度控制)', desc: '网关与 DirectQuery 跨源 Mashup 细粒度数据门禁隔离与数据防泄漏', statusClass: isPrivileged ? 'bypassed' : 'enabled', statusText: isPrivileged ? '⚡ 管理员直通' : '🛡️ 门禁通过', badge: 'GAC' },
-                    { id: 'conn_refresh', name: 'Scheduled Refresh (计划刷新调度通道)', desc: '定时增量抽取刷新与 XMLA 交互式微批次数据刷新触发特权', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ 允许刷新' : '❌ 需协作者', badge: 'Refresh' }
+                    { id: 'conn_sso', name: 'DIRECTQUERY SSO (单点登录身份委派)', desc: '【可以】DirectQuery 运行时使用当前用户 Entra ID 身份穿透鉴权直连底层数据库', statusClass: 'enabled', statusText: '✅ CAN DELEGATE', badge: 'SSO' },
+                    { id: 'conn_gac', name: 'GAC (细粒度跨源安全门禁)', desc: isPrivileged ? '【特权】工作区管理员直通，豁免跨源数据 Mashup 细粒度安全门禁限制' : '【可以】跨源数据合规校验通过，满足企业级数据防泄漏策略', statusClass: isPrivileged ? 'bypassed' : 'enabled', statusText: isPrivileged ? '⚡ ADMIN BYPASS' : '🛡️ GAC PASSED', badge: 'GAC' },
+                    { id: 'conn_refresh', name: 'SCHEDULED REFRESH (计划刷新调度)', desc: isPrivileged ? '【可以】允许配置自动化计划刷新调度并随时手动触发微批次数据抽取' : '【禁止】仅 Admin/Member/Contributor 具备计划刷新配置与手动触发权限', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ CAN REFRESH' : '❌ CANNOT REFRESH', badge: 'REFRESH' }
                 );
 
                 colConnectionBody = renderTierItemsHtml('connection', connItems);
             }
 
             const activeGwName = (inspectCache?.gateways && inspectCache.gateways[0]?.name) || (inspectCache?.datasources?.find(d => d.gatewayName)?.gatewayName) || '';
-            const connCountText = modelConnections.length > 0 ? `(${modelConnections.length} 连接)` : '';
-            const connTitleText = primaryConnName ? `🔌 5. Connection (${primaryConnName})` : `🔌 5. Connection ${connCountText}`;
-            const connSubText = activeGwName ? `网关: ${activeGwName}` : (primaryServer ? `目标: ${primaryServer}` : (hasSelectedModel ? `模型: ${curModel.alias || curModel.name}` : '等待工作区'));
-            const connStatusLabel = !hasSelectedWs ? '⚠️ 未选' : (!hasSelectedModel ? '⚠️ 未选模型' : (primaryConnName ? `✅ ${primaryConnName}` : (activeGwName ? '✅ 网关连通' : '✅ 连接就绪')));
+            const connTitleUpper = primaryConnName ? primaryConnName.toUpperCase() : '数据源连接';
+            const connTitleText = `🔌 5. CONNECTION (${connTitleUpper})`;
+            const connSubText = `连接: ${connTitleUpper} · 经由网关: ${activeGwName ? activeGwName.toUpperCase() : '云端直连'}`;
+            const connStatusLabel = !hasSelectedWs ? '⚠️ 未选' : (!hasSelectedModel ? '⚠️ 未选模型' : `✅ ${connTitleUpper}`);
             const connStatusClass = !hasSelectedWs ? 'disabled' : (!hasSelectedModel ? 'warn' : 'enabled');
 
             // Module 6: Pipeline (部署管道与 ALM 治理层)
             let colPipelineBody = '';
+            const pipelineRoleName = isPipelineAdmin ? 'ADMIN' : (hasSelectedWs ? 'DEPLOYER' : 'NONE');
             const pipelineItems = [
-                { id: 'pipeline_role', isHero: true, name: `Pipeline Role: ${isPipelineAdmin ? 'Pipeline Admin (管道管理员)' : (hasSelectedWs ? 'Deployer (阶段部署者)' : 'None (未关联)')}`, desc: hasSelectedWs ? `当前用户在工作区 [${wsName}] ALM 部署管道中的治理身份` : '需选择工作区以呈现管道身份', statusClass: hasSelectedWs ? (isPipelineAdmin ? 'enabled' : 'warn') : 'disabled', statusText: hasSelectedWs ? (isPipelineAdmin ? '✅ 完整管理' : '⚠️ 仅部署') : '❌ 未关联', badge: 'ALM' },
-                { id: 'pipeline_deploy', name: 'Deploy to Test / Prod (阶段流转部署)', desc: '将开发阶段的模型与报表一键晋升部署至测试 (Test) 或生产 (Prod) 环境', statusClass: hasSelectedWs ? 'warn' : 'disabled', statusText: hasSelectedWs ? '⚠️ 需绑定管道' : '❌ 未关联', badge: 'Deploy' },
-                { id: 'pipeline_diff', name: 'Compare Differences (阶段架构对比)', desc: '自动比对源阶段与目标阶段的模型架构、表变更与度量值元数据差异', statusClass: hasSelectedWs ? 'warn' : 'disabled', statusText: hasSelectedWs ? '⚠️ 需绑定管道' : '❌ 未关联', badge: 'Diff' }
+                { id: 'pipeline_role', isHero: true, name: `PIPELINE ROLE: ${pipelineRoleName}`, desc: hasSelectedWs ? `【当前分配角色】在工作区 [${wsName}] 部署管道 ALM 生命周期中的官方治理身份` : '【未关联】需选择目标工作区以呈现部署管道身份', statusClass: hasSelectedWs ? (isPipelineAdmin ? 'enabled' : 'warn') : 'disabled', statusText: hasSelectedWs ? (isPipelineAdmin ? '✅ FULL ADMIN' : '⚠️ DEPLOYER') : '❌ NO ACCESS', badge: 'ALM' },
+                { id: 'pipeline_deploy', name: 'STAGE DEPLOYMENT (阶段流转部署)', desc: isPipelineAdmin ? '【可以】允许将开发阶段的模型与报表一键晋升部署至测试 (Test) 或生产 (Prod) 环境' : '【禁止】尚未绑定专用管道或缺少部署者权限，无法执行阶段流转', statusClass: isPipelineAdmin ? 'enabled' : 'warn', statusText: isPipelineAdmin ? '✅ CAN DEPLOY' : '⚠️ CANNOT DEPLOY', badge: 'DEPLOY' },
+                { id: 'pipeline_diff', name: 'SCHEMA DIFF (阶段架构差异比对)', desc: isPipelineAdmin ? '【可以】自动比对各阶段模型架构、表字段变更及度量值元数据差异' : '【禁止】需绑定部署管道以启用自动化架构差异比对检测引擎', statusClass: isPipelineAdmin ? 'enabled' : 'warn', statusText: isPipelineAdmin ? '✅ CAN COMPARE' : '⚠️ CANNOT COMPARE', badge: 'DIFF' }
             ];
             if (!hasSelectedWs) {
                 colPipelineBody = `
@@ -4737,12 +4767,12 @@
 
             // 资产模块大卡片字典映射 (6 个固定大卡片，横向固定不超出屏幕，固定不能移动)
             const cardsMap = {
-                'tenant': buildTierCardHtml('tenant', '🏢 1. Tenant (租户策略)', userSub, tenantHeaderStatusClass, tenantHeaderStatusText, colTenantBody),
-                'workspace': buildTierCardHtml('workspace', '📁 2. Workspace (工作区)', wsName, wsHeaderStatusClass, wsHeaderStatusText, colWorkspaceBody),
+                'tenant': buildTierCardHtml('tenant', '🏢 1. TENANT (租户策略)', userSub, tenantHeaderStatusClass, tenantHeaderStatusText, colTenantBody),
+                'workspace': buildTierCardHtml('workspace', '📁 2. WORKSPACE (工作区)', wsName, wsHeaderStatusClass, wsHeaderStatusText, colWorkspaceBody),
                 'model': buildTierCardHtml('model', modelTitleText, modelSubText, modelStatusClass, modelStatusBadge, colModelBody),
                 'report': buildTierCardHtml('report', reportTitleText, reportSubText, reportStatusClass, reportStatusBadge, colReportBody),
                 'connection': buildTierCardHtml('connection', connTitleText, connSubText, connStatusClass, connStatusLabel, colConnectionBody),
-                'pipeline': buildTierCardHtml('pipeline', '🚀 6. Pipeline (部署管道)', hasSelectedWs ? 'ALM 流转治理' : '等待工作区', pipelineStatusClass, pipelineStatusLabel, colPipelineBody)
+                'pipeline': buildTierCardHtml('pipeline', '🚀 6. PIPELINE (部署管道)', hasSelectedWs ? 'ALM 流转治理' : '等待工作区', pipelineStatusClass, pipelineStatusLabel, colPipelineBody)
             };
 
             // 6 个大卡片固定按照 1-6 标准流转顺序平分屏幕宽，不能移动
@@ -4823,9 +4853,19 @@
 
             try {
                 this.syncFromGtb();
-                const curWsId = this.currentWorkspaceId;
+                const selectedWsIds = Array.from(window.selectedGtbWorkspaceIds || []);
+                const curWsId = selectedWsIds[0] || this.currentWorkspaceId;
                 const selectedDsIds = Array.from(window.selectedGtbDatasetIds || []);
-                const curDsId = selectedDsIds[0] || (this.currentModelKey ? this.currentModelKey.replace(/^real_model_/, '') : '');
+                let curDsId = selectedDsIds[0] || (this.currentModelKey ? this.currentModelKey.replace(/^real_model_/, '') : '');
+
+                // 若顶栏未直接选中模型但选了工作区，尝试检索该工作区下的第一个模型
+                if (!curDsId && curWsId) {
+                    const allDatasets = window.getMergedGtbDatasets ? window.getMergedGtbDatasets() : JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
+                    const wsDatasets = allDatasets.filter(d => String(d.workspaceId || '').toLowerCase() === String(curWsId).toLowerCase());
+                    if (wsDatasets.length > 0) {
+                        curDsId = wsDatasets[0].id;
+                    }
+                }
 
                 if (curDsId) {
                     const cacheKey = `${curWsId || 'global'}_${curDsId}`;
@@ -4837,20 +4877,29 @@
                     } catch(e) {}
                     await this.fetchModelConnections(curWsId, curDsId, true);
                 }
+
+                // 强制重新渲染矩阵
                 this.renderUserAssetsMatrix();
 
-                // 弹出轻量反馈提示或临时更新顶部主体状态栏
+                // 弹出轻量反馈提示与顶部状态栏反馈
                 const topBadge = document.getElementById('pb-top-simulated-badge');
                 if (topBadge) {
                     const originalText = topBadge.textContent;
                     topBadge.textContent = '⚡ 已完成全景权限链路与数据网关状态穿透刷新！';
                     setTimeout(() => { if (topBadge.textContent.startsWith('⚡')) topBadge.textContent = originalText; }, 2500);
                 }
-                if (typeof window.showToast === 'function') {
-                    window.showToast('✅ 用户全景权限链路与底层数据网关已穿透更新！', 'success');
+
+                const toastMsg = curDsId ? '✅ 用户全景权限链路与模型底层官方连接已穿透更新！' : '✅ 用户全景权限链路已刷新 (请在顶栏选择具体模型以检测官方连接)';
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification(toastMsg, 'success', 2500);
+                } else if (typeof window.showToast === 'function') {
+                    window.showToast(toastMsg, 'success');
                 }
             } catch (err) {
                 console.error('刷新链路失败:', err);
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification('⚠️ 刷新链路异常，请检查网络或登录凭据', 'warn', 3000);
+                }
             } finally {
                 setTimeout(() => {
                     if (icon) icon.style.animation = '';

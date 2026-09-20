@@ -8601,4 +8601,97 @@ body.light-theme .pb-asset-status-pill.status-bypassed,
     vertical-align: middle;
 }
 
+/* 权限链路语义说明标签 (一眼看出可做与不可做) */
+.pb-desc-tag {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.64rem;
+    font-weight: 800;
+    padding: 0 4px;
+    height: 16px;
+    border-radius: 3px;
+    margin-right: 4px;
+    vertical-align: baseline;
+    letter-spacing: 0.2px;
+}
+.pb-desc-tag.tag-can {
+    color: #34d399;
+    background: rgba(52, 211, 153, 0.16);
+    border: 1px solid rgba(52, 211, 153, 0.35);
+}
+.pb-desc-tag.tag-cannot {
+    color: #f87171;
+    background: rgba(239, 68, 68, 0.16);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+}
+.pb-desc-tag.tag-limit {
+    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.16);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+}
+.pb-desc-tag.tag-priv {
+    color: #c084fc;
+    background: rgba(168, 85, 247, 0.16);
+    border: 1px solid rgba(168, 85, 247, 0.35);
+}
+.pb-desc-tag.tag-role,
+.pb-desc-tag.tag-conn {
+    color: #818cf8;
+    background: rgba(99, 102, 241, 0.16);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+}
+.pb-desc-tag.tag-gw {
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.16);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+}
+.pb-desc-tag.tag-ok {
+    color: #34d399;
+    background: rgba(52, 211, 153, 0.1);
+    border: 1px solid rgba(52, 211, 153, 0.2);
+}
 
+body.light-theme .pb-desc-tag.tag-can,
+[data-theme="light"] .pb-desc-tag.tag-can {
+    color: #047857 !important;
+    background: #ecfdf5 !important;
+    border-color: #a7f3d0 !important;
+}
+body.light-theme .pb-desc-tag.tag-cannot,
+[data-theme="light"] .pb-desc-tag.tag-cannot {
+    color: #b91c1c !important;
+    background: #fef2f2 !important;
+    border-color: #fecaca !important;
+}
+body.light-theme .pb-desc-tag.tag-limit,
+[data-theme="light"] .pb-desc-tag.tag-limit {
+    color: #b45309 !important;
+    background: #fffbeb !important;
+    border-color: #fde68a !important;
+}
+body.light-theme .pb-desc-tag.tag-priv,
+[data-theme="light"] .pb-desc-tag.tag-priv {
+    color: #6d28d9 !important;
+    background: #faf5ff !important;
+    border-color: #ddd6fe !important;
+}
+body.light-theme .pb-desc-tag.tag-role,
+body.light-theme .pb-desc-tag.tag-conn,
+[data-theme="light"] .pb-desc-tag.tag-role,
+[data-theme="light"] .pb-desc-tag.tag-conn {
+    color: #4338ca !important;
+    background: #eef2ff !important;
+    border-color: #c7d2fe !important;
+}
+body.light-theme .pb-desc-tag.tag-gw,
+[data-theme="light"] .pb-desc-tag.tag-gw {
+    color: #0369a1 !important;
+    background: #f0f9ff !important;
+    border-color: #bae6fd !important;
+}
+body.light-theme .pb-desc-tag.tag-ok,
+[data-theme="light"] .pb-desc-tag.tag-ok {
+    color: #065f46 !important;
+    background: #ecfdf5 !important;
+    border-color: #a7f3d0 !important;
+}

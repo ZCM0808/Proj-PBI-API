@@ -3249,11 +3249,12 @@ async def api_inspect_datasource(req: DatasourceInspectRequest):
     """报表与语义模型数据源全景穿透检测接口 (双轨融合架构)"""
     from src.datasource_inspector import inspect_datasource_full
     try:
+        eff_token = _get_effective_xmla_token(req.access_token)
         res = await inspect_datasource_full(
             workspace_id=req.workspace_id,
             report_id=req.report_id,
             dataset_id=req.dataset_id,
-            access_token=req.access_token
+            access_token=eff_token
         )
         return res
     except Exception as e:
