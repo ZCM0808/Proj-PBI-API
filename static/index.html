@@ -76,6 +76,33 @@
                     handle.setAttribute('title', '展开全局功能栏 (Expand Global Topbar)');
                 }
 
+                // 提前恢复上次激活的模块视图，防止刷新后始终闪烁 workflows 再切换
+                var savedMod = localStorage.getItem('pbi-active-module');
+                if (savedMod && savedMod !== 'workflows') {
+                    // 隐藏所有 sidebar pane 和 workspace view
+                    var allSidebarPanes = document.querySelectorAll('.sidebar-pane');
+                    for (var i = 0; i < allSidebarPanes.length; i++) {
+                        allSidebarPanes[i].style.display = 'none';
+                    }
+                    var targetSide = document.getElementById('sidebar-pane-' + savedMod);
+                    if (targetSide) targetSide.style.display = 'flex';
+
+                    var allViews = document.querySelectorAll('.workspace-view');
+                    for (var j = 0; j < allViews.length; j++) {
+                        allViews[j].style.display = 'none';
+                    }
+                    var targetView = document.getElementById('view-' + savedMod);
+                    if (targetView) targetView.style.display = 'flex';
+
+                    // 同步 Rail 高亮
+                    var allRailItems = document.querySelectorAll('.rail-item');
+                    for (var k = 0; k < allRailItems.length; k++) {
+                        allRailItems[k].classList.remove('active');
+                    }
+                    var activeRail = document.getElementById('rail-nav-' + savedMod);
+                    if (activeRail) activeRail.classList.add('active');
+                }
+
                 // 移除 html 上的初始化占位类
                 document.documentElement.classList.remove('rail-expanded-init');
                 document.documentElement.classList.remove('topbar-collapsed-init');
