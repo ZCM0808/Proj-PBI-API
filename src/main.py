@@ -1566,6 +1566,7 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
         
         response_data = None
         error_details = []
+        is_group_not_accessible = False
         for ep in endpoints_to_try:
             try:
                 resp = await asyncio.to_thread(requests.get, ep, headers=headers)
@@ -1573,7 +1574,11 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
                     response_data = resp.json()
                     break
                 else:
-                    error_details.append(f"{ep} -> HTTP {resp.status_code}")
+                    err_info = resp.headers.get("X-PowerBI-Error-Info")
+                    if err_info == "GroupNotAccessible":
+                        is_group_not_accessible = True
+                    desc = f"HTTP {resp.status_code}" + (f" ({err_info})" if err_info else "")
+                    error_details.append(f"{ep} -> {desc}")
             except Exception as e:
                 error_details.append(f"{ep} -> {str(e)}")
 
@@ -1606,7 +1611,15 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
 
         if response_data is None:
             err_msg = " | ".join(error_details)
-            return {"success": False, "error": f"Scan failed. Service Principal may lack permissions or Workspace ID is invalid. Details: {err_msg}"}
+            if is_group_not_accessible:
+                auth_subject = f"当前登录用户 ({Config.USERNAME})" if is_personal else f"应用主体 ({client_id})"
+                return {
+                    "success": False,
+                    "error": f"扫描失败：目标工作区对{auth_subject}无访问权限 (GroupNotAccessible)。该工作区通常是其他用户的私有个人工作区(PersonalWorkspace)或在当前租户中不存在。请在顶部工作区下拉框中选择您拥有的工作区，或点击“重新扫描工作区”自动同步当前账号拥有的真实工作区列表。详情: {err_msg}"
+                }
+            
+            auth_subject_hint = "当前个人凭据缺少访问权限" if is_personal else "Service Principal 可能缺少 API 权限或管理员租户开关未启用"
+            return {"success": False, "error": f"扫描失败：{auth_subject_hint}或工作区 ID 无效。详情: {err_msg}"}
 
         items = response_data.get("value", [])
         result_items = []
