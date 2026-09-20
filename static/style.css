@@ -8190,55 +8190,38 @@ body.light-theme .pb-flow-pill-text,
     position: relative;
     display: flex;
     flex-direction: row;
-    align-items: flex-start;
-    gap: 16px;
+    align-items: stretch;
+    gap: 8px;
     height: calc(100% - 44px);
-    padding: 20px 24px 30px 24px;
-    overflow-x: auto;
+    padding: 8px 10px 12px 10px;
+    overflow-x: hidden; /* 严禁横向超出屏幕，无水平滚动条 */
     overflow-y: hidden;
     box-sizing: border-box;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
     width: 100%;
 }
-#pb-user-assets-container::-webkit-scrollbar {
-    height: 7px;
-    width: 7px;
-}
-#pb-user-assets-container::-webkit-scrollbar-track {
-    background: transparent;
-}
-#pb-user-assets-container::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 6px;
-}
 
-/* 单个资产层级卡片 - 横向独立列卡片 (X 轴物理隔离，上下拖动天然零重叠) */
+/* 6 个固定资产层级大卡片 - 平分屏幕宽度，固定不可移动 */
 .pb-asset-tier-card {
     display: flex;
     flex-direction: column;
-    flex: 0 0 340px;
-    width: 340px;
-    max-height: calc(100% - 10px);
-    background: rgba(15, 23, 42, 0.70);
+    flex: 1 1 0;
+    min-width: 0;
+    width: 0;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.72);
     backdrop-filter: blur(14px);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
     transition: border-color 0.25s ease, box-shadow 0.25s ease;
     box-sizing: border-box;
     user-select: none;
     position: relative;
-    will-change: transform;
+    overflow: hidden;
 }
 .pb-asset-tier-card:hover {
     border-color: rgba(99, 102, 241, 0.35);
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
-}
-.pb-asset-tier-card.pb-card-dragging-y {
-    box-shadow: 0 16px 40px rgba(99, 102, 241, 0.4), 0 0 0 2px rgba(99, 102, 241, 0.7);
-    z-index: 20;
-    transition: none !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 }
 
 body.light-theme .pb-asset-tier-card,
@@ -8250,23 +8233,21 @@ body.light-theme .pb-asset-tier-card,
 body.light-theme .pb-asset-tier-card:hover,
 [data-theme="light"] .pb-asset-tier-card:hover {
     border-color: #818cf8 !important;
-    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.12) !important;
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.12) !important;
 }
 
-/* 卡片头部 - 支持鼠标上下拖动位置 */
+/* 卡片固定头部 - 不允许移动大卡片 */
 .pb-asset-tier-card .pb-card-header {
-    padding: 10px 14px;
+    padding: 8px 10px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(255, 255, 255, 0.02);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: 6px;
     user-select: none;
-    cursor: grab;
-}
-.pb-asset-tier-card .pb-card-header:active {
-    cursor: grabbing;
+    cursor: default;
+    flex-shrink: 0;
 }
 body.light-theme .pb-asset-tier-card .pb-card-header,
 [data-theme="light"] .pb-asset-tier-card .pb-card-header {
@@ -8277,50 +8258,28 @@ body.light-theme .pb-asset-tier-card .pb-card-header,
 .pb-card-header-left {
     display: flex;
     align-items: center;
-    gap: 8px;
     min-width: 0;
     flex: 1;
 }
 
-/* 拖拽手柄 */
-.pb-card-drag-handle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 5px;
-    color: var(--text-secondary);
-    cursor: ns-resize;
-    transition: all 0.2s ease;
-    opacity: 0.6;
-    flex-shrink: 0;
-}
-.pb-card-drag-handle:hover {
-    opacity: 1;
-    color: var(--accent);
-    background: rgba(255, 255, 255, 0.08);
-}
-.pb-card-drag-handle:active {
-    cursor: grabbing;
-}
-
 .pb-card-title-group {
     display: flex;
-    align-items: baseline;
-    gap: 10px;
+    flex-direction: column;
+    gap: 1px;
     min-width: 0;
-    flex-wrap: wrap;
+    flex: 1;
 }
 .pb-card-title {
     margin: 0;
-    font-size: 0.88rem;
+    font-size: 0.78rem;
     font-weight: 700;
     color: var(--text-primary);
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .pb-card-sub {
-    font-size: 0.72rem;
+    font-size: 0.65rem;
     color: var(--text-secondary);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -8331,20 +8290,21 @@ body.light-theme .pb-asset-tier-card .pb-card-header,
 .pb-card-header-status {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    font-size: 0.74rem;
+    gap: 4px;
+    font-size: 0.66rem;
     font-weight: 600;
     cursor: default;
     user-select: none;
-    padding: 3px 8px;
-    border-radius: 20px;
+    padding: 2px 6px;
+    border-radius: 12px;
     background: transparent;
     border: none;
     flex-shrink: 0;
+    white-space: nowrap;
 }
 .pb-status-indicator-dot {
-    width: 7px;
-    height: 7px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     display: inline-block;
     flex-shrink: 0;
@@ -8352,7 +8312,7 @@ body.light-theme .pb-asset-tier-card .pb-card-header,
 
 .pb-card-header-status.status-enabled .pb-status-indicator-dot {
     background: #10b981;
-    box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
 }
 .pb-card-header-status.status-enabled .pb-status-indicator-text {
     color: #34d399;
@@ -8364,7 +8324,7 @@ body.light-theme .pb-card-header-status.status-enabled .pb-status-indicator-text
 
 .pb-card-header-status.status-warn .pb-status-indicator-dot {
     background: #f59e0b;
-    box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
 }
 .pb-card-header-status.status-warn .pb-status-indicator-text {
     color: #fbbf24;
@@ -8376,7 +8336,7 @@ body.light-theme .pb-card-header-status.status-warn .pb-status-indicator-text,
 
 .pb-card-header-status.status-disabled .pb-status-indicator-dot {
     background: #ef4444;
-    box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
 }
 .pb-card-header-status.status-disabled .pb-status-indicator-text {
     color: #f87171;
@@ -8388,7 +8348,7 @@ body.light-theme .pb-card-header-status.status-disabled .pb-status-indicator-tex
 
 .pb-card-header-status.status-bypassed .pb-status-indicator-dot {
     background: #a855f7;
-    box-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
+    box-shadow: 0 0 6px rgba(168, 85, 247, 0.6);
 }
 .pb-card-header-status.status-bypassed .pb-status-indicator-text {
     color: #c084fc;
@@ -8398,41 +8358,57 @@ body.light-theme .pb-card-header-status.status-bypassed .pb-status-indicator-tex
     color: #7c3aed;
 }
 
-/* 卡片内部网格/列表内容 */
+/* 卡片内部纵向滚动列表容器 */
 .pb-asset-tier-card .pb-card-body {
-    padding: 10px 14px;
+    padding: 8px;
     display: flex;
     flex-direction: column;
     gap: 6px;
+    flex: 1;
     overflow-y: auto;
-    max-height: calc(100vh - 270px);
+    overflow-x: hidden;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 .pb-asset-tier-card .pb-card-body::-webkit-scrollbar {
-    width: 5px;
+    width: 4px;
+}
+.pb-asset-tier-card .pb-card-body::-webkit-scrollbar-track {
+    background: transparent;
 }
 .pb-asset-tier-card .pb-card-body::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.18);
     border-radius: 4px;
 }
 
-/* 单条权限规则行 - 紧凑双栏对齐，拒绝散乱 */
+/* 权限小卡片 (如“企业具体租户凭据”) - 支持在卡片内上下拖拽移动，物理零重叠 */
 .pb-asset-card-row {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 8px 12px;
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+    flex-direction: column;
+    gap: 4px;
+    padding: 7px 8px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 7px;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+    cursor: grab;
+    position: relative;
+    user-select: none;
+    box-sizing: border-box;
+}
+.pb-asset-card-row:active {
+    cursor: grabbing;
 }
 .pb-asset-card-row:hover {
-    background: rgba(255, 255, 255, 0.04);
-    border-color: rgba(99, 102, 241, 0.25);
-    transform: translateX(2px);
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(99, 102, 241, 0.35);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+.pb-asset-card-row.pb-row-dragging {
+    opacity: 0.35;
+    border: 1px dashed #6366f1 !important;
+    background: rgba(99, 102, 241, 0.1) !important;
+    transform: scale(0.98);
 }
 body.light-theme .pb-asset-card-row,
 [data-theme="light"] .pb-asset-card-row {
@@ -8443,65 +8419,60 @@ body.light-theme .pb-asset-card-row:hover,
 [data-theme="light"] .pb-asset-card-row:hover {
     background: #f1f5f9 !important;
     border-color: #cbd5e1 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
 }
 
-.pb-asset-row-left {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-.pb-asset-row-header {
+/* 小卡片第一行：拖拽小手柄 + 属性名 + 状态胶囊 */
+.pb-asset-row-top {
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 6px;
+    min-width: 0;
+}
+.pb-asset-row-title-area {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    flex: 1;
+}
+.pb-row-drag-handle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    color: var(--text-secondary);
+    opacity: 0.45;
+    cursor: grab;
+    flex-shrink: 0;
+    transition: opacity 0.2s, color 0.2s;
+}
+.pb-asset-card-row:hover .pb-row-drag-handle {
+    opacity: 0.9;
+    color: var(--accent);
 }
 .pb-asset-prop-name {
-    font-size: 0.78rem;
+    font-size: 0.74rem;
     font-weight: 600;
     color: var(--text-primary);
-}
-.pb-asset-tag-pill {
-    font-size: 0.60rem;
-    padding: 1px 6px;
-    border-radius: 4px;
-    background: rgba(255, 255, 255, 0.06);
-    color: var(--text-secondary);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    font-family: monospace;
     white-space: nowrap;
-}
-body.light-theme .pb-asset-tag-pill,
-[data-theme="light"] .pb-asset-tag-pill {
-    background: #e2e8f0 !important;
-    color: #475569 !important;
-    border-color: #cbd5e1 !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.pb-asset-prop-desc {
-    font-size: 0.68rem;
-    color: var(--text-secondary);
-    line-height: 1.35;
-    word-break: break-word;
-}
-
-.pb-asset-row-right {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-}
+/* 状态药丸胶囊 */
 .pb-asset-status-pill {
-    font-size: 0.70rem;
+    font-size: 0.64rem;
     font-weight: 600;
-    padding: 3px 10px;
-    border-radius: 6px;
+    padding: 2px 6px;
+    border-radius: 4px;
     white-space: nowrap;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
+    flex-shrink: 0;
 }
 .pb-asset-status-pill.status-enabled {
     background: rgba(52, 211, 153, 0.12);
@@ -8537,6 +8508,54 @@ body.light-theme .pb-asset-status-pill.status-disabled,
     background: #fef2f2 !important;
     color: #dc2626 !important;
     border-color: #fecaca !important;
+}
+
+.pb-asset-status-pill.status-bypassed {
+    background: rgba(168, 85, 247, 0.12);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.25);
+}
+body.light-theme .pb-asset-status-pill.status-bypassed,
+[data-theme="light"] .pb-asset-status-pill.status-bypassed {
+    background: #faf5ff !important;
+    color: #7c3aed !important;
+    border-color: #e9d5ff !important;
+}
+
+/* 小卡片第二行：说明文字 + 标签 */
+.pb-asset-row-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    min-width: 0;
+}
+.pb-asset-prop-desc {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}
+.pb-asset-tag-pill {
+    font-size: 0.58rem;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-family: monospace;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+body.light-theme .pb-asset-tag-pill,
+[data-theme="light"] .pb-asset-tag-pill {
+    background: #e2e8f0 !important;
+    color: #475569 !important;
+    border-color: #cbd5e1 !important;
 }
 
 .pb-asset-status-pill.status-bypassed {

@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260920_v2130">
+    <link rel="stylesheet" href="/static/style.css?v=20260920_v2140">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -2565,9 +2565,9 @@
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
                             <span>刷新链路</span>
                         </button>
-                        <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.resetUserAssetsCardPositions()" title="重置所有资产卡片垂直高低位置为水平平齐 (零重叠保证)" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer;">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="8 17 12 21 16 17"></polyline><polyline points="8 7 12 3 16 7"></polyline><line x1="12" y1="3" x2="12" y2="21"></line></svg>
-                            <span>重置卡片位置</span>
+                        <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.resetUserAssetsItemsOrder()" title="恢复各卡片内部权限条目的默认排列顺序" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                            <span>重置条目顺序</span>
                         </button>
                         <button type="button" class="icon-btn zen-mode-btn" onclick="window.toggleZenMode()" title="沉浸全屏模式 (Zen Mode)" style="width: 28px; height: 28px; padding: 0; border-radius: 6px; border: 1px solid var(--overlay-10); background: transparent; transition: all 0.2s; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-expand"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
@@ -3166,7 +3166,7 @@
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260919_v1440"></script>
     <script src="/static/script.js?v=20260920_v2100"></script>
-    <script src="/static/permission_blueprint.js?v=20260920_v2130"></script>
+    <script src="/static/permission_blueprint.js?v=20260920_v2140"></script>
 
 
 

@@ -4256,46 +4256,60 @@
                 `;
             };
 
-            // 属性规则行渲染函数 (紧凑高内聚双栏设计：左侧属性与描述，右侧垂直居中对齐权限状态药丸)
-            const renderAssetRow = (propName, propDesc, statusClass, statusText, badgeText = '') => {
-                return `
-                    <div class="pb-asset-card-row">
-                        <div class="pb-asset-row-left">
-                            <div class="pb-asset-row-header">
-                                <span class="pb-asset-prop-name" title="${propName}">${propName}</span>
-                                ${badgeText ? `<span class="pb-asset-tag-pill">${badgeText}</span>` : ''}
-                            </div>
-                            <div class="pb-asset-prop-desc" title="${propDesc}">${propDesc}</div>
-                        </div>
-                        <div class="pb-asset-row-right">
-                            <span class="pb-asset-status-pill status-${statusClass}">${statusText}</span>
-                        </div>
-                    </div>
-                `;
-            };
+            // 权限小卡片条目渲染辅助函数 (支持在同一大卡片内上下拖拽移动排序，物理零重叠)
+            const renderTierItemsHtml = (tierId, items) => {
+                let savedOrder = [];
+                try {
+                    savedOrder = JSON.parse(localStorage.getItem(`pbi-user-assets-tier-items-${tierId}`) || '[]');
+                } catch(e) {}
 
-            // 0. 读取本地持久化的各卡片 Y 轴高度错落位移 (支持上下拖拽微调位置，各列独立占位天然零重叠)
-            let cardYOffsets = {};
-            try {
-                cardYOffsets = JSON.parse(localStorage.getItem('pbi-user-assets-card-y-offsets') || '{}');
-            } catch (e) {}
+                let orderedItems = [...items];
+                if (Array.isArray(savedOrder) && savedOrder.length > 0) {
+                    const itemMap = new Map(items.map(it => [it.id, it]));
+                    const prioritized = [];
+                    savedOrder.forEach(id => {
+                        if (itemMap.has(id)) {
+                            prioritized.push(itemMap.get(id));
+                            itemMap.delete(id);
+                        }
+                    });
+                    orderedItems = [...prioritized, ...itemMap.values()];
+                }
 
-            // 单个卡片组装辅助函数 (集成上下拖拽手柄、卡片标题与内容，物理零重叠)
-            const buildTierCardHtml = (tierId, title, sub, statusClass, statusText, bodyHtml) => {
-                const yOffset = Number(cardYOffsets[tierId]) || 0;
-                return `
-                    <div class="pb-asset-tier-card" data-tier-id="${tierId}" style="transform: translateY(${yOffset}px);">
-                        <div class="pb-card-header">
-                            <div class="pb-card-header-left">
-                                <span class="pb-card-drag-handle" title="按住上下拖拽调整卡片位置 (各列独立占位，天然零重叠)">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="8 17 12 21 16 17"></polyline>
-                                        <polyline points="8 7 12 3 16 7"></polyline>
-                                        <line x1="12" y1="3" x2="12" y2="21"></line>
+                return orderedItems.map(item => `
+                    <div class="pb-asset-card-row" data-row-id="${item.id}" data-tier-id="${tierId}" draggable="true" title="按住可上下拖拽移动调整顺序 (绝无重叠)">
+                        <div class="pb-asset-row-top">
+                            <div class="pb-asset-row-title-area">
+                                <span class="pb-row-drag-handle">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <circle cx="9" cy="5" r="1.5"></circle>
+                                        <circle cx="9" cy="12" r="1.5"></circle>
+                                        <circle cx="9" cy="19" r="1.5"></circle>
+                                        <circle cx="15" cy="5" r="1.5"></circle>
+                                        <circle cx="15" cy="12" r="1.5"></circle>
+                                        <circle cx="15" cy="19" r="1.5"></circle>
                                     </svg>
                                 </span>
+                                <span class="pb-asset-prop-name" title="${item.name}">${item.name}</span>
+                            </div>
+                            <span class="pb-asset-status-pill status-${item.statusClass}">${item.statusText}</span>
+                        </div>
+                        <div class="pb-asset-row-bottom">
+                            <span class="pb-asset-prop-desc" title="${item.desc}">${item.desc}</span>
+                            ${item.badge ? `<span class="pb-asset-tag-pill">${item.badge}</span>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            };
+
+            // 6 个大卡片组装辅助函数 (横向固定不超出屏幕，固定不能移动，内部小卡片可上下移动)
+            const buildTierCardHtml = (tierId, title, sub, statusClass, statusText, bodyHtml) => {
+                return `
+                    <div class="pb-asset-tier-card" data-tier-id="${tierId}">
+                        <div class="pb-card-header">
+                            <div class="pb-card-header-left">
                                 <div class="pb-card-title-group">
-                                    <h4 class="pb-card-title">${title}</h4>
+                                    <h4 class="pb-card-title" title="${title}">${title}</h4>
                                     <span class="pb-card-sub" title="${sub}">${sub}</span>
                                 </div>
                             </div>
@@ -4303,7 +4317,7 @@
                                 ${renderHeaderStatus(statusClass, statusText)}
                             </div>
                         </div>
-                        <div class="pb-card-body">
+                        <div class="pb-card-body" data-tier-id="${tierId}">
                             ${bodyHtml}
                         </div>
                     </div>
@@ -4314,15 +4328,16 @@
             const tenantTitleSub = tenantId ? `租户 ID: ${tenantId.length > 18 ? tenantId.slice(0, 18) + '...' : tenantId}` : '租户 ID 未配置';
             const userSub = user ? `主体: ${user.upn}` : '未指定具体用户主体';
             const tenantHeaderStatusClass = user ? (isGuest ? 'warn' : 'enabled') : 'disabled';
-            const tenantHeaderStatusText = user ? (isGuest ? '⚠️ B2B 外部访客' : '✅ 认证有效') : '⚠️ 未选主体';
-            const colTenantBody = `
-                ${renderAssetRow('企业具体租户凭据', tenantId ? `已挂载租户 ID: ${tenantId}` : '系统未配置 TENANT_ID，请在设置中输入', tenantId ? 'enabled' : 'warn', tenantId ? '✅ 租户已加载' : '⚠️ 缺少租户ID', 'Tenant ID')}
-                ${renderAssetRow('目标用户主体与域名', user ? `主体: ${user.name} (${user.roleTag})` : '请在左侧主体面板选择需要审计的真实企业成员', user ? 'enabled' : 'disabled', user ? '✅ 身份有效' : '❌ 未选择用户', 'Principal')}
-                ${renderAssetRow('组织外部内容共享', user ? (isGuest ? '当前属于外部访客账号，默认禁用外发' : '租户策略放行组织外部报告共享') : '需选定用户后推导策略', isGuest ? 'disabled' : (user ? 'enabled' : 'disabled'), isGuest ? '❌ 禁止外发' : (user ? '✅ 租户放行' : '⚠️ 等待主体'), 'External Share')}
-                ${renderAssetRow('客户端明细数据导出', '租户管理员已配置允许导出至 Excel/CSV 文件', user ? 'enabled' : 'disabled', user ? '✅ 租户策略放行' : '⚠️ 等待主体', 'Export Data')}
-                ${renderAssetRow('Web 浏览器在线建模', '租户是否放行语义模型网页端建模与度量值设计', user?.state?.tenantAllowWebModeling ? 'enabled' : 'disabled', user?.state?.tenantAllowWebModeling ? '✅ 策略允许' : '❌ 租户策略收紧', 'Web Modeling')}
-                ${renderAssetRow('XMLA 终结点全局读写', '允许 SSMS/DAX Studio/Tabular Editor 跨客户端直连', 'enabled', '✅ 读写已启用', 'XMLA Endpoint')}
-            `;
+            const tenantHeaderStatusText = user ? (isGuest ? '⚠️ B2B 访客' : '✅ 认证有效') : '⚠️ 未选主体';
+            const tenantItems = [
+                { id: 'tenant_id', name: '企业具体租户凭据', desc: tenantId ? `已挂载租户 ID: ${tenantId}` : '系统未配置 TENANT_ID，请在设置中输入', statusClass: tenantId ? 'enabled' : 'warn', statusText: tenantId ? '✅ 租户就绪' : '⚠️ 缺少租户ID', badge: 'Tenant ID' },
+                { id: 'tenant_principal', name: '目标用户主体与域名', desc: user ? `主体: ${user.name} (${user.roleTag})` : '请在左侧主体面板选择需要审计的真实企业成员', statusClass: user ? 'enabled' : 'disabled', statusText: user ? '✅ 身份有效' : '❌ 未选择用户', badge: 'Principal' },
+                { id: 'tenant_external', name: '组织外部内容共享', desc: user ? (isGuest ? '当前属于外部访客账号，默认禁用外发' : '租户策略放行组织外部报告共享') : '需选定用户后推导策略', statusClass: isGuest ? 'disabled' : (user ? 'enabled' : 'disabled'), statusText: isGuest ? '❌ 禁止外发' : (user ? '✅ 策略放行' : '⚠️ 等待主体'), badge: 'External' },
+                { id: 'tenant_export', name: '客户端明细数据导出', desc: '租户管理员已配置允许导出至 Excel/CSV 文件', statusClass: user ? 'enabled' : 'disabled', statusText: user ? '✅ 策略放行' : '⚠️ 等待主体', badge: 'Export' },
+                { id: 'tenant_web_modeling', name: 'Web 浏览器在线建模', desc: '租户是否放行语义模型网页端建模与度量值设计', statusClass: user?.state?.tenantAllowWebModeling ? 'enabled' : 'disabled', statusText: user?.state?.tenantAllowWebModeling ? '✅ 允许建模' : '❌ 策略收紧', badge: 'Web Model' },
+                { id: 'tenant_xmla', name: 'XMLA 终结点全局读写', desc: '允许 SSMS/DAX Studio/Tabular Editor 跨客户端直连', statusClass: 'enabled', statusText: '✅ 读写启用', badge: 'XMLA' }
+            ];
+            const colTenantBody = renderTierItemsHtml('tenant', tenantItems);
 
             // Module 2: Workspace (工作区治理角色层)
             let colWorkspaceBody = '';
@@ -4330,41 +4345,41 @@
             const wsHeaderStatusText = hasSelectedWs ? `治理角色: ${wsRole}` : '⚠️ 未选择';
             if (!hasSelectedWs) {
                 colWorkspaceBody = `
-                    <div style="padding: 24px 16px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
-                        <div style="font-size: 1.6rem; margin-bottom: 8px;">🏢</div>
-                        <div style="font-weight: 700; font-size: 0.84rem; color: #f59e0b; margin-bottom: 4px;">尚未选择目标工作区</div>
-                        <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 8px;">
-                            工作区是模型、报表与凭据的载体。请在顶部控制台或下拉菜单指定目标工作区。
+                    <div style="padding: 16px 10px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
+                        <div style="font-size: 1.3rem; margin-bottom: 6px;">🏢</div>
+                        <div style="font-weight: 700; font-size: 0.76rem; color: #f59e0b; margin-bottom: 3px;">尚未选择目标工作区</div>
+                        <div style="font-size: 0.65rem; color: var(--text-secondary); line-height: 1.4;">
+                            工作区是模型与报表载体，请在顶栏下拉框指定目标工作区。
                         </div>
-                        <div style="font-size: 0.68rem; color: var(--text-secondary);">当前可用组织工作区共 ${rawWsData.length} 个</div>
                     </div>
                 `;
             } else {
                 const t2Status = isAdmin ? 'enabled' : (isPrivileged ? 'bypassed' : (isViewer ? 'warn' : 'disabled'));
-                colWorkspaceBody = `
-                    ${renderAssetRow('具体指定目标工作区', `工作区名称: ${wsName} · ID: ${curWs.id}`, 'enabled', '✅ 目标已就绪', 'Workspace')}
-                    ${renderAssetRow('当前分配的工作区角色', `用户在该工作区被授予的实际治理角色为 [${wsRole}]`, t2Status, `✅ 赋予 ${wsRole}`, 'Role')}
-                    ${renderAssetRow('成员管理与权限委派', '向其他企业成员分配或回收该工作区访问权限', isAdmin ? 'enabled' : (isMember ? 'warn' : 'disabled'), isAdmin ? '✅ 完全管理' : (isMember ? '⚠️ 仅可添加查看者' : '❌ 禁用'), 'Permissions')}
-                    ${renderAssetRow('工作区资产增删改', '新建、修改、重命名或删除该工作区名下的资产', isPrivileged ? 'enabled' : 'disabled', isPrivileged ? '✅ 完整编辑特权' : '❌ 仅只读不可修改', 'Asset Edit')}
-                    ${renderAssetRow('组织应用打包与发布', '将该工作区报表发布更新为组织企业应用程序 (App)', (isAdmin || isMember) ? 'enabled' : 'disabled', (isAdmin || isMember) ? '✅ 允许发布更新' : '❌ 需成员以上权限', 'App Publish')}
-                    ${renderAssetRow('底层算力容量绑定', '承载当前工作区资产运行的计算节点规格', 'enabled', '⚡ Fabric F64 弹性专用容量', 'Capacity')}
-                `;
+                const wsItems = [
+                    { id: 'ws_target', name: '具体指定目标工作区', desc: `工作区: ${wsName} · ID: ${curWs.id}`, statusClass: 'enabled', statusText: '✅ 目标就绪', badge: 'Workspace' },
+                    { id: 'ws_role', name: '当前分配的工作区角色', desc: `用户在该工作区被授予的实际治理角色为 [${wsRole}]`, statusClass: t2Status, statusText: `✅ 赋予 ${wsRole}`, badge: 'Role' },
+                    { id: 'ws_members', name: '成员管理与权限委派', desc: '向其他企业成员分配或回收该工作区访问权限', statusClass: isAdmin ? 'enabled' : (isMember ? 'warn' : 'disabled'), statusText: isAdmin ? '✅ 完全管理' : (isMember ? '⚠️ 查看者委派' : '❌ 禁用'), badge: 'Permissions' },
+                    { id: 'ws_edit', name: '工作区资产增删改', desc: '新建、修改、重命名或删除该工作区名下的资产', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ 编辑特权' : '❌ 仅只读', badge: 'Asset Edit' },
+                    { id: 'ws_app', name: '组织应用打包与发布', desc: '将该工作区报表发布更新为组织企业应用程序 (App)', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ 允许发布' : '❌ 需成员', badge: 'App Publish' },
+                    { id: 'ws_capacity', name: '底层算力容量绑定', desc: '承载当前工作区资产运行的计算节点规格', statusClass: 'enabled', statusText: '⚡ Fabric F64 专用容量', badge: 'Capacity' }
+                ];
+                colWorkspaceBody = renderTierItemsHtml('workspace', wsItems);
             }
 
             // Module 3: Model (语义模型资产权限层)
             let colModelBody = '';
-            let modelTitleText = '🗄️ 3. Model (语义模型)';
+            let modelTitleText = '🗄️ 3. Model (模型)';
             let modelStatusBadge = '⚠️ 等待工作区';
             let modelStatusClass = 'disabled';
             let modelSubText = '未选择模型';
 
             if (!hasSelectedWs) {
                 colModelBody = `
-                    <div style="padding: 24px 16px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
-                        <div style="font-size: 1.6rem; margin-bottom: 8px;">🗄️</div>
-                        <div style="font-weight: 700; font-size: 0.84rem; color: #94a3b8; margin-bottom: 4px;">等待指定目标工作区</div>
-                        <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.5;">
-                            语义模型归属于工作区。请先在顶栏指定目标工作区以加载其名下模型。
+                    <div style="padding: 16px 10px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
+                        <div style="font-size: 1.3rem; margin-bottom: 6px;">🗄️</div>
+                        <div style="font-weight: 700; font-size: 0.76rem; color: #94a3b8; margin-bottom: 3px;">等待指定目标工作区</div>
+                        <div style="font-size: 0.65rem; color: var(--text-secondary); line-height: 1.4;">
+                            语义模型归属于工作区，请先在顶栏指定工作区。
                         </div>
                     </div>
                 `;
@@ -4372,33 +4387,33 @@
                 modelTitleText = '🗄️ 3. Model (未加载)';
                 modelStatusBadge = '⚠️ 尚未选择';
                 modelStatusClass = 'warn';
-                modelSubText = '请在顶栏模型选择器中选择具体模型';
+                modelSubText = '请在顶栏挑选模型';
                 colModelBody = `
-                    <div style="padding: 20px 16px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
-                        <div style="font-size: 1.6rem; margin-bottom: 8px;">🗄️</div>
-                        <div style="font-weight: 700; font-size: 0.84rem; color: #f59e0b; margin-bottom: 4px;">尚未在顶栏选择具体模型</div>
-                        <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 6px;">
-                            请点击顶栏「模型」下拉框，从当前工作区 <strong style="color: #60a5fa;">${wsName}</strong> 中挑选语义模型。
+                    <div style="padding: 16px 10px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
+                        <div style="font-size: 1.3rem; margin-bottom: 6px;">🗄️</div>
+                        <div style="font-weight: 700; font-size: 0.76rem; color: #f59e0b; margin-bottom: 3px;">顶栏尚未选择具体模型</div>
+                        <div style="font-size: 0.65rem; color: var(--text-secondary); line-height: 1.4;">
+                            请在顶栏「模型」选择器中选择 <strong style="color: #60a5fa;">${wsName}</strong> 下的模型。
                         </div>
-                        <div style="font-size: 0.68rem; color: var(--text-secondary); opacity: 0.7;">当前工作区共缓存 ${scopedModels.length} 个模型</div>
                     </div>
                 `;
             } else {
                 const canReadModel = isPrivileged || isViewer;
                 const canBuild = isPrivileged || Boolean(user?.state?.sharePermission && String(user?.state?.sharePermission).includes('Build'));
                 modelTitleText = `🗄️ 3. Model (${curModel.alias || curModel.name})`;
-                modelStatusBadge = canBuild ? '⚡ 构建+衍生' : (canReadModel ? '👁️ 仅只读' : '🚫 拒绝访问');
+                modelStatusBadge = canBuild ? '⚡ 构建+衍生' : (canReadModel ? '👁️ 只读' : '🚫 拒绝');
                 modelStatusClass = canBuild ? 'enabled' : (canReadModel ? 'warn' : 'disabled');
                 modelSubText = `模型 ID: ${curModel.id}`;
 
-                colModelBody = `
-                    ${renderAssetRow('具体指定语义模型', `模型名称: ${curModel.alias || curModel.name} · ID: ${curModel.id}`, 'enabled', '✅ 模型已就绪', 'Model')}
-                    ${renderAssetRow('语义模型直接读取权限', '允许执行 DAX 查询、报表取数与刷新 (Read 权限)', canReadModel ? 'enabled' : 'disabled', canReadModel ? '✅ 已授权读取' : '❌ 403 阻断', 'Read')}
-                    ${renderAssetRow('衍生构建与自助探索', '允许以该模型为基础创建新报表、Excel 透视分析 (Build 权限)', canBuild ? 'enabled' : 'disabled', canBuild ? '⚡ 允许探索构建 (Build)' : '❌ 仅只读无构建权', 'Build')}
-                    ${renderAssetRow('模型度量值与架构写回', '允许通过 XMLA 或浏览器端添加度量值、修改表关系', isPrivileged ? 'enabled' : 'disabled', isPrivileged ? '✅ 允许架构写入' : '❌ 架构写回阻断', 'Write')}
-                    ${renderAssetRow('行级数据安全 (RLS) 生效', '针对该模型的 DAX 安全角色行过滤隔离状态', isPrivileged ? 'bypassed' : 'warn', isPrivileged ? '⚡ 特权全量穿透' : '🔒 RLS 角色生效隔离', 'RLS')}
-                    ${renderAssetRow('向第三方重新共享模型', '是否可将该具体模型二次授权给企业内其他同事', (isAdmin || isMember) ? 'enabled' : 'disabled', (isAdmin || isMember) ? '✅ 允许重新共享' : '❌ 禁止二次共享', 'Reshare')}
-                `;
+                const modelItems = [
+                    { id: 'model_target', name: '具体指定语义模型', desc: `模型: ${curModel.alias || curModel.name} · ID: ${curModel.id}`, statusClass: 'enabled', statusText: '✅ 模型就绪', badge: 'Model' },
+                    { id: 'model_read', name: '语义模型直接读取权限', desc: '允许执行 DAX 查询、报表取数与刷新 (Read 权限)', statusClass: canReadModel ? 'enabled' : 'disabled', statusText: canReadModel ? '✅ 授权读取' : '❌ 403 阻断', badge: 'Read' },
+                    { id: 'model_build', name: '衍生构建与自助探索', desc: '允许以该模型为基础创建新报表、Excel 透视分析 (Build 权限)', statusClass: canBuild ? 'enabled' : 'disabled', statusText: canBuild ? '⚡ 允许构建' : '❌ 仅只读', badge: 'Build' },
+                    { id: 'model_write', name: '模型度量值与架构写回', desc: '允许通过 XMLA 或浏览器端添加度量值、修改表关系', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ 允许写入' : '❌ 写回阻断', badge: 'Write' },
+                    { id: 'model_rls', name: '行级数据安全 (RLS) 生效', desc: '针对该模型的 DAX 安全角色行过滤隔离状态', statusClass: isPrivileged ? 'bypassed' : 'warn', statusText: isPrivileged ? '⚡ 特权穿透' : '🔒 RLS 隔离', badge: 'RLS' },
+                    { id: 'model_reshare', name: '向第三方重新共享模型', desc: '是否可将该具体模型二次授权给企业内其他同事', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ 允许共享' : '❌ 禁止共享', badge: 'Reshare' }
+                ];
+                colModelBody = renderTierItemsHtml('model', modelItems);
             }
 
             // Module 4: Report (报表视图与交互权限层)
@@ -4410,11 +4425,11 @@
 
             if (!hasSelectedWs) {
                 colReportBody = `
-                    <div style="padding: 24px 16px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
-                        <div style="font-size: 1.6rem; margin-bottom: 8px;">📊</div>
-                        <div style="font-weight: 700; font-size: 0.84rem; color: #94a3b8; margin-bottom: 4px;">等待指定目标工作区</div>
-                        <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.5;">
-                            报表资产归属于工作区。请先在顶栏指定目标工作区以联动加载其名下报表。
+                    <div style="padding: 16px 10px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
+                        <div style="font-size: 1.3rem; margin-bottom: 6px;">📊</div>
+                        <div style="font-weight: 700; font-size: 0.76rem; color: #94a3b8; margin-bottom: 3px;">等待指定目标工作区</div>
+                        <div style="font-size: 0.65rem; color: var(--text-secondary); line-height: 1.4;">
+                            报表资产归属于工作区，请先在顶栏指定工作区。
                         </div>
                     </div>
                 `;
@@ -4422,232 +4437,200 @@
                 reportTitleText = '📊 4. Report (未加载)';
                 reportStatusBadge = '⚠️ 尚未选择';
                 reportStatusClass = 'warn';
-                reportSubText = '请在顶栏报表选择器中选择具体报表';
+                reportSubText = '请在顶栏挑选报表';
                 colReportBody = `
-                    <div style="padding: 20px 16px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
-                        <div style="font-size: 1.6rem; margin-bottom: 8px;">📊</div>
-                        <div style="font-weight: 700; font-size: 0.84rem; color: #f59e0b; margin-bottom: 4px;">尚未在顶栏选择具体报表</div>
-                        <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 6px;">
-                            请点击顶栏「报表」下拉框，从当前工作区 <strong style="color: #60a5fa;">${wsName}</strong> 中挑选分析报表。
+                    <div style="padding: 16px 10px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
+                        <div style="font-size: 1.3rem; margin-bottom: 6px;">📊</div>
+                        <div style="font-weight: 700; font-size: 0.76rem; color: #f59e0b; margin-bottom: 3px;">顶栏尚未选择具体报表</div>
+                        <div style="font-size: 0.65rem; color: var(--text-secondary); line-height: 1.4;">
+                            请在顶栏「报表」选择器中选择 <strong style="color: #60a5fa;">${wsName}</strong> 下的报表。
                         </div>
-                        <div style="font-size: 0.68rem; color: var(--text-secondary); opacity: 0.7;">当前工作区共缓存 ${scopedReports.length} 个报表</div>
                     </div>
                 `;
             } else {
                 const canEditReport = isPrivileged && user?.state?.tenantAllowWebModeling;
                 const canExportUnderlying = Boolean(user?.state?.sharePermission?.includes('Build') || isPrivileged) && Boolean(user?.state?.tenantAllowExport);
                 reportTitleText = `📊 4. Report (${curReport.alias || curReport.name})`;
-                reportStatusBadge = canEditReport ? '✏️ 协同设计编辑' : '👁️ 交互浏览';
+                reportStatusBadge = canEditReport ? '✏️ 协同编辑' : '👁️ 浏览交互';
                 reportStatusClass = canEditReport ? 'enabled' : 'warn';
                 reportSubText = `报表 ID: ${curReport.id}`;
 
-                colReportBody = `
-                    ${renderAssetRow('具体指定分析报表', `报表名称: ${curReport.alias || curReport.name} · ID: ${curReport.id}`, 'enabled', '✅ 报表已就绪', 'Report')}
-                    ${renderAssetRow('报表在线交互与查看', '访问该报表页面、切片器联动与图表钻取浏览', 'enabled', '✅ 允许完整交互浏览', 'View')}
-                    ${renderAssetRow('视觉对象编辑与另存', '编辑现有报表页面布局、添加图表或另存为副本', canEditReport ? 'enabled' : 'disabled', canEditReport ? '✅ 允许设计画布与另存' : '❌ 仅只读浏览不可编辑', 'Edit')}
-                    ${renderAssetRow('导出底层明细数据', '允许将该报表图表底层未聚合的原始颗粒度明细导出至本地', canExportUnderlying ? 'enabled' : 'warn', canExportUnderlying ? '✅ 允许导出明细数据' : '⚠️ 仅允许导出汇总数据', 'Export')}
-                    ${renderAssetRow('邮件订阅与自动化警报', '设置该报表关键 KPI 阈值警报及定时邮件快照推送', 'enabled', '✅ 允许创建订阅与警报', 'Subscribe')}
-                    ${renderAssetRow('报表分发与链接共享', '生成该报表的安全嵌入链接向授权受众分发', (isAdmin || isMember) ? 'enabled' : 'disabled', (isAdmin || isMember) ? '✅ 允许生成共享链接' : '❌ 需工作区成员权限', 'Share')}
-                `;
+                const reportItems = [
+                    { id: 'report_target', name: '具体指定分析报表', desc: `报表: ${curReport.alias || curReport.name} · ID: ${curReport.id}`, statusClass: 'enabled', statusText: '✅ 报表就绪', badge: 'Report' },
+                    { id: 'report_view', name: '报表在线交互与查看', desc: '访问该报表页面、切片器联动与图表钻取浏览', statusClass: 'enabled', statusText: '✅ 完整浏览', badge: 'View' },
+                    { id: 'report_edit', name: '视觉对象编辑与另存', desc: '编辑现有报表页面布局、添加图表或另存为副本', statusClass: canEditReport ? 'enabled' : 'disabled', statusText: canEditReport ? '✅ 允许编辑' : '❌ 仅只读', badge: 'Edit' },
+                    { id: 'report_export', name: '导出底层明细数据', desc: '允许将该报表图表底层原始颗粒度明细导出至本地', statusClass: canExportUnderlying ? 'enabled' : 'warn', statusText: canExportUnderlying ? '✅ 允许导出' : '⚠️ 仅汇总', badge: 'Export' },
+                    { id: 'report_sub', name: '邮件订阅与自动化警报', desc: '设置该报表关键 KPI 阈值警报及定时邮件快照推送', statusClass: 'enabled', statusText: '✅ 允许订阅', badge: 'Subscribe' },
+                    { id: 'report_share', name: '报表分发与链接共享', desc: '生成该报表的安全嵌入链接向授权受众分发', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ 允许共享' : '❌ 需成员', badge: 'Share' }
+                ];
+                colReportBody = renderTierItemsHtml('report', reportItems);
             }
 
             // Module 5: Connection (网关连接与凭据鉴权层)
             let colConnectionBody = '';
             if (!hasSelectedWs) {
                 colConnectionBody = `
-                    <div style="padding: 24px 16px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
-                        <div style="font-size: 1.6rem; margin-bottom: 8px;">🔌</div>
-                        <div style="font-weight: 700; font-size: 0.84rem; color: #94a3b8; margin-bottom: 4px;">等待指定目标工作区</div>
-                        <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.5;">
-                            数据源通道与网关凭据需基于具体工作区和语义模型进行链路推导。
+                    <div style="padding: 16px 10px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
+                        <div style="font-size: 1.3rem; margin-bottom: 6px;">🔌</div>
+                        <div style="font-weight: 700; font-size: 0.76rem; color: #94a3b8; margin-bottom: 3px;">等待指定目标工作区</div>
+                        <div style="font-size: 0.65rem; color: var(--text-secondary); line-height: 1.4;">
+                            数据通道需基于工作区和模型推导。
                         </div>
                     </div>
                 `;
             } else if (!hasSelectedModel) {
                 colConnectionBody = `
-                    <div style="padding: 20px 16px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
-                        <div style="font-size: 1.6rem; margin-bottom: 8px;">🔌</div>
-                        <div style="font-weight: 700; font-size: 0.84rem; color: #f59e0b; margin-bottom: 4px;">未关联具体语义模型</div>
-                        <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.5;">
-                            数据源凭据与网关连通性需绑定到具体语义模型才可推导，请先在顶栏选择目标语义模型。
+                    <div style="padding: 16px 10px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
+                        <div style="font-size: 1.3rem; margin-bottom: 6px;">🔌</div>
+                        <div style="font-weight: 700; font-size: 0.76rem; color: #f59e0b; margin-bottom: 3px;">未关联具体语义模型</div>
+                        <div style="font-size: 0.65rem; color: var(--text-secondary); line-height: 1.4;">
+                            网关连通性需绑定语义模型，请先选择模型。
                         </div>
                     </div>
                 `;
             } else {
                 const gwStatus = gatewayOnline === true ? 'enabled' : (gatewayOnline === false ? 'disabled' : 'warn');
-                const gwText = gatewayOnline === true ? '✅ 网关集群在线' : (gatewayOnline === false ? '❌ 网关离线不可达' : '⚠️ 状态未知');
+                const gwText = gatewayOnline === true ? '✅ 网关在线' : (gatewayOnline === false ? '❌ 网关离线' : '⚠️ 状态未知');
                 const connStatus = hasDataConn === true ? 'enabled' : (hasDataConn === false ? 'warn' : 'disabled');
-                const connText = hasDataConn === true ? '✅ 统一数据源凭据已鉴权' : (hasDataConn === false ? '⚠️ 凭据受限/需单独配置' : '❌ 未配置数据源凭据');
-                colConnectionBody = `
-                    ${renderAssetRow('企业数据网关连通性', '该工作区绑定的本地数据网关 (On-Premises Gateway) 状态', gwStatus, gwText, 'Gateway')}
-                    ${renderAssetRow('数据源直连凭据鉴权', `针对模型 [${curModel.alias || curModel.name}] 的底层数据库鉴权凭据`, connStatus, connText, 'Credentials')}
-                    ${renderAssetRow('GAC 细粒度访问控制', '网关与 DirectQuery 跨源 Mashup 细粒度数据门禁隔离', isPrivileged ? 'bypassed' : 'enabled', isPrivileged ? '⚡ 管理员特权直通通道' : '🛡️ 细粒度门禁鉴权通过', 'GAC Security')}
-                    ${renderAssetRow('SSO 单点登录凭据委派', 'DirectQuery 运行时使用当前用户 Entra ID 身份穿透鉴权', 'enabled', '✅ Kerberos / OAuth 委派生效', 'SSO Pass-through')}
-                    ${renderAssetRow('动态数据刷新通道', '定时增量刷新与 XMLA 交互式微批次数据刷新触发权', isPrivileged ? 'enabled' : 'disabled', isPrivileged ? '✅ 允许按需触发刷新' : '❌ 仅限管理员/协作者', 'Refresh')}
-                `;
+                const connText = hasDataConn === true ? '✅ 凭据已鉴权' : (hasDataConn === false ? '⚠️ 凭据受限' : '❌ 未配置');
+                const connItems = [
+                    { id: 'conn_gw', name: '企业数据网关连通性', desc: '该工作区绑定的本地数据网关 (On-Premises Gateway) 状态', statusClass: gwStatus, statusText: gwText, badge: 'Gateway' },
+                    { id: 'conn_cred', name: '数据源直连凭据鉴权', desc: `针对模型 [${curModel.alias || curModel.name}] 的底层数据库鉴权凭据`, statusClass: connStatus, statusText: connText, badge: 'Credentials' },
+                    { id: 'conn_gac', name: 'GAC 细粒度访问控制', desc: '网关与 DirectQuery 跨源 Mashup 细粒度数据门禁隔离', statusClass: isPrivileged ? 'bypassed' : 'enabled', statusText: isPrivileged ? '⚡ 管理员直通' : '🛡️ 门禁通过', badge: 'GAC' },
+                    { id: 'conn_sso', name: 'SSO 单点登录凭据委派', desc: 'DirectQuery 运行时使用当前用户 Entra ID 身份穿透鉴权', statusClass: 'enabled', statusText: '✅ 委派生效', badge: 'SSO' },
+                    { id: 'conn_refresh', name: '动态数据刷新通道', desc: '定时增量刷新与 XMLA 交互式微批次数据刷新触发权', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ 允许刷新' : '❌ 需协作者', badge: 'Refresh' }
+                ];
+                colConnectionBody = renderTierItemsHtml('connection', connItems);
             }
-            const connStatusLabel = !hasSelectedWs ? '⚠️ 未选择' : (!hasSelectedModel ? '⚠️ 未关联模型' : (gatewayOnline ? '✅ 网关在线' : '❌ 网关离线'));
+            const connStatusLabel = !hasSelectedWs ? '⚠️ 未选' : (!hasSelectedModel ? '⚠️ 未联模型' : (gatewayOnline ? '✅ 网关在线' : '❌ 网关离线'));
             const connStatusClass = !hasSelectedWs ? 'disabled' : (!hasSelectedModel ? 'warn' : (gatewayOnline ? 'enabled' : 'disabled'));
 
             // Module 6: Pipeline (部署管道与 ALM 治理层)
             let colPipelineBody = '';
             if (!hasSelectedWs) {
                 colPipelineBody = `
-                    <div style="padding: 24px 16px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
-                        <div style="font-size: 1.6rem; margin-bottom: 8px;">🚀</div>
-                        <div style="font-weight: 700; font-size: 0.84rem; color: #94a3b8; margin-bottom: 4px;">等待指定目标工作区</div>
-                        <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.5;">
-                            部署管道需关联具体工作区以呈现各生命周期阶段流转。
+                    <div style="padding: 16px 10px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
+                        <div style="font-size: 1.3rem; margin-bottom: 6px;">🚀</div>
+                        <div style="font-weight: 700; font-size: 0.76rem; color: #94a3b8; margin-bottom: 3px;">等待指定目标工作区</div>
+                        <div style="font-size: 0.65rem; color: var(--text-secondary); line-height: 1.4;">
+                            部署管道需关联具体工作区以呈现阶段流转。
                         </div>
                     </div>
                 `;
             } else {
                 colPipelineBody = `
-                    <div style="padding: 20px 16px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
-                        <div style="font-size: 1.6rem; margin-bottom: 8px;">🚀</div>
-                        <div style="font-weight: 700; font-size: 0.84rem; color: #f59e0b; margin-bottom: 4px;">未检测到关联的 ALM 部署管道</div>
-                        <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 6px;">
-                            工作区 <strong style="color: #60a5fa;">${wsName}</strong> 当前未绑定任何 Dev ➔ Test ➔ Prod 部署管道。<br>
-                            如需查看管道权限，请在 Power BI Service 中将该工作区关联至具体部署管道。
-                        </div>
-                        <div style="font-size: 0.68rem; color: var(--text-secondary); opacity: 0.7;">
-                            需通过 ALM (Application Lifecycle Management) API 实时验证管道绑定状态
+                    <div style="padding: 16px 10px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
+                        <div style="font-size: 1.3rem; margin-bottom: 6px;">🚀</div>
+                        <div style="font-weight: 700; font-size: 0.76rem; color: #f59e0b; margin-bottom: 3px;">未检测到关联部署管道</div>
+                        <div style="font-size: 0.65rem; color: var(--text-secondary); line-height: 1.4;">
+                            工作区 <strong style="color: #60a5fa;">${wsName}</strong> 未绑定 Dev ➔ Test ➔ Prod 管道。
                         </div>
                     </div>
                 `;
             }
-            const pipelineStatusLabel = !hasSelectedWs ? '⚠️ 未选择' : '❌ 未绑定管道';
+            const pipelineStatusLabel = !hasSelectedWs ? '⚠️ 未选' : '❌ 未绑管道';
             const pipelineStatusClass = !hasSelectedWs ? 'disabled' : 'warn';
 
-            // 资产模块卡片全集字典映射
+            // 资产模块大卡片字典映射 (6 个固定大卡片，横向固定不超出屏幕，固定不能移动)
             const cardsMap = {
-                'tenant': buildTierCardHtml('tenant', '🏢 1. Tenant (租户全局策略层)', userSub, tenantHeaderStatusClass, tenantHeaderStatusText, colTenantBody),
-                'workspace': buildTierCardHtml('workspace', '📁 2. Workspace (工作区治理角色层)', wsName, wsHeaderStatusClass, wsHeaderStatusText, colWorkspaceBody),
+                'tenant': buildTierCardHtml('tenant', '🏢 1. Tenant (租户策略)', userSub, tenantHeaderStatusClass, tenantHeaderStatusText, colTenantBody),
+                'workspace': buildTierCardHtml('workspace', '📁 2. Workspace (工作区)', wsName, wsHeaderStatusClass, wsHeaderStatusText, colWorkspaceBody),
                 'model': buildTierCardHtml('model', modelTitleText, modelSubText, modelStatusClass, modelStatusBadge, colModelBody),
                 'report': buildTierCardHtml('report', reportTitleText, reportSubText, reportStatusClass, reportStatusBadge, colReportBody),
-                'connection': buildTierCardHtml('connection', '🔌 5. Connection (网关与连接凭据层)', hasSelectedWs ? '数据源通道与网关凭据池' : '等待工作区', connStatusClass, connStatusLabel, colConnectionBody),
-                'pipeline': buildTierCardHtml('pipeline', '🚀 6. Pipeline (部署管道治理层)', hasSelectedWs ? '未检测到关联管道' : '等待工作区', pipelineStatusClass, pipelineStatusLabel, colPipelineBody)
+                'connection': buildTierCardHtml('connection', '🔌 5. Connection (连接凭据)', hasSelectedWs ? '数据源与网关' : '等待工作区', connStatusClass, connStatusLabel, colConnectionBody),
+                'pipeline': buildTierCardHtml('pipeline', '🚀 6. Pipeline (部署管道)', hasSelectedWs ? '未关联管道' : '等待工作区', pipelineStatusClass, pipelineStatusLabel, colPipelineBody)
             };
 
-            // 优先加载用户自定义的卡片拖拽排版顺序
-            let cardOrder = ['tenant', 'workspace', 'model', 'report', 'connection', 'pipeline'];
-            try {
-                const savedOrder = JSON.parse(localStorage.getItem('pbi-user-assets-card-order') || '[]');
-                if (Array.isArray(savedOrder) && savedOrder.length === 6 && savedOrder.every(k => cardsMap[k])) {
-                    cardOrder = savedOrder;
-                }
-            } catch(e) {}
+            // 6 个大卡片固定按照 1-6 标准流转顺序平分屏幕宽，不能移动
+            const fixedOrder = ['tenant', 'workspace', 'model', 'report', 'connection', 'pipeline'];
+            container.innerHTML = fixedOrder.map(k => cardsMap[k]).join('');
 
-            container.innerHTML = cardOrder.map(k => cardsMap[k]).join('');
-
-            // 初始化卡片上下拖拽防重叠位移引擎 (各列独立占位，天然零重叠)
-            this.initUserAssetsCardVerticalDrag(container);
+            // 初始化卡片内部各个权限小卡片上下拖拽移动排序引擎 (物理零重叠)
+            this.initUserAssetsItemDrag(container);
         }
 
-        // ⚡ 初始化卡片上下拖拽位置引擎 (Zero-Overlap Guaranteed Vertical Dragging)
-        initUserAssetsCardVerticalDrag(container) {
+        // ⚡ 初始化卡片内部权限条目上下拖拽移动引擎 (Zero-Overlap Guaranteed Item Reordering)
+        initUserAssetsItemDrag(container) {
             if (!container) return;
-            const cards = container.querySelectorAll('.pb-asset-tier-card');
+            const bodies = container.querySelectorAll('.pb-asset-tier-card .pb-card-body');
+            let draggedRow = null;
+            let currentTierId = null;
 
-            cards.forEach(card => {
-                const header = card.querySelector('.pb-card-header');
-                if (!header) return;
+            bodies.forEach(body => {
+                const tierId = body.getAttribute('data-tier-id');
+                const rows = body.querySelectorAll('.pb-asset-card-row');
 
-                let isDragging = false;
-                let startY = 0;
-                let initialY = 0;
+                rows.forEach(row => {
+                    row.addEventListener('dragstart', (e) => {
+                        draggedRow = row;
+                        currentTierId = tierId;
+                        row.classList.add('pb-row-dragging');
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', row.getAttribute('data-row-id') || '');
+                        e.stopPropagation();
+                    });
 
-                const onPointerDown = (e) => {
-                    // 若点击内部可交互元素，不触发拖动
-                    if (e.target.closest('button, a, input, select')) return;
+                    row.addEventListener('dragend', () => {
+                        if (draggedRow) {
+                            draggedRow.classList.remove('pb-row-dragging');
+                        }
+                        // 拖拽完成，立即持久化该大卡片内部小条目顺序
+                        if (currentTierId && body) {
+                            const newOrder = Array.from(body.querySelectorAll('.pb-asset-card-row'))
+                                .map(r => r.getAttribute('data-row-id'))
+                                .filter(Boolean);
+                            try {
+                                localStorage.setItem(`pbi-user-assets-tier-items-${currentTierId}`, JSON.stringify(newOrder));
+                            } catch(e) {}
+                        }
+                        draggedRow = null;
+                        currentTierId = null;
+                    });
 
-                    isDragging = true;
-                    startY = e.clientY;
+                    row.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                        if (!draggedRow || draggedRow === row) return;
+                        // 严格限制：只允许在同属于该卡片的条目之间上下排序
+                        if (draggedRow.getAttribute('data-tier-id') !== tierId) return;
 
-                    // 从当前行内样式中提取当前的 translateY 值
-                    const match = /translateY\((-?\d+(?:\.\d+)?)px\)/.exec(card.style.transform || '');
-                    initialY = match ? parseFloat(match[1]) : 0;
+                        const rect = row.getBoundingClientRect();
+                        const midpoint = rect.top + rect.height / 2;
+                        const isAfter = (e.clientY > midpoint);
 
-                    card.classList.add('pb-card-dragging-y');
-                    try {
-                        header.setPointerCapture(e.pointerId);
-                    } catch (err) {}
-
-                    header.addEventListener('pointermove', onPointerMove);
-                    header.addEventListener('pointerup', onPointerUp);
-                    header.addEventListener('pointercancel', onPointerUp);
-                    e.preventDefault();
-                };
-
-                const onPointerMove = (e) => {
-                    if (!isDragging) return;
-                    const deltaY = e.clientY - startY;
-                    // 物理零重叠范围控制：限制在 -80px 至 +160px 之间，避免移出视口
-                    const clampedY = Math.round(Math.max(-80, Math.min(160, initialY + deltaY)));
-                    card.style.transform = `translateY(${clampedY}px)`;
-                };
-
-                const onPointerUp = (e) => {
-                    if (!isDragging) return;
-                    isDragging = false;
-                    card.classList.remove('pb-card-dragging-y');
-
-                    try {
-                        header.releasePointerCapture(e.pointerId);
-                    } catch (err) {}
-                    header.removeEventListener('pointermove', onPointerMove);
-                    header.removeEventListener('pointerup', onPointerUp);
-                    header.removeEventListener('pointercancel', onPointerUp);
-
-                    // 拖动落位后立即持久化卡片 Y 轴位置至本地缓存
-                    this.persistCardYOffsets(container);
-                };
-
-                header.addEventListener('pointerdown', onPointerDown);
+                        // 原生 DOM 垂直插槽重排，物理文档流绝对杜绝重叠
+                        if (isAfter) {
+                            body.insertBefore(draggedRow, row.nextSibling);
+                        } else {
+                            body.insertBefore(draggedRow, row);
+                        }
+                    });
+                });
             });
         }
 
-        // 持久化卡片 Y 轴位置
-        persistCardYOffsets(container) {
-            const offsets = {};
-            const cards = container.querySelectorAll('.pb-asset-tier-card');
-            cards.forEach(card => {
-                const tierId = card.getAttribute('data-tier-id');
-                const match = /translateY\((-?\d+(?:\.\d+)?)px\)/.exec(card.style.transform || '');
-                if (tierId && match) {
-                    offsets[tierId] = parseFloat(match[1]);
-                }
-            });
+        // 重置所有卡片内部权限小条目的上下排列顺序为默认
+        resetUserAssetsItemsOrder() {
             try {
-                localStorage.setItem('pbi-user-assets-card-y-offsets', JSON.stringify(offsets));
-            } catch (e) {}
-        }
-
-        // 重置用户全景链路卡片垂直位置为统一居中平齐
-        resetUserAssetsCardPositions() {
-            try {
+                ['tenant', 'workspace', 'model', 'report', 'connection', 'pipeline'].forEach(t => {
+                    localStorage.removeItem(`pbi-user-assets-tier-items-${t}`);
+                });
                 localStorage.removeItem('pbi-user-assets-card-y-offsets');
                 localStorage.removeItem('pbi-user-assets-card-order');
             } catch(e) {}
-            const container = document.getElementById('pb-user-assets-container');
-            if (container) {
-                const cards = container.querySelectorAll('.pb-asset-tier-card');
-                cards.forEach(card => {
-                    card.style.transition = 'transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1)';
-                    card.style.transform = 'translateY(0px)';
-                    setTimeout(() => {
-                        card.style.transition = '';
-                    }, 350);
-                });
-            }
+            this.renderUserAssetsMatrix();
             if (typeof window.showNotification === 'function') {
-                window.showNotification('✨ 已将所有资产卡片垂直位置重置平齐', 'info', 2000);
+                window.showNotification('✨ 已将所有卡片内部权限条目恢复为默认顺序', 'info', 2000);
             }
         }
 
         // 兼容重置入口
+        resetUserAssetsCardPositions() {
+            this.resetUserAssetsItemsOrder();
+        }
+
         resetUserAssetsCardOrder() {
-            this.resetUserAssetsCardPositions();
+            this.resetUserAssetsItemsOrder();
         }
     }
 
