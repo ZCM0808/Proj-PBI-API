@@ -2520,6 +2520,43 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
   - `tests/test_permission_blueprint.spec.js` **15/15 全部绿色通过 (1.4m)**；
   - 重点验证了“节点拖拽 -> `localStorage` 保存 -> SQLite 数据库存入 -> 刷新保持 -> 点击重置 -> 本地与数据库彻底清空”全流程。
 - **静态代码检查与质量校验**：
-  - `python -m ruff check src/`：All checks passed!
-  - `python -m mypy src/`：Success: no issues found in 10 source files!
+
+---
+
+## 68. 顶栏认证模式/快照全链路联动、全局配置 Tab 视觉分流与快照中心置顶架构
+
+### 68.1 业务背景与用户痛点
+1. **顶栏切换无感知与数据脱节**：
+   - 历史痛点：用户在顶栏切换“🌐 微软现代交互认证”或其他认证模式后，工作区、数据集和报表菜单没有同步刷新，顶栏文字和图标未能及时体现新的账号与组织租户信息；
+   - 根本原因：`selectGtbAuthMode` 内部缺少 `await window.renderGlobalTopbar()`，且未触发面向新认证主体（如交互凭据账号与租户）的静默工作区重扫（`POST /api/scan/workspaces`）。
+2. **全局环境配置面板信息过载与混杂**：
+   - 历史痛点：现代长效交互凭据（支持手机扫码、通行密钥 Passkey、90 天自动静默续期）与常规应用凭据（Client ID + Secret、个人账密）垂直堆叠混排，层次不清；
+   - 核心诉求：采用标签切换（Segmented Tab / Button），根据当前选中的体系（现代交互认证 vs 常规应用认证）独立展示对应配置表单，并支持快照中心独立置顶，保存多套交互与常规版本。
+
+### 68.2 技术架构与实装细节
+1. **全局配置快照管理中心 (Auth Profiles) 独立置顶与交互快照全自动免扫码生效**：
+   - 在 [`static/index.html`](file:///D:/zcm/Proj-PBI-API/static/index.html) 中将 `auth-snapshots-container` 提升至模态框最顶层作为公共环境中心；
+   - 在 [`static/snapshots.js`](file:///D:/zcm/Proj-PBI-API/static/snapshots.js) 中为交互认证快照注入智能识别（带 `🌐` 前缀），点击快照时自动回填租户 ID 与用户名，并直接调用 `/api/auth-mode` 进行无缝激活；
+   - **免二次扫码原理**：本地 MSAL(微软身份验证库) 缓存（`.msal_token_cache.json`）已持久化各账号与租户的 Refresh Token(90天长效刷新令牌)，从快照切换账号时，系统直接通过 `acquire_token_silent` 静默续期获得 Access Token，零弹窗、零扫码一键切号！
+2. **配置面板选项卡 (Tab 分隔) 与视觉状态无缝联动**：
+   - 在 [`static/index.html`](file:///D:/zcm/Proj-PBI-API/static/index.html) 与 [`static/script.js`](file:///D:/zcm/Proj-PBI-API/static/script.js) 中新增 `window.switchAuthSettingsTab(tab)`：
+     - `[ 🌐 微软现代交互认证 ]`（包含专属租户 ID、用户名配置与浏览器登录、粘贴 Token、设备码三通道入口）；
+     - `[ 🛡️ Azure App & 常规认证 ]`（包含 Service Principal 应用主体与 Personal 账密双模式）；
+   - 在 `updateAuthCardsVisualStatus` 中实现两个 Tab 上运行态徽章（`🟢 运行中` vs `⚪ 备用`）的精准状态点亮；
+   - 在 `loadSettings` 中根据当前生效模式自动激活对应 Tab 并回显专属输入框。
+3. **顶栏切换与工作区全链路静默同步机制 (`syncWorkspacesAfterAuthSwitch`)**：
+   - 在 [`static/script.js`](file:///D:/zcm/Proj-PBI-API/static/script.js) 中实现统一调度：
+     1. 调用 `await window.renderGlobalTopbar()` 瞬时更新顶栏主图标、模式说明与账号租户名；
+     2. 调用 `POST /api/scan/workspaces` 发起静默扫描，获取当前新凭据下有权限的工作区列表；
+     3. 自动更新 `pbi_workspaces` 缓存与 `window.selectedGtbWorkspaceIds`，重置并刷新顶栏下拉框、工作区矩阵及上下文选择器。
+
+### 68.3 工业级静态校验与自动化测试闭环
+- **静态代码检查**：
+  - `python -m ruff check src/`：All checks passed! (0 issues)
+  - `python -m mypy src/main.py --ignore-missing-imports`：Success: no issues found! (0 errors)
+  - `node -c static/script.js` & `node -c static/snapshots.js`：语法 100% 正确通过。
+- **Playwright 自动化回归测试**：
+  - `tests/e2e.spec.js` 中“微软官方浏览器长效 OAuth 登录：支持手机通行密钥/扫码认证、自动回填与工作区扫描”以及“绕过企业条件访问(CA)：支持直接粘贴 Bearer Token 快速激活与工作区扫描”全绿通过（`2 passed (11.8s)`）。
+  - “全局环境配置 (Global Settings)：Scan Workspace 能够严格过滤重复添加的 GUID”通过（`1 passed (5.0s)`）。
+
 

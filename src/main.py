@@ -707,27 +707,42 @@ async def update_settings(request: Request):
 
 @app.post("/api/auth-mode")
 async def set_auth_mode(request: Request):
-    """快速切换全局认证模式 (service_principal / personal / interactive)"""
+    """快速切换全局认证模式 (service_principal / personal / interactive)，支持直接绑定快照租户与账号"""
     try:
         data = await request.json()
         mode = data.get("auth_mode", "service_principal")
+        tenant_id = data.get("tenant_id")
+        username = data.get("username")
         if mode not in ["service_principal", "personal", "interactive"]:
             return {"success": False, "message": "无效的认证模式"}
         
         settings = load_settings()
         if mode == "interactive":
-            Config.update_config({
+            updates = {
                 "AUTH_MODE": "personal",
                 "CLIENT_ID": "04b07795-8ddb-461a-bbee-02f9e1bf7b46"
-            })
+            }
+            if tenant_id:
+                updates["TENANT_ID"] = tenant_id.strip()
+            if username:
+                updates["USERNAME"] = username.strip()
+            Config.update_config(updates)
         elif mode == "service_principal":
             saved_client = settings.get("PBI_CLIENT_ID") or Config.CLIENT_ID
-            Config.update_config({
+            updates = {
                 "AUTH_MODE": "service_principal",
                 "CLIENT_ID": saved_client
-            })
+            }
+            if tenant_id:
+                updates["TENANT_ID"] = tenant_id.strip()
+            Config.update_config(updates)
         else:
-            Config.update_config({"AUTH_MODE": "personal"})
+            updates = {"AUTH_MODE": "personal"}
+            if tenant_id:
+                updates["TENANT_ID"] = tenant_id.strip()
+            if username:
+                updates["USERNAME"] = username.strip()
+            Config.update_config(updates)
             
         global client
         client = PBIClient(Config())

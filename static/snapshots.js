@@ -46,7 +46,8 @@
             
             const nameSpan = document.createElement('span');
             nameSpan.className = 'dropdown-item-name';
-            nameSpan.textContent = snap.name;
+            const modeIcon = snap.authMode === 'interactive' ? '🌐 ' : (snap.authMode === 'personal' ? '👤 ' : '🛡️ ');
+            nameSpan.textContent = modeIcon + snap.name;
             nameSpan.title = "Double click to rename";
             
             const actions = document.createElement('div');
@@ -68,6 +69,7 @@
             const startEdit = (e) => {
                 e.stopPropagation();
                 nameSpan.contentEditable = 'true';
+                nameSpan.textContent = snap.name; // 编辑时去掉前缀 icon
                 nameSpan.focus();
                 const sel = window.getSelection();
                 sel.selectAllChildren(nameSpan);
@@ -82,14 +84,14 @@
                     const isDuplicate = snapshots.some(s => s.id !== snap.id && s.name.toLowerCase() === newName.toLowerCase());
                     if (isDuplicate) {
                         alert(`别名 "${newName}" 已存在，请换一个名称！`);
-                        nameSpan.textContent = snap.name; // 恢复原名
+                        nameSpan.textContent = modeIcon + snap.name; // 恢复原名
                     } else {
                         snap.name = newName;
                         saveSnapshots();
                         renderSnapshots(); // re-render to update trigger text if active
                     }
                 } else {
-                    nameSpan.textContent = snap.name; // revert
+                    nameSpan.textContent = modeIcon + snap.name; // revert
                 }
             };
             
@@ -98,7 +100,7 @@
             nameSpan.onblur = finishEdit;
             nameSpan.onkeydown = (e) => {
                 if (e.key === 'Enter') { e.preventDefault(); finishEdit(); }
-                if (e.key === 'Escape') { nameSpan.textContent = snap.name; finishEdit(); }
+                if (e.key === 'Escape') { nameSpan.textContent = modeIcon + snap.name; finishEdit(); }
             };
             // Prevent clicking name from triggering item click if editing
             nameSpan.onclick = (e) => {
@@ -118,30 +120,71 @@
             };
 
             // Apply Logic
-            item.onclick = (e) => {
+            item.onclick = async (e) => {
                 if (nameSpan.contentEditable === 'true') return;
                 activeSnapshotId = snap.id;
                 saveSnapshots();
                 renderSnapshots();
                 closeDropdown();
                 
-                // Fill form
-                document.getElementById('set-client').value = snap.clientId || '';
-                document.getElementById('set-secret').value = snap.clientSecret || '';
-                document.getElementById('set-username').value = snap.username || '';
-                document.getElementById('set-password').value = snap.password || '';
-                document.getElementById('set-tenant').value = snap.tenantId || '';
-                
-                const authModeRadios = document.getElementsByName('pbi_auth_mode');
-                for (let radio of authModeRadios) {
-                    radio.checked = (radio.value === snap.authMode);
-                }
-                if (window.updateAuthModeVisibility) {
-                    window.updateAuthModeVisibility(snap.authMode || 'service_principal');
+                if (snap.authMode === 'interactive') {
+                    if (window.switchAuthSettingsTab) window.switchAuthSettingsTab('interactive');
+                    const intTenant = document.getElementById('set-interactive-tenant');
+                    const intUser = document.getElementById('set-interactive-username');
+                    if (intTenant) intTenant.value = snap.tenantId || '';
+                    if (intUser) intUser.value = snap.username || '';
+                    const setTenant = document.getElementById('set-tenant');
+                    const setUser = document.getElementById('set-username');
+                    const setClient = document.getElementById('set-client');
+                    if (setTenant) setTenant.value = snap.tenantId || '';
+                    if (setUser) setUser.value = snap.username || '';
+                    if (setClient) setClient.value = snap.clientId || '04b07795-8ddb-461a-bbee-02f9e1bf7b46';
+
+                    // 自动激活该交互快照（本地已持有 MSAL 刷新令牌，免去二次扫码交互！）
+                    try {
+                        const res = await fetch('/api/auth-mode', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                auth_mode: 'interactive',
+                                tenant_id: snap.tenantId,
+                                username: snap.username
+                            })
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            if (window.showNotification) {
+                                window.showNotification(`🎉 已切换至快照 [${snap.name}]，已连接本地安全凭据！`, 'success', 3500);
+                            }
+                            if (window.renderGlobalTopbar) await window.renderGlobalTopbar();
+                            if (window.renderEnvIdentity) await window.renderEnvIdentity();
+                            if (window.updateWorkflowAuthBadge) await window.updateWorkflowAuthBadge();
+                            if (window.updateAuthCardsVisualStatus) await window.updateAuthCardsVisualStatus();
+                            if (window.syncWorkspacesAfterAuthSwitch) await window.syncWorkspacesAfterAuthSwitch();
+                        }
+                    } catch(err) {
+                        console.warn('Failed to auto-activate interactive snapshot:', err);
+                    }
+                } else {
+                    if (window.switchAuthSettingsTab) window.switchAuthSettingsTab('legacy');
+                    // Fill form
+                    document.getElementById('set-client').value = snap.clientId || '';
+                    document.getElementById('set-secret').value = snap.clientSecret || '';
+                    document.getElementById('set-username').value = snap.username || '';
+                    document.getElementById('set-password').value = snap.password || '';
+                    document.getElementById('set-tenant').value = snap.tenantId || '';
+                    
+                    const authModeRadios = document.getElementsByName('pbi_auth_mode');
+                    for (let radio of authModeRadios) {
+                        radio.checked = (radio.value === snap.authMode);
+                    }
+                    if (window.updateAuthModeVisibility) {
+                        window.updateAuthModeVisibility(snap.authMode || 'service_principal');
+                    }
                 }
                 
                 // Trigger flash animation for micro-interaction feedback
-                ['set-client', 'set-secret', 'set-username', 'set-password', 'set-tenant'].forEach(id => {
+                ['set-client', 'set-secret', 'set-username', 'set-password', 'set-tenant', 'set-interactive-tenant', 'set-interactive-username'].forEach(id => {
                     const el = document.getElementById(id);
                     if(el && el.value) {
                         el.classList.remove('snapshot-flash');
@@ -208,6 +251,19 @@
     }
 
     function getCurrentConfig() {
+        const isInteractiveTab = (window._currentAuthSettingsTab === 'interactive');
+        if (isInteractiveTab) {
+            const tenantId = (document.getElementById('set-interactive-tenant')?.value || document.getElementById('set-tenant')?.value || '7d97f400-69b4-4df4-a009-c9806ec70783').trim();
+            const username = (document.getElementById('set-interactive-username')?.value || document.getElementById('set-username')?.value || 'carman_zhao@vfc.com').trim();
+            return {
+                clientId: '04b07795-8ddb-461a-bbee-02f9e1bf7b46',
+                clientSecret: '',
+                username: username,
+                password: '',
+                tenantId: tenantId,
+                authMode: 'interactive'
+            };
+        }
         let authMode = 'service_principal';
         const authModeRadios = document.getElementsByName('pbi_auth_mode');
         for (let radio of authModeRadios) {
@@ -225,8 +281,8 @@
 
     window.saveAuthSnapshot = function(customName = null, isManual = false) {
         const config = getCurrentConfig();
-        if (!config.clientId || !config.tenantId) {
-            console.warn('Cannot save snapshot: Missing Client ID or Tenant ID.');
+        if (!config.tenantId) {
+            console.warn('Cannot save snapshot: Missing Tenant ID.');
             return;
         }
         
@@ -249,7 +305,18 @@
             }
         }
 
-        let finalName = customName || `Profile ${snapshots.length + 1}`;
+        let defaultPrefix = 'Profile';
+        if (config.authMode === 'interactive') {
+            const userShort = config.username ? config.username.split('@')[0] : 'User';
+            defaultPrefix = `交互凭据 (${userShort})`;
+        } else if (config.authMode === 'personal') {
+            const userShort = config.username ? config.username.split('@')[0] : 'User';
+            defaultPrefix = `个人账密 (${userShort})`;
+        } else {
+            defaultPrefix = `应用主体 (SP ${snapshots.length + 1})`;
+        }
+
+        let finalName = customName || defaultPrefix;
         let counter = 1;
         let baseName = finalName;
         while (snapshots.some(s => s.name.toLowerCase() === finalName.toLowerCase())) {
@@ -281,8 +348,8 @@
         if (!snap) return;
 
         const config = getCurrentConfig();
-        if (!config.clientId || !config.tenantId) {
-            alert('更新失败：TENANT_ID 和 CLIENT_ID 不能为空！');
+        if (!config.tenantId) {
+            alert('更新失败：TENANT_ID 不能为空！');
             return;
         }
 
@@ -306,14 +373,24 @@
 
     window.saveNewAuthSnapshot = async function() {
         const config = getCurrentConfig();
-        if (!config.clientId || !config.tenantId) {
-            alert('保存失败：TENANT_ID 和 CLIENT_ID 不能为空！');
+        if (!config.tenantId) {
+            alert('保存失败：TENANT_ID 不能为空！');
             return;
         }
-        const defaultName = `Profile ${snapshots.length + 1}`;
+        let defaultName = `Profile ${snapshots.length + 1}`;
+        if (config.authMode === 'interactive') {
+            const prefix = config.username ? config.username.split('@')[0] : 'User';
+            defaultName = `交互凭据 (${prefix})`;
+        } else if (config.authMode === 'personal') {
+            const prefix = config.username ? config.username.split('@')[0] : 'User';
+            defaultName = `个人账密 (${prefix})`;
+        } else {
+            defaultName = `应用主体 (SP ${snapshots.length + 1})`;
+        }
+
         const name = window.showCustomPrompt 
-            ? await window.showCustomPrompt('为新快照输入名称:', defaultName)
-            : prompt('为新快照输入名称:', defaultName);
+            ? await window.showCustomPrompt('为新配置快照输入名称:', defaultName)
+            : prompt('为新配置快照输入名称:', defaultName);
         if (name !== null) {
             window.saveAuthSnapshot(name.trim() || undefined, true);
             if (typeof window.showNotification === 'function') {

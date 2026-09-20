@@ -2667,62 +2667,14 @@
             <form id="settings-form" autocomplete="on">
                 <div class="modal-body" style="display: flex; flex-direction: column; gap: 8px; max-height: 65vh; overflow-y: auto;">
                     <p style="margin: 0; font-size: 0.75rem; color: var(--text-secondary);">在此配置的所有参数将立即生效，且会在整个项目 (API & Pipeline) 中共享。</p>
-                    <!-- 1. Microsoft Modern Interactive Authentication (Standalone Card) -->
-                    <div id="auth-card-interactive" style="background: var(--input-bg-light); padding: 10px 12px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.35); box-shadow: 0 2px 8px rgba(56, 189, 248, 0.04); margin-bottom: 8px; transition: all 0.25s ease;">
+                    <!-- 全局配置快照管理中心 (独立置于最顶层，支持多环境与多账号快照) -->
+                    <div class="auth-snapshots-container" style="background: var(--input-bg-light); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--panel-border); margin-bottom: 10px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                             <div style="display: flex; align-items: center; gap: 6px;">
-                                <span style="font-size: 0.95rem;">🌐</span>
-                                <h4 style="margin: 0; font-size: 0.78rem; font-weight: 700; color: #38bdf8;">Microsoft Modern Interactive Auth (微软现代交互认证)</h4>
-                                <span style="font-size: 0.62rem; padding: 1px 6px; border-radius: 4px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-weight: 600;">推荐 · 90天自动续期</span>
+                                <span style="font-size: 0.95rem;">🗂️</span>
+                                <h4 style="font-weight: 700; font-size: 0.78rem; color: var(--text-primary); margin: 0;">Auth Profiles (配置快照管理中心)</h4>
                             </div>
-                            <span id="auth-status-badge-interactive" class="auth-status-badge" style="font-size: 0.65rem; padding: 2px 8px; border-radius: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; transition: all 0.25s ease; background: rgba(255, 255, 255, 0.06); color: var(--text-secondary);">⚪ 未激活 (备用)</span>
-                        </div>
-                        <p style="margin: 0 0 8px 0; font-size: 0.68rem; color: var(--text-secondary); line-height: 1.4;">
-                            独立现代交互授权：直接调起微软官方登录窗口，支持手机 Authenticator 扫码与 Passkey(通行密钥 / FIDO2)。由微软颁发 Refresh Token 自动静默续期永不过期，彻底免去配置 App Secret 与个人账密。
-                        </p>
-                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 8px; border-top: 1px dashed var(--panel-border); flex-wrap: wrap;">
-                            <div style="display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--text-secondary);">
-                                <span>当前租户:</span>
-                                <span style="font-family: monospace; font-weight: 600; color: var(--text-primary); font-size: 0.7rem;">7d97f400-69b4-4df4-a009-c9806ec70783</span>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-                                <button type="button" id="btn-browser-interactive-login" onclick="window.startInteractiveBrowserLogin()" class="btn-action-primary" title="推荐：使用浏览器调起微软标准登录，支持手机扫码与通行密钥，长效 90 天自动刷新" style="padding: 4px 10px; font-size: 0.72rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; background: linear-gradient(135deg, #0284c7, #0ea5e9); color: #fff; border: none; cursor: pointer; box-shadow: 0 2px 8px rgba(14, 165, 233, 0.25); transition: all 0.2s;">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-                                    <span>浏览器登录</span>
-                                </button>
-                                <button type="button" id="btn-paste-token-login" onclick="window.promptAndApplyBearerToken()" class="btn-action-secondary" title="企业条件访问(CA)受限时，直接粘贴从已登录浏览器复制的 Token 快速绕过" style="padding: 4px 8px; font-size: 0.72rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; background: rgba(56, 189, 248, 0.1); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); cursor: pointer; transition: all 0.2s;">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-                                    <span>粘贴 Token</span>
-                                </button>
-                                <button type="button" id="btn-device-code-login" onclick="window.startDeviceCodeLoginFlow()" class="btn-action-secondary" title="备用方式：设备代码流 (若企业未拦截)" style="padding: 4px 8px; font-size: 0.72rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); border: 1px solid var(--panel-border); cursor: pointer; transition: all 0.2s;">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
-                                    <span>设备码</span>
-                                </button>
-                            </div>
-                        </div>
-                        <div id="auth-interactive-active-info" style="display: none; margin-top: 8px; font-size: 0.68rem; color: #38bdf8; background: rgba(56, 189, 248, 0.08); padding: 6px 10px; border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.2); line-height: 1.4;"></div>
-                    </div>
-
-                    <!-- 2. Azure App & Legacy Authentication Configs -->
-                    <div id="auth-card-legacy" style="background: var(--input-bg-light); padding: 8px; border-radius: 6px; border: 1px solid var(--panel-border); transition: all 0.25s ease;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <div style="display: flex; align-items: center; gap: 6px;">
-                                <h4 style="margin: 0; font-size: 0.75rem; color: var(--badge-custom-text);">Azure App & Legacy Authentication</h4>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 6px;">
-                                <span id="auth-status-badge-legacy" class="auth-status-badge" style="font-size: 0.65rem; padding: 2px 8px; border-radius: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; transition: all 0.25s ease; background: rgba(34, 197, 94, 0.15); color: #22c55e;">🟢 当前生效中</span>
-                                <button type="button" id="verify-settings-btn" title="Verify Auth" class="btn-verify" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                                </button>
-                            </div>
-                        </div>
-                        <div id="auth-legacy-inactive-tip" style="display: none; margin-bottom: 8px; font-size: 0.68rem; color: var(--text-secondary); background: rgba(255, 255, 255, 0.04); padding: 6px 10px; border-radius: 4px; border: 1px dashed var(--panel-border); line-height: 1.4;">
-                            💡 <strong>提示</strong>：当前正在生效上方的<strong>“微软现代交互认证”</strong>。若需切回常规应用或个人账密，在下方选择快照或调整凭据后点击“保存配置”，系统将立即切换生效。
-                        </div>
-                    <!-- Auth Snapshots UI -->
-                    <div class="auth-snapshots-container" style="margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed var(--panel-border);">
-                        <div style="margin-bottom: 6px;">
-                            <h4 style="font-weight: bold; font-size: 0.75rem; color: var(--text-primary); margin: 0;">Auth Profiles (配置快照)</h4>
+                            <span style="font-size: 0.64rem; color: var(--text-secondary);">支持保存现代交互凭据与常规应用多套环境</span>
                         </div>
                         <div style="display: flex; align-items: center; gap: 6px; width: 100%;">
                             <div id="snapshot-dropdown-wrapper" style="position: relative; flex: 1; min-width: 0;">
@@ -2742,59 +2694,136 @@
                             </button>
                         </div>
                     </div>
-                        <div class="form-group" style="margin-bottom: 12px; padding: 8px; background: var(--input-bg); border-radius: 4px;">
-                            <label style="margin-bottom: 6px; display: block; font-weight: bold;">Active Auth Mode (认证模式选择)</label>
-                            <div style="display: flex; flex-direction: column; gap: 6px;">
-                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.8rem; color: var(--text-primary);">
-                                    <input type="radio" name="pbi_auth_mode" value="service_principal" checked onchange="window.updateAuthModeVisibility('service_principal')" style="margin: 0; accent-color: var(--badge-custom-text);">
-                                    <span><strong>Service Principal</strong> (Azure App: Client ID + Secret)</span>
-                                </label>
-                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.8rem; color: var(--text-primary);">
-                                    <input type="radio" name="pbi_auth_mode" value="personal" onchange="window.updateAuthModeVisibility('personal')" style="margin: 0; accent-color: var(--badge-custom-text);">
-                                    <span><strong>Personal Auth</strong> (Delegated: Username + Password)</span>
-                                </label>
+
+                    <!-- 认证体系切换标签 (根据选择展示不同配置) -->
+                    <div class="auth-tabs-nav" style="display: flex; gap: 6px; margin-bottom: 10px; background: var(--input-bg); padding: 4px; border-radius: 8px; border: 1px solid var(--panel-border);">
+                        <button type="button" id="tab-btn-interactive" onclick="window.switchAuthSettingsTab('interactive')" class="auth-tab-btn active" style="flex: 1; padding: 7px 10px; font-size: 0.74rem; font-weight: 600; border-radius: 6px; border: none; cursor: pointer; transition: all 0.25s; display: flex; align-items: center; justify-content: center; gap: 6px; background: rgba(56, 189, 248, 0.18); color: #38bdf8; box-shadow: 0 1px 4px rgba(56, 189, 248, 0.12);">
+                            <span>🌐 微软现代交互认证</span>
+                            <span id="tab-badge-interactive" style="font-size: 0.6rem; padding: 1px 6px; border-radius: 10px; background: rgba(34, 197, 94, 0.2); color: #22c55e;">🟢 运行中</span>
+                        </button>
+                        <button type="button" id="tab-btn-legacy" onclick="window.switchAuthSettingsTab('legacy')" class="auth-tab-btn" style="flex: 1; padding: 7px 10px; font-size: 0.74rem; font-weight: 600; border-radius: 6px; border: none; cursor: pointer; transition: all 0.25s; display: flex; align-items: center; justify-content: center; gap: 6px; background: transparent; color: var(--text-secondary);">
+                            <span>🛡️ Azure App & 常规认证</span>
+                            <span id="tab-badge-legacy" style="font-size: 0.6rem; padding: 1px 6px; border-radius: 10px; background: rgba(255, 255, 255, 0.06); color: var(--text-secondary);">备用</span>
+                        </button>
+                    </div>
+
+                    <!-- Panel 1: Microsoft Modern Interactive Authentication -->
+                    <div id="panel-auth-interactive" class="auth-tab-panel" style="display: block; transition: all 0.25s ease;">
+                        <div id="auth-card-interactive" style="background: var(--input-bg-light); padding: 12px; border-radius: 8px; border: 1.5px solid #0284c7; box-shadow: 0 0 14px rgba(14, 165, 233, 0.22); margin-bottom: 8px; transition: all 0.25s ease;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="font-size: 0.95rem;">🌐</span>
+                                    <h4 style="margin: 0; font-size: 0.78rem; font-weight: 700; color: #38bdf8;">Microsoft Modern Interactive Auth (微软现代交互认证)</h4>
+                                </div>
+                                <span id="auth-status-badge-interactive" class="auth-status-badge" style="font-size: 0.65rem; padding: 2px 8px; border-radius: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; transition: all 0.25s ease; background: rgba(34, 197, 94, 0.15); color: #22c55e;">🟢 当前生效中</span>
                             </div>
-                        </div>
-                        <!-- Service Principal Auth Fields (3 Parameters) -->
-                        <div id="auth-sp-fields" class="auth-mode-collapsible">
-                            <div class="form-group" style="margin-bottom: 8px;">
-                                <label>TENANT_ID (Azure AD)</label>
-                                <input type="text" id="set-tenant" name="pbi_tenant_id" class="settings-input" placeholder="e.g. c8923456-789a-bcde-f012-3456789abcde">
+                            <p style="margin: 0 0 10px 0; font-size: 0.68rem; color: var(--text-secondary); line-height: 1.4;">
+                                直接调起微软官方登录窗口，支持手机 Authenticator 扫码与 Passkey(通行密钥 / FIDO2)。微软颁发 Refresh Token 自动静默续期永不过期。<strong>认证成功后直接保存在上方快照中，下次切换快照直接生效，无需再次交互认证扫码！</strong>
+                            </p>
+                            <!-- 专属租户与用户名输入配置 (可保存为多个版本快照) -->
+                            <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 8px; margin-bottom: 10px; background: var(--input-bg); padding: 8px; border-radius: 6px; border: 1px solid var(--panel-border);">
+                                <div class="form-group" style="margin: 0;">
+                                    <label style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 3px; display: block;">企业租户 ID (Tenant ID)</label>
+                                    <input type="text" id="set-interactive-tenant" class="settings-input" placeholder="例如: 7d97f400-69b4-4df4-a009-c9806ec70783" style="font-family: monospace; font-size: 0.72rem; padding: 4px 8px;" value="7d97f400-69b4-4df4-a009-c9806ec70783">
+                                </div>
+                                <div class="form-group" style="margin: 0;">
+                                    <label style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 3px; display: block;">登录账号 / UPN (Username)</label>
+                                    <input type="text" id="set-interactive-username" class="settings-input" placeholder="例如: carman_zhao@vfc.com" style="font-size: 0.72rem; padding: 4px 8px;" value="carman_zhao@vfc.com">
+                                </div>
                             </div>
-                            <div class="form-group" style="margin-bottom: 8px;">
-                                <label>CLIENT_ID (Azure App)</label>
-                                <input type="text" id="set-client" name="pbi_client_id" class="settings-input" placeholder="e.g. f0123456-789a-bcde-f012-3456789abcde">
-                            </div>
-                            <div class="form-group" id="client-secret-group" style="margin-bottom: 8px;">
-                                <label>CLIENT_SECRET (Azure App)</label>
-                                <div style="position: relative; display: flex; align-items: center;">
-                                    <input type="password" id="set-secret" name="pbi_client_secret" class="settings-input" placeholder="e.g. 8qC8Q~xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="padding-right: 36px;">
-                                    <button type="button" id="toggle-secret-btn" style="position: absolute; right: 8px; background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px;" title="Toggle Visibility">
-                                        <svg id="eye-icon-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block;">
-                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                            <circle cx="12" cy="12" r="3"></circle>
-                                        </svg>
-                                        <svg id="eye-icon-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
-                                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                                            <line x1="1" y1="1" x2="23" y2="23"></line>
-                                        </svg>
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 8px; border-top: 1px dashed var(--panel-border); flex-wrap: wrap;">
+                                <span style="font-size: 0.68rem; color: var(--text-secondary);">若需新环境或更换账号，点击按钮登录：</span>
+                                <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                                    <button type="button" id="btn-browser-interactive-login" onclick="window.startInteractiveBrowserLogin()" class="btn-action-primary" title="推荐：使用浏览器调起微软标准登录，支持手机扫码与通行密钥，长效 90 天自动刷新" style="padding: 4px 10px; font-size: 0.72rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; background: linear-gradient(135deg, #0284c7, #0ea5e9); color: #fff; border: none; cursor: pointer; box-shadow: 0 2px 8px rgba(14, 165, 233, 0.25); transition: all 0.2s;">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                                        <span>浏览器登录</span>
+                                    </button>
+                                    <button type="button" id="btn-paste-token-login" onclick="window.promptAndApplyBearerToken()" class="btn-action-secondary" title="企业条件访问(CA)受限时，直接粘贴从已登录浏览器复制的 Token 快速绕过" style="padding: 4px 8px; font-size: 0.72rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; background: rgba(56, 189, 248, 0.1); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); cursor: pointer; transition: all 0.2s;">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                                        <span>粘贴 Token</span>
+                                    </button>
+                                    <button type="button" id="btn-device-code-login" onclick="window.startDeviceCodeLoginFlow()" class="btn-action-secondary" title="备用方式：设备代码流 (若企业未拦截)" style="padding: 4px 8px; font-size: 0.72rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); border: 1px solid var(--panel-border); cursor: pointer; transition: all 0.2s;">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                                        <span>设备码</span>
                                     </button>
                                 </div>
                             </div>
+                            <div id="auth-interactive-active-info" style="display: none; margin-top: 8px; font-size: 0.68rem; color: #38bdf8; background: rgba(56, 189, 248, 0.08); padding: 6px 10px; border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.2); line-height: 1.4;"></div>
                         </div>
-                        <!-- Personal Auth Fields (2 Parameters) -->
-                        <div id="auth-personal-fields" class="auth-mode-collapsible" style="display: none; max-height: 0; opacity: 0; overflow: hidden;">
-                            <div class="form-group" style="margin-bottom: 8px;">
-                                <label>USERNAME (Personal & Delegated)</label>
-                                <input type="text" id="set-username" name="pbi_username" class="settings-input" placeholder="e.g. user@myorg.com">
-                            </div>
-                            <div class="form-group" style="margin-bottom: 8px;">
-                                <label>PASSWORD (Personal & Delegated)</label>
-                                <div style="position: relative; display: flex; align-items: center;">
-                                    <input type="password" id="set-password" name="pbi_password" class="settings-input" placeholder="User password" style="padding-right: 36px;">
-                                    <button type="button" onclick="const p = document.getElementById('set-password'); p.type = p.type === 'password' ? 'text' : 'password';" style="position: absolute; right: 8px; background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px;" title="Toggle Visibility">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path></svg>
+                    </div>
+
+                    <!-- Panel 2: Azure App & Legacy Authentication Configs -->
+                    <div id="panel-auth-legacy" class="auth-tab-panel" style="display: none; transition: all 0.25s ease;">
+                        <div id="auth-card-legacy" style="background: var(--input-bg-light); padding: 10px; border-radius: 8px; border: 1px solid var(--panel-border); transition: all 0.25s ease;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="font-size: 0.95rem;">🛡️</span>
+                                    <h4 style="margin: 0; font-size: 0.75rem; color: var(--badge-custom-text);">Azure App & Legacy Authentication (常规应用与个人账密认证)</h4>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span id="auth-status-badge-legacy" class="auth-status-badge" style="font-size: 0.65rem; padding: 2px 8px; border-radius: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; transition: all 0.25s ease; background: rgba(255, 255, 255, 0.06); color: var(--text-secondary);">⚪ 未启用 (备用)</span>
+                                    <button type="button" id="verify-settings-btn" title="Verify Auth" class="btn-verify" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
                                     </button>
+                                </div>
+                            </div>
+                            <div id="auth-legacy-inactive-tip" style="display: none; margin-bottom: 8px; font-size: 0.68rem; color: var(--text-secondary); background: rgba(255, 255, 255, 0.04); padding: 6px 10px; border-radius: 4px; border: 1px dashed var(--panel-border); line-height: 1.4;">
+                                💡 <strong>提示</strong>：当前系统正在生效<strong>“微软现代交互认证”</strong>。若需切回此常规认证，只需在下方调整凭据后点击“保存配置”，系统将立即切换生效。
+                            </div>
+                            <div class="form-group" style="margin-bottom: 10px; padding: 8px; background: var(--input-bg); border-radius: 4px;">
+                                <label style="margin-bottom: 6px; display: block; font-weight: bold; font-size: 0.74rem;">Active Auth Mode (认证模式选择)</label>
+                                <div style="display: flex; flex-direction: column; gap: 6px;">
+                                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.8rem; color: var(--text-primary);">
+                                        <input type="radio" name="pbi_auth_mode" value="service_principal" checked onchange="window.updateAuthModeVisibility('service_principal')" style="margin: 0; accent-color: var(--badge-custom-text);">
+                                        <span><strong>Service Principal</strong> (Azure App: Client ID + Secret)</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.8rem; color: var(--text-primary);">
+                                        <input type="radio" name="pbi_auth_mode" value="personal" onchange="window.updateAuthModeVisibility('personal')" style="margin: 0; accent-color: var(--badge-custom-text);">
+                                        <span><strong>Personal Auth</strong> (Delegated: Username + Password)</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <!-- Service Principal Auth Fields (3 Parameters) -->
+                            <div id="auth-sp-fields" class="auth-mode-collapsible">
+                                <div class="form-group" style="margin-bottom: 8px;">
+                                    <label>TENANT_ID (Azure AD)</label>
+                                    <input type="text" id="set-tenant" name="pbi_tenant_id" class="settings-input" placeholder="e.g. c8923456-789a-bcde-f012-3456789abcde">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 8px;">
+                                    <label>CLIENT_ID (Azure App)</label>
+                                    <input type="text" id="set-client" name="pbi_client_id" class="settings-input" placeholder="e.g. f0123456-789a-bcde-f012-3456789abcde">
+                                </div>
+                                <div class="form-group" id="client-secret-group" style="margin-bottom: 8px;">
+                                    <label>CLIENT_SECRET (Azure App)</label>
+                                    <div style="position: relative; display: flex; align-items: center;">
+                                        <input type="password" id="set-secret" name="pbi_client_secret" class="settings-input" placeholder="e.g. 8qC8Q~xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="padding-right: 36px;">
+                                        <button type="button" id="toggle-secret-btn" style="position: absolute; right: 8px; background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px;" title="Toggle Visibility">
+                                            <svg id="eye-icon-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block;">
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                                <circle cx="12" cy="12" r="3"></circle>
+                                            </svg>
+                                            <svg id="eye-icon-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                                <line x1="1" y1="1" x2="23" y2="23"></line>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Personal Auth Fields (2 Parameters) -->
+                            <div id="auth-personal-fields" class="auth-mode-collapsible" style="display: none; max-height: 0; opacity: 0; overflow: hidden;">
+                                <div class="form-group" style="margin-bottom: 8px;">
+                                    <label>USERNAME (Personal & Delegated)</label>
+                                    <input type="text" id="set-username" name="pbi_username" class="settings-input" placeholder="e.g. user@myorg.com">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 8px;">
+                                    <label>PASSWORD (Personal & Delegated)</label>
+                                    <div style="position: relative; display: flex; align-items: center;">
+                                        <input type="password" id="set-password" name="pbi_password" class="settings-input" placeholder="User password" style="padding-right: 36px;">
+                                        <button type="button" onclick="const p = document.getElementById('set-password'); p.type = p.type === 'password' ? 'text' : 'password';" style="position: absolute; right: 8px; background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px;" title="Toggle Visibility">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path></svg>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -3115,7 +3144,7 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260919_v1440"></script>
-    <script src="/static/script.js?v=20260920_v1230"></script>
+    <script src="/static/script.js?v=20260920_v1245"></script>
     <script src="/static/permission_blueprint.js?v=20260920_v1118"></script>
 
 
@@ -3209,7 +3238,7 @@
             </button>
         </div>
     </div>
-    <script src="/static/snapshots.js?v=20260920_v1115"></script>
+    <script src="/static/snapshots.js?v=20260920_v1245"></script>
     <!-- Test Harness Modal -->
     <div id="test-harness-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content" style="max-width: 800px; width: 90%;">

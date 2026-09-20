@@ -3,16 +3,15 @@ const { test, expect } = require('@playwright/test');
 test.describe('Proj-PBI-API UI e2e tests', () => {
 
   test.beforeEach(async ({ page }) => {
+    // 注入稳定的 Mock 环境变量以保证测试环境（本地和CI）绝对一致，避免二次 reload
+    await page.addInitScript(() => {
+      localStorage.clear();
+      localStorage.setItem('pbi-active-module', 'api_tree');
+      localStorage.setItem('pbi_tenant_id', 'mock-tenant-1234');
+      localStorage.setItem('pbi_app_name', 'Mock App');
+    });
     // 导航到主页
     await page.goto('/');
-    // 清空缓存并注入稳定的 Mock 环境变量以保证测试环境（本地和CI）绝对一致
-    await page.evaluate(() => {
-        localStorage.clear();
-        localStorage.setItem('pbi-active-module', 'api_tree');
-        localStorage.setItem('pbi_tenant_id', 'mock-tenant-1234');
-        localStorage.setItem('pbi_app_name', 'Mock App');
-    });
-    await page.reload();
   });
 
   test('刷新页面后，历史下拉框默认必须是隐藏的 (不能因为 CSS 冲突自动展开)', async ({ page }) => {
@@ -168,9 +167,8 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
         PBI_WORKSPACES: [{ id: 'duplicate-ws', name: 'Already Added WS' }]
       })
     }));
-    await page.reload();
-    await page.waitForTimeout(300);
-
+    // 清理本地工作区缓存，确保测试环境使用 mock 的单个已有工作区
+    await page.evaluate(() => localStorage.removeItem('pbi_workspaces'));
     // 点击全局设置按钮
     await page.locator('#btn-settings').click();
     await expect(page.locator('#settings-modal')).toBeVisible();
@@ -188,8 +186,8 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
       })
     }));
 
-    // 点击 Workspace 的 Scan 按钮 (找第一个包含 Scan 字样的按钮)
-    const scanBtn = page.locator('button', { hasText: '🔍 Scan' }).first();
+    // 点击 Workspace 的 Scan 按钮 (.btn-scan)
+    const scanBtn = page.locator('.btn-scan, button:has-text("Scan")').first();
     await scanBtn.click();
 
     // 弹窗可见并点击全部添加 (Add Selected)
@@ -1012,6 +1010,11 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     const settingsModal = page.locator('#settings-modal');
     await expect(settingsModal).toBeVisible();
 
+    const tabInteractive = page.locator('#tab-btn-interactive');
+    if (await tabInteractive.isVisible()) {
+      await tabInteractive.click();
+    }
+
     const pasteBtn = page.locator('#btn-paste-token-login');
     await expect(pasteBtn).toBeVisible();
 
@@ -1072,6 +1075,12 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
       }
       return await settingsModal.isVisible();
     }, { timeout: 8000 }).toBe(true);
+
+    // 切换至微软现代交互认证 Tab
+    const tabInteractive = page.locator('#tab-btn-interactive');
+    if (await tabInteractive.isVisible()) {
+      await tabInteractive.click();
+    }
 
     // 验证浏览器登录按钮可见并点击
     const oauthBtn = page.locator('#btn-browser-interactive-login');

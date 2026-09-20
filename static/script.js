@@ -3131,11 +3131,12 @@ window.selectGtbAuthMode = async function(mode) {
             if (window.showNotification) {
                 window.showNotification(`认证模式已成功切换为: ${label}`, 'success');
             }
+            if (window.renderGlobalTopbar) await window.renderGlobalTopbar();
             if (window.renderEnvIdentity) await window.renderEnvIdentity();
             if (window.updateWorkflowAuthBadge) await window.updateWorkflowAuthBadge();
             if (window.updateAuthCardsVisualStatus) await window.updateAuthCardsVisualStatus();
-            if (window.refreshGlobalContext) {
-                await window.refreshGlobalContext();
+            if (window.syncWorkspacesAfterAuthSwitch) {
+                await window.syncWorkspacesAfterAuthSwitch();
             }
         } else {
             if (window.showNotification) {
@@ -3145,6 +3146,58 @@ window.selectGtbAuthMode = async function(mode) {
     } catch(e) {
         console.error('Failed to set auth mode:', e);
         if (window.showNotification) window.showNotification('切换认证模式发生网络错误', 'error');
+    }
+};
+
+// 认证模式或快照切换后，自动静默同步并刷新工作区与顶栏联动菜单
+window.syncWorkspacesAfterAuthSwitch = async function() {
+    try {
+        if (window.renderGlobalTopbar) await window.renderGlobalTopbar();
+        const res = await fetch('/api/scan/workspaces', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+        const ret = await res.json();
+        if (ret && ret.success && Array.isArray(ret.data)) {
+            const formatted = ret.data.map(item => ({
+                id: item.id,
+                name: item.name,
+                alias: item.name,
+                type: item.type || '',
+                state: item.state || ''
+            }));
+            localStorage.setItem('pbi_workspaces', JSON.stringify(formatted));
+            
+            const newIds = new Set(formatted.map(w => String(w.id)));
+            if (window.selectedGtbWorkspaceIds) {
+                const currentIds = Array.from(window.selectedGtbWorkspaceIds);
+                const validIds = currentIds.filter(id => newIds.has(id));
+                window.selectedGtbWorkspaceIds.clear();
+                if (validIds.length > 0) {
+                    validIds.forEach(id => window.selectedGtbWorkspaceIds.add(id));
+                } else if (formatted.length > 0) {
+                    window.selectedGtbWorkspaceIds.add(String(formatted[0].id));
+                }
+            }
+            if (window.persistGtbWorkspacesAndSync) {
+                window.persistGtbWorkspacesAndSync();
+            } else if (window.updateGlobalTopbarDropdowns) {
+                window.updateGlobalTopbarDropdowns();
+            }
+            if (window.renderContextDropdowns) {
+                window.renderContextDropdowns();
+            }
+            if (window.syncAllWorkflowSelectors) {
+                window.syncAllWorkflowSelectors();
+            }
+        } else {
+            if (window.updateGlobalTopbarDropdowns) window.updateGlobalTopbarDropdowns();
+            if (window.renderContextDropdowns) window.renderContextDropdowns();
+        }
+    } catch (e) {
+        console.warn('syncWorkspacesAfterAuthSwitch warning:', e);
+        if (window.updateGlobalTopbarDropdowns) window.updateGlobalTopbarDropdowns();
     }
 };
 
@@ -9876,152 +9929,132 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                 loadList('report-list', 'pbi_reports', data.PBI_REPORTS);
 
                 document.getElementById('set-client').value = data.CLIENT_ID || '';
-
                 document.getElementById('set-secret').value = data.CLIENT_SECRET || '';
-
                 document.getElementById('set-username').value = data.USERNAME || '';
-
                 document.getElementById('set-password').value = data.PASSWORD || '';
-
                 document.getElementById('set-tenant').value = data.TENANT_ID || '';
 
-                
+                // 回显交互认证参数
+                const intTenantInput = document.getElementById('set-interactive-tenant');
+                const intUserInput = document.getElementById('set-interactive-username');
+                if (intTenantInput && data.TENANT_ID) intTenantInput.value = data.TENANT_ID;
+                if (intUserInput && data.USERNAME) intUserInput.value = data.USERNAME;
 
                 const authModeRadios = document.getElementsByName('pbi_auth_mode');
-
                 let activeAuthMode = 'service_principal';
-
                 for (let radio of authModeRadios) {
-
                     if (radio.value === (data.AUTH_MODE || 'service_principal')) {
-
                         radio.checked = true;
-
                         activeAuthMode = radio.value;
-
                         break;
-
                     }
-
                 }
 
                 window.updateAuthModeVisibility(activeAuthMode);
+                const isInteractive = (data.AUTH_MODE === 'interactive' || data.IS_INTERACTIVE);
+                if (window.switchAuthSettingsTab) {
+                    window.switchAuthSettingsTab(isInteractive ? 'interactive' : 'legacy');
+                }
                 if (window.updateAuthCardsVisualStatus) await window.updateAuthCardsVisualStatus();
-
             } catch (err) {
-
                 console.error('Failed to load settings:', err);
-
             }
-
         };
 
+        window._currentAuthSettingsTab = 'interactive';
 
+        window.switchAuthSettingsTab = function(tab) {
+            window._currentAuthSettingsTab = tab;
+            const btnInteractive = document.getElementById('tab-btn-interactive');
+            const btnLegacy = document.getElementById('tab-btn-legacy');
+            const panelInteractive = document.getElementById('panel-auth-interactive');
+            const panelLegacy = document.getElementById('panel-auth-legacy');
+
+            if (tab === 'interactive') {
+                if (btnInteractive) {
+                    btnInteractive.classList.add('active');
+                    btnInteractive.style.background = 'rgba(56, 189, 248, 0.18)';
+                    btnInteractive.style.color = '#38bdf8';
+                    btnInteractive.style.boxShadow = '0 1px 4px rgba(56, 189, 248, 0.12)';
+                }
+                if (btnLegacy) {
+                    btnLegacy.classList.remove('active');
+                    btnLegacy.style.background = 'transparent';
+                    btnLegacy.style.color = 'var(--text-secondary)';
+                    btnLegacy.style.boxShadow = 'none';
+                }
+                if (panelInteractive) panelInteractive.style.display = 'block';
+                if (panelLegacy) panelLegacy.style.display = 'none';
+            } else {
+                if (btnInteractive) {
+                    btnInteractive.classList.remove('active');
+                    btnInteractive.style.background = 'transparent';
+                    btnInteractive.style.color = 'var(--text-secondary)';
+                    btnInteractive.style.boxShadow = 'none';
+                }
+                if (btnLegacy) {
+                    btnLegacy.classList.add('active');
+                    btnLegacy.style.background = 'rgba(99, 102, 241, 0.18)';
+                    btnLegacy.style.color = '#818cf8';
+                    btnLegacy.style.boxShadow = '0 1px 4px rgba(99, 102, 241, 0.12)';
+                }
+                if (panelInteractive) panelInteractive.style.display = 'none';
+                if (panelLegacy) panelLegacy.style.display = 'block';
+            }
+        };
 
         window.updateAuthModeVisibility = function(mode) {
-
             if (!mode) {
-
                 const checked = document.querySelector('input[name="pbi_auth_mode"]:checked');
-
                 mode = checked ? checked.value : 'service_principal';
-
             }
-
             const spFields = document.getElementById('auth-sp-fields');
-
             const personalFields = document.getElementById('auth-personal-fields');
 
-            
-
             if (mode === 'service_principal') {
-
                 if (spFields) {
-
                     spFields.style.display = 'block';
-
                     void spFields.offsetWidth;
-
                     spFields.style.maxHeight = '600px';
-
                     spFields.style.opacity = '1';
-
                     spFields.style.pointerEvents = 'auto';
-
                     spFields.style.transform = 'translateY(0)';
-
                 }
-
                 if (personalFields) {
-
                     personalFields.style.maxHeight = '0px';
-
                     personalFields.style.opacity = '0';
-
                     personalFields.style.pointerEvents = 'none';
-
                     personalFields.style.transform = 'translateY(-6px)';
-
                     setTimeout(() => {
-
                         const current = document.querySelector('input[name="pbi_auth_mode"]:checked');
-
                         if (current && current.value === 'service_principal') {
-
                             personalFields.style.display = 'none';
-
                         }
-
                     }, 300);
-
                 }
-
             } else {
-
                 if (personalFields) {
-
                     personalFields.style.display = 'block';
-
                     void personalFields.offsetWidth;
-
                     personalFields.style.maxHeight = '600px';
-
                     personalFields.style.opacity = '1';
-
                     personalFields.style.pointerEvents = 'auto';
-
                     personalFields.style.transform = 'translateY(0)';
-
                 }
-
                 if (spFields) {
-
                     spFields.style.maxHeight = '0px';
-
                     spFields.style.opacity = '0';
-
                     spFields.style.pointerEvents = 'none';
-
                     spFields.style.transform = 'translateY(-6px)';
-
                     setTimeout(() => {
-
                         const current = document.querySelector('input[name="pbi_auth_mode"]:checked');
-
                         if (current && current.value === 'personal') {
-
                             spFields.style.display = 'none';
-
                         }
-
                     }, 300);
-
                 }
-
             }
-
             if (window.updateWorkflowAuthBadge) window.updateWorkflowAuthBadge();
-
         };
 
         window.updateAuthCardsVisualStatus = async function(prefetchedInfo) {
@@ -10036,13 +10069,25 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                 const cardInteractive = document.getElementById('auth-card-interactive');
                 const badgeInteractive = document.getElementById('auth-status-badge-interactive');
                 const infoInteractive = document.getElementById('auth-interactive-active-info');
+                const tabBadgeInteractive = document.getElementById('tab-badge-interactive');
 
                 const cardLegacy = document.getElementById('auth-card-legacy');
                 const badgeLegacy = document.getElementById('auth-status-badge-legacy');
                 const tipLegacy = document.getElementById('auth-legacy-inactive-tip');
+                const tabBadgeLegacy = document.getElementById('tab-badge-legacy');
 
                 if (info.is_interactive) {
                     // Card 1: 现代交互认证激活
+                    if (tabBadgeInteractive) {
+                        tabBadgeInteractive.innerHTML = '🟢 运行中';
+                        tabBadgeInteractive.style.background = 'rgba(34, 197, 94, 0.2)';
+                        tabBadgeInteractive.style.color = '#22c55e';
+                    }
+                    if (tabBadgeLegacy) {
+                        tabBadgeLegacy.innerHTML = '备用';
+                        tabBadgeLegacy.style.background = 'rgba(255, 255, 255, 0.06)';
+                        tabBadgeLegacy.style.color = 'var(--text-secondary)';
+                    }
                     if (cardInteractive) {
                         cardInteractive.style.border = '1.5px solid #0284c7';
                         cardInteractive.style.boxShadow = '0 0 14px rgba(14, 165, 233, 0.22)';
@@ -10076,6 +10121,16 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                     }
                 } else {
                     // Card 1: 现代交互认证未激活 (备用)
+                    if (tabBadgeInteractive) {
+                        tabBadgeInteractive.innerHTML = '备用';
+                        tabBadgeInteractive.style.background = 'rgba(255, 255, 255, 0.06)';
+                        tabBadgeInteractive.style.color = 'var(--text-secondary)';
+                    }
+                    if (tabBadgeLegacy) {
+                        tabBadgeLegacy.innerHTML = '🟢 运行中';
+                        tabBadgeLegacy.style.background = 'rgba(34, 197, 94, 0.2)';
+                        tabBadgeLegacy.style.color = '#22c55e';
+                    }
                     if (cardInteractive) {
                         cardInteractive.style.border = '1px solid rgba(56, 189, 248, 0.25)';
                         cardInteractive.style.boxShadow = 'none';
@@ -10468,6 +10523,17 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                 PBI_REPORTS: window.getListData('report-list')
             };
 
+            // 如果当前在交互认证 Tab 下保存，自动同步交互认证参数
+            if (window._currentAuthSettingsTab === 'interactive') {
+                payload.AUTH_MODE = 'interactive';
+                const intTenant = document.getElementById('set-interactive-tenant')?.value.trim();
+                const intUser = document.getElementById('set-interactive-username')?.value.trim();
+                if (intTenant) payload.TENANT_ID = intTenant;
+                if (intUser) payload.USERNAME = intUser;
+                payload.CLIENT_ID = '04b07795-8ddb-461a-bbee-02f9e1bf7b46';
+                payload.CLIENT_SECRET = '';
+            }
+
             try {
                 const res = await fetch('/api/settings', {
                     method: 'POST',
@@ -10479,11 +10545,13 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                     backendSettingsCache = { ...backendSettingsCache, ...payload };
                     saveSettingsBtn.innerHTML = successSvg;
 
-                    // Trigger UI updates for auth badges
+                    // Trigger UI updates for auth badges & workspaces
+                    if (window.renderGlobalTopbar) await window.renderGlobalTopbar();
                     if (window.renderEnvIdentity) window.renderEnvIdentity();
                     if (window.updateWorkflowAuthBadge) window.updateWorkflowAuthBadge();
                     if (window.updateAuthCardsVisualStatus) window.updateAuthCardsVisualStatus();
-                    if (window.updateGlobalTopbarDropdowns) window.updateGlobalTopbarDropdowns();
+                    if (window.syncWorkspacesAfterAuthSwitch) await window.syncWorkspacesAfterAuthSwitch();
+                    else if (window.updateGlobalTopbarDropdowns) window.updateGlobalTopbarDropdowns();
 
                     setTimeout(() => {
                         window.closeModalWithAnimation('settings-modal');
@@ -21914,6 +21982,21 @@ window.addEventListener('message', (event) => {
         if (tenantInput) tenantInput.value = finalTenantId;
         if (usernameInput) usernameInput.value = finalUsername;
         if (clientInput) clientInput.value = '04b07795-8ddb-461a-bbee-02f9e1bf7b46';
+
+        const intTenant = document.getElementById('set-interactive-tenant');
+        const intUser = document.getElementById('set-interactive-username');
+        if (intTenant) intTenant.value = finalTenantId;
+        if (intUser) intUser.value = finalUsername;
+
+        fetch('/api/auth-mode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                auth_mode: 'interactive',
+                tenant_id: finalTenantId,
+                username: finalUsername
+            })
+        }).catch(console.warn);
 
         const personalRadio = document.querySelector('input[name="pbi_auth_mode"][value="personal"]');
         if (personalRadio) {
