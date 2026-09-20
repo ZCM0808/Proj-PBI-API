@@ -256,9 +256,6 @@
                     <button type="button" class="gtb-copy-btn" onclick="window.copyGtbItem(this, 'workspace')" title="复制当前选中的工作区名称与 ID">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                     </button>
-                    <button type="button" class="gtb-copy-btn" onclick="window.copyGlobalXmlaEndpoint(this)" title="一键复制当前工作区对应的标准 XMLA 终结点连接串 (SSMS / DAX Studio)">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent);"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                    </button>
 
                     <!-- 全局工作区多选/全选浮层面板 (Workspace Multi-Select Popover) -->
                     <div class="gtb-ws-dropdown" id="gtb-ws-dropdown" style="display: none;" onclick="event.stopPropagation()">
@@ -268,6 +265,7 @@
                                 <input type="text" id="gtb-ws-search-input" placeholder="筛选工作区名称或 ID..." oninput="window.filterGtbWsOptions(this.value)" autocomplete="off">
                             </div>
                             <div class="gtb-ws-actions">
+                                <button type="button" class="gtb-ws-btn-sm" onclick="window.copyGlobalXmlaEndpoint(this)" title="复制当前工作区对应的标准 XMLA 终结点连接串">复制 XMLA</button>
                                 <button type="button" class="gtb-ws-btn-sm" onclick="window.selectAllGtbWorkspaces(true)">全选</button>
                                 <button type="button" class="gtb-ws-btn-sm" onclick="window.selectAllGtbWorkspaces(false)">清空</button>
                             </div>
@@ -3163,8 +3161,8 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260919_v1440"></script>
-    <script src="/static/script.js?v=20260920_v2035"></script>
-    <script src="/static/permission_blueprint.js?v=20260920_v2035"></script>
+    <script src="/static/script.js?v=20260920_v2040"></script>
+    <script src="/static/permission_blueprint.js?v=20260920_v2040"></script>
 
 
 

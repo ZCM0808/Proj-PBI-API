@@ -3471,9 +3471,22 @@ window.handleGlobalWorkspaceChange = function(wsId) {
 
 // 持久化当前选中的工作区并触发全站联动与回显
 window.persistGtbWorkspacesAndSync = function(triggerCascade = true) {
-    const selectedArray = Array.from(window.selectedGtbWorkspaceIds);
     const oldFirstWsId = localStorage.getItem('pbi-active-workspace') || '';
     const firstWsId = selectedArray[0] || '';
+    const wsChanged = (firstWsId !== oldFirstWsId);
+
+    // ⚡ 核心守卫：工作区切换或重置时，下级模型与报表必须彻底归零，严禁自动选择，由用户手动点选
+    if (wsChanged) {
+        if (window.selectedGtbDatasetIds) window.selectedGtbDatasetIds.clear();
+        if (window.selectedGtbReportIds) window.selectedGtbReportIds.clear();
+        try {
+            localStorage.removeItem('pbi-selected-datasets');
+            localStorage.removeItem('pbi-selected-reports');
+            localStorage.removeItem('pbi-active-dataset');
+            localStorage.removeItem('pbi-active-report');
+        } catch(e) {}
+    }
+
     try {
         localStorage.setItem('pbi-selected-workspaces', JSON.stringify(selectedArray));
         if (firstWsId) {
@@ -4142,11 +4155,9 @@ window.updateGlobalTopbarDropdowns = function() {
         }
     }
 
-    // 🚨 严格级联：未选工作区时强制清空模型选择；仅在工作区有效且有精确记录时才回显
+    // 🚨 严格守卫：未选工作区时强制清空模型选择；选了工作区后也坚决不自动选择任何模型，必须由用户显式手动点选！
     if (!hasWsFilter) {
         window.selectedGtbDatasetIds.clear();
-    } else if (window.selectedGtbDatasetIds.size === 0 && curDsId && validScopedDsIds.has(String(curDsId).toLowerCase())) {
-        window.selectedGtbDatasetIds.add(String(curDsId));
     }
 
     const selectedDsList = Array.from(window.selectedGtbDatasetIds);
@@ -4288,11 +4299,9 @@ window.updateGlobalTopbarDropdowns = function() {
         }
     }
 
-    // 🚨 严格级联：未选工作区时强制清空报表选择；仅在工作区有效且有精确记录时才回显
+    // 🚨 严格守卫：未选工作区时强制清空报表选择；选了工作区后也坚决不自动选择任何报表，必须由用户显式手动点选！
     if (!hasWsFilter) {
         window.selectedGtbReportIds.clear();
-    } else if (window.selectedGtbReportIds.size === 0 && curRpId && validScopedRpIds.has(String(curRpId).toLowerCase())) {
-        window.selectedGtbReportIds.add(String(curRpId));
     }
 
     const selectedRpList = Array.from(window.selectedGtbReportIds);
