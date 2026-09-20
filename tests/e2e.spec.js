@@ -1173,6 +1173,65 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
       await expect.poll(() => authModeCalledWith, { timeout: 5000 }).toBeTruthy();
     }
   });
+
+  test('全局功能区布局与深度级联同步断言：认证放置于最左侧且刷新能级联同步工作区、模型与报表', async ({ page }) => {
+    let wsScanned = false;
+    let dsScanned = false;
+    let rpScanned = false;
+
+    await page.route('**/api/scan/workspaces', async route => {
+      wsScanned = true;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: [{ id: 'ws-cascade-01', name: 'DA_APAC_PROD', type: 'Premium' }]
+        })
+      });
+    });
+
+    await page.route('**/api/scan/datasets', async route => {
+      dsScanned = true;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: [{ id: 'ds-cascade-01', name: 'Sales Model' }]
+        })
+      });
+    });
+
+    await page.route('**/api/scan/reports', async route => {
+      rpScanned = true;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: [{ id: 'rp-cascade-01', name: 'Monthly Financials' }]
+        })
+      });
+    });
+
+    await page.goto('http://127.0.0.1:8081');
+    await expect(page.locator('#api-tree')).toBeVisible();
+
+    // 1. 断言顶栏最左侧第一个元素是认证模块 (#gtb-auth-box)
+    const firstTopbarItem = page.locator('#global-topbar .gtb-group > .gtb-item').first();
+    await expect(firstTopbarItem).toHaveId('gtb-auth-box');
+
+    // 2. 点击全局刷新按钮 (#gtb-btn-refresh)
+    const refreshBtn = page.locator('#gtb-btn-refresh');
+    await expect(refreshBtn).toBeVisible();
+    await refreshBtn.click();
+
+    // 3. 断言触发了深层级联（工作区 -> 数据模型 -> 报表）
+    await expect.poll(() => wsScanned, { timeout: 8000 }).toBe(true);
+    await expect.poll(() => dsScanned, { timeout: 8000 }).toBe(true);
+    await expect.poll(() => rpScanned, { timeout: 8000 }).toBe(true);
+  });
 });
 
 

@@ -2461,8 +2461,6 @@ window.selectCustomOption = function(type, id, alias, skipCascade = false) {
                         pbi_tenant_id: document.getElementById('set-tenant')?.value?.trim() || cachedSettings.TENANT_ID || '',
                         workspace_id: id
                     };
-                    if (!reqBody.pbi_client_id || !reqBody.pbi_client_secret) return;
-
                     const targetType = itemType === 'datasets' ? 'dataset' : 'report';
                     const res = await fetch(`/api/scan/${itemType}`, {
                         method: 'POST',
@@ -3149,56 +3147,131 @@ window.selectGtbAuthMode = async function(mode) {
     }
 };
 
-// 认证模式或快照切换后，自动静默同步并刷新工作区与顶栏联动菜单
-window.syncWorkspacesAfterAuthSwitch = async function() {
+// ⚡ 全局资产深度级联同步引擎 (同步工作区 -> 自动并发级联拉取已选工作区下的模型和报表)
+window.cascadeScanWorkspacesAndAssets = async function(customTargetWsId) {
     try {
         if (window.renderGlobalTopbar) await window.renderGlobalTopbar();
-        const res = await fetch('/api/scan/workspaces', {
+
+        // 1. 从 API 获取当前活跃认证主体最新可访问的工作区列表
+        const wsRes = await fetch('/api/scan/workspaces', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({})
         });
-        const ret = await res.json();
-        if (ret && ret.success && Array.isArray(ret.data)) {
-            const formatted = ret.data.map(item => ({
+        const wsRet = await wsRes.json();
+        
+        let activeWsId = customTargetWsId || '';
+        let wsList = [];
+        if (wsRet && wsRet.success && Array.isArray(wsRet.data)) {
+            wsList = wsRet.data.map(item => ({
                 id: item.id,
                 name: item.name,
                 alias: item.name,
                 type: item.type || '',
                 state: item.state || ''
             }));
-            localStorage.setItem('pbi_workspaces', JSON.stringify(formatted));
-            
-            const newIds = new Set(formatted.map(w => String(w.id)));
+            localStorage.setItem('pbi_workspaces', JSON.stringify(wsList));
+
+            const newIds = new Set(wsList.map(w => String(w.id)));
             if (window.selectedGtbWorkspaceIds) {
                 const currentIds = Array.from(window.selectedGtbWorkspaceIds);
                 const validIds = currentIds.filter(id => newIds.has(id));
                 window.selectedGtbWorkspaceIds.clear();
-                if (validIds.length > 0) {
+                if (activeWsId && newIds.has(String(activeWsId))) {
+                    window.selectedGtbWorkspaceIds.add(String(activeWsId));
+                } else if (validIds.length > 0) {
                     validIds.forEach(id => window.selectedGtbWorkspaceIds.add(id));
-                } else if (formatted.length > 0) {
-                    window.selectedGtbWorkspaceIds.add(String(formatted[0].id));
+                    activeWsId = validIds[0];
+                } else if (wsList.length > 0) {
+                    window.selectedGtbWorkspaceIds.add(String(wsList[0].id));
+                    activeWsId = wsList[0].id;
                 }
+            } else if (wsList.length > 0) {
+                activeWsId = wsList[0].id;
             }
-            if (window.persistGtbWorkspacesAndSync) {
-                window.persistGtbWorkspacesAndSync();
-            } else if (window.updateGlobalTopbarDropdowns) {
-                window.updateGlobalTopbarDropdowns();
-            }
-            if (window.renderContextDropdowns) {
-                window.renderContextDropdowns();
-            }
-            if (window.syncAllWorkflowSelectors) {
-                window.syncAllWorkflowSelectors();
-            }
-        } else {
-            if (window.updateGlobalTopbarDropdowns) window.updateGlobalTopbarDropdowns();
-            if (window.renderContextDropdowns) window.renderContextDropdowns();
         }
+
+        if (!activeWsId) {
+            activeWsId = document.getElementById('active-workspace')?.value || localStorage.getItem('pbi-active-workspace') || '';
+        }
+
+        // 2. 级联并发拉取当前有效工作区下的 Datasets 和 Reports
+        let dsCount = 0;
+        let rpCount = 0;
+        if (activeWsId) {
+            try {
+                const [dsRes, rpRes] = await Promise.allSettled([
+                    fetch('/api/scan/datasets', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ workspace_id: activeWsId })
+                    }).then(r => r.json()),
+                    fetch('/api/scan/reports', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ workspace_id: activeWsId })
+                    }).then(r => r.json())
+                ]);
+
+                // 处理 Datasets
+                if (dsRes.status === 'fulfilled' && dsRes.value && dsRes.value.success && Array.isArray(dsRes.value.data)) {
+                    const formattedDs = dsRes.value.data.map(d => ({
+                        id: d.id,
+                        name: d.name,
+                        alias: d.name,
+                        workspaceId: activeWsId
+                    }));
+                    localStorage.setItem('pbi_datasets', JSON.stringify(formattedDs));
+                    dsCount = formattedDs.length;
+                    if (window.selectedGtbDatasetIds) {
+                        window.selectedGtbDatasetIds.clear();
+                        if (formattedDs.length > 0) window.selectedGtbDatasetIds.add(String(formattedDs[0].id));
+                    }
+                    if (window._populateDropdown) window._populateDropdown('dataset', formattedDs);
+                } else {
+                    localStorage.setItem('pbi_datasets', JSON.stringify([]));
+                    if (window.selectedGtbDatasetIds) window.selectedGtbDatasetIds.clear();
+                }
+
+                // 处理 Reports
+                if (rpRes.status === 'fulfilled' && rpRes.value && rpRes.value.success && Array.isArray(rpRes.value.data)) {
+                    const formattedRp = rpRes.value.data.map(r => ({
+                        id: r.id,
+                        name: r.name,
+                        alias: r.name,
+                        workspaceId: activeWsId
+                    }));
+                    localStorage.setItem('pbi_reports', JSON.stringify(formattedRp));
+                    rpCount = formattedRp.length;
+                    if (window._populateDropdown) window._populateDropdown('report', formattedRp);
+                } else {
+                    localStorage.setItem('pbi_reports', JSON.stringify([]));
+                }
+            } catch(subErr) {
+                console.warn('Cascade fetch assets warning:', subErr);
+            }
+        }
+
+        // 3. 触发全域顶栏下拉框、工作流选择器与上下文视图同步
+        if (window.persistGtbWorkspacesAndSync) {
+            window.persistGtbWorkspacesAndSync(false);
+        } else if (window.updateGlobalTopbarDropdowns) {
+            window.updateGlobalTopbarDropdowns();
+        }
+        if (window.renderContextDropdowns) window.renderContextDropdowns();
+        if (window.syncAllWorkflowSelectors) window.syncAllWorkflowSelectors();
+
+        return { success: true, activeWsId, wsCount: wsList.length, dsCount, rpCount };
     } catch (e) {
-        console.warn('syncWorkspacesAfterAuthSwitch warning:', e);
+        console.warn('cascadeScanWorkspacesAndAssets error:', e);
         if (window.updateGlobalTopbarDropdowns) window.updateGlobalTopbarDropdowns();
+        return { success: false, error: e };
     }
+};
+
+// 认证模式或快照切换后，自动静默同步并级联刷新工作区、模型与报表
+window.syncWorkspacesAfterAuthSwitch = async function() {
+    return await window.cascadeScanWorkspacesAndAssets();
 };
 
 window.handleGlobalAuthModeChange = function(mode) {
@@ -3285,12 +3358,13 @@ window.handleGlobalWorkspaceChange = function(wsId) {
 };
 
 // 持久化当前选中的工作区并触发全站联动与回显
-window.persistGtbWorkspacesAndSync = function() {
+window.persistGtbWorkspacesAndSync = function(triggerCascade = true) {
     const selectedArray = Array.from(window.selectedGtbWorkspaceIds);
+    const oldFirstWsId = localStorage.getItem('pbi-active-workspace') || '';
+    const firstWsId = selectedArray[0] || '';
     try {
         localStorage.setItem('pbi-selected-workspaces', JSON.stringify(selectedArray));
         // 同时维护单个主工作区 ID（取首个选中的，以向下兼容原 active-workspace 机制）
-        const firstWsId = selectedArray[0] || '';
         localStorage.setItem('pbi-active-workspace', firstWsId);
         const activeWsInput = document.getElementById('active-workspace');
         if (activeWsInput) activeWsInput.value = firstWsId;
@@ -3302,6 +3376,18 @@ window.persistGtbWorkspacesAndSync = function() {
     if (window.syncAllWorkflowSelectors) window.syncAllWorkflowSelectors();
     // 联动 GUM 目标范围展示
     if (window.syncGumScopeDisplay) window.syncGumScopeDisplay();
+
+    // ⚡ 若主工作区发生变更，自动级联拉取该工作区名下的最新 Datasets 和 Reports
+    if (triggerCascade && firstWsId && firstWsId !== oldFirstWsId && window.cascadeScanWorkspacesAndAssets) {
+        window.cascadeScanWorkspacesAndAssets(firstWsId).then(res => {
+            if (res && res.success && window.showNotification) {
+                const wsData = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+                const wsObj = wsData.find(w => w.id === firstWsId);
+                const wsName = wsObj ? (wsObj.alias || wsObj.name) : (firstWsId.length > 8 ? firstWsId.slice(0, 8) + '...' : firstWsId);
+                window.showNotification(`🔄 工作区 [${wsName}] 资产已就绪: ${res.dsCount} 个模型, ${res.rpCount} 个报表`, 'info', 2500);
+            }
+        });
+    }
 };
 
 // 过滤 Popover 里的工作区列表项
@@ -4544,14 +4630,20 @@ window.refreshGlobalContext = async function(btn) {
         btn.innerHTML = `<svg class="spinning" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation: spin 1s linear infinite;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>`;
     }
     try {
+        // 1. 先刷新认证状态与顶栏渲染
         if (window.renderGlobalTopbar) await window.renderGlobalTopbar();
         if (window.renderEnvIdentity) await window.renderEnvIdentity();
-        if (window.renderContextDropdowns) window.renderContextDropdowns();
-        window.updateGlobalTopbarDropdowns();
-        window.syncAllWorkflowSelectors();
-        if (window.showNotification) window.showNotification('全局上下文状态已成功同步刷新！', 'success');
+        if (window.updateAuthCardsVisualStatus) await window.updateAuthCardsVisualStatus();
+
+        // 2. 真正从 API 重新扫描工作区（非缓存），并并发级联拉取 datasets/reports
+        const ret = await window.cascadeScanWorkspacesAndAssets();
+        const wsCount = (JSON.parse(localStorage.getItem('pbi_workspaces') || '[]')).length;
+        if (window.showNotification) {
+            window.showNotification(`🎉 全局资产已从云端同步: ${wsCount} 个工作区, ${ret?.dsCount || 0} 个模型, ${ret?.rpCount || 0} 个报表`, 'success');
+        }
     } catch(e) {
         console.error('Refresh context failed:', e);
+        if (window.showNotification) window.showNotification('刷新全局上下文失败: ' + (e.message || e), 'error');
     } finally {
         if (btn) {
             btn.disabled = false;
