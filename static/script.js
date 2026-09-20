@@ -10025,12 +10025,13 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
                     const localItems = JSON.parse(localStorage.getItem(key) || '[]');
 
-                    if (containerId === 'workspace-list' && serverList && serverList.length > 0) {
-                        // 工作区列表：强制以服务端已净化数据为准，覆写 localStorage
-                        // 防止 cascadeScan / 跨域扫描写入的脏数据通过 localStorage 持久化
-                        items = serverList;
+                    if (containerId === 'workspace-list') {
+                        // 工作区列表：始终以服务端数据（global_settings.json）为唯一权威来源
+                        // 不论服务端返回空还是有数据，都强制覆写 localStorage
+                        // 这样只要服务端清掉了跨域工作区，刷新页面即立刻生效，无需手动清缓存
+                        items = (serverList && serverList.length > 0) ? serverList : [];
                         localStorage.setItem(key, JSON.stringify(items));
-                        window.renderContextDropdowns();
+                        if (items.length > 0) window.renderContextDropdowns();
                     } else if (localItems.length > 0) {
                         // 其他列表（dataset/report）：保留 localStorage 优先，允许用户自定义
                         items = localItems;

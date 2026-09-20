@@ -154,6 +154,10 @@ class Config:
                 if k in env_keys:
                     set_key(env_file, env_keys[k], str(v))
                 elif k in json_keys:
+                    # 写入前对工作区列表做净化，防止跨域/个人工作区脏数据持久化到磁盘
+                    if k == "PBI_WORKSPACES" and isinstance(v, list):
+                        v = sanitize_workspaces(v)
+                        setattr(cls, k, v)
                     settings[json_keys[k]] = v
                     json_updated = True
 
