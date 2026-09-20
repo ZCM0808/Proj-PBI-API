@@ -1028,6 +1028,79 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     // 验证自动触发了工作区扫描
     await expect.poll(() => scanCalled, { timeout: 8000 }).toBe(true);
   });
+
+  test('微软官方浏览器长效 OAuth 登录：支持手机通行密钥/扫码认证、自动回填与工作区扫描', async ({ page }) => {
+    let initCalled = false;
+    let scanCalled = false;
+
+    await page.route('**/api/auth/interactive/init', async route => {
+      initCalled = true;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          auth_url: 'https://login.microsoftonline.com/7d97f400-69b4-4df4-a009-c9806ec70783/oauth2/v2.0/authorize?mock=1',
+          state: 'mock-state-999',
+          tenant_id: '7d97f400-69b4-4df4-a009-c9806ec70783',
+          username: 'carman_zhao@vfc.com'
+        })
+      });
+    });
+
+    await page.route('**/api/scan/workspaces', async route => {
+      scanCalled = true;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: 'success',
+          data: [{ id: 'ws-oauth-001', name: 'VFC Global Analytics Workspace (OAuth)' }]
+        })
+      });
+    });
+
+    // 等待页面完全初始化
+    await expect(page.locator('#api-tree')).toBeVisible();
+
+    // 打开全局设置弹窗
+    const settingsBtn = page.locator('#btn-settings');
+    const settingsModal = page.locator('#settings-modal');
+    await expect.poll(async () => {
+      if (!await settingsModal.isVisible()) {
+        await settingsBtn.click().catch(() => {});
+      }
+      return await settingsModal.isVisible();
+    }, { timeout: 8000 }).toBe(true);
+
+    // 验证浏览器登录按钮可见并点击
+    const oauthBtn = page.locator('#btn-browser-interactive-login');
+    await expect(oauthBtn).toBeVisible();
+    await oauthBtn.click();
+
+    // 断言 init 接口被调用
+    await expect.poll(() => initCalled, { timeout: 5000 }).toBe(true);
+
+    // 模拟子窗口认证成功后向父窗口发送 postMessage
+    await page.evaluate(() => {
+      window.postMessage({
+        type: 'PBI_AUTH_SUCCESS',
+        tenant_id: '7d97f400-69b4-4df4-a009-c9806ec70783',
+        username: 'carman_zhao@vfc.com',
+        token: 'mock-oauth-access-token'
+      }, '*');
+    });
+
+    // 断言表单回填与 Personal 模式激活
+    await expect(page.locator('#set-tenant')).toHaveValue('7d97f400-69b4-4df4-a009-c9806ec70783');
+    await expect(page.locator('#set-username')).toHaveValue('carman_zhao@vfc.com');
+    const personalRadio = page.locator('input[name="pbi_auth_mode"][value="personal"]');
+    await expect(personalRadio).toBeChecked();
+
+    // 验证自动触发了工作区扫描
+    await expect.poll(() => scanCalled, { timeout: 8000 }).toBe(true);
+  });
 });
+
 
 

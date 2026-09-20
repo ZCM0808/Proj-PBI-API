@@ -2399,6 +2399,182 @@ async def cancel_device_code_flow(flow_id: str):
         del _active_device_flows[flow_id]
     return {"success": True}
 
+class InteractiveLoginInitRequest(BaseModel):
+    tenant_id: Optional[str] = None
+    username: Optional[str] = None
+    redirect_port: Optional[int] = None
+
+_active_interactive_flows: dict[str, dict] = {}
+
+@app.post("/api/auth/interactive/init")
+async def init_interactive_login(req: Optional[InteractiveLoginInitRequest] = None):
+    """初始化微软 OAuth 2.0 浏览器交互登录 (PKCE 授权码模式，支持手机扫码/通行密钥与长效自动刷新)"""
+    try:
+        tenant = (req.tenant_id if req and req.tenant_id else Config.TENANT_ID) or "7d97f400-69b4-4df4-a009-c9806ec70783"
+        username = (req.username if req and req.username else Config.USERNAME) or "carman_zhao@vfc.com"
+        port = (req.redirect_port if req and req.redirect_port else 8081)
+        
+        authority = f"https://login.microsoftonline.com/{tenant.strip()}"
+        client_id = "04b07795-8ddb-461a-bbee-02f9e1bf7b46"
+        redirect_uri = f"http://localhost:{port}/api/auth/callback"
+        
+        from msal import PublicClientApplication  # type: ignore[import-untyped]
+        app_msal = PublicClientApplication(
+            client_id=client_id,
+            authority=authority,
+            token_cache=client.cache
+        )
+        
+        scopes = ["https://analysis.windows.net/powerbi/api/.default"]
+        flow = app_msal.initiate_auth_code_flow(
+            scopes=scopes,
+            redirect_uri=redirect_uri,
+            login_hint=username
+        )
+        
+        state = flow.get("state")
+        if not state or not flow.get("auth_uri"):
+            return {"success": False, "message": "生成微软交互式认证授权链接失败"}
+            
+        _active_interactive_flows[state] = {
+            "flow": flow,
+            "app": app_msal,
+            "tenant_id": tenant,
+            "username": username,
+            "created_at": time.time()
+        }
+        
+        return {
+            "success": True,
+            "auth_url": flow["auth_uri"],
+            "state": state,
+            "tenant_id": tenant,
+            "username": username
+        }
+    except Exception as e:
+        return {"success": False, "message": f"初始化浏览器登录失败: {str(e)}"}
+
+@app.get("/api/auth/callback", response_class=HTMLResponse)
+async def handle_oauth_callback(request: Request):
+    """处理微软 OAuth 2.0 授权码回调，提取 Access Token、Refresh Token 与租户信息"""
+    state = request.query_params.get("state", "")
+    error = request.query_params.get("error", "")
+    error_desc = request.query_params.get("error_description", "")
+    
+    if error:
+        return HTMLResponse(content=f"""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><title>登录认证未完成</title>
+        <style>body{{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#0f172a;color:#f8fafc;}} .card{{background:#1e293b;padding:32px;border-radius:12px;max-width:480px;text-align:center;box-shadow:0 10px 25px rgba(0,0,0,0.5);border:1px solid #ef4444;}} h2{{color:#ef4444;margin-top:0;}} p{{color:#94a3b8;font-size:14px;line-height:1.5;}}</style>
+        </head>
+        <body>
+            <div class="card">
+                <h2>❌ 微软认证未完成</h2>
+                <p>{error_desc or error}</p>
+                <p style="margin-top:20px;"><button onclick="window.close()" style="padding:8px 16px;background:#334155;color:#fff;border:none;border-radius:6px;cursor:pointer;">关闭窗口</button></p>
+            </div>
+        </body>
+        </html>
+        """, status_code=400)
+        
+    record = _active_interactive_flows.pop(state, None)
+    if not record:
+        return HTMLResponse(content="""
+        <!DOCTYPE html><html><head><meta charset="utf-8"><title>状态失效</title></head>
+        <body style="font-family:sans-serif;padding:40px;background:#0f172a;color:#f8fafc;text-align:center;">
+            <h3>⚠️ 认证会话已失效或已完成处理</h3>
+            <p>您可以关闭本窗口，并返回系统界面检查凭据状态。</p>
+            <button onclick="window.close()" style="padding:8px 16px;cursor:pointer;">关闭窗口</button>
+        </body></html>
+        """, status_code=400)
+        
+    try:
+        global client
+        app_msal = record["app"]
+        flow = record["flow"]
+        res = app_msal.acquire_token_by_auth_code_flow(flow, dict(request.query_params))
+        client._save_cache()
+        
+        if res and "access_token" in res:
+            token = res["access_token"]
+            id_claims = res.get("id_token_claims", {}) or {}
+            tenant_id = id_claims.get("tid", "") or record["tenant_id"]
+            username = id_claims.get("preferred_username", "") or id_claims.get("upn", "") or record["username"]
+            
+            # 持久化配置
+            Config.update_config({
+                "AUTH_MODE": "personal",
+                "CLIENT_ID": "04b07795-8ddb-461a-bbee-02f9e1bf7b46",
+                "TENANT_ID": tenant_id,
+                "USERNAME": username
+            })
+            
+            # 注入全局 Token 缓存
+            from src.pbi_client import set_manual_token
+            set_manual_token(token, auth_mode="personal", identity=username, expires_in=int(res.get("expires_in", 3600)))
+            
+            client = PBIClient(Config())
+            
+            return HTMLResponse(content=f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>认证成功</title>
+                <style>
+                    body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0f172a; color: #f8fafc; }}
+                    .card {{ background: #1e293b; padding: 36px; border-radius: 16px; max-width: 460px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.6); border: 1px solid #10b981; animation: fadeIn 0.4s ease; }}
+                    @keyframes fadeIn {{ from {{ opacity: 0; transform: scale(0.95); }} to {{ opacity: 1; transform: scale(1); }} }}
+                    .badge {{ display: inline-block; padding: 4px 12px; border-radius: 20px; background: rgba(16,185,129,0.15); color: #10b981; font-weight: 600; font-size: 13px; margin-bottom: 12px; }}
+                    h2 {{ margin: 8px 0; color: #f8fafc; font-size: 20px; }}
+                    p {{ color: #94a3b8; font-size: 13px; line-height: 1.6; margin: 8px 0; }}
+                    .timer {{ font-weight: bold; color: #38bdf8; }}
+                </style>
+                <script>
+                    (function() {{
+                        const payload = {{
+                            type: 'PBI_AUTH_SUCCESS',
+                            tenant_id: '{tenant_id}',
+                            username: '{username}',
+                            token: '{token}'
+                        }};
+                        try {{
+                            if (window.opener) {{
+                                window.opener.postMessage(payload, '*');
+                            }}
+                        }} catch (e) {{}}
+                        
+                        let remaining = 2;
+                        const timer = setInterval(() => {{
+                            remaining -= 1;
+                            const el = document.getElementById('count');
+                            if (el) el.textContent = remaining;
+                            if (remaining <= 0) {{
+                                clearInterval(timer);
+                                window.close();
+                            }}
+                        }}, 1000);
+                    }})();
+                </script>
+            </head>
+            <body>
+                <div class="card">
+                    <div class="badge">✓ 微软长效 OAuth 凭据已就绪</div>
+                    <h2>🎉 登录成功</h2>
+                    <p>已成功获取 <strong>Access Token</strong> 与 <strong>长效刷新凭据 (Refresh Token)</strong>，支持无感静默自动续期！</p>
+                    <p style="font-size:12px; color:#64748b;">绑定租户: <code>{tenant_id}</code><br>用户: <code>{username}</code></p>
+                    <p style="margin-top:16px; font-size:12px;">窗口将在 <span id="count" class="timer">2</span> 秒后自动关闭并同步...</p>
+                </div>
+            </body>
+            </html>
+            """)
+        else:
+            err_desc = res.get("error_description", "获取令牌失败") if res else "未知错误"
+            return HTMLResponse(content=f"<h3>认证异常: {err_desc}</h3>", status_code=400)
+    except Exception as ex:
+        return HTMLResponse(content=f"<h3>认证处理错误: {str(ex)}</h3>", status_code=500)
+
 class XMLAScanRequest(BaseModel):
     xmla_endpoint: str
     access_token: Optional[str] = None

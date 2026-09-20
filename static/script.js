@@ -21782,6 +21782,102 @@ window.promptAndApplyBearerToken = async function(prefilledToken = '') {
     }
 };
 
+window.startInteractiveBrowserLogin = async function() {
+    const btn = document.getElementById('btn-browser-interactive-login');
+    const originalHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="animate-spin" style="display:inline-block;animation:spin 1s linear infinite;">⏳</span> 正在打开...';
+    }
+
+    try {
+        if (window.showNotification) window.showNotification("🌐 正在初始化微软官方浏览器交互授权...", "info");
+        const tenantId = document.getElementById('set-tenant')?.value.trim() || '7d97f400-69b4-4df4-a009-c9806ec70783';
+        const username = document.getElementById('set-username')?.value.trim() || 'carman_zhao@vfc.com';
+        const port = window.location.port || (window.location.protocol === 'https:' ? 443 : 80);
+
+        const res = await fetch('/api/auth/interactive/init', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                tenant_id: tenantId,
+                username: username,
+                redirect_port: parseInt(port, 10)
+            })
+        });
+        const data = await res.json();
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+
+        if (data && data.success && data.auth_url) {
+            const width = 560;
+            const height = 680;
+            const left = Math.max(0, Math.floor((window.screen.width - width) / 2));
+            const top = Math.max(0, Math.floor((window.screen.height - height) / 2));
+            window.open(data.auth_url, 'msft_auth_popup', `width=${width},height=${height},left=${left},top=${top},status=no,toolbar=no,menubar=no`);
+            if (window.showNotification) {
+                window.showNotification("🔑 请在弹出的微软登录窗口中完成扫码或通行密钥认证，完成后将自动同步！", "info", 6000);
+            }
+        } else {
+            alert("❌ 无法生成登录链接: " + (data?.message || "未知错误"));
+        }
+    } catch (e) {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+        alert("调起浏览器登录异常: " + e.message);
+    }
+};
+
+// 监听 OAuth 授权回调窗口发来的成功信号
+window.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'PBI_AUTH_SUCCESS') {
+        const { tenant_id, username } = event.data;
+        const finalTenantId = tenant_id || '7d97f400-69b4-4df4-a009-c9806ec70783';
+        const finalUsername = username || 'carman_zhao@vfc.com';
+
+        const tenantInput = document.getElementById('set-tenant');
+        const usernameInput = document.getElementById('set-username');
+        const clientInput = document.getElementById('set-client');
+        if (tenantInput) tenantInput.value = finalTenantId;
+        if (usernameInput) usernameInput.value = finalUsername;
+        if (clientInput) clientInput.value = '04b07795-8ddb-461a-bbee-02f9e1bf7b46';
+
+        const personalRadio = document.querySelector('input[name="pbi_auth_mode"][value="personal"]');
+        if (personalRadio) {
+            personalRadio.checked = true;
+            if (window.updateAuthModeVisibility) window.updateAuthModeVisibility('personal');
+        }
+
+        localStorage.setItem('pbi_tenant_id', finalTenantId);
+        localStorage.setItem('pbi_username', finalUsername);
+        localStorage.setItem('pbi_app_name', 'Power BI (VFC Enterprise OAuth)');
+
+        if (window.saveAuthSnapshot) {
+            const prefix = finalUsername ? finalUsername.split('@')[0] : 'User';
+            window.saveAuthSnapshot(`VFC OAuth (${prefix})`, true);
+        }
+        if (window.renderEnvIdentity) window.renderEnvIdentity();
+        if (window.updateWorkflowAuthBadge) window.updateWorkflowAuthBadge();
+
+        if (window.showNotification) {
+            window.showNotification(`🎉 微软长效 OAuth 登录成功！支持 90 天自动静默续期，正在一键扫描工作区...`, "success", 6000);
+        }
+
+        setTimeout(() => {
+            const scanWsBtn = document.querySelector('button[onclick*="scanItems(\'workspaces\'"]');
+            if (scanWsBtn) {
+                scanWsBtn.click();
+            } else if (typeof window.scanItems === 'function') {
+                window.scanItems('workspaces');
+            }
+        }, 600);
+    }
+});
+
 
 
 // =========================================================================
