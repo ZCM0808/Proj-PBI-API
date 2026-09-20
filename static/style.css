@@ -8242,9 +8242,8 @@ body.light-theme .pb-asset-tier-card:hover,
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(255, 255, 255, 0.02);
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px;
+    flex-direction: column;
+    gap: 4px;
     user-select: none;
     cursor: default;
     flex-shrink: 0;
@@ -8255,35 +8254,33 @@ body.light-theme .pb-asset-tier-card .pb-card-header,
     border-bottom-color: #e2e8f0 !important;
 }
 
-.pb-card-header-left {
+.pb-card-header-top {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    width: 100%;
     min-width: 0;
-    flex: 1;
 }
 
-.pb-card-title-group {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    min-width: 0;
-    flex: 1;
-}
 .pb-card-title {
     margin: 0;
-    font-size: 0.78rem;
+    font-size: 0.84rem;
     font-weight: 700;
     color: var(--text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 1.3;
+    word-break: break-word;
+    white-space: normal;
+    flex: 1;
+    min-width: 0;
 }
 .pb-card-sub {
-    font-size: 0.65rem;
+    font-size: 0.68rem;
     color: var(--text-secondary);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    line-height: 1.4;
+    word-break: break-word;
+    white-space: normal;
+    width: 100%;
 }
 
 /* 标题处非按钮化状态指示文本 (Status Indicator - Non-Button Design) */
@@ -8385,11 +8382,11 @@ body.light-theme .pb-card-header-status.status-bypassed .pb-status-indicator-tex
 .pb-asset-card-row {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding: 7px 8px;
+    gap: 5px;
+    padding: 8px 10px;
     background: rgba(255, 255, 255, 0.025);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 7px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 8px;
     transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
     cursor: grab;
     position: relative;
@@ -8410,6 +8407,31 @@ body.light-theme .pb-card-header-status.status-bypassed .pb-status-indicator-tex
     background: rgba(99, 102, 241, 0.1) !important;
     transform: scale(0.98);
 }
+
+/* 官方核心权限大卡片高亮显式呈现 (Official System Permissions Hero Highlight) */
+/* 官方核心权限大卡片高亮显式呈现 (Official System Permissions Hero Highlight) */
+.pb-asset-card-row.is-hero-role {
+    background: rgba(99, 102, 241, 0.12) !important;
+    border: 1.5px solid rgba(99, 102, 241, 0.5) !important;
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.18) !important;
+}
+.pb-asset-card-row.is-hero-role .pb-asset-prop-name {
+    font-size: 1.02rem !important;
+    font-weight: 900 !important;
+    color: #c7d2fe !important;
+    letter-spacing: 0.3px;
+    line-height: 1.35;
+}
+body.light-theme .pb-asset-card-row.is-hero-role,
+[data-theme="light"] .pb-asset-card-row.is-hero-role {
+    background: #eef2ff !important;
+    border-color: #6366f1 !important;
+}
+body.light-theme .pb-asset-card-row.is-hero-role .pb-asset-prop-name,
+[data-theme="light"] .pb-asset-card-row.is-hero-role .pb-asset-prop-name {
+    color: #3730a3 !important;
+}
+
 body.light-theme .pb-asset-card-row,
 [data-theme="light"] .pb-asset-card-row {
     background: #f8fafc !important;
@@ -8422,18 +8444,18 @@ body.light-theme .pb-asset-card-row:hover,
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
 }
 
-/* 小卡片第一行：拖拽小手柄 + 属性名 + 状态胶囊 */
+/* 小卡片第一行：拖拽小手柄 + 属性名 + 状态胶囊 (顶部对齐，彻底防止挤压) */
 .pb-asset-row-top {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 6px;
     min-width: 0;
 }
 .pb-asset-row-title-area {
     display: flex;
-    align-items: center;
-    gap: 5px;
+    align-items: flex-start;
+    gap: 6px;
     min-width: 0;
     flex: 1;
 }
@@ -8443,6 +8465,7 @@ body.light-theme .pb-asset-card-row:hover,
     justify-content: center;
     width: 14px;
     height: 14px;
+    margin-top: 3px;
     color: var(--text-secondary);
     opacity: 0.45;
     cursor: grab;
@@ -8454,12 +8477,12 @@ body.light-theme .pb-asset-card-row:hover,
     color: var(--accent);
 }
 .pb-asset-prop-name {
-    font-size: 0.74rem;
-    font-weight: 600;
+    font-size: 0.88rem;
+    font-weight: 700;
     color: var(--text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 1.35;
+    word-break: break-word;
+    white-space: normal;
 }
 
 /* 状态药丸胶囊 */
@@ -8522,34 +8545,32 @@ body.light-theme .pb-asset-status-pill.status-bypassed,
     border-color: #e9d5ff !important;
 }
 
-/* 小卡片第二行：说明文字 + 标签 */
+/* 小卡片第二行：说明文字 + 标签 (纵向排列，说明文字占满整宽，绝不生硬截断) */
 .pb-asset-row-bottom {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px;
+    flex-direction: column;
+    gap: 3px;
     min-width: 0;
+    width: 100%;
 }
 .pb-asset-prop-desc {
-    font-size: 0.65rem;
+    font-size: 0.70rem;
     color: var(--text-secondary);
-    line-height: 1.3;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    flex: 1;
-    min-width: 0;
+    line-height: 1.45;
+    word-break: break-word;
+    white-space: normal;
+    width: 100%;
 }
 .pb-asset-tag-pill {
     font-size: 0.58rem;
-    padding: 1px 4px;
+    padding: 1px 5px;
     border-radius: 3px;
     background: rgba(255, 255, 255, 0.05);
     color: var(--text-secondary);
     border: 1px solid rgba(255, 255, 255, 0.08);
     font-family: monospace;
     white-space: nowrap;
-    flex-shrink: 0;
+    align-self: flex-start;
 }
 body.light-theme .pb-asset-tag-pill,
 [data-theme="light"] .pb-asset-tag-pill {

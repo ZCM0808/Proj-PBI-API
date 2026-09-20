@@ -521,13 +521,11 @@ async def inspect_datasource_full(
                                 m_conn = str(m_ds.get("connectionString") or "").lower()
 
                                 is_matched = False
-                                if m_ds.get("gatewayId") == gw_id:
+                                if g_path and m_url and (g_path in m_url or m_url in g_path):
                                     is_matched = True
                                 elif g_server and m_server and (g_server in m_server or m_server in g_server):
                                     if not g_db or not m_db or g_db == m_db:
                                         is_matched = True
-                                elif g_path and m_url and (g_path in m_url or m_url in g_path):
-                                    is_matched = True
                                 elif g_conn and m_conn and (g_conn in m_conn or m_conn in g_conn):
                                     is_matched = True
 
@@ -538,8 +536,14 @@ async def inspect_datasource_full(
                                     m_ds["gatewayType"] = gw.get("type", "Resource")
                                     if g_ds.get("id"):
                                         m_ds["datasourceId"] = g_ds.get("id")
+                                    conn_name = g_ds.get("datasourceName")
+                                    if conn_name:
+                                        # 优先选择包含业务标识的正式连接名称
+                                        existing_conn = m_ds.get("connectionName") or ""
+                                        if not existing_conn or ("redshift" in conn_name.lower() and "test" not in conn_name.lower()):
+                                            m_ds["connectionName"] = conn_name
                                     matched_with_this_gw = True
-                                    log(f"  🔗 成功关联企业网关: 「{gw_name}」 (状态: {gw_status}) -> {m_ds.get('server') or m_ds.get('url')}")
+                                    log(f"  🔗 成功关联企业网关: 「{gw_name}」, 官方连接: 「{m_ds.get('connectionName') or '默认'}」 (状态: {gw_status}) -> {m_ds.get('server') or m_ds.get('url')}")
 
                     # 若匹配成功或为租户单一主网关兜底
                     if matched_with_this_gw or (len(gw_list) == 1 and not any(d.get("gatewayName") for d in dataset_datasources)):
@@ -557,6 +561,11 @@ async def inspect_datasource_full(
                         })
         except Exception as e:
             log(f"  ⚠️ 企业数据网关拓扑探测异常: {e}")
+
+    # 为所有数据源提供规范的 connectionName 兜底
+    for ds in dataset_datasources:
+        if not ds.get("connectionName"):
+            ds["connectionName"] = ds.get("database") or ds.get("server") or ds.get("datasourceType") or "云端数据连接"
 
     log(f"[COMPLETE] ✅ 穿透完成！连接模式判定: 【{overall_mode}】，执行引擎: 【{engine_used}】，发现网关: {len(detected_gateways)} 个")
 
