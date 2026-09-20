@@ -2,7 +2,92 @@
     "PBI_AUTH_MODE": "personal",
     "PBI_TENANT_ID": "7d97f400-69b4-4df4-a009-c9806ec70783",
     "SQL_CONN_STR": "Server=myServerAddress;Database=myDataBase;User Id=myUsername;",
-    "PBI_WORKSPACES": [],
+    "PBI_WORKSPACES": [
+        {
+            "id": "b1fbef06-41f1-434e-b8cf-1c932deaf250",
+            "name": "DA_APAC_PSA_PROD",
+            "alias": "DA_APAC_PSA_PROD",
+            "type": "Premium/Fabric",
+            "state": "Active"
+        },
+        {
+            "id": "fb49a96d-722e-400b-9d6a-ece87a67ebe2",
+            "name": "DA_AMER_DTC_QA",
+            "alias": "DA_AMER_DTC_QA",
+            "type": "Premium/Fabric",
+            "state": "Active"
+        },
+        {
+            "id": "995ba105-6b15-43cc-abf3-49337bc674dd",
+            "name": "DA_AMER_BI_KEY_REPORTING_QA",
+            "alias": "DA_AMER_BI_KEY_REPORTING_QA",
+            "type": "Premium/Fabric",
+            "state": "Active"
+        },
+        {
+            "id": "1af01762-874f-4add-af38-722b599ee34e",
+            "name": "DA_AMER_DTC_OMNI Channel_QA",
+            "alias": "DA_AMER_DTC_OMNI Channel_QA",
+            "type": "Premium/Fabric",
+            "state": "Active"
+        },
+        {
+            "id": "a7aebb70-00cc-422d-a5a9-53b8511484e9",
+            "name": "DA_APAC_BI_DEV",
+            "alias": "DA_APAC_BI_DEV",
+            "type": "Premium/Fabric",
+            "state": "Active"
+        },
+        {
+            "id": "81293c65-8c1b-49ed-9752-58734e364db3",
+            "name": "DA_APAC_BI_QA",
+            "alias": "DA_APAC_BI_QA",
+            "type": "Premium/Fabric",
+            "state": "Active"
+        },
+        {
+            "id": "7725ad78-b687-465e-89c8-d4fbd9b455e2",
+            "name": "DA_APAC_BI_PROD",
+            "alias": "DA_APAC_BI_PROD",
+            "type": "Premium/Fabric",
+            "state": "Active"
+        },
+        {
+            "id": "31eeb317-ad5c-42c7-989e-a51ba3ea9b84",
+            "name": "DA_APAC_FINANCE_PROD",
+            "alias": "DA_APAC_FINANCE_PROD",
+            "type": "Premium/Fabric",
+            "state": "Active"
+        },
+        {
+            "id": "4894a527-88c4-4697-837a-6cb5641b7ece",
+            "name": "Global Analytics Pre-Prod",
+            "alias": "Global Analytics Pre-Prod",
+            "type": "Premium/Fabric",
+            "state": "Active"
+        },
+        {
+            "id": "b128a046-5e0c-4e8b-ba6a-7ca068f56ff2",
+            "name": "Training",
+            "alias": "Training",
+            "type": "Workspace",
+            "state": "Active"
+        },
+        {
+            "id": "bcc9205f-d329-48d0-88dc-753cf2185e8a",
+            "name": "Microsoft 365 Usage Analytics 8/26/2026, 10:05:07 AM",
+            "alias": "Microsoft 365 Usage Analytics 8/26/2026, 10:05:07 AM",
+            "type": "Workspace",
+            "state": "Active"
+        },
+        {
+            "id": "6705d894-380f-4a57-a7b1-66bdd2d9baa4",
+            "name": "Microsoft Fabric Capacity Metrics 8/26/2026, 10:08:21 AM",
+            "alias": "Microsoft Fabric Capacity Metrics 8/26/2026, 10:08:21 AM",
+            "type": "Workspace",
+            "state": "Active"
+        }
+    ],
     "PBI_DATASETS": [
         {
             "alias": "REPLAY_Data_2024_8_9",

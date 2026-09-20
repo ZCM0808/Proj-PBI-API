@@ -3268,12 +3268,7 @@ window.cascadeScanWorkspacesAndAssets = async function(customTargetWsId) {
                 } else if (validIds.length > 0) {
                     validIds.forEach(id => window.selectedGtbWorkspaceIds.add(id));
                     activeWsId = validIds[0];
-                } else if (wsList.length > 0) {
-                    window.selectedGtbWorkspaceIds.add(String(wsList[0].id));
-                    activeWsId = wsList[0].id;
                 }
-            } else if (wsList.length > 0) {
-                activeWsId = wsList[0].id;
             }
         }
 
@@ -4046,13 +4041,8 @@ window.updateGlobalTopbarDropdowns = function() {
         }
     }
 
-    // 🚨 仅在全新首次加载（localStorage 无记录）且有可用工作区时赋初值；若用户主动清空（size === 0 且已有记录）坚决保持为 0！
-    const savedWsRaw = localStorage.getItem('pbi-selected-workspaces');
-    if (savedWsRaw === null && window.selectedGtbWorkspaceIds.size === 0 && wsData.length > 0) {
-        if (wsData[0] && wsData[0].id) {
-            window.selectedGtbWorkspaceIds.add(String(wsData[0].id));
-        }
-    }
+    // 🚨 严禁强制自动勾选首项：未显式选择时坚决维持 0 项选中状态 (-- 选择工作区 (0) --)
+    // 杜绝刷新页面时系统擅自将首个工作区设为默认值并导致 XMLA/模型/报表全部级联污染
 
     const selectedList = Array.from(window.selectedGtbWorkspaceIds);
     const selectedCount = selectedList.length;
