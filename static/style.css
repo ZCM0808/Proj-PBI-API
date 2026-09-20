@@ -8440,6 +8440,84 @@ body.light-theme .pb-asset-card-row.is-hero-role .pb-asset-prop-name,
     color: #3730a3 !important;
 }
 
+/* ── Category Labels: ASSIGNED vs CAPABILITY vs ENV ── */
+.pb-cat-label {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    font-size: 0.52rem;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    padding: 1.5px 5px;
+    border-radius: 3px;
+    line-height: 1.3;
+    white-space: nowrap;
+    margin-right: 5px;
+    vertical-align: middle;
+}
+
+/* ASSIGNED category: gold accent */
+.pb-asset-card-row.cat-assigned {
+    border-left: 3px solid #f59e0b !important;
+}
+.pb-asset-card-row.cat-assigned .pb-cat-label {
+    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.18);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+/* CAPABILITY (derived) category: cyan accent */
+.pb-asset-card-row.cat-derived {
+    border-left: 3px solid rgba(56, 189, 248, 0.4) !important;
+}
+.pb-asset-card-row.cat-derived .pb-cat-label {
+    color: #7dd3fc;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+/* ENV (environment info) category: slate accent */
+.pb-asset-card-row.cat-env {
+    border-left: 3px solid rgba(148, 163, 184, 0.4) !important;
+}
+.pb-asset-card-row.cat-env .pb-cat-label {
+    color: #94a3b8;
+    background: rgba(148, 163, 184, 0.12);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+/* Light theme overrides */
+body.light-theme .pb-asset-card-row.cat-assigned .pb-cat-label,
+[data-theme="light"] .pb-asset-card-row.cat-assigned .pb-cat-label {
+    color: #b45309;
+    background: #fffbeb;
+    border-color: #fde68a;
+}
+body.light-theme .pb-asset-card-row.cat-derived .pb-cat-label,
+[data-theme="light"] .pb-asset-card-row.cat-derived .pb-cat-label {
+    color: #0369a1;
+    background: #f0f9ff;
+    border-color: #bae6fd;
+}
+body.light-theme .pb-asset-card-row.cat-env .pb-cat-label,
+[data-theme="light"] .pb-asset-card-row.cat-env .pb-cat-label {
+    color: #64748b;
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+body.light-theme .pb-asset-card-row.cat-assigned,
+[data-theme="light"] .pb-asset-card-row.cat-assigned {
+    border-left-color: #f59e0b !important;
+}
+body.light-theme .pb-asset-card-row.cat-derived,
+[data-theme="light"] .pb-asset-card-row.cat-derived {
+    border-left-color: #0ea5e9 !important;
+}
+body.light-theme .pb-asset-card-row.cat-env,
+[data-theme="light"] .pb-asset-card-row.cat-env {
+    border-left-color: #94a3b8 !important;
+}
+
 body.light-theme .pb-asset-card-row,
 [data-theme="light"] .pb-asset-card-row {
     background: #f8fafc !important;
