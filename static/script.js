@@ -2423,14 +2423,10 @@ window.selectCustomOption = function(type, id, alias, skipCascade = false) {
         }) : localReports;
         window._populateDropdown('report', filteredReports);
 
-        // Auto-select first matching report if active report not in filtered list
+        // 杜绝自动选择模型和报表首项，未选择或不匹配时置空，由用户显式手动点选
         const activeReportId = document.getElementById('active-report')?.value;
         if (!filteredReports.some(r => r.id === activeReportId)) {
-            if (filteredReports.length > 0) {
-                selectCustomOption('report', filteredReports[0].id, filteredReports[0].alias || filteredReports[0].name || '', true);
-            } else {
-                selectCustomOption('report', '', '', true);
-            }
+            selectCustomOption('report', '', '', true);
         }
 
         const localDatasets = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
@@ -2440,14 +2436,10 @@ window.selectCustomOption = function(type, id, alias, skipCascade = false) {
         }) : localDatasets;
         window._populateDropdown('dataset', filteredDatasets);
 
-        // Auto-select first matching dataset if active dataset not in filtered list
+        // 杜绝自动选择模型首项，未选择或不匹配时置空，由用户显式手动点选
         const activeDatasetId = document.getElementById('active-dataset')?.value;
         if (!filteredDatasets.some(d => d.id === activeDatasetId)) {
-            if (filteredDatasets.length > 0) {
-                selectCustomOption('dataset', filteredDatasets[0].id, filteredDatasets[0].alias || filteredDatasets[0].name || '', true);
-            } else {
-                selectCustomOption('dataset', '', '', true);
-            }
+            selectCustomOption('dataset', '', '', true);
         }
 
         // 2. If valid workspace selected, also query cloud API for fresh items
@@ -2473,7 +2465,7 @@ window.selectCustomOption = function(type, id, alias, skipCascade = false) {
                         window._populateDropdown(targetType, formatted);
                         const curId = document.getElementById(`active-${targetType}`)?.value;
                         if (!formatted.some(f => f.id === curId)) {
-                            selectCustomOption(targetType, formatted[0].id, formatted[0].alias, true);
+                            selectCustomOption(targetType, '', '', true);
                         }
                     }
                 } catch (e) {
@@ -2992,7 +2984,7 @@ try {
 
     const curActive = (localStorage.getItem('pbi-active-workspace') || '').toLowerCase();
     if (curActive === 'my' || curActive === '2c51e061-0f9f-4d02-bed0-c169019e5d83' || curActive === 'workspace_dev') {
-        localStorage.setItem('pbi-active-workspace', cleaned[0]?.id || '');
+        localStorage.removeItem('pbi-active-workspace');
     }
 
     let history = JSON.parse(localStorage.getItem('pbi-xmla-history') || '[]');
@@ -3263,17 +3255,22 @@ window.cascadeScanWorkspacesAndAssets = async function(customTargetWsId) {
                 const currentIds = Array.from(window.selectedGtbWorkspaceIds);
                 const validIds = currentIds.filter(id => newIds.has(id));
                 window.selectedGtbWorkspaceIds.clear();
-                if (activeWsId && newIds.has(String(activeWsId))) {
-                    window.selectedGtbWorkspaceIds.add(String(activeWsId));
+                if (customTargetWsId && newIds.has(String(customTargetWsId))) {
+                    window.selectedGtbWorkspaceIds.add(String(customTargetWsId));
+                    activeWsId = String(customTargetWsId);
                 } else if (validIds.length > 0) {
                     validIds.forEach(id => window.selectedGtbWorkspaceIds.add(id));
                     activeWsId = validIds[0];
+                } else {
+                    activeWsId = '';
                 }
             }
         }
 
         if (!activeWsId) {
-            activeWsId = document.getElementById('active-workspace')?.value || localStorage.getItem('pbi-active-workspace') || '';
+            activeWsId = (window.selectedGtbWorkspaceIds && window.selectedGtbWorkspaceIds.size > 0)
+                ? Array.from(window.selectedGtbWorkspaceIds)[0]
+                : '';
         }
 
         // 2. 级联并发拉取当前有效工作区下的 Datasets 和 Reports
@@ -3471,12 +3468,13 @@ window.handleGlobalWorkspaceChange = function(wsId) {
 
 // 持久化当前选中的工作区并触发全站联动与回显
 window.persistGtbWorkspacesAndSync = function(triggerCascade = true) {
+    const selectedArray = Array.from(window.selectedGtbWorkspaceIds || []);
     const oldFirstWsId = localStorage.getItem('pbi-active-workspace') || '';
     const firstWsId = selectedArray[0] || '';
     const wsChanged = (firstWsId !== oldFirstWsId);
 
-    // ⚡ 核心守卫：工作区切换或重置时，下级模型与报表必须彻底归零，严禁自动选择，由用户手动点选
-    if (wsChanged) {
+    // ⚡ 核心守卫：工作区切换或清空为0时，下级模型与报表必须彻底归零，严禁自动选择，由用户手动点选
+    if (wsChanged || selectedArray.length === 0) {
         if (window.selectedGtbDatasetIds) window.selectedGtbDatasetIds.clear();
         if (window.selectedGtbReportIds) window.selectedGtbReportIds.clear();
         try {
@@ -3496,6 +3494,8 @@ window.persistGtbWorkspacesAndSync = function(triggerCascade = true) {
         }
         const activeWsInput = document.getElementById('active-workspace');
         if (activeWsInput) activeWsInput.value = firstWsId;
+        const gtbSelectWs = document.getElementById('gtb-select-workspace');
+        if (gtbSelectWs) gtbSelectWs.value = selectedArray.join(',');
     } catch(e) {}
 
     // 重新更新顶栏下拉框与 Popover 视图
@@ -3553,9 +3553,6 @@ try {
     const savedDs = JSON.parse(localStorage.getItem('pbi-selected-datasets') || '[]');
     if (Array.isArray(savedDs) && savedDs.length > 0) {
         savedDs.forEach(id => { if (id) window.selectedGtbDatasetIds.add(String(id)); });
-    } else {
-        const activeDs = localStorage.getItem('pbi-active-dataset') || document.getElementById('active-dataset')?.value;
-        if (activeDs) window.selectedGtbDatasetIds.add(String(activeDs));
     }
 } catch(e) {}
 
@@ -3803,9 +3800,15 @@ window.persistGtbDatasetsAndSync = function() {
     try {
         localStorage.setItem('pbi-selected-datasets', JSON.stringify(selectedArray));
         const firstDsId = selectedArray[0] || '';
-        localStorage.setItem('pbi-active-dataset', firstDsId);
+        if (firstDsId) {
+            localStorage.setItem('pbi-active-dataset', firstDsId);
+        } else {
+            localStorage.removeItem('pbi-active-dataset');
+        }
         const activeDsInput = document.getElementById('active-dataset');
         if (activeDsInput) activeDsInput.value = firstDsId;
+        const gtbSelectDs = document.getElementById('gtb-select-dataset');
+        if (gtbSelectDs) gtbSelectDs.value = firstDsId;
     } catch(e) {}
 
     window.updateGlobalTopbarDropdowns();
@@ -3963,7 +3966,11 @@ window.persistGtbReportsAndSync = function() {
     try {
         localStorage.setItem('pbi-selected-reports', JSON.stringify(selectedArray));
         const firstRpId = selectedArray[0] || '';
-        localStorage.setItem('pbi-active-report', firstRpId);
+        if (firstRpId) {
+            localStorage.setItem('pbi-active-report', firstRpId);
+        } else {
+            localStorage.removeItem('pbi-active-report');
+        }
         const activeRpInput = document.getElementById('active-report');
         if (activeRpInput) activeRpInput.value = firstRpId;
         const gtbSelectRp = document.getElementById('gtb-select-report');
@@ -4108,8 +4115,21 @@ window.updateGlobalTopbarDropdowns = function() {
         if (wsData.length === 0) {
             wsListContainer.innerHTML = '<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 16px 0;">暂无可用的工作区缓存</div>';
         } else {
+            // 排序：已选中的工作区排在最前面，其余按 name 升序排序
+            const sortedWsData = wsData.slice().sort((a, b) => {
+                const widA = String(a.id || '');
+                const widB = String(b.id || '');
+                const aSel = window.selectedGtbWorkspaceIds.has(widA);
+                const bSel = window.selectedGtbWorkspaceIds.has(widB);
+                if (aSel && !bSel) return -1;
+                if (!aSel && bSel) return 1;
+                const nameA = String(a.alias || a.name || widA).trim();
+                const nameB = String(b.alias || b.name || widB).trim();
+                return nameA.localeCompare(nameB, 'zh-CN', { numeric: true, sensitivity: 'base' });
+            });
+
             let listHtml = '';
-            wsData.forEach(w => {
+            sortedWsData.forEach(w => {
                 if (!w || !w.id) return;
                 const wid = String(w.id);
                 const wname = w.alias || w.name || wid;
@@ -4234,13 +4254,38 @@ window.updateGlobalTopbarDropdowns = function() {
             });
 
             let matrixHtml = '';
-            wsMap.forEach(group => {
+            // 工作区分组排序：若分组内有选中的模型，排在前面；其余按工作区名称升序
+            const sortedWsGroups = Array.from(wsMap.values()).sort((a, b) => {
+                const aHasSel = a.models.some(m => window.selectedGtbDatasetIds.has(String(m.id)));
+                const bHasSel = b.models.some(m => window.selectedGtbDatasetIds.has(String(m.id)));
+                if (aHasSel && !bHasSel) return -1;
+                if (!aHasSel && bHasSel) return 1;
+                const nameA = String(a.name || a.id || '').trim();
+                const nameB = String(b.name || b.id || '').trim();
+                return nameA.localeCompare(nameB, 'zh-CN', { numeric: true, sensitivity: 'base' });
+            });
+
+            sortedWsGroups.forEach(group => {
                 const wid = group.id;
                 const wname = group.name;
                 const models = group.models;
                 const isScoped = group.isScoped;
                 if (!models || models.length === 0) return;
-                const isAllGroupSelected = models.every(m => window.selectedGtbDatasetIds.has(String(m.id)));
+
+                // 分组内模型排序：已选中排在最前面，其余按 name 升序
+                const sortedModels = models.slice().sort((a, b) => {
+                    const idA = String(a.id || '');
+                    const idB = String(b.id || '');
+                    const aSel = window.selectedGtbDatasetIds.has(idA);
+                    const bSel = window.selectedGtbDatasetIds.has(idB);
+                    if (aSel && !bSel) return -1;
+                    if (!aSel && bSel) return 1;
+                    const nameA = String(a.alias || a.name || idA).trim();
+                    const nameB = String(b.alias || b.name || idB).trim();
+                    return nameA.localeCompare(nameB, 'zh-CN', { numeric: true, sensitivity: 'base' });
+                });
+
+                const isAllGroupSelected = sortedModels.every(m => window.selectedGtbDatasetIds.has(String(m.id)));
                 // 如果启用了工作区过滤且该工作区不在当前过滤作用域内，默认 display: none 并赋予 gtb-ds-ws-other-scope 类，搜索时智能唤醒
                 const defaultDisplay = isScoped ? 'block' : 'none';
                 const scopeClass = isScoped ? '' : 'gtb-ds-ws-other-scope';
@@ -4252,14 +4297,14 @@ window.updateGlobalTopbarDropdowns = function() {
                                 <svg class="gtb-ds-ws-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect></svg>
                                 <span title="${wname}">${wname}</span>
-                                <span class="gtb-ds-ws-badge">${models.length} 个模型</span>
+                                <span class="gtb-ds-ws-badge">${sortedModels.length} 个模型</span>
                             </div>
                             <button type="button" class="gtb-ws-btn-sm" style="padding: 1px 6px; font-size: 0.65rem; border-radius: 4px;" onclick="window.toggleGtbWsModels('${wid}', event)" title="全选/取消全选该工作区模型">
                                 ${isAllGroupSelected ? '取消' : '全选'}
                             </button>
                         </div>
                         <div class="gtb-ds-items-group">
-                            ${models.map(m => {
+                            ${sortedModels.map(m => {
                                 const mId = String(m.id);
                                 const mName = m.alias || m.name || mId;
                                 const isSel = window.selectedGtbDatasetIds.has(mId);
@@ -4384,12 +4429,37 @@ window.updateGlobalTopbarDropdowns = function() {
             });
 
             let matrixHtml = '';
-            wsMap.forEach(group => {
+            // 工作区分组排序：若分组内有选中的报表，排在前面；其余按工作区名称升序
+            const sortedRpGroups = Array.from(wsMap.values()).sort((a, b) => {
+                const aHasSel = a.reports.some(r => window.selectedGtbReportIds.has(String(r.id)));
+                const bHasSel = b.reports.some(r => window.selectedGtbReportIds.has(String(r.id)));
+                if (aHasSel && !bHasSel) return -1;
+                if (!aHasSel && bHasSel) return 1;
+                const nameA = String(a.name || a.id || '').trim();
+                const nameB = String(b.name || b.id || '').trim();
+                return nameA.localeCompare(nameB, 'zh-CN', { numeric: true, sensitivity: 'base' });
+            });
+
+            sortedRpGroups.forEach(group => {
                 const wid = group.id;
                 const wname = group.name;
                 const reports = group.reports;
                 if (!reports || reports.length === 0) return;
-                const isAllGroupSelected = reports.every(r => window.selectedGtbReportIds.has(String(r.id)));
+
+                // 分组内报表排序：已选中排在最前面，其余按 name 升序
+                const sortedReports = reports.slice().sort((a, b) => {
+                    const idA = String(a.id || '');
+                    const idB = String(b.id || '');
+                    const aSel = window.selectedGtbReportIds.has(idA);
+                    const bSel = window.selectedGtbReportIds.has(idB);
+                    if (aSel && !bSel) return -1;
+                    if (!aSel && bSel) return 1;
+                    const nameA = String(a.alias || a.name || idA).trim();
+                    const nameB = String(b.alias || b.name || idB).trim();
+                    return nameA.localeCompare(nameB, 'zh-CN', { numeric: true, sensitivity: 'base' });
+                });
+
+                const isAllGroupSelected = sortedReports.every(r => window.selectedGtbReportIds.has(String(r.id)));
 
                 matrixHtml += `
                     <div class="gtb-ds-ws-group gtb-rp-ws-group" data-ws-id="${wid}">
@@ -4398,14 +4468,14 @@ window.updateGlobalTopbarDropdowns = function() {
                                 <svg class="gtb-ds-ws-arrow gtb-rp-ws-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="9"></line><line x1="9" y1="13" x2="15" y2="13"></line><line x1="9" y1="17" x2="13" y2="17"></line></svg>
                                 <span title="${wname}">${wname}</span>
-                                <span class="gtb-ds-ws-badge gtb-rp-ws-badge">${reports.length} 个报表</span>
+                                <span class="gtb-ds-ws-badge gtb-rp-ws-badge">${sortedReports.length} 个报表</span>
                             </div>
                             <button type="button" class="gtb-ws-btn-sm" style="padding: 1px 6px; font-size: 0.65rem; border-radius: 4px;" onclick="window.toggleGtbWsReports('${wid}', event)" title="全选/取消全选该工作区报表">
                                 ${isAllGroupSelected ? '取消' : '全选'}
                             </button>
                         </div>
                         <div class="gtb-ds-items-group">
-                            ${reports.map(r => {
+                            ${sortedReports.map(r => {
                                 const rId = String(r.id);
                                 const rName = r.alias || r.name || rId;
                                 const isSel = window.selectedGtbReportIds.has(rId);
