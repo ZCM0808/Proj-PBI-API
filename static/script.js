@@ -4122,14 +4122,10 @@ window.updateGlobalTopbarDropdowns = function() {
     const hasWsFilter = selectedWsIds.length > 0;
 
     // 严格作用域过滤：模型必须明确属于当前选中的工作区，绝对杜绝跨域展示
-    const scopedDsData = dsData.filter(d => {
-        if (!d || !d.id) return false;
-        const wid = String(d.workspaceId || '').trim().toLowerCase();
-        if (hasWsFilter) {
-            return wid && selectedWsSet.has(wid);
-        }
-        return wid && validWsIdSet.has(wid);
-    });
+    // 🚨 严格级联守卫：工作区是模型和报表的容器！未选择工作区时，下属模型必须为空！
+    const scopedDsData = hasWsFilter
+        ? dsData.filter(d => d && d.id && selectedWsSet.has(String(d.workspaceId || '').trim().toLowerCase()))
+        : [];
 
     // 清理超出范围的已选模型
     const validScopedDsIds = new Set(scopedDsData.map(d => String(d.id).toLowerCase()));
@@ -4139,8 +4135,10 @@ window.updateGlobalTopbarDropdowns = function() {
         }
     }
 
-    // 🚨 严禁强制自动勾选首项：允许用户处于 0 项选中状态 (-- 选择模型 (0) --)，杜绝清空与取消勾选失效
-    if (window.selectedGtbDatasetIds.size === 0 && curDsId && validScopedDsIds.has(String(curDsId).toLowerCase())) {
+    // 🚨 严格级联：未选工作区时强制清空模型选择；仅在工作区有效且有精确记录时才回显
+    if (!hasWsFilter) {
+        window.selectedGtbDatasetIds.clear();
+    } else if (window.selectedGtbDatasetIds.size === 0 && curDsId && validScopedDsIds.has(String(curDsId).toLowerCase())) {
         window.selectedGtbDatasetIds.add(String(curDsId));
     }
 
@@ -4269,15 +4267,11 @@ window.updateGlobalTopbarDropdowns = function() {
         }
     }
 
-    // 4. 根据所选工作区严格过滤报表 (彻底杜绝跨域混杂，严禁放行无工作区归属的孤儿报表)
-    const filteredRp = rpData.filter(r => {
-        if (!r || !r.id) return false;
-        const rWid = String(r.workspaceId || '').trim().toLowerCase();
-        if (hasWsFilter) {
-            return rWid && selectedWsSet.has(rWid);
-        }
-        return rWid && validWsIdSet.has(rWid);
-    });
+    // 4. 根据所选工作区严格过滤报表 (彻底杜绝跨域混杂)
+    // 🚨 严格级联守卫：工作区是报表的父级容器！未选择工作区时，下属报表必须为空！
+    const filteredRp = hasWsFilter
+        ? rpData.filter(r => r && r.id && selectedWsSet.has(String(r.workspaceId || '').trim().toLowerCase()))
+        : [];
 
     // 清理超出范围的已选报表
     const validScopedRpIds = new Set(filteredRp.map(r => String(r.id).toLowerCase()));
@@ -4287,8 +4281,10 @@ window.updateGlobalTopbarDropdowns = function() {
         }
     }
 
-    // 🚨 严禁强制自动勾选首项：允许用户处于 0 项选中状态 (-- 选择报表 (0) --)，杜绝清空与取消勾选失效
-    if (window.selectedGtbReportIds.size === 0 && curRpId && validScopedRpIds.has(String(curRpId).toLowerCase())) {
+    // 🚨 严格级联：未选工作区时强制清空报表选择；仅在工作区有效且有精确记录时才回显
+    if (!hasWsFilter) {
+        window.selectedGtbReportIds.clear();
+    } else if (window.selectedGtbReportIds.size === 0 && curRpId && validScopedRpIds.has(String(curRpId).toLowerCase())) {
         window.selectedGtbReportIds.add(String(curRpId));
     }
 
@@ -4337,7 +4333,13 @@ window.updateGlobalTopbarDropdowns = function() {
 
     // 渲染报表下拉面板列表 (严格隔离，杜绝未分配的跨域孤儿报表)
     if (rpListContainer) {
-        if (filteredRp.length === 0) {
+        if (!hasWsFilter) {
+            rpListContainer.innerHTML = `<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 24px 10px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="opacity: 0.4; margin-bottom: 6px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                <div style="color: #f59e0b; font-weight: 600; margin-bottom: 4px;">未选择目标工作区</div>
+                <div>请先在顶栏指定具体工作区以联动加载其名下的报表</div>
+            </div>`;
+        } else if (filteredRp.length === 0) {
             rpListContainer.innerHTML = `<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 24px 10px;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="opacity: 0.4; margin-bottom: 6px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
                 <div>当前已选工作区下暂无可用的报表</div>
