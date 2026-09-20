@@ -3,9 +3,15 @@
 import os
 import time
 from typing import Any, Dict, Optional
+
 import requests  # type: ignore[import-untyped]
+from msal import (  # type: ignore[import-untyped]
+    ConfidentialClientApplication,
+    PublicClientApplication,
+    SerializableTokenCache,
+)
 from requests.adapters import HTTPAdapter  # type: ignore[import-untyped]
-from msal import ConfidentialClientApplication, PublicClientApplication, SerializableTokenCache  # type: ignore[import-untyped]
+
 from src.config import Config
 
 # 模块级全局连接池与 Token 内存缓存 (彻底消除频繁 TCP/TLS 跨洋握手与磁盘反序列化耗时)

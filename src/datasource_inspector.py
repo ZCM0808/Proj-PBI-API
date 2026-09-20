@@ -10,7 +10,9 @@ import json
 import re
 import urllib.parse
 from typing import Any, Dict, List, Optional
+
 import requests  # type: ignore[import-untyped]
+
 from src.config import Config
 from src.pbi_client import PBIClient
 
@@ -105,18 +107,18 @@ async def inspect_datasource_full(
     """
     config = Config()
     client = PBIClient(config)
-    
+
     # 确定有效 Token
     token = access_token.strip() if access_token and access_token.strip() else client._get_token("powerbi")
     if not token:
         return {"success": False, "message": "未能获取有效的 Power BI 认证 Token (Authentication Token)"}
 
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    
+
     workspace_id = workspace_id.strip()
     report_id = report_id.strip() if report_id else ""
     dataset_id = dataset_id.strip() if dataset_id else ""
-    
+
     logs: List[str] = []
     def log(msg: str):
         logs.append(msg)
@@ -138,14 +140,14 @@ async def inspect_datasource_full(
                 report_meta = r_rep.json()
                 report_name = report_meta.get("name", "")
                 report_dataset_id = report_meta.get("datasetId", "")
-                
+
                 log(f"  ↳ 报表名称: 「{report_name}」，绑定数据集 ID: {report_dataset_id}")
-                
+
                 # 若数据集归属的工作区与报表所在工作区不同，或者是专门的 Direct Live 报表
                 if report_meta.get("datasetWorkspaceId") and report_meta.get("datasetWorkspaceId") != workspace_id:
                     is_live_connection = True
                     log(f"  ↳ 🔗 检测到跨工作区连接 (Live Connection)，源模型位于工作区: {report_meta.get('datasetWorkspaceId')}")
-                
+
                 if not dataset_id:
                     dataset_id = report_dataset_id
             else:
@@ -168,16 +170,16 @@ async def inspect_datasource_full(
     # =========================================================================
     scanner_success = False
     log("[STEP 2] 🔥 尝试执行方案 A: Power BI Admin Scanner API (深层次元数据与 M 表达式全量扫描)...")
-    
+
     scanner_url = "https://api.powerbi.com/v1.0/myorg/admin/workspaces/getInfo?datasetExpressions=True&datasetSchema=True&datasourceDetails=True&lineage=True"
     scanner_body = {"workspaces": [workspace_id]}
-    
+
     try:
         r_scan_init = await asyncio.to_thread(requests.post, scanner_url, json=scanner_body, headers=headers, timeout=12)
         if r_scan_init.status_code in [200, 202]:
             scan_id = r_scan_init.json().get("id")
             log(f"  ↳ 成功创建 Admin 扫描任务 (Scan ID: {scan_id})，开始轮询扫描结果...")
-            
+
             # 轮询状态，最多等待 12 秒
             status_url = f"https://api.powerbi.com/v1.0/myorg/admin/workspaces/scanStatus/{scan_id}"
             scan_ready = False
@@ -194,7 +196,7 @@ async def inspect_datasource_full(
                     elif st == "Failed":
                         log("  ❌ Admin 扫描任务标记为 Failed")
                         break
-            
+
             if scan_ready:
                 res_url = f"https://api.powerbi.com/v1.0/myorg/admin/workspaces/scanResult/{scan_id}"
                 r_res = await asyncio.to_thread(requests.get, res_url, headers=headers, timeout=15)
@@ -202,7 +204,7 @@ async def inspect_datasource_full(
                     scan_data = r_res.json()
                     workspaces = scan_data.get("workspaces", [])
                     target_ws = next((w for w in workspaces if w.get("id") == workspace_id), (workspaces[0] if workspaces else None))
-                    
+
                     if target_ws:
                         raw_datasets = target_ws.get("datasets", [])
                         target_ds = None
@@ -210,14 +212,14 @@ async def inspect_datasource_full(
                             target_ds = next((d for d in raw_datasets if d.get("id") == dataset_id), None)
                         if not target_ds and raw_datasets:
                             target_ds = raw_datasets[0]
-                            
+
                         if target_ds:
                             scanner_success = True
                             engine_used = "Admin Scanner API (Official)"
                             dataset_name = target_ds.get("name", "")
                             dataset_id = target_ds.get("id", dataset_id)
                             log(f"  🎉 成功从 Scanner API 获取目标数据集: 「{dataset_name}」({dataset_id})")
-                            
+
                             # 提取数据源连接配置
                             for ds_item in target_ds.get("datasources", []):
                                 conn_details = ds_item.get("connectionDetails", {})
@@ -230,7 +232,7 @@ async def inspect_datasource_full(
                                     "gatewayId": ds_item.get("gatewayId", "-"),
                                     "datasourceId": ds_item.get("datasourceId", "-")
                                 })
-                            
+
                             # 提取表间模型关系 (Model Relationships)
                             for rel in target_ds.get("relationships", []):
                                 dataset_relationships.append({
@@ -248,7 +250,7 @@ async def inspect_datasource_full(
                                 t_name = t.get("name", "")
                                 if t_name.startswith("LocalDateTable_") or t_name.startswith("DateTableTemplate_"):
                                     continue
-                                
+
                                 # 获取 table 的 source (包含 M 表达式)
                                 m_expr = ""
                                 raw_source = t.get("source", [])
@@ -256,7 +258,7 @@ async def inspect_datasource_full(
                                     m_expr = raw_source[0].get("expression", "")
                                 elif isinstance(raw_source, dict):
                                     m_expr = raw_source.get("expression", "")
-                                    
+
                                 # 分析表分区模式
                                 p_mode = "Import"
                                 raw_parts = t.get("partitions", [])
@@ -264,10 +266,10 @@ async def inspect_datasource_full(
                                     p_mode = raw_parts[0].get("mode", "Import")
                                     if not m_expr:
                                         m_expr = raw_parts[0].get("source", {}).get("expression", "")
-                                
+
                                 all_modes.add(p_mode.lower())
                                 parsed_sql_info = extract_native_sql_and_server_info(m_expr)
-                                
+
                                 tables_result.append({
                                     "tableName": t_name,
                                     "mode": p_mode,
@@ -279,7 +281,7 @@ async def inspect_datasource_full(
                                     "columnsCount": len(t.get("columns", [])),
                                     "measuresCount": len(t.get("measures", []))
                                 })
-                                
+
                             # 判定整体模式
                             if is_live_connection:
                                 overall_mode = "Live Connection (Direct Live)"
@@ -300,7 +302,7 @@ async def inspect_datasource_full(
     if not scanner_success:
         log("[STEP 3] ⚡ 执行方案 B (Fallback): 激活 XMLA / TMSL + REST API 多路分析引擎...")
         engine_used = "XMLA / TMSL & REST API (Hybrid Fallback)"
-        
+
         # 1. 尝试通过 REST API 获取数据集基本信息与数据源连接配置
         if workspace_id and dataset_id:
             try:
@@ -310,7 +312,7 @@ async def inspect_datasource_full(
                 if r_ds.status_code == 200:
                     ds_data = r_ds.json()
                     dataset_name = ds_data.get("name", "")
-                
+
                 # 获取 Datasources
                 ds_conn_url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/datasources"
                 r_conn = await asyncio.to_thread(requests.get, ds_conn_url, headers=headers, timeout=8)
@@ -352,21 +354,21 @@ async def inspect_datasource_full(
                     "SOAPAction": '"urn:schemas-microsoft-com:xmla:Discover"'
                 }
                 tmsl_soap = f"""<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><Discover xmlns="urn:schemas-microsoft-com:xmla"><RequestType>DISCOVER_TMSL_METADATA</RequestType><Restrictions /><Properties><PropertyList><Catalog>{dataset_name}</Catalog></PropertyList></Properties></Discover></soap:Body></soap:Envelope>"""
-                
+
                 log(f"  ↳ 尝试向 XMLA 端点 ({ws_alias_name}) 发起 TMSL 元数据穿透请求...")
                 r_xmla = await asyncio.to_thread(requests.post, xmla_url, data=tmsl_soap.encode('utf-8'), headers=xmla_headers, timeout=15)
-                
+
                 if r_xmla.status_code == 200 and "<METADATA>" in r_xmla.text:
                     import html
                     json_str = r_xmla.text.split("<METADATA>")[1].split("</METADATA>")[0]
                     m_json = json.loads(html.unescape(json_str))
                     all_modes = set()
-                    
+
                     for t in m_json.get("model", {}).get("tables", []):
                         t_name = t.get("name", "")
                         if t_name.startswith("LocalDateTable_") or t_name.startswith("DateTableTemplate_"):
                             continue
-                        
+
                         m_expr = ""
                         p_mode = "Import"
                         for p in t.get("partitions", []):
@@ -382,11 +384,11 @@ async def inspect_datasource_full(
                             elif isinstance(src, str):
                                 m_expr = src
                                 break
-                        
+
                         all_modes.add(p_mode.lower())
 
                         parsed_sql_info = extract_native_sql_and_server_info(m_expr)
-                        
+
                         tables_result.append({
                             "tableName": t_name,
                             "mode": p_mode,
@@ -398,9 +400,9 @@ async def inspect_datasource_full(
                             "columnsCount": len(t.get("columns", [])),
                             "measuresCount": len(t.get("measures", []))
                         })
-                    
+
                     log(f"  🎉 XMLA TMSL 成功穿透！解析出 {len(tables_result)} 张物理表及其 M/SQL 表达式！")
-                    
+
                     if is_live_connection:
                         overall_mode = "Live Connection (Direct Live)"
                     elif "directquery" in all_modes and "import" in all_modes:

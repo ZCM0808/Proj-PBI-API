@@ -1,7 +1,8 @@
-import subprocess
 import json
 import os
+import subprocess
 import sys
+
 
 def get_adomd_dll_path():
     # Common paths for PBI Desktop MS Store and Installer versions
@@ -22,11 +23,11 @@ def scan_local_instances():
         res = subprocess.run(["powershell", "-NoProfile", "-Command", cmd], capture_output=True, text=True)
         if not res.stdout.strip():
             return []
-        
+
         data = json.loads(res.stdout)
         if isinstance(data, dict):
             data = [data]
-            
+
         instances = []
         for proc in data:
             cmdline = proc.get("CommandLine", "")
@@ -38,7 +39,7 @@ def scan_local_instances():
                         path = path_part.split('"')[1]
                     else:
                         path = path_part.split(' ')[0]
-                    
+
                     port_file = os.path.join(path, "msmdsrv.port.txt")
                     if os.path.exists(port_file):
                         # try utf-16-le then utf-8
@@ -50,7 +51,7 @@ def scan_local_instances():
                             with open(port_file, 'r', encoding='utf-8') as f:
                                 port = f.read().strip()
                                 port = "".join(filter(str.isdigit, port))
-                        
+
                         db_name = os.path.basename(os.path.dirname(path))
                         if db_name == "AnalysisServicesWorkspaces":
                             db_name = os.path.basename(path)
@@ -67,31 +68,33 @@ def run_dax_query(port: str, query: str):
     dll_path = get_adomd_dll_path()
     if not dll_path:
         return {"error": "AdomdClient DLL not found on this machine. Is Power BI Desktop installed?"}
-    
+
     bin_dir = os.path.dirname(dll_path)
     if bin_dir not in sys.path:
         sys.path.append(bin_dir)
-        
+
     try:
-        import clr # type: ignore
+        import clr  # type: ignore
         try:
             clr.AddReference("Microsoft.PowerBI.AdomdClient")
         except Exception:
             pass # might be already loaded
-        from Microsoft.AnalysisServices.AdomdClient import AdomdConnection # type: ignore
-        
+        from Microsoft.AnalysisServices.AdomdClient import (
+            AdomdConnection,  # type: ignore
+        )
+
         conn_str = f"Data Source=localhost:{port};"
         conn = AdomdConnection(conn_str)
         conn.Open()
-        
+
         cmd = conn.CreateCommand()
         cmd.CommandText = query
         reader = cmd.ExecuteReader()
-        
+
         columns = []
         for i in range(reader.FieldCount):
             columns.append(reader.GetName(i))
-            
+
         rows = []
         while reader.Read():
             row: dict[str, str | None] = {}
@@ -103,10 +106,10 @@ def run_dax_query(port: str, query: str):
                 else:
                     row[columns[i]] = str(val)
             rows.append(row)
-            
+
         reader.Close()
         conn.Close()
-        
+
         return {"columns": columns, "rows": rows}
     except Exception as e:
         return {"error": str(e)}

@@ -2945,12 +2945,72 @@ window.renderGlobalTopbar = async function() {
     window.updateGlobalTopbarDropdowns();
 };
 
+// ⚡ 全局跨域/私有域工作区清洗器 (Cross-Domain Workspaces Sanitizer)
+// 规则：type=PersonalGroup | 名称/ID 包含 personal | 已知禁止 ID | DEV 标记 | 邮箱域名跨域特征
+const _FORBIDDEN_WS_IDS = new Set([
+    'c06a2729-ee28-4471-af27-803b56a3d8cc', // PersonalWorkspace seven@carman.ccwu.cc
+    '2c51e061-0f9f-4d02-bed0-c169019e5d83', // WorkSpace_DEV
+    'c38cfce4-99a9-45a9-929b-44374b63a30a', // PersonalWorkspace zhaochengmei@sina.cn
+    'ad88bcfe-af01-4744-968e-c59af1daab02', // PersonalWorkspace nameless@carman.ccwu.cc
+    '50e6b428-68a9-4366-8aee-e6113d8ed3db', // PersonalWorkspace APP_Automation
+    'my',
+]);
+window.cleanseCrossDomainWorkspaces = function(list) {
+    if (!Array.isArray(list)) return [];
+    return list.filter(w => {
+        if (!w) return false;
+        const wid = String(w.id || w.workspaceId || '').trim().toLowerCase();
+        const wname = String(w.alias || w.name || w.displayName || wid).trim().toLowerCase();
+        const wtype = String(w.type || '').trim().toLowerCase();
+
+        // 精确 ID 黑名单
+        if (_FORBIDDEN_WS_IDS.has(wid)) return false;
+
+        // type=PersonalGroup 强制排除
+        if (wtype === 'personalgroup') return false;
+
+        // 名称模糊包含：personal | @carman | @sina | workspace_dev | dev_workspace
+        if (wname.includes('personal')) return false;
+        if (wname.includes('@carman')) return false;
+        if (wname.includes('@sina')) return false;
+        if (wname.includes('workspace_dev')) return false;
+        if (wname.includes('dev_workspace')) return false;
+
+        // 精确匹配 my / my workspace / 我的工作区
+        if (['my', 'my workspace', '我的工作区'].includes(wname)) return false;
+        if (wid === 'my') return false;
+
+        return true;
+    });
+};
+
+// 启动时主动清洗 localStorage 中残留的跨域工作区与 XMLA 脏数据
+try {
+    const rawStored = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+    const cleaned = window.cleanseCrossDomainWorkspaces(rawStored);
+    localStorage.setItem('pbi_workspaces', JSON.stringify(cleaned));
+
+    const curActive = (localStorage.getItem('pbi-active-workspace') || '').toLowerCase();
+    if (curActive === 'my' || curActive === '2c51e061-0f9f-4d02-bed0-c169019e5d83' || curActive === 'workspace_dev') {
+        localStorage.setItem('pbi-active-workspace', cleaned[0]?.id || '');
+    }
+
+    let history = JSON.parse(localStorage.getItem('pbi-xmla-history') || '[]');
+    history = history.filter(url => !url.includes('/myorg/my') && !url.toLowerCase().includes('workspace_dev') && !url.includes('2c51e061-0f9f-4d02-bed0-c169019e5d83'));
+    localStorage.setItem('pbi-xmla-history', JSON.stringify(history));
+} catch(e) {}
+
 // ⚡ 全局已选工作区 ID 集合 (Set<string> - 支持单选、多选与全选)
 window.selectedGtbWorkspaceIds = new Set();
 try {
     const savedWs = JSON.parse(localStorage.getItem('pbi-selected-workspaces') || '[]');
     if (Array.isArray(savedWs) && savedWs.length > 0) {
-        savedWs.forEach(id => { if (id) window.selectedGtbWorkspaceIds.add(String(id)); });
+        savedWs.forEach(id => {
+            const strId = String(id).toLowerCase();
+            if (id && strId !== 'my' && strId !== '2c51e061-0f9f-4d02-bed0-c169019e5d83' && strId !== 'workspace_dev') {
+                window.selectedGtbWorkspaceIds.add(String(id));
+            }
+        });
     }
 } catch(e) {}
 
@@ -2969,13 +3029,15 @@ window.getMergedGtbWorkspaces = function() {
     if (Array.isArray(window.allWorkspaces)) rawList.push(...window.allWorkspaces);
 
     const uniqueMap = new Map();
-    rawList.forEach(w => {
+    // 复用标准清洗器，统一过滤规则，避免遗漏
+    const cleanedList = window.cleanseCrossDomainWorkspaces ? window.cleanseCrossDomainWorkspaces(rawList) : rawList;
+    cleanedList.forEach(w => {
         if (!w) return;
         const id = String(w.id || w.workspaceId || '').trim();
         if (!id) return;
         const name = String(w.alias || w.name || w.displayName || id).trim();
         if (!uniqueMap.has(id.toLowerCase())) {
-            uniqueMap.set(id.toLowerCase(), { id: id, alias: name, name: name });
+            uniqueMap.set(id.toLowerCase(), { id: id, alias: name, name: name, type: w.type || '', state: w.state || '' });
         }
     });
     const result = Array.from(uniqueMap.values());
@@ -3214,6 +3276,7 @@ window.cascadeScanWorkspacesAndAssets = async function(customTargetWsId) {
                 ]);
 
                 // 处理 Datasets
+                // 处理 Datasets (增量合并，保留其他工作区如 APAC 已缓存的模型，严禁全量覆盖抹消)
                 if (dsRes.status === 'fulfilled' && dsRes.value && dsRes.value.success && Array.isArray(dsRes.value.data)) {
                     const formattedDs = dsRes.value.data.map(d => ({
                         id: d.id,
@@ -3221,19 +3284,36 @@ window.cascadeScanWorkspacesAndAssets = async function(customTargetWsId) {
                         alias: d.name,
                         workspaceId: activeWsId
                     }));
-                    localStorage.setItem('pbi_datasets', JSON.stringify(formattedDs));
+                    let curStoredDs = [];
+                    try {
+                        curStoredDs = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
+                        if (!Array.isArray(curStoredDs)) curStoredDs = [];
+                    } catch(e) { curStoredDs = []; }
+                    const otherWsDatasets = curStoredDs.filter(d => d && String(d.workspaceId || '').toLowerCase() !== String(activeWsId).toLowerCase());
+                    const mergedDatasets = [...otherWsDatasets, ...formattedDs];
+                    localStorage.setItem('pbi_datasets', JSON.stringify(mergedDatasets));
                     dsCount = formattedDs.length;
                     if (window.selectedGtbDatasetIds) {
-                        window.selectedGtbDatasetIds.clear();
-                        if (formattedDs.length > 0) window.selectedGtbDatasetIds.add(String(formattedDs[0].id));
+                        const validIds = new Set(mergedDatasets.map(d => String(d.id).toLowerCase()));
+                        for (const selId of Array.from(window.selectedGtbDatasetIds)) {
+                            if (!validIds.has(String(selId).toLowerCase())) {
+                                window.selectedGtbDatasetIds.delete(selId);
+                            }
+                        }
                     }
-                    if (window._populateDropdown) window._populateDropdown('dataset', formattedDs);
+                    if (window._populateDropdown) window._populateDropdown('dataset', mergedDatasets);
                 } else {
-                    localStorage.setItem('pbi_datasets', JSON.stringify([]));
-                    if (window.selectedGtbDatasetIds) window.selectedGtbDatasetIds.clear();
+                    // 若拉取失败，仅移除当前工作区失效数据，不抹除其他工作区
+                    let curStoredDs = [];
+                    try {
+                        curStoredDs = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
+                        if (!Array.isArray(curStoredDs)) curStoredDs = [];
+                    } catch(e) { curStoredDs = []; }
+                    const otherWsDatasets = curStoredDs.filter(d => d && String(d.workspaceId || '').toLowerCase() !== String(activeWsId).toLowerCase());
+                    localStorage.setItem('pbi_datasets', JSON.stringify(otherWsDatasets));
                 }
 
-                // 处理 Reports
+                // 处理 Reports (增量合并，保留其他工作区已缓存的报表)
                 if (rpRes.status === 'fulfilled' && rpRes.value && rpRes.value.success && Array.isArray(rpRes.value.data)) {
                     const formattedRp = rpRes.value.data.map(r => ({
                         id: r.id,
@@ -3241,11 +3321,24 @@ window.cascadeScanWorkspacesAndAssets = async function(customTargetWsId) {
                         alias: r.name,
                         workspaceId: activeWsId
                     }));
-                    localStorage.setItem('pbi_reports', JSON.stringify(formattedRp));
+                    let curStoredRp = [];
+                    try {
+                        curStoredRp = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+                        if (!Array.isArray(curStoredRp)) curStoredRp = [];
+                    } catch(e) { curStoredRp = []; }
+                    const otherWsReports = curStoredRp.filter(r => r && String(r.workspaceId || '').toLowerCase() !== String(activeWsId).toLowerCase());
+                    const mergedReports = [...otherWsReports, ...formattedRp];
+                    localStorage.setItem('pbi_reports', JSON.stringify(mergedReports));
                     rpCount = formattedRp.length;
-                    if (window._populateDropdown) window._populateDropdown('report', formattedRp);
+                    if (window._populateDropdown) window._populateDropdown('report', mergedReports);
                 } else {
-                    localStorage.setItem('pbi_reports', JSON.stringify([]));
+                    let curStoredRp = [];
+                    try {
+                        curStoredRp = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+                        if (!Array.isArray(curStoredRp)) curStoredRp = [];
+                    } catch(e) { curStoredRp = []; }
+                    const otherWsReports = curStoredRp.filter(r => r && String(r.workspaceId || '').toLowerCase() !== String(activeWsId).toLowerCase());
+                    localStorage.setItem('pbi_reports', JSON.stringify(otherWsReports));
                 }
             } catch(subErr) {
                 console.warn('Cascade fetch assets warning:', subErr);
@@ -3680,15 +3773,17 @@ window.persistGtbDatasetsAndSync = function() {
     if (window.syncAllWorkflowSelectors) window.syncAllWorkflowSelectors();
 };
 
-// 过滤 Popover 里的数据模型列表项与工作区分组
+// 过滤 Popover 里的数据模型列表项与工作区分组 (支持跨工作区智能搜索，如搜索 apac)
 window.filterGtbDsOptions = function(term = '') {
     const q = (term || '').toLowerCase().trim();
     const groups = document.querySelectorAll('#gtb-ds-list .gtb-ds-ws-group');
+    let totalMatches = 0;
     groups.forEach(group => {
+        const isOtherScope = group.classList.contains('gtb-ds-ws-other-scope');
         const items = group.querySelectorAll('.gtb-ds-item');
         let visibleItemCount = 0;
         items.forEach(item => {
-            const text = item.getAttribute('data-search-text') || '';
+            const text = (item.getAttribute('data-search-text') || '').toLowerCase();
             if (!q || text.includes(q)) {
                 item.style.display = 'flex';
                 visibleItemCount++;
@@ -3697,14 +3792,20 @@ window.filterGtbDsOptions = function(term = '') {
             }
         });
         const headerTitle = group.querySelector('.gtb-ds-ws-title')?.textContent?.toLowerCase() || '';
-        if (!q || visibleItemCount > 0 || headerTitle.includes(q)) {
+        const headerMatches = Boolean(q && headerTitle.includes(q));
+
+        if (!q) {
+            // 没有搜索词时：非当前选定工作区范围的隐藏，选定范围的显示
+            group.style.display = isOtherScope ? 'none' : 'block';
+        } else if (visibleItemCount > 0 || headerMatches) {
+            // 搜索状态下：无论是否属于当前选定工作区，只要匹配关键字（如 apac）即刻高亮展开呈现
             group.style.display = 'block';
-            if (q) {
-                group.classList.remove('collapsed'); // 搜索时自动展开匹配分组
-            }
-            if (headerTitle.includes(q) && q) {
+            group.classList.remove('collapsed');
+            if (headerMatches) {
                 items.forEach(item => item.style.display = 'flex');
+                visibleItemCount = items.length;
             }
+            totalMatches += visibleItemCount;
         } else {
             group.style.display = 'none';
         }
@@ -3895,7 +3996,7 @@ if (!window._gtbGlobalClickListenerAdded) {
 }
 
 window.updateGlobalTopbarDropdowns = function() {
-    const wsData = window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+    const rawWsData = window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
     const dsData = window.getMergedGtbDatasets ? window.getMergedGtbDatasets() : JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
     const rpData = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
 
@@ -3908,12 +4009,23 @@ window.updateGlobalTopbarDropdowns = function() {
     const curDsId = document.getElementById('active-dataset')?.value || localStorage.getItem('pbi-active-dataset') || '';
     const curRpId = document.getElementById('active-report')?.value || localStorage.getItem('pbi-active-report') || '';
 
-    // 若当前未选中任何工作区，但有可用工作区，默认选中当前主工作区或第一个 (仅初次初始化)
-    if (!window._gtbWsInitialized && window.selectedGtbWorkspaceIds.size === 0 && wsData.length > 0) {
-        window._gtbWsInitialized = true;
-        if (curWsId && wsData.some(w => String(w.id).toLowerCase() === curWsId.toLowerCase())) {
-            window.selectedGtbWorkspaceIds.add(String(curWsId));
-        } else if (wsData[0] && wsData[0].id) {
+    // 1. 严格过滤跨域工作区：统一复用 cleanseCrossDomainWorkspaces 清洗器
+    const wsData = window.cleanseCrossDomainWorkspaces
+        ? window.cleanseCrossDomainWorkspaces(rawWsData)
+        : rawWsData.filter(w => w && w.id);
+
+    // 剔除已选集合中被过滤掉的非法/跨域工作区 ID (不区分大小写安全比对)
+    const validWsIdSet = new Set(wsData.map(w => String(w.id).trim().toLowerCase()));
+    for (const selId of Array.from(window.selectedGtbWorkspaceIds)) {
+        if (!validWsIdSet.has(String(selId).trim().toLowerCase())) {
+            window.selectedGtbWorkspaceIds.delete(selId);
+        }
+    }
+
+    // 🚨 仅在全新首次加载（localStorage 无记录）且有可用工作区时赋初值；若用户主动清空（size === 0 且已有记录）坚决保持为 0！
+    const savedWsRaw = localStorage.getItem('pbi-selected-workspaces');
+    if (savedWsRaw === null && window.selectedGtbWorkspaceIds.size === 0 && wsData.length > 0) {
+        if (wsData[0] && wsData[0].id) {
             window.selectedGtbWorkspaceIds.add(String(wsData[0].id));
         }
     }
@@ -3922,7 +4034,7 @@ window.updateGlobalTopbarDropdowns = function() {
     const selectedCount = selectedList.length;
     const totalCount = wsData.length;
 
-    // 1. 更新顶栏触发器文本与徽章
+    // 1. 更新顶栏工作区触发器文本与徽章
     const displayTextEl = document.getElementById('gtb-ws-display-text');
     const countBadgeEl = document.getElementById('gtb-ws-count-badge');
     let firstWsName = '';
@@ -3955,7 +4067,7 @@ window.updateGlobalTopbarDropdowns = function() {
         wsHidden.value = selectedList.join(',');
     }
 
-    // 2. 渲染 Popover 下拉列表
+    // 2. 渲染工作区 Popover 下拉列表
     const wsListContainer = document.getElementById('gtb-ws-list');
     const statTextEl = document.getElementById('gtb-ws-stat-text');
     if (wsListContainer) {
@@ -3990,38 +4102,32 @@ window.updateGlobalTopbarDropdowns = function() {
         statTextEl.textContent = `已选 ${selectedCount} / ${totalCount} 个工作区`;
     }
 
-    // 3. 渲染数据模型 (Dataset / Model) 顶栏触发器与工作区分组矩阵 (全面支持与已选工作区联动)
+    // 3. 渲染数据模型 (Dataset / Model) 顶栏触发器与工作区分组矩阵 (严格联动当前已选工作区)
     const selectedWsIds = Array.from(window.selectedGtbWorkspaceIds);
-    const isAllWs = selectedWsIds.length === 0 || (wsData.length > 0 && selectedWsIds.length >= wsData.length);
-    const hasWsFilter = !isAllWs;
     const selectedWsSet = new Set(selectedWsIds.map(id => String(id).toLowerCase()));
+    const hasWsFilter = selectedWsIds.length > 0;
 
-    // 动态根据工作区联动过滤出当前范围可用的模型集
-    const scopedDsData = !isAllWs
-        ? dsData.filter(d => {
-            const wid = String(d.workspaceId || '').trim().toLowerCase();
+    // 严格作用域过滤：模型必须明确属于当前选中的工作区，绝对杜绝跨域展示
+    const scopedDsData = dsData.filter(d => {
+        if (!d || !d.id) return false;
+        const wid = String(d.workspaceId || '').trim().toLowerCase();
+        if (hasWsFilter) {
             return wid && selectedWsSet.has(wid);
-        })
-        : dsData;
+        }
+        return wid && validWsIdSet.has(wid);
+    });
 
-    // 清理并对齐已选模型：仅在非全选且指定工作区子集时剔除超出范围的模型
-    if (!isAllWs) {
-        const validScopedDsIds = new Set(scopedDsData.map(d => String(d.id).toLowerCase()));
-        for (const curSelectedId of Array.from(window.selectedGtbDatasetIds)) {
-            if (!validScopedDsIds.has(String(curSelectedId).toLowerCase())) {
-                window.selectedGtbDatasetIds.delete(curSelectedId);
-            }
+    // 清理超出范围的已选模型
+    const validScopedDsIds = new Set(scopedDsData.map(d => String(d.id).toLowerCase()));
+    for (const curSelectedId of Array.from(window.selectedGtbDatasetIds)) {
+        if (!validScopedDsIds.has(String(curSelectedId).toLowerCase())) {
+            window.selectedGtbDatasetIds.delete(curSelectedId);
         }
     }
 
-    // 仅初次初始化默认选中首个模型
-    if (!window._gtbDsInitialized && window.selectedGtbDatasetIds.size === 0 && scopedDsData.length > 0) {
-        window._gtbDsInitialized = true;
-        if (curDsId && scopedDsData.some(d => String(d.id).toLowerCase() === curDsId.toLowerCase())) {
-            window.selectedGtbDatasetIds.add(String(curDsId));
-        } else if (scopedDsData[0] && scopedDsData[0].id) {
-            window.selectedGtbDatasetIds.add(String(scopedDsData[0].id));
-        }
+    // 🚨 严禁强制自动勾选首项：允许用户处于 0 项选中状态 (-- 选择模型 (0) --)，杜绝清空与取消勾选失效
+    if (window.selectedGtbDatasetIds.size === 0 && curDsId && validScopedDsIds.has(String(curDsId).toLowerCase())) {
+        window.selectedGtbDatasetIds.add(String(curDsId));
     }
 
     const selectedDsList = Array.from(window.selectedGtbDatasetIds);
@@ -4037,7 +4143,7 @@ window.updateGlobalTopbarDropdowns = function() {
         if (selectedDsCount === 0) {
             dsDisplayTextEl.textContent = '-- 选择模型 (0) --';
         } else if (selectedDsCount === 1) {
-            const matched = scopedDsData.find(d => String(d.id).toLowerCase() === selectedDsList[0].toLowerCase()) || dsData.find(d => String(d.id).toLowerCase() === selectedDsList[0].toLowerCase());
+            const matched = scopedDsData.find(d => String(d.id).toLowerCase() === selectedDsList[0].toLowerCase());
             const firstDsName = matched ? (matched.alias || matched.name || matched.id) : selectedDsList[0];
             dsDisplayTextEl.textContent = firstDsName;
         } else if (selectedDsCount === totalDsCount && totalDsCount > 1) {
@@ -4066,45 +4172,34 @@ window.updateGlobalTopbarDropdowns = function() {
         dsHidden.value = selectedDsList.join(',');
     }
 
-    // 渲染各工作区下的模型分组矩阵 (Workspace Grouping Matrix - 联动已选工作区)
+    // 渲染各工作区下的模型分组矩阵 (构建全景分组映射，既保持所选工作区的独立展示，又保障搜索 apac 等关键词时全局匹配展现)
     if (dsListContainer) {
-        if (scopedDsData.length === 0) {
+        if (dsData.length === 0) {
             dsListContainer.innerHTML = `<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 24px 10px;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="opacity: 0.4; margin-bottom: 6px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                <div>${hasWsFilter ? '当前已选工作区下暂无可用的数据模型' : '暂无可用的模型缓存'}</div>
+                <div>暂无可用的数据模型缓存</div>
             </div>`;
         } else {
             const wsMap = new Map();
-            const targetWorkspaces = hasWsFilter
-                ? wsData.filter(w => w && w.id && selectedWsSet.has(String(w.id).toLowerCase()))
-                : wsData;
-
-            targetWorkspaces.forEach(w => {
+            // 登记所有有效工作区进映射分组
+            wsData.forEach(w => {
                 if (w && w.id) {
-                    wsMap.set(String(w.id).toLowerCase(), {
+                    const widLower = String(w.id).trim().toLowerCase();
+                    wsMap.set(widLower, {
                         id: String(w.id),
                         name: w.alias || w.name || String(w.id),
+                        isScoped: !hasWsFilter || selectedWsSet.has(widLower),
                         models: []
                     });
                 }
             });
 
-            const unassignedModels = [];
-            scopedDsData.forEach(d => {
+            // 归类所有数据模型到对应工作区
+            dsData.forEach(d => {
+                if (!d || !d.id) return;
                 const wid = String(d.workspaceId || '').trim().toLowerCase();
                 if (wid && wsMap.has(wid)) {
                     wsMap.get(wid).models.push(d);
-                } else if (wid && !hasWsFilter) {
-                    if (!wsMap.has(wid)) {
-                        wsMap.set(wid, {
-                            id: d.workspaceId,
-                            name: d.workspaceName || d.workspaceId,
-                            models: []
-                        });
-                    }
-                    wsMap.get(wid).models.push(d);
-                } else if (!hasWsFilter) {
-                    unassignedModels.push(d);
                 }
             });
 
@@ -4113,11 +4208,15 @@ window.updateGlobalTopbarDropdowns = function() {
                 const wid = group.id;
                 const wname = group.name;
                 const models = group.models;
+                const isScoped = group.isScoped;
                 if (!models || models.length === 0) return;
                 const isAllGroupSelected = models.every(m => window.selectedGtbDatasetIds.has(String(m.id)));
+                // 如果启用了工作区过滤且该工作区不在当前过滤作用域内，默认 display: none 并赋予 gtb-ds-ws-other-scope 类，搜索时智能唤醒
+                const defaultDisplay = isScoped ? 'block' : 'none';
+                const scopeClass = isScoped ? '' : 'gtb-ds-ws-other-scope';
 
                 matrixHtml += `
-                    <div class="gtb-ds-ws-group" data-ws-id="${wid}">
+                    <div class="gtb-ds-ws-group ${scopeClass}" data-ws-id="${wid}" style="display: ${defaultDisplay};">
                         <div class="gtb-ds-ws-header" onclick="window.toggleGtbDsGroupCollapse(this)" title="点击折叠/展开该工作区下的模型">
                             <div class="gtb-ds-ws-title">
                                 <svg class="gtb-ds-ws-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -4152,68 +4251,30 @@ window.updateGlobalTopbarDropdowns = function() {
                 `;
             });
 
-            if (unassignedModels.length > 0) {
-                const isAllUnassignedSelected = unassignedModels.every(m => window.selectedGtbDatasetIds.has(String(m.id)));
-                matrixHtml += `
-                    <div class="gtb-ds-ws-group" data-ws-id="__unassigned__">
-                        <div class="gtb-ds-ws-header" onclick="window.toggleGtbDsGroupCollapse(this)" title="点击折叠/展开该分组下的模型">
-                            <div class="gtb-ds-ws-title">
-                                <svg class="gtb-ds-ws-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
-                                <span>其他 / 未指定工作区模型</span>
-                                <span class="gtb-ds-ws-badge">${unassignedModels.length} 个模型</span>
-                            </div>
-                            <button type="button" class="gtb-ws-btn-sm" style="padding: 1px 6px; font-size: 0.65rem; border-radius: 4px;" onclick="window.toggleGtbWsModels('__unassigned__', event)" title="全选/取消全选未指定工作区模型">
-                                ${isAllUnassignedSelected ? '取消' : '全选'}
-                            </button>
-                        </div>
-                        <div class="gtb-ds-items-group">
-                            ${unassignedModels.map(m => {
-                                const mId = String(m.id);
-                                const mName = m.alias || m.name || mId;
-                                const isSel = window.selectedGtbDatasetIds.has(mId);
-                                const searchText = `${mName} ${mId} 其他 全局`.toLowerCase();
-                                return `
-                                    <div class="gtb-ws-item gtb-ds-item ${isSel ? 'selected' : ''}" data-search-text="${searchText}" onclick="window.toggleGtbDataset('${mId}')">
-                                        <div class="gtb-ws-item-left">
-                                            <input type="checkbox" class="gtb-ws-checkbox gtb-ds-checkbox" ${isSel ? 'checked' : ''} onclick="event.stopPropagation(); window.toggleGtbDataset('${mId}')">
-                                            <div class="gtb-ws-item-names">
-                                                <div class="gtb-ws-item-title" title="${mName}">${mName}</div>
-                                                <div class="gtb-ws-item-sub" title="${mId}">${mId}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>
-                `;
-            }
-
-            dsListContainer.innerHTML = matrixHtml;
+            dsListContainer.innerHTML = matrixHtml || `<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 24px 10px;">当前已选工作区下暂无可用的数据模型</div>`;
         }
     }
 
-    // 4. 根据所选的工作区过滤 Reports (向后兼容与高颜值下拉列表)
-    const filteredRp = (selectedCount > 0) ? rpData.filter(r => {
-        const rWid = (r.workspaceId || '').trim().toLowerCase();
-        return !rWid || selectedWsSet.has(rWid);
-    }) : rpData;
+    // 4. 根据所选工作区严格过滤报表 (彻底杜绝跨域混杂)
+    const filteredRp = rpData.filter(r => {
+        if (!r || !r.id) return false;
+        const rWid = String(r.workspaceId || '').trim().toLowerCase();
+        if (hasWsFilter) {
+            return rWid && selectedWsSet.has(rWid);
+        }
+        return !rWid || validWsIdSet.has(rWid);
+    });
 
-    // 清理并对齐已选报表：若指定工作区子集，剔除超出范围的报表
-    if (!isAllWs) {
-        const validScopedRpIds = new Set(filteredRp.map(r => String(r.id).toLowerCase()));
-        for (const curSelectedId of Array.from(window.selectedGtbReportIds)) {
-            if (!validScopedRpIds.has(String(curSelectedId).toLowerCase())) {
-                window.selectedGtbReportIds.delete(curSelectedId);
-            }
+    // 清理超出范围的已选报表
+    const validScopedRpIds = new Set(filteredRp.map(r => String(r.id).toLowerCase()));
+    for (const curSelectedId of Array.from(window.selectedGtbReportIds)) {
+        if (!validScopedRpIds.has(String(curSelectedId).toLowerCase())) {
+            window.selectedGtbReportIds.delete(curSelectedId);
         }
     }
 
-    // 仅初次初始化默认选中首个报表
-    if (!window._gtbRpInitialized && window.selectedGtbReportIds.size === 0 && filteredRp.length > 0) {
-        window._gtbRpInitialized = true;
-        if (curRpId && filteredRp.some(r => String(r.id).toLowerCase() === curRpId.toLowerCase())) {
+    if (window.selectedGtbReportIds.size === 0 && filteredRp.length > 0) {
+        if (curRpId && validScopedRpIds.has(String(curRpId).toLowerCase())) {
             window.selectedGtbReportIds.add(String(curRpId));
         } else if (filteredRp[0] && filteredRp[0].id) {
             window.selectedGtbReportIds.add(String(filteredRp[0].id));
@@ -4234,7 +4295,7 @@ window.updateGlobalTopbarDropdowns = function() {
         if (selectedRpCount === 0) {
             rpDisplayTextEl.textContent = '-- 选择报表 (0) --';
         } else if (selectedRpCount === 1) {
-            const matched = filteredRp.find(r => String(r.id).toLowerCase() === selectedRpList[0].toLowerCase()) || rpData.find(r => String(r.id).toLowerCase() === selectedRpList[0].toLowerCase());
+            const matched = filteredRp.find(r => String(r.id).toLowerCase() === selectedRpList[0].toLowerCase());
             const firstRpName = matched ? (matched.alias || matched.name || matched.id) : selectedRpList[0];
             rpDisplayTextEl.textContent = firstRpName;
         } else if (selectedRpCount === totalRpCount && totalRpCount > 1) {
@@ -4263,12 +4324,12 @@ window.updateGlobalTopbarDropdowns = function() {
         rpSelect.value = selectedRpList[0] || '';
     }
 
-    // 渲染报表下拉面板列表 (按工作区分组矩阵渲染 Workspace-Grouped Matrix)
+    // 渲染报表下拉面板列表 (严格隔离，杜绝未分配的跨域孤儿报表)
     if (rpListContainer) {
         if (filteredRp.length === 0) {
             rpListContainer.innerHTML = `<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 24px 10px;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="opacity: 0.4; margin-bottom: 6px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                <div>${hasWsFilter ? '当前已选工作区下暂无可用的报表' : '暂无可用的报表缓存'}</div>
+                <div>当前已选工作区下暂无可用的报表</div>
             </div>`;
         } else {
             const wsMap = new Map();
@@ -4286,22 +4347,10 @@ window.updateGlobalTopbarDropdowns = function() {
                 }
             });
 
-            const unassignedReports = [];
             filteredRp.forEach(r => {
                 const wid = String(r.workspaceId || '').trim().toLowerCase();
                 if (wid && wsMap.has(wid)) {
                     wsMap.get(wid).reports.push(r);
-                } else if (wid && !hasWsFilter) {
-                    if (!wsMap.has(wid)) {
-                        wsMap.set(wid, {
-                            id: r.workspaceId,
-                            name: r.workspaceName || r.workspaceId,
-                            reports: []
-                        });
-                    }
-                    wsMap.get(wid).reports.push(r);
-                } else if (!hasWsFilter) {
-                    unassignedReports.push(r);
                 }
             });
 
@@ -4318,7 +4367,7 @@ window.updateGlobalTopbarDropdowns = function() {
                         <div class="gtb-ds-ws-header gtb-rp-ws-header" onclick="window.toggleGtbRpGroupCollapse(this)" title="点击折叠/展开该工作区下的报表">
                             <div class="gtb-ds-ws-title gtb-rp-ws-title">
                                 <svg class="gtb-ds-ws-arrow gtb-rp-ws-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect></svg>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="9"></line><line x1="9" y1="13" x2="15" y2="13"></line><line x1="9" y1="17" x2="13" y2="17"></line></svg>
                                 <span title="${wname}">${wname}</span>
                                 <span class="gtb-ds-ws-badge gtb-rp-ws-badge">${reports.length} 个报表</span>
                             </div>
@@ -4326,7 +4375,7 @@ window.updateGlobalTopbarDropdowns = function() {
                                 ${isAllGroupSelected ? '取消' : '全选'}
                             </button>
                         </div>
-                        <div class="gtb-ds-items-group gtb-rp-items-group">
+                        <div class="gtb-ds-items-group">
                             ${reports.map(r => {
                                 const rId = String(r.id);
                                 const rName = r.alias || r.name || rId;
@@ -4349,72 +4398,36 @@ window.updateGlobalTopbarDropdowns = function() {
                 `;
             });
 
-            if (unassignedReports.length > 0) {
-                const isAllUnassignedSelected = unassignedReports.every(r => window.selectedGtbReportIds.has(String(r.id)));
-                matrixHtml += `
-                    <div class="gtb-ds-ws-group gtb-rp-ws-group" data-ws-id="__unassigned__">
-                        <div class="gtb-ds-ws-header gtb-rp-ws-header" onclick="window.toggleGtbRpGroupCollapse(this)" title="点击折叠/展开该分组下的报表">
-                            <div class="gtb-ds-ws-title gtb-rp-ws-title">
-                                <svg class="gtb-ds-ws-arrow gtb-rp-ws-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="9"></line><line x1="9" y1="13" x2="15" y2="13"></line><line x1="9" y1="17" x2="13" y2="17"></line></svg>
-                                <span>其他 / 未指定工作区报表</span>
-                                <span class="gtb-ds-ws-badge gtb-rp-ws-badge">${unassignedReports.length} 个报表</span>
-                            </div>
-                            <button type="button" class="gtb-ws-btn-sm" style="padding: 1px 6px; font-size: 0.65rem; border-radius: 4px;" onclick="window.toggleGtbWsReports('__unassigned__', event)" title="全选/取消全选未指定工作区报表">
-                                ${isAllUnassignedSelected ? '取消' : '全选'}
-                            </button>
-                        </div>
-                        <div class="gtb-ds-items-group gtb-rp-items-group">
-                            ${unassignedReports.map(r => {
-                                const rId = String(r.id);
-                                const rName = r.alias || r.name || rId;
-                                const isSel = window.selectedGtbReportIds.has(rId);
-                                const searchText = `${rName} ${rId} 其他 全局`.toLowerCase();
-                                return `
-                                    <div class="gtb-ws-item gtb-rp-item ${isSel ? 'selected' : ''}" data-search-text="${searchText}" onclick="window.toggleGtbReport('${rId}')">
-                                        <div class="gtb-ws-item-left">
-                                            <input type="checkbox" class="gtb-ws-checkbox gtb-rp-checkbox" ${isSel ? 'checked' : ''} onclick="event.stopPropagation(); window.toggleGtbReport('${rId}')">
-                                            <div class="gtb-ws-item-names">
-                                                <div class="gtb-ws-item-title" title="${rName}">${rName}</div>
-                                                <div class="gtb-ws-item-sub" title="${rId}">${rId}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>
-                `;
-            }
-
-            rpListContainer.innerHTML = matrixHtml;
+            rpListContainer.innerHTML = matrixHtml || `<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 24px 10px;">当前已选工作区下暂无可用的报表</div>`;
         }
     }
 
-    // 计算并更新 XMLA 终结点连接串及历史记录维护
+    // 5. 计算并更新 XMLA 终结点连接串 (纯净化：严格使用合法组织工作区，清洗历史脏数据)
     if (xmlaInput) {
         let currentEndpoint = '';
-        if (firstWsName) {
-            currentEndpoint = `powerbi://api.powerbi.com/v1.0/myorg/${firstWsName}`;
-        } else if (selectedList[0]) {
-            currentEndpoint = `powerbi://api.powerbi.com/v1.0/myorg/${selectedList[0]}`;
+        const curSelectedWs = wsData.find(w => String(w.id).toLowerCase() === selectedList[0]?.toLowerCase());
+        const validWsName = curSelectedWs ? (curSelectedWs.alias || curSelectedWs.name) : '';
+        if (validWsName) {
+            currentEndpoint = `powerbi://api.powerbi.com/v1.0/myorg/${validWsName}`;
         }
         xmlaInput.value = currentEndpoint;
 
         if (currentEndpoint) {
             try {
                 let history = JSON.parse(localStorage.getItem('pbi-xmla-history') || '[]');
+                // 清洗历史记录：彻底剔除包含 WorkSpace_DEV 或 myorg/my 的历史脏项
+                history = history.filter(url => !url.includes('/myorg/my') && !url.toLowerCase().includes('workspace_dev'));
                 if (!history.includes(currentEndpoint)) {
                     history.unshift(currentEndpoint);
                     if (history.length > 20) history = history.slice(0, 20);
-                    localStorage.setItem('pbi-xmla-history', JSON.stringify(history));
                 }
+                localStorage.setItem('pbi-xmla-history', JSON.stringify(history));
             } catch(e) {}
         }
         window.renderGlobalXmlaHistoryOptions();
     }
 
-    // 联动 GUM 目标范围展示与候选人员状态 (不自动发起扫描，等待用户手动点击)
+    // 联动 GUM 目标范围展示与候选人员状态
     if (window.syncGumScopeDisplay) {
         window.syncGumScopeDisplay();
     }
@@ -4424,85 +4437,111 @@ window.updateGlobalTopbarDropdowns = function() {
     }
 };
 
-// 渲染 XMLA 历史下拉选项
+// 渲染 XMLA 历史下拉选项 (严格限定于当前合法组织工作区名单，彻底根除任何跨域项目)
 window.renderGlobalXmlaHistoryOptions = function() {
     const xmlaHistorySelect = document.getElementById('gtb-select-xmla-history');
     const xmlaDisplayText = document.getElementById('gtb-xmla-display-text');
     const xmlaListContainer = document.getElementById('gtb-xmla-list');
     const xmlaStatText = document.getElementById('gtb-xmla-stat-text');
+    const xmlaInput = document.getElementById('gtb-input-xmla');
+
+    const rawWsData = window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+    const cleanWsData = window.cleanseCrossDomainWorkspaces ? window.cleanseCrossDomainWorkspaces(rawWsData) : rawWsData;
+
+    // 建立合法组织工作区名称集合
+    const validWsNames = new Set();
+    cleanWsData.forEach(w => {
+        if (!w) return;
+        if (w.alias) validWsNames.add(w.alias.toLowerCase().trim());
+        if (w.name) validWsNames.add(w.name.toLowerCase().trim());
+    });
+
+    const isEndpointValid = (url) => {
+        if (!url || typeof url !== 'string') return false;
+        const cleanUrl = url.trim();
+        if (!cleanUrl.startsWith('powerbi://api.powerbi.com/v1.0/myorg/')) return false;
+        const wsName = cleanUrl.replace('powerbi://api.powerbi.com/v1.0/myorg/', '').trim().toLowerCase();
+        if (!wsName || wsName === 'my' || wsName === 'workspace_dev' || wsName.includes('personal') || wsName.includes('2c51e061-0f9f-4d02-bed0-c169019e5d83')) {
+            return false;
+        }
+        return validWsNames.has(wsName);
+    };
 
     let history = [];
     try {
         history = JSON.parse(localStorage.getItem('pbi-xmla-history') || '[]');
+        history = history.filter(isEndpointValid);
+        localStorage.setItem('pbi-xmla-history', JSON.stringify(history));
     } catch(e) { history = []; }
 
-    const wsData = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
-    const currentVal = document.getElementById('gtb-input-xmla')?.value || '';
+    const selectedWsList = Array.from(window.selectedGtbWorkspaceIds || []);
+    let currentVal = xmlaInput?.value || '';
+    if (selectedWsList.length === 0 || !isEndpointValid(currentVal)) {
+        currentVal = '';
+        if (xmlaInput) xmlaInput.value = '';
+    }
 
-    // 生成全部候选端点
+    // 仅基于合法组织工作区生成纯正组织端点
     const allEndpoints = [];
-    history.forEach(ep => {
-        if (!allEndpoints.includes(ep)) allEndpoints.push(ep);
-    });
-    wsData.forEach(w => {
-        const name = w.alias || w.name;
+    cleanWsData.forEach(w => {
+        const name = (w.alias || w.name || '').trim();
         if (name) {
             const ep = `powerbi://api.powerbi.com/v1.0/myorg/${name}`;
-            if (!allEndpoints.includes(ep)) allEndpoints.push(ep);
+            if (isEndpointValid(ep) && !allEndpoints.includes(ep)) {
+                allEndpoints.push(ep);
+            }
         }
     });
 
-    if (currentVal && !allEndpoints.includes(currentVal)) {
-        allEndpoints.unshift(currentVal);
-    }
-
     // 更新顶栏触发器文本
     if (xmlaDisplayText) {
-        if (currentVal) {
+        if (currentVal && isEndpointValid(currentVal)) {
             const targetName = currentVal.split('/').pop() || currentVal;
             xmlaDisplayText.textContent = targetName ? `myorg/${targetName}` : currentVal;
             xmlaDisplayText.setAttribute('title', currentVal);
         } else {
-            xmlaDisplayText.textContent = '-- 选择 XMLA 端点 --';
+            xmlaDisplayText.textContent = '-- 选择 XMLA 终结点 --';
+            xmlaDisplayText.removeAttribute('title');
         }
     }
 
     if (xmlaStatText) {
-        xmlaStatText.textContent = `共 ${allEndpoints.length} 个可用端点`;
+        xmlaStatText.textContent = `共 ${allEndpoints.length} 个组织端点`;
     }
 
     if (xmlaHistorySelect) {
-        xmlaHistorySelect.value = currentVal;
+        let selectHtml = '<option value="">-- 选择已有 XMLA 终结点 --</option>';
+        allEndpoints.forEach(ep => {
+            selectHtml += `<option value="${ep}" ${ep === currentVal ? 'selected' : ''}>${ep}</option>`;
+        });
+        xmlaHistorySelect.innerHTML = selectHtml;
     }
 
     // 渲染 XMLA Popover 下拉列表
     if (xmlaListContainer) {
         if (allEndpoints.length === 0) {
-            xmlaListContainer.innerHTML = '<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 20px 0;">暂无可用的 XMLA 端点</div>';
+            xmlaListContainer.innerHTML = '<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 16px 0;">暂无可用的 XMLA 终结点</div>';
         } else {
-            let html = '';
+            let listHtml = '';
             allEndpoints.forEach(ep => {
-                const isSel = (ep === currentVal);
-                const shortName = ep.split('/').pop() || ep;
-                const searchText = `${shortName} ${ep}`.toLowerCase();
-
-                html += `
-                    <div class="gtb-ws-item gtb-xmla-item ${isSel ? 'selected' : ''}" data-search-text="${searchText}" onclick="window.selectGtbXmlaEndpoint('${ep}')">
+                const isSelected = (ep === currentVal);
+                const targetName = ep.split('/').pop() || ep;
+                listHtml += `
+                    <div class="gtb-ws-item gtb-xmla-item ${isSelected ? 'selected' : ''}" data-search-text="${ep.toLowerCase()}" onclick="window.selectGtbXmlaEndpoint('${ep}')">
                         <div class="gtb-ws-item-left">
-                            <span style="font-size: 0.9rem; color: var(--accent); flex-shrink: 0;">⚡</span>
                             <div class="gtb-ws-item-names">
-                                <div class="gtb-ws-item-title" title="${shortName}">${shortName}</div>
-                                <div class="gtb-xmla-url-text" title="${ep}">${ep}</div>
+                                <div class="gtb-ws-item-title" title="${ep}">${targetName}</div>
+                                <div class="gtb-ws-item-sub" title="${ep}">${ep}</div>
                             </div>
                         </div>
-                        ${isSel ? '<span style="color: var(--accent); font-size: 0.72rem; font-weight: bold;">✓ 激活</span>' : ''}
                     </div>
                 `;
             });
-            xmlaListContainer.innerHTML = html;
+            xmlaListContainer.innerHTML = listHtml;
         }
     }
 };
+window.selectGtbXmlaOption = window.selectGtbXmlaEndpoint;
 
 // 选择 XMLA 历史记录
 window.handleGlobalXmlaHistoryChange = function(ep) {
@@ -4739,6 +4778,11 @@ window.syncAllWorkflowSelectors = function() {
     // 6. Global User Manager Workflow
     if (window.initGumWorkspaceSelector) {
         window.initGumWorkspaceSelector();
+    }
+
+    // 7. Permission Blueprint Engine (实时从顶栏同步工作区与模型并驱动推演与矩阵重算)
+    if (window.PermissionBlueprint && typeof window.PermissionBlueprint.syncFromGtb === 'function') {
+        window.PermissionBlueprint.syncFromGtb();
     }
 };
 
@@ -5487,9 +5531,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             
 
             if (data.PBI_WORKSPACES) {
-
-                localStorage.setItem('pbi_workspaces', JSON.stringify(data.PBI_WORKSPACES));
-
+                const cleanWs = window.cleanseCrossDomainWorkspaces ? window.cleanseCrossDomainWorkspaces(data.PBI_WORKSPACES) : data.PBI_WORKSPACES;
+                localStorage.setItem('pbi_workspaces', JSON.stringify(cleanWs));
             }
 
             if (data.PBI_DATASETS) {
@@ -10014,7 +10057,8 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
                 };
 
-                loadList('workspace-list', 'pbi_workspaces', data.PBI_WORKSPACES);
+                const sanitizedWsList = window.cleanseCrossDomainWorkspaces ? window.cleanseCrossDomainWorkspaces(data.PBI_WORKSPACES) : data.PBI_WORKSPACES;
+                loadList('workspace-list', 'pbi_workspaces', sanitizedWsList);
 
                 loadList('dataset-list', 'pbi_datasets', data.PBI_DATASETS);
 

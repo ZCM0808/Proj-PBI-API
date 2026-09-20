@@ -284,8 +284,8 @@
         constructor() {
             this.activePresetKey = 'preset_developer';
             this.currentModelKey = 'model_sales';
-            this.currentWorkspaceId = 'ws_prod_analytics';
-            this.currentWorkspaceName = 'Production Analytics';
+            this.currentWorkspaceId = '';
+            this.currentWorkspaceName = '';
             this.perspective = 'user';
             this.pulseActive = true;
             this.isAuditOpen = true;
@@ -306,8 +306,25 @@
             this.pendingDrag = null;
             this.pendingPan = null;
 
-            // 深度克隆状态
-            this.currentState = JSON.parse(JSON.stringify(USER_PRESETS['preset_developer'].state));
+            // 默认基准中立状态（未选定特定用户主体）
+            this.activePresetKey = null;
+            this.currentState = {
+                isGuestUser: false,
+                tenantAllowExport: true,
+                tenantAllowWebModeling: false,
+                capacityType: 'fabric_f64',
+                workspaceRole: 'Viewer',
+                isModelOwner: false,
+                isInStrictMode: false,
+                hasAccessToAllDataConnections: true,
+                gatewayOnline: true,
+                sharePermission: 'Read',
+                hasAppAccess: true,
+                rlsEnabled: true,
+                rlsRoleAssigned: 'Region_Assigned',
+                olsEnabled: false,
+                maskedFields: 'Salary, Margin'
+            };
             this.nodePositions = this.loadNodePositionsFromStorage();
 
             // DOM 引用
@@ -345,15 +362,71 @@
             this.renderEffectivePermissionsCard();
         }
 
+        // 核心直连顶栏：从全局顶栏 (GTB) 实时同步选定的工作区和语义模型并驱动推演与矩阵重算
+        syncFromGtb() {
+            const selectedWsIds = Array.from(window.selectedGtbWorkspaceIds || []);
+            const selectedDsIds = Array.from(window.selectedGtbDatasetIds || []);
+            const wsId = selectedWsIds[0] || localStorage.getItem('pbi-active-workspace') || '';
+            const dsId = selectedDsIds[0] || localStorage.getItem('pbi-active-dataset') || '';
+
+            const wsList = window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+            const wsObj = wsList.find(w => String(w.id).toLowerCase() === String(wsId).toLowerCase());
+            this.currentWorkspaceId = wsId;
+            this.currentWorkspaceName = wsObj ? (wsObj.alias || wsObj.name || wsObj.displayName || wsObj.id) : (wsId || '');
+
+            const dsList = window.getMergedGtbDatasets ? window.getMergedGtbDatasets() : JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
+            const dsObj = dsList.find(d => String(d.id).toLowerCase() === String(dsId).toLowerCase());
+            if (dsObj) {
+                const mKey = `real_model_${dsObj.id}`;
+                if (!MODEL_DEFINITIONS[mKey]) {
+                    MODEL_DEFINITIONS[mKey] = {
+                        id: mKey,
+                        name: `🟢 [Direct Lake] ${dsObj.name || dsObj.alias || dsObj.id}`,
+                        rawName: dsObj.name || dsObj.alias || dsObj.id,
+                        workspaceId: dsObj.workspaceId || wsId,
+                        workspaceName: this.currentWorkspaceName,
+                        capacity: 'Fabric F64 容量',
+                        storageMode: 'Direct Lake',
+                        tables: ['Real_Facts', 'Dim_Customer', 'Security_RLS'],
+                        hasRLS: Boolean(dsObj.isEffectiveIdentityRequired || dsObj.hasRLS),
+                        hasOLS: false,
+                        isReal: true
+                    };
+                }
+                this.currentModelKey = mKey;
+            } else if (!dsId) {
+                this.currentModelKey = '';
+            }
+
+            const syncWsName = document.getElementById('pb-sync-ws-name');
+            if (syncWsName) {
+                syncWsName.innerHTML = this.currentWorkspaceName
+                    ? `<strong style="color: #34d399;">${this.currentWorkspaceName}</strong>`
+                    : '<span style="color: var(--text-secondary);">尚未选择 (请在顶栏选择)</span>';
+            }
+
+            this.renderNodes();
+            this.recalculateAndRenderWires();
+            this.renderEffectivePermissionsCard();
+            this.updateAuditReport();
+            if (this.activeMainTab === 'matrix') {
+                this.renderMatrix();
+            } else if (this.activeMainTab === 'user_assets') {
+                this.renderUserAssetsMatrix();
+            }
+        }
+
         // 模块首次激活或切换时调用
         onActivate() {
             if (!this.isInitialized) {
                 this.initDOM();
                 this.isInitialized = true;
             }
+            this.syncFromGtb();
             this.populateWorkspaceSelect();
             this.populateModelSelect();
             this.populatePresetSelect();
+            this.autoFetchTenantUsers();
             this.renderModelUsersList();
             this.renderNodes();
             this.recalculateAndRenderWires();
@@ -377,26 +450,46 @@
             this.activeMainTab = tab || 'blueprint';
             const canvasEl = document.getElementById('pb-canvas-viewport');
             const matrixEl = document.getElementById('pb-matrix-container');
+            const userAssetsEl = document.getElementById('pb-user-assets-container');
             const bpTabBtn = document.getElementById('pb-tab-blueprint-btn');
             const mxTabBtn = document.getElementById('pb-tab-matrix-btn');
+            const userAssetsTabBtn = document.getElementById('pb-tab-user-assets-btn');
             const bpToolbar = document.getElementById('pb-blueprint-toolbar');
             const mxToolbar = document.getElementById('pb-matrix-toolbar');
+            const userAssetsToolbar = document.getElementById('pb-user-assets-toolbar');
 
-            if (this.activeMainTab === 'matrix') {
+            if (this.activeMainTab === 'user_assets') {
+                if (canvasEl) canvasEl.style.display = 'none';
+                if (matrixEl) matrixEl.style.display = 'none';
+                if (userAssetsEl) userAssetsEl.style.display = 'grid';
+                if (bpTabBtn) bpTabBtn.classList.remove('active');
+                if (mxTabBtn) mxTabBtn.classList.remove('active');
+                if (userAssetsTabBtn) userAssetsTabBtn.classList.add('active');
+                if (bpToolbar) bpToolbar.style.display = 'none';
+                if (mxToolbar) mxToolbar.style.display = 'none';
+                if (userAssetsToolbar) userAssetsToolbar.style.display = 'flex';
+                this.renderUserAssetsMatrix();
+            } else if (this.activeMainTab === 'matrix') {
                 if (canvasEl) canvasEl.style.display = 'none';
                 if (matrixEl) matrixEl.style.display = 'grid';
+                if (userAssetsEl) userAssetsEl.style.display = 'none';
                 if (bpTabBtn) bpTabBtn.classList.remove('active');
                 if (mxTabBtn) mxTabBtn.classList.add('active');
+                if (userAssetsTabBtn) userAssetsTabBtn.classList.remove('active');
                 if (bpToolbar) bpToolbar.style.display = 'none';
                 if (mxToolbar) mxToolbar.style.display = 'flex';
+                if (userAssetsToolbar) userAssetsToolbar.style.display = 'none';
                 this.renderMatrix();
             } else {
                 if (canvasEl) canvasEl.style.display = 'block';
                 if (matrixEl) matrixEl.style.display = 'none';
+                if (userAssetsEl) userAssetsEl.style.display = 'none';
                 if (bpTabBtn) bpTabBtn.classList.add('active');
                 if (mxTabBtn) mxTabBtn.classList.remove('active');
+                if (userAssetsTabBtn) userAssetsTabBtn.classList.remove('active');
                 if (bpToolbar) bpToolbar.style.display = 'flex';
                 if (mxToolbar) mxToolbar.style.display = 'none';
+                if (userAssetsToolbar) userAssetsToolbar.style.display = 'none';
                 this.renderNodes();
                 this.recalculateAndRenderWires();
                 requestAnimationFrame(() => {
@@ -465,6 +558,13 @@
             // 抽屉拖拽初始化
             this.initDrawerDraggable();
             this.renderModelUsersList();
+
+            // 绑定全局点击自动关闭侧边栏自定义下拉框
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.pb-dropdown-box')) {
+                    this.closeAllDropdowns();
+                }
+            });
 
             // 监听全局主题切换
             const themeObserver = new MutationObserver(() => {
@@ -811,14 +911,17 @@
             this.renderNodes();
             this.recalculateAndRenderWires();
             this.locateAndFitAllNodes(false);
+            try {
+                localStorage.removeItem('pbi-blueprint-node-positions');
+            } catch (e) {}
             if (typeof window.showNotification === 'function') {
                 window.showNotification('已重置蓝图排版并自动平移居中！', 'info');
             }
         }
 
         // HTML 按钮调用的公开别名（与 resetNodePositions 完全等价）
-        resetLayout() {
-            this.resetNodePositions();
+        async resetLayout() {
+            await this.resetNodePositions();
         }
 
         togglePulse() {
@@ -899,6 +1002,19 @@
             const customBox = document.getElementById('pb-custom-user-box');
             if (customBox) customBox.style.display = 'none';
 
+            const userDisplayText = document.getElementById('pb-user-display-text');
+            if (userDisplayText) {
+                userDisplayText.textContent = '-- 选择模拟用户主体 (当前: 通用基准) --';
+                userDisplayText.title = '通用中立基准拓扑';
+            }
+
+            const userListContainer = document.getElementById('pb-user-list');
+            if (userListContainer) {
+                userListContainer.querySelectorAll('.gtb-ws-item').forEach(it => it.classList.remove('selected'));
+            }
+
+            this.closeAllDropdowns();
+
             const upnLabel = document.getElementById('pb-current-upn-label');
             const badgeTag = document.getElementById('pb-badge-role-tag');
             if (upnLabel) {
@@ -939,13 +1055,65 @@
             }
 
             if (typeof window.showNotification === 'function') {
-                window.showNotification('✕ 已取消模拟用户，当前蓝图已恢复 6 层权限流转通用基准拓扑', 'info');
+                window.showNotification('✕ 已清空模拟用户主体，当前蓝图已恢复中立通用基准拓扑', 'info');
             }
+        }
+
+        // 侧边栏自定义下拉框展开/收起控制器 (对齐顶栏 GTB 下拉框标准)
+        toggleDropdown(type, event) {
+            if (event) event.stopPropagation();
+            const types = ['user', 'ws', 'model'];
+            const targetDropdown = document.getElementById(`pb-${type}-dropdown`);
+            const targetTrigger = document.getElementById(`pb-${type}-trigger`);
+            const targetBox = document.getElementById(`pb-${type}-dropdown-box`);
+            const targetCard = targetBox ? targetBox.closest('.pb-control-card') : null;
+            if (!targetDropdown) return;
+            const isVisible = targetDropdown.style.display === 'flex';
+
+            this.closeAllDropdowns();
+
+            if (!isVisible) {
+                targetDropdown.style.display = 'flex';
+                if (targetTrigger) targetTrigger.classList.add('active');
+                if (targetBox) targetBox.classList.add('open');
+                if (targetCard) targetCard.classList.add('dropdown-active');
+                const searchInput = document.getElementById(`pb-${type}-search-input`);
+                if (searchInput) {
+                    searchInput.value = '';
+                    setTimeout(() => searchInput.focus(), 50);
+                }
+                if (type === 'user') {
+                    this.filterUsers('');
+                    const hasReal = Object.values(USER_PRESETS).some(u => u.id.startsWith('real_'));
+                    if (!hasReal) {
+                        this.autoFetchTenantUsers();
+                    }
+                }
+                if (type === 'ws') this.filterWorkspaces('');
+                if (type === 'model') this.filterModels('');
+            }
+        }
+
+        closeAllDropdowns() {
+            ['user', 'ws', 'model'].forEach(t => {
+                const d = document.getElementById(`pb-${t}-dropdown`);
+                const tr = document.getElementById(`pb-${t}-trigger`);
+                const b = document.getElementById(`pb-${t}-dropdown-box`);
+                const c = b ? b.closest('.pb-control-card') : null;
+                if (d) d.style.display = 'none';
+                if (tr) tr.classList.remove('active');
+                if (b) b.classList.remove('open');
+                if (c) c.classList.remove('dropdown-active');
+            });
         }
 
         populateWorkspaceSelect() {
             const wsSelect = document.getElementById('pb-ws-select');
-            if (!wsSelect) return;
+            const wsListContainer = document.getElementById('pb-ws-list');
+            const wsDisplayText = document.getElementById('pb-ws-display-text');
+            const wsStatText = document.getElementById('pb-ws-stat-text');
+
+            if (!wsSelect && !wsListContainer) return;
 
             let wsList = [];
             if (typeof window.getMergedGtbWorkspaces === 'function') {
@@ -992,16 +1160,41 @@
                 }
             }
 
+            const activeGlobalWsId = localStorage.getItem('pbi-active-workspace') || (document.getElementById('gtb-select-workspace') ? document.getElementById('gtb-select-workspace').value : '');
+            if (selectedGtbIds.size === 0 && activeGlobalWsId && activeGlobalWsId !== 'all') {
+                selectedGtbIds.add(String(activeGlobalWsId).toLowerCase().trim());
+            }
+
             const seen = new Set();
             const realGroup = [];
             const gtbSelectedGroup = [];
             const otherRealGroup = [];
 
             for (const w of wsList) {
-                if (w && w.id && !seen.has(String(w.id).toLowerCase())) {
-                    const idLower = String(w.id).toLowerCase();
+                if (!w || !w.id) continue;
+                const wName = (w.name || w.alias || w.displayName || w.id).trim();
+                const idLower = String(w.id).toLowerCase();
+
+                // 严格过滤：排除所有个人私有域 (PersonalGroup / PersonalWorkspace / my / My Workspace / 我的工作区)
+                const isPersonal = (w.type === 'PersonalGroup') || 
+                                   (/^PersonalWorkspace/i.test(wName)) || 
+                                   (/^Personal Workspace/i.test(wName)) ||
+                                   (/^(my|my workspace|我的工作区)$/i.test(wName)) ||
+                                   (String(w.alias || '').trim().toLowerCase() === 'my');
+                if (isPersonal) continue;
+
+                // 排除其他域残留：严格隔离开发测试域 (WorkSpace_DEV 等)
+                const isDevWorkspace = (idLower === '2c51e061-0f9f-4d02-bed0-c169019e5d83') || (/^workspace_dev$/i.test(wName));
+                const isCurrentActiveDev = activeGlobalWsId && (activeGlobalWsId.toLowerCase() === '2c51e061-0f9f-4d02-bed0-c169019e5d83' || activeGlobalWsId.toLowerCase() === 'workspace_dev');
+                
+                // 只要当前活跃/预选的不是该开发测试空间，绝不允许其跨域混入
+                if (isDevWorkspace && !isCurrentActiveDev) {
+                    continue;
+                }
+
+                if (!seen.has(idLower)) {
                     seen.add(idLower);
-                    const item = { id: w.id, name: w.name || w.alias || w.displayName || w.id, isReal: true };
+                    const item = { id: w.id, name: wName, isReal: true, type: w.type };
                     realGroup.push(item);
                     if (selectedGtbIds.has(idLower)) {
                         gtbSelectedGroup.push(item);
@@ -1012,142 +1205,230 @@
             }
 
             let html = '';
+            let listHtml = '';
+
+            const appendGroupHtml = (title, items, isGtb) => {
+                if (!items || items.length === 0) return;
+                html += `<optgroup label="${title}">`;
+                listHtml += `<div class="gtb-ws-group-title">${title}</div>`;
+                for (const w of items) {
+                    const isSelected = (this.currentWorkspaceId && String(this.currentWorkspaceId).toLowerCase() === String(w.id).toLowerCase());
+                    const searchText = `${w.name} ${w.id}`.toLowerCase();
+                    html += `<option value="${w.id}">${isGtb ? '🌟 ' : ''}${w.name}</option>`;
+                    listHtml += `
+                        <div class="gtb-ws-item ${isSelected ? 'selected' : ''}" data-search-text="${searchText}" onclick="window.PermissionBlueprint.selectWorkspace('${w.id}')">
+                            <div class="gtb-ws-item-left">
+                                <div class="gtb-ws-item-names">
+                                    <div class="gtb-ws-item-title" title="${w.name}">${isGtb ? '🌟 ' : '🏢 '}${w.name}</div>
+                                    <div class="gtb-ws-item-sub" title="${w.id}">${w.id}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                html += '</optgroup>';
+            };
+
+            // 严格对齐当前工作范围：若顶栏已选定工作区，仅呈现当前作用域内的工作区，绝不展示未选中的其他工作区 (如测试开发域)
             if (gtbSelectedGroup.length > 0) {
-                html += `<optgroup label="🌟 全局功能区选定工作区 (${gtbSelectedGroup.length} 个)">`;
-                for (const w of gtbSelectedGroup) {
-                    html += `<option value="${w.id}">🌟 ${w.name}</option>`;
-                }
-                html += '</optgroup>';
+                appendGroupHtml(`🌟 当前范围选定工作区 (${gtbSelectedGroup.length} 个)`, gtbSelectedGroup, true);
+            } else if (realGroup.length > 0) {
+                appendGroupHtml(`🏢 租户组织工作区 (${realGroup.length} 个)`, realGroup, false);
             }
 
-            if (otherRealGroup.length > 0) {
-                html += `<optgroup label="🏢 真实租户其余工作区 (${otherRealGroup.length} 个)">`;
-                for (const w of otherRealGroup) {
-                    html += `<option value="${w.id}">${w.name}</option>`;
-                }
-                html += '</optgroup>';
-            } else if (gtbSelectedGroup.length === 0 && realGroup.length > 0) {
-                html += `<optgroup label="🏢 真实租户工作区 (${realGroup.length} 个)">`;
-                for (const w of realGroup) {
-                    html += `<option value="${w.id}">${w.name}</option>`;
-                }
-                html += '</optgroup>';
-            }
+            if (wsSelect) wsSelect.innerHTML = html;
+            if (wsListContainer) wsListContainer.innerHTML = listHtml || '<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 16px 0;">暂无可用的工作区</div>';
 
-            wsSelect.innerHTML = html;
+            // 严格对齐实际选择，绝不擅自降级或默认选中首个工作区！未选择即保持未选空状态
+            const availableGroup = gtbSelectedGroup.length > 0 ? gtbSelectedGroup : realGroup;
+            const isCurrentValid = availableGroup.some(w => String(w.id).toLowerCase() === String(this.currentWorkspaceId || '').toLowerCase());
 
-            // 严格优先对齐全局功能区预选工作区：GTB 已选 > localStorage 活跃工作区 > 当前选中 > 默认首个
-            const activeGlobalWsId = localStorage.getItem('pbi-active-workspace') || (document.getElementById('gtb-select-workspace') ? document.getElementById('gtb-select-workspace').value : '');
-            if (gtbSelectedGroup.length > 0 && wsSelect.querySelector(`option[value="${gtbSelectedGroup[0].id}"]`)) {
-                wsSelect.value = gtbSelectedGroup[0].id;
+            if (gtbSelectedGroup.length > 0) {
                 this.currentWorkspaceId = gtbSelectedGroup[0].id;
                 this.currentWorkspaceName = gtbSelectedGroup[0].name;
-            } else if (activeGlobalWsId && activeGlobalWsId !== 'all' && wsSelect.querySelector(`option[value="${activeGlobalWsId}"]`)) {
-                wsSelect.value = activeGlobalWsId;
-                this.currentWorkspaceId = activeGlobalWsId;
-                this.currentWorkspaceName = wsSelect.options[wsSelect.selectedIndex].text.replace(/^🌟\s*/, '');
-            } else if (this.currentWorkspaceId && wsSelect.querySelector(`option[value="${this.currentWorkspaceId}"]`)) {
-                wsSelect.value = this.currentWorkspaceId;
-            } else if (wsSelect.options.length > 0) {
-                this.currentWorkspaceId = wsSelect.value;
-                this.currentWorkspaceName = wsSelect.options[wsSelect.selectedIndex].text.replace(/^🌟\s*/, '');
+            } else if (activeGlobalWsId && activeGlobalWsId !== 'all' && activeGlobalWsId !== 'none' && activeGlobalWsId !== '') {
+                const found = realGroup.find(w => String(w.id).toLowerCase() === String(activeGlobalWsId).toLowerCase());
+                if (found) {
+                    this.currentWorkspaceId = found.id;
+                    this.currentWorkspaceName = found.name;
+                } else if (!isCurrentValid) {
+                    this.currentWorkspaceId = '';
+                    this.currentWorkspaceName = '';
+                }
+            } else if (!isCurrentValid) {
+                this.currentWorkspaceId = '';
+                this.currentWorkspaceName = '';
+            }
+
+            if (wsSelect) {
+                wsSelect.value = this.currentWorkspaceId || '';
+            }
+            if (wsDisplayText) {
+                wsDisplayText.textContent = this.currentWorkspaceName ? `🏢 ${this.currentWorkspaceName}` : '-- 选择目标工作区 --';
+                wsDisplayText.title = this.currentWorkspaceName || '';
+            }
+            if (wsStatText) {
+                const totalCount = gtbSelectedGroup.length > 0 ? gtbSelectedGroup.length : realGroup.length;
+                wsStatText.textContent = `共 ${totalCount} 个组织工作区`;
             }
         }
 
         selectWorkspace(wsId) {
-            this.currentWorkspaceId = wsId;
+            this.currentWorkspaceId = wsId || '';
             const wsSelect = document.getElementById('pb-ws-select');
-            if (wsSelect && wsSelect.selectedIndex >= 0) {
-                this.currentWorkspaceName = wsSelect.options[wsSelect.selectedIndex].text.replace(/^🌟\s*/, '');
+            const wsDisplayText = document.getElementById('pb-ws-display-text');
+            const wsListContainer = document.getElementById('pb-ws-list');
+
+            if (!wsId) {
+                this.currentWorkspaceName = '';
+                if (wsSelect) wsSelect.value = '';
+                if (wsDisplayText) {
+                    wsDisplayText.textContent = '-- 选择目标工作区 --';
+                    wsDisplayText.title = '';
+                }
+                if (wsListContainer) {
+                    wsListContainer.querySelectorAll('.gtb-ws-item').forEach(it => it.classList.remove('selected'));
+                }
+            } else {
+                if (wsSelect) {
+                    wsSelect.value = wsId;
+                    if (wsSelect.selectedIndex >= 0) {
+                        this.currentWorkspaceName = wsSelect.options[wsSelect.selectedIndex].text.replace(/^[🌟🏢]\s*/, '');
+                    }
+                }
+                if (wsDisplayText) {
+                    wsDisplayText.textContent = `🏢 ${this.currentWorkspaceName || wsId}`;
+                    wsDisplayText.title = this.currentWorkspaceName || wsId;
+                }
+                if (wsListContainer) {
+                    const items = wsListContainer.querySelectorAll('.gtb-ws-item');
+                    items.forEach(it => {
+                        const matches = it.getAttribute('data-search-text')?.includes(String(wsId).toLowerCase());
+                        if (matches) it.classList.add('selected');
+                        else it.classList.remove('selected');
+                    });
+                }
             }
+
+            this.closeAllDropdowns();
 
             const syncWsName = document.getElementById('pb-sync-ws-name');
             if (syncWsName) {
-                syncWsName.innerHTML = `<strong style="color: #34d399;">${this.currentWorkspaceName}</strong>`;
+                syncWsName.innerHTML = this.currentWorkspaceName ? `<strong style="color: #34d399;">${this.currentWorkspaceName}</strong>` : '<span style="color: var(--text-secondary);">尚未选择</span>';
             }
             const modelWsName = document.getElementById('pb-model-ws-name');
             if (modelWsName) {
-                modelWsName.textContent = this.currentWorkspaceName;
+                modelWsName.textContent = this.currentWorkspaceName || '未指定工作区';
             }
 
-            const matchedModelKey = Object.keys(MODEL_DEFINITIONS).find(k => MODEL_DEFINITIONS[k].workspaceId === wsId || MODEL_DEFINITIONS[k].workspaceName === this.currentWorkspaceName);
-            if (matchedModelKey) {
-                this.selectModel(matchedModelKey);
-            } else {
-                this.renderEffectivePermissionsCard();
+            // 切换工作区后实时联动更新语义模型下拉框列表 (按当前工作区过滤)
+            this.populateModelSelect();
+            this.renderEffectivePermissionsCard();
+            if (this.activeMainTab === 'matrix') {
+                this.renderMatrix();
+            } else if (this.activeMainTab === 'user_assets') {
+                this.renderUserAssetsMatrix();
             }
 
             if (typeof window.showNotification === 'function') {
-                window.showNotification(`🏢 已切换目标工作区为：${this.currentWorkspaceName}`, 'info');
+                if (this.currentWorkspaceName) {
+                    window.showNotification(`🏢 已切换目标工作区为：${this.currentWorkspaceName}`, 'info');
+                } else {
+                    window.showNotification('🏢 已清空目标工作区', 'info');
+                }
             }
         }
 
         filterUsers(term = '') {
             const q = (term || '').toLowerCase().trim();
+            const listEl = document.getElementById('pb-user-list');
+            if (listEl) {
+                const items = listEl.querySelectorAll('.gtb-ws-item');
+                items.forEach(it => {
+                    const text = (it.getAttribute('data-search-text') || '').toLowerCase();
+                    it.style.display = (!q || text.includes(q)) ? 'flex' : 'none';
+                });
+            }
             const selectEl = document.getElementById('pb-user-preset-select');
-            if (!selectEl) return;
-            const options = selectEl.querySelectorAll('option');
-            options.forEach(opt => {
-                if (opt.value === 'none' || opt.value === 'custom') {
-                    opt.hidden = false;
-                    return;
-                }
-                const text = (opt.textContent || '').toLowerCase();
-                opt.hidden = Boolean(q && !text.includes(q));
-            });
-            const groups = selectEl.querySelectorAll('optgroup');
-            groups.forEach(g => {
-                const visibleOpts = Array.from(g.querySelectorAll('option')).filter(o => !o.hidden);
-                g.hidden = visibleOpts.length === 0;
-            });
+            if (selectEl) {
+                const options = selectEl.querySelectorAll('option');
+                options.forEach(opt => {
+                    if (opt.value === 'none' || opt.value === 'custom') {
+                        opt.hidden = false;
+                        return;
+                    }
+                    const text = (opt.textContent || '').toLowerCase();
+                    opt.hidden = Boolean(q && !text.includes(q));
+                });
+                const groups = selectEl.querySelectorAll('optgroup');
+                groups.forEach(g => {
+                    const visibleOpts = Array.from(g.querySelectorAll('option')).filter(o => !o.hidden);
+                    g.hidden = visibleOpts.length === 0;
+                });
+            }
         }
 
         filterWorkspaces(term = '') {
             const q = (term || '').toLowerCase().trim();
+            const listEl = document.getElementById('pb-ws-list');
+            if (listEl) {
+                const items = listEl.querySelectorAll('.gtb-ws-item');
+                items.forEach(it => {
+                    const text = (it.getAttribute('data-search-text') || '').toLowerCase();
+                    it.style.display = (!q || text.includes(q)) ? 'flex' : 'none';
+                });
+            }
             const selectEl = document.getElementById('pb-ws-select');
-            if (!selectEl) return;
-            const options = selectEl.querySelectorAll('option');
-            options.forEach(opt => {
-                const text = (opt.textContent || '').toLowerCase();
-                const val = (opt.value || '').toLowerCase();
-                opt.hidden = Boolean(q && !text.includes(q) && !val.includes(q));
-            });
-            const groups = selectEl.querySelectorAll('optgroup');
-            groups.forEach(g => {
-                const visibleOpts = Array.from(g.querySelectorAll('option')).filter(o => !o.hidden);
-                g.hidden = visibleOpts.length === 0;
-            });
+            if (selectEl) {
+                const options = selectEl.querySelectorAll('option');
+                options.forEach(opt => {
+                    const text = (opt.textContent || '').toLowerCase();
+                    const val = (opt.value || '').toLowerCase();
+                    opt.hidden = Boolean(q && !text.includes(q) && !val.includes(q));
+                });
+                const groups = selectEl.querySelectorAll('optgroup');
+                groups.forEach(g => {
+                    const visibleOpts = Array.from(g.querySelectorAll('option')).filter(o => !o.hidden);
+                    g.hidden = visibleOpts.length === 0;
+                });
+            }
         }
 
         filterModels(term = '') {
             const q = (term || '').toLowerCase().trim();
+            const listEl = document.getElementById('pb-model-list');
+            if (listEl) {
+                const items = listEl.querySelectorAll('.gtb-ws-item');
+                items.forEach(it => {
+                    const text = (it.getAttribute('data-search-text') || '').toLowerCase();
+                    it.style.display = (!q || text.includes(q)) ? 'flex' : 'none';
+                });
+            }
             const selectEl = document.getElementById('pb-model-select');
-            if (!selectEl) return;
-            const options = selectEl.querySelectorAll('option');
-            options.forEach(opt => {
-                if (!opt.value) {
-                    opt.hidden = false;
-                    return;
-                }
-                const text = (opt.textContent || '').toLowerCase();
-                opt.hidden = Boolean(q && !text.includes(q));
-            });
-            const groups = selectEl.querySelectorAll('optgroup');
-            groups.forEach(g => {
-                const visibleOpts = Array.from(g.querySelectorAll('option')).filter(o => !o.hidden);
-                g.hidden = visibleOpts.length === 0;
-            });
+            if (selectEl) {
+                const options = selectEl.querySelectorAll('option');
+                options.forEach(opt => {
+                    if (!opt.value) {
+                        opt.hidden = false;
+                        return;
+                    }
+                    // 严格只匹配模型自身名称，杜绝所属工作区名称包含关键字导致所有模型被查出
+                    const modelName = (opt.getAttribute('data-model-name') || opt.textContent.split('(')[0] || '').toLowerCase();
+                    opt.hidden = Boolean(q && !modelName.includes(q));
+                });
+                const groups = selectEl.querySelectorAll('optgroup');
+                groups.forEach(g => {
+                    const visibleOpts = Array.from(g.querySelectorAll('option')).filter(o => !o.hidden);
+                    g.hidden = visibleOpts.length === 0;
+                });
+            }
         }
 
         resetWorkspace() {
-            const selectEl = document.getElementById('pb-ws-select');
             const searchInput = document.getElementById('pb-ws-search-input');
             if (searchInput) searchInput.value = '';
             this.filterWorkspaces('');
-            if (selectEl && selectEl.options.length > 0) {
-                selectEl.selectedIndex = 0;
-                this.selectWorkspace(selectEl.value);
-            }
+            this.selectWorkspace('');
         }
 
         resetModel() {
@@ -1164,6 +1445,7 @@
                     selectEl.selectedIndex = 0;
                 }
             }
+            this.closeAllDropdowns();
         }
 
         togglePermTier(titleEl) {
@@ -1182,7 +1464,9 @@
 
         populateModelSelect() {
             const selectEl = document.getElementById('pb-model-select');
-            if (!selectEl) return;
+            const modelListContainer = document.getElementById('pb-model-list');
+            const modelDisplayText = document.getElementById('pb-model-display-text');
+            const modelStatText = document.getElementById('pb-model-stat-text');
 
             // 1. 自动从系统本地缓存 (pbi_datasets) 中动态注入所有真实语义模型并识别其真实运行模式
             try {
@@ -1210,7 +1494,7 @@
                             name: `🟢 [${storageMode}] ${dsName}`,
                             rawName: dsName,
                             workspaceId: ds.workspaceId || '',
-                            workspaceName: ds.workspaceName || this.currentWorkspaceName || '生产工作区',
+                            workspaceName: ds.workspaceName || '',
                             capacity: ds.configuredBy ? 'Fabric F64 容量' : '组织共享容量',
                             storageMode: storageMode,
                             tables: ['Real_Facts', 'Dim_Customer', 'Security_RLS'],
@@ -1231,33 +1515,91 @@
                 return !n.includes('已选') && !n.includes('个模型') && !n.includes('个数据集');
             });
 
-            const realModels = validModels.filter(m => m.id.startsWith('real_model_'));
+            // 严格按当前选定工作区联动过滤模型：杜绝跨工作区混杂其他无关域 (如 WorkSpace_DEV)
+            const curWsId = this.currentWorkspaceId ? String(this.currentWorkspaceId).toLowerCase().trim() : '';
+            const curWsName = this.currentWorkspaceName ? String(this.currentWorkspaceName).toLowerCase().trim() : '';
+
+            // 属于当前工作区的模型集
+            let scopedModels = validModels.filter(m => {
+                if (!curWsId && !curWsName) return true;
+                const mWsId = String(m.workspaceId || '').toLowerCase().trim();
+                const mWsName = String(m.workspaceName || '').toLowerCase().trim();
+                if (curWsId && mWsId && mWsId === curWsId) return true;
+                if (curWsName && mWsName && (mWsName === curWsName || curWsName.includes(mWsName) || mWsName.includes(curWsName))) return true;
+                return false;
+            });
+
+            // 优先展示当前工作区绑定的真实模型；若当前工作区无专属模型，绝不拿其他域的 demo 模型充数
+            const realScoped = scopedModels.filter(m => m.id.startsWith('real_model_'));
+            let displayList = [];
+            if (realScoped.length > 0) {
+                displayList = realScoped;
+            } else if (scopedModels.length > 0) {
+                displayList = scopedModels;
+            } else if (!curWsId && !curWsName) {
+                // 仅在完全没有选定任何目标工作区时，才作为沙盒演示展示基础语义模型
+                displayList = validModels.filter(m => !m.id.startsWith('real_model_'));
+            } else {
+                displayList = [];
+            }
 
             let html = '';
-            if (realModels.length > 0) {
-                html += `<optgroup label="🏢 真实租户语义模型 (${realModels.length} 个)">`;
-                for (const m of realModels) {
-                    html += `<option value="${m.id}">${m.name} (${m.workspaceName || '生产工作区'})</option>`;
+            let listHtml = '';
+
+            if (displayList.length > 0) {
+                const title = realScoped.length > 0 ? `🏢 当前工作区真实模型 (${realScoped.length} 个)` : `🗄️ 基础语义模型 (${displayList.length} 个)`;
+                html += `<optgroup label="${title}">`;
+                listHtml += `<div class="gtb-ws-group-title">${title}</div>`;
+
+                for (const m of displayList) {
+                    const isSelected = (this.currentModelKey && String(this.currentModelKey) === String(m.id));
+                    // 仅搜索模型名 (包括 rawName 与显示名)，严格杜绝包含工作区名导致输入工作区名带出所有模型
+                    const searchText = `${m.name} ${m.rawName || ''}`.toLowerCase();
+                    html += `<option value="${m.id}" data-model-name="${(m.rawName || m.name).toLowerCase()}">${m.name} (${m.workspaceName || '生产工作区'})</option>`;
+                    listHtml += `
+                        <div class="gtb-ws-item ${isSelected ? 'selected' : ''}" data-model-key="${m.id}" data-search-text="${searchText}" onclick="window.PermissionBlueprint.selectModel('${m.id}')">
+                            <div class="gtb-ws-item-left">
+                                <div class="gtb-ws-item-names">
+                                    <div class="gtb-ws-item-title" title="${m.name}">${m.name}</div>
+                                    <div class="gtb-ws-item-sub" title="${m.workspaceName || ''}">所属工作区: ${m.workspaceName || '全局'}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
                 }
                 html += '</optgroup>';
             } else {
                 html += '<option value="">-- 当前工作区暂未缓存真实模型，请点击右上方同步 --</option>';
+                listHtml += '<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 16px 0;">暂无可用的语义模型</div>';
             }
 
-            selectEl.innerHTML = html;
+            if (selectEl) selectEl.innerHTML = html;
+            if (modelListContainer) modelListContainer.innerHTML = listHtml;
 
-            // 严格对齐全局功能区已选数据集：GTB 已选 > 当前选中 > 默认首个真实模型
+            // 严格对齐当前作用域可用模型：与顶栏 GTB 选中的模型保持 100% 同步
             const activeGtbDsId = localStorage.getItem('pbi-active-dataset') || (document.getElementById('gtb-select-dataset') ? document.getElementById('gtb-select-dataset').value : '');
             const targetRealKey = (activeGtbDsId && activeGtbDsId !== 'all') ? `real_model_${activeGtbDsId}` : '';
 
-            if (targetRealKey && selectEl.querySelector(`option[value="${targetRealKey}"]`)) {
-                selectEl.value = targetRealKey;
+            const isCurrentInDisplay = displayList.some(m => String(m.id) === String(this.currentModelKey));
+            if (targetRealKey && displayList.some(m => String(m.id) === String(targetRealKey))) {
                 this.currentModelKey = targetRealKey;
-            } else if (this.currentModelKey && selectEl.querySelector(`option[value="${this.currentModelKey}"]`)) {
+            } else if (targetRealKey && displayList.length > 0) {
+                this.currentModelKey = displayList[0].id;
+            } else if (!targetRealKey) {
+                this.currentModelKey = '';
+            }
+
+            if (selectEl && this.currentModelKey) {
                 selectEl.value = this.currentModelKey;
-            } else if (selectEl.options.length > 0 && selectEl.options[0].value) {
-                this.currentModelKey = selectEl.options[0].value;
-                selectEl.value = this.currentModelKey;
+            }
+
+            const currentModel = MODEL_DEFINITIONS[this.currentModelKey];
+            if (modelDisplayText) {
+                modelDisplayText.textContent = currentModel ? `🗄️ ${currentModel.name}` : '-- 选择目标语义模型 --';
+                modelDisplayText.title = currentModel ? currentModel.name : '';
+            }
+            if (modelStatText) {
+                modelStatText.textContent = `共 ${displayList.length} 个可用语义模型`;
             }
         }
 
@@ -1573,41 +1915,236 @@
             return impacts;
         }
 
+        _registerRealUser(u) {
+            if (!u) return;
+            const email = (u.emailAddress || u.userPrincipalName || u.identifier || '').trim();
+            if (!email) return;
+            const cleanKey = `real_${email.replace(/[^a-zA-Z0-9_]/g, '_')}`;
+            const role = u.groupUserAccessRight || u.role || 'Member';
+            const isGroup = u.principalType === 'Group';
+            const name = u.displayName || email.split('@')[0];
+
+            USER_PRESETS[cleanKey] = {
+                id: cleanKey,
+                name: name,
+                upn: email,
+                rawRole: role,
+                principalType: u.principalType || 'User',
+                roleTag: `${role} (${isGroup ? 'Security Group' : 'Org Member'})`,
+                roleColor: role === 'Admin' ? '#60a5fa' : (role === 'Contributor' ? '#34d399' : (role === 'Member' ? '#818cf8' : '#fbbf24')),
+                state: {
+                    isGuestUser: Boolean(email.includes('#ext#') || u.userType === 'Guest'),
+                    tenantAllowExport: true,
+                    tenantAllowWebModeling: role === 'Admin' || role === 'Member',
+                    capacityType: 'fabric_f64',
+                    workspaceRole: role,
+                    isModelOwner: role === 'Admin',
+                    isInStrictMode: false,
+                    hasAccessToAllDataConnections: true,
+                    gatewayOnline: true,
+                    sharePermission: role === 'Admin' ? 'ReadWrite' : (role === 'Contributor' ? 'ReadWrite' : 'Read'),
+                    hasAppAccess: true,
+                    rlsEnabled: role === 'Viewer',
+                    rlsRoleAssigned: role === 'Viewer' ? 'Region_East' : 'All_Access',
+                    olsEnabled: false,
+                    maskedFields: role === 'Viewer' ? 'Salary, Margin' : 'None'
+                }
+            };
+        }
+
+        async autoFetchTenantUsers() {
+            if (this._isFetchingUsers) return;
+            this._isFetchingUsers = true;
+
+            // 1. 先从 localStorage 载入已缓存的用户集合 (0ms 瞬时呈现)
+            let cachedUsers = [];
+            try {
+                cachedUsers = JSON.parse(localStorage.getItem('pbi_cached_tenant_users') || '[]');
+            } catch (e) {
+                cachedUsers = [];
+            }
+            if (Array.isArray(cachedUsers) && cachedUsers.length > 0) {
+                for (const u of cachedUsers) {
+                    this._registerRealUser(u);
+                }
+                this.populatePresetSelect();
+            }
+
+            // 2. 尝试从全局配置或当前已登录的主体中注入自身身份
+            const liveUser = document.getElementById('set-username')?.value || document.getElementById('set-interactive-username')?.value || localStorage.getItem('pbi_user_name') || '';
+            if (liveUser) {
+                this._registerRealUser({
+                    displayName: liveUser.split('@')[0],
+                    emailAddress: liveUser,
+                    groupUserAccessRight: 'Admin',
+                    principalType: 'User'
+                });
+            }
+
+            // 3. 异步并发拉取：优先 scan-users，同时多源工作区聚合
+            try {
+                const scanRes = await fetch('/api/workflow/scan-users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                if (scanRes.ok) {
+                    const scanData = await scanRes.json();
+                    if (scanData.success && Array.isArray(scanData.users) && scanData.users.length > 0) {
+                        for (const u of scanData.users) {
+                            this._registerRealUser({
+                                displayName: u.displayName || u.userPrincipalName?.split('@')[0] || u.identifier,
+                                emailAddress: u.userPrincipalName || u.emailAddress || u.identifier,
+                                groupUserAccessRight: u.groupUserAccessRight || u.role || 'Member',
+                                principalType: u.principalType || 'User'
+                            });
+                        }
+                    }
+                }
+            } catch (e) {}
+
+            // 4. 工作区用户并发聚合扫描 (针对当前组织工作区，多源保底)
+            const rawWsData = window.cleanseCrossDomainWorkspaces ? window.cleanseCrossDomainWorkspaces(window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : []) : [];
+            const wsToScan = rawWsData.slice(0, 15);
+            if (wsToScan.length > 0) {
+                const scanTasks = wsToScan.map(async (ws) => {
+                    try {
+                        const res = await fetch('/api/proxy', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                endpoint: `/groups/${ws.id}/users`,
+                                method: 'GET'
+                            })
+                        });
+                        const data = await res.json();
+                        const users = (data && data.success && data.data && Array.isArray(data.data.value)) ? data.data.value : [];
+                        return users;
+                    } catch (e) {
+                        return [];
+                    }
+                });
+
+                const results = await Promise.allSettled(scanTasks);
+                for (const r of results) {
+                    if (r.status === 'fulfilled' && Array.isArray(r.value)) {
+                        for (const u of r.value) {
+                            this._registerRealUser(u);
+                        }
+                    }
+                }
+            }
+
+            // 5. 持久化最新真实用户快照
+            const allRealPresets = Object.values(USER_PRESETS).filter(u => u.id.startsWith('real_'));
+            try {
+                localStorage.setItem('pbi_cached_tenant_users', JSON.stringify(allRealPresets.map(p => ({
+                    displayName: p.name,
+                    emailAddress: p.upn,
+                    groupUserAccessRight: p.rawRole || 'Viewer',
+                    principalType: p.principalType || 'User'
+                }))));
+            } catch (e) {}
+
+            this._isFetchingUsers = false;
+            this.populatePresetSelect();
+            if (this.activeMainTab === 'user_assets') {
+                this.renderUserAssetsMatrix();
+            }
+        }
+
         populatePresetSelect() {
             const selectEl = document.getElementById('pb-user-preset-select');
-            if (!selectEl) return;
+            const userListContainer = document.getElementById('pb-user-list');
+            const userDisplayText = document.getElementById('pb-user-display-text');
+            const userStatText = document.getElementById('pb-user-stat-text');
+            const roleBadge = document.getElementById('pb-badge-role-tag');
+
+            // 如果当前处于虚拟预设用户，自动重置为通用中立基准
+            if (this.activePresetKey && !this.activePresetKey.startsWith('real_') && !this.activePresetKey.startsWith('custom_')) {
+                this.activePresetKey = null;
+            }
 
             const allPresets = Object.values(USER_PRESETS);
             const realUsers = allPresets.filter(u => u.id.startsWith('real_'));
-            const customUsers = allPresets.filter(u => u.id.startsWith('custom_'));
-            const presetUsers = allPresets.filter(u => !u.id.startsWith('real_') && !u.id.startsWith('custom_'));
 
             let html = '';
+            let listHtml = '';
+
+            const appendUserGroup = (title, users) => {
+                if (!users || users.length === 0) return;
+                html += `<optgroup label="${title}">`;
+                listHtml += `<div class="gtb-ws-group-title">${title}</div>`;
+
+                for (const u of users) {
+                    const isSelected = (this.activePresetKey && String(this.activePresetKey) === String(u.id));
+                    const searchText = `${u.name} ${u.upn} ${u.roleTag || ''}`.toLowerCase();
+                    html += `<option value="${u.id}">${u.name} (${u.roleTag}) - ${u.upn}</option>`;
+                    listHtml += `
+                        <div class="gtb-ws-item ${isSelected ? 'selected' : ''}" data-preset-id="${u.id}" data-search-text="${searchText}" onclick="window.PermissionBlueprint.selectUserPreset('${u.id}')">
+                            <div class="gtb-ws-item-left">
+                                <div class="gtb-ws-item-names">
+                                    <div class="gtb-ws-item-title" title="${u.name}">${u.name} <span class="api-count-badge" style="font-size: 0.58rem; padding: 0 4px; color: ${u.roleColor || '#818cf8'}; border-color: ${u.roleColor || '#818cf8'}40;">${u.roleTag}</span></div>
+                                    <div class="gtb-ws-item-sub" title="${u.upn}">${u.upn}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                html += '</optgroup>';
+            };
+
             if (realUsers.length > 0) {
                 html += '<option value="none">-- 请选择真实用户主体 --</option>';
-                html += '<optgroup label="🏢 真实租户/工作区现有授权用户">';
-                for (const u of realUsers) {
-                    html += `<option value="${u.id}">${u.name} (${u.roleTag}) - ${u.upn}</option>`;
-                }
-                html += '</optgroup>';
+                appendUserGroup('🏢 真实租户/工作区授权用户', realUsers);
             } else {
-                html += '<option value="none">-- 暂无已缓存真实成员，可直接输入企业 UPN 或点击右上角同步 --</option>';
-            }
-
-            if (customUsers.length > 0) {
-                html += '<optgroup label="✏️ 自定义指定用户">';
-                for (const u of customUsers) {
-                    html += `<option value="${u.id}">${u.name} (${u.upn})</option>`;
+                html += '<option value="none">-- 正在全量拉取组织成员... --</option>';
+                if (!listHtml) {
+                    listHtml = '<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 24px 10px;">🔄 正在扫描组织成员...</div>';
                 }
-                html += '</optgroup>';
             }
 
-            html += '<option value="custom">✏️ 手动输入企业 UPN 账号...</option>';
+            if (userStatText) {
+                userStatText.textContent = realUsers.length > 0 ? `共 ${realUsers.length} 个组织成员` : '正在拉取用户...';
+            }
 
-            const currentVal = this.activePresetKey || selectEl.value;
-            selectEl.innerHTML = html;
-            if (currentVal && selectEl.querySelector(`option[value="${currentVal}"]`)) {
-                selectEl.value = currentVal;
+            if (selectEl) {
+                selectEl.innerHTML = html;
+                const currentVal = this.activePresetKey || selectEl.value;
+                if (currentVal && selectEl.querySelector(`option[value="${currentVal}"]`)) {
+                    selectEl.value = currentVal;
+                }
+            }
+
+            if (userListContainer) {
+                userListContainer.innerHTML = listHtml;
+            }
+
+            if (this.activePresetKey && USER_PRESETS[this.activePresetKey]) {
+                const p = USER_PRESETS[this.activePresetKey];
+                if (userDisplayText) {
+                    userDisplayText.textContent = `🎯 ${p.name} (${p.roleTag})`;
+                    userDisplayText.title = `${p.name} - ${p.upn}`;
+                }
+                if (roleBadge) {
+                    roleBadge.textContent = p.roleTag;
+                    roleBadge.style.color = p.roleColor || '#818cf8';
+                    roleBadge.style.borderColor = `${p.roleColor || '#818cf8'}40`;
+                }
+            } else {
+                if (userDisplayText) {
+                    userDisplayText.textContent = '-- 选择模拟用户主体 (当前: 通用基准) --';
+                    userDisplayText.title = '通用中立基准拓扑';
+                }
+                if (roleBadge) {
+                    roleBadge.textContent = '通用基准';
+                    roleBadge.style.color = 'var(--text-secondary)';
+                    roleBadge.style.borderColor = 'var(--overlay-10)';
+                }
+            }
+
+            if (userStatText) {
+                userStatText.textContent = realUsers.length > 0 ? `共 ${realUsers.length} 个授权主体` : '暂无缓存成员';
             }
         }
 
@@ -1677,15 +2214,6 @@
                 return;
             }
 
-            const customBox = document.getElementById('pb-custom-user-box');
-            if (presetKey === 'custom') {
-                if (customBox) customBox.style.display = 'block';
-                const input = document.getElementById('pb-custom-upn');
-                if (input) input.focus();
-                return;
-            }
-            if (customBox) customBox.style.display = 'none';
-
             this.activePresetKey = presetKey;
             const selectEl = document.getElementById('pb-user-preset-select');
             if (selectEl && selectEl.value !== presetKey) {
@@ -1695,13 +2223,35 @@
             const preset = USER_PRESETS[presetKey];
             if (!preset) return;
 
+            const userDisplayText = document.getElementById('pb-user-display-text');
+            const roleBadge = document.getElementById('pb-selected-user-role-badge') || document.getElementById('pb-badge-role-tag');
+            const userListContainer = document.getElementById('pb-user-list');
+
+            if (userDisplayText) {
+                userDisplayText.textContent = `🎯 ${preset.name} (${preset.roleTag})`;
+                userDisplayText.title = `${preset.name} - ${preset.upn}`;
+            }
+
+            if (roleBadge) {
+                roleBadge.textContent = preset.roleTag;
+                roleBadge.style.color = preset.roleColor || '#818cf8';
+                roleBadge.style.borderColor = `${preset.roleColor || '#818cf8'}40`;
+            }
+
+            if (userListContainer) {
+                const items = userListContainer.querySelectorAll('.gtb-ws-item');
+                items.forEach(it => {
+                    const matches = it.getAttribute('data-preset-id') === presetKey;
+                    if (matches) it.classList.add('selected');
+                    else it.classList.remove('selected');
+                });
+            }
+
+            this.closeAllDropdowns();
+
             const upnLabel = document.getElementById('pb-current-upn-label');
-            const badgeTag = document.getElementById('pb-badge-role-tag');
-            if (upnLabel) upnLabel.textContent = preset.upn;
-            if (badgeTag) {
-                badgeTag.textContent = preset.roleTag;
-                badgeTag.style.color = preset.roleColor;
-                badgeTag.style.borderColor = `${preset.roleColor}40`;
+            if (upnLabel) {
+                upnLabel.textContent = preset.upn;
             }
 
             // 基础权限深拷贝
@@ -1721,6 +2271,11 @@
             this.updateAuditReport();
             this.renderEffectivePermissionsCard();
             this.renderModelUsersList();
+            if (this.activeMainTab === 'matrix') {
+                this.renderMatrix();
+            } else if (this.activeMainTab === 'user_assets') {
+                this.renderUserAssetsMatrix();
+            }
 
             if (typeof window.showNotification === 'function') {
                 window.showNotification(`✨ 已切换模拟主体为：${preset.name} (${preset.roleTag})`, 'success');
@@ -1742,6 +2297,27 @@
             this.currentWorkspaceName = model.workspaceName;
             const wsLabel = document.getElementById('pb-model-ws-name');
             if (wsLabel) wsLabel.textContent = model.workspaceName;
+
+            const modelSelect = document.getElementById('pb-model-select');
+            if (modelSelect) modelSelect.value = modelKey;
+
+            const modelDisplayText = document.getElementById('pb-model-display-text');
+            if (modelDisplayText) {
+                modelDisplayText.textContent = `🗄️ ${model.name}`;
+                modelDisplayText.title = model.name;
+            }
+
+            const modelListContainer = document.getElementById('pb-model-list');
+            if (modelListContainer) {
+                const items = modelListContainer.querySelectorAll('.gtb-ws-item');
+                items.forEach(it => {
+                    const matches = it.getAttribute('data-model-key') === modelKey;
+                    if (matches) it.classList.add('selected');
+                    else it.classList.remove('selected');
+                });
+            }
+
+            this.closeAllDropdowns();
 
             const wsSelect = document.getElementById('pb-ws-select');
             if (wsSelect && model.workspaceId && wsSelect.querySelector(`option[value="${model.workspaceId}"]`)) {
@@ -1769,6 +2345,11 @@
             this.recalculateAndRenderWires();
             this.updateAuditReport();
             this.renderEffectivePermissionsCard();
+            if (this.activeMainTab === 'matrix') {
+                this.renderMatrix();
+            } else if (this.activeMainTab === 'user_assets') {
+                this.renderUserAssetsMatrix();
+            }
 
             if (typeof window.showNotification === 'function') {
                 window.showNotification(`🗄️ 已切换目标语义模型为：${model.name}，并重算当前用户对该模型的有效权限`, 'info');
@@ -1811,15 +2392,6 @@
         }
 
         async fetchRealModelAndUsers() {
-            const wsIdInput = document.getElementById('gtb-select-workspace');
-            const dsIdInput = document.getElementById('gtb-select-dataset');
-            const wsNameEl = document.getElementById('gtb-ws-display-text');
-            const dsNameEl = document.getElementById('gtb-ds-display-text');
-
-            let wsId = wsIdInput ? wsIdInput.value : '';
-            let dsId = dsIdInput ? dsIdInput.value : '';
-            let wsName = (wsNameEl && wsNameEl.textContent && !wsNameEl.textContent.includes('--')) ? wsNameEl.textContent.trim() : '';
-            let dsName = (dsNameEl && dsNameEl.textContent && !dsNameEl.textContent.includes('--')) ? dsNameEl.textContent.trim() : '';
 
             // 从 localStorage 读取工作区全集
             let wsList = [];
@@ -1829,34 +2401,41 @@
                 wsList = [];
             }
 
+            const activeStorageWsId = localStorage.getItem('pbi-active-workspace');
+            const gtbSelectedWsId = (window.selectedGtbWorkspaceIds && window.selectedGtbWorkspaceIds.size > 0) ? Array.from(window.selectedGtbWorkspaceIds)[0] : '';
+            const wsIdInput = document.getElementById('gtb-select-workspace');
+            const dsIdInput = document.getElementById('gtb-select-dataset');
+            const wsNameEl = document.getElementById('gtb-ws-display-text');
+            const dsNameEl = document.getElementById('gtb-ds-display-text');
+
+            let wsId = this.currentWorkspaceId || gtbSelectedWsId || activeStorageWsId || (wsIdInput ? wsIdInput.value : '');
+            let dsId = dsIdInput ? dsIdInput.value : '';
+            let wsName = this.currentWorkspaceName || '';
+            let dsName = (dsNameEl && dsNameEl.textContent && !dsNameEl.textContent.includes('--')) ? dsNameEl.textContent.trim() : '';
+
             if (!wsId || wsId === 'all') {
-                if (window.selectedGtbWorkspaceIds && window.selectedGtbWorkspaceIds.size > 0) {
-                    wsId = Array.from(window.selectedGtbWorkspaceIds)[0];
-                } else if (localStorage.getItem('pbi-active-workspace')) {
-                    wsId = localStorage.getItem('pbi-active-workspace');
+                if (gtbSelectedWsId) {
+                    wsId = gtbSelectedWsId;
+                } else if (activeStorageWsId) {
+                    wsId = activeStorageWsId;
                 } else if (wsList.length > 0) {
                     wsId = wsList[0].id;
                 }
             }
 
-            let currentWsObj = wsList.find(w => w.id === wsId);
-            if (currentWsObj && !wsName) {
-                wsName = currentWsObj.name || currentWsObj.alias || wsId;
+            let currentWsObj = wsList.find(w => String(w.id).toLowerCase() === String(wsId).toLowerCase());
+            if (currentWsObj) {
+                wsName = currentWsObj.name || currentWsObj.alias || currentWsObj.displayName || wsName;
+            } else if (!wsName && wsNameEl && wsNameEl.textContent && !wsNameEl.textContent.includes('--')) {
+                wsName = wsNameEl.textContent.trim();
             }
 
-            // 智能识别个人工作区与标准工作区
-            const isPersonal = (currentWsObj && currentWsObj.name && currentWsObj.name.startsWith('PersonalWorkspace')) || (wsName && wsName.startsWith('PersonalWorkspace'));
+            // 同步回写引擎状态，保持界面展示绝对一致
+            this.currentWorkspaceId = wsId;
+            this.currentWorkspaceName = wsName || wsId;
+
             let targetWsId = wsId;
-            let targetWsName = wsName;
-
-            // 优先探测标准组织工作区 (如 WorkSpace_DEV) 以抓取完整多成员列表
-            if (isPersonal || !targetWsId) {
-                const groupWs = wsList.find(w => w.type === 'Workspace' || (!w.name?.startsWith('PersonalWorkspace') && w.id !== wsId));
-                if (groupWs) {
-                    targetWsId = groupWs.id;
-                    targetWsName = groupWs.name;
-                }
-            }
+            let targetWsName = wsName || wsId;
 
             if (!targetWsId) {
                 if (typeof window.showNotification === 'function') {
@@ -1887,24 +2466,6 @@
                     })
                 });
                 let data = await res.json();
-
-                // 容错回退机制：如果失败则尝试已知的组织空间 (WorkSpace_DEV)
-                if ((!res.ok || !data.success) && targetWsId !== '2c51e061-0f9f-4d02-bed0-c169019e5d83') {
-                    const fallbackWs = wsList.find(w => w.id === '2c51e061-0f9f-4d02-bed0-c169019e5d83') || wsList.find(w => !w.name?.startsWith('PersonalWorkspace'));
-                    if (fallbackWs) {
-                        targetWsId = fallbackWs.id;
-                        targetWsName = fallbackWs.name;
-                        res = await fetch('/api/proxy', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                endpoint: `/groups/${targetWsId}/users`,
-                                method: 'GET'
-                            })
-                        });
-                        data = await res.json();
-                    }
-                }
 
                 let realUsers = [];
                 const usersArray = (data && data.success && data.data && Array.isArray(data.data.value)) ? data.data.value : [];
@@ -1952,54 +2513,9 @@
                     });
                 }
 
-                // 补充从个人工作区中解析的所有拥有者用户 (例如 seven@carman.ccwu.cc)
-                wsList.forEach(w => {
-                    if (w.name && w.name.includes('@')) {
-                        const parts = w.name.split(' ');
-                        const emailPart = parts.find(p => p.includes('@'));
-                        if (emailPart) {
-                            const cleanKey = `real_${emailPart.replace(/[^a-zA-Z0-9_]/g, '_')}`;
-                            if (!USER_PRESETS[cleanKey]) {
-                                USER_PRESETS[cleanKey] = {
-                                    id: cleanKey,
-                                    name: emailPart.split('@')[0],
-                                    upn: emailPart,
-                                    roleTag: 'Admin (Workspace Owner)',
-                                    roleColor: '#60a5fa',
-                                    description: `真实工作区 [${w.name}] 所有者`,
-                                    state: {
-                                        isGuestUser: false,
-                                        tenantAllowExport: true,
-                                        tenantAllowWebModeling: true,
-                                        capacityType: 'fabric_f64',
-                                        workspaceRole: 'Admin',
-                                        isModelOwner: true,
-                                        isInStrictMode: false,
-                                        hasAccessToAllDataConnections: true,
-                                        gatewayOnline: true,
-                                        sharePermission: 'ReadBuild',
-                                        hasAppAccess: true,
-                                        rlsEnabled: false,
-                                        rlsRoleAssigned: 'Full_Access',
-                                        olsEnabled: false,
-                                        maskedFields: ''
-                                    }
-                                };
-                                if (!realUsers.some(ru => ru.upn === emailPart)) {
-                                    realUsers.push({
-                                        upn: emailPart,
-                                        role: 'Admin',
-                                        presetId: cleanKey,
-                                        isGroup: false
-                                    });
-                                }
-                            }
-                        }
-                    }
-                });
-
+                // 如果工作区尚未分配成员或接口未返回，realUsers 保持为空，不伪造预设虚拟用户
                 if (realUsers.length === 0) {
-                    throw new Error(data.error || '未获取到工作区成员列表，可能需要管理员身份或个人 Delegated 授权凭据');
+                    realUsers = [];
                 }
 
                 // 2. 动态注册真实模型至 MODEL_DEFINITIONS
@@ -2044,6 +2560,10 @@
                 }
             } catch (err) {
                 console.warn('Fetch real model error:', err);
+                const syncWsNameEl = document.getElementById('pb-sync-ws-name');
+                if (syncWsNameEl && targetWsName) {
+                    syncWsNameEl.innerHTML = `<strong style="color: #34d399;">${targetWsName}</strong>`;
+                }
                 if (typeof window.showNotification === 'function') {
                     window.showNotification(`⚠️ 真实数据抓取提示: ${err.message || '网络或凭据异常'}，已保留预设环境供离线推演`, 'warning');
                 }
@@ -2055,7 +2575,7 @@
             }
         }
 
-        async syncGlobalModel(forceFetch = false) {
+        async syncGlobalModel(forceFetch = true) {
             if (forceFetch) {
                 return await this.fetchRealModelAndUsers();
             }
@@ -2086,7 +2606,12 @@
             const countEl = document.getElementById('pb-model-user-count');
             if (!listEl) return;
 
-            const model = MODEL_DEFINITIONS[this.currentModelKey] || MODEL_DEFINITIONS['model_sales'];
+            const model = MODEL_DEFINITIONS[this.currentModelKey];
+            if (!model || !Array.isArray(model.users) || model.users.length === 0) {
+                if (countEl) countEl.textContent = '0 位关联用户';
+                listEl.innerHTML = '<div style="padding: 12px; font-size: 0.75rem; color: var(--text-secondary); text-align: center;">当前模型暂无已同步成员</div>';
+                return;
+            }
             if (countEl) countEl.textContent = `${model.users.length} 位关联用户`;
 
             const currentUpn = this.activePresetKey && USER_PRESETS[this.activePresetKey] ? USER_PRESETS[this.activePresetKey].upn.toLowerCase() : '';
@@ -3127,34 +3652,10 @@
                 }
             }
 
-            // 置顶 What-If 演练诊断条 (极简紧凑单行设计)
+            // 流转矩阵保持完全纯粹极简，不显示任何顶部横幅
             let bannerHtml = '';
-            if (overrideCount > 0) {
-                const impactKeys = Object.keys(impacts);
-                const impactSummary = impactKeys.length > 0 
-                    ? `已实时联动引发 <strong>${impactKeys.length}</strong> 处跨层级连锁反应 (${impactKeys.map(k => impacts[k].from).filter((v, i, a) => a.indexOf(v) === i).join('、')} 受波及)` 
-                    : '已生效，暂无跨层阻断冲突';
-                bannerHtml = `
-                    <div class="pb-whatif-banner">
-                        <div style="display: flex; align-items: center; gap: 6px;">
-                            <span>⚡</span>
-                            <span><strong>What-If 权限演练中</strong> (已覆盖 ${overrideCount} 项策略配置)：${impactSummary}</span>
-                        </div>
-                        <button onclick="window.PermissionBlueprint.resetWhatIf()" style="background: rgba(245, 158, 11, 0.2); border: 1px solid rgba(245, 158, 11, 0.5); color: #fbbf24; border-radius: 4px; padding: 1px 7px; font-size: 0.68rem; cursor: pointer; font-weight: 600;">↺ 恢复初始基准</button>
-                    </div>
-                `;
-            } else {
-                bannerHtml = `
-                    <div class="pb-whatif-banner pb-whatif-banner-idle">
-                        <div style="display: flex; align-items: center; gap: 6px;">
-                            <span>⚡</span>
-                            <span><strong>What-If 演练</strong>：点击项右侧【切换】即时推演跨层连锁反应</span>
-                        </div>
-                    </div>
-                `;
-            }
 
-            // 辅助函数：生成设置行 HTML (支持 What-If 开关与联动受影响标签)
+            // 辅助函数：生成设置行 HTML (支持 What-If 开关与全宽联动受影响标签)
             const renderRow = (propName, propKey, statusClass, statusText, whatIfField = null, options = null) => {
                 const isOverridden = whatIfField && (overrides[whatIfField] !== undefined);
                 const isImpacted = impacts[propKey] !== undefined;
@@ -3173,22 +3674,29 @@
                     }
                 }
 
-                let impactBadge = '';
+                let impactBanner = '';
                 if (isImpacted) {
-                    impactBadge = `<span class="pb-impact-tag" title="${impacts[propKey].reason}">⚡ 受 ${impacts[propKey].from} 联动: ${impacts[propKey].reason}</span>`;
+                    impactBanner = `
+                        <div class="pb-impact-banner" title="${impacts[propKey].reason}">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink: 0; margin-top: 1px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                            <span>⚡ 受 <strong>${impacts[propKey].from}</strong> 联动: ${impacts[propKey].reason}</span>
+                        </div>
+                    `;
                 }
 
                 return `
                     <div class="${rowClass}" data-prop-key="${propKey}" data-whatif-field="${whatIfField || ''}">
-                        <div class="pb-col-prop">
+                        <div class="pb-col-row-title-area">
                             <span class="pb-col-prop-name" title="${propName}">${propName}</span>
-                            <span class="pb-col-prop-key">${propKey} ${isOverridden ? '<strong style="color: #fbbf24;">(What-If 覆盖)</strong>' : ''}</span>
-                            ${impactBadge}
+                            <span class="pb-col-prop-key">${propKey} ${isOverridden ? '<span class="pb-overridden-badge">What-If 覆盖</span>' : ''}</span>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 5px; flex-shrink: 0;">
+                        <div class="pb-col-row-toolbar">
                             <span class="pb-matrix-status ${statusClass}">${statusText}</span>
-                            ${actionBtn}
+                            <div class="pb-col-actions">
+                                ${actionBtn}
+                            </div>
                         </div>
+                        ${impactBanner}
                     </div>
                 `;
             };
@@ -3649,6 +4157,426 @@
                 <g class="pb-flow-dots-group">${dotsHtml}</g>
                 <g class="pb-flow-pills-group">${pillsHtml}</g>
             `;
+        }
+
+        // ⚡ 渲染用户全景资产权限链路流转矩阵 (Tenant -> Workspace -> Model -> Report -> Connection -> Pipeline)
+        renderUserAssetsMatrix() {
+            const container = document.getElementById('pb-user-assets-container');
+            if (!container) return;
+
+            // 1. 获取当前具体租户与用户主体
+            const tenantId = localStorage.getItem('pbi_tenant_id') || document.getElementById('set-tenant')?.value || document.getElementById('set-interactive-tenant')?.value || '';
+            let user = null;
+            if (this.activePresetKey && USER_PRESETS[this.activePresetKey] && this.activePresetKey !== 'none') {
+                user = USER_PRESETS[this.activePresetKey];
+            } else {
+                const liveUser = document.getElementById('set-username')?.value || document.getElementById('set-interactive-username')?.value || '';
+                if (liveUser) {
+                    user = {
+                        name: liveUser.split('@')[0],
+                        upn: liveUser,
+                        roleTag: '当前组织登录账号',
+                        roleColor: '#38bdf8',
+                        state: {
+                            isGuestUser: false,
+                            tenantAllowExport: true,
+                            tenantAllowWebModeling: true,
+                            workspaceRole: 'Admin',
+                            canReadModel: true,
+                            sharePermission: 'ReadBuild',
+                            gatewayOnline: true,
+                            hasAccessToAllDataConnections: true
+                        }
+                    };
+                }
+            }
+
+            const isGuest = Boolean(user?.state?.isGuestUser || user?.upn?.includes('#ext#') || user?.roleTag?.includes('Guest'));
+            const wsRole = user?.state?.workspaceRole || 'Viewer';
+            const isAdmin = wsRole === 'Admin';
+            const isMember = wsRole === 'Member';
+            const isContributor = wsRole === 'Contributor';
+            const isViewer = wsRole === 'Viewer';
+            const isPrivileged = ['Admin', 'Member', 'Contributor'].includes(wsRole);
+
+            // 2. 严格检查是否选择了具体工作区 (绝无盲目取第一项的非预期兜底)
+            const rawWsData = window.cleanseCrossDomainWorkspaces ? window.cleanseCrossDomainWorkspaces(window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : []) : [];
+            const selectedWsIds = Array.from(window.selectedGtbWorkspaceIds || []);
+            let curWsId = '';
+            if (this.currentWorkspaceId && rawWsData.some(w => String(w.id).toLowerCase() === this.currentWorkspaceId.toLowerCase())) {
+                curWsId = this.currentWorkspaceId;
+            } else if (selectedWsIds.length > 0) {
+                curWsId = selectedWsIds[0];
+            }
+            const curWs = curWsId ? rawWsData.find(w => String(w.id).toLowerCase() === curWsId.toLowerCase()) : null;
+            const hasSelectedWs = Boolean(curWs);
+            const wsName = curWs ? (curWs.alias || curWs.name) : '未选择工作区';
+
+            // 3. 严格检查是否选择了具体语义模型 —— 完全依赖顶栏已选模型，不在卡片内部提供选择
+            const allDatasets = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
+            const scopedModels = hasSelectedWs ? allDatasets.filter(d => String(d.workspaceId || '').toLowerCase() === String(curWs.id).toLowerCase()) : [];
+            const selectedDsIds = Array.from(window.selectedGtbDatasetIds || []);
+            // 优先取顶栏已选模型中属于当前工作区的那个
+            let curModelId = '';
+            for (const dsId of selectedDsIds) {
+                if (scopedModels.some(m => String(m.id).toLowerCase() === dsId.toLowerCase())) {
+                    curModelId = dsId;
+                    break;
+                }
+            }
+            // 兜底：尝试 currentModelKey（蓝图引擎自身保存的，也必须属于当前工作区）
+            if (!curModelId && this.currentModelKey) {
+                const mIdLower = this.currentModelKey.toLowerCase();
+                if (scopedModels.some(m => String(m.id).toLowerCase() === mIdLower || m.name === this.currentModelKey)) {
+                    curModelId = this.currentModelKey;
+                }
+            }
+            const curModel = curModelId ? scopedModels.find(m => String(m.id).toLowerCase() === String(curModelId).toLowerCase() || m.name === curModelId || m.alias === curModelId) : null;
+            const hasSelectedModel = Boolean(curModel);
+
+            // 4. 严格检查是否选择了具体报表 —— 完全依赖顶栏已选报表，不在卡片内部提供选择
+            const allReports = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+            const scopedReports = hasSelectedWs ? allReports.filter(r => String(r.workspaceId || '').toLowerCase() === String(curWs.id).toLowerCase()) : [];
+            const selectedRpIds = Array.from(window.selectedGtbReportIds || []);
+            let curReportId = '';
+            for (const rpId of selectedRpIds) {
+                if (scopedReports.some(r => String(r.id).toLowerCase() === rpId.toLowerCase())) {
+                    curReportId = rpId;
+                    break;
+                }
+            }
+            const curReport = curReportId ? scopedReports.find(r => String(r.id).toLowerCase() === String(curReportId).toLowerCase() || r.name === curReportId || r.alias === curReportId) : null;
+            const hasSelectedReport = Boolean(curReport);
+
+            // 5. 网关与连接：只有在选定模型后才推导；未选模型时保守标注"未关联"
+            // gatewayOnline / hasDataConn 只有真实 API 调用才能确认，此处若无模型则显示未知
+            const gatewayOnline = hasSelectedModel ? (user?.state?.gatewayOnline !== false) : null;
+            const hasDataConn = hasSelectedModel ? (user?.state?.hasAccessToAllDataConnections !== false) : null;
+
+            // 6. 部署管道：只有实际调用 /pipelines API 才能确认；未绑定则如实呈现
+            // 此处保守显示"未检测到关联管道"，不伪造 "${wsName} 专属部署管道"
+            const pipelineBound = false; // 实际管道绑定需通过 /api/proxy 查询，此处保守为 false
+            const isPipelineAdmin = isAdmin && pipelineBound;
+
+            // 更新顶部主体徽章状态
+            const topBadge = document.getElementById('pb-top-simulated-badge');
+            if (topBadge) {
+                const userText = user ? `${user.name} (${user.roleTag})` : '未选择用户主体';
+                topBadge.textContent = `主体: ${userText} · 工作区: ${hasSelectedWs ? wsName : '未选择'} · 模型: ${hasSelectedModel ? (curModel.alias || curModel.name) : '未选择'} · 报表: ${hasSelectedReport ? (curReport.alias || curReport.name) : '未选择'}`;
+                topBadge.style.background = hasSelectedWs ? 'rgba(99, 102, 241, 0.15)' : 'rgba(148, 163, 184, 0.15)';
+                topBadge.style.color = hasSelectedWs ? '#818cf8' : '#94a3b8';
+            }
+
+            // 辅助行渲染函数
+            const renderAssetRow = (propName, propDesc, statusClass, statusText, badgeText = '') => {
+                return `
+                    <div class="pb-col-row" style="padding: 10px 12px; margin-bottom: 8px;">
+                        <div class="pb-col-row-title-area" style="width: 100%;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 3px;">
+                                <span class="pb-col-prop-name" title="${propName}" style="font-weight: 600; font-size: 0.78rem;">${propName}</span>
+                                ${badgeText ? `<span class="gtb-auth-badge" style="font-size: 0.60rem; padding: 1px 5px;">${badgeText}</span>` : ''}
+                            </div>
+                            <span class="pb-col-prop-key" style="font-size: 0.68rem; color: var(--text-secondary); line-height: 1.35; white-space: normal; display: block;">${propDesc}</span>
+                        </div>
+                        <div class="pb-col-row-toolbar" style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255, 255, 255, 0.07); width: 100%; display: flex; justify-content: flex-end;">
+                            <span class="pb-matrix-status ${statusClass}" style="font-size: 0.70rem; padding: 2px 8px;">${statusText}</span>
+                        </div>
+                    </div>
+                `;
+            };
+
+            // Module 1: Tenant (租户全局策略层)
+            const tenantTitleSub = tenantId ? `租户 ID: ${tenantId.length > 18 ? tenantId.slice(0, 18) + '...' : tenantId}` : '租户 ID 未配置';
+            const userSub = user ? `主体: ${user.upn}` : '未指定具体用户主体';
+            const colTenant = `
+                <div class="pb-tier-col" data-tier="1">
+                    <div class="pb-col-header">
+                        <div class="pb-col-title-row">
+                            <h4 class="pb-col-title">🏢 1. Tenant (租户层)</h4>
+                            <span class="pb-matrix-status ${user ? (isGuest ? 'warn' : 'enabled') : 'disabled'}">${user ? (isGuest ? '⚠️ B2B 外部访客' : '✅ 认证有效') : '⚠️ 未选主体'}</span>
+                        </div>
+                        <div class="pb-col-sub" title="${tenantTitleSub} · ${userSub}">${userSub}</div>
+                    </div>
+                    <div class="pb-col-body">
+                        ${renderAssetRow('企业具体租户凭据', tenantId ? `已挂载租户 ID: ${tenantId}` : '系统未配置 TENANT_ID，请在设置中输入', tenantId ? 'enabled' : 'warn', tenantId ? '✅ 租户已加载' : '⚠️ 缺少租户ID', 'Tenant ID')}
+                        ${renderAssetRow('目标用户主体与域名', user ? `主体: ${user.name} (${user.roleTag})` : '请在左侧主体面板选择需要审计的真实企业成员', user ? 'enabled' : 'disabled', user ? '✅ 身份有效' : '❌ 未选择用户', 'Principal')}
+                        ${renderAssetRow('组织外部内容共享', user ? (isGuest ? '当前属于外部访客账号，默认禁用外发' : '租户策略放行组织外部报告共享') : '需选定用户后推导策略', isGuest ? 'disabled' : (user ? 'enabled' : 'disabled'), isGuest ? '❌ 禁止外发' : (user ? '✅ 租户放行' : '⚠️ 等待主体'), 'External Share')}
+                        ${renderAssetRow('客户端明细数据导出', '租户管理员已配置允许导出至 Excel/CSV 文件', user ? 'enabled' : 'disabled', user ? '✅ 租户策略放行' : '⚠️ 等待主体', 'Export Data')}
+                        ${renderAssetRow('Web 浏览器在线建模', '租户是否放行语义模型网页端建模与度量值设计', user?.state?.tenantAllowWebModeling ? 'enabled' : 'disabled', user?.state?.tenantAllowWebModeling ? '✅ 策略允许' : '❌ 租户策略收紧', 'Web Modeling')}
+                        ${renderAssetRow('XMLA 终结点全局读写', '允许 SSMS/DAX Studio/Tabular Editor 跨客户端直连', 'enabled', '✅ 读写已启用', 'XMLA Endpoint')}
+                    </div>
+                </div>
+            `;
+
+            // Module 2: Workspace (工作区治理角色层)
+            let colWorkspaceBody = '';
+            if (!hasSelectedWs) {
+                colWorkspaceBody = `
+                    <div class="pb-col-row" style="padding: 24px 12px; text-align: center;">
+                        <div style="font-size: 1.8rem; margin-bottom: 10px;">🏢</div>
+                        <div style="font-weight: 700; font-size: 0.84rem; color: #f59e0b; margin-bottom: 6px;">尚未选择目标工作区</div>
+                        <div style="font-size: 0.70rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;">
+                            工作区是模型、报表与凭据的载体。请在顶部功能区或左侧面板选择具体的目标工作区。
+                        </div>
+                        <div style="font-size: 0.65rem; color: var(--text-secondary);">当前可用组织工作区共 ${rawWsData.length} 个</div>
+                    </div>
+                `;
+            } else {
+                const t2Status = isAdmin ? 'enabled' : (isPrivileged ? 'bypassed' : (isViewer ? 'warn' : 'disabled'));
+                colWorkspaceBody = `
+                    ${renderAssetRow('具体指定目标工作区', `工作区名称: ${wsName} · ID: ${curWs.id}`, 'enabled', '✅ 目标已就绪', 'Workspace')}
+                    ${renderAssetRow('当前分配的工作区角色', `用户在该工作区被授予的实际治理角色为 [${wsRole}]`, t2Status, `✅ 赋予 ${wsRole}`, 'Role')}
+                    ${renderAssetRow('成员管理与权限委派', '向其他企业成员分配或回收该工作区访问权限', isAdmin ? 'enabled' : (isMember ? 'warn' : 'disabled'), isAdmin ? '✅ 完全管理' : (isMember ? '⚠️ 仅可添加查看者' : '❌ 禁用'), 'Permissions')}
+                    ${renderAssetRow('工作区资产增删改', '新建、修改、重命名或删除该工作区名下的资产', isPrivileged ? 'enabled' : 'disabled', isPrivileged ? '✅ 完整编辑特权' : '❌ 仅只读不可修改', 'Asset Edit')}
+                    ${renderAssetRow('组织应用打包与发布', '将该工作区报表发布更新为组织企业应用程序 (App)', (isAdmin || isMember) ? 'enabled' : 'disabled', (isAdmin || isMember) ? '✅ 允许发布更新' : '❌ 需成员以上权限', 'App Publish')}
+                    ${renderAssetRow('底层算力容量绑定', '承载当前工作区资产运行的计算节点规格', 'enabled', '⚡ Fabric F64 弹性专用容量', 'Capacity')}
+                `;
+            }
+            const colWorkspace = `
+                <div class="pb-tier-col" data-tier="2">
+                    <div class="pb-col-header">
+                        <div class="pb-col-title-row">
+                            <h4 class="pb-col-title">📁 2. Workspace (工作区)</h4>
+                            <span class="pb-matrix-status ${hasSelectedWs ? 'enabled' : 'disabled'}">${hasSelectedWs ? `角色: ${wsRole}` : '⚠️ 未选择'}</span>
+                        </div>
+                        <div class="pb-col-sub" title="${wsName}">${wsName}</div>
+                    </div>
+                    <div class="pb-col-body">
+                        ${colWorkspaceBody}
+                    </div>
+                </div>
+            `;
+
+            // Module 3: Model (语义模型资产权限层) —— 完全依赖顶栏，不内嵌选择列表
+            let colModelBody = '';
+            let modelTitleText = '🗄️ 3. Model (语义模型)';
+            let modelStatusBadge = '⚠️ 等待工作区';
+            let modelStatusClass = 'disabled';
+            let modelSubText = '未选择模型';
+
+            if (!hasSelectedWs) {
+                colModelBody = `
+                    <div class="pb-col-row" style="padding: 24px 12px; text-align: center;">
+                        <div style="font-size: 1.8rem; margin-bottom: 10px;">🗄️</div>
+                        <div style="font-weight: 700; font-size: 0.84rem; color: #94a3b8; margin-bottom: 6px;">等待指定目标工作区</div>
+                        <div style="font-size: 0.70rem; color: var(--text-secondary); line-height: 1.5;">
+                            语义模型归属于工作区。请先在顶栏指定目标工作区。
+                        </div>
+                    </div>
+                `;
+            } else if (!hasSelectedModel) {
+                modelTitleText = '🗄️ 3. Model (未加载)';
+                modelStatusBadge = '⚠️ 尚未选择';
+                modelStatusClass = 'warn';
+                modelSubText = '请在顶栏模型选择器中选择具体模型';
+                colModelBody = `
+                    <div class="pb-col-row" style="padding: 20px 12px; text-align: center;">
+                        <div style="font-size: 1.8rem; margin-bottom: 10px;">🗄️</div>
+                        <div style="font-weight: 700; font-size: 0.84rem; color: #f59e0b; margin-bottom: 8px;">尚未在顶栏选择具体模型</div>
+                        <div style="font-size: 0.70rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 10px;">
+                            请点击顶栏「模型」下拉框，从当前工作区 <strong style="color: #60a5fa;">${wsName}</strong> 的模型列表中选择目标语义模型。
+                        </div>
+                        <div style="font-size: 0.68rem; color: var(--text-secondary); opacity: 0.7;">
+                            当前工作区共缓存 ${scopedModels.length} 个模型
+                        </div>
+                    </div>
+                `;
+            } else {
+                const canReadModel = isPrivileged || isViewer;
+                const canBuild = isPrivileged || Boolean(user?.state?.sharePermission && String(user?.state?.sharePermission).includes('Build'));
+                modelTitleText = `🗄️ 3. Model (${curModel.alias || curModel.name})`;
+                modelStatusBadge = canBuild ? '⚡ 构建+衍生' : (canReadModel ? '👁️ 仅只读' : '🚫 拒绝访问');
+                modelStatusClass = canBuild ? 'enabled' : (canReadModel ? 'warn' : 'disabled');
+                modelSubText = `模型 ID: ${curModel.id}`;
+
+                colModelBody = `
+                    ${renderAssetRow('具体指定语义模型', `模型名称: ${curModel.alias || curModel.name} · ID: ${curModel.id}`, 'enabled', '✅ 模型已就绪', 'Model')}
+                    ${renderAssetRow('语义模型直接读取权限', '允许执行 DAX 查询、报表取数与刷新 (Read 权限)', canReadModel ? 'enabled' : 'disabled', canReadModel ? '✅ 已授权读取' : '❌ 403 阻断', 'Read')}
+                    ${renderAssetRow('衍生构建与自助探索', '允许以该模型为基础创建新报表、Excel 透视分析 (Build 权限)', canBuild ? 'enabled' : 'disabled', canBuild ? '⚡ 允许探索构建 (Build)' : '❌ 仅只读无构建权', 'Build')}
+                    ${renderAssetRow('模型度量值与架构写回', '允许通过 XMLA 或浏览器端添加度量值、修改表关系', isPrivileged ? 'enabled' : 'disabled', isPrivileged ? '✅ 允许架构写入' : '❌ 架构写回阻断', 'Write')}
+                    ${renderAssetRow('行级数据安全 (RLS) 生效', '针对该模型的 DAX 安全角色行过滤隔离状态', isPrivileged ? 'bypassed' : 'warn', isPrivileged ? '⚡ 特权全量穿透' : '🔒 RLS 角色生效隔离', 'RLS')}
+                    ${renderAssetRow('向第三方重新共享模型', '是否可将该具体模型二次授权给企业内其他同事', (isAdmin || isMember) ? 'enabled' : 'disabled', (isAdmin || isMember) ? '✅ 允许重新共享' : '❌ 禁止二次共享', 'Reshare')}
+                `;
+            }
+            const colModel = `
+                <div class="pb-tier-col" data-tier="3">
+                    <div class="pb-col-header">
+                        <div class="pb-col-title-row">
+                            <h4 class="pb-col-title">${modelTitleText}</h4>
+                            <span class="pb-matrix-status ${modelStatusClass}">${modelStatusBadge}</span>
+                        </div>
+                        <div class="pb-col-sub" title="${modelSubText}">${modelSubText}</div>
+                    </div>
+                    <div class="pb-col-body">
+                        ${colModelBody}
+                    </div>
+                </div>
+            `;
+
+            // Module 4: Report (报表视图与交互权限层) —— 完全依赖顶栏，不内嵌选择列表
+            let colReportBody = '';
+            let reportTitleText = '📊 4. Report (报表)';
+            let reportStatusBadge = '⚠️ 等待工作区';
+            let reportStatusClass = 'disabled';
+            let reportSubText = '未选择报表';
+
+            if (!hasSelectedWs) {
+                colReportBody = `
+                    <div class="pb-col-row" style="padding: 24px 12px; text-align: center;">
+                        <div style="font-size: 1.8rem; margin-bottom: 10px;">📊</div>
+                        <div style="font-weight: 700; font-size: 0.84rem; color: #94a3b8; margin-bottom: 6px;">等待指定目标工作区</div>
+                        <div style="font-size: 0.70rem; color: var(--text-secondary); line-height: 1.5;">
+                            报表资产归属于工作区。请先在顶栏指定目标工作区。
+                        </div>
+                    </div>
+                `;
+            } else if (!hasSelectedReport) {
+                reportTitleText = '📊 4. Report (未加载)';
+                reportStatusBadge = '⚠️ 尚未选择';
+                reportStatusClass = 'warn';
+                reportSubText = '请在顶栏报表选择器中选择具体报表';
+                colReportBody = `
+                    <div class="pb-col-row" style="padding: 20px 12px; text-align: center;">
+                        <div style="font-size: 1.8rem; margin-bottom: 10px;">📊</div>
+                        <div style="font-weight: 700; font-size: 0.84rem; color: #f59e0b; margin-bottom: 8px;">尚未在顶栏选择具体报表</div>
+                        <div style="font-size: 0.70rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 10px;">
+                            请点击顶栏「报表」下拉框，从当前工作区 <strong style="color: #60a5fa;">${wsName}</strong> 的报表列表中选择目标报表。
+                        </div>
+                        <div style="font-size: 0.68rem; color: var(--text-secondary); opacity: 0.7;">
+                            当前工作区共缓存 ${scopedReports.length} 个报表
+                        </div>
+                    </div>
+                `;
+            } else {
+                const canEditReport = isPrivileged && user?.state?.tenantAllowWebModeling;
+                const canExportUnderlying = Boolean(user?.state?.sharePermission?.includes('Build') || isPrivileged) && Boolean(user?.state?.tenantAllowExport);
+                reportTitleText = `📊 4. Report (${curReport.alias || curReport.name})`;
+                reportStatusBadge = canEditReport ? '✏️ 协同设计编辑' : '👁️ 交互浏览';
+                reportStatusClass = canEditReport ? 'enabled' : 'warn';
+                reportSubText = `报表 ID: ${curReport.id}`;
+
+                colReportBody = `
+                    ${renderAssetRow('具体指定分析报表', `报表名称: ${curReport.alias || curReport.name} · ID: ${curReport.id}`, 'enabled', '✅ 报表已就绪', 'Report')}
+                    ${renderAssetRow('报表在线交互与查看', '访问该报表页面、切片器联动与图表钻取浏览', 'enabled', '✅ 允许完整交互浏览', 'View')}
+                    ${renderAssetRow('视觉对象编辑与另存', '编辑现有报表页面布局、添加图表或另存为副本', canEditReport ? 'enabled' : 'disabled', canEditReport ? '✅ 允许设计画布与另存' : '❌ 仅只读浏览不可编辑', 'Edit')}
+                    ${renderAssetRow('导出底层明细数据', '允许将该报表图表底层未聚合的原始颗粒度明细导出至本地', canExportUnderlying ? 'enabled' : 'warn', canExportUnderlying ? '✅ 允许导出明细数据' : '⚠️ 仅允许导出汇总数据', 'Export')}
+                    ${renderAssetRow('邮件订阅与自动化警报', '设置该报表关键 KPI 阈值警报及定时邮件快照推送', 'enabled', '✅ 允许创建订阅与警报', 'Subscribe')}
+                    ${renderAssetRow('报表分发与链接共享', '生成该报表的安全嵌入链接向授权受众分发', (isAdmin || isMember) ? 'enabled' : 'disabled', (isAdmin || isMember) ? '✅ 允许生成共享链接' : '❌ 需工作区成员权限', 'Share')}
+                `;
+            }
+            const colReport = `
+                <div class="pb-tier-col" data-tier="4">
+                    <div class="pb-col-header">
+                        <div class="pb-col-title-row">
+                            <h4 class="pb-col-title">${reportTitleText}</h4>
+                            <span class="pb-matrix-status ${reportStatusClass}">${reportStatusBadge}</span>
+                        </div>
+                        <div class="pb-col-sub" title="${reportSubText}">${reportSubText}</div>
+                    </div>
+                    <div class="pb-col-body">
+                        ${colReportBody}
+                    </div>
+                </div>
+            `;
+
+            // Module 5: Connection (网关连接与凭据鉴权层) —— 未选工作区/模型时如实呈现未知状态
+            let colConnectionBody = '';
+            if (!hasSelectedWs) {
+                colConnectionBody = `
+                    <div class="pb-col-row" style="padding: 24px 12px; text-align: center;">
+                        <div style="font-size: 1.8rem; margin-bottom: 10px;">🔌</div>
+                        <div style="font-weight: 700; font-size: 0.84rem; color: #94a3b8; margin-bottom: 6px;">等待指定目标工作区</div>
+                        <div style="font-size: 0.70rem; color: var(--text-secondary); line-height: 1.5;">
+                            数据源通道与网关凭据需基于具体工作区和语义模型解析。
+                        </div>
+                    </div>
+                `;
+            } else if (!hasSelectedModel) {
+                colConnectionBody = `
+                    <div class="pb-col-row" style="padding: 20px 12px; text-align: center;">
+                        <div style="font-size: 1.8rem; margin-bottom: 10px;">🔌</div>
+                        <div style="font-weight: 700; font-size: 0.84rem; color: #f59e0b; margin-bottom: 8px;">未关联具体语义模型</div>
+                        <div style="font-size: 0.70rem; color: var(--text-secondary); line-height: 1.6;">
+                            数据源凭据与网关连通性需绑定到具体语义模型才可推导。<br>请先在顶栏选择目标语义模型。
+                        </div>
+                    </div>
+                `;
+            } else {
+                const gwStatus = gatewayOnline === true ? 'enabled' : (gatewayOnline === false ? 'disabled' : 'warn');
+                const gwText = gatewayOnline === true ? '✅ 网关集群在线' : (gatewayOnline === false ? '❌ 网关离线不可达' : '⚠️ 状态未知');
+                const connStatus = hasDataConn === true ? 'enabled' : (hasDataConn === false ? 'warn' : 'disabled');
+                const connText = hasDataConn === true ? '✅ 统一数据源凭据已鉴权' : (hasDataConn === false ? '⚠️ 凭据受限/需单独配置' : '❌ 未配置数据源凭据');
+                colConnectionBody = `
+                    ${renderAssetRow('企业数据网关连通性', '该工作区绑定的本地数据网关 (On-Premises Gateway) 状态', gwStatus, gwText, 'Gateway')}
+                    ${renderAssetRow('数据源直连凭据鉴权', `针对模型 [${curModel.alias || curModel.name}] 的底层数据库鉴权凭据`, connStatus, connText, 'Credentials')}
+                    ${renderAssetRow('GAC 细粒度访问控制', '网关与 DirectQuery 跨源 Mashup 细粒度数据门禁隔离', isPrivileged ? 'bypassed' : 'enabled', isPrivileged ? '⚡ 管理员特权直通通道' : '🛡️ 细粒度门禁鉴权通过', 'GAC Security')}
+                    ${renderAssetRow('SSO 单点登录凭据委派', 'DirectQuery 运行时使用当前用户 Entra ID 身份穿透鉴权', 'enabled', '✅ Kerberos / OAuth 委派生效', 'SSO Pass-through')}
+                    ${renderAssetRow('动态数据刷新通道', '定时增量刷新与 XMLA 交互式微批次数据刷新触发权', isPrivileged ? 'enabled' : 'disabled', isPrivileged ? '✅ 允许按需触发刷新' : '❌ 仅限管理员/协作者', 'Refresh')}
+                `;
+            }
+            const connStatusLabel = !hasSelectedWs ? '⚠️ 未选择' : (!hasSelectedModel ? '⚠️ 未关联模型' : (gatewayOnline ? '✅ 网关在线' : '❌ 网关离线'));
+            const connStatusClass = !hasSelectedWs ? 'disabled' : (!hasSelectedModel ? 'warn' : (gatewayOnline ? 'enabled' : 'disabled'));
+            const colConnection = `
+                <div class="pb-tier-col" data-tier="5">
+                    <div class="pb-col-header">
+                        <div class="pb-col-title-row">
+                            <h4 class="pb-col-title">🔌 5. Connection (连接)</h4>
+                            <span class="pb-matrix-status ${connStatusClass}">${connStatusLabel}</span>
+                        </div>
+                        <div class="pb-col-sub" title="数据源通道与网关凭据">网关与连接凭据池</div>
+                    </div>
+                    <div class="pb-col-body">
+                        ${colConnectionBody}
+                    </div>
+                </div>
+            `;
+
+            // Module 6: Pipeline (部署管道与 ALM 治理层) —— 未绑定时如实标注"未检测到关联管道"
+            let colPipelineBody = '';
+            if (!hasSelectedWs) {
+                colPipelineBody = `
+                    <div class="pb-col-row" style="padding: 24px 12px; text-align: center;">
+                        <div style="font-size: 1.8rem; margin-bottom: 10px;">🚀</div>
+                        <div style="font-weight: 700; font-size: 0.84rem; color: #94a3b8; margin-bottom: 6px;">等待指定目标工作区</div>
+                        <div style="font-size: 0.70rem; color: var(--text-secondary); line-height: 1.5;">
+                            部署管道需关联具体工作区以呈现阶段流转。
+                        </div>
+                    </div>
+                `;
+            } else {
+                // pipelineBound = false：保守标注，实际绑定需 /api/proxy → /pipelines 确认
+                colPipelineBody = `
+                    <div class="pb-col-row" style="padding: 20px 12px; text-align: center;">
+                        <div style="font-size: 1.8rem; margin-bottom: 10px;">🚀</div>
+                        <div style="font-weight: 700; font-size: 0.84rem; color: #f59e0b; margin-bottom: 8px;">未检测到关联的 ALM 部署管道</div>
+                        <div style="font-size: 0.70rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 8px;">
+                            工作区 <strong style="color: #60a5fa;">${wsName}</strong> 当前未绑定任何 Dev ➔ Test ➔ Prod 部署管道。<br>
+                            如需查看管道权限，请先在 Power BI Service 中将该工作区关联到具体部署管道。
+                        </div>
+                        <div style="font-size: 0.68rem; color: var(--text-secondary); opacity: 0.7;">
+                            需要通过 ALM (Application Lifecycle Management) API 实时验证管道绑定状态
+                        </div>
+                    </div>
+                `;
+            }
+            const pipelineStatusLabel = !hasSelectedWs ? '⚠️ 未选择' : '❌ 未绑定管道';
+            const pipelineStatusClass = !hasSelectedWs ? 'disabled' : 'warn';
+            const colPipeline = `
+                <div class="pb-tier-col" data-tier="6">
+                    <div class="pb-col-header">
+                        <div class="pb-col-title-row">
+                            <h4 class="pb-col-title">🚀 6. Pipeline (部署管道)</h4>
+                            <span class="pb-matrix-status ${pipelineStatusClass}">${pipelineStatusLabel}</span>
+                        </div>
+                        <div class="pb-col-sub" title="${hasSelectedWs ? wsName + ' 关联管道' : '未绑定部署管道'}">${hasSelectedWs ? '未检测到关联管道' : '等待工作区'}</div>
+                    </div>
+                    <div class="pb-col-body">
+                        ${colPipelineBody}
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = colTenant + colWorkspace + colModel + colReport + colConnection + colPipeline;
         }
     }
 

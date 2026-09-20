@@ -6,7 +6,9 @@ Power BI Full-Spectrum Permission Scanner & Governance Engine
 import asyncio
 import time
 from typing import Any, Dict, List, Optional, Set
+
 from pydantic import BaseModel
+
 from src.config import Config
 from src.pbi_client import PBIClient
 
@@ -108,7 +110,7 @@ async def scan_permissions_deep(
             # 多工作区定向集合模式：优先从全租户缓存匹配，未命中则请求 Admin API 并精准过滤
             if cached_workspaces and cache_age < 180:
                 workspaces = [w for w in cached_workspaces if str(w.get("id", "")).lower() in target_ws_set]
-            
+
             if len(workspaces) < len(target_ws_list):
                 try:
                     ws_res = await asyncio.to_thread(

@@ -1,23 +1,57 @@
-import os
 import json
+import os
+
 from dotenv import load_dotenv, set_key
 
 load_dotenv(override=True)
 
 SETTINGS_FILE = "data/global_settings.json"
 
-def load_settings():
+FORBIDDEN_WORKSPACE_IDS = {
+    "c06a2729-ee28-4471-af27-803b56a3d8cc",
+    "2c51e061-0f9f-4d02-bed0-c169019e5d83",
+    "c38cfce4-99a9-45a9-929b-44374b63a30a",
+    "ad88bcfe-af01-4744-968e-c59af1daab02",
+    "50e6b428-68a9-4366-8aee-e6113d8ed3db",
+    "my",
+}
+
+def sanitize_workspaces(workspaces: list) -> list:
+    if not isinstance(workspaces, list):
+        return []
+    cleaned = []
+    for w in workspaces:
+        if not isinstance(w, dict):
+            continue
+        wid = str(w.get("id") or w.get("workspaceId") or "").strip().lower()
+        wname = str(w.get("alias") or w.get("name") or wid).strip().lower()
+        wtype = str(w.get("type") or "").strip().lower()
+        if wtype == "personalgroup":
+            continue
+        if wid in FORBIDDEN_WORKSPACE_IDS or wid == "my":
+            continue
+        if "personal" in wname or "@carman" in wname or "@sina" in wname:
+            continue
+        if "workspace_dev" in wname or "dev_workspace" in wname or wname in ("my", "my workspace", "我的工作区"):
+            continue
+        cleaned.append(w)
+    return cleaned
+
+def load_settings() -> dict:
     if os.path.exists(SETTINGS_FILE):
         try:
             with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                if isinstance(data, dict) and "PBI_WORKSPACES" in data:
+                    data["PBI_WORKSPACES"] = sanitize_workspaces(data["PBI_WORKSPACES"])
+                return data if isinstance(data, dict) else {}
         except Exception:
             pass
     return {}
 
 class Config:
     """Power BI API 配置类"""
-    
+
     _settings = load_settings()
 
     CLIENT_ID: str = os.getenv("PBI_CLIENT_ID", "")
@@ -44,7 +78,7 @@ class Config:
     # Smart DataOps Pipeline 共享配置
     # ==========================================
     SQL_CONN_STR: str = _settings.get("SQL_CONN_STR", os.getenv("SQL_CONN_STR", ""))
-    
+
     PBI_WORKSPACES: list = _settings.get("PBI_WORKSPACES", json.loads(os.getenv("PBI_WORKSPACES", "[]")) if os.getenv("PBI_WORKSPACES") else [])
     PBI_DATASETS: list = _settings.get("PBI_DATASETS", json.loads(os.getenv("PBI_DATASETS", "[]")) if os.getenv("PBI_DATASETS") else [])
     PBI_REPORTS: list = _settings.get("PBI_REPORTS", json.loads(os.getenv("PBI_REPORTS", "[]")) if os.getenv("PBI_REPORTS") else [])
@@ -58,7 +92,7 @@ class Config:
     def get_all(cls) -> dict:
         settings = load_settings()
         if settings.get("PBI_WORKSPACES"):
-            cls.PBI_WORKSPACES = settings["PBI_WORKSPACES"]
+            cls.PBI_WORKSPACES = sanitize_workspaces(settings["PBI_WORKSPACES"])
         if settings.get("PBI_DATASETS"):
             cls.PBI_DATASETS = settings["PBI_DATASETS"]
         if settings.get("PBI_REPORTS"):
@@ -99,7 +133,7 @@ class Config:
             "USERNAME": "PBI_USERNAME",
             "PASSWORD": "PBI_PASSWORD",
         }
-        
+
         json_keys = {
             "AUTH_MODE": "PBI_AUTH_MODE",
             "TENANT_ID": "PBI_TENANT_ID",

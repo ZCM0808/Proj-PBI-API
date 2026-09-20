@@ -1254,10 +1254,10 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
       const bpModal = page.locator('#permission-blueprint-modal');
       await expect.poll(() => bpModal.isVisible(), { timeout: 8000 }).toBe(true);
 
-      // 3. 验证三个核心选择器均带有专属搜索过滤框与清空/重置按钮
+      // 3. 验证用户主体选择器带有专属搜索过滤框，工作区与模型由顶栏专属搜索框统一驱动
       const userSearch = page.locator('#pb-user-search-input');
-      const wsSearch = page.locator('#pb-ws-search-input');
-      const modelSearch = page.locator('#pb-model-search-input');
+      const wsSearch = page.locator('#gtb-ws-search-input');
+      const modelSearch = page.locator('#gtb-ds-search-input');
 
       await expect(userSearch).toBeVisible();
       await expect(wsSearch).toBeVisible();

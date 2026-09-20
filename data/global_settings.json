@@ -1,40 +1,12 @@
 {
-    "PBI_AUTH_MODE": "service_principal",
-    "PBI_TENANT_ID": "78a11419-9556-437d-843b-55d8396908e1",
+    "PBI_AUTH_MODE": "personal",
+    "PBI_TENANT_ID": "7d97f400-69b4-4df4-a009-c9806ec70783",
     "SQL_CONN_STR": "Server=myServerAddress;Database=myDataBase;User Id=myUsername;",
     "PBI_WORKSPACES": [
-        {
-            "alias": "PersonalWorkspace seven@carman.ccwu.cc",
-            "id": "c06a2729-ee28-4471-af27-803b56a3d8cc",
-            "type": "PersonalGroup",
-            "state": "Active",
-            "workspaceId": ""
-        },
-        {
-            "alias": "WorkSpace_DEV",
-            "id": "2c51e061-0f9f-4d02-bed0-c169019e5d83",
-            "type": "Workspace",
-            "state": "Active",
-            "workspaceId": ""
-        },
-        {
-            "alias": "PersonalWorkspace zhaochengmei@sina.cn",
-            "id": "c38cfce4-99a9-45a9-929b-44374b63a30a",
-            "type": "PersonalGroup",
-            "state": "Active",
-            "workspaceId": ""
-        },
         {
             "alias": "Admin monitoring",
             "id": "5f0a49b0-a02e-4c86-bf44-4f6a5d4d4af5",
             "type": "Workspace",
-            "state": "Active",
-            "workspaceId": ""
-        },
-        {
-            "alias": "PersonalWorkspace nameless@carman.ccwu.cc",
-            "id": "ad88bcfe-af01-4744-968e-c59af1daab02",
-            "type": "PersonalGroup",
             "state": "Active",
             "workspaceId": ""
         },
@@ -53,9 +25,86 @@
             "workspaceId": ""
         },
         {
-            "alias": "PersonalWorkspace APP_Automation",
-            "id": "50e6b428-68a9-4366-8aee-e6113d8ed3db",
-            "type": "PersonalGroup",
+            "alias": "DA_APAC_PSA_PROD",
+            "id": "b1fbef06-41f1-434e-b8cf-1c932deaf250",
+            "type": "Premium/Fabric",
+            "state": "Active",
+            "workspaceId": ""
+        },
+        {
+            "alias": "DA_AMER_DTC_QA",
+            "id": "fb49a96d-722e-400b-9d6a-ece87a67ebe2",
+            "type": "Premium/Fabric",
+            "state": "Active",
+            "workspaceId": ""
+        },
+        {
+            "alias": "DA_AMER_BI_KEY_REPORTING_QA",
+            "id": "995ba105-6b15-43cc-abf3-49337bc674dd",
+            "type": "Premium/Fabric",
+            "state": "Active",
+            "workspaceId": ""
+        },
+        {
+            "alias": "DA_AMER_DTC_OMNI Channel_QA",
+            "id": "1af01762-874f-4add-af38-722b599ee34e",
+            "type": "Premium/Fabric",
+            "state": "Active",
+            "workspaceId": ""
+        },
+        {
+            "alias": "DA_APAC_BI_DEV",
+            "id": "a7aebb70-00cc-422d-a5a9-53b8511484e9",
+            "type": "Premium/Fabric",
+            "state": "Active",
+            "workspaceId": ""
+        },
+        {
+            "alias": "DA_APAC_BI_QA",
+            "id": "81293c65-8c1b-49ed-9752-58734e364db3",
+            "type": "Premium/Fabric",
+            "state": "Active",
+            "workspaceId": ""
+        },
+        {
+            "alias": "DA_APAC_BI_PROD",
+            "id": "7725ad78-b687-465e-89c8-d4fbd9b455e2",
+            "type": "Premium/Fabric",
+            "state": "Active",
+            "workspaceId": ""
+        },
+        {
+            "alias": "DA_APAC_FINANCE_PROD",
+            "id": "31eeb317-ad5c-42c7-989e-a51ba3ea9b84",
+            "type": "Premium/Fabric",
+            "state": "Active",
+            "workspaceId": ""
+        },
+        {
+            "alias": "Global Analytics Pre-Prod",
+            "id": "4894a527-88c4-4697-837a-6cb5641b7ece",
+            "type": "Premium/Fabric",
+            "state": "Active",
+            "workspaceId": ""
+        },
+        {
+            "alias": "Training",
+            "id": "b128a046-5e0c-4e8b-ba6a-7ca068f56ff2",
+            "type": "Workspace",
+            "state": "Active",
+            "workspaceId": ""
+        },
+        {
+            "alias": "Microsoft 365 Usage Analytics 8/26/2026, 10:05:07 AM",
+            "id": "bcc9205f-d329-48d0-88dc-753cf2185e8a",
+            "type": "Workspace",
+            "state": "Active",
+            "workspaceId": ""
+        },
+        {
+            "alias": "Microsoft Fabric Capacity Metrics 8/26/2026, 10:08:21 AM",
+            "id": "6705d894-380f-4a57-a7b1-66bdd2d9baa4",
+            "type": "Workspace",
             "state": "Active",
             "workspaceId": ""
         }
@@ -137,6 +186,853 @@
             "type": "Workspace",
             "state": "Active",
             "workspaceId": ""
+        },
+        {
+            "alias": "REPLAY_Data_2024_8_9",
+            "id": "6de5216a-6a5d-4bbf-a925-e669fd9fd744",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "APAC Overview",
+            "id": "90f0e827-fc8c-4238-834d-4d1236f16a3f",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "APAC_Lakehouse",
+            "id": "0943ca54-873a-49da-93d2-e86e12e5fab5",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "APAC DT DATA Landing Page",
+            "id": "0fee1347-8b95-4a9e-978f-48a0e369cbf0",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "TBL TW sales report",
+            "id": "23cf7dfc-2ff6-4db6-bbd3-786246d33c23",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "zlor005_billed_so_KR",
+            "id": "232ea586-386b-4779-9bef-e17cbf9cce9b",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "DUT report testing",
+            "id": "670e68de-26da-44e6-a02f-1d46149bac4a",
+            "type": "PremiumFiles",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "KPL_Checking",
+            "id": "f05aac07-be25-441d-876b-bf48ec78d2b7",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "SAP POS Inventory Recon Dashboard v2.0",
+            "id": "92c8c099-f31b-42be-a9b3-b6cf50742b0a",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Transaction Raw Data",
+            "id": "43b48921-acaf-42a8-9973-c096117d91de",
+            "type": "PremiumFiles",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "NetSDL Data Source (OMS vs SAP Inventory)",
+            "id": "a4dd4615-19dd-45c1-9cf9-e3698be653c9",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "SAP VS BI",
+            "id": "61a40206-b1be-418d-96cf-49edfb21a029",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "NetSDL Data Source(OMS vs BI Sales)",
+            "id": "24c7022d-4d3e-4264-9926-d7d0dc329015",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "NetSDL Datasource (OMS vs WMS Sales)",
+            "id": "d8d7bd90-ba08-4027-82b0-a137e9945f5e",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Ta Po Report",
+            "id": "1a682488-5d36-484b-a9d2-050555d8e43c",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Ta So Rejected Report",
+            "id": "62b1d6c1-7a27-4e09-bf6a-e7ade474ca0c",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "TA SO report",
+            "id": "5fff766a-5098-4b8f-be48-d64ab7624f7b",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Data Comparison_v1",
+            "id": "f34836ef-9b0c-4afc-8c45-0685d2294cad",
+            "type": "PremiumFiles",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "DUT Analytics View",
+            "id": "0ff842c7-0528-4732-ad9d-9dab267f8677",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "DUT Analytics View (5)",
+            "id": "68ad1166-2b11-404d-b94e-5d138e6d2ce6",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "TBLJP_Doris_BI_Dashboard",
+            "id": "97f099fa-57b6-48de-ad1d-0fd3f0ba3075",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "DUT Analytics View_TBL",
+            "id": "1c958249-9b12-4d79-9219-4fa82cde9eb2",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Wuqiong_Recon Sales and COGS_Controllership_POC",
+            "id": "8a40102d-577b-4708-9590-ea507c8c7460",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Eva_Unit Sales_Controllership_POC",
+            "id": "9b6d9b91-d007-4558-9239-f164511a1600",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "NetSDL Data Source(OMS vs BI Sales)_Adjust",
+            "id": "5a27e037-8995-4f77-bc1f-38b2fb6f9f76",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "POC_TEST",
+            "id": "5aa75b79-ea6b-4e19-8eb7-32c2109c47ca",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "VF_BI_Stream_Analysis_20260123_done",
+            "id": "e1b18c23-0b08-40cc-92dd-f33935c2305c",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "SAP S4 GDF2.0_BI_Workshop_BI Scope Split_23 Jan 2026_Test_Cathy 1739",
+            "id": "604e4314-2959-4bcd-957e-35afe808fd67",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "SAP S4 GDF2.0_BI_Workshop_BI Scope Split_Cathy_Stack",
+            "id": "358bbb11-20b4-468c-99c7-e5c413d531c0",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM0944_2 Feb 2026",
+            "id": "ab35dbf1-013e-48d6-8409-45cdd3104546",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM0952_2 Feb 2026",
+            "id": "9ae9e11c-b77f-46df-be70-c41eb11232f4",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1177_Corporate Reporting_revenue vs forecast__3 Feb 2026",
+            "id": "402baf0f-7cd9-4578-94cd-b0eb32e55dde",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1186_Corporate Reporting_by store P&L performance__4 Feb 2026",
+            "id": "52e68057-240e-4721-bc2d-c12b64df980b",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1181_Corporate Reporting_weekly KPIs vs LY LW​​_4 Feb 2026",
+            "id": "8e1f42fb-727a-41af-9818-3c8b2cacce6a",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1187_Corporate Reporting_by key account P&L performance_4 Feb 2026",
+            "id": "5af9fbf5-3747-4b4f-be54-cc365d9f3b63",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM0944_5 Feb 2026",
+            "id": "f11c0b30-6b00-4eda-b824-4e41184d995c",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "DTC_RTM1475_Sales Reconciliation_5 Feb 2026",
+            "id": "22e370e4-c6b5-4d6d-8590-741d9750891b",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM0950_ROU (Right-of-Use Asset) movement Report(BPC)​_5 Feb 2026",
+            "id": "0e1b1859-1fdb-4a67-9002-5bdc2ad630bd",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "DTC_RTM1482_Transactional data comparison between OMS&SAP&WMS_5 Feb 2026",
+            "id": "d15926be-0a8a-4d97-84c5-c13b52b6dbfa",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Monitoring_Report1",
+            "id": "1d9c5a85-93cb-4668-a994-78449f7177b2",
+            "type": "PremiumFiles",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1180_Corporate Reportin Weekly Comp KPI vs LY Plan Forecast",
+            "id": "4470c2fd-e1df-4f6d-8b3a-177c961ce0f2",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Xcelerate Landing Page",
+            "id": "f2d17c88-ae4c-4581-9e0d-83bc6f113e9e",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "pbi_testing_GL",
+            "id": "a5f72ffa-78b3-4d8d-a3a9-24c237602dda",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM0941_Dashboard for Payment Type (Auto-payment vs manual payment)​_6 Feb 2026",
+            "id": "8208a338-fa8a-477d-a1ab-40831475f57c",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "DTC_RTM1481_Tableau ZLOR022 - Inventory balance variance SAP & OMS_6 Feb 2026",
+            "id": "0d6d2581-e46f-4414-aaf3-5d08b36db021",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Logistics_RTM1365_OBD Comparison Report",
+            "id": "f7a0ba55-6117-4236-ae4d-8b6501390f9b",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM0942_Inventory recon with the inventory balance in SAP TB",
+            "id": "eee9336c-3200-4961-8377-e4918ca0d64d",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1173_PPV Analysis​",
+            "id": "658bc5f4-4ddf-43c9-b1b7-b167d2c3ee69",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "DTC_RTM1481_Inventory balance variance SAP & OMS",
+            "id": "f569ccc6-f993-4067-9804-bd710a161b70",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "DTC_RTM1475_Sales Reconciliation",
+            "id": "8100dfb7-d4f5-4c51-93a4-df68b78a11b4",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "DTC_RTM1482_Transactional data comparison between OMS&SAP&WMS",
+            "id": "c465a71c-6fea-4d74-8a0e-de31e5bbf729",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM0941_Dashboard for Payment Type (Auto-payment vs manual payment)",
+            "id": "8990c992-5c7d-4f5f-bb97-b5317de3943c",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM0941_Dashboard for Payment Type (Auto-payment vs manual payment)​",
+            "id": "476b8f75-a93e-4358-b826-bc427e6b5248",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1175_BPC Planning Template Tool for P&L Report",
+            "id": "3eba3de1-e511-4aa2-aa46-c2d53d152899",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Personalize Visuals",
+            "id": "f6cdb652-6285-49bd-b9b2-82d9c77ad31f",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM0944_Inventory balance (tie TB) and roll forward",
+            "id": "28988af5-1157-488c-8d44-95ea12cf3361",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1179 Sales Margin Report​",
+            "id": "f6b73a18-9e5e-4dc2-9510-d3c099547a36",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controlership_RTM1415_CN EC return report",
+            "id": "21a5335e-e3c9-4a48-bf96-2d6028cbbb41",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Row limit exceeded",
+            "id": "7439ffd3-7645-4a0e-afc6-bf9de110bedf",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Row 104w",
+            "id": "634ae30e-7c2b-463a-82b7-04257cd1c0b7",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "PTP_RTM1390_DUT Reporting",
+            "id": "da6d2af0-8086-4af4-93ec-7f355cd0d032",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "ControllerShip_RTM0943_APAC concur expense report",
+            "id": "536642ee-bf44-47be-9b0f-0bd5497f0c4f",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "ControllerShip_RTM1618_RTR KPI Report Request",
+            "id": "a4b1f4b1-3396-4f99-b1d0-c0c9ad96f121",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM1619_Billing and Cash Application KPI Dashboard",
+            "id": "823d9c1b-eaf6-4ea6-bcdd-62576c60a8d0",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1172_Margin Analysis",
+            "id": "47a8d59f-1408-4af1-bdbb-dea41ac20f7b",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1178_MKT expenses tracking Report",
+            "id": "d327125f-2487-458d-a9cd-203038ea7520",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1182_Monthly T&E Tracking Report",
+            "id": "1f487888-7cb4-47b2-9f99-bfd1f03e60cc",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1183_Corporate Reporting_monthly Ecom KPIs",
+            "id": "f272b428-f37f-4c06-ba5d-8e3d626d718c",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1185_CRM Tracking Report",
+            "id": "f41f2d60-ec9f-4d69-a9bd-615b97507ce4",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "PTP_RTM1391_DUT Analytics View",
+            "id": "8dfaba15-84d6-4ca7-99e7-403d474b47eb",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1439_Project Budget Tracking Report",
+            "id": "809cf3ce-69b2-4c14-ad4e-193ac4c6340a",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Logistics_RTM1365_OBD Comparison between SAP and 3PL",
+            "id": "71c4758d-8716-457a-af2e-4cc34ea1fbbd",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "ControllerShip_RTM1416_One inventory ending balance report for event tee, one dedicated PO type is set for event tee",
+            "id": "f893518a-5477-488d-bc79-d5dfce1e02cb",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "ControllerShip_RTM1417_One Transaction level report",
+            "id": "48371e83-1d8e-44d8-a406-b60cbc301739",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM0939_Revenue&Cost and COGS calculation",
+            "id": "541ca39b-39f1-4916-9341-7eb9c7aadf6d",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "PTP_RTM0144_Ability to show demand supply match report",
+            "id": "5209f6fb-de13-41f2-929c-c5df34d0eace",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM0940_Volume total amount of FOB and non FOB item​",
+            "id": "b204c309-4ac5-4abe-8fbf-fa9ce55cdd05",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "PTP_RTM1425_GDF SO report interface to DUT report",
+            "id": "cf6cbede-31a3-4b6b-bee7-57143eaa9f68",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "PTP_RTM1441_Free stock analysis",
+            "id": "6cb7663a-72d3-45b2-9269-44cb78c6fbb9",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "PTP_RTM1397_PO Report",
+            "id": "ef05157c-06a0-4e7c-8c44-0ba92f418720",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1180_Corporate Reporting_ Weekly Comp KPIs vs LY  Plan",
+            "id": "9a5ef879-71c2-4926-a172-51a3fde2f922",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1187_Corporate Reporting_by key account P&L performance",
+            "id": "b8317ca1-ac00-4cfe-89fb-919b3723add2",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1186_Corporate Reporting_by store P&L performance",
+            "id": "e8e1a8e0-0680-471a-bb17-c8cc18fab4a4",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Report Usage Metrics Model",
+            "id": "f7516807-ea3b-47b5-bdae-ccd4553cf9c9",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "PTP_RTM1443_RDC Taxation Risk Control",
+            "id": "2fd1ed43-1428-4611-a164-20ac0ebc8129",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1488_Customer PC Profitability (Margin) Report",
+            "id": "bb8d1b99-c1dd-465d-9613-7c5dac555f94",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Usage Metrics Report",
+            "id": "0f2c6a36-0e9e-412b-8b25-554ca316e6ca",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "ControllerShip_RTM1416 and 1417",
+            "id": "0bcbfa44-8d52-4cc5-81ed-09ddbfa51be6",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1189_Margin Report",
+            "id": "41197789-fb77-4ef8-bbd5-d9712763518d",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "DTC_RTM1480_DC to store and store level replenishment",
+            "id": "d96b3ab4-c87c-4d03-be97-18c2c65cc15c",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Logistics_RTM1495 Inventory split by Channel",
+            "id": "777f81cf-2268-4cec-b0c8-ecdc8d6275c4",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1487_Inventory Rolling Report",
+            "id": "b4b0a349-7ed7-4b40-8a34-59a0703afc5d",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1181_Corporate Reporting_weekly KPIs vs LY LW​​",
+            "id": "4dae6d90-5f9b-407a-aea1-74948bde59fd",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1620_Excess Inventory report",
+            "id": "31fdf8cc-d67f-4db7-8964-3b876968124b",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Logistics_RTM1490_GR discrepancy report (New)",
+            "id": "6c33e8b5-8229-4623-83f4-960faa5eba0b",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Logistics_RTM1192_Return Business Analysis",
+            "id": "afcc1b2c-2be1-4290-815f-b0e12a0421a5",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Logistitc_RTM1489_write off report",
+            "id": "fb2a501a-f58b-47e8-9afd-e123ae46d996",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1181_Corporate Reporting_weekly KPIs vs LY LW",
+            "id": "78a8d424-8bf2-4e5c-8c55-3a818041ddc1",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1181_Corporate Reporting_weekly KPIs vs LY LW_18 Mar 2026",
+            "id": "1e238c91-a303-4af4-92b4-abf1f98f3fdd",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "OTC_RTM1367_Self-service Data Cube",
+            "id": "3de66600-4036-4acd-835a-4508feda6f72",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1184 and 1186",
+            "id": "859008cb-0636-4cd2-a542-391982d224a5",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1188_Units Report",
+            "id": "3821f136-d77a-4543-add8-9e5e5486cc32",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1176_Open PO​ Sourcing Variance Forecast",
+            "id": "2e609ce6-c433-4ff2-980a-303c91f0a7a5",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1174_Cap Variance Closing",
+            "id": "0f93de16-5627-4f23-b3f6-0eea35837d95",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1594 Billing Rebate Report",
+            "id": "23185f4b-7ac8-4171-a9e0-b3aa5b2169e6",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "rate alert",
+            "id": "0cae7cb8-9db1-4970-b3fa-26986020bbfe",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Smart Discount",
+            "id": "5e074ac4-046a-4fb7-93b2-5efc3a728c56",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "GLOBAL SELL IN DASHBOARD - APAC",
+            "id": "55f6ebbf-1ca0-4224-be81-58362e994b45",
+            "type": "PremiumFiles",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "APAC Channel performance Analytics",
+            "id": "dca83ecc-9699-4c9a-9a5a-42ab372a1ec6",
+            "type": "PremiumFiles",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Refresh by single table",
+            "id": "d2bfd767-d121-4d6c-8027-7c33a088d7e0",
+            "type": "PremiumFiles",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Mirrored_Performance_Testing",
+            "id": "0055a2c2-8085-430a-a9e3-97ad20260d16",
+            "type": "PremiumFiles",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Carman_Performance_Testing",
+            "id": "c33ae7b9-6237-4c73-9df3-3887ce70708e",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Carman-DUT Analytics View",
+            "id": "e9ab5a8d-2688-462f-8e6b-10f79baee965",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "APAC Partner Store Analytics",
+            "id": "bd898729-6725-4dc3-b9ab-fe425059f0c2",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Carman-DUT reporting",
+            "id": "2c686311-3b53-417b-82e1-9d461cf1cb24",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Role Test",
+            "id": "2b1c6244-397e-4234-a4c0-d950d76fc5d8",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Field Measure distribution",
+            "id": "a57d7cc6-9d56-4e82-889a-e3ba73313347",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "GR-GIT Forecast_VAN_20240728",
+            "id": "a9e51fec-2d39-4980-abe5-36368776b442",
+            "type": "PremiumFiles",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Tableau metadata analysis v0.2",
+            "id": "43f732d9-f3b5-40c0-a93c-3b2bfc4c3b7a",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Tableau metadata analysis v0.20.0 t0.10.1",
+            "id": "369268de-9783-4916-bce5-c83e38010a24",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Carman-DUT reporting-from DEV",
+            "id": "432f29d8-4841-450d-b500-11ce3ed4161e",
+            "type": "Abf",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
         }
     ],
     "PBI_REPORTS": [
@@ -230,7 +1126,882 @@
             "type": "PowerBIReport (PBIR)",
             "state": "Active",
             "workspaceId": ""
+        },
+        {
+            "alias": "REPLAY_Data",
+            "id": "ea96fab1-0db7-4117-bc39-b14d21b88575",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "APAC Overview",
+            "id": "7a7dfe09-6f55-4fec-88e0-6895a0299332",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "APAC DT DATA Landing Page",
+            "id": "40130239-d6f3-4d29-a1b4-0ebf3d65878b",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "TBL TW sales report",
+            "id": "7534cbd4-d0eb-4a0f-a01f-9cb01e0d8d60",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "zlor005_billed_so_KR",
+            "id": "cf7adf5f-0d38-4e28-9d2f-2435ffe4f707",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "DUT report testing",
+            "id": "5319aee4-59ce-43d3-9f77-4086e58502a1",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "KPL_Checking",
+            "id": "245dfe7b-cca5-4922-958e-fa936abc0607",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "SAP POS Inventory Recon Dashboard v2.0",
+            "id": "0fd21e9f-71d7-4f38-9175-43056fd381e6",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Transaction Raw Data",
+            "id": "8d75e462-7695-4de6-ad6e-81fff926a009",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "NetSDL Data Source (OMS vs SAP Inventory)",
+            "id": "043b1771-e468-4de3-b793-e5ed5d265ffb",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "SAP VS BI",
+            "id": "99fc4d0a-9e97-4a2b-a96c-21a8c9e9ae45",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "NetSDL Data Source(OMS vs BI Sales)",
+            "id": "b17ccb8d-c095-4f04-a3ba-9c25c2dc7441",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "NetSDL Datasource (OMS vs WMS Sales)",
+            "id": "18bf1f22-7a03-4d75-8b19-cfd4cdb8b929",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Ta Po Report",
+            "id": "9f153e2e-0c45-44a4-8c4a-469b36c9a138",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Ta So Rejected Report",
+            "id": "1f751b89-1809-4e59-8ba7-51f6e24f58f4",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "TA SO report",
+            "id": "5ea77926-989b-4aae-a2c6-b22d51110df6",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Data Comparison_v1",
+            "id": "ff9c611a-877d-42c0-8445-d6eb1e382e4c",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "DUT Analytics View",
+            "id": "f4eaaebb-a1a9-4e0b-8128-6fa489af707e",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "DUT Analytics View (5)",
+            "id": "96ac5f9a-5396-48d9-8c86-cbed0794f9f0",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "TBLJP_Doris_BI_Dashboard",
+            "id": "aae363a6-44cd-4534-983d-84404e8bde3a",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "DUT Analytics View_TBL",
+            "id": "99634558-3c48-4856-997a-c8e71260bb51",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Wuqiong_Recon Sales and COGS_Controllership_POC",
+            "id": "814b48d8-d7e9-4bba-b1f5-e0b16d5017c1",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Wuqiong_Recon Sales and COGS_Controllership_POC",
+            "id": "be6aa8d0-5b60-4230-b99a-f0345beada00",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Eva_Unit Sales_Controllership_POC",
+            "id": "5728658c-4988-4ff0-beec-7ed3ec605d14",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "NetSDL Data Source(OMS vs BI Sales)_Adjust",
+            "id": "e2b41d77-3c64-40be-a026-5d5600597888",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Chelsea_FP&A weekly sales report_TBL_POC",
+            "id": "47f92e32-e550-49a8-b47a-6cd266bae4b7",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "VF_BI_Stream_Analysis_20260123_done",
+            "id": "a20856d8-f9c3-416d-88a0-d1eba6eb9bff",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "SAP S4 GDF2.0_BI_Workshop_BI Scope Split_23 Jan 2026_Test_Cathy 1739",
+            "id": "34054714-cc8e-4f31-9a55-e6e26593342b",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "SAP S4 GDF2.0_BI_Workshop_BI Scope Split_Cathy_Stack",
+            "id": "c35410ba-fe9c-473f-ae49-0de56d806347",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM0944_2 Feb 2026",
+            "id": "9af522d7-c9d1-499b-94c6-a3db0a0c9be6",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM0952_2 Feb 2026",
+            "id": "e6d4615b-66aa-487d-b6a2-b8afdd779c66",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1177_Corporate Reporting_revenue vs forecast__3 Feb 2026",
+            "id": "d027762c-69c5-4c43-a66d-65a77e4b92dc",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1186_Corporate Reporting_by store P&L performance__4 Feb 2026",
+            "id": "bfd3a392-5112-4306-aac5-a311648bc354",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1181_Corporate Reporting_weekly KPIs vs LY LW​​_4 Feb 2026",
+            "id": "51f92994-14c2-4c07-a55a-827314fc6655",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1187_Corporate Reporting_by key account P&L performance_4 Feb 2026",
+            "id": "84900f62-47d4-4800-9299-3e928ebcbd32",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM0944_5 Feb 2026",
+            "id": "e2776de5-b5d0-40bc-b7e4-3da393fd6746",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "DTC_RTM1475_Sales Reconciliation_5 Feb 2026",
+            "id": "f5d073f7-7920-4a5f-a52b-9fd9f2f642c6",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM0950_ROU (Right-of-Use Asset) movement Report(BPC)​_5 Feb 2026",
+            "id": "7d96ad23-b6b8-4380-b2df-1fd803ba9141",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "DTC_RTM1482_Transactional data comparison between OMS&SAP&WMS_5 Feb 2026",
+            "id": "a2c629b4-1bcf-4dc8-8308-abbd56379e0c",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Monitoring_Report1",
+            "id": "30eb3317-55df-43d7-a2d6-d2ac87214000",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1180_Corporate Reportin Weekly Comp KPI vs LY Plan Forecast",
+            "id": "3378d6ca-4abf-49bf-895f-769486cd9c29",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Xcelerate Landing Page",
+            "id": "84f6ee74-788c-4bb1-a2d2-1d2060dc51b9",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "pbi_testing_GL",
+            "id": "8895258d-2d1f-4117-8ab3-b51144cf7be0",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM0941_Dashboard for Payment Type (Auto-payment vs manual payment)​_6 Feb 2026",
+            "id": "e3e33f39-6496-41fa-89d9-25611f979de1",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "DTC_RTM1481_Tableau ZLOR022 - Inventory balance variance SAP & OMS_6 Feb 2026",
+            "id": "1374f0f1-e428-48ec-a6d0-64caf115ae90",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Logistics_RTM1365_OBD Comparison Report",
+            "id": "bbc285cb-833f-4f4a-a0be-8c1314731ed1",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM0942_Inventory recon with the inventory balance in SAP TB",
+            "id": "351088a8-302a-40e5-804f-09c2cd7ea080",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1173_PPV Analysis​",
+            "id": "288d4cea-6540-4093-a595-bf9393ae8d42",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "DTC_RTM1481_Inventory balance variance SAP & OMS",
+            "id": "f8e45d82-b889-4af0-a6d5-2fcb7a18be82",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "DTC_RTM1475_Sales Reconciliation",
+            "id": "74580c9b-3a22-46de-ae6f-5725f1a34335",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "DTC_RTM1482_Transactional data comparison between OMS&SAP&WMS",
+            "id": "e6474f8a-a9b2-471f-a323-d45e08f708cc",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM0941_Dashboard for Payment Type (Auto-payment vs manual payment)",
+            "id": "5f28e2a9-5830-4a41-a285-5797318cdf0b",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM0941_Dashboard for Payment Type (Auto-payment vs manual payment)​",
+            "id": "d50909cd-8130-47ae-8eb1-b6b0c4e8f47a",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1175_BPC Planning Template Tool for P&L Report",
+            "id": "8e5169cb-06ea-4764-9d36-55c3f59e0cff",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Personalize Visuals",
+            "id": "eb959ecb-f4f2-402b-bf22-7e4c2669f242",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM0944_Inventory balance (tie TB) and roll forward",
+            "id": "071be0a3-d6eb-4c58-9b74-8124d6e86b11",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1179 Sales Margin Report​",
+            "id": "8d3f9ab3-fe60-44d6-b99c-771e84d7bc02",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controlership_RTM1415_CN EC return report",
+            "id": "f5c7e5e9-94ae-4448-9670-0ce9d45d6772",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Row limit exceeded",
+            "id": "6027f62a-64ae-45a9-9a87-6b564ac6cd6c",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Row 104w",
+            "id": "5bdfe46c-0907-4e7e-aa4a-7747a8cbc5a5",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "PTP_RTM1390_DUT Reporting",
+            "id": "85480bfc-dd47-4773-8944-74cb52ac22aa",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "ControllerShip_RTM0943_APAC concur expense report",
+            "id": "00074ecf-71d4-4edd-8f03-59efe7196d3b",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "ControllerShip_RTM1618_RTR KPI Report Request",
+            "id": "0232aff8-207a-4147-a9bc-9bc50d36dc4d",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM1619_Billing and Cash Application KPI Dashboard",
+            "id": "bfe9df72-32a0-4af8-b3cb-84609f34d5e3",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1172_Margin Analysis",
+            "id": "6ffd229d-a453-4004-874d-88a05428575b",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1178_MKT expenses tracking Report",
+            "id": "e3482a30-3de5-4fec-9249-24b8f740500c",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1182_Monthly T&E Tracking Report",
+            "id": "71698deb-9906-48ea-b378-fe0bb4d9c0f2",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1183_Corporate Reporting_monthly Ecom KPIs",
+            "id": "0e4ea114-4f89-4818-ac06-ccabc4c1c328",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1185_CRM Tracking Report",
+            "id": "c0cd81bc-6e19-4502-97dc-b712b9d744c2",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "PTP_RTM1391_DUT Analytics View",
+            "id": "89ddd3ad-ee58-466b-b242-d34c78bf05b2",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1439_Project Budget Tracking Report",
+            "id": "83aeb137-bbc5-4ebb-bea4-83077aa037d4",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Logistics_RTM1365_OBD Comparison between SAP and 3PL",
+            "id": "84799510-1f49-4062-8269-5513069e71df",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "ControllerShip_RTM1416_One inventory ending balance report for event tee, one dedicated PO type is set for event tee",
+            "id": "869ea03d-8ff9-4f00-8b78-37986482817d",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "ControllerShip_RTM1417_One Transaction level report",
+            "id": "5e596fcf-70ca-4bc3-a856-945833a062e1",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM0939_Revenue&Cost and COGS calculation",
+            "id": "fc2ffa90-a87f-4350-b342-3518cf5afe3e",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "PTP_RTM0144_Ability to show demand supply match report",
+            "id": "f17b7597-0393-40d9-9df3-568b2ced098e",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Controllership_RTM0940_Volume total amount of FOB and non FOB item​",
+            "id": "8d014a57-e12e-4909-88af-0bf769436a2d",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "PTP_RTM1425_GDF SO report interface to DUT report",
+            "id": "78dc3c32-44e2-4075-a650-a8646c20acc6",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "PTP_RTM1441_Free stock analysis",
+            "id": "4a38121a-abcf-42aa-bca8-85eb0440e058",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "PTP_RTM1397_PO Report",
+            "id": "0235fb92-e7da-4570-bf35-9229e61c6492",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1180_Corporate Reporting_ Weekly Comp KPIs vs LY  Plan",
+            "id": "80edeeaf-3f6e-4676-9cc6-2d353acc7b95",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1187_Corporate Reporting_by key account P&L performance",
+            "id": "9c410e73-914b-4ba9-bba3-b9c5371588e5",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1186_Corporate Reporting_by store P&L performance",
+            "id": "3b067f68-f27a-482d-8d8a-ff517c486c2d",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Report Usage Metrics Report",
+            "id": "7b9194c9-bf26-4c79-94a8-9ec6f0dac190",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "PTP_RTM1443_RDC Taxation Risk Control",
+            "id": "26e2500b-0bbb-4f6b-afba-7d9b8573175b",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1488_Customer PC Profitability (Margin) Report",
+            "id": "f97d2231-6c8f-45aa-8399-2cf375be220a",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Usage Metrics Report",
+            "id": "083b543c-efc9-4358-8e4e-0f602f1b4b90",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "ControllerShip_RTM1416 and 1417",
+            "id": "7e93c8c3-b12a-4ab9-97cd-699092087285",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1189_Margin Report",
+            "id": "6be09ca6-e5d3-4249-841f-a05efea968d5",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "DTC_RTM1480_DC to store and store level replenishment",
+            "id": "85f6a076-5119-4b65-b3c7-4c8fbf6e5109",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Logistics_RTM1495 Inventory split by Channel",
+            "id": "9879f514-f82a-4b8c-912c-a0676b041b72",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1487_Inventory Rolling Report",
+            "id": "77de5c85-a30d-41f1-9247-fc4e0f82be66",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1181_Corporate Reporting_weekly KPIs vs LY LW​​",
+            "id": "972f49a4-41df-465b-a276-9fe20334093b",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1620_Excess Inventory report",
+            "id": "3c6d4885-0649-47b3-802d-7779b33fd146",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Logistics_RTM1490_GR discrepancy report (New)",
+            "id": "6f654481-adc5-41fa-acd9-d6b8f39f5af2",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Logistics_RTM1192_Return Business Analysis",
+            "id": "b83d645f-e7bd-42e9-b4dc-922d2b3e05f6",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Logistitc_RTM1489_write off report",
+            "id": "65831f79-bd01-4275-bc6e-005329e33ee0",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1181_Corporate Reporting_weekly KPIs vs LY LW",
+            "id": "a40435d1-84bf-4db2-b61e-25844f21c31e",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1181_Corporate Reporting_weekly KPIs vs LY LW_18 Mar 2026",
+            "id": "db573d25-e407-4556-8aba-6e8f5c3f2b72",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "OTC_RTM1367_Self-service Data Cube",
+            "id": "2a4c6744-f409-4145-b317-1e5f8b854552",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1184 and 1186",
+            "id": "fde25b61-35d9-4c19-af99-9803aaef8f43",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1188_Units Report",
+            "id": "412869fa-dbfc-443c-acb3-a52cf97eb5b6",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1176_Open PO​ Sourcing Variance Forecast",
+            "id": "ee34333d-c2ef-4403-ab4d-7d3a710973e0",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1174_Cap Variance Closing",
+            "id": "f822cd39-d288-48eb-827f-9f1d4bce22a0",
+            "type": "PowerBIReport (PBIRLegacy)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "FP&A_RTM1594 Billing Rebate Report",
+            "id": "cddf3957-b667-4652-9315-5fbf82f22ce8",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "rate alert",
+            "id": "917978d4-1f50-489d-ab05-e7e9ccc893aa",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Smart Discount",
+            "id": "5d75b221-60e9-45ed-b266-372677343640",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "GLOBAL SELL IN DASHBOARD - APAC",
+            "id": "0971e174-cf9f-423e-bb0a-344cdd2f9999",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "APAC Channel performance Analytics",
+            "id": "33b277e8-fd48-40a0-af50-95a1fdb4bb96",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Report Refresh by single table",
+            "id": "29398bb6-b8e1-4fdd-9c3a-575e63a7677e",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Carman_Performance_Testing",
+            "id": "14f44193-e5d7-4999-98bb-3ef4cd528fa6",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Carman-DUT Analytics View",
+            "id": "fd033ff4-24a7-4842-994b-05078dc9a884",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "APAC Partner Store Analytics",
+            "id": "d98e6f6e-7643-451a-b6d4-d7060f3af168",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Carman-DUT reporting",
+            "id": "a698ccc8-2bab-48ba-b9be-f59297a7eb4e",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Role Test",
+            "id": "24b74b8c-bf28-43c3-ba23-bb46a8e25d02",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Field Measure distribution",
+            "id": "08d5737f-c0a8-4458-a625-4b6edde8d3e8",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Imported-PerformanceTesting",
+            "id": "d0cb620e-b0ab-45ff-8555-af3154494e6f",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Mirrored-PerformanceTesting",
+            "id": "a62b6ec3-37bc-4147-a7b0-6a9b64fca03c",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "GR-GIT Forecast_VAN_20240728",
+            "id": "c0eac71f-70c3-49ae-8d2f-42dca3e38251",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Tableau metadata analysis v0.2",
+            "id": "e5ef21e1-c455-4047-9a68-508eeaf355fb",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Tableau metadata analysis v0.20.0 t0.10.1",
+            "id": "14f0dab0-5c81-49ba-8ed9-af8d99c4b691",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "Carman-DUT reporting-from DEV",
+            "id": "c99231b1-2b3a-43f0-8b2b-3544bffa95cd",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "POC_TEST_Paginated",
+            "id": "5d4b6681-f72a-44ce-9269-b263f02e9694",
+            "type": "PaginatedReport (RDL)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "CarmanPaginatedReport_1",
+            "id": "815314d3-b2cd-4a37-8701-81c57fd22438",
+            "type": "PaginatedReport (RDL)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "GR-GIT Forecast_VAN_20240728",
+            "id": "dcb05d29-d601-481c-b480-bec00c75a32d",
+            "type": "PaginatedReport (RDL)",
+            "state": "Active",
+            "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
         }
     ],
-    "PBI_TENANT_NAME": ""
+    "PBI_TENANT_NAME": "VFC Corp"
 }

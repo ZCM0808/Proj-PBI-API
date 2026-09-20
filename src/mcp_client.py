@@ -1,9 +1,10 @@
 import asyncio
 import json
-import uuid
-import subprocess
 import os
+import subprocess
 import sys
+import uuid
+
 
 class MCPClient:
     def __init__(self):
@@ -51,7 +52,7 @@ class MCPClient:
         }
         await self._send(init_req)
         await self._receive() # Wait for init response
-        
+
         # Send initialized notification
         await self._send({"jsonrpc": "2.0", "method": "notifications/initialized"})
 
@@ -65,11 +66,11 @@ class MCPClient:
             line = await self.process.stdout.readline()
             if not line:
                 raise Exception("MCP Server disconnected unexpectedly.")
-            
+
             line = line.decode("utf-8").strip()
             if not line:
                 continue
-                
+
             try:
                 response = json.loads(line)
                 # Ignore logs or notifications, only return actual responses
@@ -92,10 +93,10 @@ class MCPClient:
         }
         await self._send(req)
         response = await self._receive()
-        
+
         if "error" in response:
             raise Exception(f"MCP Tool Error: {response['error']}")
-            
+
         return response.get("result", {})
 
     async def close(self):

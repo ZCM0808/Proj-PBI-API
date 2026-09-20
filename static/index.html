@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260920_v0952">
+    <link rel="stylesheet" href="/static/style.css?v=20260920_v1715">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -642,82 +642,53 @@
                 </div>
 
                 <!-- 滚动配置区 -->
+                <!-- 滚动配置区 -->
                 <div class="pb-sidebar-scroll" style="flex: 1; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 10px; padding: 0; width: 100%; box-sizing: border-box;">
-                    <!-- A. 真实用户主体面板 (支持直接从下拉列表选择真实用户或自定义UPN) -->
-                    <div id="pb-user-principal-card" class="pb-control-card glass-panel" style="padding: 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--overlay-10);">
+                    <!-- A. 真实用户主体面板 (顶栏同款全功能下拉框，内嵌搜索与一键清空/恢复基准) -->
+                    <div id="pb-user-principal-card" class="pb-control-card glass-panel" style="padding: 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--overlay-10); position: relative;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                             <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 4px;">
                                 <span>🎯 目标用户主体 (User Principal)</span>
                             </label>
                         </div>
 
-                        <!-- 现有用户快速选择下拉框 (带搜索过滤与一键清空/恢复基准) -->
-                        <div class="pb-filter-bar" style="display: flex; gap: 6px; margin-bottom: 6px; align-items: center;">
-                            <div class="gtb-ws-search-box" style="flex: 1; height: 26px; padding: 2px 6px; background: rgba(0,0,0,0.2); border-radius: 4px; border: 1px solid var(--overlay-10); display: flex; align-items: center; gap: 4px;">
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity: 0.6; flex-shrink: 0;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                                <input type="text" id="pb-user-search-input" placeholder="搜索用户姓名/UPN/角色..." style="background: transparent; border: none; color: var(--text-primary); font-size: 0.72rem; outline: none; width: 100%;" oninput="window.PermissionBlueprint.filterUsers(this.value)">
+                        <!-- 目标用户主体自定义下拉框 -->
+                        <div class="pb-dropdown-box" id="pb-user-dropdown-box">
+                            <div class="pb-custom-trigger" id="pb-user-trigger" onclick="window.PermissionBlueprint.toggleDropdown('user', event)" title="点击展开模拟用户主体选择">
+                                <span id="pb-user-display-text" class="gtb-ws-display-text">-- 选择模拟用户主体 --</span>
+                                <svg class="gtb-ws-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
                             </div>
-                            <button type="button" class="gtb-ws-btn-sm" style="height: 26px; padding: 0 8px; font-size: 0.68rem; border-radius: 4px; background: rgba(255,255,255,0.06); border: 1px solid var(--overlay-10); color: var(--text-secondary); cursor: pointer; white-space: nowrap; transition: all 0.2s;" onclick="window.PermissionBlueprint.clearSimulatedUser()" title="清空当前选中的模拟用户主体，恢复中立基准拓扑">清空</button>
-                        </div>
-                        <div style="margin-bottom: 6px;">
-                            <select id="pb-user-preset-select" class="modern-input" style="width: 100%; font-size: 0.76rem; padding: 5px 8px;" onchange="window.PermissionBlueprint.selectUserPreset(this.value)">
-                                <!-- 动态注入真实用户 -->
-                            </select>
+
+                            <!-- 下拉浮层 (内含搜索过滤、清空操作与用户主体列表) -->
+                            <div class="pb-custom-dropdown" id="pb-user-dropdown" style="display: none;" onclick="event.stopPropagation()">
+                                <div class="gtb-ws-header">
+                                    <div class="gtb-ws-search-box">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                        <input type="text" id="pb-user-search-input" placeholder="搜索用户姓名/UPN/角色..." oninput="window.PermissionBlueprint.filterUsers(this.value)" autocomplete="off">
+                                    </div>
+                                    <div class="gtb-ws-actions">
+                                        <button type="button" class="gtb-ws-btn-sm" onclick="window.PermissionBlueprint.clearSimulatedUser()" title="清空当前选中的模拟用户主体，恢复中立基准拓扑">清空</button>
+                                    </div>
+                                </div>
+                                <div class="gtb-ws-list" id="pb-user-list">
+                                    <!-- 动态注入用户主体项 -->
+                                </div>
+                                <div class="gtb-ws-footer">
+                                    <span id="pb-user-stat-text">中立基准拓扑</span>
+                                </div>
+                            </div>
                         </div>
 
-                        <div id="pb-custom-user-box" style="display: none; margin-bottom: 8px; padding: 6px; background: rgba(0,0,0,0.2); border-radius: 6px; border: 1px dashed var(--accent);">
-                            <label style="font-size: 0.68rem; color: var(--text-secondary); display: block; margin-bottom: 4px;">输入任意企业邮箱 (UPN)：</label>
-                            <div style="display: flex; gap: 4px;">
-                                <input type="text" id="pb-custom-upn" class="modern-input" placeholder="如: zhangsan@yourcompany.com" style="flex: 1; font-size: 0.75rem; padding: 4px 8px;" oninput="window.PermissionBlueprint.updateCustomUpn(this.value)">
-                                <button type="button" class="btn-action-primary" onclick="window.PermissionBlueprint.applyCustomUpn()" style="padding: 2px 8px; font-size: 0.68rem; border-radius: 4px;">应用</button>
-                            </div>
-                        </div>
+                        <!-- 底层兼容选择器 -->
+                        <select id="pb-user-preset-select" style="display: none;" onchange="window.PermissionBlueprint.selectUserPreset(this.value)">
+                            <!-- 动态注入同步选项 -->
+                        </select>
 
                         <div style="display: none;">
                             <strong id="pb-current-upn-label"></strong>
                         </div>
                     </div>
 
-                    <!-- B. 目标工作区与目标模型面板 (对齐全局功能区真实预选值，带搜索与重置) -->
-                    <div id="pb-model-select-card" class="pb-control-card glass-panel" style="padding: 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--overlay-10); display: flex; flex-direction: column; gap: 8px;">
-                        <div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                                <label style="font-size: 0.72rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 4px;">
-                                    <span>🏢 目标工作区 (Target Workspace)</span>
-                                </label>
-                            </div>
-                            <div class="pb-filter-bar" style="display: flex; gap: 6px; margin-bottom: 4px; align-items: center;">
-                                <div class="gtb-ws-search-box" style="flex: 1; height: 26px; padding: 2px 6px; background: rgba(0,0,0,0.2); border-radius: 4px; border: 1px solid var(--overlay-10); display: flex; align-items: center; gap: 4px;">
-                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity: 0.6; flex-shrink: 0;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                                    <input type="text" id="pb-ws-search-input" placeholder="搜索工作区名称或ID..." style="background: transparent; border: none; color: var(--text-primary); font-size: 0.72rem; outline: none; width: 100%;" oninput="window.PermissionBlueprint.filterWorkspaces(this.value)">
-                                </div>
-                                <button type="button" class="gtb-ws-btn-sm" style="height: 26px; padding: 0 8px; font-size: 0.68rem; border-radius: 4px; background: rgba(255,255,255,0.06); border: 1px solid var(--overlay-10); color: var(--text-secondary); cursor: pointer; white-space: nowrap; transition: all 0.2s;" onclick="window.PermissionBlueprint.resetWorkspace()" title="重置工作区为默认项">重置</button>
-                            </div>
-                            <select id="pb-ws-select" class="modern-input" style="width: 100%; font-size: 0.76rem; padding: 5px 8px;" onchange="window.PermissionBlueprint.selectWorkspace(this.value)">
-                                <!-- 动态注入租户真实工作区 -->
-                            </select>
-                        </div>
-                        <div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                                <label style="font-size: 0.72rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 4px;">
-                                    <span>🗄️ 目标语义模型 (Target Semantic Model)</span>
-                                </label>
-                            </div>
-                            <div class="pb-filter-bar" style="display: flex; gap: 6px; margin-bottom: 4px; align-items: center;">
-                                <div class="gtb-ws-search-box" style="flex: 1; height: 26px; padding: 2px 6px; background: rgba(0,0,0,0.2); border-radius: 4px; border: 1px solid var(--overlay-10); display: flex; align-items: center; gap: 4px;">
-                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity: 0.6; flex-shrink: 0;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                                    <input type="text" id="pb-model-search-input" placeholder="搜索模型名称/模式..." style="background: transparent; border: none; color: var(--text-primary); font-size: 0.72rem; outline: none; width: 100%;" oninput="window.PermissionBlueprint.filterModels(this.value)">
-                                </div>
-                                <button type="button" class="gtb-ws-btn-sm" style="height: 26px; padding: 0 8px; font-size: 0.68rem; border-radius: 4px; background: rgba(255,255,255,0.06); border: 1px solid var(--overlay-10); color: var(--text-secondary); cursor: pointer; white-space: nowrap; transition: all 0.2s;" onclick="window.PermissionBlueprint.resetModel()" title="重置语义模型为默认项">重置</button>
-                            </div>
-                            <select id="pb-model-select" class="modern-input" style="width: 100%; font-size: 0.76rem; padding: 5px 8px;" onchange="window.PermissionBlueprint.selectModel(this.value)">
-                                <option value="">-- 请选择租户真实语义模型 --</option>
-                            </select>
-                        </div>
-                        <div style="font-size: 0.68rem; color: var(--text-secondary); display: none;">
-                            工作区：<span id="pb-model-ws-name" style="color: var(--text-primary); font-weight: 500;">Production Analytics</span>
-                        </div>
-                    </div>
 
                     <!-- C. 目标主体有效权限速览 (简明概览，主工作区展示 6 层全貌) -->
                     <div id="pb-effective-permissions-card" class="pb-control-card glass-panel" style="padding: 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--overlay-10);">
@@ -726,7 +697,10 @@
                                 <span>🛡️</span>
                                 <span>当前层级具体有效权限</span>
                             </label>
-                            <span id="pb-perm-summary-badge" class="gtb-auth-badge" style="font-size: 0.65rem; padding: 2px 6px;">实时穿透</span>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span id="pb-perm-summary-badge" class="gtb-auth-badge" style="font-size: 0.65rem; padding: 2px 6px;">实时穿透</span>
+                                <button type="button" id="pb-btn-switch-user-assets" class="gtb-ws-btn-sm" onclick="window.PermissionBlueprint.switchMainTab('user_assets')" title="在主工作区切换为 6 模块全景流转矩阵" style="padding: 1px 6px; font-size: 0.65rem; border-radius: 4px; border: 1px solid rgba(99, 102, 241, 0.4); color: #818cf8; background: rgba(99, 102, 241, 0.1); cursor: pointer;">全景链路 ↗</button>
+                            </div>
                         </div>
                         <!-- 功能预设筛选胶囊 (导出、GAC、RLS、OLS、建模构建) -->
                         <div id="pb-feature-capsules" class="pb-feature-capsules" style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px dashed var(--overlay-10);">
@@ -2563,13 +2537,16 @@
                 <!-- 顶部控制栏 (提供蓝图与 6 层矩阵无缝选项卡切换) -->
                 <div class="pb-canvas-header glass-panel" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 14px; border-bottom: 1px solid var(--overlay-10); background: var(--panel-bg); flex-shrink: 0; z-index: 20;">
                     <div style="display: flex; align-items: center; gap: 12px;">
-                        <!-- 蓝图与 6 层矩阵无缝分段切换器 -->
+                        <!-- 蓝图、理论推导矩阵与用户全景链路分段切换器 -->
                         <div class="pb-view-tabs" style="display: inline-flex; padding: 2px; background: rgba(0, 0, 0, 0.25); border: 1px solid var(--overlay-10); border-radius: 6px;">
                             <button type="button" id="pb-tab-blueprint-btn" class="pb-view-tab-btn active" onclick="window.PermissionBlueprint.switchMainTab('blueprint')">
                                 <span>🗺️ 权限流转蓝图</span>
                             </button>
                             <button type="button" id="pb-tab-matrix-btn" class="pb-view-tab-btn" onclick="window.PermissionBlueprint.switchMainTab('matrix')">
-                                <span>🏛️ 6 层流转矩阵</span>
+                                <span>🏛️ 6 层推导矩阵</span>
+                            </button>
+                            <button type="button" id="pb-tab-user-assets-btn" class="pb-view-tab-btn" onclick="window.PermissionBlueprint.switchMainTab('user_assets')">
+                                <span>🌐 用户全景权限链路</span>
                             </button>
                         </div>
                         <span class="gtb-auth-badge" id="pb-top-simulated-badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; font-size: 0.68rem; padding: 2px 8px;">
@@ -2606,6 +2583,18 @@
                         <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.renderMatrix()" title="重新计算并刷新矩阵" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer;">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
                             <span>刷新矩阵</span>
+                        </button>
+                        <button type="button" class="icon-btn zen-mode-btn" onclick="window.toggleZenMode()" title="沉浸全屏模式 (Zen Mode)" style="width: 28px; height: 28px; padding: 0; border-radius: 6px; border: 1px solid var(--overlay-10); background: transparent; transition: all 0.2s; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-expand"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-collapse" style="display: none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
+                        </button>
+                    </div>
+
+                    <!-- C. 用户全景权限链路专属工具栏 -->
+                    <div id="pb-user-assets-toolbar" style="display: none; align-items: center; gap: 8px;">
+                        <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.renderUserAssetsMatrix()" title="重新计算并刷新用户全景资产链路" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                            <span>刷新链路</span>
                         </button>
                         <button type="button" class="icon-btn zen-mode-btn" onclick="window.toggleZenMode()" title="沉浸全屏模式 (Zen Mode)" style="width: 28px; height: 28px; padding: 0; border-radius: 6px; border: 1px solid var(--overlay-10); background: transparent; transition: all 0.2s; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-expand"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
@@ -2681,6 +2670,11 @@
                 <!-- 2. 6 大层级横向全景流转矩阵 (点击顶部选项卡一键切换至此，从左到右依次排列) -->
                 <div id="pb-matrix-container" class="pb-matrix-container" style="display: none;">
                     <!-- 动态注入 6 大层级列 -->
+                </div>
+
+                <!-- 3. 用户全景资产权限流转矩阵 (Tenant -> Workspace -> Model -> Report -> Connection -> Pipeline) -->
+                <div id="pb-user-assets-container" class="pb-matrix-container" style="display: none;">
+                    <!-- 动态注入从左到右 6 大资产模块权限列 -->
                 </div>
 
                 <!-- 隐藏的旧抽屉占位，确保兼容 -->
@@ -3198,8 +3192,8 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260919_v1440"></script>
-    <script src="/static/script.js?v=20260920_v1445"></script>
-    <script src="/static/permission_blueprint.js?v=20260920_v1445"></script>
+    <script src="/static/script.js?v=20260920_v1760"></script>
+    <script src="/static/permission_blueprint.js?v=20260920_v1760"></script>
 
 
 

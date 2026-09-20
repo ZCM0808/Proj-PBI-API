@@ -1,35 +1,42 @@
 """Power BI API Web Explorer"""
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import uvicorn
-from fastapi import FastAPI, Request, Response, HTTPException, UploadFile, File
-from pydantic import BaseModel
-from src.local_pbi import scan_local_instances, run_dax_query
-from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
-from typing import Optional, Any, List, Dict
-from datetime import datetime, timedelta
+import asyncio
+import base64
 import hashlib
-import time
+import io
 import json
 import re
-import uuid
-import asyncio
 import subprocess
-import io
-import base64
-import requests  # type: ignore[import-untyped]
-import pyotp  # type: ignore[import-untyped]
+import time
+import uuid
+from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
 
+import pyotp  # type: ignore[import-untyped]
 import qrcode  # type: ignore[import-untyped]
+import requests  # type: ignore[import-untyped]
+import uvicorn
+from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile
+from fastapi.responses import (
+    HTMLResponse,
+    JSONResponse,
+    RedirectResponse,
+    StreamingResponse,
+)
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
 from src.config import Config, load_settings
+from src.local_pbi import run_dax_query, scan_local_instances
 from src.pbi_client import PBIClient
 from src.pipeline import PBIPipeline
-from contextlib import asynccontextmanager
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -42,14 +49,14 @@ async def lifespan(app: FastAPI):
         valid_keys = [k for k in keys if k]
         if not valid_keys:
             return
-        
+
         for api_key in valid_keys:
             for model_name in ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-3.5-flash"]:
                 try:
                     genai.configure(api_key=api_key)
                     model = genai.GenerativeModel(model_name)
                     await model.generate_content_async(
-                        "ping", 
+                        "ping",
                         request_options={"timeout": 2.0}
                     )
                     _model_instance = model
@@ -58,9 +65,9 @@ async def lifespan(app: FastAPI):
                     return
                 except Exception:
                     continue
-                    
+
         print("AI helper initialized in on-demand mode.")
-            
+
     asyncio.create_task(_warmup())
     yield
 
@@ -116,7 +123,7 @@ async def auth_middleware(request: Request, call_next):
                     return JSONResponse(status_code=401, content={"success": False, "message": "Session expired or unauthorized. Please login."})
                 else:
                     return RedirectResponse(url="/login", status_code=302)
-            
+
             parts = token.split(".", 2)
             mode = parts[1] if len(parts) == 3 else "mfa"
             if mode == "pwd1":
@@ -161,10 +168,10 @@ async def async_git_push():
             # Configure git user for Render environment
             subprocess.run(["git", "config", "user.email", "bot@render.com"], check=False)
             subprocess.run(["git", "config", "user.name", "Render Bot"], check=False)
-            
+
             subprocess.run(["git", "add", LOCKOUT_FILE], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(["git", "commit", "-m", "security: update device lockouts"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            
+
             # Push using GitHub PAT from environment variable
             github_pat = os.environ.get("GITHUB_PAT")
             if github_pat:
@@ -187,23 +194,23 @@ async def login(req: LoginRequest, request: Request, response: Response):
     if not device_id:
         device_id = str(uuid.uuid4())
         response.set_cookie(key="pbi_device_id", value=device_id, max_age=86400*365, path="/", samesite="lax")
-    
+
     now = time.time()
     device_record = lockouts.get(device_id, {"attempts": 0, "locked_until": 0})
-    
+
     if device_record["locked_until"] > now:
         remaining = int(device_record["locked_until"] - now)
         return JSONResponse(status_code=429, content={"success": False, "message": f"Device locked. Please try again in {remaining // 60}m {remaining % 60}s."})
-    
+
     if device_record["locked_until"] != 0 and device_record["locked_until"] < now:
         device_record["attempts"] = 0
         device_record["locked_until"] = 0
-    
+
     # ===== 平行分支 1: 使用 MFA 动态口令登录 (独立方式，无需主密码) =====
     if req.mfa_code:
         if not Config.MFA_SECRET:
             return JSONResponse(status_code=400, content={"success": False, "message": "MFA is not configured on server."})
-        
+
         totp = pyotp.TOTP(Config.MFA_SECRET)
         if not totp.verify(req.mfa_code, valid_window=1):
             device_record["attempts"] += 1
@@ -234,7 +241,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
         usage = device_record.get("daily_usage", {"date": today, "used_seconds": 0})
         if not is_dev_mode() and usage.get("date") == today and usage.get("used_seconds", 0) >= 3600:
             return JSONResponse(status_code=403, content={"success": False, "message": "今日密码登录 1 小时额度已用完，请使用 MFA 登录 (Daily limit reached)."})
-            
+
         if req.password != Config.APP_ACCESS_PASSWORD:
             device_record["attempts"] += 1
             if device_record["attempts"] >= 3:
@@ -289,32 +296,32 @@ async def ping_usage(request: Request):
     token = request.cookies.get("pbi_auth_token")
     if not token or not verify_auth_token(token):
         return JSONResponse(status_code=401, content={"success": False})
-        
+
     device_id = request.cookies.get("pbi_device_id")
     if not device_id:
         return JSONResponse(content={"success": True, "used_seconds": 0, "limit_reached": False})
-        
+
     parts = token.split(".", 2)
     mode = parts[1] if len(parts) == 3 else "mfa"
-    
+
     if is_dev_mode() or mode != "pwd1":
         return JSONResponse(content={"success": True, "used_seconds": 0, "limit_reached": False})
-        
+
     today = datetime.now().strftime("%Y-%m-%d")
     device_record = lockouts.get(device_id, {"attempts": 0, "locked_until": 0})
-    
+
     usage = device_record.get("daily_usage", {"date": today, "used_seconds": 0})
     if usage.get("date") != today:
         usage = {"date": today, "used_seconds": 0}
-        
+
     usage["used_seconds"] += 60
     device_record["daily_usage"] = usage
     lockouts[device_id] = device_record
     save_lockouts(lockouts)
-    
+
     return JSONResponse(content={
-        "success": True, 
-        "used_seconds": usage["used_seconds"], 
+        "success": True,
+        "used_seconds": usage["used_seconds"],
         "limit_reached": usage["used_seconds"] >= 3600
     })
 
@@ -437,20 +444,20 @@ async def renew_mfa_session(req: RenewMfaRequest, request: Request, response: Re
     token = request.cookies.get("pbi_auth_token")
     if not token or not verify_auth_token(token):
         return JSONResponse(status_code=401, content={"success": False, "message": "Unauthorized or session expired."})
-    
+
     # 验证只有 MFA 模式支持续期
     parts = token.split(".", 2)
     mode = parts[1] if len(parts) == 3 else "mfa"
     if mode != "mfa":
         return JSONResponse(status_code=400, content={"success": False, "message": "Password 1 session cannot be renewed. Please login with MFA mode."})
-    
+
     if not Config.MFA_SECRET:
         return JSONResponse(status_code=400, content={"success": False, "message": "MFA is not configured."})
-    
+
     totp = pyotp.TOTP(Config.MFA_SECRET)
     if not totp.verify(req.mfa_code, valid_window=1):
         return JSONResponse(status_code=401, content={"success": False, "message": "Invalid MFA code. Renew failed."})
-    
+
     now = int(time.time())
     new_token = make_auth_token(now, mode="mfa")
     response.set_cookie(key="pbi_auth_token", value=new_token, httponly=True, max_age=10800, path="/", samesite="lax")
@@ -520,25 +527,26 @@ def _get_valid_api_keys():
 
 @app.post("/api/chat")
 async def ai_chat(req: ChatRequest):
-    import google.generativeai as genai
     import json
     import uuid
+
+    import google.generativeai as genai
     global _current_api_key
-    
+
     os.environ["GRPC_DNS_RESOLVER"] = "native"
     valid_keys = _get_valid_api_keys()
-    
+
     if not valid_keys:
         return {"success": False, "message": "Backend missing GEMINI_API_KEY in .env"}
-    
+
     # 优先使用已证明可用的 Key，防止掉入 429 陷阱
     if _current_api_key and _current_api_key in valid_keys:
         valid_keys.remove(_current_api_key)
         valid_keys.insert(0, _current_api_key)
-        
+
     session_id = req.session_id or str(uuid.uuid4())
     chat = _chat_sessions.get(session_id)
-    
+
     last_error = None
     if not chat:
         for api_key in valid_keys:
@@ -553,7 +561,7 @@ async def ai_chat(req: ChatRequest):
             except Exception as e:
                 last_error = str(e)
                 continue
-                
+
     if not chat:
         return {"success": False, "message": f"All API keys failed to init session. Error: {last_error}"}
 
@@ -562,15 +570,15 @@ async def ai_chat(req: ChatRequest):
     if len(chat.history) == 0:
         project_kb = get_project_memory()
         full_message = f"=== 专属项目知识库 ===\n{project_kb}\n\n=== 用户请求 ===\n{req.message}"
-        
+
     try:
         response = await chat.send_message_async(full_message, stream=True)
-        
+
         async def event_generator():
             try:
                 # 告诉前端当前的 Session ID
                 yield f"data: {json.dumps({'success': True, 'type': 'session_info', 'session_id': session_id})}\n\n"
-                
+
                 async for chunk in response:
                     # 拦截特殊的 Tool Call（函数调用申请）
                     if getattr(chunk, 'parts', None):
@@ -583,7 +591,7 @@ async def ai_chat(req: ChatRequest):
                                 except Exception:
                                     # Fallback for protobuf mapping
                                     args_dict = {k: v for k, v in fc.args.items()} if hasattr(fc.args, 'items') else {}
-                                
+
                                 payload = {
                                     'success': True,
                                     'type': 'tool_request',
@@ -594,7 +602,7 @@ async def ai_chat(req: ChatRequest):
                                 yield f"data: {json.dumps(payload)}\n\n"
                                 yield "data: [DONE]\n\n"
                                 return
-                                
+
                     # 普通聊天文本，正常输出
                     try:
                         if chunk.text:
@@ -605,7 +613,7 @@ async def ai_chat(req: ChatRequest):
                 yield "data: [DONE]\n\n"
             except Exception as e:
                 yield f"data: {json.dumps({'success': False, 'message': str(e)})}\n\n"
-                
+
         return StreamingResponse(event_generator(), media_type="text/event-stream")
     except Exception as e:
         return {"success": False, "message": str(e)}
@@ -613,13 +621,14 @@ async def ai_chat(req: ChatRequest):
 @app.post("/api/tool/approve")
 async def ai_tool_approve(req: ToolApproveRequest):
     """前端点击批准/拒绝后，回调此接口执行工具，并继续聊天"""
-    from google.generativeai.types import content_types
     import json
-    
+
+    from google.generativeai.types import content_types
+
     chat = _chat_sessions.get(req.session_id)
     if not chat:
         return {"success": False, "message": "Session expired or not found. Please start a new chat."}
-        
+
     if not req.approved:
         tool_result = "User REJECTED the execution of this command for security reasons. Apologize and propose a different solution."
     else:
@@ -628,7 +637,7 @@ async def ai_tool_approve(req: ToolApproveRequest):
             tool_result = await asyncio.to_thread(run_powershell, req.tool_args.get("command", ""))
         else:
             tool_result = f"Unknown tool: {req.tool_name}"
-            
+
     try:
         # 将工具执行结果送回给 AI 大脑，触发它继续输出结果
         response = await chat.send_message_async(
@@ -638,7 +647,7 @@ async def ai_tool_approve(req: ToolApproveRequest):
             ),
             stream=True
         )
-        
+
         # 原封不动复用上面的流式下发器逻辑
         async def event_generator():
             try:
@@ -664,7 +673,7 @@ async def ai_tool_approve(req: ToolApproveRequest):
                 yield "data: [DONE]\n\n"
             except Exception as e:
                 yield f"data: {json.dumps({'success': False, 'message': str(e)})}\n\n"
-                
+
         return StreamingResponse(event_generator(), media_type="text/event-stream")
     except Exception as e:
         return {"success": False, "message": str(e)}
@@ -715,7 +724,7 @@ async def set_auth_mode(request: Request):
         username = data.get("username")
         if mode not in ["service_principal", "personal", "interactive"]:
             return {"success": False, "message": "无效的认证模式"}
-        
+
         settings = load_settings()
         if mode == "interactive":
             updates = {
@@ -743,7 +752,7 @@ async def set_auth_mode(request: Request):
             if username:
                 updates["USERNAME"] = username.strip()
             Config.update_config(updates)
-            
+
         global client
         client = PBIClient(Config())
         return {"success": True, "auth_mode": mode, "message": f"已切换至 {mode} 认证模式"}
@@ -767,12 +776,15 @@ async def verify_settings(request: Request):
             return {"success": False, "message": "TENANT_ID and CLIENT_ID are required."}
 
         authority_url = f"https://login.microsoftonline.com/{tenant_id}"
-        from msal import ConfidentialClientApplication, PublicClientApplication  # type: ignore[import-untyped]
-        
+        from msal import (  # type: ignore[import-untyped]
+            ConfidentialClientApplication,
+            PublicClientApplication,
+        )
+
         # Test default PowerBI scope
         scope = ["https://analysis.windows.net/powerbi/api/.default"]
         import asyncio
-        
+
         result = None
         if auth_mode == "personal":
             if not username or not password:
@@ -782,7 +794,7 @@ async def verify_settings(request: Request):
                 authority=authority_url,
             )
             result = await asyncio.to_thread(app.acquire_token_by_username_password, username=username, password=password, scopes=scope)
-            
+
             if result and "error" in result:
                 error_codes = result.get("error_codes", [])
                 error_msg = result.get("error", "").lower()
@@ -797,7 +809,7 @@ async def verify_settings(request: Request):
                 authority=authority_url,
             )
             result = await asyncio.to_thread(app.acquire_token_for_client, scopes=scope)
-        
+
         if result and "access_token" in result:
             app_name = "Unknown App"
             try:
@@ -825,11 +837,11 @@ async def verify_settings(request: Request):
 
             except Exception:
                 pass
-                
+
             tenant_name_display = tenant_name if 'tenant_name' in locals() and tenant_name else 'Unknown (Needs Permissions)'
             tenant_name_val = tenant_name if 'tenant_name' in locals() and tenant_name else ''
             return {"success": True, "message": f"Auth Success\nAuth Mode: {auth_mode}\nClient App: {app_name}\nTenant Name: {tenant_name_display}", "app_name": app_name, "tenant_name": tenant_name_val}
-        
+
         error_desc = result.get('error_description', result.get('error', 'Unknown Error')) if result else "No result returned"
         return {"success": False, "message": f"Auth failed: {error_desc}"}
     except Exception as e:
@@ -879,7 +891,7 @@ async def get_embed_info(request: Request):
         r_id = data.get("report_id")
         if not w_id or not r_id:
             return {"success": False, "error": "Missing workspace_id or report_id"}
-        
+
         import asyncio
         # Get report details
         report_info = await asyncio.to_thread(
@@ -887,7 +899,7 @@ async def get_embed_info(request: Request):
         )
         embed_url = report_info.get("embedUrl")
         dataset_id = report_info.get("datasetId")
-        
+
         # 1. Try standard GenerateToken first
         try:
             token_res = await asyncio.to_thread(
@@ -928,33 +940,34 @@ async def get_embed_info(request: Request):
 async def get_xmla_schema(workspace_id: str, dataset_id: str):
     try:
         # Load ADOMD Client
-        import clr  # type: ignore[import-untyped]
-        import sys
         import os
+        import sys
+
+        import clr  # type: ignore[import-untyped]
         dll_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "dlls", "lib", "net45"))
         if dll_path not in sys.path:
             sys.path.append(dll_path)
-        
+
         try:
             clr.AddReference('Microsoft.AnalysisServices.AdomdClient')
         except Exception:
             return {"success": False, "error": "ADOMD DLL missing."}
-            
+
         from pyadomd import Pyadomd  # type: ignore[import-untyped]
 
-        
+
         # Get workspace name
         groups = client.request('GET', f'/groups/{workspace_id}')
         if not groups or 'name' not in groups:
             return {"success": False, "error": "Cannot find workspace."}
         workspace_name = groups['name']
-        
+
         # Get dataset name
         ds = client.request('GET', f'/groups/{workspace_id}/datasets/{dataset_id}')
         if not ds or 'name' not in ds:
             return {"success": False, "error": "Cannot find dataset."}
         dataset_name = ds['name']
-        
+
         cfg = Config()
         conn_str = (
             f"Data Source=powerbi://api.powerbi.com/v1.0/myorg/{workspace_name};"
@@ -962,7 +975,7 @@ async def get_xmla_schema(workspace_id: str, dataset_id: str):
             f"User ID=app:{cfg.CLIENT_ID}@{cfg.TENANT_ID};"
             f"Password={cfg.CLIENT_SECRET};"
         )
-        
+
         schema_map = {}
         def process_xmla():
             with Pyadomd(conn_str) as conn:
@@ -970,7 +983,7 @@ async def get_xmla_schema(workspace_id: str, dataset_id: str):
                 with conn.cursor().execute("SELECT [ID], [Name] FROM $SYSTEM.TMSCHEMA_TABLES") as cursor:
                     for row in cursor.fetchall():
                         tables_dict[row[0]] = row[1]
-                        
+
                 with conn.cursor().execute("SELECT [TableID], [ExplicitName], [InferredName] FROM $SYSTEM.TMSCHEMA_COLUMNS") as cursor:
                     for row in cursor.fetchall():
                         tid = row[0]
@@ -979,7 +992,7 @@ async def get_xmla_schema(workspace_id: str, dataset_id: str):
                             # Format: 'Table'[Column]
                             full_name = f"'{tables_dict[tid]}'[{name}]"
                             schema_map[name.lower()] = full_name
-                            
+
                 with conn.cursor().execute("SELECT [TableID], [Name] FROM $SYSTEM.TMSCHEMA_MEASURES") as cursor:
                     for row in cursor.fetchall():
                         tid = row[0]
@@ -987,11 +1000,11 @@ async def get_xmla_schema(workspace_id: str, dataset_id: str):
                         if name and tid in tables_dict:
                             full_name = f"'{tables_dict[tid]}'[{name}]"
                             schema_map[name.lower()] = full_name
-        
+
         await asyncio.to_thread(process_xmla)
-        
+
         return {"success": True, "schema": schema_map}
-        
+
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -1001,18 +1014,19 @@ async def download_proxy(request: Request):
         data = await request.json()
     except Exception:
         return {"success": False, "error": "Invalid JSON format"}
-        
+
     method = data.get("method", "GET").upper()
     endpoint = data.get("endpoint", "").strip()
     api_type = data.get("api_type", "powerbi").strip().lower()
-    
+
     if endpoint.startswith("http://") or endpoint.startswith("https://"):
         return {"success": False, "error": "Security Error"}
     if not endpoint.startswith("/"):
         endpoint = "/" + endpoint
-        
+
     try:
         import asyncio
+
         from fastapi.responses import Response
         resp = await asyncio.to_thread(
             client.request, method, endpoint, api_type=api_type, raw_response=True
@@ -1027,8 +1041,8 @@ async def download_proxy(request: Request):
 
 @app.get("/api/db/history")
 async def get_history():
-    import sqlite3
     import json
+    import sqlite3
     try:
         conn = sqlite3.connect('data/pbi_app.db')
         c = conn.cursor()
@@ -1044,8 +1058,8 @@ async def get_history():
 
 @app.post("/api/db/history")
 async def sync_history(request: Request):
-    import sqlite3
     import json
+    import sqlite3
     try:
         data = await request.json()
         conn = sqlite3.connect('data/pbi_app.db')
@@ -1121,15 +1135,15 @@ async def delete_kv(key: str):
 
 @app.get("/api/bookmarks")
 async def get_bookmarks():
-    import sqlite3
     import json
     import os
+    import sqlite3
     try:
         if not os.path.exists('data'):
             os.makedirs('data')
         conn = sqlite3.connect('data/pbi_app.db')
         c = conn.cursor()
-        c.execute('''CREATE TABLE IF NOT EXISTS bookmarks 
+        c.execute('''CREATE TABLE IF NOT EXISTS bookmarks
                      (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT)''')
         c.execute('SELECT data FROM bookmarks ORDER BY id DESC LIMIT 1')
         row = c.fetchone()
@@ -1142,16 +1156,16 @@ async def get_bookmarks():
 
 @app.post("/api/bookmarks")
 async def sync_bookmarks(request: Request):
-    import sqlite3
     import json
     import os
+    import sqlite3
     try:
         data = await request.json()
         if not os.path.exists('data'):
             os.makedirs('data')
         conn = sqlite3.connect('data/pbi_app.db')
         c = conn.cursor()
-        c.execute('''CREATE TABLE IF NOT EXISTS bookmarks 
+        c.execute('''CREATE TABLE IF NOT EXISTS bookmarks
                      (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT)''')
         # Just store the entire array as a single JSON blob for the MVP database sync
         c.execute('INSERT INTO bookmarks (data) VALUES (?)', (json.dumps(data, ensure_ascii=False),))
@@ -1164,23 +1178,24 @@ async def sync_bookmarks(request: Request):
 
 @app.get("/api/graph_users")
 async def get_graph_users(query: str = ""):
-    from msal import ConfidentialClientApplication
-    import httpx
     import asyncio
-    
+
+    import httpx
+    from msal import ConfidentialClientApplication
+
     if not query:
         return {"success": False, "error": "Query is empty"}
-        
+
     try:
         from src.config import Config
         cfg = Config()
         client_id = cfg.CLIENT_ID
         client_secret = cfg.CLIENT_SECRET
         tenant_id = cfg.TENANT_ID
-        
+
         if not all([client_id, client_secret, tenant_id]):
             return {"success": False, "error": "Missing credentials in Config."}
-            
+
         authority_url = f"https://login.microsoftonline.com/{tenant_id}"
         app_msal = ConfidentialClientApplication(
             client_id=client_id,
@@ -1188,17 +1203,17 @@ async def get_graph_users(query: str = ""):
             authority=authority_url,
         )
         result = await asyncio.to_thread(app_msal.acquire_token_for_client, scopes=["https://graph.microsoft.com/.default"])
-        
+
         if "access_token" not in result:
             return {"success": False, "error": "Failed to get Graph token. Ensure User.Read.All is granted."}
-            
+
         token = result["access_token"]
-        
+
         # Call Graph API
         headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
         safe_q = query.replace("'", "''")
         url = f"https://graph.microsoft.com/v1.0/users?$filter=startswith(displayName,'{safe_q}') or startswith(userPrincipalName,'{safe_q}')&$top=10&$select=id,displayName,userPrincipalName"
-        
+
         async with httpx.AsyncClient() as http_client:
             resp = await http_client.get(url, headers=headers)
             if resp.status_code == 200:
@@ -1206,7 +1221,7 @@ async def get_graph_users(query: str = ""):
                 return {"success": True, "users": data.get("value", [])}
             else:
                 return {"success": False, "error": resp.text}
-                
+
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -1220,46 +1235,46 @@ async def proxy_request(request: Request):
         data = await request.json()
     except Exception:
         return {"success": False, "error": "Invalid JSON format"}
-        
+
     method = data.get("method", "GET").upper()
     endpoint = data.get("endpoint", "").strip()
     body = data.get("body", None)
     api_type = data.get("api_type", "powerbi").strip().lower()
-    
+
     # 拦截自然语言查询 NLQ
     if endpoint == "/api/local-model/nlq":
-        from src.dax_executor import get_dynamic_port, execute_dax_via_ps
+        from src.dax_executor import execute_dax_via_ps, get_dynamic_port
         try:
             nlq = ""
             if body and "query" in body:
                 nlq = body["query"]
             else:
                 return {"success": False, "error": "Missing 'query' field in body"}
-                
+
             port = get_dynamic_port()
-            
+
             # Use pre-warmed AI model to translate NLQ to DAX
             global _model_instance
             if not _model_instance:
                 return {"success": False, "error": "AI Model not initialized. Please configure API keys."}
-                
+
             prompt = f"""
             You are an expert Power BI DAX developer. The user wants to query the local model with this natural language request:
             "{nlq}"
-            
-            Write a valid DAX EVALUATE statement to retrieve this data. 
+
+            Write a valid DAX EVALUATE statement to retrieve this data.
             Do not include any explanation or markdown formatting like ```dax. Just return the raw DAX query text.
             For example, if they ask for top 10 products, return: EVALUATE TOPN(10, 'Dim_Products')
             """
-            
+
             ai_res = await _model_instance.generate_content_async(prompt)
             dax_query = ai_res.text.strip().replace("```dax", "").replace("```", "").strip()
-            
+
             # Execute the generated DAX
             result = await execute_dax_via_ps(port, dax_query)
-            
+
             return {
-                "success": True, 
+                "success": True,
                 "dax_generated": dax_query,
                 "data": result
             }
@@ -1276,19 +1291,19 @@ async def proxy_request(request: Request):
             return {"success": False, "error": str(e)}
 
     if endpoint in ["local-model/dax", "/local-model/dax", "/api/local-model/dax"]:
-        from src.dax_executor import get_dynamic_port, execute_dax_via_ps
+        from src.dax_executor import execute_dax_via_ps, get_dynamic_port
         try:
             dax = ""
             if body and "query" in body:
                 dax = body["query"]
             else:
                 return {"success": False, "error": "Missing 'query' field in body"}
-                
+
             port = body.get("port") if body else None
             if not port:
                 port = get_dynamic_port()
             result = await execute_dax_via_ps(port, dax)
-            
+
             return {
                 "success": True,
                 "data": result
@@ -1319,15 +1334,15 @@ async def proxy_request(request: Request):
     # [安全验证] 防止 SSRF (服务器端请求伪造)
     if endpoint.startswith("http://") or endpoint.startswith("https://"):
         return {"success": False, "error": "Security Error: Absolute URLs are strictly prohibited to prevent SSRF and Token leakage. Please provide only the API path."}
-    
+
     # 简单的格式化，确保 endpoint 开头有 /
     if not endpoint.startswith("/"):
         endpoint = "/" + endpoint
-        
+
     kwargs = {}
     if body:
         kwargs["json"] = body
-        
+
     try:
         import asyncio
         response_data = await asyncio.to_thread(
@@ -1355,13 +1370,13 @@ class LocalDaxRequest(BaseModel):
 
 @app.post("/api/local-model/dax")
 async def api_local_model_dax(req: LocalDaxRequest):
-    from src.dax_executor import get_dynamic_port, execute_dax_via_ps, execute_cloud_dax
+    from src.dax_executor import execute_cloud_dax, execute_dax_via_ps, get_dynamic_port
     try:
         # 如果指定了云端工作区和数据集，走云端（途径二 XMLA 优先 -> 自动回退途径一 REST API）
         if req.workspace_id and req.dataset_id:
             res = await execute_cloud_dax(req.workspace_id, req.dataset_id, req.query)
             return res
-        
+
         # 否则走本地实例
         port = req.port or get_dynamic_port()
         result = await execute_dax_via_ps(port, req.query)
@@ -1377,11 +1392,11 @@ async def clear_cache(request: Request):
         cache_file = ".msal_token_cache.json"
         if os.path.exists(cache_file):
             os.remove(cache_file)
-        
+
         # Reset the in-memory cache of the global client
         from msal import SerializableTokenCache  # type: ignore[import-untyped]
         client.cache = SerializableTokenCache()
-        
+
         return {"success": True, "message": "Token cache cleared successfully. You will be prompted to re-authenticate on your next request."}
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -1399,6 +1414,7 @@ def main():
 async def test_guid(request: Request):
     """Test a specific GUID via Power BI API"""
     import asyncio
+
     import requests  # type: ignore[import-untyped]
     from msal import ConfidentialClientApplication  # type: ignore[import-untyped]
 
@@ -1420,15 +1436,15 @@ async def test_guid(request: Request):
             client_credential=client_secret,
             authority=authority_url,
         )
-        
+
         scope = ["https://analysis.windows.net/powerbi/api/.default"]
         result = await asyncio.to_thread(app_msal.acquire_token_for_client, scopes=scope)
-        
+
         if "access_token" not in result:
             return {"success": False, "message": f"Auth failed: {result.get('error_description', 'Unknown Error')}"}
-        
+
         access_token = result["access_token"]
-        
+
         endpoints_to_try = []
         if item_type == "groups":
             endpoints_to_try = [
@@ -1487,7 +1503,7 @@ async def test_guid(request: Request):
 async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | None = None):
     """Scan workspaces, datasets, or reports using provided credentials"""
     import asyncio
-    
+
     try:
         data = await request.json()
         client_id = data.get("pbi_client_id", "").strip()
@@ -1497,7 +1513,7 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
         # Prefer body parameter over query parameter
         if body_workspace_id:
             workspace_id = body_workspace_id
-        
+
         auth_mode = data.get("auth_mode") or Config.AUTH_MODE
         is_personal = (auth_mode == "personal" or client_id == "04b07795-8ddb-461a-bbee-02f9e1bf7b46" or not client_secret)
 
@@ -1511,21 +1527,23 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
                 return {"success": False, "error": "Missing credentials. Please fill TENANT_ID, CLIENT_ID, and CLIENT_SECRET."}
 
             authority_url = f"https://login.microsoftonline.com/{tenant_id}"
-            from msal import ConfidentialClientApplication  # type: ignore[import-untyped]
+            from msal import (
+                ConfidentialClientApplication,  # type: ignore[import-untyped]
+            )
             app_conf = ConfidentialClientApplication(
                 client_id=client_id,
                 client_credential=client_secret,
                 authority=authority_url,
             )
-            
+
             scope = ["https://analysis.windows.net/powerbi/api/.default"]
             result = await asyncio.to_thread(app_conf.acquire_token_for_client, scopes=scope)
-            
+
             if "access_token" not in result:
                 return {"success": False, "error": f"Auth failed: {result.get('error_description', 'Unknown Error')}"}
-            
+
             access_token = result["access_token"]
-        
+
         # Candidate endpoints to try in order
         endpoints_to_try = []
         if item_type == "workspaces":
@@ -1563,7 +1581,7 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
             "Authorization": f"Bearer {access_token}",
             "Accept": "application/json"
         }
-        
+
         response_data = None
         error_details = []
         is_group_not_accessible = False
@@ -1617,7 +1635,7 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
                     "success": False,
                     "error": f"扫描失败：目标工作区对{auth_subject}无访问权限 (GroupNotAccessible)。该工作区通常是其他用户的私有个人工作区(PersonalWorkspace)或在当前租户中不存在。请在顶部工作区下拉框中选择您拥有的工作区，或点击“重新扫描工作区”自动同步当前账号拥有的真实工作区列表。详情: {err_msg}"
                 }
-            
+
             auth_subject_hint = "当前个人凭据缺少访问权限" if is_personal else "Service Principal 可能缺少 API 权限或管理员租户开关未启用"
             return {"success": False, "error": f"扫描失败：{auth_subject_hint}或工作区 ID 无效。详情: {err_msg}"}
 
@@ -1626,7 +1644,7 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
         for item in items:
             is_dedicated = bool(item.get("isOnDedicatedCapacity"))
             capacity_id = item.get("capacityId", "")
-            
+
             if item_type == "workspaces":
                 if is_dedicated:
                     raw_type = "Premium/Fabric"
@@ -1653,7 +1671,7 @@ async def scan_pbi_items(item_type: str, request: Request, workspace_id: str | N
             raw_state = item.get("state") or ("Active" if item.get("isRefreshable") is not None or item.get("reportType") else "Active")
             ws_prefix = f"[{item.get('workspaceName')}] " if item.get("workspaceName") else ""
             item_name = f"{ws_prefix}{item.get('name') or item.get('id')}"
-            
+
             # Generate XMLA Endpoint for workspaces
             xmla_endpoint = ""
             if item_type == "workspaces":
@@ -1687,7 +1705,9 @@ class NotePayload(BaseModel):
 def _sync_upload_to_github_rest(final_filename: str, content_bytes: bytes) -> tuple[bool, str]:
     import base64
     import os
+
     import requests
+
     from src.config import load_settings
     token = os.getenv("GITHUB_PAT") or os.getenv("GITHUB_TOKEN") or load_settings().get("GITHUB_PAT", "")
     if not token:
@@ -1699,7 +1719,7 @@ def _sync_upload_to_github_rest(final_filename: str, content_bytes: bytes) -> tu
     }
     path = f"static/uploads/notes/{final_filename}"
     url = f"https://api.github.com/repos/{repo}/contents/{path}"
-    
+
     sha = None
     try:
         r_get = requests.get(url, headers=headers, timeout=8)
@@ -1707,7 +1727,7 @@ def _sync_upload_to_github_rest(final_filename: str, content_bytes: bytes) -> tu
             sha = r_get.json().get("sha")
     except Exception:
         pass
-        
+
     try:
         b64_content = base64.b64encode(content_bytes).decode("utf-8")
         payload = {
@@ -1717,7 +1737,7 @@ def _sync_upload_to_github_rest(final_filename: str, content_bytes: bytes) -> tu
         }
         if sha:
             payload["sha"] = sha
-            
+
         r_put = requests.put(url, headers=headers, json=payload, timeout=15)
         if r_put.status_code in (200, 201):
             return True, "Successfully synced via REST API"
@@ -1740,7 +1760,7 @@ def _sync_note_to_github_rest(filename: str, content: str) -> tuple[bool, str]:
     }
     path = f"notes/{filename}"
     url = f"https://api.github.com/repos/{repo}/contents/{path}"
-    
+
     # 1. 检查远端是否已存在该文件 (获取其 SHA)
     sha = None
     try:
@@ -1749,7 +1769,7 @@ def _sync_note_to_github_rest(filename: str, content: str) -> tuple[bool, str]:
             sha = r_get.json().get("sha")
     except Exception:
         pass
-        
+
     # 2. 上传/更新文件内容
     try:
         import base64
@@ -1761,7 +1781,7 @@ def _sync_note_to_github_rest(filename: str, content: str) -> tuple[bool, str]:
         }
         if sha:
             payload["sha"] = sha
-            
+
         r_put = requests.put(url, headers=headers, json=payload, timeout=12)
         if r_put.status_code in (200, 201):
             return True, "Successfully synced to GitHub via REST API"
@@ -1782,7 +1802,7 @@ def _delete_note_from_github_rest(filename: str) -> tuple[bool, str]:
     }
     path = f"notes/{filename}"
     url = f"https://api.github.com/repos/{repo}/contents/{path}"
-    
+
     try:
         r_get = requests.get(url, headers=headers, timeout=8)
         if r_get.status_code == 200:
@@ -1805,18 +1825,18 @@ async def save_note(payload: NotePayload):
         root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         notes_dir = os.path.join(root_dir, "notes")
         os.makedirs(notes_dir, exist_ok=True)
-        
+
         raw_filename = payload.filename.strip() if payload.filename and payload.filename.strip() else f"{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
         # Security: Prevent Path Traversal by extracting only the basename
         filename = os.path.basename(raw_filename)
         if not filename.endswith(".md"):
             filename += ".md"
-            
+
         file_path = os.path.join(notes_dir, filename)
-        
+
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(payload.content)
-            
+
         # 优先尝试本地 Git CLI 推送
         git_pushed = False
         try:
@@ -1848,11 +1868,11 @@ async def delete_note(payload: DeleteNotePayload):
         filename = os.path.basename(payload.filename.strip())
         if not filename:
             raise HTTPException(status_code=400, detail="Invalid filename")
-        
+
         file_path = os.path.join(notes_dir, filename)
         if os.path.exists(file_path):
             os.remove(file_path)
-            
+
             def _git_push_note_delete():
                 try:
                     r = subprocess.run(["git", "rm", f"notes/{filename}"], cwd=root_dir, capture_output=True, text=True)
@@ -1864,7 +1884,7 @@ async def delete_note(payload: DeleteNotePayload):
                 except Exception:
                     pass
                 _delete_note_from_github_rest(filename)
-                    
+
             asyncio.create_task(asyncio.to_thread(_git_push_note_delete))
             return {"success": True, "message": f"Deleted {filename} and synced deletion to GitHub."}
         else:
@@ -1879,14 +1899,14 @@ async def search_notes(q: str = ""):
         notes_dir = os.path.join(root_dir, "notes")
         if not os.path.exists(notes_dir):
             return {"success": True, "results": []}
-        
+
         results: List[Dict[str, Any]] = []
         for filename in os.listdir(notes_dir):
             if filename.endswith(".md"):
                 file_path = os.path.join(notes_dir, filename)
                 with open(file_path, "r", encoding="utf-8") as f:
                     content = f.read()
-                    
+
                 if not q or q.lower() in filename.lower() or q.lower() in content.lower():
                     # extract a snippet if q is present in content
                     snippet = ""
@@ -1901,7 +1921,7 @@ async def search_notes(q: str = ""):
                             snippet = snippet + "..."
                     else:
                         snippet = content[:80].replace('\n', ' ') + ("..." if len(content) > 80 else "")
-                        
+
                     results.append({
                         "filename": filename,
                         "snippet": snippet,
@@ -1909,7 +1929,7 @@ async def search_notes(q: str = ""):
                         "size": os.path.getsize(file_path),
                         "content": content
                     })
-                    
+
         # Sort by mtime descending
         results.sort(key=lambda x: x["mtime"], reverse=True)
         return {"success": True, "results": results}
@@ -1923,17 +1943,17 @@ async def upload_note_file(file: UploadFile = File(...)):
         root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         uploads_dir = os.path.join(root_dir, "static", "uploads", "notes")
         os.makedirs(uploads_dir, exist_ok=True)
-        
+
         raw_name = file.filename or "uploaded_file"
         safe_name = os.path.basename(raw_name).replace(" ", "_")
         time_prefix = datetime.now().strftime("%Y%m%d_%H%M%S")
         final_filename = f"{time_prefix}_{safe_name}"
-        
+
         file_path = os.path.join(uploads_dir, final_filename)
         content = await file.read()
         with open(file_path, "wb") as f:
             f.write(content)
-            
+
         def _git_push_upload():
             git_pushed = False
             try:
@@ -1944,7 +1964,7 @@ async def upload_note_file(file: UploadFile = File(...)):
                     git_pushed = True
             except Exception:
                 pass
-            
+
             if not git_pushed:
                 print(f"Git CLI push failed for {final_filename}, falling back to REST API...")
                 ok, msg = _sync_upload_to_github_rest(final_filename, content)
@@ -1952,12 +1972,12 @@ async def upload_note_file(file: UploadFile = File(...)):
                     print(f"REST API push also failed: {msg}")
                 else:
                     print(f"REST API push succeeded for {final_filename}")
-                
+
         asyncio.create_task(asyncio.to_thread(_git_push_upload))
 
         file_url = f"/static/uploads/notes/{final_filename}"
         is_image = final_filename.lower().endswith((".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"))
-        
+
         return {
             "success": True,
             "filename": final_filename,
@@ -2005,21 +2025,21 @@ def analyze_visual(req: AnalyzeVisualRequest):
     report_id = req.report_id
     page_name = req.page_name
     visual_name = req.visual_name
-    
+
     if not all([workspace_id, report_id, page_name, visual_name]):
         return {"success": False, "error": "Missing parameters"}
-        
+
     try:
         res = client.request('GET', f'/groups/{workspace_id}/reports/{report_id}/Export', raw_response=True)
         if res.status_code != 200:
             return {"success": False, "error": f"Failed to download report. HTTP {res.status_code}: {res.text}"}
-            
+
         import io
         import json
         import zipfile
-        
+
         entities_used = set()
-        
+
         def extract_refs(obj):
             if isinstance(obj, dict):
                 if "Expression" in obj and "SourceRef" in obj["Expression"] and "Property" in obj:
@@ -2052,7 +2072,7 @@ def analyze_visual(req: AnalyzeVisualRequest):
                                 extract_refs(visual_data.get('visual', {}))
                             except Exception:
                                 pass
-                
+
                 # If PBIR parsing didn't yield anything (old PBIX format), try Layout
                 if not entities_used:
                     try:
@@ -2073,15 +2093,15 @@ def analyze_visual(req: AnalyzeVisualRequest):
                         pass
         except Exception as z_err:
             return {"success": False, "error": f"Zip extraction error: {str(z_err)}"}
-            
+
         if not entities_used:
             analysis_text = f"Target: Page '{page_name}', Visual '{visual_name}'\n\nResult:\nNo data fields or measures found (It might be a static shape or textbox)."
         else:
             fields_list = '\n'.join(f"  - {f}" for f in sorted(entities_used))
             analysis_text = f"Target: Page '{page_name}', Visual '{visual_name}'\n\nThis target references the following dataset fields/measures:\n{fields_list}\n\n(Note: Deep measure lineage tracking requires Premium XMLA/TMDL parsing and is not fully expanded here)."
-            
+
         return {"success": True, "analysis": analysis_text}
-        
+
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -2094,13 +2114,14 @@ if __name__ == "__main__":
 @app.post("/api/export_dataset/{workspace_id}/{dataset_id}")
 async def export_dataset_queries(workspace_id: str, dataset_id: str, request: Request):
     import asyncio
+
     import requests
     from msal import ConfidentialClientApplication
 
     try:
         data = await request.json()
         query = data.get("query", "").strip()
-        
+
         client_id = data.get("pbi_client_id", "").strip() or Config.CLIENT_ID
         client_secret = data.get("pbi_client_secret", "").strip() or Config.CLIENT_SECRET
         tenant_id = data.get("pbi_tenant_id", "").strip() or Config.TENANT_ID
@@ -2114,29 +2135,29 @@ async def export_dataset_queries(workspace_id: str, dataset_id: str, request: Re
             client_credential=client_secret,
             authority=authority_url,
         )
-        
+
         scope = ["https://analysis.windows.net/powerbi/api/.default"]
         result = await asyncio.to_thread(app_msal.acquire_token_for_client, scopes=scope)
-        
+
         if "access_token" not in result:
             return {"success": False, "message": f"Auth failed: {result.get('error_description', 'Unknown Error')}"}
-        
+
         access_token = result["access_token"]
-        
+
         endpoint = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/executeQueries"
-        
+
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json"
         }
-        
+
         payload = {
             "queries": [{"query": query}],
             "serializerSettings": {"includeNulls": True}
         }
-        
+
         response = await asyncio.to_thread(requests.post, endpoint, headers=headers, json=payload)
-        
+
         if response.status_code == 200:
             resp_data = response.json()
             results = resp_data.get("results", [])
@@ -2177,13 +2198,13 @@ async def run_harness_tests(request: Request):
         selected_tests = data.get("tests", [])
         if not selected_tests:
             return {"success": False, "error": "No tests selected"}
-        
+
         playwright_tests = [t["name"] for t in selected_tests if t["type"] == "playwright"]
         pytest_tests = [t["name"] for t in selected_tests if t["type"] == "pytest"]
-        
+
         import subprocess
         results = ""
-        
+
         if playwright_tests:
             # Replace all regex metacharacters with '.' to avoid Playwright test parsing errors
             pattern = "|".join([re.sub(r'[()[\]{}.?*+^$|\\]', '.', t) for t in playwright_tests])
@@ -2193,7 +2214,7 @@ async def run_harness_tests(request: Request):
             results += f"> Executed: {cmd} (Exit Code: {result.returncode})\n\n"
             results += "--- STDOUT ---\n" + (result.stdout or "No STDOUT") + "\n"
             results += "--- STDERR ---\n" + (result.stderr or "No STDERR") + "\n"
-            
+
         if pytest_tests:
             pattern = " or ".join(pytest_tests)
             pytest_cmd = ["pytest", "tests/test_backend.py", "-k", pattern, "-v"]
@@ -2202,7 +2223,7 @@ async def run_harness_tests(request: Request):
             results += f"> Executed: {' '.join(pytest_cmd)} (Exit Code: {result.returncode})\n\n"
             results += "--- STDOUT ---\n" + (result.stdout or "No STDOUT") + "\n"
             results += "--- STDERR ---\n" + (result.stderr or "No STDERR") + "\n"
-            
+
         return {"success": True, "logs": results}
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -2269,13 +2290,13 @@ async def get_auth_info():
         tenant_id = settings.get("PBI_TENANT_ID", Config.TENANT_ID)
         tenant_name = settings.get("PBI_TENANT_NAME", Config.TENANT_NAME)
         app_name = settings.get("PBI_APP_NAME") or os.getenv("PBI_APP_NAME", "")
-        
+
         # 智能发现真实租户组织全称 (Auto-resolve real Tenant Brand Name)
         if (not tenant_name or tenant_name in ("默认组织", "未命名")) and username and "@" in username:
             try:
+                import json as pyjson
                 import urllib.parse
                 import urllib.request
-                import json as pyjson
                 realm_url = f"https://login.microsoftonline.com/getuserrealm.srf?login={urllib.parse.quote(username)}&json=1"
                 req = urllib.request.Request(realm_url, headers={"User-Agent": "Mozilla/5.0"})
                 with urllib.request.urlopen(req, timeout=1.8) as resp:
@@ -2286,7 +2307,7 @@ async def get_auth_info():
                         Config.update_config({"TENANT_NAME": brand})
             except Exception:
                 pass
-        
+
         # 判断是否处于微软现代长效交互认证
         from src.pbi_client import _GLOBAL_TOKEN_CACHE
         now = time.time()
@@ -2317,7 +2338,7 @@ async def get_auth_info():
             active_desc = "Service Principal · 客户端机密"
             if not app_name:
                 app_name = f"App ({client_id[:8]}...)" if client_id else "APP_Automation"
-            
+
         return {
             "success": True,
             "auth_mode": auth_mode,
@@ -2343,16 +2364,16 @@ async def init_device_code_flow(req: Optional[DeviceCodeInitRequest] = None):
         # 个人委派认证使用微软官方跨租户通用 Power BI 客户端 (04b07795...)，支持任意企业租户账号 (如 @vfc.com, @corp 等)
         client_id = (req.client_id if req and req.client_id else None) or "04b07795-8ddb-461a-bbee-02f9e1bf7b46"
         tenant_id = (req.tenant_id if req and req.tenant_id else None) or "organizations"
-        
+
         authority = f"https://login.microsoftonline.com/{tenant_id}"
         app = PublicClientApplication(client_id=client_id, authority=authority)
-        
+
         scopes = ["https://analysis.windows.net/powerbi/api/.default"]
         flow = await asyncio.to_thread(app.initiate_device_flow, scopes=scopes)
-        
+
         if not flow or "user_code" not in flow:
             return {"success": False, "message": f"初始化设备代码流失败: {flow.get('error_description', '未知错误')}"}
-        
+
         flow_id = str(uuid.uuid4())
         flow_record: Dict[str, Any] = {
             "flow": flow,
@@ -2361,7 +2382,7 @@ async def init_device_code_flow(req: Optional[DeviceCodeInitRequest] = None):
             "status": "pending",
             "created_at": time.time()
         }
-        
+
         # 启动后台轮询任务
         async def poll_task():
             try:
@@ -2376,10 +2397,10 @@ async def init_device_code_flow(req: Optional[DeviceCodeInitRequest] = None):
             except Exception as ex:
                 flow_record["status"] = "error"
                 flow_record["error"] = str(ex)
-                
+
         asyncio.create_task(poll_task())
         _active_device_flows[flow_id] = flow_record
-        
+
         return {
             "success": True,
             "flow_id": flow_id,
@@ -2396,7 +2417,7 @@ async def poll_device_code_flow(flow_id: str):
     """轮询 Device Code Flow 认证状态并自动解析租户与用户信息"""
     if flow_id not in _active_device_flows:
         return {"status": "error", "message": "无效或已过期的 Flow ID"}
-    
+
     record = _active_device_flows[flow_id]
     status = record.get("status", "pending")
     if status == "completed":
@@ -2406,12 +2427,12 @@ async def poll_device_code_flow(flow_id: str):
         tenant_id = id_claims.get("tid", "")
         username = id_claims.get("preferred_username", "") or id_claims.get("upn", "")
         user_name = id_claims.get("name", "")
-        
+
         # 如果从 claims 没取到，尝试从 token JWT payload 解码
         if (not tenant_id or not username) and token:
             try:
-                import json
                 import base64
+                import json
                 parts = token.split(".")
                 if len(parts) >= 2:
                     padding = 4 - len(parts[1]) % 4
@@ -2423,7 +2444,7 @@ async def poll_device_code_flow(flow_id: str):
                         username = payload_json.get("upn", "") or payload_json.get("unique_name", "")
             except Exception:
                 pass
-        
+
         return {
             "status": "completed",
             "token": token,
@@ -2450,15 +2471,15 @@ async def apply_device_code_token(req: DeviceCodeApplyRequest):
         token = (req.token or "").strip()
         if token.lower().startswith("bearer "):
             token = token[7:].strip()
-            
+
         tenant_id = (req.tenant_id or "").strip()
         username = (req.username or "").strip()
-        
+
         # 如果未提供 tenant_id 或 username，尝试从 token JWT 解码提取
         if token and (not tenant_id or not username):
             try:
-                import json
                 import base64
+                import json
                 parts = token.split(".")
                 if len(parts) >= 2:
                     padding = 4 - len(parts[1]) % 4
@@ -2470,7 +2491,7 @@ async def apply_device_code_token(req: DeviceCodeApplyRequest):
                         username = payload_json.get("upn", "") or payload_json.get("unique_name", "") or payload_json.get("email", "")
             except Exception:
                 pass
-        
+
         updates = {
             "AUTH_MODE": "personal",
             "CLIENT_ID": "04b07795-8ddb-461a-bbee-02f9e1bf7b46"
@@ -2479,12 +2500,12 @@ async def apply_device_code_token(req: DeviceCodeApplyRequest):
             updates["TENANT_ID"] = tenant_id
         if username:
             updates["USERNAME"] = username
-            
+
         Config.update_config(updates)
-        
+
         if token:
             set_manual_token(token, auth_mode="personal", identity=username or Config.USERNAME)
-            
+
         global client
         client = PBIClient(Config())
         return {
@@ -2547,24 +2568,24 @@ async def init_interactive_login(req: Optional[InteractiveLoginInitRequest] = No
         tenant = (req.tenant_id if req and req.tenant_id else Config.TENANT_ID) or "7d97f400-69b4-4df4-a009-c9806ec70783"
         username = (req.username if req and req.username else Config.USERNAME) or "carman_zhao@vfc.com"
         port = (req.redirect_port if req and req.redirect_port else 8081)
-        
+
         authority = f"https://login.microsoftonline.com/{tenant.strip()}"
         client_id = "04b07795-8ddb-461a-bbee-02f9e1bf7b46"
         redirect_uri = f"http://localhost:{port}"
-        
+
         from msal import PublicClientApplication  # type: ignore[import-untyped]
         app_msal = PublicClientApplication(
             client_id=client_id,
             authority=authority,
             token_cache=client.cache
         )
-        
+
         scopes = ["https://analysis.windows.net/powerbi/api/.default"]
-        
+
         flow = None
         state = None
         auth_url = None
-        
+
         try:
             # 限制 MSAL 在线元数据探测不超过 2.5 秒，超时自动降级到本地即时 PKCE 生成
             flow = await asyncio.wait_for(
@@ -2581,11 +2602,11 @@ async def init_interactive_login(req: Optional[InteractiveLoginInitRequest] = No
                 auth_url = flow.get("auth_uri")
         except Exception:
             pass
-            
+
         if not flow or not auth_url or not state:
             # 离线极速 PKCE 构建，0ms 瞬间生成微软官方登录 URL，免疫网络连接延迟
             auth_url, state, flow = _generate_pkce_auth_flow(tenant.strip(), client_id, redirect_uri, username, scopes)
-            
+
         _active_interactive_flows[state] = {
             "flow": flow,
             "app": app_msal,
@@ -2593,7 +2614,7 @@ async def init_interactive_login(req: Optional[InteractiveLoginInitRequest] = No
             "username": username,
             "created_at": time.time()
         }
-        
+
         return {
             "success": True,
             "auth_url": auth_url,
@@ -2610,7 +2631,7 @@ async def handle_oauth_callback(request: Request):
     state = request.query_params.get("state", "")
     error = request.query_params.get("error", "")
     error_desc = request.query_params.get("error_description", "")
-    
+
     if error:
         return HTMLResponse(content=f"""
         <!DOCTYPE html>
@@ -2627,7 +2648,7 @@ async def handle_oauth_callback(request: Request):
         </body>
         </html>
         """, status_code=400)
-        
+
     record = _active_interactive_flows.pop(state, None)
     if not record:
         return HTMLResponse(content="""
@@ -2638,20 +2659,20 @@ async def handle_oauth_callback(request: Request):
             <button onclick="window.close()" style="padding:8px 16px;cursor:pointer;">关闭窗口</button>
         </body></html>
         """, status_code=400)
-        
+
     try:
         global client
         app_msal = record["app"]
         flow = record["flow"]
         res = app_msal.acquire_token_by_auth_code_flow(flow, dict(request.query_params))
         client._save_cache()
-        
+
         if res and "access_token" in res:
             token = res["access_token"]
             id_claims = res.get("id_token_claims", {}) or {}
             tenant_id = id_claims.get("tid", "") or record["tenant_id"]
             username = id_claims.get("preferred_username", "") or id_claims.get("upn", "") or record["username"]
-            
+
             # 持久化配置
             Config.update_config({
                 "AUTH_MODE": "personal",
@@ -2659,13 +2680,13 @@ async def handle_oauth_callback(request: Request):
                 "TENANT_ID": tenant_id,
                 "USERNAME": username
             })
-            
+
             # 注入全局 Token 缓存
             from src.pbi_client import set_manual_token
             set_manual_token(token, auth_mode="personal", identity=username, expires_in=int(res.get("expires_in", 3600)))
-            
+
             client = PBIClient(Config())
-            
+
             return HTMLResponse(content=f"""
             <!DOCTYPE html>
             <html>
@@ -2694,7 +2715,7 @@ async def handle_oauth_callback(request: Request):
                                 window.opener.postMessage(payload, '*');
                             }}
                         }} catch (e) {{}}
-                        
+
                         let remaining = 2;
                         const timer = setInterval(() => {{
                             remaining -= 1;
@@ -2765,16 +2786,16 @@ async def scan_xmla_datasets(req: XMLAScanRequest):
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json"
         }
-        
+
         # 解析工作区名称 / GUID (支持 URL 编码解码与前后空格清理)
         endpoint = req.xmla_endpoint.rstrip("/")
         ws_name_raw = endpoint.split("/")[-1] if "/" in endpoint else ""
         ws_name = urllib.parse.unquote(ws_name_raw).strip()
-        
+
         # 1. 尝试通过 Workspace 列表匹配 Group ID
         workspace_id = None
         available_workspaces = []
-        
+
         for grp_ep in ["https://api.powerbi.com/v1.0/myorg/groups?$top=5000", "https://api.powerbi.com/v1.0/myorg/admin/groups?$top=5000"]:
             try:
                 groups_res = await asyncio.to_thread(requests.get, grp_ep, headers=headers, timeout=8)
@@ -2843,7 +2864,7 @@ def _map_dax_datatype(dt_val, col_name="", min_val="", max_val=""):
         return "Boolean (布尔)"
     elif dt_str in ["17", "binary"]:
         return "Binary (二进制)"
-    
+
     # 智能启发式推导：根据 Min/Max 范围与字段命名推导真实数据类型
     s_min = str(min_val).strip()
     s_max = str(max_val).strip()
@@ -2860,13 +2881,13 @@ def _map_dax_datatype(dt_val, col_name="", min_val="", max_val=""):
             pass
         if s_min.lower() in ["true", "false"]:
             return "Boolean (布尔)"
-            
+
     c_lower = col_name.lower()
     if any(k in c_lower for k in ["date", "time", "year", "month", "day", "_dt", "fiscal", "created", "modified"]):
         return "DateTime (日期时间)"
     if any(c_lower.endswith(k) for k in ["_id", "id", "qty", "count", "amount", "sales", "price", "cost", "total", "rate", "sum", "avg"]):
         return "Numeric (数值/标识)"
-        
+
     return "String (文本)"
 
 @app.post("/api/xmla/scan-tables")
@@ -2880,7 +2901,7 @@ async def scan_xmla_tables(req: XMLATablesRequest):
             return {"success": False, "message": "缺少有效 Access Token"}
 
         pbi_headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-        
+
         # 1. 尝试解析工作区 Group ID (支持 URL 编码解码与大小写模糊匹配)
         endpoint = req.xmla_endpoint.rstrip("/")
         ws_name_raw = endpoint.split("/")[-1] if "/" in endpoint else ""
@@ -3067,14 +3088,14 @@ async def trigger_xmla_refresh(req: XMLARefreshRequest):
             return {"success": False, "message": "缺少有效 Access Token"}
 
         http_xmla_url = req.xmla_endpoint.replace("powerbi://", "https://").rstrip("/") + "/xmla"
-        
+
         if req.partition_name:
             tmsl_obj = {"database": req.dataset_name, "table": req.table_name, "partition": req.partition_name}
         else:
             tmsl_obj = {"database": req.dataset_name, "table": req.table_name}
-            
+
         tmsl_payload = {"refresh": {"type": req.refresh_type or "full", "objects": [tmsl_obj]}}
-        
+
         xmla_execute_headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "text/xml; charset=utf-8",
@@ -3083,10 +3104,10 @@ async def trigger_xmla_refresh(req: XMLARefreshRequest):
         xmla_soap_body = f"""<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><Execute xmlns="urn:schemas-microsoft-com:xmla"><Command><Statement>{json.dumps(tmsl_payload)}</Statement></Command><Properties><PropertyList><Catalog>{req.dataset_name}</Catalog></PropertyList></Properties></Execute></soap:Body></soap:Envelope>"""
 
         exec_res = await asyncio.to_thread(requests.post, http_xmla_url, data=xmla_soap_body.encode('utf-8'), headers=xmla_execute_headers, timeout=20)
-        
+
         if exec_res.status_code == 200 and "<Error" not in exec_res.text:
             return {"success": True, "method": "XMLA SOAP", "message": "刷新指令已成功下发至 Power BI XMLA 引擎！"}
-        
+
         # 降级尝试 Enhanced Refresh API
         if req.dataset_id:
             endpoint = req.xmla_endpoint.rstrip("/")
@@ -3122,7 +3143,7 @@ async def check_xmla_refresh_status(req: XMLATablesRequest):
             return {"success": False, "message": "缺少有效 Access Token"}
 
         pbi_headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-        
+
         # 尝试解析 workspace_id 与 dataset_id
         endpoint = req.xmla_endpoint.rstrip("/")
         ws_name = endpoint.split("/")[-1] if "/" in endpoint else ""
@@ -3151,7 +3172,7 @@ async def check_xmla_refresh_status(req: XMLATablesRequest):
                 pass
 
         ref_status_url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshes?$top=20" if (workspace_id and dataset_id) else (f"https://api.powerbi.com/v1.0/myorg/datasets/{dataset_id}/refreshes?$top=20" if dataset_id else "")
-        
+
         history = []
         if ref_status_url:
             s_res = await asyncio.to_thread(requests.get, ref_status_url, headers=pbi_headers, timeout=10)
@@ -3160,21 +3181,21 @@ async def check_xmla_refresh_status(req: XMLATablesRequest):
                 for item in raw_history:
                     start_raw = item.get("startTime", "")
                     end_raw = item.get("endTime", "")
-                    
+
                     start_bj = ""
                     end_bj = "进行中..."
                     duration_str = "进行中..."
-                    
+
                     if start_raw:
                         clean_s = start_raw[:19].replace("T", " ")
                         dt_s = datetime.strptime(clean_s, "%Y-%m-%d %H:%M:%S") + timedelta(hours=8)
                         start_bj = dt_s.strftime("%Y-%m-%d %H:%M:%S") + " (UTC+8)"
-                        
+
                         if end_raw:
                             clean_e = end_raw[:19].replace("T", " ")
                             dt_e = datetime.strptime(clean_e, "%Y-%m-%d %H:%M:%S") + timedelta(hours=8)
                             end_bj = dt_e.strftime("%Y-%m-%d %H:%M:%S") + " (UTC+8)"
-                            
+
                             diff_sec = int((dt_e - dt_s).total_seconds())
                             if diff_sec >= 0:
                                 m, s = divmod(diff_sec, 60)

@@ -1,8 +1,9 @@
 import asyncio
 import json
 from typing import AsyncGenerator
-from .pbi_client import PBIClient
+
 from .config import Config
+from .pbi_client import PBIClient
 
 try:
     import pyodbc  # type: ignore[import-not-found]

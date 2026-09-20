@@ -1,8 +1,8 @@
-import subprocess
+import asyncio
 import json
 import os
-import asyncio
 import re
+import subprocess
 import zipfile
 
 # Locate the ADOMD DLL path once at import time
@@ -259,11 +259,12 @@ async def execute_cloud_dax(workspace_name_or_id: str, dataset_name_or_id: str, 
     1. Try XMLA Endpoint via ADOMD.NET (Method 2: Premium / Fabric XMLA)
     2. Fallback silently to Power BI REST API executeQueries (Method 1: Pro / Standard REST)
     """
-    from src.config import Config
     import requests  # type: ignore[import-untyped]
 
+    from src.config import Config
+
     config = Config()
-    
+
     # ── 途径二：尝试 XMLA Endpoint 直连 ──
     xmla_error = None
     if config.AUTH_MODE != "personal" and config.CLIENT_ID and config.CLIENT_SECRET and config.TENANT_ID:
@@ -295,7 +296,7 @@ async def execute_cloud_dax(workspace_name_or_id: str, dataset_name_or_id: str, 
                 f"Password={token};"
                 f"Application Name=PBI-API-Explorer;"
             )
-            
+
             dll_path = _find_adomd_dll()
             bin_dir = os.path.dirname(dll_path) if dll_path else ""
 
@@ -343,7 +344,7 @@ async def execute_cloud_dax(workspace_name_or_id: str, dataset_name_or_id: str, 
             $conn.Close()
             $result | ConvertTo-Json -Compress -Depth 10
             """
-            
+
             script_path = os.path.join(os.environ.get("TEMP", "C:/Windows/Temp"), f"run_cloud_xmla_{os.getpid()}.ps1")
             with open(script_path, "w", encoding="utf-8") as f:
                 f.write(ps_script)
@@ -375,17 +376,17 @@ async def execute_cloud_dax(workspace_name_or_id: str, dataset_name_or_id: str, 
         from src.pbi_client import PBIClient
         client = PBIClient(config)
         token = client._get_token("powerbi")
-        
+
         # 智能判断工作区 URL 结构（如果传入 'my'、'me' 或空则调用个人工作区，否则调用群组工作区）
         ws_clean = (workspace_name_or_id or '').strip()
         if not ws_clean or ws_clean.lower() in ('my', 'me', 'myorg', 'default', 'null', 'undefined'):
             url = f"https://api.powerbi.com/v1.0/myorg/datasets/{dataset_name_or_id}/executeQueries"
         else:
             url = f"https://api.powerbi.com/v1.0/myorg/groups/{ws_clean}/datasets/{dataset_name_or_id}/executeQueries"
-        
+
         # Ensure query is clean
         dax_stmt = query.strip()
-        
+
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json"
@@ -394,9 +395,9 @@ async def execute_cloud_dax(workspace_name_or_id: str, dataset_name_or_id: str, 
             "queries": [{"query": dax_stmt}],
             "serializerSettings": {"includeNulls": True}
         }
-        
+
         resp = await asyncio.to_thread(requests.post, url, headers=headers, json=payload, timeout=60)
-        
+
         if resp.status_code == 200:
             res_json = resp.json()
             rows = []
