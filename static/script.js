@@ -3225,14 +3225,38 @@ window.cascadeScanWorkspacesAndAssets = async function(customTargetWsId) {
         let activeWsId = customTargetWsId || '';
         let wsList = [];
         if (wsRet && wsRet.success && Array.isArray(wsRet.data)) {
-            wsList = wsRet.data.map(item => ({
+            const rawWs = wsRet.data.map(item => ({
                 id: item.id,
                 name: item.name,
                 alias: item.name,
                 type: item.type || '',
                 state: item.state || ''
             }));
+            // 严格过滤跨域与私有工作区
+            wsList = window.cleanseCrossDomainWorkspaces ? window.cleanseCrossDomainWorkspaces(rawWs) : rawWs;
             localStorage.setItem('pbi_workspaces', JSON.stringify(wsList));
+
+            // ⚡ 关键持久化：将当前扫描出的真实合法工作区列表异步保存至后端 global_settings.json
+            // 确保刷新页面后服务端下发的是最新合法的 vfc 域工作区，而不是旧垃圾数据
+            fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ PBI_WORKSPACES: wsList })
+            }).catch(e => console.warn('Failed to persist scanned workspaces to backend:', e));
+
+            // ⚡ 同步清理失效的 XMLA 历史记录，杜绝跨域端点残留
+            try {
+                const validNames = new Set(wsList.map(w => (w.alias || w.name || '').trim().toLowerCase()));
+                let xmlaHist = JSON.parse(localStorage.getItem('pbi-xmla-history') || '[]');
+                if (Array.isArray(xmlaHist)) {
+                    xmlaHist = xmlaHist.filter(ep => {
+                        if (!ep || typeof ep !== 'string') return false;
+                        const epWs = ep.replace('powerbi://api.powerbi.com/v1.0/myorg/', '').trim().toLowerCase();
+                        return validNames.has(epWs);
+                    });
+                    localStorage.setItem('pbi-xmla-history', JSON.stringify(xmlaHist));
+                }
+            } catch(e) {}
 
             const newIds = new Set(wsList.map(w => String(w.id)));
             if (window.selectedGtbWorkspaceIds) {
@@ -6429,10 +6453,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             .then(data => {
 
-                    const localLayoutKeys = ['pbi-sidebar-width', 'pbi-sidebar-collapsed', 'pbi-rail-expanded', 'pbi-topbar-collapsed', 'pbi-request-height', 'pbi-details-collapsed', 'apiReqHistory', 'pbi-bookmarks'];
-                    for (const [key, value] of Object.entries(data.data)) {
-                        if (!localLayoutKeys.includes(key)) {
-                            Storage.prototype.setItem.call(localStorage, key, value);
+                    // 严格排除本地 UI 布局键以及 Power BI 动态云端资产/工作区上下文键
+                    // 防止 SQLite kv_store 中持久化的历史跨域数据在刷新页面时死灰复燃覆盖真实数据
+                    const excludedKvKeys = [
+                        'pbi-sidebar-width', 'pbi-sidebar-collapsed', 'pbi-rail-expanded', 'pbi-topbar-collapsed',
+                        'pbi-request-height', 'pbi-details-collapsed', 'apiReqHistory', 'pbi-bookmarks',
+                        'pbi_workspaces', 'pbi_datasets', 'pbi_reports', 'pbi-xmla-history',
+                        'pbi_xmla_last_dataset', 'pbi_xmla_last_table', 'pbi-selected-workspaces',
+                        'pbi-selected-datasets', 'pbi-selected-reports', 'pbi-active-workspace',
+                        'pbi-active-dataset', 'pbi-active-report', 'pbi_cached_tenant_users'
+                    ];
+                    if (data && data.data && typeof data.data === 'object') {
+                        for (const [key, value] of Object.entries(data.data)) {
+                            if (!excludedKvKeys.includes(key)) {
+                                Storage.prototype.setItem.call(localStorage, key, value);
+                            }
                         }
                     }
 
@@ -16524,7 +16559,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         originalSetItem.apply(this, arguments);
 
-        const ignoredKeys = ['pbi-sidebar-width', 'pbi-sidebar-collapsed', 'pbi-rail-expanded', 'pbi-topbar-collapsed', 'pbi-request-height', 'pbi-details-collapsed', 'apiReqHistory', 'pbi-bookmarks'];
+        const ignoredKeys = [
+            'pbi-sidebar-width', 'pbi-sidebar-collapsed', 'pbi-rail-expanded', 'pbi-topbar-collapsed',
+            'pbi-request-height', 'pbi-details-collapsed', 'apiReqHistory', 'pbi-bookmarks',
+            'pbi_workspaces', 'pbi_datasets', 'pbi_reports', 'pbi-xmla-history',
+            'pbi_xmla_last_dataset', 'pbi_xmla_last_table', 'pbi-selected-workspaces',
+            'pbi-selected-datasets', 'pbi-selected-reports', 'pbi-active-workspace',
+            'pbi-active-dataset', 'pbi-active-report', 'pbi_cached_tenant_users'
+        ];
 
         if (!ignoredKeys.includes(key)) {
 

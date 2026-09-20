@@ -91,11 +91,11 @@ class Config:
     @classmethod
     def get_all(cls) -> dict:
         settings = load_settings()
-        if settings.get("PBI_WORKSPACES"):
+        if "PBI_WORKSPACES" in settings:
             cls.PBI_WORKSPACES = sanitize_workspaces(settings["PBI_WORKSPACES"])
-        if settings.get("PBI_DATASETS"):
+        if "PBI_DATASETS" in settings:
             cls.PBI_DATASETS = settings["PBI_DATASETS"]
-        if settings.get("PBI_REPORTS"):
+        if "PBI_REPORTS" in settings:
             cls.PBI_REPORTS = settings["PBI_REPORTS"]
         if settings.get("PBI_AUTH_MODE"):
             cls.AUTH_MODE = settings["PBI_AUTH_MODE"]
