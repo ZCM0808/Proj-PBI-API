@@ -21664,12 +21664,6 @@ window.startDeviceCodeLoginFlow = async function() {
             if (finalUsername) localStorage.setItem('pbi_username', finalUsername);
             localStorage.setItem('pbi_app_name', 'Power BI Official Client (Device Code)');
 
-            // 自动将新探测到的租户配置保存为快照
-            if (window.saveAuthSnapshot) {
-                const prefix = finalUsername ? finalUsername.split('@')[0] : 'User';
-                window.saveAuthSnapshot(`Device Auth (${prefix})`, true);
-            }
-
             // 更新顶栏身份
             if (window.renderEnvIdentity) window.renderEnvIdentity();
             if (window.updateWorkflowAuthBadge) window.updateWorkflowAuthBadge();
@@ -21748,10 +21742,6 @@ window.promptAndApplyBearerToken = async function(prefilledToken = '') {
             localStorage.setItem('pbi_username', finalUsername);
             localStorage.setItem('pbi_app_name', 'Power BI (VFC Enterprise)');
 
-            if (window.saveAuthSnapshot) {
-                const prefix = finalUsername ? finalUsername.split('@')[0] : 'User';
-                window.saveAuthSnapshot(`VFC Token (${prefix})`, true);
-            }
             if (window.renderEnvIdentity) window.renderEnvIdentity();
             if (window.updateWorkflowAuthBadge) window.updateWorkflowAuthBadge();
 
@@ -21849,10 +21839,6 @@ window.addEventListener('message', (event) => {
         localStorage.setItem('pbi_username', finalUsername);
         localStorage.setItem('pbi_app_name', 'Power BI (VFC Enterprise OAuth)');
 
-        if (window.saveAuthSnapshot) {
-            const prefix = finalUsername ? finalUsername.split('@')[0] : 'User';
-            window.saveAuthSnapshot(`VFC OAuth (${prefix})`, true);
-        }
         if (window.renderEnvIdentity) window.renderEnvIdentity();
         if (window.updateWorkflowAuthBadge) window.updateWorkflowAuthBadge();
 

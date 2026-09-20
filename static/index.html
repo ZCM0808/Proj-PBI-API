@@ -2667,10 +2667,44 @@
             <form id="settings-form" autocomplete="on">
                 <div class="modal-body" style="display: flex; flex-direction: column; gap: 8px; max-height: 65vh; overflow-y: auto;">
                     <p style="margin: 0; font-size: 0.75rem; color: var(--text-secondary);">在此配置的所有参数将立即生效，且会在整个项目 (API & Pipeline) 中共享。</p>
-                    <!-- Authentication Configs -->
+                    <!-- 1. Microsoft Modern Interactive Authentication (Standalone Card) -->
+                    <div style="background: var(--input-bg-light); padding: 10px 12px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.35); box-shadow: 0 2px 8px rgba(56, 189, 248, 0.04); margin-bottom: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="font-size: 0.95rem;">🌐</span>
+                                <h4 style="margin: 0; font-size: 0.78rem; font-weight: 700; color: #38bdf8;">Microsoft Modern Interactive Auth (微软现代交互认证)</h4>
+                                <span style="font-size: 0.62rem; padding: 1px 6px; border-radius: 4px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-weight: 600;">推荐 · 90天自动续期</span>
+                            </div>
+                        </div>
+                        <p style="margin: 0 0 8px 0; font-size: 0.68rem; color: var(--text-secondary); line-height: 1.4;">
+                            独立现代交互授权：直接调起微软官方登录窗口，支持手机 Authenticator 扫码与 Passkey(通行密钥 / FIDO2)。由微软颁发 Refresh Token 自动静默续期永不过期，彻底免去配置 App Secret 与个人账密。
+                        </p>
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 8px; border-top: 1px dashed var(--panel-border); flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--text-secondary);">
+                                <span>当前租户:</span>
+                                <span style="font-family: monospace; font-weight: 600; color: var(--text-primary); font-size: 0.7rem;">7d97f400-69b4-4df4-a009-c9806ec70783</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                                <button type="button" id="btn-browser-interactive-login" onclick="window.startInteractiveBrowserLogin()" class="btn-action-primary" title="推荐：使用浏览器调起微软标准登录，支持手机扫码与通行密钥，长效 90 天自动刷新" style="padding: 4px 10px; font-size: 0.72rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; background: linear-gradient(135deg, #0284c7, #0ea5e9); color: #fff; border: none; cursor: pointer; box-shadow: 0 2px 8px rgba(14, 165, 233, 0.25); transition: all 0.2s;">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                                    <span>浏览器登录</span>
+                                </button>
+                                <button type="button" id="btn-paste-token-login" onclick="window.promptAndApplyBearerToken()" class="btn-action-secondary" title="企业条件访问(CA)受限时，直接粘贴从已登录浏览器复制的 Token 快速绕过" style="padding: 4px 8px; font-size: 0.72rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; background: rgba(56, 189, 248, 0.1); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); cursor: pointer; transition: all 0.2s;">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                                    <span>粘贴 Token</span>
+                                </button>
+                                <button type="button" id="btn-device-code-login" onclick="window.startDeviceCodeLoginFlow()" class="btn-action-secondary" title="备用方式：设备代码流 (若企业未拦截)" style="padding: 4px 8px; font-size: 0.72rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); border: 1px solid var(--panel-border); cursor: pointer; transition: all 0.2s;">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                                    <span>设备码</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Azure App & Legacy Authentication Configs -->
                     <div style="background: var(--input-bg-light); padding: 8px; border-radius: 6px; border: 1px solid var(--panel-border);">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <h4 style="margin: 0; font-size: 0.75rem; color: var(--badge-custom-text);">Azure App Authentication</h4>
+                            <h4 style="margin: 0; font-size: 0.75rem; color: var(--badge-custom-text);">Azure App & Legacy Authentication</h4>
                             <button type="button" id="verify-settings-btn" title="Verify Auth" class="btn-verify" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
                             </button>
@@ -2707,31 +2741,8 @@
                                 </label>
                                 <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.8rem; color: var(--text-primary);">
                                     <input type="radio" name="pbi_auth_mode" value="personal" onchange="window.updateAuthModeVisibility('personal')" style="margin: 0; accent-color: var(--badge-custom-text);">
-                                    <span><strong>Personal Auth</strong> (Delegated: Username + Password/Popup)</span>
+                                    <span><strong>Personal Auth</strong> (Delegated: Username + Password)</span>
                                 </label>
-                            </div>
-                            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--panel-border); display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-                                <div style="display: flex; flex-direction: column; gap: 2px;">
-                                    <span style="font-size: 0.74rem; font-weight: 600; color: #38bdf8; display: flex; align-items: center; gap: 5px;">
-                                        <span>🌐 微软长效登录 / 手机扫码与通行密钥</span>
-                                        <span style="font-size: 0.62rem; padding: 1px 5px; border-radius: 4px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-weight: 600;">推荐 · 90天自动续期</span>
-                                    </span>
-                                    <span style="font-size: 0.66rem; color: var(--text-secondary); line-height: 1.3;">浏览器交互认证，支持手机扫码与 Passkey，微软签发 Refresh Token 自动静默续期永不过期</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-                                    <button type="button" id="btn-browser-interactive-login" onclick="window.startInteractiveBrowserLogin()" class="btn-action-primary" title="推荐：使用浏览器调起微软标准登录，支持手机扫码与通行密钥，长效 90 天自动刷新" style="padding: 4px 10px; font-size: 0.72rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; background: linear-gradient(135deg, #0284c7, #0ea5e9); color: #fff; border: none; cursor: pointer; box-shadow: 0 2px 8px rgba(14, 165, 233, 0.25); transition: all 0.2s;">
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-                                        <span>浏览器登录</span>
-                                    </button>
-                                    <button type="button" id="btn-paste-token-login" onclick="window.promptAndApplyBearerToken()" class="btn-action-secondary" title="企业条件访问(CA)受限时，直接粘贴从已登录浏览器复制的 Token 快速绕过" style="padding: 4px 8px; font-size: 0.72rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; background: rgba(56, 189, 248, 0.1); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); cursor: pointer; transition: all 0.2s;">
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-                                        <span>粘贴 Token</span>
-                                    </button>
-                                    <button type="button" id="btn-device-code-login" onclick="window.startDeviceCodeLoginFlow()" class="btn-action-secondary" title="备用方式：设备代码流 (若企业未拦截)" style="padding: 4px 8px; font-size: 0.72rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); border: 1px solid var(--panel-border); cursor: pointer; transition: all 0.2s;">
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
-                                        <span>设备码</span>
-                                    </button>
-                                </div>
                             </div>
                         </div>
                         <!-- Service Principal Auth Fields (3 Parameters) -->
@@ -3094,7 +3105,7 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260919_v1440"></script>
-    <script src="/static/script.js?v=20260920_v1210"></script>
+    <script src="/static/script.js?v=20260920_v1216"></script>
     <script src="/static/permission_blueprint.js?v=20260920_v1118"></script>
 
 
