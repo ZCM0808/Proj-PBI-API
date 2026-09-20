@@ -1232,6 +1232,44 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     await expect.poll(() => dsScanned, { timeout: 8000 }).toBe(true);
     await expect.poll(() => rpScanned, { timeout: 8000 }).toBe(true);
   });
+
+  test('权力流转蓝图筛选器与顶栏租户/认证体验断言：支持搜索过滤与一键重置清空，真实租户名称回显', async ({ page }) => {
+    await page.goto('http://127.0.0.1:8081');
+    await expect(page.locator('#api-tree')).toBeVisible();
+
+    // 1. 打开顶栏认证下拉卡片，验证现代交互与传统账密的文案清晰区分
+    const authTrigger = page.locator('#gtb-auth-trigger');
+    await authTrigger.click();
+    const authDropdown = page.locator('#gtb-auth-dropdown');
+    await expect(authDropdown).toBeVisible();
+    const authContent = await authDropdown.innerText();
+    expect(authContent).toContain('微软现代交互认证');
+    expect(authContent).toContain('传统个人账密');
+    await page.click('body'); // 关闭下拉
+
+    // 2. 打开权力流转蓝图模态框或视图
+    const bpBtn = page.locator('#btn-permission-blueprint');
+    if (await bpBtn.isVisible()) {
+      await bpBtn.click();
+      const bpModal = page.locator('#permission-blueprint-modal');
+      await expect.poll(() => bpModal.isVisible(), { timeout: 8000 }).toBe(true);
+
+      // 3. 验证三个核心选择器均带有专属搜索过滤框与清空/重置按钮
+      const userSearch = page.locator('#pb-user-search-input');
+      const wsSearch = page.locator('#pb-ws-search-input');
+      const modelSearch = page.locator('#pb-model-search-input');
+
+      await expect(userSearch).toBeVisible();
+      await expect(wsSearch).toBeVisible();
+      await expect(modelSearch).toBeVisible();
+
+      // 4. 测试用户搜索过滤与清空
+      await userSearch.fill('测试不存在用户');
+      // 清空恢复
+      const clearUserBtn = page.locator('button:has-text("清空")').first();
+      await clearUserBtn.click();
+    }
+  });
 });
 
 

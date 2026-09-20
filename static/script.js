@@ -2909,8 +2909,8 @@ window.renderGlobalTopbar = async function() {
                     <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
                         <span style="color: #38bdf8; font-size: 1rem;">🌐</span>
                         <div style="display: flex; flex-direction: column; min-width: 0;">
-                            <span style="font-size: 0.74rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">微软现代交互认证</span>
-                            <span style="font-size: 0.65rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${username || '90天自动续期 · Passkey/扫码'}</span>
+                            <span style="font-size: 0.74rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">微软现代交互认证 (推荐)</span>
+                            <span style="font-size: 0.65rem; color: #38bdf8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${username || '扫码/通行密钥'} · 90天自动续期</span>
                         </div>
                     </div>
                     <span class="gtb-auth-badge" style="background: ${isInteractive ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.05)'}; color: ${isInteractive ? '#38bdf8' : 'var(--text-secondary)'};">${isInteractive ? '✓ 激活中' : '切换'}</span>
@@ -2919,8 +2919,8 @@ window.renderGlobalTopbar = async function() {
                     <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
                         <span style="color: #60a5fa; font-size: 1rem;">🛡️</span>
                         <div style="display: flex; flex-direction: column; min-width: 0;">
-                            <span style="font-size: 0.74rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Service Principal</span>
-                            <span style="font-size: 0.65rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${appName || clientId || 'Azure AD Client App'}</span>
+                            <span style="font-size: 0.74rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Azure 服务主体 (Service Principal)</span>
+                            <span style="font-size: 0.65rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${appName || clientId || 'Client ID + Secret 无人值守'}</span>
                         </div>
                     </div>
                     <span class="gtb-auth-badge" style="background: ${(!isInteractive && authMode === 'service_principal') ? 'rgba(96, 165, 250, 0.15)' : 'rgba(255, 255, 255, 0.05)'}; color: ${(!isInteractive && authMode === 'service_principal') ? '#60a5fa' : 'var(--text-secondary)'};">${(!isInteractive && authMode === 'service_principal') ? '✓ 激活中' : '切换'}</span>
@@ -2929,8 +2929,8 @@ window.renderGlobalTopbar = async function() {
                     <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
                         <span style="color: #34d399; font-size: 1rem;">👤</span>
                         <div style="display: flex; flex-direction: column; min-width: 0;">
-                            <span style="font-size: 0.74rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Personal Delegated</span>
-                            <span style="font-size: 0.65rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${username || '常规个人账密'}</span>
+                            <span style="font-size: 0.74rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">传统个人账密 (Legacy ROPC)</span>
+                            <span style="font-size: 0.65rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">账号+明文密码 · 仅限无 MFA 环境</span>
                         </div>
                     </div>
                     <span class="gtb-auth-badge" style="background: ${(!isInteractive && authMode === 'personal') ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.05)'}; color: ${(!isInteractive && authMode === 'personal') ? '#34d399' : 'var(--text-secondary)'};">${(!isInteractive && authMode === 'personal') ? '✓ 激活中' : '切换'}</span>

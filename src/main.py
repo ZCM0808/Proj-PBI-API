@@ -2270,6 +2270,23 @@ async def get_auth_info():
         tenant_name = settings.get("PBI_TENANT_NAME", Config.TENANT_NAME)
         app_name = settings.get("PBI_APP_NAME") or os.getenv("PBI_APP_NAME", "")
         
+        # 智能发现真实租户组织全称 (Auto-resolve real Tenant Brand Name)
+        if (not tenant_name or tenant_name in ("默认组织", "未命名")) and username and "@" in username:
+            try:
+                import urllib.parse
+                import urllib.request
+                import json as pyjson
+                realm_url = f"https://login.microsoftonline.com/getuserrealm.srf?login={urllib.parse.quote(username)}&json=1"
+                req = urllib.request.Request(realm_url, headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(req, timeout=1.8) as resp:
+                    realm_data = pyjson.loads(resp.read().decode("utf-8"))
+                    brand = realm_data.get("FederationBrandName") or realm_data.get("DomainName")
+                    if brand:
+                        tenant_name = brand
+                        Config.update_config({"TENANT_NAME": brand})
+            except Exception:
+                pass
+        
         # 判断是否处于微软现代长效交互认证
         from src.pbi_client import _GLOBAL_TOKEN_CACHE
         now = time.time()

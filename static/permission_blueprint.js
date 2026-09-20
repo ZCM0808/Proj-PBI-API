@@ -1082,6 +1082,90 @@
             }
         }
 
+        filterUsers(term = '') {
+            const q = (term || '').toLowerCase().trim();
+            const selectEl = document.getElementById('pb-user-preset-select');
+            if (!selectEl) return;
+            const options = selectEl.querySelectorAll('option');
+            options.forEach(opt => {
+                if (opt.value === 'none' || opt.value === 'custom') {
+                    opt.hidden = false;
+                    return;
+                }
+                const text = (opt.textContent || '').toLowerCase();
+                opt.hidden = Boolean(q && !text.includes(q));
+            });
+            const groups = selectEl.querySelectorAll('optgroup');
+            groups.forEach(g => {
+                const visibleOpts = Array.from(g.querySelectorAll('option')).filter(o => !o.hidden);
+                g.hidden = visibleOpts.length === 0;
+            });
+        }
+
+        filterWorkspaces(term = '') {
+            const q = (term || '').toLowerCase().trim();
+            const selectEl = document.getElementById('pb-ws-select');
+            if (!selectEl) return;
+            const options = selectEl.querySelectorAll('option');
+            options.forEach(opt => {
+                const text = (opt.textContent || '').toLowerCase();
+                const val = (opt.value || '').toLowerCase();
+                opt.hidden = Boolean(q && !text.includes(q) && !val.includes(q));
+            });
+            const groups = selectEl.querySelectorAll('optgroup');
+            groups.forEach(g => {
+                const visibleOpts = Array.from(g.querySelectorAll('option')).filter(o => !o.hidden);
+                g.hidden = visibleOpts.length === 0;
+            });
+        }
+
+        filterModels(term = '') {
+            const q = (term || '').toLowerCase().trim();
+            const selectEl = document.getElementById('pb-model-select');
+            if (!selectEl) return;
+            const options = selectEl.querySelectorAll('option');
+            options.forEach(opt => {
+                if (!opt.value) {
+                    opt.hidden = false;
+                    return;
+                }
+                const text = (opt.textContent || '').toLowerCase();
+                opt.hidden = Boolean(q && !text.includes(q));
+            });
+            const groups = selectEl.querySelectorAll('optgroup');
+            groups.forEach(g => {
+                const visibleOpts = Array.from(g.querySelectorAll('option')).filter(o => !o.hidden);
+                g.hidden = visibleOpts.length === 0;
+            });
+        }
+
+        resetWorkspace() {
+            const selectEl = document.getElementById('pb-ws-select');
+            const searchInput = document.getElementById('pb-ws-search-input');
+            if (searchInput) searchInput.value = '';
+            this.filterWorkspaces('');
+            if (selectEl && selectEl.options.length > 0) {
+                selectEl.selectedIndex = 0;
+                this.selectWorkspace(selectEl.value);
+            }
+        }
+
+        resetModel() {
+            const selectEl = document.getElementById('pb-model-select');
+            const searchInput = document.getElementById('pb-model-search-input');
+            if (searchInput) searchInput.value = '';
+            this.filterModels('');
+            if (selectEl) {
+                const firstValid = Array.from(selectEl.options).find(o => Boolean(o.value));
+                if (firstValid) {
+                    selectEl.value = firstValid.value;
+                    this.selectModel(firstValid.value);
+                } else {
+                    selectEl.selectedIndex = 0;
+                }
+            }
+        }
+
         togglePermTier(titleEl) {
             const tierEl = titleEl.closest('.pb-perm-tier');
             if (!tierEl) return;
