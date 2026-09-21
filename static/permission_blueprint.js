@@ -3710,6 +3710,8 @@
                         ${renderRow('Azure AD B2B 外部访客', 'guestAccess', isGuestUser ? 'warn' : 'enabled', isGuestUser ? '⚠️ 外部访客' : '✅ 内部成员', 'isGuestUser')}
                         ${renderRow('XMLA 终结点读写支持', 'xmlaEndpoint', xmlaEndpoint ? 'enabled' : 'disabled', xmlaEndpoint ? '✅ 启用' : '❌ 禁用', 'xmlaEndpoint')}
                         ${renderRow('GAC 细粒度隔离策略', 'gacPolicy', isInStrictMode ? 'enabled' : 'warn', isInStrictMode ? '🛡️ 严格门禁' : '⚠️ 宽松模式', 'isInStrictMode')}
+                        ${renderRow('EMBED FOR EXTERNAL', 'embedExternal', 'enabled', '✅ 启用', 'embedExternal')}
+                        ${renderRow('CERTIFICATION', 'certification', isAdmin ? 'enabled' : 'disabled', isAdmin ? '✅ 启用' : '❌ 禁用', 'certification')}
                     </div>
                 </div>
             `;
@@ -3782,6 +3784,8 @@
                         ${renderRow('发布与更新组织应用', 'publishApp', publishApp ? 'enabled' : (isContributor ? 'warn' : 'disabled'), publishApp ? '✅ 允许' : (isContributor ? '⚠️ 需特许' : '❌ 禁用'), 'publishApp')}
                         ${renderRow('企业网关与凭据托管', 'gatewayAdmin', gatewayAdmin ? 'enabled' : 'disabled', gatewayAdmin ? '✅ 允许' : '❌ 禁用', 'gatewayAdmin')}
                         ${renderRow('GAC 网关数据连接通道', 'gacConnection', gacConnStatus, gacConnText, 'hasAccessToAllDataConnections')}
+                        ${renderRow('DELETE WORKSPACE', 'deleteWorkspace', isAdmin ? 'enabled' : 'disabled', isAdmin ? '✅ 启用' : '❌ 禁用', 'deleteWorkspace')}
+                        ${renderRow('LINEAGE VIEW', 'lineageView', isPrivileged ? 'enabled' : 'warn', isPrivileged ? '✅ 启用' : '⚠️ 部分视图', 'lineageView')}
                     </div>
                 </div>
             `;
@@ -3990,7 +3994,65 @@
                 </div>
             `;
 
-            matrixEl.innerHTML = bannerHtml + col1Html + col2Html + col3Html + col4Html + col5Html + col6Html;
+            // Tier 7: Connection 连接层
+            const isConnOwner = getDerived('connOwner', () => isAdmin);
+            const isConnUser = getDerived('connUser', () => gacConnPass || isPrivileged);
+            const isConnShare = getDerived('connShare', () => isAdmin || isMember);
+            const isSchedRefresh = getDerived('schedRefresh', () => isPrivileged);
+
+            let t7Status = isConnOwner ? 'enabled' : (isConnUser ? 'warn' : 'disabled');
+            let t7StatusText = isConnOwner ? '✅ 完全控制' : (isConnUser ? '⚠️ 仅使用' : '❌ 无权限');
+            const col7Html = `
+                <div class="pb-tier-col" data-tier="7">
+                    <div class="pb-col-header">
+                        <div class="pb-col-title-row">
+                            <h4 class="pb-col-title">🔌 L7 连接与凭据</h4>
+                            <span class="pb-matrix-status ${t7Status}">${t7StatusText}</span>
+                        </div>
+                        <div class="pb-col-sub" title="数据源连接鉴权与网关通道">数据源连接鉴权与网关通道</div>
+                    </div>
+                    <div class="pb-col-body">
+                        ${renderRow('连接所有者/管理员', 'connOwner', isConnOwner ? 'enabled' : 'disabled', isConnOwner ? '✅ 启用' : '❌ 禁用', 'connOwner')}
+                        ${renderRow('连接用户凭据', 'connUser', isConnUser ? 'enabled' : 'disabled', isConnUser ? '✅ 启用' : '❌ 禁用', 'connUser')}
+                        ${renderRow('连接共享', 'connShare', isConnShare ? 'enabled' : 'disabled', isConnShare ? '✅ 启用' : '❌ 禁用', 'connShare')}
+                        ${renderRow('数据源直连鉴权', 'dataSourceAuth7', dsAuthStatus, dsAuthText, 'dataSourceAuth7')}
+                        ${renderRow('SSO 身份委派', 'ssoAuth', 'enabled', '✅ 启用', 'ssoAuth')}
+                        ${renderRow('计划刷新调度', 'schedRefresh', isSchedRefresh ? 'enabled' : 'disabled', isSchedRefresh ? '✅ 启用' : '❌ 禁用', 'schedRefresh')}
+                    </div>
+                </div>
+            `;
+
+            // Tier 8: 部署管道
+            const isPipelineRoleAdmin = getDerived('pipelineRoleAdmin', () => isAdmin);
+            const isStageDeploy = getDerived('stageDeploy', () => isAdmin);
+            const isSchemaDiff = getDerived('schemaDiff', () => isAdmin);
+            const isConfigRules = getDerived('configRules', () => isAdmin);
+            const isManagePipeline = getDerived('managePipeline', () => isAdmin);
+            const isBackwardDeploy = getDerived('backwardDeploy', () => isAdmin);
+
+            let t8Status = isPipelineRoleAdmin ? 'enabled' : 'warn';
+            let t8StatusText = isPipelineRoleAdmin ? '✅ 管理员' : '⚠️ 部署者';
+            const col8Html = `
+                <div class="pb-tier-col" data-tier="8">
+                    <div class="pb-col-header">
+                        <div class="pb-col-title-row">
+                            <h4 class="pb-col-title">🚀 L8 部署管道</h4>
+                            <span class="pb-matrix-status ${t8Status}">${t8StatusText}</span>
+                        </div>
+                        <div class="pb-col-sub" title="ALM 生命周期管理">ALM 生命周期管理</div>
+                    </div>
+                    <div class="pb-col-body">
+                        ${renderRow('管道角色', 'pipelineRole', 'enabled', isPipelineRoleAdmin ? '✅ Admin' : '✅ Deployer', 'pipelineRole')}
+                        ${renderRow('阶段流转部署', 'stageDeploy', isStageDeploy ? 'enabled' : 'disabled', isStageDeploy ? '✅ 启用' : '❌ 禁用', 'stageDeploy')}
+                        ${renderRow('架构差异比对', 'schemaDiff', isSchemaDiff ? 'enabled' : 'disabled', isSchemaDiff ? '✅ 启用' : '❌ 禁用', 'schemaDiff')}
+                        ${renderRow('部署规则配置', 'configRules', isConfigRules ? 'enabled' : 'disabled', isConfigRules ? '✅ 启用' : '❌ 禁用', 'configRules')}
+                        ${renderRow('管道管理', 'managePipeline', isManagePipeline ? 'enabled' : 'disabled', isManagePipeline ? '✅ 启用' : '❌ 禁用', 'managePipeline')}
+                        ${renderRow('反向部署', 'backwardDeploy', isBackwardDeploy ? 'enabled' : 'disabled', isBackwardDeploy ? '✅ 启用' : '❌ 禁用', 'backwardDeploy')}
+                    </div>
+                </div>
+            `;
+
+            matrixEl.innerHTML = bannerHtml + col1Html + col2Html + col3Html + col4Html + col5Html + col6Html + col7Html + col8Html;
 
             // 渲染 What-If 动态影响指向线（DOM 更新后需 rAF 等待布局稳定）
             requestAnimationFrame(() => this._renderImpactArrows(impacts));
@@ -4419,6 +4481,8 @@
                 { id: 'tenant_web_modeling', cat: 'derived', name: 'WEB MODELING (浏览器在线建模)', desc: user?.state?.tenantAllowWebModeling ? '租户策略允许在浏览器端直接设计、编辑语义模型架构与度量值' : '租户策略禁用网页在线建模，只能通过客户端工具操作', statusClass: user?.state?.tenantAllowWebModeling ? 'enabled' : 'disabled', statusText: user?.state?.tenantAllowWebModeling ? '✅ CAN MODEL' : '❌ CANNOT MODEL', badge: 'WEB MODEL' },
                 { id: 'tenant_xmla', cat: 'derived', name: 'XMLA ENDPOINT (终结点全局读写)', desc: '终结点已开启读写，允许 SSMS、DAX Studio 与 Tabular Editor 跨客户端直连', statusClass: 'enabled', statusText: '✅ CAN CONNECT', badge: 'XMLA' },
                 { id: 'tenant_external', cat: 'derived', name: 'EXTERNAL SHARING (跨组织外部共享)', desc: user ? (isGuest ? '当前属于外部访客账号，默认受限禁止跨租户二次外发共享' : '租户策略放行组织外部跨域报告共享') : '【等待配置】需选定用户主体后推导策略', statusClass: isGuest ? 'disabled' : (user ? 'enabled' : 'disabled'), statusText: isGuest ? '❌ CANNOT SHARE' : (user ? '✅ CAN SHARE' : '⚠️ WAITING'), badge: 'EXTERNAL' },
+                { id: 'tenant_embed', cat: 'derived', name: 'EMBED FOR EXTERNAL (外部嵌入策略)', desc: '控制是否允许将报表通过 Embed for customers 方式嵌入外部应用程序', statusClass: user ? 'enabled' : 'disabled', statusText: user ? '✅ CAN EMBED' : '❌ CANNOT EMBED', badge: 'EMBED' },
+                { id: 'tenant_certify', cat: 'derived', name: 'CERTIFICATION (数据集认证权限)', desc: isAdmin ? '允许为语义模型和数据流打上官方认证标签，向全组织推荐可信数据源' : '仅租户管理员具备数据集认证标签颁发权限', statusClass: isAdmin ? 'enabled' : 'disabled', statusText: isAdmin ? '✅ CAN CERTIFY' : '❌ CANNOT CERTIFY', badge: 'CERTIFY' },
                 { id: 'tenant_id', cat: 'env', name: `TENANT: ${tenantId ? (tenantId.length > 20 ? tenantId.slice(0, 18) + '...' : tenantId) : '未配置'}`, desc: tenantId ? `【环境就绪】挂载组织目录租户 ID: ${tenantId}` : '【未配置】系统未配置 TENANT_ID，请在设置中输入', statusClass: tenantId ? 'enabled' : 'warn', statusText: tenantId ? '✅ READY' : '⚠️ MISSING ID', badge: 'TENANT ID' }
             ];
             const colTenantBody = renderTierItemsHtml('tenant', tenantItems);
@@ -4446,6 +4510,8 @@
                     { id: 'ws_edit', cat: 'derived', name: 'CREATE & EDIT ASSETS (资产协同增删改)', desc: isPrivileged ? '拥有资产编辑特权，允许新建、修改、重命名或删除模型与报表' : '当前为 Viewer 只读角色，禁止修改或新增工作区任何资产', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ CAN EDIT' : '❌ CANNOT EDIT', badge: 'ASSETS' },
                     { id: 'ws_app', cat: 'derived', name: 'PUBLISH APP (组织应用打包发布)', desc: (isAdmin || isMember) ? '允许将该工作区报表打包发布或更新为企业级应用程序 (App)' : '仅 Admin/Member 角色具备组织应用发布与受众打包权限', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ CAN PUBLISH' : '❌ CANNOT PUBLISH', badge: 'APP' },
                     { id: 'ws_capacity', cat: 'derived', name: 'FABRIC CAPACITY (算力容量绑定)', desc: '挂载企业专用容量 (Fabric F64)，享有独立计算算力与大模型加速', statusClass: 'enabled', statusText: '⚡ CAN ACCESS', badge: 'CAPACITY' },
+                    { id: 'ws_delete', cat: 'derived', name: 'DELETE WORKSPACE (删除工作区)', desc: isAdmin ? '允许永久删除整个工作区及其包含的所有资产' : '仅 Admin 角色可执行工作区级别的永久删除操作', statusClass: isAdmin ? 'enabled' : 'disabled', statusText: isAdmin ? '✅ CAN DELETE' : '❌ CANNOT DELETE', badge: 'DELETE' },
+                    { id: 'ws_lineage', cat: 'derived', name: 'LINEAGE VIEW (数据血缘追溯)', desc: isPrivileged ? '允许查看完整的端到端数据血缘拓扑关系图' : '仅可查看自身有权访问的资产血缘片段', statusClass: isPrivileged ? 'enabled' : 'warn', statusText: isPrivileged ? '✅ FULL LINEAGE' : '⚠️ PARTIAL VIEW', badge: 'LINEAGE' },
                     { id: 'ws_target', cat: 'env', name: `WORKSPACE: ${wsName.toUpperCase()}`, desc: `【载体就绪】工作区名称: ${wsName} · 容器 ID: ${curWs.id}`, statusClass: 'enabled', statusText: '✅ READY', badge: 'WORKSPACE' }
                 ];
                 colWorkspaceBody = renderTierItemsHtml('workspace', wsItems);
@@ -4733,7 +4799,9 @@
                     { id: 'conn_gac_mashup', cat: 'derived', name: 'GAC MASHUP GATE (跨源数据混合转换门禁)', desc: isPrivileged ? '工作区管理员直通，豁免多数据源 Mashup 细粒度门禁限制，可自由混合处理多源数据' : (hasDataConn && !user?.state?.isInStrictMode ? '跨源安全门禁放行，允许在 Power Query 与 DirectQuery 中将此连接与其它数据源关联合并' : '触发 GAC 跨源安全隔离门禁，严格模式下禁止跨数据源混合关联处理'), statusClass: isPrivileged ? 'bypassed' : (hasDataConn && !user?.state?.isInStrictMode ? 'enabled' : 'disabled'), statusText: isPrivileged ? '⚡ ADMIN BYPASS' : (hasDataConn && !user?.state?.isInStrictMode ? '✅ CAN MASHUP' : '❌ CANNOT MASHUP'), badge: 'MASHUP' },
                     { id: 'conn_gw', cat: 'env', name: gwItemName, desc: gwItemDesc, statusClass: gwItemStatusClass, statusText: gwItemStatusText, badge: gwItemBadge },
                     { id: 'conn_sso', cat: 'derived', name: 'DIRECTQUERY SSO (单点登录身份委派)', desc: 'DirectQuery 运行时使用当前用户 Entra ID 身份穿透鉴权直连底层数据库', statusClass: 'enabled', statusText: '✅ CAN DELEGATE', badge: 'SSO' },
-                    { id: 'conn_refresh', cat: 'derived', name: 'SCHEDULED REFRESH (计划刷新调度)', desc: isPrivileged ? '允许配置自动化计划刷新调度并随时手动触发微批次数据抽取' : '仅 Admin/Member/Contributor 具备计划刷新配置与手动触发权限', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ CAN REFRESH' : '❌ CANNOT REFRESH', badge: 'REFRESH' }
+                    { id: 'conn_refresh', cat: 'derived', name: 'SCHEDULED REFRESH (计划刷新调度)', desc: isPrivileged ? '允许配置自动化计划刷新调度并随时手动触发微批次数据抽取' : '仅 Admin/Member/Contributor 具备计划刷新配置与手动触发权限', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ CAN REFRESH' : '❌ CANNOT REFRESH', badge: 'REFRESH' },
+                    { id: 'conn_owner', cat: 'derived', name: 'CONNECTION OWNER (连接所有者管理)', desc: isAdmin ? '拥有连接最高管理权，允许修改连接凭据、参数配置与删除连接' : '非工作区 Admin 角色，无法修改或删除连接配置', statusClass: isAdmin ? 'enabled' : 'disabled', statusText: isAdmin ? '✅ CAN MANAGE' : '❌ CANNOT MANAGE', badge: 'OWNER' },
+                    { id: 'conn_share', cat: 'derived', name: 'SHARE CONNECTION (连接共享)', desc: (isAdmin || isMember) ? '允许将该数据源连接共享给其他工作区成员使用' : '仅 Admin/Member 角色具备连接共享授权能力', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ CAN SHARE' : '❌ CANNOT SHARE', badge: 'SHARE' }
                 );
 
                 colConnectionBody = renderTierItemsHtml('connection', connItems);
@@ -4752,7 +4820,10 @@
             const pipelineItems = [
                 { id: 'pipeline_role', isHero: true, cat: 'assigned', name: pipelineRoleName, desc: hasSelectedWs ? `【当前分配角色】在工作区 [${wsName}] 部署管道 ALM 生命周期中的官方治理身份` : '【未关联】需选择目标工作区以呈现部署管道身份', statusClass: hasSelectedWs ? (isPipelineAdmin ? 'enabled' : 'warn') : 'disabled', statusText: hasSelectedWs ? (isPipelineAdmin ? '✅ ADMIN' : '⚠️ DEPLOY') : '❌ NONE', badge: 'ALM' },
                 { id: 'pipeline_deploy', cat: 'derived', name: 'STAGE DEPLOYMENT (阶段流转部署)', desc: isPipelineAdmin ? '允许将开发阶段的模型与报表一键晋升部署至测试 (Test) 或生产 (Prod) 环境' : '尚未绑定专用管道或缺少部署者权限，无法执行阶段流转', statusClass: isPipelineAdmin ? 'enabled' : 'warn', statusText: isPipelineAdmin ? '✅ CAN DEPLOY' : '⚠️ CANNOT DEPLOY', badge: 'DEPLOY' },
-                { id: 'pipeline_diff', cat: 'derived', name: 'SCHEMA DIFF (阶段架构差异比对)', desc: isPipelineAdmin ? '自动比对各阶段模型架构、表字段变更及度量值元数据差异' : '需绑定部署管道以启用自动化架构差异比对检测引擎', statusClass: isPipelineAdmin ? 'enabled' : 'warn', statusText: isPipelineAdmin ? '✅ CAN COMPARE' : '⚠️ CANNOT COMPARE', badge: 'DIFF' }
+                { id: 'pipeline_diff', cat: 'derived', name: 'SCHEMA DIFF (阶段架构差异比对)', desc: isPipelineAdmin ? '自动比对各阶段模型架构、表字段变更及度量值元数据差异' : '需绑定部署管道以启用自动化架构差异比对检测引擎', statusClass: isPipelineAdmin ? 'enabled' : 'warn', statusText: isPipelineAdmin ? '✅ CAN COMPARE' : '⚠️ CANNOT COMPARE', badge: 'DIFF' },
+                { id: 'pipeline_rules', cat: 'derived', name: 'CONFIGURE RULES (部署规则配置)', desc: isPipelineAdmin ? '允许配置参数覆盖规则、数据源映射规则与部署排除策略' : '需管道管理员权限以配置部署规则', statusClass: isPipelineAdmin ? 'enabled' : 'disabled', statusText: isPipelineAdmin ? '✅ CAN CONFIGURE' : '❌ CANNOT CONFIGURE', badge: 'RULES' },
+                { id: 'pipeline_manage', cat: 'derived', name: 'MANAGE PIPELINE (管道生命周期管理)', desc: isPipelineAdmin ? '允许创建、删除部署管道与绑定/解绑各阶段工作区' : '仅管道管理员可执行管道级别生命周期操作', statusClass: isPipelineAdmin ? 'enabled' : 'disabled', statusText: isPipelineAdmin ? '✅ CAN MANAGE' : '❌ CANNOT MANAGE', badge: 'LIFECYCLE' },
+                { id: 'pipeline_backward', cat: 'derived', name: 'BACKWARD DEPLOY (反向回退部署)', desc: isPipelineAdmin ? '允许从生产阶段逆向回退部署至测试或开发阶段' : '仅管道管理员可执行反向回退部署', statusClass: isPipelineAdmin ? 'enabled' : 'disabled', statusText: isPipelineAdmin ? '✅ CAN ROLLBACK' : '❌ CANNOT ROLLBACK', badge: 'ROLLBACK' }
             ];
             if (!hasSelectedWs) {
                 colPipelineBody = `
