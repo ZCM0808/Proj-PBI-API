@@ -535,6 +535,10 @@ window.toggleSidebar = function() {
 
 // 切换一级模块 (Workflows vs API Tree vs Permission Blueprint)
 window.switchAppModule = function(moduleName) {
+    // 0. 立即移除任何残留的 0ms 防闪烁临时样式，放行视图切换
+    const g = document.getElementById('fouc-module-guard');
+    if (g && g.parentNode) g.parentNode.removeChild(g);
+
     // 1. Update Rail active item
     document.querySelectorAll('.rail-item').forEach(el => el.classList.remove('active'));
     const navItem = document.getElementById(`rail-nav-${moduleName}`);
@@ -573,6 +577,17 @@ window.switchAppModule = function(moduleName) {
                     clearInterval(timer);
                 }
             }, 30);
+        }
+    } else if (moduleName === 'workflows') {
+        const wfSelector = document.getElementById('wf-selector');
+        if (wfSelector) {
+            const savedWf = localStorage.getItem('pbi-last-workflow') || 'datasource_inspector';
+            if (wfSelector.querySelector(`option[value="${savedWf}"]`)) {
+                wfSelector.value = savedWf;
+                wfSelector.dataset.prevVal = savedWf;
+            }
+            wfSelector.dispatchEvent(new Event('change'));
+            if (window.selectWorkflow) window.selectWorkflow(wfSelector.value || 'datasource_inspector');
         }
     }
 

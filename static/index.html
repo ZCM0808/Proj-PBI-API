@@ -64,11 +64,6 @@
                 styleStr += 'html.zen-mode-init #app-rail, html.zen-mode-init .sidebar, html.zen-mode-init #dragMe { width: 0 !important; min-width: 0 !important; max-width: 0 !important; margin: 0 !important; padding: 0 !important; border: none !important; opacity: 0 !important; overflow: hidden !important; } ';
                 styleStr += 'html.zen-mode-init .zen-icon-expand { display: none !important; } html.zen-mode-init .zen-icon-collapse { display: block !important; } ';
             }
-            // 🚨 关键防御：在解析任何 DOM 节点之前，直接用 CSS 强制隐藏非目标视图并点亮目标模块视图
-            styleStr += '.workspace-view { display: none !important; } ';
-            styleStr += '#view-' + savedMod + ' { display: flex !important; } ';
-            styleStr += '.sidebar-pane { display: none !important; } ';
-            styleStr += '#sidebar-pane-' + savedMod + ' { display: flex !important; } ';
 
             var styleEl = document.createElement('style');
             styleEl.id = 'fouc-root-vars';
@@ -146,6 +141,13 @@
                     if (tabBpBtn) tabBpBtn.classList.toggle('active', savedTab === 'blueprint');
                     if (tabMxBtn) tabMxBtn.classList.toggle('active', savedTab === 'matrix');
                     if (tabUaBtn) tabUaBtn.classList.toggle('active', savedTab === 'user_assets');
+                }
+
+                // 同步工作流内部激活面板
+                if (savedMod === 'workflows') {
+                    var savedWf = localStorage.getItem('pbi-last-workflow') || 'datasource_inspector';
+                    var targetWfPane = document.getElementById('wf-config-' + savedWf);
+                    if (targetWfPane) targetWfPane.style.display = 'block';
                 }
 
                 // 移除 html 上的初始化占位类
@@ -3253,8 +3255,8 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260919_v1440"></script>
-    <script src="/static/script.js?v=20260921_v2040"></script>
-    <script src="/static/permission_blueprint.js?v=20260921_v2040"></script>
+    <script src="/static/script.js?v=20260921_v2100"></script>
+    <script src="/static/permission_blueprint.js?v=20260921_v2100"></script>
 
 
 

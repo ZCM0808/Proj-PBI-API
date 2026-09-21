@@ -46,11 +46,46 @@ test.describe('Zero-Flicker Multi-View Reload Verification', () => {
     });
     await page.reload({ waitUntil: 'domcontentloaded' });
 
-    const wfDisp = await page.locator('#view-workflows').evaluate(el => window.getComputedStyle(el).display);
-    const dsDisp = await page.locator('#wf-config-datasource_inspector').evaluate(el => window.getComputedStyle(el).display);
-    const expDisp = await page.locator('#wf-config-export_report').evaluate(el => window.getComputedStyle(el).display);
+    await expect(page.locator('#view-workflows')).toBeVisible();
+    await expect(page.locator('#wf-config-datasource_inspector')).toBeVisible();
+    await expect(page.locator('#wf-config-export_report')).toBeHidden();
+  });
+
+  test('Module 4: Clicking Rail items switches views correctly and responsively', async ({ page }) => {
+    // Start on permission blueprint
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => {
+      localStorage.setItem('pbi-active-module', 'permission_blueprint');
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
+    // Verify initially on blueprint
+    let bpDisp = await page.locator('#view-permission_blueprint').evaluate(el => window.getComputedStyle(el).display);
+    expect(bpDisp).toBe('flex');
+
+    // 1. Click API Explorer in Rail
+    await page.click('#rail-nav-api_tree');
+    let apiTreeDisp = await page.locator('#view-api_tree').evaluate(el => window.getComputedStyle(el).display);
+    bpDisp = await page.locator('#view-permission_blueprint').evaluate(el => window.getComputedStyle(el).display);
+    let apiSideDisp = await page.locator('#sidebar-pane-api_tree').evaluate(el => window.getComputedStyle(el).display);
+    expect(apiTreeDisp).toBe('flex');
+    expect(bpDisp).toBe('none');
+    expect(apiSideDisp).toBe('flex');
+
+    // 2. Click Workflows in Rail
+    await page.click('#rail-nav-workflows');
+    let wfDisp = await page.locator('#view-workflows').evaluate(el => window.getComputedStyle(el).display);
+    apiTreeDisp = await page.locator('#view-api_tree').evaluate(el => window.getComputedStyle(el).display);
+    let wfSideDisp = await page.locator('#sidebar-pane-workflows').evaluate(el => window.getComputedStyle(el).display);
     expect(wfDisp).toBe('flex');
-    expect(dsDisp).toBe('block');
-    expect(expDisp).toBe('none');
+    expect(apiTreeDisp).toBe('none');
+    expect(wfSideDisp).toBe('flex');
+
+    // 3. Click back to Blueprint in Rail
+    await page.click('#rail-nav-permission_blueprint');
+    bpDisp = await page.locator('#view-permission_blueprint').evaluate(el => window.getComputedStyle(el).display);
+    wfDisp = await page.locator('#view-workflows').evaluate(el => window.getComputedStyle(el).display);
+    expect(bpDisp).toBe('flex');
+    expect(wfDisp).toBe('none');
   });
 });
