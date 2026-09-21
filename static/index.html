@@ -84,6 +84,9 @@
                 } else if (savedBpTab === 'matrix') {
                     guardCss += '#pb-canvas-viewport { display: none !important; } #pb-user-assets-container { display: none !important; } #pb-matrix-container { display: flex !important; } #pb-blueprint-toolbar { display: none !important; } #pb-user-assets-toolbar { display: none !important; } #pb-matrix-toolbar { display: flex !important; } ';
                 }
+                // 🚨 0ms 提前精准点亮对应选项卡按钮，物理消除按钮高光跳跃
+                var activeTabBtnId = 'pb-tab-' + (savedBpTab === 'user_assets' ? 'user-assets' : (savedBpTab === 'matrix' ? 'matrix' : 'blueprint')) + '-btn';
+                guardCss += '#' + activeTabBtnId + ', #' + activeTabBtnId + ' span { background: #4f46e5 !important; color: #ffffff !important; box-shadow: 0 1px 6px rgba(79, 70, 229, 0.4) !important; font-weight: 700 !important; } ';
             }
             var guardStyle = document.createElement('style');
             guardStyle.id = 'fouc-module-guard';
@@ -2581,7 +2584,7 @@
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <!-- 蓝图、理论推导矩阵与用户全景链路分段切换器 -->
                         <div class="pb-view-tabs" style="display: inline-flex; padding: 2px; background: rgba(0, 0, 0, 0.25); border: 1px solid var(--overlay-10); border-radius: 6px;">
-                            <button type="button" id="pb-tab-blueprint-btn" class="pb-view-tab-btn active" onclick="window.PermissionBlueprint.switchMainTab('blueprint')">
+                            <button type="button" id="pb-tab-blueprint-btn" class="pb-view-tab-btn" onclick="window.PermissionBlueprint.switchMainTab('blueprint')">
                                 <span>🗺️ 权限流转蓝图</span>
                             </button>
                             <button type="button" id="pb-tab-matrix-btn" class="pb-view-tab-btn" onclick="window.PermissionBlueprint.switchMainTab('matrix')">
@@ -3244,8 +3247,8 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260919_v1440"></script>
-    <script src="/static/script.js?v=20260921_v2030"></script>
-    <script src="/static/permission_blueprint.js?v=20260921_v2030"></script>
+    <script src="/static/script.js?v=20260921_v2035"></script>
+    <script src="/static/permission_blueprint.js?v=20260921_v2035"></script>
 
 
 
