@@ -43,6 +43,10 @@
             if (isTopbarCollapsed) {
                 document.documentElement.classList.add('topbar-collapsed-init');
             }
+            var isZenMode = localStorage.getItem('pbi-zen-mode') === '1';
+            if (isZenMode) {
+                document.documentElement.classList.add('zen-mode-init');
+            }
 
             // 3. 动态注入 CSS 变量与当前激活模块可见性（0ms 物理杜绝页面刷新时的视图跳动闪烁）
             var sidebarWidth = localStorage.getItem('pbi-sidebar-width');
@@ -55,6 +59,10 @@
             }
             if (requestHeight) {
                 styleStr += '.body-editor-container { height: ' + requestHeight + '; flex: none; } ';
+            }
+            if (isZenMode) {
+                styleStr += 'html.zen-mode-init #app-rail, html.zen-mode-init .sidebar, html.zen-mode-init #dragMe { width: 0 !important; min-width: 0 !important; max-width: 0 !important; margin: 0 !important; padding: 0 !important; border: none !important; opacity: 0 !important; overflow: hidden !important; } ';
+                styleStr += 'html.zen-mode-init .zen-icon-expand { display: none !important; } html.zen-mode-init .zen-icon-collapse { display: block !important; } ';
             }
             // 🚨 关键防御：在解析任何 DOM 节点之前，直接用 CSS 强制隐藏非目标视图并点亮目标模块视图
             styleStr += '.workspace-view { display: none !important; } ';
@@ -135,11 +143,19 @@
                 document.documentElement.classList.remove('rail-expanded-init');
                 document.documentElement.classList.remove('topbar-collapsed-init');
 
+                // 同步沉浸全屏模式 (Zen Mode)
+                if (isZenMode) {
+                    document.body.classList.add('zen-mode');
+                    document.querySelectorAll('.zen-icon-expand').forEach(function(el) { el.style.display = 'none'; });
+                    document.querySelectorAll('.zen-icon-collapse').forEach(function(el) { el.style.display = 'block'; });
+                }
+
                 // 双重 rAF 确保首帧渲染稳定后再移除临时防御样式并启用 CSS 过渡动画
                 requestAnimationFrame(function() {
                     requestAnimationFrame(function() {
                         var g = document.getElementById('fouc-module-guard');
                         if (g) g.parentNode.removeChild(g);
+                        document.documentElement.classList.remove('zen-mode-init');
                         document.documentElement.classList.remove('no-transitions');
                     });
                 });
@@ -3228,8 +3244,8 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260919_v1440"></script>
-    <script src="/static/script.js?v=20260921_v2020"></script>
-    <script src="/static/permission_blueprint.js?v=20260921_v2020"></script>
+    <script src="/static/script.js?v=20260921_v2030"></script>
+    <script src="/static/permission_blueprint.js?v=20260921_v2030"></script>
 
 
 
