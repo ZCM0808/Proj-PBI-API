@@ -381,6 +381,13 @@
 
             const dsList = window.getMergedGtbDatasets ? window.getMergedGtbDatasets() : JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
             const dsObj = dsList.find(d => String(d.id).toLowerCase() === String(dsId).toLowerCase());
+            // ⚡ 增强容错：若选了模型但未选工作区，以模型所属工作区补全
+            if (!wsId && dsObj && dsObj.workspaceId) {
+                wsId = dsObj.workspaceId;
+                wsObj = wsList.find(w => String(w.id).toLowerCase() === String(wsId).toLowerCase()) || { id: wsId, name: dsObj.workspaceName || wsId, alias: dsObj.workspaceName || wsId };
+                this.currentWorkspaceId = wsId;
+                this.currentWorkspaceName = wsObj ? (wsObj.alias || wsObj.name || wsObj.displayName || wsObj.id) : '';
+            }
             if (dsObj) {
                 const mKey = `real_model_${dsObj.id}`;
                 if (!MODEL_DEFINITIONS[mKey]) {
@@ -4443,9 +4450,7 @@
             if (selectedWsIds.length > 0 && rawWsData.some(w => String(w.id).toLowerCase() === selectedWsIds[0].toLowerCase())) {
                 curWsId = selectedWsIds[0];
             }
-            const curWs = curWsId ? rawWsData.find(w => String(w.id).toLowerCase() === curWsId.toLowerCase()) : null;
-            const hasSelectedWs = Boolean(curWs);
-            const wsName = curWs ? (curWs.alias || curWs.name) : '未选择';
+            let curWs = curWsId ? rawWsData.find(w => String(w.id).toLowerCase() === curWsId.toLowerCase()) : null;
 
             // 3. 严格检查是否选择了具体语义模型 —— 完全依赖顶栏已选模型，不在卡片内部提供选择
             const allDatasets = window.getMergedGtbDatasets ? window.getMergedGtbDatasets() : JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
@@ -4456,7 +4461,7 @@
                 curModel = allDatasets.find(d => String(d.id).toLowerCase() === selectedDsIds[0].toLowerCase());
             }
             // 其次在当前工作区限定范围内检索已选模型
-            if (!curModel && hasSelectedWs) {
+            if (!curModel && curWs) {
                 const scopedModels = allDatasets.filter(d => String(d.workspaceId || '').toLowerCase() === String(curWs.id).toLowerCase());
                 if (scopedModels.length > 0 && selectedDsIds.length > 0) {
                     curModel = scopedModels.find(m => selectedDsIds.some(sid => sid.toLowerCase() === String(m.id).toLowerCase()));
@@ -4467,6 +4472,21 @@
                 const mKeyLower = this.currentModelKey.replace(/^real_model_/, '').toLowerCase();
                 curModel = allDatasets.find(m => String(m.id).toLowerCase() === mKeyLower || m.name === this.currentModelKey || m.alias === this.currentModelKey);
             }
+
+            // ⚡ 增强对齐：若选定了模型但工作区未对齐，自动以该模型所属工作区作为承载工作区
+            if (curModel && curModel.workspaceId && (!curWs || String(curWs.id).toLowerCase() !== String(curModel.workspaceId).toLowerCase())) {
+                const modelWsId = String(curModel.workspaceId).toLowerCase();
+                const matchedWs = rawWsData.find(w => String(w.id).toLowerCase() === modelWsId);
+                if (matchedWs) {
+                    curWs = matchedWs;
+                    curWsId = matchedWs.id;
+                } else {
+                    curWs = { id: curModel.workspaceId, name: curModel.workspaceName || curModel.workspaceId, alias: curModel.workspaceName || curModel.workspaceId };
+                    curWsId = curWs.id;
+                }
+            }
+            const hasSelectedWs = Boolean(curWs);
+            const wsName = curWs ? (curWs.alias || curWs.name) : '未选择';
             const hasSelectedModel = Boolean(curModel);
 
             // 4. 严格检查是否选择了具体报表 —— 完全依赖顶栏已选报表，不在卡片内部提供选择
@@ -4544,6 +4564,15 @@
                         .replace(/^【环境就绪】/, '<strong class="pb-desc-tag tag-ok">【环境就绪】</strong>')
                         .replace(/^【载体就绪】/, '<strong class="pb-desc-tag tag-ok">【载体就绪】</strong>');
 
+                    const cleanName = (item.name || '').replace(/\s*[\(\（][^\)\）]*[\)\）]\s*/g, '').trim();
+                    const cat = item.cat || 'derived';
+                    const catLabelMap = {
+                        'assigned': 'ASSIGNED',
+                        'derived': 'CAPABILITY',
+                        'env': 'ENV'
+                    };
+                    const catLabel = catLabelMap[cat] || 'CAPABILITY';
+
                     return `
                         <div class="pb-asset-card-row ${item.isHero ? 'is-hero-role' : ''} ${item.cat ? 'cat-' + item.cat : 'cat-derived'}" data-row-id="${item.id}" data-tier-id="${tierId}" draggable="true">
                             <div class="pb-asset-row-top">
@@ -4558,13 +4587,16 @@
                                             <circle cx="15" cy="19" r="1.5"></circle>
                                         </svg>
                                     </span>
-                                    <span class="pb-asset-prop-name" title="${item.name}">${item.name}</span>
+                                    <span class="pb-asset-prop-name" title="${cleanName}">${cleanName}</span>
                                 </div>
                                 <span class="pb-asset-status-pill status-${item.statusClass}">${item.statusText}</span>
                             </div>
                             <div class="pb-asset-row-bottom">
                                 <span class="pb-asset-prop-desc">${formattedDesc}</span>
-                                ${item.badge ? `<span class="pb-asset-tag-pill">${item.badge}</span>` : ''}
+                                <div class="pb-asset-row-badges">
+                                    <span class="pb-cat-tag-pill cat-${cat}">${catLabel}</span>
+                                    ${item.badge ? `<span class="pb-asset-tag-pill">${item.badge}</span>` : ''}
+                                </div>
                             </div>
                         </div>
                     `;
@@ -4756,6 +4788,8 @@
                 }
             }
             const inspectCache = (window._modelDatasourcesCache && curModel?.id) ? window._modelDatasourcesCache[connCacheKey] : null;
+            const permCacheKey = `${curWs?.id || ''}_${curModel?.id || ''}`;
+            const realPermCache = (window._realPermissionsCache && curWs?.id && curModel?.id) ? window._realPermissionsCache[permCacheKey] : null;
 
             let primaryConnName = '';
             let primaryDsType = 'DATABASE';
@@ -5175,7 +5209,7 @@
                 // 1. 租户官方身份 -> 影响全局策略与特权
                 'tenant_principal_role': [
                     'tenant_gac_policy', 'tenant_export', 'tenant_web_modeling', 'tenant_xmla', 'tenant_external', 'tenant_embed', 'tenant_certify',
-                    'ws_role', 'ws_members', 'ws_delete',
+                    'ws_role', 'ws_members',
                     'model_write', 'conn_owner', 'pipeline_role', 'pipeline_manage'
                 ],
                 'tenant_gac_policy': ['conn_gac_perm', 'conn_gac_mashup'],

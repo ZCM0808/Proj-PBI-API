@@ -8440,18 +8440,65 @@ body.light-theme .pb-asset-card-row.is-hero-role .pb-asset-prop-name,
     color: #3730a3 !important;
 }
 
-/* ── Category Left Border Colors ── */
+/* ── Category Left Border Colors & Badges ── */
 /* ASSIGNED: gold */
 .pb-asset-card-row.cat-assigned {
-    border-left: 3px solid #f59e0b !important;
+    border-left: 3.5px solid #f59e0b !important;
 }
 /* CAPABILITY (derived): cyan */
 .pb-asset-card-row.cat-derived {
-    border-left: 3px solid rgba(56, 189, 248, 0.4) !important;
+    border-left: 3.5px solid #38bdf8 !important;
 }
 /* ENV: slate */
 .pb-asset-card-row.cat-env {
-    border-left: 3px solid rgba(148, 163, 184, 0.4) !important;
+    border-left: 3.5px solid #94a3b8 !important;
+}
+
+/* 显式图例类别小标识 (ASSIGNED / CAPABILITY / ENV) - 始终清晰常驻展示 */
+.pb-cat-tag-pill {
+    font-size: 0.55rem;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 3px;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+}
+.pb-cat-tag-pill.cat-assigned {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+}
+.pb-cat-tag-pill.cat-derived {
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+}
+.pb-cat-tag-pill.cat-env {
+    background: rgba(148, 163, 184, 0.15);
+    color: #cbd5e1;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+body.light-theme .pb-cat-tag-pill.cat-assigned,
+[data-theme="light"] .pb-cat-tag-pill.cat-assigned {
+    background: #fef3c7 !important;
+    color: #b45309 !important;
+    border-color: #fde68a !important;
+}
+body.light-theme .pb-cat-tag-pill.cat-derived,
+[data-theme="light"] .pb-cat-tag-pill.cat-derived {
+    background: #e0f2fe !important;
+    color: #0369a1 !important;
+    border-color: #bae6fd !important;
+}
+body.light-theme .pb-cat-tag-pill.cat-env,
+[data-theme="light"] .pb-cat-tag-pill.cat-env {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    border-color: #cbd5e1 !important;
 }
 
 /* ── Category Legend: bottom-left floating panel ── */
@@ -8743,7 +8790,9 @@ body.light-theme .pb-desc-tag.tag-ok,
 
 /* 1. 因果高亮：主动选中的源卡片 (Source Trigger) */
 .pb-asset-card-row.pb-causality-active {
-    border-color: #6366f1 !important;
+    border-top-color: #6366f1 !important;
+    border-right-color: #6366f1 !important;
+    border-bottom-color: #6366f1 !important;
     background: rgba(99, 102, 241, 0.22) !important;
     box-shadow: 0 0 16px rgba(99, 102, 241, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3) !important;
     transform: translateY(-1px) scale(1.01);
@@ -8751,7 +8800,9 @@ body.light-theme .pb-desc-tag.tag-ok,
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 .pb-asset-card-row.pb-causality-active.pb-causality-pinned {
-    border-color: #f59e0b !important;
+    border-top-color: #f59e0b !important;
+    border-right-color: #f59e0b !important;
+    border-bottom-color: #f59e0b !important;
     box-shadow: 0 0 18px rgba(245, 158, 11, 0.5), 0 2px 10px rgba(0, 0, 0, 0.35) !important;
 }
 
@@ -8765,7 +8816,9 @@ body.light-theme .pb-desc-tag.tag-ok,
     }
 }
 .pb-asset-card-row.pb-causality-target {
-    border-color: #38bdf8 !important;
+    border-top-color: #38bdf8 !important;
+    border-right-color: #38bdf8 !important;
+    border-bottom-color: #38bdf8 !important;
     background: rgba(56, 189, 248, 0.15) !important;
     animation: pbCausalityPulse 2s infinite ease-in-out;
     transform: translateY(-1px);
@@ -8773,11 +8826,30 @@ body.light-theme .pb-desc-tag.tag-ok,
     transition: all 0.25s ease-out !important;
 }
 
-/* 3. 因果激活时其余无关卡片优雅淡化 */
+/* 强制左边框坚守图例色彩，绝不被任何因果或激活状态覆盖 */
+.pb-asset-card-row.cat-assigned,
+.pb-asset-card-row.cat-assigned.pb-causality-active,
+.pb-asset-card-row.cat-assigned.pb-causality-target,
+.pb-asset-card-row.cat-assigned.pb-causality-pinned {
+    border-left: 3.5px solid #f59e0b !important;
+}
+.pb-asset-card-row.cat-derived,
+.pb-asset-card-row.cat-derived.pb-causality-active,
+.pb-asset-card-row.cat-derived.pb-causality-target,
+.pb-asset-card-row.cat-derived.pb-causality-pinned {
+    border-left: 3.5px solid #38bdf8 !important;
+}
+.pb-asset-card-row.cat-env,
+.pb-asset-card-row.cat-env.pb-causality-active,
+.pb-asset-card-row.cat-env.pb-causality-target,
+.pb-asset-card-row.cat-env.pb-causality-pinned {
+    border-left: 3.5px solid #94a3b8 !important;
+}
+
+/* 3. 因果激活时其余无关卡片优雅淡化 (保持真实色彩相，绝不洗白图例) */
 .pb-asset-card-row.pb-causality-dimmed {
-    opacity: 0.28 !important;
-    filter: grayscale(0.5);
-    transition: opacity 0.25s ease-out, filter 0.25s ease-out !important;
+    opacity: 0.32 !important;
+    transition: opacity 0.25s ease-out !important;
 }
 
 /* 4. 瓶颈/受限与阻断速查模式 (Bottlenecks Focus Mode) */

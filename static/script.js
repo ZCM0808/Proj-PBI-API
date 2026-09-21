@@ -2403,6 +2403,44 @@ window.selectCustomOption = function(type, id, alias, skipCascade = false) {
 
     localStorage.setItem(`pbi-active-${type}`, id);
 
+    if (type === 'dataset') {
+        if (window.selectedGtbDatasetIds) {
+            window.selectedGtbDatasetIds.clear();
+            if (id) window.selectedGtbDatasetIds.add(String(id));
+        }
+        try {
+            if (id) {
+                localStorage.setItem('pbi-selected-datasets', JSON.stringify([String(id)]));
+            } else {
+                localStorage.removeItem('pbi-selected-datasets');
+            }
+        } catch(e) {}
+    } else if (type === 'report') {
+        if (window.selectedGtbReportIds) {
+            window.selectedGtbReportIds.clear();
+            if (id) window.selectedGtbReportIds.add(String(id));
+        }
+        try {
+            if (id) {
+                localStorage.setItem('pbi-selected-reports', JSON.stringify([String(id)]));
+            } else {
+                localStorage.removeItem('pbi-selected-reports');
+            }
+        } catch(e) {}
+    } else if (type === 'workspace') {
+        if (window.selectedGtbWorkspaceIds) {
+            window.selectedGtbWorkspaceIds.clear();
+            if (id) window.selectedGtbWorkspaceIds.add(String(id));
+        }
+        try {
+            if (id) {
+                localStorage.setItem('pbi-selected-workspaces', JSON.stringify([String(id)]));
+            } else {
+                localStorage.removeItem('pbi-selected-workspaces');
+            }
+        } catch(e) {}
+    }
+
     
 
     document.getElementById(`options-${type}`).style.display = 'none';
@@ -2499,6 +2537,10 @@ window.selectCustomOption = function(type, id, alias, skipCascade = false) {
     }
     if (window.syncAllWorkflowSelectors) {
         window.syncAllWorkflowSelectors();
+    }
+    // ⚡ 联动权限蓝图引擎实时同步
+    if (window.PermissionBlueprint && typeof window.PermissionBlueprint.syncFromGtb === 'function') {
+        window.PermissionBlueprint.syncFromGtb();
     }
 };
 
@@ -3740,6 +3782,24 @@ window.toggleGtbDataset = function(dsId) {
         window.selectedGtbDatasetIds.delete(idStr);
     } else {
         window.selectedGtbDatasetIds.add(idStr);
+        // ⚡ 智能关联：若选中的模型属于某工作区，自动将该工作区激活，确保作用域一致，防止被级联作用域过滤剔除
+        const allDatasets = window.getMergedGtbDatasets ? window.getMergedGtbDatasets() : JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
+        const targetModel = allDatasets.find(d => String(d.id).toLowerCase() === idStr.toLowerCase());
+        if (targetModel && targetModel.workspaceId) {
+            const wid = String(targetModel.workspaceId);
+            if (!window.selectedGtbWorkspaceIds.has(wid)) {
+                window.selectedGtbWorkspaceIds.clear();
+                window.selectedGtbWorkspaceIds.add(wid);
+                try {
+                    localStorage.setItem('pbi-selected-workspaces', JSON.stringify([wid]));
+                    localStorage.setItem('pbi-active-workspace', wid);
+                    const activeWsInput = document.getElementById('active-workspace');
+                    if (activeWsInput) activeWsInput.value = wid;
+                    const gtbSelectWs = document.getElementById('gtb-select-workspace');
+                    if (gtbSelectWs) gtbSelectWs.value = wid;
+                } catch(e) {}
+            }
+        }
     }
     window.persistGtbDatasetsAndSync();
 };
@@ -3747,8 +3807,27 @@ window.toggleGtbDataset = function(dsId) {
 // 单选某个数据模型 (清空其他所有选择，并关闭浮层)
 window.selectSingleGtbDataset = function(dsId) {
     if (!dsId) return;
+    const idStr = String(dsId);
     window.selectedGtbDatasetIds.clear();
-    window.selectedGtbDatasetIds.add(String(dsId));
+    window.selectedGtbDatasetIds.add(idStr);
+    // ⚡ 智能关联：若选中的模型属于某工作区，自动将该工作区激活
+    const allDatasets = window.getMergedGtbDatasets ? window.getMergedGtbDatasets() : JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
+    const targetModel = allDatasets.find(d => String(d.id).toLowerCase() === idStr.toLowerCase());
+    if (targetModel && targetModel.workspaceId) {
+        const wid = String(targetModel.workspaceId);
+        if (!window.selectedGtbWorkspaceIds.has(wid)) {
+            window.selectedGtbWorkspaceIds.clear();
+            window.selectedGtbWorkspaceIds.add(wid);
+            try {
+                localStorage.setItem('pbi-selected-workspaces', JSON.stringify([wid]));
+                localStorage.setItem('pbi-active-workspace', wid);
+                const activeWsInput = document.getElementById('active-workspace');
+                if (activeWsInput) activeWsInput.value = wid;
+                const gtbSelectWs = document.getElementById('gtb-select-workspace');
+                if (gtbSelectWs) gtbSelectWs.value = wid;
+            } catch(e) {}
+        }
+    }
     window.persistGtbDatasetsAndSync();
     window.closeGtbDsDropdown();
 };
@@ -3828,9 +3907,13 @@ window.persistGtbDatasetsAndSync = function() {
 
     window.updateGlobalTopbarDropdowns();
     if (window.syncAllWorkflowSelectors) window.syncAllWorkflowSelectors();
+    // ⚡ 联动权限蓝图引擎实时同步
+    if (window.PermissionBlueprint && typeof window.PermissionBlueprint.syncFromGtb === 'function') {
+        window.PermissionBlueprint.syncFromGtb();
+    }
 };
 
-// 过滤 Popover 里的数据模型列表项与工作区分组 (支持跨工作区智能搜索，如搜索 apac)
+// 过滤 Popover 里的数据模型列表项与工作区分组 (精确匹配模型名称与 ID，绝不因工作区名误带出全部模型)
 window.filterGtbDsOptions = function(term = '') {
     const q = (term || '').toLowerCase().trim();
     const groups = document.querySelectorAll('#gtb-ds-list .gtb-ds-ws-group');
@@ -3848,20 +3931,15 @@ window.filterGtbDsOptions = function(term = '') {
                 item.style.display = 'none';
             }
         });
-        const headerTitle = group.querySelector('.gtb-ds-ws-title')?.textContent?.toLowerCase() || '';
-        const headerMatches = Boolean(q && headerTitle.includes(q));
 
         if (!q) {
-            // 没有搜索词时：非当前选定工作区范围的隐藏，选定范围的显示
+            // 没有搜索词时：非当前选定工作区范围的隐藏，选定范围的显示，恢复列表项可见
             group.style.display = isOtherScope ? 'none' : 'block';
-        } else if (visibleItemCount > 0 || headerMatches) {
-            // 搜索状态下：无论是否属于当前选定工作区，只要匹配关键字（如 apac）即刻高亮展开呈现
+            items.forEach(item => item.style.display = 'flex');
+        } else if (visibleItemCount > 0) {
+            // 搜索状态下：仅当该工作区下存在真正命中关键字的模型时才展开呈现
             group.style.display = 'block';
             group.classList.remove('collapsed');
-            if (headerMatches) {
-                items.forEach(item => item.style.display = 'flex');
-                visibleItemCount = items.length;
-            }
             totalMatches += visibleItemCount;
         } else {
             group.style.display = 'none';
@@ -3956,6 +4034,24 @@ window.toggleGtbReport = function(rpId) {
         window.selectedGtbReportIds.delete(idStr);
     } else {
         window.selectedGtbReportIds.add(idStr);
+        // ⚡ 智能关联：若选中的报表属于某工作区，自动将该工作区激活
+        const allReports = window.getMergedGtbReports ? window.getMergedGtbReports() : JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+        const targetReport = allReports.find(r => String(r.id).toLowerCase() === idStr.toLowerCase());
+        if (targetReport && targetReport.workspaceId) {
+            const wid = String(targetReport.workspaceId);
+            if (!window.selectedGtbWorkspaceIds.has(wid)) {
+                window.selectedGtbWorkspaceIds.clear();
+                window.selectedGtbWorkspaceIds.add(wid);
+                try {
+                    localStorage.setItem('pbi-selected-workspaces', JSON.stringify([wid]));
+                    localStorage.setItem('pbi-active-workspace', wid);
+                    const activeWsInput = document.getElementById('active-workspace');
+                    if (activeWsInput) activeWsInput.value = wid;
+                    const gtbSelectWs = document.getElementById('gtb-select-workspace');
+                    if (gtbSelectWs) gtbSelectWs.value = wid;
+                } catch(e) {}
+            }
+        }
     }
     window.persistGtbReportsAndSync();
 };
@@ -3963,8 +4059,27 @@ window.toggleGtbReport = function(rpId) {
 // 单选某个报表 (清空其他所有选择，并关闭浮层)
 window.selectSingleGtbReport = function(rpId) {
     if (!rpId) return;
+    const idStr = String(rpId);
     window.selectedGtbReportIds.clear();
-    window.selectedGtbReportIds.add(String(rpId));
+    window.selectedGtbReportIds.add(idStr);
+    // ⚡ 智能关联：若选中的报表属于某工作区，自动将该工作区激活
+    const allReports = window.getMergedGtbReports ? window.getMergedGtbReports() : JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+    const targetReport = allReports.find(r => String(r.id).toLowerCase() === idStr.toLowerCase());
+    if (targetReport && targetReport.workspaceId) {
+        const wid = String(targetReport.workspaceId);
+        if (!window.selectedGtbWorkspaceIds.has(wid)) {
+            window.selectedGtbWorkspaceIds.clear();
+            window.selectedGtbWorkspaceIds.add(wid);
+            try {
+                localStorage.setItem('pbi-selected-workspaces', JSON.stringify([wid]));
+                localStorage.setItem('pbi-active-workspace', wid);
+                const activeWsInput = document.getElementById('active-workspace');
+                if (activeWsInput) activeWsInput.value = wid;
+                const gtbSelectWs = document.getElementById('gtb-select-workspace');
+                if (gtbSelectWs) gtbSelectWs.value = wid;
+            } catch(e) {}
+        }
+    }
     window.persistGtbReportsAndSync();
     window.closeGtbRpDropdown();
 };
@@ -3994,9 +4109,13 @@ window.persistGtbReportsAndSync = function() {
 
     window.updateGlobalTopbarDropdowns();
     if (window.syncAllWorkflowSelectors) window.syncAllWorkflowSelectors();
+    // ⚡ 联动权限蓝图引擎实时同步
+    if (window.PermissionBlueprint && typeof window.PermissionBlueprint.syncFromGtb === 'function') {
+        window.PermissionBlueprint.syncFromGtb();
+    }
 };
 
-// 过滤 Popover 里的报表列表项与工作区分组 (Workspace-Grouped Report Search)
+// 过滤 Popover 里的报表列表项与工作区分组 (精确匹配报表名称与 ID，绝不因工作区名误带出全部报表)
 window.filterGtbRpOptions = function(term = '') {
     const q = (term || '').toLowerCase().trim();
     const groups = document.querySelectorAll('#gtb-rp-list .gtb-rp-ws-group');
@@ -4005,7 +4124,7 @@ window.filterGtbRpOptions = function(term = '') {
             const items = group.querySelectorAll('.gtb-rp-item');
             let visibleItemCount = 0;
             items.forEach(item => {
-                const text = item.getAttribute('data-search-text') || '';
+                const text = (item.getAttribute('data-search-text') || '').toLowerCase();
                 if (!q || text.includes(q)) {
                     item.style.display = 'flex';
                     visibleItemCount++;
@@ -4013,15 +4132,12 @@ window.filterGtbRpOptions = function(term = '') {
                     item.style.display = 'none';
                 }
             });
-            const headerTitle = group.querySelector('.gtb-rp-ws-title')?.textContent?.toLowerCase() || '';
-            if (!q || visibleItemCount > 0 || headerTitle.includes(q)) {
+            if (!q) {
                 group.style.display = 'block';
-                if (q) {
-                    group.classList.remove('collapsed'); // 搜索时自动展开匹配分组
-                }
-                if (headerTitle.includes(q) && q) {
-                    items.forEach(item => item.style.display = 'flex');
-                }
+                items.forEach(item => item.style.display = 'flex');
+            } else if (visibleItemCount > 0) {
+                group.style.display = 'block';
+                group.classList.remove('collapsed');
             } else {
                 group.style.display = 'none';
             }
@@ -4029,7 +4145,7 @@ window.filterGtbRpOptions = function(term = '') {
     } else {
         const items = document.querySelectorAll('#gtb-rp-list .gtb-rp-item');
         items.forEach(item => {
-            const text = item.getAttribute('data-search-text') || '';
+            const text = (item.getAttribute('data-search-text') || '').toLowerCase();
             if (!q || text.includes(q)) {
                 item.style.display = 'flex';
             } else {
@@ -4323,7 +4439,7 @@ window.updateGlobalTopbarDropdowns = function() {
                                 const mId = String(m.id);
                                 const mName = m.alias || m.name || mId;
                                 const isSel = window.selectedGtbDatasetIds.has(mId);
-                                const searchText = `${mName} ${mId} ${wname}`.toLowerCase();
+                                const searchText = `${mName} ${mId}`.toLowerCase();
                                 return `
                                     <div class="gtb-ws-item gtb-ds-item ${isSel ? 'selected' : ''}" data-search-text="${searchText}" onclick="window.toggleGtbDataset('${mId}')">
                                         <div class="gtb-ws-item-left">
@@ -4342,6 +4458,10 @@ window.updateGlobalTopbarDropdowns = function() {
             });
 
             dsListContainer.innerHTML = matrixHtml || `<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 24px 10px;">当前已选工作区下暂无可用的数据模型</div>`;
+            const currentSearch = document.getElementById('gtb-ds-search-input')?.value;
+            if (currentSearch) {
+                window.filterGtbDsOptions(currentSearch);
+            }
         }
     }
 
@@ -4494,7 +4614,7 @@ window.updateGlobalTopbarDropdowns = function() {
                                 const rId = String(r.id);
                                 const rName = r.alias || r.name || rId;
                                 const isSel = window.selectedGtbReportIds.has(rId);
-                                const searchText = `${rName} ${rId} ${wname}`.toLowerCase();
+                                const searchText = `${rName} ${rId}`.toLowerCase();
                                 return `
                                     <div class="gtb-ws-item gtb-rp-item ${isSel ? 'selected' : ''}" data-search-text="${searchText}" onclick="window.toggleGtbReport('${rId}')">
                                         <div class="gtb-ws-item-left">
@@ -4513,6 +4633,10 @@ window.updateGlobalTopbarDropdowns = function() {
             });
 
             rpListContainer.innerHTML = matrixHtml || `<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 24px 10px;">当前已选工作区下暂无可用的报表</div>`;
+            const currentRpSearch = document.getElementById('gtb-rp-search-input')?.value;
+            if (currentRpSearch) {
+                window.filterGtbRpOptions(currentRpSearch);
+            }
         }
     }
 
