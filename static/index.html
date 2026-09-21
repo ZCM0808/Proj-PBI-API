@@ -67,10 +67,19 @@
             styleEl.textContent = styleStr;
             document.head.appendChild(styleEl);
 
-            // 专门注入首帧模块可见性防御（带 !important 物理压制任何解析中途闪烁）
+            // 专门注入首帧模块及蓝图子选项卡可见性防御（带 !important 物理压制任何解析中途闪烁）
+            var savedBpTab = localStorage.getItem('pb-active-main-tab') || 'blueprint';
+            var guardCss = '.workspace-view { display: none !important; } #view-' + savedMod + ' { display: flex !important; } .sidebar-pane { display: none !important; } #sidebar-pane-' + savedMod + ' { display: flex !important; } ';
+            if (savedMod === 'permission_blueprint') {
+                if (savedBpTab === 'user_assets') {
+                    guardCss += '#pb-canvas-viewport { display: none !important; } #pb-matrix-container { display: none !important; } #pb-user-assets-container { display: flex !important; } #pb-blueprint-toolbar { display: none !important; } #pb-matrix-toolbar { display: none !important; } #pb-user-assets-toolbar { display: flex !important; } ';
+                } else if (savedBpTab === 'matrix') {
+                    guardCss += '#pb-canvas-viewport { display: none !important; } #pb-user-assets-container { display: none !important; } #pb-matrix-container { display: flex !important; } #pb-blueprint-toolbar { display: none !important; } #pb-user-assets-toolbar { display: none !important; } #pb-matrix-toolbar { display: flex !important; } ';
+                }
+            }
             var guardStyle = document.createElement('style');
             guardStyle.id = 'fouc-module-guard';
-            guardStyle.textContent = '.workspace-view { display: none !important; } #view-' + savedMod + ' { display: flex !important; } .sidebar-pane { display: none !important; } #sidebar-pane-' + savedMod + ' { display: flex !important; }';
+            guardStyle.textContent = guardCss;
             document.head.appendChild(guardStyle);
 
             // 4. DOMContentLoaded 时同步状态至 body 并优雅解除初始类与 .no-transitions
@@ -110,6 +119,17 @@
                 }
                 var activeRail = document.getElementById('rail-nav-' + savedMod);
                 if (activeRail) activeRail.classList.add('active');
+
+                // 同步权限蓝图内部子选项卡 Tab 按钮 active 状态
+                if (savedMod === 'permission_blueprint') {
+                    var savedTab = localStorage.getItem('pb-active-main-tab') || 'blueprint';
+                    var tabBpBtn = document.getElementById('pb-tab-blueprint-btn');
+                    var tabMxBtn = document.getElementById('pb-tab-matrix-btn');
+                    var tabUaBtn = document.getElementById('pb-tab-user-assets-btn');
+                    if (tabBpBtn) tabBpBtn.classList.toggle('active', savedTab === 'blueprint');
+                    if (tabMxBtn) tabMxBtn.classList.toggle('active', savedTab === 'matrix');
+                    if (tabUaBtn) tabUaBtn.classList.toggle('active', savedTab === 'user_assets');
+                }
 
                 // 移除 html 上的初始化占位类
                 document.documentElement.classList.remove('rail-expanded-init');
@@ -3208,8 +3228,8 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260919_v1440"></script>
-    <script src="/static/script.js?v=20260921_v2000"></script>
-    <script src="/static/permission_blueprint.js?v=20260921_v2000"></script>
+    <script src="/static/script.js?v=20260921_v2020"></script>
+    <script src="/static/permission_blueprint.js?v=20260921_v2020"></script>
 
 
 
