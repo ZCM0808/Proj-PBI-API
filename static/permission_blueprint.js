@@ -4303,6 +4303,19 @@
                         } catch(e) {}
                         delete this._fetchingConnections[cacheKey];
                         // 静默刷新用户全景资产链路，展示真实连接与企业网关
+                        // 真实穿透：并发查询该模型与该连接的真实官方授权人员名单
+                        const firstDs = data.datasources && data.datasources[0];
+                        this.fetchRealAssetPermissions(
+                            workspaceId,
+                            datasetId,
+                            firstDs?.gatewayId || null,
+                            firstDs?.datasourceId || null
+                        ).then(() => {
+                            if (this.activeMainTab === 'user_assets') {
+                                this.renderUserAssetsMatrix();
+                            }
+                        }).catch(() => {});
+
                         if (this.activeMainTab === 'user_assets') {
                             this.renderUserAssetsMatrix();
                         }
@@ -4317,6 +4330,65 @@
                 }
             }
             return null;
+        }
+
+        // 🌐 真实 API 穿透：查询模型及数据源连接上的真实官方授权主体与权限列表
+        async fetchRealAssetPermissions(workspaceId, datasetId, gatewayId = null, datasourceId = null) {
+            if (!workspaceId || !datasetId) return;
+            const permCacheKey = `${workspaceId}_${datasetId}`;
+            if (!window._realPermissionsCache) window._realPermissionsCache = {};
+            if (window._realPermissionsCache[permCacheKey]) return window._realPermissionsCache[permCacheKey];
+
+            const result = {
+                datasetUsers: [],
+                datasourceUsers: [],
+                fetchedAt: new Date().toISOString()
+            };
+
+            // 1. 真实穿透：GET /groups/{workspaceId}/datasets/{datasetId}/users
+            try {
+                const dsRes = await fetch('/api/proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        endpoint: `/groups/${workspaceId}/datasets/${datasetId}/users`,
+                        method: 'GET'
+                    })
+                });
+                if (dsRes.ok) {
+                    const dsData = await dsRes.json();
+                    if (dsData && dsData.success && dsData.data && Array.isArray(dsData.data.value)) {
+                        result.datasetUsers = dsData.data.value;
+                    }
+                }
+            } catch (err) {
+                console.warn('[Real API] 获取数据集模型授权用户失败:', err);
+            }
+
+            // 2. 真实穿透：GET /gateways/{gatewayId}/datasources/{datasourceId}/users (若已获取网关与数据源)
+            if (gatewayId && datasourceId) {
+                try {
+                    const gwRes = await fetch('/api/proxy', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            endpoint: `/gateways/${gatewayId}/datasources/${datasourceId}/users`,
+                            method: 'GET'
+                        })
+                    });
+                    if (gwRes.ok) {
+                        const gwData = await gwRes.json();
+                        if (gwData && gwData.success && gwData.data && Array.isArray(gwData.data.value)) {
+                            result.datasourceUsers = gwData.data.value;
+                        }
+                    }
+                } catch (err) {
+                    console.warn('[Real API] 获取数据源连接授权用户失败:', err);
+                }
+            }
+
+            window._realPermissionsCache[permCacheKey] = result;
+            return result;
         }
 
         // ⚡ 渲染用户全景资产权限链路流转矩阵 (Tenant -> Workspace -> Model -> Report -> Connection -> Pipeline)
@@ -4844,10 +4916,25 @@
                     gwItemStatusText = '❌ GATEWAY OFFLINE';
                 }
 
+                // 真实 API 穿透：检查当前用户是否真实被授予数据源连接使用权
+                let effectiveHasDataConn = hasDataConn;
+                if (realPermCache && Array.isArray(realPermCache.datasourceUsers) && realPermCache.datasourceUsers.length > 0 && user?.upn) {
+                    const userUpnLower = user.upn.trim().toLowerCase();
+                    const matchedDsUser = realPermCache.datasourceUsers.find(du => {
+                        const uIdent = (du.emailAddress || du.identifier || du.userPrincipalName || '').trim().toLowerCase();
+                        return uIdent === userUpnLower;
+                    });
+                    if (matchedDsUser) {
+                        effectiveHasDataConn = true;
+                    } else if (!isPrivileged) {
+                        effectiveHasDataConn = false;
+                    }
+                }
+
                 connItems.push(
-                    { id: 'conn_user_perm', cat: 'derived', name: 'CONNECTION USER (连接凭据使用权)', desc: hasDataConn ? '具备 Connection User 授权，模型在刷新与 DirectQuery 取数时可复用此凭据' : '未被分配 Connection User 角色，无法调用或复用该连接凭据', statusClass: hasDataConn ? 'enabled' : 'disabled', statusText: hasDataConn ? '✅ CAN USE' : '❌ CANNOT USE', badge: 'CREDENTIALS' },
-                    { id: 'conn_gac_perm', cat: 'derived', name: 'GAC PERMISSION (数据源细粒度访问权限)', desc: isPrivileged ? '工作区管理员特权穿透，直接拥有该连接最高 GAC(Granular Access Control) 细粒度物理直连与抽取权限' : (hasDataConn ? '已获官方数据源 GAC 细粒度授权，允许直接复用此连接凭据执行数据查询与抽取' : '未被分配 GAC 细粒度权限，无法通过此连接访问底层物理数据库'), statusClass: isPrivileged ? 'bypassed' : (hasDataConn ? 'enabled' : 'disabled'), statusText: isPrivileged ? '⚡ ADMIN BYPASS' : (hasDataConn ? '✅ CAN ACCESS' : '❌ CANNOT ACCESS'), badge: 'GAC' },
-                    { id: 'conn_gac_mashup', cat: 'derived', name: 'GAC MASHUP GATE (跨源数据混合转换门禁)', desc: isPrivileged ? '工作区管理员直通，豁免多数据源 Mashup 细粒度门禁限制，可自由混合处理多源数据' : (hasDataConn && !user?.state?.isInStrictMode ? '跨源安全门禁放行，允许在 Power Query 与 DirectQuery 中将此连接与其它数据源关联合并' : '触发 GAC 跨源安全隔离门禁，严格模式下禁止跨数据源混合关联处理'), statusClass: isPrivileged ? 'bypassed' : (hasDataConn && !user?.state?.isInStrictMode ? 'enabled' : 'disabled'), statusText: isPrivileged ? '⚡ ADMIN BYPASS' : (hasDataConn && !user?.state?.isInStrictMode ? '✅ CAN MASHUP' : '❌ CANNOT MASHUP'), badge: 'MASHUP' },
+                    { id: 'conn_user_perm', cat: 'derived', name: 'CONNECTION USER (连接凭据使用权)', desc: effectiveHasDataConn ? '具备 Connection User 授权，模型在刷新与 DirectQuery 取数时可复用此凭据' : '未被分配 Connection User 角色，无法调用或复用该连接凭据', statusClass: effectiveHasDataConn ? 'enabled' : 'disabled', statusText: effectiveHasDataConn ? '✅ CAN USE' : '❌ CANNOT USE', badge: 'CREDENTIALS' },
+                    { id: 'conn_gac_perm', cat: 'derived', name: 'GAC PERMISSION (数据源细粒度访问权限)', desc: isPrivileged ? '工作区管理员特权穿透，直接拥有该连接最高 GAC(Granular Access Control) 细粒度物理直连与抽取权限' : (effectiveHasDataConn ? '已获官方数据源 GAC 细粒度授权，允许直接复用此连接凭据执行数据查询与抽取' : '未被分配 GAC 细粒度权限，无法通过此连接访问底层物理数据库'), statusClass: isPrivileged ? 'bypassed' : (effectiveHasDataConn ? 'enabled' : 'disabled'), statusText: isPrivileged ? '⚡ ADMIN BYPASS' : (effectiveHasDataConn ? '✅ CAN ACCESS' : '❌ CANNOT ACCESS'), badge: 'GAC' },
+                    { id: 'conn_gac_mashup', cat: 'derived', name: 'GAC MASHUP GATE (跨源数据混合转换门禁)', desc: isPrivileged ? '工作区管理员直通，豁免多数据源 Mashup 细粒度门禁限制，可自由混合处理多源数据' : (effectiveHasDataConn && !user?.state?.isInStrictMode ? '跨源安全门禁放行，允许在 Power Query 与 DirectQuery 中将此连接与其它数据源关联合并' : '触发 GAC 跨源安全隔离门禁，严格模式下禁止跨数据源混合关联处理'), statusClass: isPrivileged ? 'bypassed' : (effectiveHasDataConn && !user?.state?.isInStrictMode ? 'enabled' : 'disabled'), statusText: isPrivileged ? '⚡ ADMIN BYPASS' : (effectiveHasDataConn && !user?.state?.isInStrictMode ? '✅ CAN MASHUP' : '❌ CANNOT MASHUP'), badge: 'MASHUP' },
                     { id: 'conn_gw', cat: 'env', name: gwItemName, desc: gwItemDesc, statusClass: gwItemStatusClass, statusText: gwItemStatusText, badge: gwItemBadge },
                     { id: 'conn_sso', cat: 'derived', name: 'DIRECTQUERY SSO (单点登录身份委派)', desc: 'DirectQuery 运行时使用当前用户 Entra ID 身份穿透鉴权直连底层数据库', statusClass: 'enabled', statusText: '✅ CAN DELEGATE', badge: 'SSO' },
                     { id: 'conn_refresh', cat: 'derived', name: 'SCHEDULED REFRESH (计划刷新调度)', desc: isPrivileged ? '允许配置自动化计划刷新调度并随时手动触发微批次数据抽取' : '仅 Admin/Member/Contributor 具备计划刷新配置与手动触发权限', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ CAN REFRESH' : '❌ CANNOT REFRESH', badge: 'REFRESH' },
@@ -5008,7 +5095,18 @@
                     try {
                         sessionStorage.removeItem('pbi_model_datasources_cache');
                     } catch(e) {}
-                    await this.fetchModelConnections(curWsId, curDsId, true);
+                    const permCacheKey = `${curWsId}_${curDsId}`;
+                    if (window._realPermissionsCache) {
+                        delete window._realPermissionsCache[permCacheKey];
+                    }
+                    const connData = await this.fetchModelConnections(curWsId, curDsId, true);
+                    const firstDs = connData?.datasources && connData.datasources[0];
+                    await this.fetchRealAssetPermissions(
+                        curWsId,
+                        curDsId,
+                        firstDs?.gatewayId || null,
+                        firstDs?.datasourceId || null
+                    );
                 }
 
                 // 强制重新渲染矩阵
