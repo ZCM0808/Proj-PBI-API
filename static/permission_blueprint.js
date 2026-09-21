@@ -4905,6 +4905,7 @@
 
             // 初始化卡片内部各个权限小卡片上下拖拽移动排序引擎 (物理零重叠)
             this.initUserAssetsItemDrag(container);
+            this.initUserAssetsCausalityLinkage(container);
         }
 
         // ⚡ 初始化卡片内部权限条目上下拖拽移动引擎 (Zero-Overlap Guaranteed Item Reordering)
@@ -5055,6 +5056,308 @@
 
         resetUserAssetsCardOrder() {
             this.resetUserAssetsItemsOrder();
+        }
+
+        // ═════════════════════════════════════════════════════════════════════
+        // ⚡ 因果光晕联动 (Hover & Click-to-Pin Causality Glow)
+        // ═════════════════════════════════════════════════════════════════════
+        initUserAssetsCausalityLinkage(container) {
+            if (!container) return;
+
+            // 官方因果关联图谱 (Causality Map: Source Item -> Derivative/Impacted Items)
+            const CAUSALITY_MAP = {
+                // 1. 租户官方身份 -> 影响全局策略与特权
+                'tenant_principal_role': [
+                    'tenant_gac_policy', 'tenant_export', 'tenant_web_modeling', 'tenant_xmla', 'tenant_external', 'tenant_embed', 'tenant_certify',
+                    'ws_role', 'ws_members', 'ws_delete',
+                    'model_write', 'conn_owner', 'pipeline_role', 'pipeline_manage'
+                ],
+                'tenant_gac_policy': ['conn_gac_perm', 'conn_gac_mashup'],
+                'tenant_export': ['report_export'],
+                'tenant_web_modeling': ['model_write', 'report_edit'],
+                'tenant_xmla': ['model_write'],
+                'tenant_external': ['report_share'],
+                'tenant_embed': ['report_view'],
+
+                // 2. 工作区官方角色 -> 影响协同编辑、应用发布、模型写回、连接与管道
+                'ws_role': [
+                    'ws_members', 'ws_edit', 'ws_app', 'ws_capacity', 'ws_delete', 'ws_lineage',
+                    'model_write', 'model_reshare', 'model_rls', 'model_gac_ols',
+                    'report_edit', 'report_share',
+                    'conn_refresh', 'conn_owner', 'conn_share',
+                    'pipeline_deploy', 'pipeline_diff', 'pipeline_rules'
+                ],
+                'ws_members': ['model_reshare', 'report_share', 'conn_share'],
+                'ws_edit': ['model_write', 'report_edit'],
+                'ws_app': ['report_view', 'report_share'],
+                'ws_capacity': ['model_build', 'model_write'],
+                'ws_delete': ['ws_target'],
+                'ws_lineage': ['report_view', 'model_read'],
+
+                // 3. 语义模型官方权限 -> 影响模型读取、构建与报表查看导出
+                'model_permission': [
+                    'model_read', 'model_build', 'model_write', 'model_reshare', 'model_gac_ols', 'model_rls',
+                    'report_view', 'report_export'
+                ],
+                'model_read': ['report_view', 'conn_user_perm'],
+                'model_build': ['report_export'],
+                'model_write': ['report_edit'],
+                'model_gac_ols': ['report_view', 'report_export'],
+                'model_rls': ['report_view', 'report_export'],
+                'model_reshare': ['report_share'],
+
+                // 4. 报表官方访问级别 -> 影响在线交互、编辑与明细导出
+                'report_access': [
+                    'report_view', 'report_edit', 'report_export', 'report_sub', 'report_share'
+                ],
+                'report_view': ['report_sub', 'report_export'],
+                'report_edit': ['report_export', 'report_share'],
+                'report_export': ['report_view'],
+                'report_share': ['report_view'],
+
+                // 5. 官方连接与网关 -> 影响数据抽取、GAC与刷新
+                'conn_default_ds': ['conn_user_perm', 'conn_gac_perm', 'conn_gac_mashup', 'conn_gw', 'conn_sso', 'conn_refresh', 'conn_owner', 'conn_share', 'model_read'],
+                'conn_inspecting': ['conn_gw'],
+                'conn_user_perm': ['model_read', 'conn_refresh'],
+                'conn_gac_perm': ['conn_gac_mashup', 'model_read'],
+                'conn_gac_mashup': ['model_read'],
+                'conn_gw': ['model_read', 'conn_refresh'],
+                'conn_sso': ['model_read'],
+                'conn_refresh': ['model_read'],
+                'conn_owner': ['conn_share', 'conn_refresh'],
+                'conn_share': ['conn_user_perm'],
+
+                // 6. 部署管道官方角色 -> 影响阶段部署与规则
+                'pipeline_role': [
+                    'pipeline_deploy', 'pipeline_diff', 'pipeline_rules', 'pipeline_manage', 'pipeline_backward'
+                ],
+                'pipeline_deploy': ['pipeline_diff', 'pipeline_rules'],
+                'pipeline_rules': ['pipeline_deploy'],
+                'pipeline_manage': ['pipeline_rules', 'pipeline_backward'],
+                'pipeline_backward': ['pipeline_deploy']
+            };
+
+            // 构建反向推导索引 (Reverse Causality: Target Item -> Its Source Enablers)
+            const REVERSE_MAP = {};
+            Object.entries(CAUSALITY_MAP).forEach(([src, targets]) => {
+                targets.forEach(tgt => {
+                    if (!REVERSE_MAP[tgt]) REVERSE_MAP[tgt] = [];
+                    REVERSE_MAP[tgt].push(src);
+                });
+            });
+
+            // 获取与指定 rowId 关联的所有卡片（包括下游衍生与上游赋权源）
+            const getLinkedRowIds = (rowId) => {
+                const forward = CAUSALITY_MAP[rowId] || [];
+                const reverse = REVERSE_MAP[rowId] || [];
+                // 如果是动态连接前缀 conn_real_ds_
+                let dynamicConn = [];
+                if (rowId.startsWith('conn_real_ds_')) {
+                    dynamicConn = CAUSALITY_MAP['conn_default_ds'] || [];
+                }
+                const set = new Set([...forward, ...reverse, ...dynamicConn]);
+                set.delete(rowId);
+                return Array.from(set);
+            };
+
+            const allRows = container.querySelectorAll('.pb-asset-card-row');
+
+            const clearCausalityVisuals = () => {
+                allRows.forEach(r => {
+                    r.classList.remove('pb-causality-active', 'pb-causality-pinned', 'pb-causality-target', 'pb-causality-dimmed');
+                });
+            };
+
+            const applyCausalityVisuals = (activeRow, isPinned = false) => {
+                clearCausalityVisuals();
+                if (!activeRow) return;
+
+                const rowId = activeRow.getAttribute('data-row-id');
+                if (!rowId) return;
+
+                const linkedIds = getLinkedRowIds(rowId);
+
+                // 标记源卡片
+                activeRow.classList.add('pb-causality-active');
+                if (isPinned) activeRow.classList.add('pb-causality-pinned');
+
+                // 标记关联卡片与其余淡化卡片
+                allRows.forEach(r => {
+                    if (r === activeRow) return;
+                    const id = r.getAttribute('data-row-id');
+                    if (linkedIds.includes(id)) {
+                        r.classList.add('pb-causality-target');
+                    } else {
+                        r.classList.add('pb-causality-dimmed');
+                    }
+                });
+            };
+
+            // 监听每个卡片的 Hover 与 Click
+            allRows.forEach(row => {
+                // 悬停联动 (仅在未锁定时生效)
+                row.addEventListener('mouseenter', () => {
+                    if (this._pinnedCausalityRow) return;
+                    applyCausalityVisuals(row, false);
+                });
+
+                row.addEventListener('mouseleave', () => {
+                    if (this._pinnedCausalityRow) return;
+                    clearCausalityVisuals();
+                });
+
+                // 点击锁定或切换
+                row.addEventListener('click', (e) => {
+                    // 防止点击按钮等其他内嵌控件干扰
+                    if (e.target.closest('button, input, select')) return;
+
+                    if (this._pinnedCausalityRow === row) {
+                        // 再次点击同一张卡片 -> 取消锁定
+                        this._pinnedCausalityRow = null;
+                        clearCausalityVisuals();
+                    } else {
+                        // 点击新卡片 -> 锁定新卡片
+                        this._pinnedCausalityRow = row;
+                        applyCausalityVisuals(row, true);
+                    }
+                    e.stopPropagation();
+                });
+            });
+
+            // 点击空白区域时解除锁定
+            if (!container._hasCausalityBlankListener) {
+                container._hasCausalityBlankListener = true;
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('.pb-asset-card-row') && this._pinnedCausalityRow) {
+                        this._pinnedCausalityRow = null;
+                        clearCausalityVisuals();
+                    }
+                });
+            }
+        }
+
+        // ═════════════════════════════════════════════════════════════════════
+        // ⚠️ 阻断与受限断点速查切换 (Bottlenecks Focus Filter)
+        // ═════════════════════════════════════════════════════════════════════
+        toggleBottleneckFilter(btnEl) {
+            const container = document.getElementById('pb-user-assets-container');
+            if (!container) return;
+
+            const isFocus = container.classList.toggle('pb-bottlenecks-focus-mode');
+            if (btnEl) btnEl.classList.toggle('active-filter', isFocus);
+
+            if (isFocus) {
+                const disabledCount = container.querySelectorAll('.pb-asset-card-row.status-disabled').length;
+                const warnCount = container.querySelectorAll('.pb-asset-card-row.status-warn').length;
+                const totalIssues = disabledCount + warnCount;
+                if (typeof window.showNotification === 'function') {
+                    if (totalIssues > 0) {
+                        window.showNotification(`⚠️ 已开启断点速查：精准锁定 ${disabledCount} 项阻断与 ${warnCount} 项受限！`, 'warning', 3000);
+                    } else {
+                        window.showNotification('🎉 当前链路全线放行，未检出任何权限阻断或异常限制！', 'success', 2500);
+                    }
+                }
+            } else {
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification('✨ 已退出断点速查，恢复全景权限链路总览', 'info', 2000);
+                }
+            }
+        }
+
+        // ═════════════════════════════════════════════════════════════════════
+        // 📋 复制权限诊断体检报告至剪贴板 (Copy Audit Summary)
+        // ═════════════════════════════════════════════════════════════════════
+        async copyAuditSummary(btnEl) {
+            const container = document.getElementById('pb-user-assets-container');
+            if (!container) return;
+
+            const now = new Date();
+            const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+            // 获取当前模拟主体
+            const topBadge = document.getElementById('pb-top-simulated-badge');
+            const principalName = topBadge ? topBadge.textContent.trim().replace(/^当前主体:\s*/, '') : '通用基准';
+
+            // 搜集 6 大 Module 的卡片条目信息
+            const tierCards = container.querySelectorAll('.pb-asset-tier-card');
+            const lines = [];
+            lines.push(`=======================================================`);
+            lines.push(`🛡️ Power BI 全景资产权限链路诊断体检报告`);
+            lines.push(`=======================================================`);
+            lines.push(`📅 诊断时间: ${timeStr}`);
+            lines.push(`👤 评估主体: ${principalName}`);
+            lines.push(`📁 目标工作区: ${this.currentWorkspaceName || '未指定'}`);
+            lines.push(`-------------------------------------------------------`);
+
+            const blockedItems = [];
+            const restrictedItems = [];
+            const passedItems = [];
+
+            tierCards.forEach(card => {
+                const title = card.querySelector('.pb-card-title')?.textContent?.trim() || 'Module';
+                const heroRole = card.querySelector('.pb-asset-card-row.is-hero-role .pb-asset-prop-name')?.textContent?.trim() || 'N/A';
+                const heroStatus = card.querySelector('.pb-asset-card-row.is-hero-role .pb-asset-status-pill')?.textContent?.trim() || '';
+
+                lines.push(`\n【${title}】 官方核心: [${heroRole}] ${heroStatus}`);
+
+                const rows = card.querySelectorAll('.pb-asset-card-row:not(.is-hero-role)');
+                rows.forEach(r => {
+                    const name = r.querySelector('.pb-asset-prop-name')?.textContent?.trim() || '';
+                    const statusText = r.querySelector('.pb-asset-status-pill')?.textContent?.trim() || '';
+                    const isDenied = r.classList.contains('status-disabled');
+                    const isWarn = r.classList.contains('status-warn');
+
+                    if (isDenied) {
+                        blockedItems.push(`  • [${title}] ${name} ➔ ${statusText}`);
+                        lines.push(`   ❌ ${name}: ${statusText}`);
+                    } else if (isWarn) {
+                        restrictedItems.push(`  • [${title}] ${name} ➔ ${statusText}`);
+                        lines.push(`   ⚠️ ${name}: ${statusText}`);
+                    } else {
+                        passedItems.push(name);
+                        lines.push(`   ✅ ${name}: ${statusText}`);
+                    }
+                });
+            });
+
+            lines.push(`\n-------------------------------------------------------`);
+            lines.push(`🔍 诊断体检排错结论:`);
+            if (blockedItems.length === 0 && restrictedItems.length === 0) {
+                lines.push(`🎉 状态健康：当前主体在全链路 6 大层级拥有完整权限，无任何拦截或离线隐患！`);
+            } else {
+                if (blockedItems.length > 0) {
+                    lines.push(`⛔ 发现 ${blockedItems.length} 个阻断断点 (Blocked / 403):`);
+                    blockedItems.forEach(b => lines.push(b));
+                }
+                if (restrictedItems.length > 0) {
+                    lines.push(`\n⚠️ 发现 ${restrictedItems.length} 个受限/警告项 (Restricted / Warn):`);
+                    restrictedItems.forEach(w => lines.push(w));
+                }
+            }
+            lines.push(`=======================================================`);
+
+            const reportText = lines.join('\n');
+
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(reportText);
+                } else {
+                    const ta = document.createElement('textarea');
+                    ta.value = reportText;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                }
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification('📋 权限诊断体检报告已成功复制到剪贴板！', 'success', 2500);
+                }
+            } catch(err) {
+                console.error('Failed to copy audit report:', err);
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification('❌ 复制报告失败，请检查浏览器权限', 'error');
+                }
+            }
         }
     }
 
