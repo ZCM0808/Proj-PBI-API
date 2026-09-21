@@ -53,6 +53,11 @@ test.describe('GTB Model Search & Panoramic Permission Chain Model Application V
     // 验证：不属于 apac 的 emea_supply_chain 也绝不应该可见
     const emeaItem = dsDropdown.locator('.gtb-ds-item:visible', { hasText: 'emea_supply_chain' });
     await expect(emeaItem).toHaveCount(0);
+
+    // 验证：底栏搜索统计文本正确展示匹配数量
+    const dsStatText = dsDropdown.locator('#gtb-ds-stat-text');
+    await expect(dsStatText).toContainText('找到');
+    await expect(dsStatText).toContainText('1');
   });
 
   test('验证 2: 搜索并选中某个模型后，全景权限链路中的 MODEL 模块即刻应用并渲染该选中的模型', async ({ page }) => {
@@ -107,7 +112,7 @@ test.describe('GTB Model Search & Panoramic Permission Chain Model Application V
     await expect(permCatPill).toHaveText('ASSIGNED');
     await expect(permCatPill).toBeVisible();
 
-    // 6. 验证选中 delete workspace 时，tenant 区域的 tenant member 卡片绝不高亮
+    // 6. 验证选中 delete workspace 时，tenant 区域的 tenant member 卡片绝不高亮，且环境卡片 ws_target 也不高亮
     const wsDeleteRow = page.locator('.pb-asset-tier-card[data-tier-id="workspace"] .pb-asset-card-row[data-row-id="ws_delete"]');
     await expect(wsDeleteRow).toBeVisible();
     await wsDeleteRow.click();
@@ -120,6 +125,10 @@ test.describe('GTB Model Search & Panoramic Permission Chain Model Application V
     await expect(tenantMemberRow).not.toHaveClass(/pb-causality-target/);
     await expect(tenantMemberRow).toHaveClass(/pb-causality-dimmed/);
 
+    // 验证 ws_target 环境卡片绝不高亮
+    const wsTargetRow = page.locator('.pb-asset-tier-card[data-tier-id="workspace"] .pb-asset-card-row[data-row-id="ws_target"]');
+    await expect(wsTargetRow).not.toHaveClass(/pb-causality-target/);
+
     // 验证工作区角色 ws_role 作为上游依赖正确高亮
     const wsRoleRow = page.locator('.pb-asset-tier-card[data-tier-id="workspace"] .pb-asset-card-row[data-row-id="ws_role"]');
     await expect(wsRoleRow).toHaveClass(/pb-causality-target/);
@@ -127,6 +136,55 @@ test.describe('GTB Model Search & Panoramic Permission Chain Model Application V
     // 7. 验证高亮/选中期间，图例标识仍然常驻可见
     await expect(wsRoleRow.locator('.pb-cat-tag-pill')).toBeVisible();
     await expect(wsDeleteRow.locator('.pb-cat-tag-pill')).toBeVisible();
+
+    // 8. 验证连接管理与管道管理卡片也绝不连带点亮 tenant member
+    const connOwnerRow = page.locator('.pb-asset-tier-card[data-tier-id="connection"] .pb-asset-card-row[data-row-id="conn_owner"]');
+    if (await connOwnerRow.count() > 0) {
+      await connOwnerRow.click();
+      await expect(tenantMemberRow).not.toHaveClass(/pb-causality-target/);
+    }
+
+    // 9. 验证点击工作区 ws_role (ADMIN) 时，下属语义模型与报表所有小卡片全部点亮，绝非变暗！
+    await wsRoleRow.click();
+    await expect(wsRoleRow).toHaveClass(/pb-causality-active/);
+    await expect(modelRowPermission).toHaveClass(/pb-causality-target/);
+    await expect(modelRowRead).toHaveClass(/pb-causality-target/);
+    const modelRowBuild = page.locator('.pb-asset-tier-card[data-tier-id="model"] .pb-asset-card-row[data-row-id="model_build"]');
+    await expect(modelRowBuild).toHaveClass(/pb-causality-target/);
+    await expect(modelRowRead).not.toHaveClass(/pb-causality-dimmed/);
+
+    // 10. 验证状态徽章中已彻底移除 CAN / CANNOT 单词，且包含 SVG 图标
+    const statusPills = page.locator('.pb-asset-status-pill');
+    const pillCount = await statusPills.count();
+    expect(pillCount).toBeGreaterThan(5);
+    for (let i = 0; i < Math.min(pillCount, 15); i++) {
+      const pill = statusPills.nth(i);
+      const text = await pill.innerText();
+      expect(text).not.toMatch(/\bCANNOT\b/i);
+      expect(text).not.toMatch(/\bCAN\b/i);
+      // 确认嵌入了 svg 图标
+      const svgCount = await pill.locator('svg').count();
+      expect(svgCount).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  test('验证 3: 刷新页面时顶栏报表绝不会被系统擅自设置默认值，坚决维持未选状态', async ({ page }) => {
+    // 清除已选报表
+    await page.evaluate(() => {
+      localStorage.removeItem('pbi-selected-reports');
+      localStorage.removeItem('pbi-active-report');
+      if (window.selectedGtbReportIds) window.selectedGtbReportIds.clear();
+    });
+
+    // 刷新页面
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
+    // 验证报表触发器文本维持未选状态，绝不默认选中第一张报表
+    const rpDisplayText = page.locator('#gtb-rp-display-text');
+    await expect(rpDisplayText).toHaveText(/-- 选择报表 \(0\) --/);
+
+    const hiddenReport = page.locator('#gtb-select-report');
+    await expect(hiddenReport).toHaveValue('');
   });
 
 });

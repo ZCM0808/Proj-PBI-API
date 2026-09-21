@@ -2630,11 +2630,9 @@ window._populateDropdown = function(type, data) {
     optionsDiv._sourceData = data;
     renderList('');
 
-    if (data.some(d => d.id === currentVal)) {
+    if (currentVal && data.some(d => d.id === currentVal)) {
         const selected = data.find(d => d.id === currentVal);
         selectCustomOption(type, selected.id, selected.alias, true);
-    } else if (data.length > 0) {
-        selectCustomOption(type, data[0].id, data[0].alias, true);
     } else {
         selectCustomOption(type, '', '', true);
     }
@@ -3583,14 +3581,27 @@ window.persistGtbWorkspacesAndSync = function(triggerCascade = true) {
 window.filterGtbWsOptions = function(term = '') {
     const q = (term || '').toLowerCase().trim();
     const items = document.querySelectorAll('#gtb-ws-list .gtb-ws-item');
+    let matchCount = 0;
+    const totalCount = items.length;
     items.forEach(item => {
-        const text = item.getAttribute('data-search-text') || '';
+        const text = (item.getAttribute('data-search-text') || '').toLowerCase();
         if (!q || text.includes(q)) {
             item.style.display = 'flex';
+            matchCount++;
         } else {
             item.style.display = 'none';
         }
     });
+
+    const statTextEl = document.getElementById('gtb-ws-stat-text');
+    if (statTextEl) {
+        if (q) {
+            statTextEl.innerHTML = `🔍 找到 <strong>${matchCount}</strong> / ${totalCount} 个工作区`;
+        } else {
+            const selectedCount = window.selectedGtbWorkspaceIds ? window.selectedGtbWorkspaceIds.size : 0;
+            statTextEl.textContent = `已选 ${selectedCount} / ${totalCount} 个工作区`;
+        }
+    }
 };
 
 // 注册全局点击事件以关闭 Popover
@@ -3918,9 +3929,11 @@ window.filterGtbDsOptions = function(term = '') {
     const q = (term || '').toLowerCase().trim();
     const groups = document.querySelectorAll('#gtb-ds-list .gtb-ds-ws-group');
     let totalMatches = 0;
+    let totalItems = 0;
     groups.forEach(group => {
         const isOtherScope = group.classList.contains('gtb-ds-ws-other-scope');
         const items = group.querySelectorAll('.gtb-ds-item');
+        totalItems += items.length;
         let visibleItemCount = 0;
         items.forEach(item => {
             const text = (item.getAttribute('data-search-text') || '').toLowerCase();
@@ -3948,6 +3961,20 @@ window.filterGtbDsOptions = function(term = '') {
     const dsList = document.getElementById('gtb-ds-list');
     if (dsList && q) {
         dsList.scrollTop = 0;
+    }
+
+    const statTextEl = document.getElementById('gtb-ds-stat-text');
+    if (statTextEl) {
+        if (q) {
+            statTextEl.innerHTML = `🔍 找到 <strong>${totalMatches}</strong> / ${totalItems} 个模型`;
+        } else {
+            const selectedDsCount = window.selectedGtbDatasetIds ? window.selectedGtbDatasetIds.size : 0;
+            const selectedWsCount = window.selectedGtbWorkspaceIds ? window.selectedGtbWorkspaceIds.size : 0;
+            const hasWsFilter = selectedWsCount > 0;
+            statTextEl.textContent = hasWsFilter
+                ? `已选 ${selectedDsCount} / ${totalItems} 个模型 (联动 ${selectedWsCount} 个工作区)`
+                : `已选 ${selectedDsCount} / ${totalItems} 个模型`;
+        }
     }
 };
 
@@ -4119,9 +4146,12 @@ window.persistGtbReportsAndSync = function() {
 window.filterGtbRpOptions = function(term = '') {
     const q = (term || '').toLowerCase().trim();
     const groups = document.querySelectorAll('#gtb-rp-list .gtb-rp-ws-group');
+    let totalMatches = 0;
+    let totalItems = 0;
     if (groups.length > 0) {
         groups.forEach(group => {
             const items = group.querySelectorAll('.gtb-rp-item');
+            totalItems += items.length;
             let visibleItemCount = 0;
             items.forEach(item => {
                 const text = (item.getAttribute('data-search-text') || '').toLowerCase();
@@ -4138,16 +4168,19 @@ window.filterGtbRpOptions = function(term = '') {
             } else if (visibleItemCount > 0) {
                 group.style.display = 'block';
                 group.classList.remove('collapsed');
+                totalMatches += visibleItemCount;
             } else {
                 group.style.display = 'none';
             }
         });
     } else {
         const items = document.querySelectorAll('#gtb-rp-list .gtb-rp-item');
+        totalItems = items.length;
         items.forEach(item => {
             const text = (item.getAttribute('data-search-text') || '').toLowerCase();
             if (!q || text.includes(q)) {
                 item.style.display = 'flex';
+                totalMatches++;
             } else {
                 item.style.display = 'none';
             }
@@ -4156,6 +4189,20 @@ window.filterGtbRpOptions = function(term = '') {
     const rpList = document.getElementById('gtb-rp-list');
     if (rpList && q) {
         rpList.scrollTop = 0;
+    }
+
+    const statTextEl = document.getElementById('gtb-rp-stat-text');
+    if (statTextEl) {
+        if (q) {
+            statTextEl.innerHTML = `🔍 找到 <strong>${totalMatches}</strong> / ${totalItems} 个报表`;
+        } else {
+            const selectedRpCount = window.selectedGtbReportIds ? window.selectedGtbReportIds.size : 0;
+            const selectedWsCount = window.selectedGtbWorkspaceIds ? window.selectedGtbWorkspaceIds.size : 0;
+            const hasWsFilter = selectedWsCount > 0;
+            statTextEl.textContent = hasWsFilter
+                ? `已选 ${selectedRpCount} / ${totalItems} 个报表 (联动 ${selectedWsCount} 个工作区)`
+                : `已选 ${selectedRpCount} / ${totalItems} 个报表`;
+        }
     }
 };
 
