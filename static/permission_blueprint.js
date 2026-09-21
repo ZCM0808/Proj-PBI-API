@@ -16,6 +16,7 @@
             description: '组织租户与工作区最高管理员，具备全部特权穿透能力',
             state: {
                 isGuestUser: false,
+                isTenantAdmin: true,
                 tenantAllowExport: true,
                 tenantAllowWebModeling: true,
                 capacityType: 'fabric_f64',
@@ -3623,6 +3624,7 @@
             const getRaw = (k, def) => (overrides[k] !== undefined ? overrides[k] : (s[k] !== undefined ? s[k] : def));
 
             // L1 租户全局基础配置
+            const isTenantAdmin = getRaw('isTenantAdmin', s.isTenantAdmin || false);
             const tenantAllowExport = getRaw('tenantAllowExport', true);
             const tenantAllowWebModeling = getRaw('tenantAllowWebModeling', true);
             const shareExternal = getRaw('shareExternal', !s.isGuestUser);
@@ -3754,7 +3756,7 @@
                         ${renderRow('XMLA 终结点读写支持', 'xmlaEndpoint', xmlaEndpoint ? 'enabled' : 'disabled', xmlaEndpoint ? '✅ 启用' : '❌ 禁用', 'xmlaEndpoint')}
                         ${renderRow('GAC 细粒度隔离策略', 'gacPolicy', isInStrictMode ? 'enabled' : 'warn', isInStrictMode ? '🛡️ 严格门禁' : '⚠️ 宽松模式', 'isInStrictMode')}
                         ${renderRow('EMBED FOR EXTERNAL', 'embedExternal', 'enabled', '✅ 启用', 'embedExternal')}
-                        ${renderRow('CERTIFICATION', 'certification', isAdmin ? 'enabled' : 'disabled', isAdmin ? '✅ 启用' : '❌ 禁用', 'certification')}
+                        ${renderRow('CERTIFICATION (认证权限)', 'certification', isTenantAdmin ? 'enabled' : 'disabled', isTenantAdmin ? '✅ 启用' : '❌ 禁用', 'isTenantAdmin')}
                     </div>
                 </div>
             `;
@@ -4350,12 +4352,16 @@
             }
 
             const isGuest = Boolean(user?.state?.isGuestUser || user?.upn?.includes('#ext#') || user?.roleTag?.includes('Guest'));
+            // 彻底解耦：租户级管理员 (Tenant Admin) vs 工作区级管理员 (Workspace Admin)
+            // 严谨治理：普通成员即使被分配了工作区 Admin，在租户级也只是 TENANT MEMBER，绝不可越权篡位为 POWER BI ADMINISTRATOR！
+            const isTenantAdmin = Boolean(user?.state?.isTenantAdmin === true || (user?.roleTag && user.roleTag.toLowerCase().includes('tenant admin')));
             const wsRole = user?.state?.workspaceRole || 'Viewer';
-            const isAdmin = wsRole === 'Admin';
+            const isWsAdmin = wsRole === 'Admin';
             const isMember = wsRole === 'Member';
             const isContributor = wsRole === 'Contributor';
             const isViewer = wsRole === 'Viewer';
             const isPrivileged = ['Admin', 'Member', 'Contributor'].includes(wsRole);
+            const isAdmin = isWsAdmin; // 保留供工作区及其下游治理使用
 
             // 2. 严格检查是否选择了具体工作区 (绝无盲目取第一项的非预期兜底)
             const rawWsData = window.cleanseCrossDomainWorkspaces ? window.cleanseCrossDomainWorkspaces(window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : []) : [];
@@ -4516,16 +4522,18 @@
             const userSub = user ? `主体: ${user.name} (${user.roleTag})` : '未指定具体用户主体';
             const tenantHeaderStatusClass = user ? (isGuest ? 'warn' : 'enabled') : 'disabled';
             const tenantHeaderStatusText = user ? (isGuest ? '⚠️ B2B GUEST' : '✅ AUTH VALID') : '⚠️ NO PRINCIPAL';
-            const tenantRoleName = isAdmin ? 'POWER BI ADMINISTRATOR' : (isGuest ? 'B2B GUEST USER' : 'TENANT MEMBER');
+            const tenantRoleName = isTenantAdmin ? 'POWER BI ADMINISTRATOR' : (isGuest ? 'B2B GUEST USER' : 'TENANT MEMBER');
+            const tenantHeroStatusClass = user ? (isTenantAdmin ? 'bypassed' : (isGuest ? 'warn' : 'enabled')) : 'disabled';
+            const tenantHeroStatusText = user ? (isTenantAdmin ? '⚡ ADMIN' : (isGuest ? '⚠️ B2B GUEST' : '✅ MEMBER')) : '❌ NO USER';
             const tenantItems = [
-                { id: 'tenant_principal_role', isHero: true, cat: 'assigned', name: tenantRoleName, desc: user ? `【当前分配身份】主体 [${user.name}] (${user.upn}) · 组织租户治理身份` : '【等待配置】请在左侧主体面板指定具体企业成员', statusClass: user ? (isAdmin ? 'bypassed' : (isGuest ? 'warn' : 'enabled')) : 'disabled', statusText: user ? (isAdmin ? '⚡ ADMIN' : (isGuest ? '⚠️ B2B GUEST' : '✅ MEMBER')) : '❌ NO USER', badge: 'ROLE' },
+                { id: 'tenant_principal_role', isHero: true, cat: 'assigned', name: tenantRoleName, desc: user ? `【当前分配身份】主体 [${user.name}] (${user.upn}) · 组织租户治理身份` : '【等待配置】请在左侧主体面板指定具体企业成员', statusClass: tenantHeroStatusClass, statusText: tenantHeroStatusText, badge: 'ROLE' },
                 { id: 'tenant_gac_policy', cat: 'derived', name: `GAC POLICY: ${user?.state?.isInStrictMode ? 'STRICT MODE (严格隔离)' : 'PERMISSIVE (策略放行)'}`, desc: user?.state?.isInStrictMode ? '租户开启 GAC(Granular Access Control / 细粒度访问控制) 严格审查模式，非特权成员必须具备显式数据连接授权' : '租户 GAC 跨源策略处于放行模式，未对非特权成员实施全局数据源物理隔离', statusClass: user?.state?.isInStrictMode ? 'warn' : 'enabled', statusText: user?.state?.isInStrictMode ? '🔒 STRICT' : '✅ CAN ACCESS', badge: 'GAC' },
                 { id: 'tenant_export', cat: 'derived', name: 'EXPORT DATA (明细数据导出策略)', desc: user ? '租户全局策略放行，允许将报表与模型数据导出至本地 Excel/CSV' : '【等待配置】需选定具体登录主体后生效策略', statusClass: user ? 'enabled' : 'disabled', statusText: user ? '✅ CAN EXPORT' : '❌ CANNOT EXPORT', badge: 'EXPORT' },
                 { id: 'tenant_web_modeling', cat: 'derived', name: 'WEB MODELING (浏览器在线建模)', desc: user?.state?.tenantAllowWebModeling ? '租户策略允许在浏览器端直接设计、编辑语义模型架构与度量值' : '租户策略禁用网页在线建模，只能通过客户端工具操作', statusClass: user?.state?.tenantAllowWebModeling ? 'enabled' : 'disabled', statusText: user?.state?.tenantAllowWebModeling ? '✅ CAN MODEL' : '❌ CANNOT MODEL', badge: 'WEB MODEL' },
                 { id: 'tenant_xmla', cat: 'derived', name: 'XMLA ENDPOINT (终结点全局读写)', desc: '终结点已开启读写，允许 SSMS、DAX Studio 与 Tabular Editor 跨客户端直连', statusClass: 'enabled', statusText: '✅ CAN CONNECT', badge: 'XMLA' },
                 { id: 'tenant_external', cat: 'derived', name: 'EXTERNAL SHARING (跨组织外部共享)', desc: user ? (isGuest ? '当前属于外部访客账号，默认受限禁止跨租户二次外发共享' : '租户策略放行组织外部跨域报告共享') : '【等待配置】需选定用户主体后推导策略', statusClass: isGuest ? 'disabled' : (user ? 'enabled' : 'disabled'), statusText: isGuest ? '❌ CANNOT SHARE' : (user ? '✅ CAN SHARE' : '⚠️ WAITING'), badge: 'EXTERNAL' },
                 { id: 'tenant_embed', cat: 'derived', name: 'EMBED FOR EXTERNAL (外部嵌入策略)', desc: '控制是否允许将报表通过 Embed for customers 方式嵌入外部应用程序', statusClass: user ? 'enabled' : 'disabled', statusText: user ? '✅ CAN EMBED' : '❌ CANNOT EMBED', badge: 'EMBED' },
-                { id: 'tenant_certify', cat: 'derived', name: 'CERTIFICATION (数据集认证权限)', desc: isAdmin ? '允许为语义模型和数据流打上官方认证标签，向全组织推荐可信数据源' : '仅租户管理员具备数据集认证标签颁发权限', statusClass: isAdmin ? 'enabled' : 'disabled', statusText: isAdmin ? '✅ CAN CERTIFY' : '❌ CANNOT CERTIFY', badge: 'CERTIFY' },
+                { id: 'tenant_certify', cat: 'derived', name: 'CERTIFICATION (数据集认证权限)', desc: isTenantAdmin ? '允许为语义模型和数据流打上官方认证标签，向全组织推荐可信数据源' : '仅租户管理员具备数据集认证标签颁发权限', statusClass: isTenantAdmin ? 'enabled' : 'disabled', statusText: isTenantAdmin ? '✅ CAN CERTIFY' : '❌ CANNOT CERTIFY', badge: 'CERTIFY' },
                 { id: 'tenant_id', cat: 'env', name: `TENANT: ${tenantId ? (tenantId.length > 20 ? tenantId.slice(0, 18) + '...' : tenantId) : '未配置'}`, desc: tenantId ? `【环境就绪】挂载组织目录租户 ID: ${tenantId}` : '【未配置】系统未配置 TENANT_ID，请在设置中输入', statusClass: tenantId ? 'enabled' : 'warn', statusText: tenantId ? '✅ READY' : '⚠️ MISSING ID', badge: 'TENANT ID' }
             ];
             const colTenantBody = renderTierItemsHtml('tenant', tenantItems);
