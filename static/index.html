@@ -75,9 +75,12 @@
             styleEl.textContent = styleStr;
             document.head.appendChild(styleEl);
 
-            // 专门注入首帧模块及蓝图子选项卡可见性防御（带 !important 物理压制任何解析中途闪烁）
+            // 专门注入首帧模块、导航轨高亮、及子选项卡可见性防御（带 !important 物理压制任何解析中途闪烁）
             var savedBpTab = localStorage.getItem('pb-active-main-tab') || 'blueprint';
             var guardCss = '.workspace-view { display: none !important; } #view-' + savedMod + ' { display: flex !important; } .sidebar-pane { display: none !important; } #sidebar-pane-' + savedMod + ' { display: flex !important; } ';
+            // 0ms 同步一级导航 Rail 高亮样式（防止刷新时 Rail 菜单图标高亮跳跃）
+            guardCss += '#rail-nav-' + savedMod + ' { background: var(--accent-glow) !important; border-color: var(--accent) !important; color: var(--accent) !important; font-weight: 600 !important; box-shadow: 0 0 12px rgba(242, 200, 17, 0.15) !important; } ';
+
             if (savedMod === 'permission_blueprint') {
                 if (savedBpTab === 'user_assets') {
                     guardCss += '#pb-canvas-viewport { display: none !important; } #pb-matrix-container { display: none !important; } #pb-user-assets-container { display: flex !important; } #pb-blueprint-toolbar { display: none !important; } #pb-matrix-toolbar { display: none !important; } #pb-user-assets-toolbar { display: flex !important; } ';
@@ -87,6 +90,9 @@
                 // 🚨 0ms 提前精准点亮对应选项卡按钮，物理消除按钮高光跳跃
                 var activeTabBtnId = 'pb-tab-' + (savedBpTab === 'user_assets' ? 'user-assets' : (savedBpTab === 'matrix' ? 'matrix' : 'blueprint')) + '-btn';
                 guardCss += '#' + activeTabBtnId + ', #' + activeTabBtnId + ' span { background: #4f46e5 !important; color: #ffffff !important; box-shadow: 0 1px 6px rgba(79, 70, 229, 0.4) !important; font-weight: 700 !important; } ';
+            } else if (savedMod === 'workflows') {
+                var savedWf = localStorage.getItem('pbi-last-workflow') || 'datasource_inspector';
+                guardCss += '.wf-config-pane { display: none !important; } #wf-config-' + savedWf + ' { display: block !important; } ';
             }
             var guardStyle = document.createElement('style');
             guardStyle.id = 'fouc-module-guard';
@@ -479,7 +485,7 @@
                         </button>
                     </div>
                 <ul class="rail-menu-list">
-                    <li class="rail-item active" id="rail-nav-workflows" data-module="workflows" title="⚡ 自动化工作流 (Workflows)">
+                    <li class="rail-item" id="rail-nav-workflows" data-module="workflows" title="⚡ 自动化工作流 (Workflows)">
                         <div class="rail-item-icon">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
                         </div>
@@ -823,7 +829,7 @@
 
                     <!-- Workflow Parameter & Property Panes Container -->
                     <div id="wf-board-panes" style="flex: 1; display: flex; flex-direction: column; gap: 12px; overflow-y: auto;">
-<div id="wf-config-export_report" class="wf-config-pane">
+<div id="wf-config-export_report" class="wf-config-pane" style="display: none;">
 
                     <div class="wf-fluid-grid">
 
@@ -3247,8 +3253,8 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260919_v1440"></script>
-    <script src="/static/script.js?v=20260921_v2035"></script>
-    <script src="/static/permission_blueprint.js?v=20260921_v2035"></script>
+    <script src="/static/script.js?v=20260921_v2040"></script>
+    <script src="/static/permission_blueprint.js?v=20260921_v2040"></script>
 
 
 
