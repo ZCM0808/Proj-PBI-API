@@ -254,7 +254,8 @@
         'node_workspace': { x: 820, y: 80 },
         'node_sharing': { x: 820, y: 530 },
         'node_rls': { x: 1220, y: 80 },
-        'node_ols': { x: 1220, y: 530 }
+        'node_ols': { x: 1220, y: 530 },
+        'node_pipeline': { x: 1620, y: 80 }
     };
 
     // 端口几何静态相对偏移表 (彻底消除 getBoundingClientRect 重排)
@@ -276,7 +277,9 @@
         'port_out_rls_filtered': { nodeId: 'node_rls', relX: 320, relY: 58 },
         'port_in_ols_rls': { nodeId: 'node_ols', relX: 0, relY: 58 },
         'port_in_ols_bypass': { nodeId: 'node_ols', relX: 0, relY: 82 },
-        'port_out_ols_final': { nodeId: 'node_ols', relX: 320, relY: 58 }
+        'port_out_ols_final': { nodeId: 'node_ols', relX: 320, relY: 58 },
+        'port_in_pipeline_ws': { nodeId: 'node_pipeline', relX: 0, relY: 58 },
+        'port_out_pipeline_prod': { nodeId: 'node_pipeline', relX: 320, relY: 58 }
     };
 
     // 蓝图运行时单例
@@ -2728,6 +2731,14 @@
                             <label>允许 Web 端数据建模 (Web Modeling)</label>
                             <input type="checkbox" ${s.tenantAllowWebModeling ? 'checked' : ''} onchange="window.PermissionBlueprint.updateStateField('tenantAllowWebModeling', this.checked)">
                         </div>
+                        <div class="pb-node-field">
+                            <label>允许外部嵌入 (Embed for External)</label>
+                            <input type="checkbox" ${s.tenantAllowEmbed !== false ? 'checked' : ''} onchange="window.PermissionBlueprint.updateStateField('tenantAllowEmbed', this.checked)">
+                        </div>
+                        <div class="pb-node-field">
+                            <label>数据集认证权限 (Certification)</label>
+                            <input type="checkbox" ${s.tenantAllowCertify !== false ? 'checked' : ''} onchange="window.PermissionBlueprint.updateStateField('tenantAllowCertify', this.checked)">
+                        </div>
                     `
                 },
 
@@ -2831,6 +2842,14 @@
                             <label>企业网关连通就绪 (Gateway Online)</label>
                             <input type="checkbox" ${s.gatewayOnline ? 'checked' : ''} onchange="window.PermissionBlueprint.updateStateField('gatewayOnline', this.checked)">
                         </div>
+                        <div class="pb-node-field">
+                            <label>连接所有者/管理员 (Connection Owner)</label>
+                            <input type="checkbox" ${s.isConnectionOwner ? 'checked' : ''} onchange="window.PermissionBlueprint.updateStateField('isConnectionOwner', this.checked)">
+                        </div>
+                        <div class="pb-node-field">
+                            <label>允许共享连接 (Share Connection)</label>
+                            <input type="checkbox" ${s.canShareConnection ? 'checked' : ''} onchange="window.PermissionBlueprint.updateStateField('canShareConnection', this.checked)">
+                        </div>
                         <div class="pb-node-alert alert-normal">
                             若在 GAC 严格模式下缺失底层连接权限，即使是工作区管理员也无法打开 Power Query 编辑器！
                         </div>
@@ -2913,6 +2932,30 @@
                         </div>
                         <div class="pb-node-alert alert-normal">
                             受限字段将在 DAX 查询与前端报表视觉对象中直接引发引用错误或完全隐藏。
+                        </div>
+                    `
+                },
+
+                // Node 9: L8 部署管道与 ALM 生命周期
+                {
+                    id: 'node_pipeline',
+                    title: 'L8: 部署管道与 ALM 生命周期',
+                    subtitle: 'Deployment Pipeline & ALM',
+                    badge: s.isPipelineAdmin ? 'Pipeline Admin' : 'Deployer',
+                    badgeColor: s.isPipelineAdmin ? '#34d399' : '#fbbf24',
+                    inputs: [{ id: 'in_pipeline_ws', label: '工作区资产流 (Workspace Assets)' }],
+                    outputs: [{ id: 'out_pipeline_prod', label: '生产部署流 (Prod Deploy)' }],
+                    contentHtml: `
+                        <div class="pb-node-field">
+                            <label>管道管理员 (Pipeline Admin)</label>
+                            <input type="checkbox" ${s.isPipelineAdmin ? 'checked' : ''} onchange="window.PermissionBlueprint.updateStateField('isPipelineAdmin', this.checked)">
+                        </div>
+                        <div class="pb-node-field">
+                            <label>允许反向部署 (Backward Deploy)</label>
+                            <input type="checkbox" ${s.allowBackwardDeploy ? 'checked' : ''} onchange="window.PermissionBlueprint.updateStateField('allowBackwardDeploy', this.checked)">
+                        </div>
+                        <div class="pb-node-alert alert-normal">
+                            管道管理员可执行阶段流转部署、架构差异比对、部署规则配置及管道生命周期管理。
                         </div>
                     `
                 }
