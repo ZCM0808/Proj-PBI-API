@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260921_v2200">
+    <link rel="stylesheet" href="/static/style.css?v=20260922_v0750">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -2652,8 +2652,8 @@
                         <button type="button" id="pb-btn-filter-bottlenecks" class="btn-wf-sm" onclick="window.PermissionBlueprint.toggleBottleneckFilter(this)" title="断点速查：仅高亮所有受限、阻断与离线项，淡化正常项" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; transition: all 0.2s;">
                             <span>⚠️ 仅看受限与阻断</span>
                         </button>
-                        <button type="button" id="pb-btn-copy-audit-summary" class="btn-wf-sm" onclick="window.PermissionBlueprint.copyAuditSummary(this)" title="导出报告：一键将当前 6 大层级全景权限诊断体检报告复制至剪贴板" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; transition: all 0.2s;">
-                            <span>📋 复制诊断报告</span>
+                        <button type="button" id="pb-btn-explain-causality" class="btn-wf-sm" onclick="window.PermissionBlueprint.explainActiveCausality(this)" title="解析关系：深度解析当前选中小卡片与关联高亮卡片之间的因果权限链路及治理合规性" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; transition: all 0.2s;">
+                            <span>🔗 解析卡片关系</span>
                         </button>
                         <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.resetUserAssetsItemsOrder()" title="恢复各卡片内部权限条目的默认排列顺序" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer;">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
@@ -3249,6 +3249,24 @@
         </div>
     </div>
 
+    <!-- Permission Blueprint: Causality & Linkage Explanation Modal -->
+    <div id="pb-explain-causality-modal" class="modal-overlay" style="display: none; z-index: 26000;">
+        <div class="modal-content glass-panel" style="max-width: 840px; width: 92%; max-height: 86vh; display: flex; flex-direction: column;">
+            <div class="modal-header" style="border-bottom: 1px solid var(--overlay-10); padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; cursor: move; user-select: none;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 1.2rem;">🔗</span>
+                    <h3 id="pb-explain-modal-title" style="margin: 0; font-size: 1.02rem; color: var(--text-primary); font-weight: 700;">权限卡片因果关联与治理合规深度解析</h3>
+                </div>
+                <button type="button" class="close-btn" onclick="window.PermissionBlueprint.closeExplainModal()" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
+            </div>
+            <div id="pb-explain-modal-body" class="modal-body" style="padding: 16px 18px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 14px;"></div>
+            <div class="modal-footer" style="padding: 10px 18px; border-top: 1px solid var(--overlay-10); display: flex; justify-content: space-between; align-items: center;">
+                <div id="pb-explain-modal-summary" style="font-size: 0.74rem; color: var(--text-secondary);"></div>
+                <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="window.PermissionBlueprint.closeExplainModal()">关闭 (Close)</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/paramHints.js?v=20260906_v1225"></script>
     <script src="/static/translations.js?v=20260906_v1225"></script>
@@ -3256,7 +3274,7 @@
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260919_v1440"></script>
     <script src="/static/script.js?v=20260921_v2230"></script>
-    <script src="/static/permission_blueprint.js?v=20260921_v2230"></script>
+    <script src="/static/permission_blueprint.js?v=20260922_v0750"></script>
 
 
 

@@ -5370,6 +5370,10 @@
                 return Array.from(set);
             };
 
+            this.CAUSALITY_MAP = CAUSALITY_MAP;
+            this.REVERSE_MAP = REVERSE_MAP;
+            this.getLinkedRowIds = getLinkedRowIds;
+
             const allRows = container.querySelectorAll('.pb-asset-card-row');
 
             // 定时器引用：80ms 悬停意图防抖 (Hover Intent) 与 60ms 间隙容差缓冲 (Leave Gap Buffer)
@@ -5415,6 +5419,9 @@
                     }
                 });
             };
+
+            this._applyCausalityVisualsFn = applyCausalityVisuals;
+            this._clearCausalityVisualsFn = clearCausalityVisuals;
 
             // 监听每个卡片的 Hover 与 Click
             allRows.forEach(row => {
@@ -5486,19 +5493,6 @@
                     e.stopPropagation();
                 });
             });
-
-            // 点击空白区域时解除锁定
-            if (!container._hasCausalityBlankListener) {
-                container._hasCausalityBlankListener = true;
-                document.addEventListener('click', (e) => {
-                    if (!e.target.closest('.pb-asset-card-row') && this._pinnedCausalityRow) {
-                        this._pinnedCausalityRow = null;
-                        if (hoverIntentTimer) clearTimeout(hoverIntentTimer);
-                        if (leaveGraceTimer) clearTimeout(leaveGraceTimer);
-                        clearCausalityVisuals();
-                    }
-                });
-            }
         }
 
         // ═════════════════════════════════════════════════════════════════════
@@ -5623,6 +5617,870 @@
                     window.showNotification('❌ 复制报告失败，请检查浏览器权限', 'error');
                 }
             }
+        }
+
+        // ═════════════════════════════════════════════════════════════════════
+        // 🔗 权限因果链路关系深度解析与治理合规评估 (Explain Causality & Governance)
+        // ═════════════════════════════════════════════════════════════════════
+        getLinkExplanation(srcId, tgtId) {
+            // 规范化动态数据源连接 ID 前缀
+            const normSrc = srcId.startsWith('conn_real_ds_') ? 'conn_default_ds' : srcId;
+            const normTgt = tgtId.startsWith('conn_real_ds_') ? 'conn_default_ds' : tgtId;
+            const key = `${normSrc}->${normTgt}`;
+
+            const DICT = {
+                // 1. 租户官方身份 -> 租户各项安全策略
+                'tenant_principal_role->tenant_gac_policy': {
+                    reason: '租户特权管理员身份 (Global Admin / Fabric Admin) 掌控全租户范围内的 GAC(General Availability Channel / 通用访问通道) 与数据安全策略。',
+                    isReasonable: '✅ 完全合理 (符合微软最高特权准入机制与全局策略委派标准)',
+                    tip: '若非必要，建议严格限制租户管理员账号数量，遵循 PoLP(Principle of Least Privilege / 最低特权原则)。'
+                },
+                'tenant_principal_role->tenant_export': {
+                    reason: '租户管理员有权在 Admin Portal(管理门户) 中开启或关闭组织级数据导出至 Excel/CSV 权限。',
+                    isReasonable: '✅ 完全合理 (属于 DLP(Data Loss Prevention / 数据防泄漏) 核心顶层门禁)',
+                    tip: '若租户层禁用导出，工作区任何角色均无法突破限制。'
+                },
+                'tenant_principal_role->tenant_web_modeling': {
+                    reason: '控制全租户是否允许在 Service 网页端直接修改语义模型结构与编辑关系。',
+                    isReasonable: '✅ 完全合理 (保障企业模型集中治理与单一真实源)',
+                    tip: '大型组织常关闭此项以强制要求使用 Desktop/Git 进行元数据版本控制。'
+                },
+                'tenant_principal_role->tenant_xmla': {
+                    reason: '掌控租户级 XMLA(XML for Analysis / 分析用可扩展标记语言) 读写端点策略，决定外部开发工具 (如 Tabular Editor、VS Code) 能否直连。',
+                    isReasonable: '✅ 完全合理 (企业级 BI 与自动化 CI/CD(持续集成与交付) 必需的治理门禁)',
+                    tip: '生产环境推荐启用 ReadWrite 并结合专用服务主体鉴权。'
+                },
+                'tenant_principal_role->tenant_external': {
+                    reason: '掌控 Azure AD B2B 外部用户协作开关，决定报表是否允许分发给组织外部访客。',
+                    isReasonable: '✅ 完全合理 (网络边界与外部跨域合规防护标准)',
+                    tip: '涉及外部客户嵌入或跨租户审计时必须启用。'
+                },
+                'tenant_principal_role->tenant_embed': {
+                    reason: '控制是否允许生成 Embed Token 将报表无缝嵌入到 SaaS 门户或客户自定义应用程序。',
+                    isReasonable: '✅ 完全合理 (嵌入式应用架构的关键授权点)',
+                    tip: '通常需结合服务主体 (Service Principal) 与专用容量资源运作。'
+                },
+                'tenant_principal_role->tenant_certify': {
+                    reason: '租户管理员指定授权安全组，只有指定组内成员方可将语义模型标记为官方认证 (Certified)。',
+                    isReasonable: '✅ 完全合理 (防止认证泛滥，维护组织黄金数据集权威)',
+                    tip: '建议仅向数据治理委员会或核心 COE 团队开放认证权限。'
+                },
+                'tenant_gac_policy->conn_gac_perm': {
+                    reason: '租户级网关通道许可直接决定底层数据连接是否允许调用 GAC 网关通道进行物理寻址。',
+                    isReasonable: '✅ 完全合理 (基础设施网络通信的策略前提)',
+                    tip: '若租户阻止网关流量，所有本地数据源连接将报告离线。'
+                },
+                'tenant_gac_policy->conn_gac_mashup': {
+                    reason: '租户跨数据源混搭策略决定 Power Query Mashup 引擎能否合并不同网络安全级别的数据源。',
+                    isReasonable: '✅ 完全合理 (防止数据在混搭过程中非预期流向低安全级数据源)',
+                    tip: '混搭涉及不同隐私级别 (Private / Organizational) 时受此约束。'
+                },
+                'tenant_export->report_export': {
+                    reason: '租户级导出数据策略为顶层绝对门禁，直接决定前端报表能否导出汇总或底层明细数据。',
+                    isReasonable: '✅ 完全合理 (自上而下的绝对合规拦截)',
+                    tip: '当报表无法导出数据时，首先排查租户导出白名单配置。'
+                },
+                'tenant_web_modeling->model_write': {
+                    reason: '租户 Web 建模策略若关闭，用户无法在浏览器中对语义模型执行写入、新建计算表或新建度量值。',
+                    isReasonable: '✅ 完全合理 (在线建模能力的物理开关)',
+                    tip: '未开启时需在 Power BI Desktop 中编辑并重新发布。'
+                },
+                'tenant_web_modeling->report_edit': {
+                    reason: '租户在线建模策略联动影响报表视图在线新建报表级度量值 (Report-level Measures)。',
+                    isReasonable: '✅ 完全合理 (与底层模型写入权限保持连贯)',
+                    tip: '报表级度量值仅保存在报表内，不回写语义模型。'
+                },
+                'tenant_xmla->model_write': {
+                    reason: '语义模型若要接受来自外部脚本、TMDL 或自动化部署的架构修改，必须依托 XMLA 读写端点。',
+                    isReasonable: '✅ 完全合理 (现代 Fabric 代码化建模的规范标准)',
+                    tip: 'Premium/Fabric 容量必须将 XMLA 设为 ReadWrite 才能生效。'
+                },
+                'tenant_external->report_share': {
+                    reason: '报表共享给组织外部邮件地址时，必须通过租户外部协作策略的安全校验。',
+                    isReasonable: '✅ 完全合理 (杜绝内部敏感数据越权共享至外网)',
+                    tip: '需确保接收方已加入组织的 Azure AD 外部来宾主体。'
+                },
+                'tenant_embed->report_view': {
+                    reason: '外部应用嵌入式查看 (Embed for Customers) 依赖租户层生成的安全令牌 (Embed Token) 支撑渲染。',
+                    isReasonable: '✅ 完全合理 (应用集成消费的官方标准模型)',
+                    tip: '嵌入端最终用户无需 Power BI Pro 许可证，按容量计费。'
+                },
+                'tenant_certify->model_permission': {
+                    reason: '获得组织官方认证的数据集在目录中享有优先展示特权，其模型治理状态提升为权威黄金数据源。',
+                    isReasonable: '✅ 完全合理 (数据治理等级直接背书模型访问可信度)',
+                    tip: '业务部门应优先连接 Certified 模型构建下游报表。'
+                },
+
+                // 2. 工作区官方角色 -> 工作区治理及下辖全量资产
+                'ws_role->ws_members': {
+                    reason: '工作区 Admin 角色拥有增删工作区成员与调整角色的最高权限，Member 角色可添加具有相同或更低角色的成员。',
+                    isReasonable: '✅ 完全合理 (工作区容器级 RBAC(基于角色的访问控制) 权限分配标准)',
+                    tip: '建议工作区 Admin 至少配置 2 人以防单点失联。'
+                },
+                'ws_role->ws_edit': {
+                    reason: '工作区 Admin/Member/Contributor 角色赋予在工作区内上传、创建与更新内容的核心能力。',
+                    isReasonable: '✅ 完全合理 (创作型角色与只读消费角色的经典隔离)',
+                    tip: '仅需查看报表的业务人员应配置为 Viewer。'
+                },
+                'ws_role->ws_app': {
+                    reason: '工作区 Admin/Member 拥有发布和更新工作区组织应用 (App) 及配置受众 (Audience) 的特权。',
+                    isReasonable: '✅ 完全合理 (应用发布权限属于发布者与管理员)',
+                    tip: '通过 App 分发可防止业务人员直接触碰工作区底层资产。'
+                },
+                'ws_role->ws_capacity': {
+                    reason: '工作区管理员有权将工作区挂载至专用的 Fabric/Premium 容量或切换为共享容量。',
+                    isReasonable: '✅ 完全合理 (计算资源分配与账单计费维度的管理权)',
+                    tip: '仅容量管理员或被授权的主体可指定目标容量。'
+                },
+                'ws_role->ws_delete': {
+                    reason: '工作区级最高删除与重置权，仅 Admin 角色可执行永久销毁操作。',
+                    isReasonable: '✅ 完全合理 (高危破坏性操作严格收敛至唯一最高特权)',
+                    tip: '删除工作区会连带销毁所有模型、报表及凭据，不可逆。'
+                },
+                'ws_role->ws_lineage': {
+                    reason: '特权角色 (Admin/Member/Contributor) 可查看工作区端到端完整数据血缘拓扑与上游依赖。',
+                    isReasonable: '✅ 完全合理 (保障开发与运维人员的架构全局洞察力)',
+                    tip: 'Viewer 角色仅可查看其有权访问的具体资产片段。'
+                },
+                'ws_role->model_permission': {
+                    reason: '工作区角色对工作区内部的所有语义模型具有直接向下继承特权，无需针对单个模型重复分配权限。',
+                    isReasonable: '⚡ 特权穿透与合理继承 (容器级授权自动下发)',
+                    tip: '若需要向特定用户仅开放单个模型，应在模型层面单独配置共享而不是加入工作区。'
+                },
+                'ws_role->model_read': {
+                    reason: '工作区任何成员 (包括 Viewer) 均拥有该工作区内所有语义模型的底层数据读取能力。',
+                    isReasonable: '✅ 完全合理 (工作区成员的基础数据访问权益)',
+                    tip: '读取权限是前端图表呈现与 DAX(数据分析表达式) 计算的物理先决条件。'
+                },
+                'ws_role->model_build': {
+                    reason: '工作区 Admin/Member/Contributor 默认拥有 Build 权限，允许基于该模型构建新报表或在 Excel 中连接。',
+                    isReasonable: '✅ 完全合理 (内容创作者的探索与自助式 BI 能力)',
+                    tip: 'Viewer 默认不具备 Build 权限，无法基于该模型自行新建报表。'
+                },
+                'ws_role->model_write': {
+                    reason: 'Admin/Member/Contributor 拥有对语义模型的元数据与架构修改写入权。',
+                    isReasonable: '✅ 完全合理 (开发与管理职责所需)',
+                    tip: 'Viewer 角色绝对禁止写入模型。'
+                },
+                'ws_role->model_reshare': {
+                    reason: 'Admin/Member 拥有将模型转授权给其他用户的重新共享权。',
+                    isReasonable: '✅ 完全合理 (转授权力与工作区管理级别一致)',
+                    tip: 'Contributor 默认无重新共享权，确保授权合规可控。'
+                },
+                'ws_role->model_rls': {
+                    reason: '微软官方机制：工作区 Admin/Member/Contributor 角色默认自动绕过 (Bypass) RLS(行级安全性)，直视全量未过滤数据；仅 Viewer 角色受 RLS 限制。',
+                    isReasonable: '⚡ 官方特权绕过行为 (符合微软官方调试与开发规范)',
+                    tip: '若要测试 RLS 规则，开发人员需在 Desktop/Service 中使用“作为角色查看 (View as role)”功能。'
+                },
+                'ws_role->model_gac_ols': {
+                    reason: '对象级安全性对工作区 Admin/Member 同样自动绕过，确保运维管理人员能正常查看所有物理表与列。',
+                    isReasonable: '⚡ 特权穿透 (管理员不受元数据隐藏限制)',
+                    tip: 'OLS(对象级安全) 仅在面对最终消费者 (Viewer 或独立分配者) 时严格生效。'
+                },
+                'ws_role->report_access': {
+                    reason: '工作区成员身份自动成为工作区下辖所有报表的合法访问者。',
+                    isReasonable: '✅ 完全合理 (容器继承，简化权限维护)',
+                    tip: '无需为工作区成员单独配置报表权限。'
+                },
+                'ws_role->report_view': {
+                    reason: '所有工作区角色均具备打开并查看报表可视化页面的基础权限。',
+                    isReasonable: '✅ 完全合理 (最基础的用户交互权益)',
+                    tip: '数据内容进一步受底层模型读取与 RLS 约束。'
+                },
+                'ws_role->report_edit': {
+                    reason: 'Admin/Member/Contributor 具备在 Service 网页端编辑报表画布、调整视觉对象与新建页面的权限。',
+                    isReasonable: '✅ 完全合理 (内容创作者的标准工作流)',
+                    tip: 'Viewer 角色只能只读查看，无法保存任何修改。'
+                },
+                'ws_role->report_export': {
+                    reason: '工作区协作角色具备导出报表至 PDF/PPT 及导出数据切片的能力。',
+                    isReasonable: '✅ 完全合理 (受租户全局导出策略共同约束)',
+                    tip: '若租户禁用导出，此能力将被静默拦截。'
+                },
+                'ws_role->report_sub': {
+                    reason: '工作区成员均可为自己或他人创建报表定时订阅与快照邮件推送。',
+                    isReasonable: '✅ 完全合理 (提高报表日常触达与协作效率)',
+                    tip: '向他人订阅邮件通常要求具备 Member 或 Pro 许可。'
+                },
+                'ws_role->report_share': {
+                    reason: 'Admin/Member 拥有从工作区直接生成报表分享链接并赋予外部受众的特权。',
+                    isReasonable: '✅ 完全合理 (资产分发的核心治理职责)',
+                    tip: '共享时可勾选是否允许收件人连带构建或访问基础数据集。'
+                },
+                'ws_role->conn_refresh': {
+                    reason: '工作区 Admin/Member 拥有配置语义模型定时刷新排程并手动触发单次刷新的控制权。',
+                    isReasonable: '✅ 完全合理 (数据保鲜与日常运维的基础保障)',
+                    tip: '刷新成功还取决于数据源凭据是否有效及网关是否在线。'
+                },
+                'ws_role->conn_owner': {
+                    reason: '工作区 Admin 对工作区内绑定的数据源连接具备最高接管与配置权。',
+                    isReasonable: '✅ 完全合理 (防止数据源孤儿化，确保运维连续性)',
+                    tip: '当原连接创建者离职时，Admin 可无缝接管凭据。'
+                },
+                'ws_role->conn_share': {
+                    reason: 'Admin/Member 角色具备将工作区可复用数据源连接共享给其他协作者的授权能力。',
+                    isReasonable: '✅ 完全合理 (提升企业数据连接复用率)',
+                    tip: '共享连接仅授权使用通道，不暴露明文账号密码。'
+                },
+                'ws_role->conn_user_perm': {
+                    reason: '工作区角色决定成员在工作区关联数据源上的默认使用凭据与连接上下文。',
+                    isReasonable: '✅ 完全合理 (工作区与数据源的紧密耦合关系)',
+                    tip: 'DirectQuery 直连模式下建议开启 SSO 透传当前用户身份。'
+                },
+                'ws_role->pipeline_deploy': {
+                    reason: '工作区若绑定至部署管道，工作区 Admin/Member 可执行一键跨阶段晋升部署。',
+                    isReasonable: '✅ 完全合理 (规范化 ALM(应用程序生命周期管理) 发布流转的必要权限)',
+                    tip: '发布前必须比对架构差异，确保向下兼容。'
+                },
+                'ws_role->pipeline_diff': {
+                    reason: '工作区特权成员可查看开发阶段与目标阶段的模型及报表架构差异 (Schema Diff)。',
+                    isReasonable: '✅ 完全合理 (发布影响面预评估的核心工具)',
+                    tip: '差异比对会自动高亮新建、修改与删除的表及字段。'
+                },
+                'ws_role->pipeline_rules': {
+                    reason: 'Admin 角色有权在部署管道中配置参数覆盖与数据源重定向规则。',
+                    isReasonable: '✅ 完全合理 (实现环境隔离与连接串自动切换的最佳实践)',
+                    tip: '防止生产环境误连开发数据库。'
+                },
+                'ws_role->pipeline_manage': {
+                    reason: '工作区 Admin 拥有将工作区与部署管道各阶段相互绑定或解绑的生命周期管理权。',
+                    isReasonable: '✅ 完全合理 (管道拓扑关系的定义权)',
+                    tip: '解绑不会删除工作区内部资产。'
+                },
+
+                // 工作区衍生治理项
+                'ws_members->model_reshare': {
+                    reason: '具备成员管理权的主体，天然具备将工作区内的语义模型转授权他人的治理资格。',
+                    isReasonable: '✅ 完全合理 (转授权力与成员管理权力职责高度对齐)',
+                    tip: '防止无管理权的普通协作者随意散播核心资产。'
+                },
+                'ws_members->report_share': {
+                    reason: '管理工作区成员者拥有将报表链接分发给新用户的权限。',
+                    isReasonable: '✅ 完全合理 (协同管理规范)',
+                    tip: '共享时应注意区分是授予查看还是编辑权限。'
+                },
+                'ws_members->conn_share': {
+                    reason: '具备管理身份的用户可将数据源网关连接授权给工作区其他分析师使用。',
+                    isReasonable: '✅ 完全合理 (网关连接复用机制)',
+                    tip: '受权人仅能使用该连接查询，无法导出凭据明文。'
+                },
+                'ws_edit->model_write': {
+                    reason: '工作区内容编辑权直接赋予向语义模型提交架构更新与度量值编写的能力。',
+                    isReasonable: '✅ 完全合理 (模型构建者的核心职责)',
+                    tip: '可通过 Git 集成实现多人协同编辑与冲突解决。'
+                },
+                'ws_edit->report_edit': {
+                    reason: '工作区内容编辑权赋予对报表页面布局、图表类型与筛选器的完全设计能力。',
+                    isReasonable: '✅ 完全合理 (报表开发者的基本功)',
+                    tip: '编辑后的报表可直接保存并覆盖当前版本。'
+                },
+                'ws_app->report_view': {
+                    reason: '组织应用 (App) 是报表面向全企业大范围只读分发的主流形态。',
+                    isReasonable: '✅ 完全合理 (实现创作环境与消费环境的物理隔离)',
+                    tip: '业务受众通过 App 访问，无需工作区任何直接成员角色。'
+                },
+                'ws_app->report_share': {
+                    reason: '组织应用支持为不同受众群体配置独立的分发策略与只读共享链接。',
+                    isReasonable: '✅ 完全合理 (细粒度受众分组分发治理)',
+                    tip: '可通过 Azure AD 组精准指定每个受众 Tab 的可见人群。'
+                },
+                'ws_capacity->model_write': {
+                    reason: '高级容量解除单模型 1GB 内存限制，开启大型语义模型存储格式与按需分页加载。',
+                    isReasonable: '✅ 完全合理 (计算与存储资源支撑大规模企业级写入)',
+                    tip: '支持数十 GB 级别的超大模型在线刷新与秒级响应。'
+                },
+
+                // 3. 语义模型官方权限 -> 原子能力与报表
+                'model_permission->model_read': {
+                    reason: '语义模型顶层权限拆解，读取 (Read) 权限为最底层数据提取与 DAX 查询的准入门槛。',
+                    isReasonable: '✅ 完全合理 (细粒度原子权限的官方拆解)',
+                    tip: '任何报表渲染或连接模型必须具备 Read 权限。'
+                },
+                'model_permission->model_build': {
+                    reason: '构建 (Build) 权限赋予用户基于该模型新建下游报表、在 Excel 中分析 (Analyze in Excel) 及导出明细数据的权利。',
+                    isReasonable: '✅ 完全合理 (自助式 BI 与二次开发的核心权限)',
+                    tip: '若仅允许查看预设报表，请勿向最终用户分配 Build 权限。'
+                },
+                'model_permission->model_write': {
+                    reason: '写入 (Write) 权限赋予用户修改模型元数据、表关系、字段属性与度量值定义的架构权。',
+                    isReasonable: '✅ 完全合理 (开发者与数据工程师必备)',
+                    tip: '建议通过工作区角色间接管理，尽量避免单独分配 Write。'
+                },
+                'model_permission->model_reshare': {
+                    reason: '重新共享 (Reshare) 权限允许被授权者将该模型进一步转授权给其他用户。',
+                    isReasonable: '✅ 完全合理 (去中心化协作机制)',
+                    tip: '生产模型应谨慎下发 Reshare，防止权限扩散失控。'
+                },
+                'model_permission->model_gac_ols': {
+                    reason: '模型权限与对象级安全性联动，决定特定角色是否能感知到被隐藏的物理表或列。',
+                    isReasonable: '🛡️ 高级安全合规 (敏感元数据级别的绝对屏蔽)',
+                    tip: '被 OLS 隐藏的列在用户视角下如同物理不存在一样，连度量值引用也会抛错。'
+                },
+                'model_permission->model_rls': {
+                    reason: '模型权限与行级安全性联动，决定是否需要根据当前用户身份执行 DAX 规则动态裁剪数据行。',
+                    isReasonable: '🛡️ 核心合规防护 (保障数据多租户隔离与部门边界)',
+                    tip: '最终用户在模型上必须被映射到具体的 RLS 角色方可生效。'
+                },
+                'model_permission->report_view': {
+                    reason: '报表实质是语义模型的可视化前端，模型权限直接决定报表能否成功取数渲染。',
+                    isReasonable: '✅ 完全合理 (前后端依赖因果)',
+                    tip: '若模型权限被收回，前端报表将直接报错无法呈现数据。'
+                },
+                'model_permission->report_export': {
+                    reason: '导出的明细数据直接源自语义模型底层表，模型权限直接约束导出行为。',
+                    isReasonable: '✅ 完全合理 (数据外发防护链条不可或缺的一环)',
+                    tip: '导出明细必须具备模型 Build 权限。'
+                },
+                'model_read->report_view': {
+                    reason: '报表可视化图表渲染必须向模型引擎发送 DAX 查询，模型 Read 权限是唯一的数据通道。',
+                    isReasonable: '✅ 完全合理 (绝对因果关系：无数据则无图表)',
+                    tip: '报表打不开时，首要检查用户在基础数据集上是否具有 Read 权限。'
+                },
+                'model_build->report_export': {
+                    reason: '导出“包含底层架构的明细数据”时，Power BI 强制要求拥有 Build 权限以防止越权嗅探未公开数据结构。',
+                    isReasonable: '🛡️ 深度防御机制 (防止利用报表界面偷取原始底层数据)',
+                    tip: '无 Build 权限的用户只能导出当前视觉对象汇总后的计算结果。'
+                },
+                'model_write->report_edit': {
+                    reason: '在报表编辑界面新建或调整模型级度量值、修改字段格式时，必须对模型具有写入权。',
+                    isReasonable: '✅ 完全合理 (保障模型元数据单一维护源)',
+                    tip: '纯报表设计（如拖拽排版、改颜色）不强制要求模型 Write。'
+                },
+                'model_gac_ols->report_view': {
+                    reason: '如果报表中的某个图表使用了被 OLS 策略隐藏的字段，该图表将直接报错并提示无法加载数据。',
+                    isReasonable: '🛡️ 严格安全隔离 (确保敏感列绝不在前端漏出)',
+                    tip: '设计公共报表时应避免将受限敏感字段直接放入全局视觉对象。'
+                },
+                'model_gac_ols->report_export': {
+                    reason: '导出的数据集中绝对不会包含被 OLS 屏蔽的列，即使原始物理表包含该列。',
+                    isReasonable: '🛡️ 字段级防泄密 (防止导出绕过前端展示策略)',
+                    tip: '导出引擎与查询引擎共享同一套 OLS 元数据过滤字典。'
+                },
+                'model_rls->report_view': {
+                    reason: 'RLS 在后台透明向每个视觉对象的 DAX 查询注入过滤谓词，报表图表仅呈现当前主体授权看到的数据行。',
+                    isReasonable: '🛡️ 行级动态安全核心 (一套报表服务万人千面的基石)',
+                    tip: '报表总计与汇总卡片也会同步反映 RLS 过滤后的精准合计数。'
+                },
+                'model_rls->report_export': {
+                    reason: '从报表导出的 Excel/CSV 数据严格继承 RLS 过滤结果，绝不可能导出他人有权查看的数据行。',
+                    isReasonable: '🛡️ 闭环合规保障 (防止通过导出功能窃取未授权行)',
+                    tip: '无论是汇总导出还是明细导出，均无法穿透 RLS 边界。'
+                },
+                'model_reshare->report_share': {
+                    reason: '共享报表时若勾选“允许收件人共享报表和基础数据集”，必须依托当前主体在模型上的 Reshare 权限。',
+                    isReasonable: '✅ 完全合理 (授权传递合规性检验)',
+                    tip: '若无模型 Reshare 权，该勾选项将被强制置灰禁用。'
+                },
+
+                // 4. 报表官方访问级别
+                'report_access->report_view': {
+                    reason: '报表资产自身访问级别是打开报表 Web 页面的第一道也是最直接的门禁。',
+                    isReasonable: '✅ 完全合理 (资产自身访问控制的基础)',
+                    tip: '支持通过直接分享、应用分发或工作区角色多途径赋予。'
+                },
+                'report_access->report_edit': {
+                    reason: '被赋予报表写入/编辑访问权的主体可进入报表在线编辑画布。',
+                    isReasonable: '✅ 完全合理 (前端设计权限的入口)',
+                    tip: '仅对报表自身有权编辑，不会影响底层模型架构。'
+                },
+                'report_access->report_export': {
+                    reason: '报表访问级别决定是否允许将该报表导出为 PowerPoint、PDF 快照或数据文件。',
+                    isReasonable: '✅ 完全合理 (遵循报表所有者设定的导出策略)',
+                    tip: '受报表设置中的“导出数据”下拉选项约束。'
+                },
+                'report_access->report_sub': {
+                    reason: '具备报表访问权的用户可以创建定时推送订阅，将最新报表快照定期推送到指定邮箱。',
+                    isReasonable: '✅ 完全合理 (业务日常例行追踪的便利功能)',
+                    tip: '订阅邮件会在报表计划刷新完成后按需触发。'
+                },
+                'report_access->report_share': {
+                    reason: '具备报表再共享权限的主体可将该报表继续向其他业务协作者分发。',
+                    isReasonable: '✅ 完全合理 (敏捷业务协同的核心驱动力)',
+                    tip: '受租户外部共享开关与工作区角色策略共同约束。'
+                },
+                'report_view->report_sub': {
+                    reason: '能看到报表内容是设定定时邮件推送与快照订阅的操作前置。',
+                    isReasonable: '✅ 完全合理 (行为递进逻辑)',
+                    tip: '若报表访问被阻断，关联订阅也将自动暂停发送。'
+                },
+                'report_view->report_export': {
+                    reason: '在报表页面中点击视觉对象的“...”菜单导出数据的前提是用户能正常加载该页面。',
+                    isReasonable: '✅ 完全合理 (交互式导出的标准前置)',
+                    tip: '页面级别的导出体验最贴近业务人员的直觉操作。'
+                },
+                'report_edit->report_export': {
+                    reason: '报表编辑者天然具备导出其所设计的报表全部布局与对应数据的能力。',
+                    isReasonable: '✅ 完全合理 (创作者特权的合理延伸)',
+                    tip: '包含下载 .pbix 文件的能力 (若租户策略允许)。'
+                },
+                'report_edit->report_share': {
+                    reason: '能够编辑报表的人员对报表内容质量负责，通常被允许将定稿报表向业务方共享。',
+                    isReasonable: '✅ 完全合理 (发布与协作流程自然闭环)',
+                    tip: '建议共享前对报表各项视觉对象进行充分自测验证。'
+                },
+
+                // 5. 数据源连接与网关
+                'conn_default_ds->conn_user_perm': {
+                    reason: '底层物理数据源必须配置有效的身份验证凭据 (OAuth2 / SQL 用户名密码 / 密钥)，方可供模型调用。',
+                    isReasonable: '✅ 完全合理 (物理数据存储访问的强制凭据机制)',
+                    tip: '凭据过期或密码变更将导致模型刷新瞬间失败。'
+                },
+                'conn_default_ds->conn_gac_perm': {
+                    reason: '数据源若部署在企业本地数据中心或私有云，必须通过 GAC 与企业网关通道进行网络路由寻址。',
+                    isReasonable: '✅ 完全合理 (内网安全穿透与流量加密的通道基础设施)',
+                    tip: '需确保网关服务处于 Running 活跃状态且版本保持最新。'
+                },
+                'conn_default_ds->conn_gac_mashup': {
+                    reason: '多源混合建模时，网关决定不同连接之间能否安全交换数据并协同计算。',
+                    isReasonable: '✅ 完全合理 (Power Query 引擎跨源查询折叠与安全隔离机制)',
+                    tip: '若提示混搭错误，请在 Desktop 中将数据源隐私级别设为一致。'
+                },
+                'conn_default_ds->conn_gw': {
+                    reason: '物理数据源连接与具体本地数据网关集群绑定，由网关集群承担查询代理与负载均衡。',
+                    isReasonable: '✅ 完全合理 (企业级高可用网关集群架构标准)',
+                    tip: '集群内有多台机器时，单机宕机可自动故障转移。'
+                },
+                'conn_default_ds->conn_sso': {
+                    reason: 'DirectQuery 直连数据源可开启 SSO 身份委派，将前端报表查看者身份直传数据库执行审计。',
+                    isReasonable: '🛡️ 高级端到端安全 (实现数据库行级与对象级权限无缝复用)',
+                    tip: '需配置 Kerberos 受限委派或 Azure AD 凭据映射。'
+                },
+                'conn_default_ds->conn_refresh': {
+                    reason: '导入模式的语义模型数据保鲜完全依赖数据源连接的稳定可用性与刷新调度。',
+                    isReasonable: '✅ 完全合理 (数据管道周期性同步的物理链路)',
+                    tip: '刷新超时通常是底层数据库慢查询或网络波动引起。'
+                },
+                'conn_default_ds->conn_share': {
+                    reason: '企业标准数据源连接可在工作区甚至跨租户复用，由管理员共享给其他数据工程师。',
+                    isReasonable: '✅ 完全合理 (避免重复创建冗余连接与分散管理密码)',
+                    tip: '仅共享凭据使用通道，协作者绝对看不到明文密码。'
+                },
+                'conn_default_ds->model_read': {
+                    reason: '数据源连接是语义模型的数据根源，无论是定时导入还是 DirectQuery 直连，连接故障均导致模型数据缺失。',
+                    isReasonable: '✅ 完全合理 (底层数据管道到顶层业务模型的核心因果)',
+                    tip: '全景链路排错时，若模型数据异常，首先验证底层数据源连通性。'
+                },
+                'conn_user_perm->model_read': {
+                    reason: '用于访问数据源的用户凭据在数据库端拥有的 SELECT 权限直接决定模型能抽取到哪些数据表。',
+                    isReasonable: '✅ 完全合理 (数据库层面的物理权限准入控制)',
+                    tip: '数据库账号权限不足会导致刷新时抛出 SQL 权限被拒绝错误。'
+                },
+                'conn_user_perm->conn_refresh': {
+                    reason: '计划刷新调度器使用保存的凭据在后台以无人值守模式向数据源发起连接。',
+                    isReasonable: '✅ 完全合理 (后台异步刷新的鉴权凭据保障)',
+                    tip: '凭据失效 (如密码定期过期) 是导致定时刷新失败的头号原因。'
+                },
+                'conn_gac_perm->conn_gac_mashup': {
+                    reason: '网关通道授权是跨数据源混搭计算合法展开的基础。',
+                    isReasonable: '✅ 完全合理 (网络通道与数据混搭引擎的配合)',
+                    tip: '确保网关版本支持跨源混搭协议。'
+                },
+                'conn_gac_perm->model_read': {
+                    reason: '经由网关通道的安全传输确保内网数据库记录能够被云端语义模型完整接收与反序列化。',
+                    isReasonable: '✅ 完全合理 (混合云架构数据上云的安全通道)',
+                    tip: '网关网络带宽与延迟直接影响 DirectQuery 报表响应速度。'
+                },
+                'conn_gac_mashup->model_read': {
+                    reason: '跨数据源混搭与查询折叠 (Query Folding) 产出的最终数据表直接注入到语义模型供前端分析。',
+                    isReasonable: '✅ 完全合理 (ETL 管道清洗加工成果与模型的结合)',
+                    tip: '尽可能让计算在源库折叠，避免大量数据拉到本地网关后再做过滤。'
+                },
+                'conn_gw->model_read': {
+                    reason: '网关在线健康状态直接决定模型能否向企业内网数据源成功发起 DAX 或 SQL 查询。',
+                    isReasonable: '✅ 完全合理 (物理服务器与服务守护进程的基础保障)',
+                    tip: '网关离线时，所有基于该网关的模型刷新与直连报表立即中断。'
+                },
+                'conn_gw->conn_refresh': {
+                    reason: '定时刷新任务在触发时向本地数据网关发送拉取指令，网关状态决定刷新能否启动。',
+                    isReasonable: '✅ 完全合理 (异步刷新任务调度的网络跳板)',
+                    tip: '在 Service 管理门户中可查看网关集群的实时运行状态与负载。'
+                },
+                'conn_sso->model_read': {
+                    reason: '在开启 SSO 的 DirectQuery 模型中，每个用户看到的都是源数据库根据其个人身份执行过滤后的精准结果。',
+                    isReasonable: '🛡️ 企业级单点登录透传 (消除多套权限系统维护成本)',
+                    tip: '需确保终端用户的 Azure AD 身份与目标数据库用户建立映射关系。'
+                },
+                'conn_refresh->model_read': {
+                    reason: '计划刷新周期性将源库变更写入语义模型内存缓存，确保报表用户读取到最新的业务数据。',
+                    isReasonable: '✅ 完全合理 (数据保鲜与时效性的生命线)',
+                    tip: 'Pro 每天最多 8 次，Premium/Fabric 每天最多 48 次，支持分钟级刷新。'
+                },
+                'conn_owner->conn_share': {
+                    reason: '连接所有者对连接具有排他性支配权，拥有向他人授权复用该连接的完全决策权。',
+                    isReasonable: '✅ 完全合理 (基础设施所有权治理机制)',
+                    tip: '所有者离职时应及时将连接管理权转移给团队公共账号或工作区 Admin。'
+                },
+                'conn_owner->conn_refresh': {
+                    reason: '连接所有者负责在连接出现凭据失效、网关变动时重新测试并修复连接，恢复刷新能力。',
+                    isReasonable: '✅ 完全合理 (故障自愈与运维责任归属)',
+                    tip: '可通过 API(应用程序编程接口) 自动化监听连接健康度并告警。'
+                },
+                'conn_owner->conn_user_perm': {
+                    reason: '连接所有者负责录入与维护保存的认证凭据（如更新数据库密码或刷新 OAuth Token）。',
+                    isReasonable: '✅ 完全合理 (机密凭据保管的核心责任)',
+                    tip: '建议采用托管标识 (Managed Identity) 彻底消除密码管理烦恼。'
+                },
+                'conn_share->conn_user_perm': {
+                    reason: '被共享连接的协作者获得使用该凭据查询数据的授权，但无法读取密码明文。',
+                    isReasonable: '✅ 完全合理 (安全凭据分级委派规范)',
+                    tip: '符合企业级数据资产安全分层原则。'
+                },
+
+                // 6. 部署管道
+                'pipeline_role->pipeline_deploy': {
+                    reason: '部署管道角色 (Pipeline Admin / Deployer) 是执行开发 (Dev) 到测试 (Test) 或生产 (Prod) 晋升部署的总门禁。',
+                    isReasonable: '✅ 完全合理 (ALM 软件交付生命周期标准化控制)',
+                    tip: '生产阶段的部署应严格控制权限，遵循发布变更管理流程。'
+                },
+                'pipeline_role->pipeline_diff': {
+                    reason: '管道角色允许在执行部署前，一键自动扫描比对两个阶段之间的元数据变更细节。',
+                    isReasonable: '✅ 完全合理 (变更管理与发布影响分析的核心工具)',
+                    tip: '清晰展示哪些报表视觉对象被更改，哪些表结构被调整。'
+                },
+                'pipeline_role->pipeline_rules': {
+                    reason: '管道管理员拥有配置部署规则的权限，确保部署到新阶段后参数与数据源自动切换。',
+                    isReasonable: '✅ 完全合理 (环境解耦与持续集成的关键支撑)',
+                    tip: '无需人工修改代码，彻底杜绝手工发布失误。'
+                },
+                'pipeline_role->pipeline_manage': {
+                    reason: '管道最高管理员拥有新增、删除部署管道以及解绑或调整工作区阶段的生命周期管理权。',
+                    isReasonable: '✅ 完全合理 (DevOps 基础设施生命周期管控)',
+                    tip: '一个工作区只能绑定至一个部署管道的一个阶段。'
+                },
+                'pipeline_role->pipeline_backward': {
+                    reason: '当生产阶段发现严重回归缺陷时，管道管理员可执行逆向回退部署将稳定版本恢复。',
+                    isReasonable: '🛡️ 灾备与故障回退底线 (高危特权操作)',
+                    tip: '回退操作需谨慎，建议先在测试阶段验证回退脚本。'
+                },
+                'pipeline_diff->pipeline_deploy': {
+                    reason: '架构差异比对是跨阶段晋升部署前必须经过的确认环节，防止盲目发布产生破坏性变更。',
+                    isReasonable: '✅ 完全合理 (工程化发布防呆机制)',
+                    tip: '若发现架构存在冲突或删除关键字段，应提前通知下游消费团队。'
+                },
+                'pipeline_rules->pipeline_deploy': {
+                    reason: '在将开发阶段部署到生产阶段时，预设的部署规则会自动拦截并替换数据源连接参数。',
+                    isReasonable: '✅ 完全合理 (环境自动化隔离的标准规范)',
+                    tip: '确保生产环境自动直连生产数据库，保护开发测试数据不污染生产。'
+                },
+                'pipeline_manage->pipeline_deploy': {
+                    reason: '管道生命周期的配置状态直接决定部署流程是否通畅、阶段工作区是否成功绑定。',
+                    isReasonable: '✅ 完全合理 (基础设施配置与业务发布的必然联动)',
+                    tip: '绑定工作区时需确保各阶段工作区均处于容量支持范围内。'
+                },
+                'pipeline_manage->pipeline_rules': {
+                    reason: '管道管理员负责维护规则清单，支持新增参数映射规则或删除过期规则。',
+                    isReasonable: '✅ 完全合理 (规则库的主动生命周期维护)',
+                    tip: '可配置数据源规则与参数规则双重重定向策略。'
+                },
+                'pipeline_manage->pipeline_backward': {
+                    reason: '只有管道管理员具备发起跨阶段反向部署并覆盖目标阶段工作区的极高破坏性权限。',
+                    isReasonable: '✅ 完全合理 (最高风险权限严格收敛于唯一管理员)',
+                    tip: '反向部署会彻底覆盖开发阶段资产，建议事先做好代码备份。'
+                },
+                'pipeline_backward->pipeline_deploy': {
+                    reason: '反向部署是部署晋升流转的一种逆向特殊执行路径，遵循相同的部署事务与元数据传输协议。',
+                    isReasonable: '✅ 完全合理 (统一底层 ALM 传输引擎)',
+                    tip: '部署过程具有事务一致性，若单个资产部署失败将自动整体回滚。'
+                }
+            };
+
+            if (DICT[key]) return DICT[key];
+
+            // 智能自适应规则推导引擎 (针对未显式列出的组合执行通用推导)
+            return {
+                reason: '基于微软 Fabric & Power BI 统一 RBAC(基于角色的访问控制) 与资产安全继承规范，上层安全策略直接约束或赋能下层资产。',
+                isReasonable: '✅ 完全合理 (符合容器层级派生与最小权限安全标准)',
+                tip: '全景链路排错时，若下游受限，请沿着高亮因果链路逐级向上追溯授权源。'
+            };
+        }
+
+        // ⚡ 一键锁定选中并直接解析特定卡片关系
+        selectAndExplainRow(rowId) {
+            const container = document.getElementById('pb-user-assets-container');
+            if (!container) return;
+            const targetRow = container.querySelector(`.pb-asset-card-row[data-row-id="${rowId}"]`);
+            if (targetRow) {
+                this._pinnedCausalityRow = targetRow;
+                if (typeof this._applyCausalityVisualsFn === 'function') {
+                    this._applyCausalityVisualsFn(targetRow, true);
+                }
+                this.explainActiveCausality();
+            }
+        }
+
+        // ⚡ 打开解析卡片关系弹窗
+        explainActiveCausality(btnEl) {
+            const container = document.getElementById('pb-user-assets-container');
+            if (!container) return;
+
+            const modal = document.getElementById('pb-explain-causality-modal');
+            if (!modal) return;
+            const content = modal.querySelector('.modal-content');
+            const header = modal.querySelector('.modal-header');
+            const body = document.getElementById('pb-explain-modal-body');
+            const summary = document.getElementById('pb-explain-modal-summary');
+
+            // 绑定遮罩点击关闭
+            if (!modal._hasOverlayListener) {
+                modal._hasOverlayListener = true;
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        this.closeExplainModal();
+                    }
+                });
+            }
+
+            // 获取当前选中的卡片行
+            const activeRow = this._pinnedCausalityRow || this._activeCausalityRow;
+
+            // 场景 A: 用户尚未锁定任何小卡片
+            if (!activeRow) {
+                if (body) {
+                    body.innerHTML = `
+                        <div style="padding: 24px 16px; text-align: center; background: rgba(99, 102, 241, 0.05); border: 1px dashed rgba(99, 102, 241, 0.25); border-radius: 10px;">
+                            <div style="font-size: 2rem; margin-bottom: 8px;">💡</div>
+                            <div style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">
+                                尚未锁定选中任何权限小卡片
+                            </div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary); max-width: 540px; margin: 0 auto 18px; line-height: 1.6;">
+                                在全景权限链路中，每个小卡片均与其他层级存在严密的 RBAC(Role-Based Access Control / 基于角色的访问控制) 因果继承或依赖链条。请直接点击下方常用核心卡片立即锁定并解析其关联关系，或在画板上点击任意小卡片后再次点击此按钮：
+                            </div>
+                            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;">
+                                <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.selectAndExplainRow('ws_role')" style="padding: 5px 12px; font-size: 0.76rem; border-radius: 6px; cursor: pointer;">📁 工作区角色 (Workspace Role)</button>
+                                <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.selectAndExplainRow('model_read')" style="padding: 5px 12px; font-size: 0.76rem; border-radius: 6px; cursor: pointer;">📊 语义模型读取 (Model Read)</button>
+                                <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.selectAndExplainRow('report_view')" style="padding: 5px 12px; font-size: 0.76rem; border-radius: 6px; cursor: pointer;">📈 报表在线交互查看 (Report View)</button>
+                                <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.selectAndExplainRow('tenant_principal_role')" style="padding: 5px 12px; font-size: 0.76rem; border-radius: 6px; cursor: pointer;">🏢 租户官方身份 (Tenant Principal)</button>
+                                <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.selectAndExplainRow('conn_default_ds')" style="padding: 5px 12px; font-size: 0.76rem; border-radius: 6px; cursor: pointer;">🔌 数据源连接与网关 (Data Connection)</button>
+                                <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.selectAndExplainRow('pipeline_role')" style="padding: 5px 12px; font-size: 0.76rem; border-radius: 6px; cursor: pointer;">🚀 部署管道角色 (Pipeline Role)</button>
+                            </div>
+                        </div>
+                    `;
+                }
+                if (summary) {
+                    summary.textContent = '提示: 点击画板中的小卡片即可固定选中状态';
+                }
+            } else {
+                // 场景 B: 存在当前选中卡片，提取元数据并深度解析所有关联
+                const rowId = activeRow.getAttribute('data-row-id');
+                const titleText = activeRow.querySelector('.pb-asset-prop-name')?.textContent?.trim() || rowId;
+                const statusPillText = activeRow.querySelector('.pb-asset-status-pill')?.textContent?.trim() || '';
+                const statusClass = activeRow.classList.contains('status-disabled') ? 'status-disabled' : (activeRow.classList.contains('status-warn') ? 'status-warn' : 'status-enabled');
+                const descText = activeRow.querySelector('.pb-asset-desc')?.textContent?.trim() || '官方资产属性';
+
+                // 获取所属 Module 标题
+                const tierCard = activeRow.closest('.pb-asset-tier-card');
+                const moduleTitle = tierCard ? tierCard.querySelector('.pb-card-title')?.textContent?.trim() : '治理模块';
+
+                // 获取图例类别
+                let catLabel = 'ASSIGNED (官方分配)';
+                let catBadgeBg = 'rgba(245, 158, 11, 0.15)';
+                let catBadgeColor = '#f59e0b';
+                let catBorder = 'rgba(245, 158, 11, 0.35)';
+                if (activeRow.classList.contains('cat-derived')) {
+                    catLabel = 'CAPABILITY (派生能力)';
+                    catBadgeBg = 'rgba(56, 189, 248, 0.15)';
+                    catBadgeColor = '#38bdf8';
+                    catBorder = 'rgba(56, 189, 248, 0.35)';
+                } else if (activeRow.classList.contains('cat-env')) {
+                    catLabel = 'ENV (环境配置)';
+                    catBadgeBg = 'rgba(148, 163, 184, 0.15)';
+                    catBadgeColor = '#cbd5e1';
+                    catBorder = 'rgba(148, 163, 184, 0.35)';
+                }
+
+                // 仅筛选当前画布中实际存在并被连带高亮的目标/上游卡片
+                const existingCardIds = new Set(Array.from(container.querySelectorAll('.pb-asset-card-row')).map(r => r.getAttribute('data-row-id')).filter(Boolean));
+
+                // 收集正向下游赋权与反向上游前置依赖 (严格限定于当前画板上已渲染存在的卡片)
+                const forwardTargets = (this.CAUSALITY_MAP ? (this.CAUSALITY_MAP[rowId] || []) : [])
+                    .filter(id => id !== rowId && existingCardIds.has(id));
+                // 针对动态连接
+                if (rowId.startsWith('conn_real_ds_') && this.CAUSALITY_MAP) {
+                    const dyn = (this.CAUSALITY_MAP['conn_default_ds'] || []).filter(id => id !== rowId && existingCardIds.has(id));
+                    dyn.forEach(d => { if (!forwardTargets.includes(d)) forwardTargets.push(d); });
+                }
+
+                const reverseSources = (this.REVERSE_MAP ? (this.REVERSE_MAP[rowId] || []) : [])
+                    .filter(id => id !== rowId && existingCardIds.has(id) && !forwardTargets.includes(id));
+                const totalLinked = forwardTargets.length + reverseSources.length;
+
+                // 检测是否存在尚未加载至画布的潜在派生项（如未选报表）
+                const unrenderedForward = (this.CAUSALITY_MAP ? (this.CAUSALITY_MAP[rowId] || []) : []).filter(id => id !== rowId && !existingCardIds.has(id));
+                let unrenderedTipHtml = '';
+                if (unrenderedForward.length > 0) {
+                    unrenderedTipHtml = `
+                        <div style="font-size: 0.74rem; color: var(--text-secondary); background: rgba(255, 255, 255, 0.02); border: 1px dashed rgba(255, 255, 255, 0.08); padding: 8px 12px; border-radius: 6px; line-height: 1.5; margin-top: 6px;">
+                            ℹ️ 架构说明：在端到端完整数据流中，该卡片可派生赋能至报表等未在顶栏加载的资产（当前尚未挑选具体报表）。在顶栏选择对应报表后即可联动点亮完整的跨资产消费链路。
+                        </div>
+                    `;
+                }
+
+                // 构建 HTML 内容
+                let cardsHtml = '';
+
+                // 1. 下游派生卡片剖析
+                if (forwardTargets.length > 0) {
+                    cardsHtml += `
+                        <div style="font-size: 0.82rem; font-weight: 700; color: #38bdf8; display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+                            <span>⬇️ 当前卡片作为【源头】向下赋能与影响的资产 (${forwardTargets.length} 项)</span>
+                        </div>
+                    `;
+                    forwardTargets.forEach(tgtId => {
+                        const tgtEl = container.querySelector(`.pb-asset-card-row[data-row-id="${tgtId}"]`);
+                        const tgtTitle = tgtEl ? (tgtEl.querySelector('.pb-asset-prop-name')?.textContent?.trim() || tgtId) : tgtId;
+                        const tgtTierCard = tgtEl ? tgtEl.closest('.pb-asset-tier-card') : null;
+                        const tgtModule = tgtTierCard ? (tgtTierCard.querySelector('.pb-card-title')?.textContent?.trim() || '') : '';
+                        const tgtStatusPill = tgtEl ? (tgtEl.querySelector('.pb-asset-status-pill')?.textContent?.trim() || '') : '';
+                        const tgtStatusClass = tgtEl ? (tgtEl.classList.contains('status-disabled') ? 'status-disabled' : (tgtEl.classList.contains('status-warn') ? 'status-warn' : 'status-enabled')) : 'status-enabled';
+
+                        const explanation = this.getLinkExplanation(rowId, tgtId);
+
+                        cardsHtml += `
+                            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">⬇️ 派生能力</span>
+                                        <span style="font-weight: 700; font-size: 0.88rem; color: var(--text-primary);">${tgtTitle}</span>
+                                        <span style="font-size: 0.72rem; color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 3px;">${tgtModule}</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="pb-asset-status-pill ${tgtStatusClass}" style="font-size: 0.72rem; padding: 2px 8px;">${tgtStatusPill}</span>
+                                        <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.selectAndExplainRow('${tgtId}')" title="切换聚焦到此卡片" style="height: 22px; padding: 0 6px; font-size: 0.68rem; cursor: pointer;">🔍 聚焦</button>
+                                    </div>
+                                </div>
+                                <div style="font-size: 0.78rem; line-height: 1.6; color: var(--text-primary);">
+                                    <strong style="color: #818cf8;">🔗 为什么会有链接？</strong> ${explanation.reason}
+                                </div>
+                                <div style="font-size: 0.78rem; line-height: 1.6; color: var(--text-primary);">
+                                    <strong style="color: #34d399;">⚖️ 架构是否合理？</strong> ${explanation.isReasonable}
+                                </div>
+                                <div style="font-size: 0.74rem; line-height: 1.5; color: var(--text-secondary); background: rgba(0, 0, 0, 0.15); padding: 6px 10px; border-radius: 6px;">
+                                    <strong style="color: #f59e0b;">💡 治理防御提示：</strong> ${explanation.tip}
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+
+                // 2. 上游依赖卡片剖析
+                if (reverseSources.length > 0) {
+                    cardsHtml += `
+                        <div style="font-size: 0.82rem; font-weight: 700; color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-top: ${forwardTargets.length > 0 ? '12px' : '4px'};">
+                            <span>⬆️ 当前卡片所依托的【上游前置依赖与授权依据】 (${reverseSources.length} 项)</span>
+                        </div>
+                    `;
+                    reverseSources.forEach(srcId => {
+                        const srcEl = container.querySelector(`.pb-asset-card-row[data-row-id="${srcId}"]`);
+                        const srcTitle = srcEl ? (srcEl.querySelector('.pb-asset-prop-name')?.textContent?.trim() || srcId) : srcId;
+                        const srcTierCard = srcEl ? srcEl.closest('.pb-asset-tier-card') : null;
+                        const srcModule = srcTierCard ? (srcTierCard.querySelector('.pb-card-title')?.textContent?.trim() || '') : '';
+                        const srcStatusPill = srcEl ? (srcEl.querySelector('.pb-asset-status-pill')?.textContent?.trim() || '') : '';
+                        const srcStatusClass = srcEl ? (srcEl.classList.contains('status-disabled') ? 'status-disabled' : (srcEl.classList.contains('status-warn') ? 'status-warn' : 'status-enabled')) : 'status-enabled';
+
+                        const explanation = this.getLinkExplanation(srcId, rowId);
+
+                        cardsHtml += `
+                            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">⬆️ 上游前置依据</span>
+                                        <span style="font-weight: 700; font-size: 0.88rem; color: var(--text-primary);">${srcTitle}</span>
+                                        <span style="font-size: 0.72rem; color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 3px;">${srcModule}</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="pb-asset-status-pill ${srcStatusClass}" style="font-size: 0.72rem; padding: 2px 8px;">${srcStatusPill}</span>
+                                        <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.selectAndExplainRow('${srcId}')" title="切换聚焦到此卡片" style="height: 22px; padding: 0 6px; font-size: 0.68rem; cursor: pointer;">🔍 聚焦</button>
+                                    </div>
+                                </div>
+                                <div style="font-size: 0.78rem; line-height: 1.6; color: var(--text-primary);">
+                                    <strong style="color: #818cf8;">🔗 为什么会有链接？</strong> 当前卡片受上游【${srcTitle}】前置制约：${explanation.reason}
+                                </div>
+                                <div style="font-size: 0.78rem; line-height: 1.6; color: var(--text-primary);">
+                                    <strong style="color: #34d399;">⚖️ 架构是否合理？</strong> ${explanation.isReasonable}
+                                </div>
+                                <div style="font-size: 0.74rem; line-height: 1.5; color: var(--text-secondary); background: rgba(0, 0, 0, 0.15); padding: 6px 10px; border-radius: 6px;">
+                                    <strong style="color: #f59e0b;">💡 治理防御提示：</strong> ${explanation.tip}
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+
+                if (totalLinked === 0) {
+                    cardsHtml = `
+                        <div style="padding: 20px 14px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08); color: var(--text-secondary); font-size: 0.8rem;">
+                            🍃 该卡片为链路终端叶子节点，当前未配置直接向下派生或跨模块前置依赖项。
+                        </div>
+                    `;
+                }
+
+                if (body) {
+                    body.innerHTML = `
+                        <!-- 主解析卡片英雄看板 -->
+                        <div style="background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 8px; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="font-size: 0.72rem; font-weight: 700; color: #818cf8; background: rgba(99, 102, 241, 0.2); padding: 2px 8px; border-radius: 4px;">当前解析主体</span>
+                                    <h4 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: var(--text-primary);">${titleText}</h4>
+                                    <span style="font-size: 0.72rem; color: ${catBadgeColor}; background: ${catBadgeBg}; border: 1px solid ${catBorder}; padding: 1px 6px; border-radius: 3px; font-weight: 600;">${catLabel}</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="font-size: 0.72rem; color: var(--text-secondary);">${moduleTitle}</span>
+                                    <span class="pb-asset-status-pill ${statusClass}" style="font-size: 0.72rem; padding: 2px 8px;">${statusPillText}</span>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5;">
+                                ${descText}
+                            </div>
+                        </div>
+
+                        <!-- 联动统计速览 -->
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; background: rgba(255, 255, 255, 0.02); border-radius: 6px; font-size: 0.75rem; color: var(--text-secondary);">
+                            <span>⚡ 共高亮关联 <strong style="color: var(--text-primary); font-size: 0.85rem;">${totalLinked}</strong> 项资产权限</span>
+                            <span>⬇️ 下游派生赋权: <strong style="color: #38bdf8;">${forwardTargets.length}</strong> 项 · ⬆️ 上游前置依赖: <strong style="color: #f59e0b;">${reverseSources.length}</strong> 项</span>
+                        </div>
+
+                        <!-- 关联因果卡片列表 -->
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            ${cardsHtml}
+                        </div>
+                        ${unrenderedTipHtml}
+                    `;
+                }
+
+                if (summary) {
+                    summary.textContent = `当前卡片 [${titleText}] 治理合规审计评估完成 · 微软官方 Fabric & Power BI RBAC 标准`;
+                }
+            }
+
+            // 打开弹窗并重置回屏幕居中位置
+            if (content && typeof window.centerModal === 'function') {
+                window.centerModal(content);
+            }
+
+            // 移动端固定居中，非移动端支持头部自由拖拽
+            const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+            if (!isMobile && typeof window.makeDraggable === 'function' && content && header && !content._dragBound) {
+                window.makeDraggable(content, header);
+                content._dragBound = true;
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        // ⚡ 关闭解析卡片关系弹窗
+        closeExplainModal() {
+            const modal = document.getElementById('pb-explain-causality-modal');
+            if (!modal || modal.style.display === 'none') return;
+            modal.classList.add('closing');
+            setTimeout(() => {
+                modal.style.display = 'none';
+                modal.classList.remove('closing');
+                const content = modal.querySelector('.modal-content');
+                if (content && typeof window.centerModal === 'function') {
+                    window.centerModal(content);
+                }
+            }, 200);
         }
     }
 
