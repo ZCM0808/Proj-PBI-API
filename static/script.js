@@ -15382,8 +15382,7 @@ window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded)
             railEl.classList.add('expanded');
         }
 
-        // 恢复上次激活的模块 (Workflows vs API Tree)
-        // 如果用户在 script.js 加载前就点了菜单项，优先使用缓存的 _pendingModule
+        // 恢复上次激活的模块 (Workflows vs API Tree vs Permission Blueprint)
         const savedModule = window._pendingModule || localStorage.getItem('pbi-active-module') || 'workflows';
         delete window._pendingModule;
         window.switchAppModule(savedModule);
@@ -15393,9 +15392,13 @@ window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded)
         if (savedWf && wfSelector.querySelector(`option[value="${savedWf}"]`)) {
             wfSelector.value = savedWf;
             wfSelector.dataset.prevVal = savedWf;
-            wfSelector.dispatchEvent(new Event('change'));
-            if (window.selectWorkflow) window.selectWorkflow(savedWf);
-        } else {
+            // 🚨 关键防御：仅当当前激活模块确实是 workflows 时才派发事件展示工作流面板，
+            // 绝不在用户停留在权限蓝图或其他模块时强制弹出工作流界面！
+            if (savedModule === 'workflows') {
+                wfSelector.dispatchEvent(new Event('change'));
+                if (window.selectWorkflow) window.selectWorkflow(savedWf);
+            }
+        } else if (savedModule === 'workflows') {
             if (window.selectWorkflow) window.selectWorkflow('datasource_inspector');
         }
 

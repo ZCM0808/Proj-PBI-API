@@ -44,9 +44,10 @@
                 document.documentElement.classList.add('topbar-collapsed-init');
             }
 
-            // 3. 动态注入 CSS 变量（永久生效）
+            // 3. 动态注入 CSS 变量与当前激活模块可见性（0ms 物理杜绝页面刷新时的视图跳动闪烁）
             var sidebarWidth = localStorage.getItem('pbi-sidebar-width');
             var requestHeight = localStorage.getItem('pbi-request-height');
+            var savedMod = localStorage.getItem('pbi-active-module') || 'workflows';
             var styleStr = '';
             if (sidebarWidth) {
                 var wVal = sidebarWidth.endsWith('px') ? sidebarWidth : sidebarWidth + 'px';
@@ -55,12 +56,22 @@
             if (requestHeight) {
                 styleStr += '.body-editor-container { height: ' + requestHeight + '; flex: none; } ';
             }
-            if (styleStr) {
-                var styleEl = document.createElement('style');
-                styleEl.id = 'fouc-root-vars';
-                styleEl.textContent = styleStr;
-                document.head.appendChild(styleEl);
-            }
+            // 🚨 关键防御：在解析任何 DOM 节点之前，直接用 CSS 强制隐藏非目标视图并点亮目标模块视图
+            styleStr += '.workspace-view { display: none !important; } ';
+            styleStr += '#view-' + savedMod + ' { display: flex !important; } ';
+            styleStr += '.sidebar-pane { display: none !important; } ';
+            styleStr += '#sidebar-pane-' + savedMod + ' { display: flex !important; } ';
+
+            var styleEl = document.createElement('style');
+            styleEl.id = 'fouc-root-vars';
+            styleEl.textContent = styleStr;
+            document.head.appendChild(styleEl);
+
+            // 专门注入首帧模块可见性防御（带 !important 物理压制任何解析中途闪烁）
+            var guardStyle = document.createElement('style');
+            guardStyle.id = 'fouc-module-guard';
+            guardStyle.textContent = '.workspace-view { display: none !important; } #view-' + savedMod + ' { display: flex !important; } .sidebar-pane { display: none !important; } #sidebar-pane-' + savedMod + ' { display: flex !important; }';
+            document.head.appendChild(guardStyle);
 
             // 4. DOMContentLoaded 时同步状态至 body 并优雅解除初始类与 .no-transitions
             window.addEventListener('DOMContentLoaded', function() {
@@ -76,40 +87,39 @@
                     handle.setAttribute('title', '展开全局功能栏 (Expand Global Topbar)');
                 }
 
-                // 提前恢复上次激活的模块视图，防止刷新后始终闪烁 workflows 再切换
-                var savedMod = localStorage.getItem('pbi-active-module');
-                if (savedMod && savedMod !== 'workflows') {
-                    // 隐藏所有 sidebar pane 和 workspace view
-                    var allSidebarPanes = document.querySelectorAll('.sidebar-pane');
-                    for (var i = 0; i < allSidebarPanes.length; i++) {
-                        allSidebarPanes[i].style.display = 'none';
-                    }
-                    var targetSide = document.getElementById('sidebar-pane-' + savedMod);
-                    if (targetSide) targetSide.style.display = 'flex';
-
-                    var allViews = document.querySelectorAll('.workspace-view');
-                    for (var j = 0; j < allViews.length; j++) {
-                        allViews[j].style.display = 'none';
-                    }
-                    var targetView = document.getElementById('view-' + savedMod);
-                    if (targetView) targetView.style.display = 'flex';
-
-                    // 同步 Rail 高亮
-                    var allRailItems = document.querySelectorAll('.rail-item');
-                    for (var k = 0; k < allRailItems.length; k++) {
-                        allRailItems[k].classList.remove('active');
-                    }
-                    var activeRail = document.getElementById('rail-nav-' + savedMod);
-                    if (activeRail) activeRail.classList.add('active');
+                // 提前恢复上次激活的模块视图 DOM 显式内联属性
+                var savedMod = localStorage.getItem('pbi-active-module') || 'workflows';
+                var allSidebarPanes = document.querySelectorAll('.sidebar-pane');
+                for (var i = 0; i < allSidebarPanes.length; i++) {
+                    allSidebarPanes[i].style.display = 'none';
                 }
+                var targetSide = document.getElementById('sidebar-pane-' + savedMod);
+                if (targetSide) targetSide.style.display = 'flex';
+
+                var allViews = document.querySelectorAll('.workspace-view');
+                for (var j = 0; j < allViews.length; j++) {
+                    allViews[j].style.display = 'none';
+                }
+                var targetView = document.getElementById('view-' + savedMod);
+                if (targetView) targetView.style.display = 'flex';
+
+                // 同步 Rail 高亮
+                var allRailItems = document.querySelectorAll('.rail-item');
+                for (var k = 0; k < allRailItems.length; k++) {
+                    allRailItems[k].classList.remove('active');
+                }
+                var activeRail = document.getElementById('rail-nav-' + savedMod);
+                if (activeRail) activeRail.classList.add('active');
 
                 // 移除 html 上的初始化占位类
                 document.documentElement.classList.remove('rail-expanded-init');
                 document.documentElement.classList.remove('topbar-collapsed-init');
 
-                // 双重 rAF 确保首帧渲染稳定后再启用 CSS 过渡动画
+                // 双重 rAF 确保首帧渲染稳定后再移除临时防御样式并启用 CSS 过渡动画
                 requestAnimationFrame(function() {
                     requestAnimationFrame(function() {
+                        var g = document.getElementById('fouc-module-guard');
+                        if (g) g.parentNode.removeChild(g);
                         document.documentElement.classList.remove('no-transitions');
                     });
                 });
@@ -753,7 +763,7 @@
                             <option value="local_model_query">Local Model Diagnostics &amp; Query (DAX)</option>
 
                         </select>
-<div id="view-workflows" class="workspace-view" style="display: flex;">
+<div id="view-workflows" class="workspace-view" style="display: none;">
                 <div class="wf-detail-board glass-panel">
                     <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0 0 8px 0; border-bottom: 1px solid var(--overlay-10); margin-bottom: 8px;">
                         <div style="display: flex; align-items: baseline; gap: 8px; flex: 1; min-width: 0; overflow: hidden;">
@@ -3198,8 +3208,8 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260919_v1440"></script>
-    <script src="/static/script.js?v=20260920_v2100"></script>
-    <script src="/static/permission_blueprint.js?v=20260921_v1035"></script>
+    <script src="/static/script.js?v=20260921_v2000"></script>
+    <script src="/static/permission_blueprint.js?v=20260921_v2000"></script>
 
 
 
