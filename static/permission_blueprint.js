@@ -5268,33 +5268,46 @@
 
             const allRows = container.querySelectorAll('.pb-asset-card-row');
 
+            // 定时器引用：80ms 悬停意图防抖 (Hover Intent) 与 60ms 间隙容差缓冲 (Leave Gap Buffer)
+            let hoverIntentTimer = null;
+            let leaveGraceTimer = null;
+
             const clearCausalityVisuals = () => {
+                this._activeCausalityRow = null;
                 allRows.forEach(r => {
                     r.classList.remove('pb-causality-active', 'pb-causality-pinned', 'pb-causality-target', 'pb-causality-dimmed');
                 });
             };
 
+            // 采用差量更新 (State Diffing)，保持持续无关的卡片维持 dimmed，绝不重置回 1.0 导致变亮再变暗
             const applyCausalityVisuals = (activeRow, isPinned = false) => {
-                clearCausalityVisuals();
-                if (!activeRow) return;
+                if (!activeRow) {
+                    clearCausalityVisuals();
+                    return;
+                }
+                this._activeCausalityRow = activeRow;
 
                 const rowId = activeRow.getAttribute('data-row-id');
                 if (!rowId) return;
 
-                const linkedIds = getLinkedRowIds(rowId);
+                const linkedIds = new Set(getLinkedRowIds(rowId));
 
-                // 标记源卡片
-                activeRow.classList.add('pb-causality-active');
-                if (isPinned) activeRow.classList.add('pb-causality-pinned');
-
-                // 标记关联卡片与其余淡化卡片
+                // 标记源卡片、关联目标卡片与其余淡化卡片（差量平滑接替，杜绝全局闪亮）
                 allRows.forEach(r => {
-                    if (r === activeRow) return;
-                    const id = r.getAttribute('data-row-id');
-                    if (linkedIds.includes(id)) {
-                        r.classList.add('pb-causality-target');
+                    if (r === activeRow) {
+                        r.classList.add('pb-causality-active');
+                        r.classList.toggle('pb-causality-pinned', isPinned);
+                        r.classList.remove('pb-causality-target', 'pb-causality-dimmed');
                     } else {
-                        r.classList.add('pb-causality-dimmed');
+                        r.classList.remove('pb-causality-active', 'pb-causality-pinned');
+                        const id = r.getAttribute('data-row-id');
+                        if (linkedIds.has(id)) {
+                            r.classList.add('pb-causality-target');
+                            r.classList.remove('pb-causality-dimmed');
+                        } else {
+                            r.classList.add('pb-causality-dimmed');
+                            r.classList.remove('pb-causality-target');
+                        }
                     }
                 });
             };
@@ -5304,18 +5317,58 @@
                 // 悬停联动 (仅在未锁定时生效)
                 row.addEventListener('mouseenter', () => {
                     if (this._pinnedCausalityRow) return;
-                    applyCausalityVisuals(row, false);
+
+                    // 1. 消除间隙空窗期：若此前有待清空的计时器（刚离开上一张卡片），立刻取消，避免卡片闪亮
+                    if (leaveGraceTimer) {
+                        clearTimeout(leaveGraceTimer);
+                        leaveGraceTimer = null;
+                    }
+                    if (hoverIntentTimer) {
+                        clearTimeout(hoverIntentTimer);
+                        hoverIntentTimer = null;
+                    }
+
+                    // 如果当前已经在展示此卡片，则无需重复计算
+                    if (this._activeCausalityRow === row) return;
+
+                    // 2. 微防抖意图识别：
+                    // - 如果此前已有激活卡片（鼠标在卡片之间平滑滑动），采用 35ms 超低延迟差量接管；
+                    // - 如果此前无激活卡片（从外部首次掠过），设置 80ms 意图识别防抖，防止掠过时误触发全屏明暗切换。
+                    const delay = this._activeCausalityRow ? 35 : 80;
+                    hoverIntentTimer = setTimeout(() => {
+                        applyCausalityVisuals(row, false);
+                    }, delay);
                 });
 
                 row.addEventListener('mouseleave', () => {
                     if (this._pinnedCausalityRow) return;
-                    clearCausalityVisuals();
+
+                    if (hoverIntentTimer) {
+                        clearTimeout(hoverIntentTimer);
+                        hoverIntentTimer = null;
+                    }
+
+                    // 1. 消除间隙空窗期：移出时不立即清空，给予 60ms 容差缓冲。
+                    // 若鼠标顺势移入下一张卡片，下一个 card 的 mouseenter 会取消该 timer，实现丝滑差量接管，零闪烁。
+                    if (leaveGraceTimer) clearTimeout(leaveGraceTimer);
+                    leaveGraceTimer = setTimeout(() => {
+                        clearCausalityVisuals();
+                    }, 60);
                 });
 
                 // 点击锁定或切换
                 row.addEventListener('click', (e) => {
                     // 防止点击按钮等其他内嵌控件干扰
                     if (e.target.closest('button, input, select')) return;
+
+                    if (hoverIntentTimer) {
+                        clearTimeout(hoverIntentTimer);
+                        hoverIntentTimer = null;
+                    }
+                    if (leaveGraceTimer) {
+                        clearTimeout(leaveGraceTimer);
+                        leaveGraceTimer = null;
+                    }
 
                     if (this._pinnedCausalityRow === row) {
                         // 再次点击同一张卡片 -> 取消锁定
@@ -5336,6 +5389,8 @@
                 document.addEventListener('click', (e) => {
                     if (!e.target.closest('.pb-asset-card-row') && this._pinnedCausalityRow) {
                         this._pinnedCausalityRow = null;
+                        if (hoverIntentTimer) clearTimeout(hoverIntentTimer);
+                        if (leaveGraceTimer) clearTimeout(leaveGraceTimer);
                         clearCausalityVisuals();
                     }
                 });

@@ -8392,7 +8392,7 @@ body.light-theme .pb-card-header-status.status-bypassed .pb-status-indicator-tex
     background: rgba(255, 255, 255, 0.025);
     border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: 8px;
-    transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease, opacity 0.25s ease, filter 0.25s ease;
     cursor: grab;
     position: relative;
     user-select: none;
