@@ -4805,7 +4805,6 @@
                             <div class="pb-asset-row-bottom">
                                 <span class="pb-asset-prop-desc">${formattedDesc}</span>
                                 <div class="pb-asset-row-badges">
-                                    <span class="pb-cat-tag-pill cat-${cat}">${catLabel}</span>
                                     ${item.badge ? `<span class="pb-asset-tag-pill">${item.badge}</span>` : ''}
                                 </div>
                             </div>
@@ -5256,10 +5255,20 @@
             // 6 个大卡片固定按照 1-6 标准流转顺序平分屏幕宽，不能移动
             const fixedOrder = ['tenant', 'workspace', 'model', 'report', 'connection', 'pipeline'];
             container.innerHTML = fixedOrder.map(k => cardsMap[k]).join('') +
-                `<div class="pb-category-legend">
-                    <div class="pb-legend-item"><span class="pb-legend-dot dot-assigned"></span>ASSIGNED</div>
-                    <div class="pb-legend-item"><span class="pb-legend-dot dot-derived"></span>CAPABILITY</div>
-                    <div class="pb-legend-item"><span class="pb-legend-dot dot-env"></span>ENV</div>
+                `<div class="pb-category-legend pb-legend-card glass-panel">
+                    <span class="pb-legend-title">权限分类与标识图例：</span>
+                    <div class="pb-legend-row">
+                        <span class="pb-legend-dot dot-assigned"></span>
+                        <span class="pb-legend-label"><strong style="color: #fbbf24;">官方分配身份 (ASSIGNED)</strong>：显式分配的权威原始身份与核心治理角色</span>
+                    </div>
+                    <div class="pb-legend-row">
+                        <span class="pb-legend-dot dot-derived"></span>
+                        <span class="pb-legend-label"><strong style="color: #38bdf8;">衍生能力权限 (CAPABILITY)</strong>：基于上游身份与策略推导派生的具体操作能力</span>
+                    </div>
+                    <div class="pb-legend-row">
+                        <span class="pb-legend-dot dot-env"></span>
+                        <span class="pb-legend-label"><strong style="color: #94a3b8;">承载环境资产 (ENV)</strong>：权限生效所依赖的目标环境容器、网关通道与租户载体</span>
+                    </div>
                 </div>`;
 
             // 初始化卡片内部各个权限小卡片上下拖拽移动排序引擎 (物理零重叠)
@@ -5459,7 +5468,7 @@
                 'ws_members': ['model_reshare', 'report_share', 'conn_share'],
                 'ws_edit': ['model_write', 'report_edit'],
                 'ws_app': ['report_view', 'report_share'],
-                'ws_capacity': ['model_write'],
+                'ws_capacity': ['model_write', 'conn_refresh'],
                 'ws_delete': [],
                 'ws_lineage': [],
 
@@ -5480,7 +5489,7 @@
                     'report_view', 'report_edit', 'report_export', 'report_sub', 'report_share'
                 ],
                 'report_view': ['report_sub', 'report_export'],
-                'report_edit': ['report_export', 'report_share'],
+                'report_edit': ['report_export'],
                 'report_export': [],
                 'report_share': [],
 

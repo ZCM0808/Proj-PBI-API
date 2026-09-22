@@ -580,6 +580,32 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     await expect(reportEditRow).toHaveClass(/pb-causality-target/);
     const reportExportRow = page.locator('.pb-asset-card-row[data-row-id="report_export"]');
     await expect(reportExportRow).toHaveClass(/pb-causality-target/);
+
+    const reportShareRow = page.locator('.pb-asset-card-row[data-row-id="report_share"]');
+    await expect(reportShareRow).not.toHaveClass(/pb-causality-target/);
+
+    // 6. 验证点击 RESHARE 卡片时：派生授权分发，精准点亮报表层的 SHARE REPORT
+    const reshareRow = page.locator('.pb-asset-card-row[data-row-id="model_reshare"]');
+    if (await reshareRow.count() > 0) {
+      await reshareRow.click();
+      await page.waitForTimeout(300);
+      await expect(reportShareRow).toHaveClass(/pb-causality-target/);
+    }
+
+    // 7. 验证小卡片中已移除冗余的 pb-cat-tag-pill (无需重复显示 assigned/capability/env)
+    const catPillCount = await page.locator('.pb-cat-tag-pill').count();
+    expect(catPillCount).toBe(0);
+
+    // 8. 验证用户全景左下角图例为逐行纵向排版面板并附带详实解释
+    const legendCard = page.locator('.pb-category-legend');
+    await expect(legendCard).toBeVisible();
+    await expect(legendCard.locator('.pb-legend-title')).toContainText('权限分类与标识图例');
+    const legendRows = legendCard.locator('.pb-legend-row');
+    await expect(legendRows).toHaveCount(3);
+    const legendText = await legendCard.textContent();
+    expect(legendText).toContain('官方分配身份');
+    expect(legendText).toContain('衍生能力权限');
+    expect(legendText).toContain('承载环境资产');
   });
 
 });
