@@ -2596,3 +2596,46 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
 - **静态代码检查**：
   - `python -m ruff check src`：All checks passed! (0 issues)
   - `python -m mypy src`：Success: no issues found in 10 source files! (0 errors)
+
+---
+
+## 70. Laya (System 1 决策引擎) 本地部署、配置与物理级一键卸载规范指南
+
+### 70.1 核心价值与系统角色
+- **架构定位**：作为本地轻量级、非自回归的 System 1(系统一，即快思考/反射式决策模型)，弥补传统 LLM(Large Language Model / 大语言模型，如 Gemini) 依赖外网、时延长(2~5秒)与成本高的局限，实现亚秒级（CPU 下 0.5~1.5 秒，GPU 下 30 毫秒）的结构化概率决策。
+- **三种决策原语**：
+  - `choice`：多候选项单选（意图路由、根因归类）；
+  - `score`：序数阶梯打分（风险评估 0~3 级、紧急度）；
+  - `noul`：布尔值置信概率（0.0~1.0，如是否越权、是否违规）。
+
+### 70.2 标准安装与模型下载步骤
+1. **安装底层依赖包 (建议清华源加速)**：
+   ```powershell
+   python -m pip install laya torch transformers safetensors huggingface_hub tokenizers -i https://pypi.tuna.tsinghua.edu.cn/simple
+   ```
+2. **配置国内 Hugging Face 镜像端点**：
+   下载模型前在终端或脚本顶部注入镜像环境变量，规避外网直连超时：
+   ```python
+   import os
+   os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+   ```
+3. **模型拉取与加载 (首次运行自动缓存约 1.3GB)**：
+   ```python
+   import laya
+   agent = laya.load("convaiinnovations/laya")  # 默认英文通用端点 (421M 参数)
+   # 或多语言端点: agent_ml = laya.load("convaiinnovations/laya", subfolder="multilingual")
+   ```
+4. **独立验证脚本**：
+   位于项目根目录下的 [`test_laya_local.py`](file:///D:/zcm/Proj-PBI-API/test_laya_local.py)。
+
+### 70.3 物理级一键无痕卸载步骤 (零残留恢复)
+若不再需要 Laya 或需回收磁盘空间，执行以下两步即可 100% 恢复环境初始纯净状态：
+1. **卸载 Python 库包**：
+   ```powershell
+   pip uninstall -y laya torch transformers safetensors huggingface_hub tokenizers
+   ```
+2. **清空本地 Hugging Face 缓存权重与测试脚本**：
+   ```powershell
+   Remove-Item -Recurse -Force "C:\Users\ZCM\.cache\huggingface\hub\models--convaiinnovations*"
+   Remove-Item -Force "D:\zcm\Proj-PBI-API\test_laya_local.py"
+   ```

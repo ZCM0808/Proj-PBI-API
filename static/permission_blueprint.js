@@ -6537,6 +6537,15 @@
                             </div>
                         </div>
 
+                        <!-- ⚡ Laya System 1 本地即时合规门禁状态条 -->
+                        <div id="pb-laya-guardrail-bar" class="laya-security-guardrail-bar">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 0.72rem; font-weight: 700; color: #818cf8; background: rgba(99, 102, 241, 0.2); padding: 2px 8px; border-radius: 4px;">⚡ System 1 合规门禁</span>
+                                <span id="pb-laya-guardrail-status" style="font-weight: 600; font-size: 0.76rem; color: #a7f3d0;">正在调用本地 Laya 引擎评估链路风险...</span>
+                            </div>
+                            <span id="pb-laya-guardrail-action" style="font-size: 0.7rem; color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 3px;">Act / Escalate 计算中</span>
+                        </div>
+
                         <!-- 联动统计速览 -->
                         <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; background: rgba(255, 255, 255, 0.02); border-radius: 6px; font-size: 0.75rem; color: var(--text-secondary);">
                             <span>⚡ 共高亮关联 <strong style="color: var(--text-primary); font-size: 0.85rem;">${totalLinked}</strong> 项资产权限</span>
@@ -6548,6 +6557,44 @@
                             ${cardsHtml}
                         </div>
                     `;
+
+                    // 异步调用本地 Laya System 1 权限合规门禁审计
+                    fetch('/api/ai/laya/audit-permission', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            role: titleText,
+                            user_title: 'Power BI Analyst',
+                            workspace_type: moduleTitle,
+                            permissions: forwardTargets
+                        })
+                    })
+                    .then(r => r.json())
+                    .then(audit => {
+                        const bar = document.getElementById('pb-laya-guardrail-bar');
+                        const statusEl = document.getElementById('pb-laya-guardrail-status');
+                        const actEl = document.getElementById('pb-laya-guardrail-action');
+                        if (!bar || !statusEl) return;
+
+                        if (audit.is_high_risk) {
+                            bar.classList.add('is-warning');
+                            statusEl.style.color = '#fca5a5';
+                            statusEl.textContent = `🚨 越权风险预警 · 合规风险度: ${audit.risk_score} / 2.0 · 建议复核 (Escalate)`;
+                            if (actEl) {
+                                actEl.style.color = '#f87171';
+                                actEl.textContent = `自主放行率: ${Math.round((audit.act_probability || 0.2) * 100)}%`;
+                            }
+                        } else {
+                            bar.classList.remove('is-warning');
+                            statusEl.style.color = '#a7f3d0';
+                            statusEl.textContent = `🟢 微软标准 RBAC 链路 · 机器完全信任放行 (Act) · 风险度: ${audit.risk_score}`;
+                            if (actEl) {
+                                actEl.style.color = '#34d399';
+                                actEl.textContent = `自主放行率: ${Math.round((audit.act_probability || 0.95) * 100)}%`;
+                            }
+                        }
+                    })
+                    .catch(e => console.warn('Laya audit fetch error:', e));
                 }
 
                 if (summary) {

@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260922_v0750">
+    <link rel="stylesheet" href="/static/style.css?v=20260922_v1120">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -608,11 +608,21 @@
                     <p class="nav-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">🌲 API 资源树</p>
                     <span class="api-count-badge" title="Total APIs">共 <span id="total-api-count">0</span> 个</span>
                 </div>
-                <div style="display: flex; gap: 8px; margin-bottom: 0.5rem;">
-                    <input type="search" id="api-search-input" placeholder="搜索 API... (支持拼音/英文)" class="modern-input" style="flex: 1; border-radius: 6px; min-width: 0;">
-                    <button id="toggle-all-categories-btn" class="icon-btn" title="全部折叠 / 展开 (Expand / Collapse All)" type="button" style="padding: 0 8px;">
+                <div style="display: flex; gap: 6px; margin-bottom: 0.5rem; align-items: center;">
+                    <input type="search" id="api-search-input" placeholder="搜索 API 或输入口语需求按回车..." class="modern-input" style="flex: 1; border-radius: 6px; min-width: 0;">
+                    <button id="btn-laya-intent-search" class="btn-laya-intent" title="⚡ Laya 智能意图直达 (输入口语即可自动定位并高亮 API 目录)" type="button">
+                        <span>⚡</span>
+                    </button>
+                    <button id="toggle-all-categories-btn" class="icon-btn" title="全部折叠 / 展开 (Expand / Collapse All)" type="button" style="padding: 0 8px; height: 34px;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg>
                     </button>
+                </div>
+                <div id="laya-search-intent-hint" class="laya-intent-hint-banner">
+                    <div style="display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        <span style="color: #818cf8; font-weight: 700;">⚡ Laya 意图直达:</span>
+                        <span id="laya-intent-matched-name" style="font-weight: 600; color: var(--text-primary);">...</span>
+                    </div>
+                    <button type="button" class="btn-wf-sm" id="laya-intent-locate-btn" style="height: 20px; padding: 0 6px; font-size: 0.68rem; cursor: pointer; flex-shrink: 0;">定位</button>
                 </div>
                 <div class="flag-filter-container" style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 1rem; padding: 2px 0;">
                     <span class="flag-badge active" data-flag="ALL">ALL</span>
@@ -2570,8 +2580,21 @@
 
                         <button id="copy-res-body-btn" class="icon-btn copy-btn" style="flex-shrink: 0;" title="Copy Response JSON" type="button" onclick="window.handleCopyAction(this, window.currentJsonResponse ? JSON.stringify(window.currentJsonResponse, null, 2) : document.getElementById('response-output').textContent)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
 
-                    </div>
+                </div>
 
+                <!-- Laya System 1 错误秒级预诊与自愈卡片 -->
+                <div id="laya-error-triage-card" class="laya-error-triage-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="font-size: 0.72rem; font-weight: 700; color: #f59e0b; background: rgba(245, 158, 11, 0.2); padding: 2px 8px; border-radius: 4px;">⚡ Laya 智能预诊</span>
+                            <span id="laya-error-cause-badge" style="font-weight: 700; font-size: 0.84rem; color: #fbbf24;">...</span>
+                            <span id="laya-error-confidence-badge" style="font-size: 0.7rem; color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 3px;">置信度 0%</span>
+                        </div>
+                        <button type="button" class="btn-wf-sm" id="laya-error-dismiss-btn" style="height: 20px; padding: 0 6px; font-size: 0.68rem; cursor: pointer;">✕ 忽略</button>
+                    </div>
+                    <div id="laya-error-advice-text" style="font-size: 0.76rem; color: var(--text-primary); line-height: 1.5; margin-top: 2px;">
+                        ...
+                    </div>
                 </div>
 
                 <div class="response-body">
@@ -3273,8 +3296,8 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260919_v1440"></script>
-    <script src="/static/script.js?v=20260921_v2230"></script>
-    <script src="/static/permission_blueprint.js?v=20260922_v0805"></script>
+    <script src="/static/script.js?v=20260922_v1120"></script>
+    <script src="/static/permission_blueprint.js?v=20260922_v1120"></script>
 
 
 

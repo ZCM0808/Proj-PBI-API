@@ -33,6 +33,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from src.config import Config, load_settings
+from src.laya_engine import LayaDecisionEngine
 from src.local_pbi import run_dax_query, scan_local_instances
 from src.pbi_client import PBIClient
 from src.pipeline import PBIPipeline
@@ -695,6 +696,53 @@ async def get_ui(request: Request):
         return await handle_oauth_callback(request)
     with open("static/index.html", "r", encoding="utf-8") as f:
         return f.read()
+
+
+# =========================================================================
+# Laya System 1 (系统一) 本地决策引擎 API 路由
+# =========================================================================
+
+class LayaRouteRequest(BaseModel):
+    query: str
+
+class LayaTriageRequest(BaseModel):
+    error_text: str
+
+class LayaPermissionAuditRequest(BaseModel):
+    role: str
+    user_title: Optional[str] = "Analyst"
+    workspace_type: Optional[str] = "Workspace"
+    permissions: List[str] = []
+
+@app.get("/api/ai/laya/status")
+async def get_laya_status():
+    """获取 Laya 引擎可用性与就绪状态"""
+    engine = LayaDecisionEngine.get_instance()
+    return engine.get_status()
+
+@app.post("/api/ai/laya/route-api")
+async def laya_route_api(req: LayaRouteRequest):
+    """API 意图口语化理解与毫秒级路由跳转"""
+    engine = LayaDecisionEngine.get_instance()
+    return await asyncio.to_thread(engine.route_api_intent, req.query)
+
+@app.post("/api/ai/laya/triage-error")
+async def laya_triage_error(req: LayaTriageRequest):
+    """DAX / 网关 / API 错误日志快速归因与自愈指引"""
+    engine = LayaDecisionEngine.get_instance()
+    return await asyncio.to_thread(engine.triage_error, req.error_text)
+
+@app.post("/api/ai/laya/audit-permission")
+async def laya_audit_permission(req: LayaPermissionAuditRequest):
+    """权限蓝图越权安全审计与合规门禁"""
+    engine = LayaDecisionEngine.get_instance()
+    return await asyncio.to_thread(
+        engine.audit_permission_risk,
+        req.role,
+        req.user_title or "Analyst",
+        req.workspace_type or "Workspace",
+        req.permissions,
+    )
 
 
 @app.get("/api/settings")

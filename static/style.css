@@ -8907,3 +8907,105 @@ body.light-theme .btn-wf-sm.active-filter,
     color: #b45309 !important;
 }
 
+/* =========================================================================
+   Laya System 1 Local Decision Engine UI Components & Micro-animations
+   ========================================================================= */
+
+/* 1. API 搜索意图直达闪电按钮 */
+.btn-laya-intent {
+    padding: 0 10px;
+    height: 34px;
+    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    border-radius: 6px;
+    color: #818cf8;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+    user-select: none;
+}
+.btn-laya-intent:hover {
+    background: rgba(99, 102, 241, 0.25);
+    border-color: #818cf8;
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+    transform: translateY(-1px);
+}
+.btn-laya-intent:active {
+    transform: scale(0.96);
+}
+.btn-laya-intent.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* 2. 搜索框下方 Laya 意图命中动态提示条 */
+.laya-intent-hint-banner {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 6px;
+    padding: 6px 10px;
+    margin-bottom: 0.6rem;
+    font-size: 0.76rem;
+    color: var(--text-primary);
+    animation: layaFadeInSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.laya-intent-hint-banner.visible {
+    display: flex;
+}
+@keyframes layaFadeInSlide {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 3. 错误响应区上方 Laya 智能就诊预诊卡片 */
+.laya-error-triage-card {
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-left: 4px solid #f59e0b;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    animation: layaFadeInSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.laya-error-triage-card.visible {
+    display: flex;
+}
+
+/* 4. 权限蓝图 System 1 安全合规条 */
+.laya-security-guardrail-bar {
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: 6px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 0.76rem;
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+}
+.laya-security-guardrail-bar.is-warning {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.35);
+}
+

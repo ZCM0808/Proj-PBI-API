@@ -8169,29 +8169,110 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 搜索过滤逻辑 (Global Smart Search)
 
     const apiSearchInput = document.getElementById('api-search-input');
+    const layaSearchBtn = document.getElementById('btn-laya-intent-search');
 
-    if (apiSearchInput) {
+    window.handleLayaIntentSearch = async function(query) {
+        const input = document.getElementById('api-search-input');
+        const q = (query || (input ? input.value : '')).trim();
+        if (!q) return;
 
-        apiSearchInput.addEventListener('input', (e) => {
+        const btn = document.getElementById('btn-laya-intent-search');
+        const hintBanner = document.getElementById('laya-search-intent-hint');
+        const hintName = document.getElementById('laya-intent-matched-name');
+        const locateBtn = document.getElementById('laya-intent-locate-btn');
 
-            renderTree(e.target.value);
+        if (btn) btn.classList.add('loading');
 
-            // 搜索时如果输入了关键字，自动切换为全部展开图标（因为搜索会强制展开结果）
+        try {
+            const resp = await fetch('/api/ai/laya/route-api', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: q })
+            });
+            const data = await resp.json();
+            const catKey = data.category || 'groups';
+            const confPct = Math.round((data.confidence || 0.5) * 100);
 
-            if (e.target.value.trim() !== '') {
+            const categoryMapping = {
+                'activity_events': 'Activity Events',
+                'groups': 'Groups',
+                'datasets': 'Datasets',
+                'reports': 'Reports',
+                'gateways': 'Gateways',
+                'pipelines': 'Pipelines',
+                'imports': 'Imports',
+                'capacities': 'Capacities',
+                'admin': 'Admin - Tenant'
+            };
 
-                allExpanded = true;
-
-                if (toggleAllBtn) {
-
-                    toggleAllBtn.classList.add('expanded');
-
-                }
-
+            let targetCatName = categoryMapping[catKey] || catKey;
+            if (window.pbiApis && Array.isArray(window.pbiApis)) {
+                const found = window.pbiApis.find(c => c.category.toLowerCase().includes(catKey.replace('_', ' ')) || c.category.toLowerCase().includes(catKey));
+                if (found) targetCatName = found.category;
             }
 
+            if (hintBanner && hintName) {
+                hintName.textContent = `[${targetCatName}] (置信度 ${confPct}%)`;
+                hintBanner.classList.add('visible');
+            }
+
+            if (typeof expandedCategories !== 'undefined' && expandedCategories.add) {
+                expandedCategories.add(targetCatName);
+            }
+            if (typeof renderTree === 'function') {
+                renderTree();
+            }
+
+            const locateFn = () => {
+                const titles = document.querySelectorAll('.api-category-title');
+                for (const t of titles) {
+                    if (t.textContent.toLowerCase().includes(targetCatName.toLowerCase())) {
+                        t.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        t.style.transition = 'all 0.4s ease';
+                        t.style.background = 'rgba(99, 102, 241, 0.3)';
+                        setTimeout(() => { t.style.background = ''; }, 1600);
+                        break;
+                    }
+                }
+            };
+
+            locateFn();
+            if (locateBtn) {
+                locateBtn.onclick = locateFn;
+            }
+        } catch (e) {
+            console.warn('Laya intent search error:', e);
+        } finally {
+            if (btn) btn.classList.remove('loading');
+        }
+    };
+
+    if (layaSearchBtn) {
+        layaSearchBtn.addEventListener('click', () => {
+            window.handleLayaIntentSearch();
+        });
+    }
+
+    if (apiSearchInput) {
+        apiSearchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                window.handleLayaIntentSearch();
+            }
         });
 
+        apiSearchInput.addEventListener('input', (e) => {
+            renderTree(e.target.value);
+            // 搜索时如果输入了关键字，自动切换为全部展开图标（因为搜索会强制展开结果）
+            if (e.target.value.trim() !== '') {
+                allExpanded = true;
+                if (toggleAllBtn) {
+                    toggleAllBtn.classList.add('expanded');
+                }
+            } else {
+                const hintBanner = document.getElementById('laya-search-intent-hint');
+                if (hintBanner) hintBanner.classList.remove('visible');
+            }
+        });
     }
 
 
@@ -8588,6 +8669,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 updateViewMode('tree');
 
+
+
+                // ⚡ 触发 Laya System 1 错误秒级预诊与自愈建议
+
+                const errStr = typeof (data.error || data) === 'object' ? JSON.stringify(data.error || data) : String(data.error || data);
+
+                if (typeof window.triggerLayaErrorTriage === 'function') {
+
+                    window.triggerLayaErrorTriage(errStr);
+
+                }
+
             }
 
 
@@ -8608,6 +8701,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (toggleGroup) toggleGroup.style.display = 'none';
 
+
+
+            // ⚡ 触发 Laya System 1 错误秒级预诊
+
+            if (typeof window.triggerLayaErrorTriage === 'function') {
+
+                window.triggerLayaErrorTriage(err.message || String(err));
+
+            }
+
         } finally {
 
             sendBtn.disabled = false;
@@ -8624,7 +8727,47 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     }
 
+    // ⚡ Laya System 1 错误秒级预诊与自愈处理
+    window.triggerLayaErrorTriage = async function(errText) {
+        const triageCard = document.getElementById('laya-error-triage-card');
+        if (!triageCard) return;
 
+        const causeBadge = document.getElementById('laya-error-cause-badge');
+        const confBadge = document.getElementById('laya-error-confidence-badge');
+        const adviceText = document.getElementById('laya-error-advice-text');
+        const dismissBtn = document.getElementById('laya-error-dismiss-btn');
+
+        if (dismissBtn) {
+            dismissBtn.onclick = () => triageCard.classList.remove('visible');
+        }
+
+        try {
+            const resp = await fetch('/api/ai/laya/triage-error', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ error_text: errText })
+            });
+            const data = await resp.json();
+
+            const causeLabelMap = {
+                'credential_expired': '🔑 凭据过期失效',
+                'gateway_unreachable': '🔌 本地网关不可达',
+                'dax_syntax': '📐 DAX 语法或度量值异常',
+                'rls_blocked': '🛡️ RLS 行级安全数据拦截',
+                'rate_limited': '⏳ 429 访问频次受限',
+                'not_found': '🔍 目标资源不存在 (404)',
+                'general_error': '⚠️ 请求执行遇到异常'
+            };
+
+            if (causeBadge) causeBadge.textContent = causeLabelMap[data.cause] || data.cause;
+            if (confBadge) confBadge.textContent = `置信度 ${Math.round((data.confidence || 0.5) * 100)}%`;
+            if (adviceText) adviceText.textContent = data.advice || '建议排查对应数据源与请求日志。';
+
+            triageCard.classList.add('visible');
+        } catch (e) {
+            console.warn('Laya triage error:', e);
+        }
+    };
 
     // Unlock 和 Reset 按钮逻辑
 
