@@ -501,5 +501,74 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     expect(isFitRestored).toBe(true);
   });
 
+  test('UI: User assets matrix displays clean asset names instead of raw IDs in Model, Report, and Connection headers', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.PermissionBlueprint !== 'undefined', { timeout: 15000 });
+
+    await page.evaluate(() => {
+      if (typeof window.switchAppModule === 'function') {
+        window.switchAppModule('permission_blueprint');
+      }
+      // 模拟选中预设模型与测试工作区
+      window.selectedGtbWorkspaceIds = new Set(['ws_prod']);
+      window.selectedGtbDatasetIds = new Set(['model_sales']);
+      window.selectedGtbReportIds = new Set(['report_sales_exec']);
+      window.PermissionBlueprint.currentModelKey = 'model_sales';
+      window.PermissionBlueprint.switchMainTab('user_assets');
+    });
+
+    await page.waitForTimeout(500);
+
+    // 1. 验证 Model 卡片标题与副标题：显示业务名称，不显示原始 model id
+    const modelCard = page.locator('#pb-module-card-model');
+    await expect(modelCard).toBeVisible({ timeout: 10000 });
+    const modelTitle = await modelCard.locator('.pb-card-title').textContent();
+    const modelSub = await modelCard.locator('.pb-card-sub').textContent();
+
+    expect(modelTitle).toContain('3. MODEL:');
+    expect(modelTitle).toContain('ENTERPRISE SALES & MARGIN MODEL');
+    expect(modelTitle).not.toContain('model_sales');
+    expect(modelSub).not.toContain('模型 ID:');
+
+    // 2. 验证 Report 卡片标题与副标题：显示业务名称，不显示原始 report id
+    const reportCard = page.locator('#pb-module-card-report');
+    await expect(reportCard).toBeVisible({ timeout: 10000 });
+    const reportTitle = await reportCard.locator('.pb-card-title').textContent();
+    const reportSub = await reportCard.locator('.pb-card-sub').textContent();
+
+    expect(reportTitle).toContain('4. REPORT:');
+    expect(reportTitle).toContain('SALES EXECUTIVE DASHBOARD');
+    expect(reportTitle).not.toContain('report_sales_exec');
+    expect(reportSub).not.toContain('报表 ID:');
+
+    // 3. 验证 Connection 卡片标题：展示具体连接业务名
+    const connCard = page.locator('#pb-module-card-connection');
+    await expect(connCard).toBeVisible({ timeout: 10000 });
+    const connTitle = await connCard.locator('.pb-card-title').textContent();
+
+    expect(connTitle).toContain('5. CONNECTION:');
+    expect(connTitle).toContain('AWS REDSHIFT');
+
+    // 4. 验证点击 READ 卡片时的因果链路：仅影响报表 VIEW，绝不波及网关与计划刷新
+    const readRow = page.locator('.pb-asset-card-row[data-row-id="model_read"]');
+    await expect(readRow).toBeVisible({ timeout: 10000 });
+    await readRow.click();
+    await page.waitForTimeout(300);
+
+    const reportViewRow = page.locator('.pb-asset-card-row[data-row-id="report_view"]');
+    await expect(reportViewRow).toHaveClass(/pb-causality-target/);
+
+    const gwRow = page.locator('.pb-asset-card-row[data-row-id="conn_gw"]');
+    if (await gwRow.count() > 0) {
+      await expect(gwRow).not.toHaveClass(/pb-causality-target/);
+    }
+
+    const refreshRow = page.locator('.pb-asset-card-row[data-row-id="conn_refresh"]');
+    if (await refreshRow.count() > 0) {
+      await expect(refreshRow).not.toHaveClass(/pb-causality-target/);
+    }
+  });
+
 });
 

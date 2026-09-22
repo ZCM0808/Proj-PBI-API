@@ -4592,16 +4592,24 @@
                 const mKeyLower = this.currentModelKey.replace(/^real_model_/, '').toLowerCase();
                 curModel = allDatasets.find(m => String(m.id).toLowerCase() === mKeyLower || m.name === this.currentModelKey || m.alias === this.currentModelKey);
             }
+            if (!curModel) {
+                const fallbackKey = (selectedDsIds[0] && MODEL_DEFINITIONS[selectedDsIds[0]])
+                    ? selectedDsIds[0]
+                    : (this.currentModelKey && MODEL_DEFINITIONS[this.currentModelKey] ? this.currentModelKey : null);
+                if (fallbackKey && MODEL_DEFINITIONS[fallbackKey]) {
+                    curModel = MODEL_DEFINITIONS[fallbackKey];
+                }
+            }
 
             // ⚡ 增强对齐：若选定了模型但工作区未对齐，自动以该模型所属工作区作为承载工作区
-            if (curModel && curModel.workspaceId && (!curWs || String(curWs.id).toLowerCase() !== String(curModel.workspaceId).toLowerCase())) {
-                const modelWsId = String(curModel.workspaceId).toLowerCase();
+            if (curModel && (curModel.workspaceId || curModel.workspaceName) && (!curWs || (curModel.workspaceId && String(curWs.id).toLowerCase() !== String(curModel.workspaceId).toLowerCase()))) {
+                const modelWsId = String(curModel.workspaceId || 'ws_preset').toLowerCase();
                 const matchedWs = rawWsData.find(w => String(w.id).toLowerCase() === modelWsId);
                 if (matchedWs) {
                     curWs = matchedWs;
                     curWsId = matchedWs.id;
                 } else {
-                    curWs = { id: curModel.workspaceId, name: curModel.workspaceName || curModel.workspaceId, alias: curModel.workspaceName || curModel.workspaceId };
+                    curWs = { id: curModel.workspaceId || 'ws_preset', name: curModel.workspaceName || curModel.workspaceId || '预设工作区', alias: curModel.workspaceName || curModel.workspaceId || '预设工作区' };
                     curWsId = curWs.id;
                 }
             }
@@ -4622,7 +4630,67 @@
                     curReport = scopedReports.find(r => selectedRpIds.some(sid => sid.toLowerCase() === String(r.id).toLowerCase()));
                 }
             }
+            // 预设报表兜底：若在预设模型下，自动推导对应预设报表
+            if (!curReport) {
+                const PRESET_MODEL_REPORTS = {
+                    'model_sales': { id: 'report_sales_exec', name: 'Sales Executive Dashboard', workspaceName: 'Production Analytics' },
+                    'model_finance': { id: 'report_finance_pl', name: 'Corporate P&L Summary', workspaceName: 'Finance Corporate Hub' },
+                    'model_hr': { id: 'report_hr_headcount', name: 'Workforce Headcount & Payroll', workspaceName: 'HR & People Operations' },
+                    'model_inventory': { id: 'report_inv_logistics', name: 'Supply Chain Logistics Monitor', workspaceName: 'Operations Logistics' }
+                };
+                const mKey = curModel?.id || this.currentModelKey;
+                if (mKey && PRESET_MODEL_REPORTS[mKey]) {
+                    curReport = PRESET_MODEL_REPORTS[mKey];
+                }
+            }
             const hasSelectedReport = Boolean(curReport);
+
+            // 提炼清洗语义模型的人类友好名称 (彻底消除机器 ID 与冗余技术前缀)
+            const resolveModelDisplayName = (m) => {
+                if (!m) return '';
+                if (m.id && MODEL_DEFINITIONS[m.id] && MODEL_DEFINITIONS[m.id].name) {
+                    const presetName = MODEL_DEFINITIONS[m.id].name;
+                    if (!m.name || m.name === m.id || m.name.startsWith('model_') || m.name.startsWith('real_model_')) {
+                        return presetName;
+                    }
+                }
+                let raw = m.rawName || m.alias || m.name || m.datasetName || m.displayName || '';
+                if (!raw && m.id && MODEL_DEFINITIONS[m.id]) {
+                    raw = MODEL_DEFINITIONS[m.id].name;
+                }
+                let clean = String(raw)
+                    .replace(/^🟢\s*(真实模型|真实工作区资产)?\s*[:：]?\s*/i, '')
+                    .replace(/^\[(Direct\s*Lake|Import|DirectQuery)\]\s*/i, '')
+                    .trim();
+                if ((!clean || clean === m.id || clean.startsWith('real_model_')) && m.id && MODEL_DEFINITIONS[m.id]) {
+                    clean = MODEL_DEFINITIONS[m.id].name;
+                }
+                return clean || m.name || m.id || '语义模型';
+            };
+
+            // 提炼清洗可视化报表的人类友好名称
+            const resolveReportDisplayName = (r) => {
+                if (!r) return '';
+                const PRESET_REPORT_NAMES = {
+                    'report_sales_exec': 'Sales Executive Dashboard',
+                    'report_finance_pl': 'Corporate P&L Summary',
+                    'report_hr_headcount': 'Workforce Headcount & Payroll',
+                    'report_inv_logistics': 'Supply Chain Logistics Monitor'
+                };
+                if (r.id && PRESET_REPORT_NAMES[r.id]) {
+                    if (!r.name || r.name === r.id || r.name.startsWith('report_') || r.name.startsWith('real_report_')) {
+                        return PRESET_REPORT_NAMES[r.id];
+                    }
+                }
+                let raw = r.rawName || r.alias || r.name || r.reportName || r.displayName || '';
+                let clean = String(raw)
+                    .replace(/^🟢\s*(真实报表|真实工作区资产)?\s*[:：]?\s*/i, '')
+                    .trim();
+                if ((!clean || clean === r.id || clean.startsWith('report_') || clean.startsWith('real_report_')) && r.id && PRESET_REPORT_NAMES[r.id]) {
+                    clean = PRESET_REPORT_NAMES[r.id];
+                }
+                return clean || r.name || r.id || '业务报表';
+            };
 
             // 5. 网关与连接：只有在选定模型后才推导；未选模型时保守标注"未关联"
             // gatewayOnline / hasDataConn 只有真实 API 调用才能确认，此处若无模型则显示未知
@@ -4823,6 +4891,8 @@
             let modelSubText = '未选择模型';
 
             if (!hasSelectedWs) {
+                modelTitleText = '🗄️ 3. MODEL (等待工作区)';
+                modelSubText = '等待指定目标工作区';
                 colModelBody = `
                     <div style="padding: 16px 10px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
                         <div style="font-size: 1.3rem; margin-bottom: 6px;">🗄️</div>
@@ -4833,7 +4903,7 @@
                     </div>
                 `;
             } else if (!hasSelectedModel) {
-                modelTitleText = '🗄️ 3. MODEL (未加载)';
+                modelTitleText = '🗄️ 3. MODEL (未选择)';
                 modelStatusBadge = '⚠️ 尚未选择';
                 modelStatusClass = 'warn';
                 modelSubText = '请在顶栏挑选模型';
@@ -4847,16 +4917,17 @@
                     </div>
                 `;
             } else {
+                const cleanModelName = resolveModelDisplayName(curModel);
                 const canReadModel = isPrivileged || isViewer;
                 const canBuild = isPrivileged || Boolean(user?.state?.sharePermission && String(user?.state?.sharePermission).includes('Build'));
                 const modelPermLabel = canBuild ? 'READ + BUILD' : (canReadModel ? 'READ ONLY' : 'NO ACCESS');
-                modelTitleText = `🗄️ 3. MODEL (${(curModel.alias || curModel.name).toUpperCase()})`;
+                modelTitleText = `🗄️ 3. MODEL: ${cleanModelName.toUpperCase()}`;
                 modelStatusBadge = canBuild ? '⚡ READ + BUILD' : (canReadModel ? '👁️ READ ONLY' : '🚫 NO ACCESS');
                 modelStatusClass = canBuild ? 'enabled' : (canReadModel ? 'warn' : 'disabled');
-                modelSubText = `模型 ID: ${curModel.id}`;
+                modelSubText = `语义模型资产 · 所属工作区: ${wsName}`;
 
                 const modelItems = [
-                    { id: 'model_permission', isHero: true, cat: 'assigned', name: modelPermLabel, desc: `【当前分配权限】当前用户对语义模型 [${curModel.alias || curModel.name}] 的官方有效权限集合`, statusClass: canBuild ? 'enabled' : (canReadModel ? 'warn' : 'disabled'), statusText: canBuild ? '⚡ BUILD' : (canReadModel ? '👁️ READ' : '🚫 DENIED'), badge: 'PERMISSION' },
+                    { id: 'model_permission', isHero: true, cat: 'assigned', name: modelPermLabel, desc: `【当前分配权限】当前用户对语义模型 [${cleanModelName}] 的官方有效权限集合`, statusClass: canBuild ? 'enabled' : (canReadModel ? 'warn' : 'disabled'), statusText: canBuild ? '⚡ BUILD' : (canReadModel ? '👁️ READ' : '🚫 DENIED'), badge: 'PERMISSION' },
                     { id: 'model_read', cat: 'derived', name: 'READ', desc: canReadModel ? '执行 DAX 查询与模型基础刷新，下游报表正常取数渲染' : '无 READ 权限，DAX 查询将被 403 阻断，报表将拒绝加载', statusClass: canReadModel ? 'enabled' : 'disabled', statusText: canReadModel ? '✅ CAN READ' : '❌ CANNOT READ', badge: 'READ' },
                     { id: 'model_build', cat: 'derived', name: 'BUILD', desc: canBuild ? '允许以该模型为基础使用 Excel 透视分析、新建独立衍生报表' : '无 BUILD 权限，无法新建下游衍生报表或在 Excel 中连接探索', statusClass: canBuild ? 'enabled' : 'disabled', statusText: canBuild ? '✅ CAN BUILD' : '❌ CANNOT BUILD', badge: 'BUILD' },
                     { id: 'model_write', cat: 'derived', name: 'WRITE', desc: isPrivileged ? '通过 XMLA 端点或浏览器在线修改表结构、新建度量值与关系模型' : '非 Admin/Member/Contributor 角色，禁止写回模型架构或修改度量值', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ CAN WRITE' : '❌ CANNOT WRITE', badge: 'WRITE' },
@@ -4875,6 +4946,8 @@
             let reportSubText = '未选择报表';
 
             if (!hasSelectedWs) {
+                reportTitleText = '📊 4. REPORT (等待工作区)';
+                reportSubText = '等待指定目标工作区';
                 colReportBody = `
                     <div style="padding: 16px 10px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
                         <div style="font-size: 1.3rem; margin-bottom: 6px;">📊</div>
@@ -4885,7 +4958,7 @@
                     </div>
                 `;
             } else if (!hasSelectedReport) {
-                reportTitleText = '📊 4. REPORT (未加载)';
+                reportTitleText = '📊 4. REPORT (未选择)';
                 reportStatusBadge = '⚠️ 尚未选择';
                 reportStatusClass = 'warn';
                 reportSubText = '请在顶栏挑选报表';
@@ -4899,16 +4972,17 @@
                     </div>
                 `;
             } else {
+                const cleanReportName = resolveReportDisplayName(curReport);
                 const canEditReport = isPrivileged && user?.state?.tenantAllowWebModeling;
                 const canExportUnderlying = Boolean(user?.state?.sharePermission?.includes('Build') || isPrivileged) && Boolean(user?.state?.tenantAllowExport);
                 const reportAccessLabel = canEditReport ? 'EDIT + VIEW' : 'VIEW ONLY';
-                reportTitleText = `📊 4. REPORT (${(curReport.alias || curReport.name).toUpperCase()})`;
+                reportTitleText = `📊 4. REPORT: ${cleanReportName.toUpperCase()}`;
                 reportStatusBadge = canEditReport ? '✏️ EDIT + VIEW' : '👁️ VIEW ONLY';
                 reportStatusClass = canEditReport ? 'enabled' : 'warn';
-                reportSubText = `报表 ID: ${curReport.id}`;
+                reportSubText = `报表展现层 · ${canEditReport ? '支持在线编辑' : '只读交互浏览'}`;
 
                 const reportItems = [
-                    { id: 'report_access', isHero: true, cat: 'assigned', name: reportAccessLabel, desc: `【当前分配权限】当前用户对报表 [${curReport.alias || curReport.name}] 的官方有效访问级别`, statusClass: canEditReport ? 'enabled' : 'warn', statusText: canEditReport ? '✏️ EDIT' : '👁️ VIEW', badge: 'ACCESS' },
+                    { id: 'report_access', isHero: true, cat: 'assigned', name: reportAccessLabel, desc: `【当前分配权限】当前用户对报表 [${cleanReportName}] 的官方有效访问级别`, statusClass: canEditReport ? 'enabled' : 'warn', statusText: canEditReport ? '✏️ EDIT' : '👁️ VIEW', badge: 'ACCESS' },
                     { id: 'report_view', cat: 'derived', name: 'VIEW & INTERACT', desc: '在线访问报表页面、切片器联动与图表多维钻取浏览', statusClass: 'enabled', statusText: '✅ CAN VIEW', badge: 'VIEW' },
                     { id: 'report_edit', cat: 'derived', name: 'EDIT VISUALS', desc: canEditReport ? '在线修改报表图表、调整页面布局与另存副本' : '未被授予编辑权限，报表处于纯只读交互模式，无法修改布局', statusClass: canEditReport ? 'enabled' : 'disabled', statusText: canEditReport ? '✅ CAN EDIT' : '❌ CANNOT EDIT', badge: 'EDIT' },
                     { id: 'report_export', cat: 'derived', name: 'EXPORT DATA', desc: canExportUnderlying ? '允许导出底层原始颗粒度数据明细至本地 Excel/CSV' : '缺少 BUILD权限或受租户策略限制，仅允许导出带格式汇总数据', statusClass: canExportUnderlying ? 'enabled' : 'warn', statusText: canExportUnderlying ? '✅ CAN EXPORT' : '⚠️ SUMMARY ONLY', badge: 'EXPORT' },
@@ -5053,14 +5127,15 @@
                         badge: 'SCANNING'
                     });
                 } else {
-                    const fallbackConnName = `${(curModel.alias || curModel.name).toUpperCase()} PRIMARY CONNECTION`;
+                    const modelNameForConn = resolveModelDisplayName(curModel);
+                    const fallbackConnName = `${modelNameForConn.toUpperCase()} PRIMARY CONNECTION`;
                     primaryConnName = fallbackConnName;
                     connItems.push({
                         id: 'conn_default_ds',
                         isHero: true,
                         cat: 'assigned',
                         name: fallbackConnName,
-                        desc: `【当前模型绑定的官方连接】模型 [${curModel.alias || curModel.name}] 已挂载官方数据源连接通道 · 运行正常`,
+                        desc: `【当前模型绑定的官方连接】模型 [${modelNameForConn}] 已挂载官方数据源连接通道 · 运行正常`,
                         statusClass: 'enabled',
                         statusText: '✅ CONNECTED',
                         badge: 'DATASOURCE'
@@ -5123,9 +5198,21 @@
             }
 
             const activeGwName = (inspectCache?.gateways && inspectCache.gateways[0]?.name) || (inspectCache?.datasources?.find(d => d.gatewayName)?.gatewayName) || '';
-            const connTitleUpper = primaryConnName ? primaryConnName.toUpperCase() : '数据源连接';
-            const connTitleText = '🔌 5. CONNECTION';
-            const connSubText = `连接: ${connTitleUpper} · 经由网关: ${activeGwName ? activeGwName.toUpperCase() : '云端直连'}`;
+            let connTitleText = '🔌 5. CONNECTION';
+            let connSubText = '未关联具体模型';
+            if (!hasSelectedWs) {
+                connTitleText = '🔌 5. CONNECTION (等待工作区)';
+                connSubText = '等待指定目标工作区';
+            } else if (!hasSelectedModel) {
+                connTitleText = '🔌 5. CONNECTION (未关联)';
+                connSubText = '请在顶栏挑选模型以解析连接';
+            } else if (primaryConnName) {
+                connTitleText = `🔌 5. CONNECTION: ${primaryConnName.toUpperCase()}`;
+                connSubText = `经由网关: ${activeGwName ? activeGwName.toUpperCase() : '云端直连通道'} · 凭据鉴权就绪`;
+            } else {
+                connTitleText = '🔌 5. CONNECTION (云端数据通道)';
+                connSubText = `经由网关: ${activeGwName ? activeGwName.toUpperCase() : '云端直连通道'} · 凭据鉴权就绪`;
+            }
             const connStatusLabel = !hasSelectedWs ? '⚠️ 未选' : (!hasSelectedModel ? '⚠️ 未选模型' : '✅ CONNECTED');
             const connStatusClass = !hasSelectedWs ? 'disabled' : (!hasSelectedModel ? 'warn' : 'enabled');
 
@@ -5397,15 +5484,15 @@
                 'report_export': [],
                 'report_share': [],
 
-                // 5. 官方连接与网关 -> 影响数据通道抽取、GAC物理直连与自动化计划刷新
-                'conn_default_ds': ['conn_user_perm', 'conn_gac_perm', 'conn_gac_mashup', 'conn_gw', 'conn_sso', 'conn_refresh', 'conn_share', 'model_read'],
+                // 5. 官方连接与网关 -> 影响底层数据通道抽取、GAC物理直连与自动化计划刷新 (与模型前端只读 DAX 消费严格解耦)
+                'conn_default_ds': ['conn_user_perm', 'conn_gac_perm', 'conn_gw', 'conn_sso', 'conn_refresh', 'conn_share'],
                 'conn_inspecting': ['conn_gw'],
-                'conn_user_perm': ['model_read', 'conn_refresh'],
-                'conn_gac_perm': ['conn_gac_mashup', 'model_read'],
-                'conn_gac_mashup': ['model_read'],
-                'conn_gw': ['model_read', 'conn_refresh'],
-                'conn_sso': ['model_read'],
-                'conn_refresh': ['model_read'],
+                'conn_user_perm': ['conn_refresh'],
+                'conn_gac_perm': ['conn_gac_mashup'],
+                'conn_gac_mashup': [],
+                'conn_gw': ['conn_refresh'],
+                'conn_sso': [],
+                'conn_refresh': [],
                 'conn_owner': ['conn_share', 'conn_refresh', 'conn_user_perm'],
                 'conn_share': ['conn_user_perm'],
 
