@@ -132,6 +132,42 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     await expect(guardrailBar).toBeVisible({ timeout: 15000 });
     const guardText = await guardrailBar.innerText();
     expect(guardText).toContain('System 1 合规门禁');
+    expect(guardText).toContain('LAYA');
+    expect(guardText).toContain('Laya');
+  });
+
+  test('UI: Explicit LAYA badges and labels are prominently displayed across all entry points', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+    // 1. 切换至 API 资源树
+    await page.evaluate(() => {
+      if (typeof window.switchAppModule === 'function') {
+        window.switchAppModule('api_tree');
+      }
+    });
+
+    // 验证标题微标与按钮文字
+    const title = page.locator('#sidebar-pane-api_tree .nav-title');
+    await expect(title).toContainText('LAYA POWERED');
+
+    const layaBtn = page.locator('#btn-laya-intent-search');
+    await expect(layaBtn).toContainText('⚡ Laya');
+
+    const searchInput = page.locator('#api-search-input');
+    const placeholder = await searchInput.getAttribute('placeholder');
+    expect(placeholder).toContain('Laya');
+
+    // 2. 切换至全景权限蓝图
+    await page.evaluate(() => {
+      localStorage.setItem('pbi-active-module', 'permission_blueprint');
+      localStorage.setItem('pb-active-main-tab', 'user_assets');
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
+    // 验证蓝图工具栏【解析卡片关系】按钮上含有 LAYA 微标
+    const explainBtn = page.locator('#pb-btn-explain-causality');
+    await expect(explainBtn).toBeVisible();
+    await expect(explainBtn).toContainText('LAYA');
   });
 
 });

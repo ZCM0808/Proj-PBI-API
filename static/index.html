@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260922_v1120">
+    <link rel="stylesheet" href="/static/style.css?v=20260922_v1315">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -605,13 +605,16 @@
             <!-- Sidebar Pane B: API Tree -->
             <div id="sidebar-pane-api_tree" class="sidebar-pane" style="display: none;">
                 <div class="nav-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                    <p class="nav-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">🌲 API 资源树</p>
+                    <p class="nav-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                        <span>🌲 API 资源树</span>
+                        <span style="font-size: 0.62rem; font-weight: 800; background: rgba(99, 102, 241, 0.18); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.35); padding: 1px 5px; border-radius: 4px; letter-spacing: 0.5px;" title="已启用 Laya 本地决策引擎 (口语搜索秒级直达)">LAYA POWERED</span>
+                    </p>
                     <span class="api-count-badge" title="Total APIs">共 <span id="total-api-count">0</span> 个</span>
                 </div>
                 <div style="display: flex; gap: 6px; margin-bottom: 0.5rem; align-items: center;">
-                    <input type="search" id="api-search-input" placeholder="搜索 API 或输入口语需求按回车..." class="modern-input" style="flex: 1; border-radius: 6px; min-width: 0;">
+                    <input type="search" id="api-search-input" placeholder="搜索 API 或输入口语需求 (⚡ Laya 智能识别)..." class="modern-input" style="flex: 1; border-radius: 6px; min-width: 0;">
                     <button id="btn-laya-intent-search" class="btn-laya-intent" title="⚡ Laya 智能意图直达 (输入口语即可自动定位并高亮 API 目录)" type="button">
-                        <span>⚡</span>
+                        <span style="display: inline-flex; align-items: center; gap: 3px;">⚡ Laya</span>
                     </button>
                     <button id="toggle-all-categories-btn" class="icon-btn" title="全部折叠 / 展开 (Expand / Collapse All)" type="button" style="padding: 0 8px; height: 34px;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg>
@@ -619,7 +622,10 @@
                 </div>
                 <div id="laya-search-intent-hint" class="laya-intent-hint-banner">
                     <div style="display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                        <span style="color: #818cf8; font-weight: 700;">⚡ Laya 意图直达:</span>
+                        <span style="color: #818cf8; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+                            <span style="background: rgba(99, 102, 241, 0.25); color: #a5b4fc; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.5px;">LAYA</span>
+                            ⚡ Laya 意图直达:
+                        </span>
                         <span id="laya-intent-matched-name" style="font-weight: 600; color: var(--text-primary);">...</span>
                     </div>
                     <button type="button" class="btn-wf-sm" id="laya-intent-locate-btn" style="height: 20px; padding: 0 6px; font-size: 0.68rem; cursor: pointer; flex-shrink: 0;">定位</button>
@@ -2586,7 +2592,10 @@
                 <div id="laya-error-triage-card" class="laya-error-triage-card">
                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
                         <div style="display: flex; align-items: center; gap: 6px;">
-                            <span style="font-size: 0.72rem; font-weight: 700; color: #f59e0b; background: rgba(245, 158, 11, 0.2); padding: 2px 8px; border-radius: 4px;">⚡ Laya 智能预诊</span>
+                            <span style="font-size: 0.72rem; font-weight: 800; color: #fbbf24; background: rgba(245, 158, 11, 0.22); padding: 2px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px;">
+                                <span style="background: #f59e0b; color: #1e1e2d; font-size: 0.62rem; font-weight: 900; padding: 0 4px; border-radius: 2px; letter-spacing: 0.5px;">LAYA</span>
+                                ⚡ Laya 智能预诊
+                            </span>
                             <span id="laya-error-cause-badge" style="font-weight: 700; font-size: 0.84rem; color: #fbbf24;">...</span>
                             <span id="laya-error-confidence-badge" style="font-size: 0.7rem; color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 3px;">置信度 0%</span>
                         </div>
@@ -2675,8 +2684,9 @@
                         <button type="button" id="pb-btn-filter-bottlenecks" class="btn-wf-sm" onclick="window.PermissionBlueprint.toggleBottleneckFilter(this)" title="断点速查：仅高亮所有受限、阻断与离线项，淡化正常项" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; transition: all 0.2s;">
                             <span>⚠️ 仅看受限与阻断</span>
                         </button>
-                        <button type="button" id="pb-btn-explain-causality" class="btn-wf-sm" onclick="window.PermissionBlueprint.explainActiveCausality(this)" title="解析关系：深度解析当前选中小卡片与关联高亮卡片之间的因果权限链路及治理合规性" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; transition: all 0.2s;">
+                        <button type="button" id="pb-btn-explain-causality" class="btn-wf-sm" onclick="window.PermissionBlueprint.explainActiveCausality(this)" title="解析关系 (⚡ Laya 智能合规审计)：深度解析当前选中小卡片与关联高亮卡片之间的因果权限链路及治理合规性" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; transition: all 0.2s;">
                             <span>🔗 解析卡片关系</span>
+                            <span style="font-size: 0.6rem; color: #818cf8; font-weight: 800; background: rgba(99, 102, 241, 0.18); border: 1px solid rgba(99, 102, 241, 0.35); padding: 0 4px; border-radius: 3px; letter-spacing: 0.5px;">LAYA</span>
                         </button>
                         <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.resetUserAssetsItemsOrder()" title="恢复各卡片内部权限条目的默认排列顺序" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer;">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
@@ -3296,8 +3306,8 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260919_v1440"></script>
-    <script src="/static/script.js?v=20260922_v1120"></script>
-    <script src="/static/permission_blueprint.js?v=20260922_v1120"></script>
+    <script src="/static/script.js?v=20260922_v1315"></script>
+    <script src="/static/permission_blueprint.js?v=20260922_v1315"></script>
 
 
 

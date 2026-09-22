@@ -8761,7 +8761,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (causeBadge) causeBadge.textContent = causeLabelMap[data.cause] || data.cause;
             if (confBadge) confBadge.textContent = `置信度 ${Math.round((data.confidence || 0.5) * 100)}%`;
-            if (adviceText) adviceText.textContent = data.advice || '建议排查对应数据源与请求日志。';
+            if (adviceText) adviceText.innerHTML = `<strong style="color: #fbbf24;">💡 Laya 诊断建议：</strong>${data.advice || '建议排查对应数据源与请求日志。'}`;
 
             triageCard.classList.add('visible');
         } catch (e) {

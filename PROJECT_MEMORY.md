@@ -2639,3 +2639,19 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
    Remove-Item -Recurse -Force "C:\Users\ZCM\.cache\huggingface\hub\models--convaiinnovations*"
    Remove-Item -Force "D:\zcm\Proj-PBI-API\test_laya_local.py"
    ```
+
+### 70.4 前端全链路 Laya 显式标注与徽标防御规范
+为确保用户明确感知本地 System 1 决策模型介入，系统在所有集成点均添加了统一的高对比度显式标注与微标：
+1. **API 资源树模块**：
+   - 侧边栏标题：带有 `LAYA POWERED` 发光微标；
+   - 搜索输入框：占位符注明 `(⚡ Laya 智能识别)`；
+   - 意图直达按钮：由单闪电升级为 `⚡ Laya` 文字徽章；
+   - 匹配结果提示横幅：带有高亮 `LAYA` 徽标与 `⚡ Laya 意图直达`。
+2. **工作流与 API 响应区域**：
+   - 错误预诊卡片：顶部带有高亮深底金字 `LAYA` 徽标与 `⚡ Laya 智能预诊`；
+   - 自愈处理指引：明确标明 `💡 Laya 诊断建议`。
+3. **全景权限蓝图模块**：
+   - 顶部工具栏：【🔗 解析卡片关系】按钮内附带显式紫色 `LAYA` 徽标与悬浮说明；
+   - 因果关系弹窗 (场景 A)：底部嵌入 `LAYA SENTINEL` 引导条；
+   - 风险门禁状态条 (场景 B)：显式展示 `LAYA` 徽标与 `⚡ Laya · System 1 合规门禁`，回显结果打上 `Laya 评估通过` 与 `Laya 越权风险预警` 前缀，放行率按钮标注 `Laya 自主放行率`。
+
