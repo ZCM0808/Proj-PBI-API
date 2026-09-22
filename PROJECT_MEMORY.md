@@ -2559,4 +2559,40 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
   - `tests/e2e.spec.js` 中“微软官方浏览器长效 OAuth 登录：支持手机通行密钥/扫码认证、自动回填与工作区扫描”以及“绕过企业条件访问(CA)：支持直接粘贴 Bearer Token 快速激活与工作区扫描”全绿通过（`2 passed (11.8s)`）。
   - “全局环境配置 (Global Settings)：Scan Workspace 能够严格过滤重复添加的 GUID”通过（`1 passed (5.0s)`）。
 
+---
 
+## 69. 权限全景链路因果解析弹窗跨资产未加载感知、卡片锁定防御与软边框光晕重构
+
+### 69.1 业务背景与用户痛点
+1. **顶栏未选资产时的因果断链困惑**：
+   - 痛点表现：在点击模型层 `READ` 小卡片时，弹窗若不显示下游报表派生能力则破坏了 RBAC 溯源完整性；若直接显示 `report_view` 原始变量名，则造成“画板上明明没有该卡片为何出现”的困惑。
+   - 根本诉求：即便目标关联资产（如报表）因顶栏未选而未在画板加载，弹窗**依然展示该关联条目**，但必须以人类友好的标准名称呈现，并配备**简洁直观的状态备注说明**。
+2. **关闭弹窗误解除卡片锁定 Bug**：
+   - 痛点表现：关闭“解析卡片关系”弹窗时，原本点击选中的小卡片被连带解除选中。
+   - 核心原则：**只能通过再次点击小卡片自身来解除锁定**，关闭弹窗、点击遮罩或画板空白均保持锁定状态。
+3. **高亮边框锐利线条瑕疵**：
+   - 痛点表现：选中小卡片时，卡片上、下、右侧产生生硬刺眼的纯色线条。
+   - 核心优化：采用半透明色与柔和的外扩散与内发光双层 `box-shadow` 光晕，彻底消除四周生硬割裂感。
+
+### 69.2 技术架构与实装细节
+1. **全局卡片标准元数据字典 `ITEM_META`**：
+   - 覆盖全部 6 大模块、36+ 项权限卡片的标准化全称与所属模块标识；
+   - 动态识别未加载资产模块：针对 `report_*`、`model_*`、`conn_*`、`pipeline_*` 分别映射定制的 `unrenderedBadge`（如 `⚠️ 顶栏未选报表 · 尚未加载`）与 `unrenderedReason`（如 `当前顶栏尚未挑选具体报表`）。
+2. **因果弹窗渲染分支 (`explainActiveCausality`)**：
+   - 不再将未在 DOM 渲染的卡片过滤剔除；
+   - 针对未在画板加载的卡片：
+     - 展示标准标题（如 `VIEW & INTERACT`）与所属模块（如 `📈 4. REPORT`）；
+     - 状态徽章标注 `⚠️ 顶栏未选报表 · 尚未加载`；
+     - 注入高亮黄色状态提示条：`📌 状态备注：当前顶栏尚未挑选具体报表，该卡片暂未在画板呈现；在顶栏挑选对应资产后即可联动展示。`
+     - 完整展示因果关系、架构合理性与安全防御提示，保持端到端授权溯源闭环。
+3. **严格小卡片单点解除锁定 (`_pinnedCausalityRow`)**：
+   - 移除所有外部空白区域冒泡取消锁定的监听器；
+   - 严格限定在卡片点击事件内部：`if (this._pinnedCausalityRow === row) { this._pinnedCausalityRow = null; clearCausalityVisuals(); }`。
+
+### 69.3 工业级静态校验与自动化测试闭环
+- **Playwright 自动化回归测试**：
+  - `tests/test_causality_glow.spec.js` 2 passed (16.5s)；
+  - `tests/test_model_selection_chain.spec.js` 3 passed (37.3s)；
+- **静态代码检查**：
+  - `python -m ruff check src`：All checks passed! (0 issues)
+  - `python -m mypy src`：Success: no issues found in 10 source files! (0 errors)

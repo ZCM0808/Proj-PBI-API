@@ -113,7 +113,7 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
     await exportRow.click();
     await expect(exportRow).not.toHaveClass(/pb-causality-pinned/);
 
-    // 8. Verify model_read: when no report is rendered on canvas, report_view must NOT be listed as a phantom target
+    // 8. Verify model_read: when no report is selected, downstream report VIEW & INTERACT must be displayed with concise unrendered remark
     const modelReadRow = page.locator('.pb-asset-card-row[data-row-id="model_read"]');
     if (await modelReadRow.count() > 0) {
       await modelReadRow.click();
@@ -121,13 +121,22 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
       await explainBtn.click();
       await expect(modal).toBeVisible();
 
-      // Check report_view raw ID is NOT in the cards list
-      const modalText = await modal.locator('#pb-explain-modal-body').textContent();
-      expect(modalText).not.toContain('report_view');
+      const modalBody = modal.locator('#pb-explain-modal-body');
+      await expect(modalBody).toContainText('VIEW & INTERACT');
+      await expect(modalBody).toContainText('4. REPORT');
+      await expect(modalBody).toContainText('顶栏尚未挑选具体报表');
+      await expect(modalBody).toContainText('尚未加载');
+
+      // Check report_view raw ID is NOT shown directly as title
+      const modalHtml = await modalBody.innerHTML();
+      expect(modalHtml).not.toContain('>${tgtId}<');
+
+      // Close modal: card remains pinned
       await closeBtn.click();
       await page.waitForTimeout(200);
       await expect(modelReadRow).toHaveClass(/pb-causality-pinned/);
-      // Unpin
+
+      // Only clicking the card itself unpins it
       await modelReadRow.click();
       await expect(modelReadRow).not.toHaveClass(/pb-causality-pinned/);
     }

@@ -6288,32 +6288,93 @@
                     catBorder = 'rgba(148, 163, 184, 0.35)';
                 }
 
-                // 仅筛选当前画布中实际存在并被连带高亮的目标/上游卡片
-                const existingCardIds = new Set(Array.from(container.querySelectorAll('.pb-asset-card-row')).map(r => r.getAttribute('data-row-id')).filter(Boolean));
+                // 📚 权限卡片标准元数据字典 (用于弹窗关系解析与跨资产未加载提示)
+                const ITEM_META = {
+                    'tenant_principal_role': { title: 'PRINCIPAL ROLE', module: '🏢 1. TENANT', unrenderedBadge: '⚠️ 租户策略 · 尚未加载', unrenderedReason: '当前尚未加载租户全局策略' },
+                    'tenant_gac_policy': { title: 'DATASET TENANT POLICY', module: '🏢 1. TENANT', unrenderedBadge: '⚠️ 租户策略 · 尚未加载', unrenderedReason: '当前尚未加载租户全局策略' },
+                    'tenant_export': { title: 'EXPORT TO EXCEL', module: '🏢 1. TENANT', unrenderedBadge: '⚠️ 租户策略 · 尚未加载', unrenderedReason: '当前尚未加载租户全局策略' },
+                    'tenant_web_modeling': { title: 'WEB MODELING', module: '🏢 1. TENANT', unrenderedBadge: '⚠️ 租户策略 · 尚未加载', unrenderedReason: '当前尚未加载租户全局策略' },
+                    'tenant_xmla': { title: 'XMLA ENDPOINT', module: '🏢 1. TENANT', unrenderedBadge: '⚠️ 租户策略 · 尚未加载', unrenderedReason: '当前尚未加载租户全局策略' },
+                    'tenant_external': { title: 'EXTERNAL SHARING', module: '🏢 1. TENANT', unrenderedBadge: '⚠️ 租户策略 · 尚未加载', unrenderedReason: '当前尚未加载租户全局策略' },
+                    'tenant_embed': { title: 'EMBED FOR EXTERNAL', module: '🏢 1. TENANT', unrenderedBadge: '⚠️ 租户策略 · 尚未加载', unrenderedReason: '当前尚未加载租户全局策略' },
+                    'tenant_certify': { title: 'CERTIFICATION', module: '🏢 1. TENANT', unrenderedBadge: '⚠️ 租户策略 · 尚未加载', unrenderedReason: '当前尚未加载租户全局策略' },
+                    'tenant_id': { title: 'TENANT ID', module: '🏢 1. TENANT', unrenderedBadge: '⚠️ 租户策略 · 尚未加载', unrenderedReason: '当前尚未加载租户全局策略' },
 
-                // 收集正向下游赋权与反向上游前置依赖 (严格限定于当前画板上已渲染存在的卡片)
+                    'ws_role': { title: 'WORKSPACE ROLE', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
+                    'ws_members': { title: 'MANAGE MEMBERS', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
+                    'ws_edit': { title: 'EDIT CONTENT', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
+                    'ws_app': { title: 'PUBLISH APP', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
+                    'ws_capacity': { title: 'CAPACITY ACCESS', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
+                    'ws_delete': { title: 'DELETE WORKSPACE', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
+                    'ws_lineage': { title: 'LINEAGE VIEW', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
+                    'ws_target': { title: 'TARGET WORKSPACE', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
+
+                    'model_permission': { title: 'ROLE PERMISSION', module: '📊 3. MODEL', unrenderedBadge: '⚠️ 顶栏未选模型 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体语义模型' },
+                    'model_read': { title: 'READ', module: '📊 3. MODEL', unrenderedBadge: '⚠️ 顶栏未选模型 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体语义模型' },
+                    'model_build': { title: 'BUILD', module: '📊 3. MODEL', unrenderedBadge: '⚠️ 顶栏未选模型 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体语义模型' },
+                    'model_write': { title: 'WRITE', module: '📊 3. MODEL', unrenderedBadge: '⚠️ 顶栏未选模型 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体语义模型' },
+                    'model_reshare': { title: 'RESHARE', module: '📊 3. MODEL', unrenderedBadge: '⚠️ 顶栏未选模型 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体语义模型' },
+                    'model_rls': { title: 'RLS', module: '📊 3. MODEL', unrenderedBadge: '⚠️ 顶栏未选模型 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体语义模型' },
+                    'model_gac_ols': { title: 'GAC / OLS', module: '📊 3. MODEL', unrenderedBadge: '⚠️ 顶栏未选模型 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体语义模型' },
+                    'model_target': { title: 'SEMANTIC MODEL', module: '📊 3. MODEL', unrenderedBadge: '⚠️ 顶栏未选模型 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体语义模型' },
+
+                    'report_access': { title: 'REPORT ACCESS', module: '📈 4. REPORT', unrenderedBadge: '⚠️ 顶栏未选报表 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体报表' },
+                    'report_view': { title: 'VIEW & INTERACT', module: '📈 4. REPORT', unrenderedBadge: '⚠️ 顶栏未选报表 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体报表' },
+                    'report_edit': { title: 'EDIT VISUALS', module: '📈 4. REPORT', unrenderedBadge: '⚠️ 顶栏未选报表 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体报表' },
+                    'report_export': { title: 'EXPORT DATA', module: '📈 4. REPORT', unrenderedBadge: '⚠️ 顶栏未选报表 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体报表' },
+                    'report_sub': { title: 'SUBSCRIBE & ALERT', module: '📈 4. REPORT', unrenderedBadge: '⚠️ 顶栏未选报表 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体报表' },
+                    'report_share': { title: 'SHARE REPORT', module: '📈 4. REPORT', unrenderedBadge: '⚠️ 顶栏未选报表 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体报表' },
+                    'report_target': { title: 'REPORT NAME', module: '📈 4. REPORT', unrenderedBadge: '⚠️ 顶栏未选报表 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体报表' },
+
+                    'conn_default_ds': { title: 'DATA CONNECTION', module: '🔌 5. CONNECTION', unrenderedBadge: '⚠️ 未绑连接 · 尚未加载', unrenderedReason: '当前模型未绑定对应数据源连接' },
+                    'conn_inspecting': { title: 'CONN INSPECTION', module: '🔌 5. CONNECTION', unrenderedBadge: '⚠️ 未绑连接 · 尚未加载', unrenderedReason: '当前模型未绑定对应数据源连接' },
+                    'conn_user_perm': { title: 'USER CREDENTIAL', module: '🔌 5. CONNECTION', unrenderedBadge: '⚠️ 未绑连接 · 尚未加载', unrenderedReason: '当前模型未绑定对应数据源连接' },
+                    'conn_gac_perm': { title: 'GAC DIRECT READ', module: '🔌 5. CONNECTION', unrenderedBadge: '⚠️ 未绑连接 · 尚未加载', unrenderedReason: '当前模型未绑定对应数据源连接' },
+                    'conn_gac_mashup': { title: 'GAC MASHUP', module: '🔌 5. CONNECTION', unrenderedBadge: '⚠️ 未绑连接 · 尚未加载', unrenderedReason: '当前模型未绑定对应数据源连接' },
+                    'conn_gw': { title: 'GATEWAY STATUS', module: '🔌 5. CONNECTION', unrenderedBadge: '⚠️ 未绑连接 · 尚未加载', unrenderedReason: '当前模型未绑定对应数据源连接' },
+                    'conn_sso': { title: 'DIRECTQUERY SSO', module: '🔌 5. CONNECTION', unrenderedBadge: '⚠️ 未绑连接 · 尚未加载', unrenderedReason: '当前模型未绑定对应数据源连接' },
+                    'conn_refresh': { title: 'SCHEDULED REFRESH', module: '🔌 5. CONNECTION', unrenderedBadge: '⚠️ 未绑连接 · 尚未加载', unrenderedReason: '当前模型未绑定对应数据源连接' },
+                    'conn_owner': { title: 'CONNECTION OWNER', module: '🔌 5. CONNECTION', unrenderedBadge: '⚠️ 未绑连接 · 尚未加载', unrenderedReason: '当前模型未绑定对应数据源连接' },
+                    'conn_share': { title: 'SHARE CONNECTION', module: '🔌 5. CONNECTION', unrenderedBadge: '⚠️ 未绑连接 · 尚未加载', unrenderedReason: '当前模型未绑定对应数据源连接' },
+
+                    'pipeline_role': { title: 'PIPELINE ROLE', module: '🚀 6. PIPELINE', unrenderedBadge: '⚠️ 未绑管道 · 尚未加载', unrenderedReason: '当前工作区尚未关联部署管道' },
+                    'pipeline_deploy': { title: 'STAGE DEPLOYMENT', module: '🚀 6. PIPELINE', unrenderedBadge: '⚠️ 未绑管道 · 尚未加载', unrenderedReason: '当前工作区尚未关联部署管道' },
+                    'pipeline_diff': { title: 'SCHEMA DIFF', module: '🚀 6. PIPELINE', unrenderedBadge: '⚠️ 未绑管道 · 尚未加载', unrenderedReason: '当前工作区尚未关联部署管道' },
+                    'pipeline_rules': { title: 'CONFIGURE RULES', module: '🚀 6. PIPELINE', unrenderedBadge: '⚠️ 未绑管道 · 尚未加载', unrenderedReason: '当前工作区尚未关联部署管道' },
+                    'pipeline_manage': { title: 'MANAGE PIPELINE', module: '🚀 6. PIPELINE', unrenderedBadge: '⚠️ 未绑管道 · 尚未加载', unrenderedReason: '当前工作区尚未关联部署管道' },
+                    'pipeline_backward': { title: 'BACKWARD DEPLOY', module: '🚀 6. PIPELINE', unrenderedBadge: '⚠️ 未绑管道 · 尚未加载', unrenderedReason: '当前工作区尚未关联部署管道' }
+                };
+
+                const getItemMeta = (id) => {
+                    if (ITEM_META[id]) return ITEM_META[id];
+                    if (id.startsWith('conn_real_ds_')) {
+                        return {
+                            title: 'DATA CONNECTION',
+                            module: '🔌 5. CONNECTION',
+                            unrenderedBadge: '⚠️ 未绑连接 · 尚未加载',
+                            unrenderedReason: '当前模型未绑定对应数据源连接'
+                        };
+                    }
+                    return {
+                        title: id,
+                        module: '治理资产',
+                        unrenderedBadge: '⚠️ 尚未加载',
+                        unrenderedReason: '当前画板尚未加载该项资产'
+                    };
+                };
+
+                // 收集正向下游赋权与反向上游前置依赖 (展示全部因果链路，若未在画板加载则附带直观备注说明)
                 const forwardTargets = (this.CAUSALITY_MAP ? (this.CAUSALITY_MAP[rowId] || []) : [])
-                    .filter(id => id !== rowId && existingCardIds.has(id));
+                    .filter(id => id !== rowId);
                 // 针对动态连接
                 if (rowId.startsWith('conn_real_ds_') && this.CAUSALITY_MAP) {
-                    const dyn = (this.CAUSALITY_MAP['conn_default_ds'] || []).filter(id => id !== rowId && existingCardIds.has(id));
+                    const dyn = (this.CAUSALITY_MAP['conn_default_ds'] || []).filter(id => id !== rowId);
                     dyn.forEach(d => { if (!forwardTargets.includes(d)) forwardTargets.push(d); });
                 }
 
                 const reverseSources = (this.REVERSE_MAP ? (this.REVERSE_MAP[rowId] || []) : [])
-                    .filter(id => id !== rowId && existingCardIds.has(id) && !forwardTargets.includes(id));
+                    .filter(id => id !== rowId && !forwardTargets.includes(id));
                 const totalLinked = forwardTargets.length + reverseSources.length;
-
-                // 检测是否存在尚未加载至画布的潜在派生项（如未选报表）
-                const unrenderedForward = (this.CAUSALITY_MAP ? (this.CAUSALITY_MAP[rowId] || []) : []).filter(id => id !== rowId && !existingCardIds.has(id));
-                let unrenderedTipHtml = '';
-                if (unrenderedForward.length > 0) {
-                    unrenderedTipHtml = `
-                        <div style="font-size: 0.74rem; color: var(--text-secondary); background: rgba(255, 255, 255, 0.02); border: 1px dashed rgba(255, 255, 255, 0.08); padding: 8px 12px; border-radius: 6px; line-height: 1.5; margin-top: 6px;">
-                            ℹ️ 架构说明：在端到端完整数据流中，该卡片可派生赋能至报表等未在顶栏加载的资产（当前尚未挑选具体报表）。在顶栏选择对应报表后即可联动点亮完整的跨资产消费链路。
-                        </div>
-                    `;
-                }
 
                 // 构建 HTML 内容
                 let cardsHtml = '';
@@ -6327,11 +6388,31 @@
                     `;
                     forwardTargets.forEach(tgtId => {
                         const tgtEl = container.querySelector(`.pb-asset-card-row[data-row-id="${tgtId}"]`);
-                        const tgtTitle = tgtEl ? (tgtEl.querySelector('.pb-asset-prop-name')?.textContent?.trim() || tgtId) : tgtId;
-                        const tgtTierCard = tgtEl ? tgtEl.closest('.pb-asset-tier-card') : null;
-                        const tgtModule = tgtTierCard ? (tgtTierCard.querySelector('.pb-card-title')?.textContent?.trim() || '') : '';
-                        const tgtStatusPill = tgtEl ? (tgtEl.querySelector('.pb-asset-status-pill')?.textContent?.trim() || '') : '';
-                        const tgtStatusClass = tgtEl ? (tgtEl.classList.contains('status-disabled') ? 'status-disabled' : (tgtEl.classList.contains('status-warn') ? 'status-warn' : 'status-enabled')) : 'status-enabled';
+                        const meta = getItemMeta(tgtId);
+                        const isRendered = !!tgtEl;
+
+                        const tgtTitle = isRendered ? (tgtEl.querySelector('.pb-asset-prop-name')?.textContent?.trim() || meta.title) : meta.title;
+                        const tgtTierCard = isRendered ? tgtEl.closest('.pb-asset-tier-card') : null;
+                        const tgtModule = tgtTierCard ? (tgtTierCard.querySelector('.pb-card-title')?.textContent?.trim() || meta.module) : meta.module;
+
+                        let statusBadgeHtml = '';
+                        let actionBtnHtml = '';
+                        let unrenderedNoteHtml = '';
+
+                        if (isRendered) {
+                            const tgtStatusPill = tgtEl.querySelector('.pb-asset-status-pill')?.textContent?.trim() || '';
+                            const tgtStatusClass = tgtEl.classList.contains('status-disabled') ? 'status-disabled' : (tgtEl.classList.contains('status-warn') ? 'status-warn' : 'status-enabled');
+                            statusBadgeHtml = `<span class="pb-asset-status-pill ${tgtStatusClass}" style="font-size: 0.72rem; padding: 2px 8px;">${tgtStatusPill}</span>`;
+                            actionBtnHtml = `<button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.selectAndExplainRow('${tgtId}')" title="切换聚焦到此卡片" style="height: 22px; padding: 0 6px; font-size: 0.68rem; cursor: pointer;">🔍 聚焦</button>`;
+                        } else {
+                            statusBadgeHtml = `<span style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.35); font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; font-weight: 600;">${meta.unrenderedBadge || '⚠️ 尚未加载'}</span>`;
+                            actionBtnHtml = `<span style="font-size: 0.68rem; color: var(--text-secondary); background: rgba(255, 255, 255, 0.05); padding: 2px 6px; border-radius: 4px;" title="顶栏未挑选对应资产，画板未加载">未选资产</span>`;
+                            unrenderedNoteHtml = `
+                                <div style="font-size: 0.74rem; line-height: 1.5; color: #fbbf24; background: rgba(245, 158, 11, 0.08); border-left: 3px solid #f59e0b; padding: 6px 10px; border-radius: 0 4px 4px 0;">
+                                    📌 <strong>状态备注：</strong>${meta.unrenderedReason || '当前画板尚未加载该项资产'}，该卡片暂未在画板呈现；在顶栏挑选对应资产后即可联动展示。
+                                </div>
+                            `;
+                        }
 
                         const explanation = this.getLinkExplanation(rowId, tgtId);
 
@@ -6344,10 +6425,11 @@
                                         <span style="font-size: 0.72rem; color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 3px;">${tgtModule}</span>
                                     </div>
                                     <div style="display: flex; align-items: center; gap: 8px;">
-                                        <span class="pb-asset-status-pill ${tgtStatusClass}" style="font-size: 0.72rem; padding: 2px 8px;">${tgtStatusPill}</span>
-                                        <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.selectAndExplainRow('${tgtId}')" title="切换聚焦到此卡片" style="height: 22px; padding: 0 6px; font-size: 0.68rem; cursor: pointer;">🔍 聚焦</button>
+                                        ${statusBadgeHtml}
+                                        ${actionBtnHtml}
                                     </div>
                                 </div>
+                                ${unrenderedNoteHtml}
                                 <div style="font-size: 0.78rem; line-height: 1.6; color: var(--text-primary);">
                                     <strong style="color: #818cf8;">🔗 为什么会有链接？</strong> ${explanation.reason}
                                 </div>
@@ -6371,11 +6453,31 @@
                     `;
                     reverseSources.forEach(srcId => {
                         const srcEl = container.querySelector(`.pb-asset-card-row[data-row-id="${srcId}"]`);
-                        const srcTitle = srcEl ? (srcEl.querySelector('.pb-asset-prop-name')?.textContent?.trim() || srcId) : srcId;
-                        const srcTierCard = srcEl ? srcEl.closest('.pb-asset-tier-card') : null;
-                        const srcModule = srcTierCard ? (srcTierCard.querySelector('.pb-card-title')?.textContent?.trim() || '') : '';
-                        const srcStatusPill = srcEl ? (srcEl.querySelector('.pb-asset-status-pill')?.textContent?.trim() || '') : '';
-                        const srcStatusClass = srcEl ? (srcEl.classList.contains('status-disabled') ? 'status-disabled' : (srcEl.classList.contains('status-warn') ? 'status-warn' : 'status-enabled')) : 'status-enabled';
+                        const meta = getItemMeta(srcId);
+                        const isRendered = !!srcEl;
+
+                        const srcTitle = isRendered ? (srcEl.querySelector('.pb-asset-prop-name')?.textContent?.trim() || meta.title) : meta.title;
+                        const srcTierCard = isRendered ? srcEl.closest('.pb-asset-tier-card') : null;
+                        const srcModule = srcTierCard ? (srcTierCard.querySelector('.pb-card-title')?.textContent?.trim() || meta.module) : meta.module;
+
+                        let statusBadgeHtml = '';
+                        let actionBtnHtml = '';
+                        let unrenderedNoteHtml = '';
+
+                        if (isRendered) {
+                            const srcStatusPill = srcEl.querySelector('.pb-asset-status-pill')?.textContent?.trim() || '';
+                            const srcStatusClass = srcEl.classList.contains('status-disabled') ? 'status-disabled' : (srcEl.classList.contains('status-warn') ? 'status-warn' : 'status-enabled');
+                            statusBadgeHtml = `<span class="pb-asset-status-pill ${srcStatusClass}" style="font-size: 0.72rem; padding: 2px 8px;">${srcStatusPill}</span>`;
+                            actionBtnHtml = `<button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.selectAndExplainRow('${srcId}')" title="切换聚焦到此卡片" style="height: 22px; padding: 0 6px; font-size: 0.68rem; cursor: pointer;">🔍 聚焦</button>`;
+                        } else {
+                            statusBadgeHtml = `<span style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.35); font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; font-weight: 600;">${meta.unrenderedBadge || '⚠️ 尚未加载'}</span>`;
+                            actionBtnHtml = `<span style="font-size: 0.68rem; color: var(--text-secondary); background: rgba(255, 255, 255, 0.05); padding: 2px 6px; border-radius: 4px;" title="顶栏未挑选对应资产，画板未加载">未选资产</span>`;
+                            unrenderedNoteHtml = `
+                                <div style="font-size: 0.74rem; line-height: 1.5; color: #fbbf24; background: rgba(245, 158, 11, 0.08); border-left: 3px solid #f59e0b; padding: 6px 10px; border-radius: 0 4px 4px 0;">
+                                    📌 <strong>状态备注：</strong>${meta.unrenderedReason || '当前画板尚未加载该项资产'}，该卡片暂未在画板呈现；在顶栏挑选对应资产后即可联动展示。
+                                </div>
+                            `;
+                        }
 
                         const explanation = this.getLinkExplanation(srcId, rowId);
 
@@ -6388,10 +6490,11 @@
                                         <span style="font-size: 0.72rem; color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 3px;">${srcModule}</span>
                                     </div>
                                     <div style="display: flex; align-items: center; gap: 8px;">
-                                        <span class="pb-asset-status-pill ${srcStatusClass}" style="font-size: 0.72rem; padding: 2px 8px;">${srcStatusPill}</span>
-                                        <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.selectAndExplainRow('${srcId}')" title="切换聚焦到此卡片" style="height: 22px; padding: 0 6px; font-size: 0.68rem; cursor: pointer;">🔍 聚焦</button>
+                                        ${statusBadgeHtml}
+                                        ${actionBtnHtml}
                                     </div>
                                 </div>
+                                ${unrenderedNoteHtml}
                                 <div style="font-size: 0.78rem; line-height: 1.6; color: var(--text-primary);">
                                     <strong style="color: #818cf8;">🔗 为什么会有链接？</strong> 当前卡片受上游【${srcTitle}】前置制约：${explanation.reason}
                                 </div>
@@ -6444,7 +6547,6 @@
                         <div style="display: flex; flex-direction: column; gap: 10px;">
                             ${cardsHtml}
                         </div>
-                        ${unrenderedTipHtml}
                     `;
                 }
 
