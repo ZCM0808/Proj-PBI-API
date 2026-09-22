@@ -7609,16 +7609,10 @@ body.light-theme .pb-view-tab-btn.active,
 }
 
 /* ==========================================================================
-   Power BI 6-Tier Permission Matrix (从左到右 6 大层级横向全景流转矩阵)
+   Power BI 8-Tier Permission Matrix (从左到右 8 大层级横向全景流转矩阵)
    ========================================================================== */
 .pb-matrix-container {
     position: relative;
-    display: grid;
-    grid-template-columns: repeat(8, minmax(220px, 1fr));
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(220px, 1fr);
-    grid-template-rows: 1fr;
-    gap: 12px;
     height: calc(100% - 44px);
     padding: 4px 12px 10px 12px;
     overflow-x: auto;
@@ -7626,6 +7620,26 @@ body.light-theme .pb-view-tab-btn.active,
     box-sizing: border-box;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+.pb-matrix-container.fit-to-screen {
+    overflow-x: hidden !important;
+    overflow-y: hidden !important;
+}
+
+/* 8 大层级矩阵舞台容器 (支持 Fit-to-Screen 矢量自适应等比缩放) */
+.pb-matrix-stage {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(8, minmax(220px, 1fr));
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(220px, 1fr);
+    grid-template-rows: 1fr;
+    gap: 12px;
+    height: 100%;
+    min-width: 1844px;
+    box-sizing: border-box;
+    transform-origin: 0 0;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .pb-matrix-container::-webkit-scrollbar {
     height: 6px;

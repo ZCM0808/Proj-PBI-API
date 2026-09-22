@@ -294,6 +294,14 @@
             this.pulseActive = true;
             this.isAuditOpen = true;
 
+            // 8 层推导矩阵自适应等比缩放引擎 (Fit-to-Screen)
+            try {
+                const savedFit = localStorage.getItem('pb_matrix_fit_to_screen');
+                this.matrixFitToScreen = savedFit !== null ? (savedFit === 'true') : true;
+            } catch(e) {
+                this.matrixFitToScreen = true;
+            }
+
             // 画布平移与缩放
             this.zoom = 0.88;
             this.panX = 35;
@@ -493,7 +501,7 @@
                 this.renderUserAssetsMatrix();
             } else if (this.activeMainTab === 'matrix') {
                 if (canvasEl) canvasEl.style.display = 'none';
-                if (matrixEl) matrixEl.style.display = 'grid';
+                if (matrixEl) matrixEl.style.display = 'block';
                 if (userAssetsEl) userAssetsEl.style.display = 'none';
                 if (bpTabBtn) bpTabBtn.classList.remove('active');
                 if (mxTabBtn) mxTabBtn.classList.add('active');
@@ -502,6 +510,7 @@
                 if (mxToolbar) mxToolbar.style.display = 'flex';
                 if (userAssetsToolbar) userAssetsToolbar.style.display = 'none';
                 this.renderMatrix();
+                requestAnimationFrame(() => this.applyMatrixFitScale());
             } else {
                 if (canvasEl) canvasEl.style.display = 'block';
                 if (matrixEl) matrixEl.style.display = 'none';
@@ -4152,10 +4161,90 @@
                 </div>
             `;
 
-            matrixEl.innerHTML = bannerHtml + col1Html + col2Html + col3Html + col4Html + col5Html + col6Html + col7Html + col8Html;
+            matrixEl.innerHTML = `<div id="pb-matrix-stage" class="pb-matrix-stage">${bannerHtml + col1Html + col2Html + col3Html + col4Html + col5Html + col6Html + col7Html + col8Html}</div>`;
+            this.applyMatrixFitScale();
 
             // 渲染 What-If 动态影响指向线（DOM 更新后需 rAF 等待布局稳定）
             requestAnimationFrame(() => this._renderImpactArrows(impacts));
+        }
+
+        // ⚡ 8 层推导矩阵自适应一屏全览 (Fit to Screen) 缩放调度器
+        applyMatrixFitScale() {
+            const matrixEl = document.getElementById('pb-matrix-container');
+            const stageEl = document.getElementById('pb-matrix-stage');
+            if (!matrixEl || !stageEl) return;
+
+            const isFit = this.matrixFitToScreen !== false;
+            const fitBtn = document.getElementById('pb-btn-matrix-fit');
+            const fitLabel = document.getElementById('pb-matrix-fit-label');
+
+            if (fitBtn && fitLabel) {
+                if (isFit) {
+                    fitBtn.classList.add('active');
+                    fitBtn.style.borderColor = '#6366f1';
+                    fitBtn.style.background = 'rgba(99, 102, 241, 0.18)';
+                    fitBtn.style.color = '#818cf8';
+                    fitLabel.textContent = '🔍 一屏全览';
+                    fitBtn.title = '当前处于一屏全览 (Fit to Screen) 模式：点击切换回 1:1 原始比例并支持横向滚动';
+                } else {
+                    fitBtn.classList.remove('active');
+                    fitBtn.style.borderColor = 'var(--panel-border)';
+                    fitBtn.style.background = 'var(--input-bg)';
+                    fitBtn.style.color = 'var(--text-primary)';
+                    fitLabel.textContent = '↔️ 原始比例';
+                    fitBtn.title = '当前处于 1:1 原始比例模式：点击切换为一屏全览 (Fit to Screen)';
+                }
+            }
+
+            if (!isFit) {
+                matrixEl.classList.remove('fit-to-screen');
+                matrixEl.style.overflowX = 'auto';
+                matrixEl.style.overflowY = 'hidden';
+                stageEl.style.transform = 'none';
+                stageEl.style.width = '100%';
+                stageEl.style.height = '100%';
+                return;
+            }
+
+            matrixEl.classList.add('fit-to-screen');
+            matrixEl.style.overflowX = 'hidden';
+            matrixEl.style.overflowY = 'hidden';
+
+            // 8 列标准排版基础宽度：8 * 220px + 7 * 12px = 1844px
+            const naturalWidth = 1844;
+            const paddingX = 24; // 左右各 12px 内边距
+            const paddingY = 14; // 顶部 4px + 底部 10px
+            const availWidth = Math.max(300, matrixEl.clientWidth - paddingX);
+            const availHeight = Math.max(200, matrixEl.clientHeight - paddingY);
+
+            if (availWidth >= naturalWidth) {
+                stageEl.style.transform = 'none';
+                stageEl.style.width = '100%';
+                stageEl.style.height = '100%';
+            } else {
+                const scale = availWidth / naturalWidth;
+                stageEl.style.width = naturalWidth + 'px';
+                stageEl.style.height = (availHeight / scale) + 'px';
+                stageEl.style.transform = `scale(${scale})`;
+            }
+        }
+
+        // ⚡ 切换 8 层推导矩阵一屏全览 / 1:1 原始比例模式
+        toggleMatrixFitToScreen(btn) {
+            this.matrixFitToScreen = !this.matrixFitToScreen;
+            try {
+                localStorage.setItem('pb_matrix_fit_to_screen', this.matrixFitToScreen ? 'true' : 'false');
+            } catch(e) {}
+            this.applyMatrixFitScale();
+            if (this._lastImpacts) {
+                requestAnimationFrame(() => this._renderImpactArrows(this._lastImpacts));
+            }
+            if (typeof window.showNotification === 'function') {
+                window.showNotification(
+                    this.matrixFitToScreen ? '🔍 已开启「一屏全览 (Fit to Screen)」自适应等比缩放' : '↔️ 已恢复「1:1 原始比例」横向滚动排版',
+                    'info'
+                );
+            }
         }
 
         // 渲染 6 层流转矩阵内部的 What-If 跨层级动态流向指向线 (带动态流光、箭头与流向药丸标签)
@@ -4176,8 +4265,11 @@
                 if (!this._matrixScrollBound) {
                     this._matrixScrollBound = true;
                     const triggerRedraw = () => {
-                        if (this.activeMainTab === 'matrix' && this._lastImpacts) {
-                            requestAnimationFrame(() => this._renderImpactArrows(this._lastImpacts));
+                        if (this.activeMainTab === 'matrix') {
+                            this.applyMatrixFitScale();
+                            if (this._lastImpacts) {
+                                requestAnimationFrame(() => this._renderImpactArrows(this._lastImpacts));
+                            }
                         }
                     };
 

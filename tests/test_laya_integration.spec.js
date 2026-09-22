@@ -428,7 +428,7 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     }
   });
 
-  test('UI: Permission Matrix L7 and L8 tiers retain minimum width and are not squeezed into vertical strips', async ({ page }) => {
+  test('UI: Permission Matrix L7 and L8 tiers retain minimum width in 1:1 mode and are not squeezed', async ({ page }) => {
     await page.setViewportSize({ width: 1200, height: 800 });
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => typeof window.PermissionBlueprint !== 'undefined', { timeout: 15000 });
@@ -437,7 +437,9 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
       if (typeof window.switchAppModule === 'function') {
         window.switchAppModule('permission_blueprint');
       }
+      window.PermissionBlueprint.matrixFitToScreen = false;
       window.PermissionBlueprint.switchMainTab('matrix');
+      window.PermissionBlueprint.applyMatrixFitScale();
     });
 
     const tier7 = page.locator('.pb-tier-col[data-tier="7"]');
@@ -455,6 +457,48 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
       expect(box7.width).toBeGreaterThanOrEqual(200);
       expect(box8.width).toBeGreaterThanOrEqual(200);
     }
+  });
+
+  test('UI: Permission Matrix Fit-to-Screen engine scales matrix to fit within viewport in non-fullscreen', async ({ page }) => {
+    await page.setViewportSize({ width: 1200, height: 800 });
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.PermissionBlueprint !== 'undefined', { timeout: 15000 });
+
+    await page.evaluate(() => {
+      if (typeof window.switchAppModule === 'function') {
+        window.switchAppModule('permission_blueprint');
+      }
+      window.PermissionBlueprint.matrixFitToScreen = true;
+      window.PermissionBlueprint.switchMainTab('matrix');
+      window.PermissionBlueprint.applyMatrixFitScale();
+    });
+
+    const fitBtn = page.locator('#pb-btn-matrix-fit');
+    await expect(fitBtn).toBeVisible({ timeout: 15000 });
+
+    const tier8 = page.locator('.pb-tier-col[data-tier="8"]');
+    await expect(tier8).toBeVisible({ timeout: 15000 });
+
+    // 1. 在开启 Fit-to-Screen 模式下，L8 必定收纳在 1200px 视口内部 (<= 1205px)
+    const box8Fit = await tier8.boundingBox();
+    expect(box8Fit).not.toBeNull();
+    if (box8Fit) {
+      expect(box8Fit.x + box8Fit.width).toBeLessThanOrEqual(1205);
+    }
+
+    // 2. 点击工具栏一键切换至 1:1 模式
+    await fitBtn.click();
+    await page.waitForTimeout(300);
+
+    const isFitAfterClick = await page.evaluate(() => window.PermissionBlueprint.matrixFitToScreen);
+    expect(isFitAfterClick).toBe(false);
+
+    // 3. 再次点击一键切回 Fit-to-Screen
+    await fitBtn.click();
+    await page.waitForTimeout(300);
+
+    const isFitRestored = await page.evaluate(() => window.PermissionBlueprint.matrixFitToScreen);
+    expect(isFitRestored).toBe(true);
   });
 
 });
