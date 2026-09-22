@@ -151,7 +151,8 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     await expect(title).toContainText('LAYA POWERED');
 
     const layaBtn = page.locator('#btn-laya-intent-search');
-    await expect(layaBtn).toContainText('⚡ Laya');
+    await expect(layaBtn).toContainText('Laya');
+    await expect(layaBtn.locator('svg')).toBeVisible();
 
     const searchInput = page.locator('#api-search-input');
     const placeholder = await searchInput.getAttribute('placeholder');

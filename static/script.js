@@ -8761,7 +8761,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (causeBadge) causeBadge.textContent = causeLabelMap[data.cause] || data.cause;
             if (confBadge) confBadge.textContent = `置信度 ${Math.round((data.confidence || 0.5) * 100)}%`;
-            if (adviceText) adviceText.innerHTML = `<strong style="color: #fbbf24;">💡 Laya 诊断建议：</strong>${data.advice || '建议排查对应数据源与请求日志。'}`;
+            if (adviceText) adviceText.innerHTML = `<strong style="color: #fbbf24; display: inline-flex; align-items: center; gap: 4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg><span>Laya 诊断建议：</span></strong>${data.advice || '建议排查对应数据源与请求日志。'}`;
 
             triageCard.classList.add('visible');
         } catch (e) {

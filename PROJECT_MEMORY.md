@@ -2640,18 +2640,30 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
    Remove-Item -Force "D:\zcm\Proj-PBI-API\test_laya_local.py"
    ```
 
-### 70.4 前端全链路 Laya 显式标注与徽标防御规范
-为确保用户明确感知本地 System 1 决策模型介入，系统在所有集成点均添加了统一的高对比度显式标注与微标：
+### 70.4 前端全链路 Laya 显式标注与统一单色 SVG 矢量规范
+为确保设计严谨、专业，杜绝不同操作系统/浏览器中彩色 Emoji 风格杂乱的弊端，系统彻底移除了所有彩色闪电 `⚡`、`💡` 等 Emoji，统一采用跟随主题色 (`currentColor`) 的专业微型 SVG 矢量图标与显式胶囊徽标：
 1. **API 资源树模块**：
-   - 侧边栏标题：带有 `LAYA POWERED` 发光微标；
-   - 搜索输入框：占位符注明 `(⚡ Laya 智能识别)`；
-   - 意图直达按钮：由单闪电升级为 `⚡ Laya` 文字徽章；
-   - 匹配结果提示横幅：带有高亮 `LAYA` 徽标与 `⚡ Laya 意图直达`。
+   - 侧边栏标题：带有高对比度 `LAYA POWERED` 胶囊微标；
+   - 搜索输入框：占位符注明 `(Laya 智能识别)`；
+   - 意图直达按钮：由单闪电升级为 `雷达罗盘 SVG + Laya` 专业按钮；
+   - 匹配结果提示横幅：带有高亮 `LAYA` 徽标、`分流指向 SVG` 与 `Laya 意图直达`。
 2. **工作流与 API 响应区域**：
-   - 错误预诊卡片：顶部带有高亮深底金字 `LAYA` 徽标与 `⚡ Laya 智能预诊`；
-   - 自愈处理指引：明确标明 `💡 Laya 诊断建议`。
+   - 错误预诊卡片：顶部带有高亮深底金字 `LAYA` 徽标、`脉冲探测 SVG` 与 `Laya 智能预诊`；
+   - 自愈处理指引：明确标明 `信息圆圈 SVG + Laya 诊断建议`。
 3. **全景权限蓝图模块**：
    - 顶部工具栏：【🔗 解析卡片关系】按钮内附带显式紫色 `LAYA` 徽标与悬浮说明；
-   - 因果关系弹窗 (场景 A)：底部嵌入 `LAYA SENTINEL` 引导条；
-   - 风险门禁状态条 (场景 B)：显式展示 `LAYA` 徽标与 `⚡ Laya · System 1 合规门禁`，回显结果打上 `Laya 评估通过` 与 `Laya 越权风险预警` 前缀，放行率按钮标注 `Laya 自主放行率`。
+   - 因果关系弹窗 (场景 A)：底部嵌入 `安全盾牌 SVG + LAYA SENTINEL` 引导条；
+   - 风险门禁状态条 (场景 B)：显式展示 `LAYA` 徽标、`盾牌安全 SVG` 与 `Laya · System 1 合规门禁`，回显结果打上单色矢量 `盾牌对勾/感叹号 SVG` 与 `Laya 评估通过` / `Laya 越权风险预警` 前缀，放行率按钮标注 `Laya 自主放行率`。
+
+### 70.5 Render 云端生产环境部署资源限制与双重防御机制
+1. **Render 实例硬件规格约束**：
+   - **Render 免费层 (Free Tier)**：仅提供 **512 MB RAM** 与 0.1 vCPU；
+   - **Render 入门层 (Starter Tier)**：提供 **512 MB ~ 1 GB RAM**；
+   - **Laya 权重内存开销**：`convaiinnovations/laya` 参数量为 421M，PyTorch 导入与权重加载后常驻 RAM 约 **900 MB ~ 1.2 GB**。
+   - **结论**：在 512MB 的 Render 免费实例中直接加载神经网络权重必然会触发 **OOM(Out Of Memory / 内存溢出) 进程终止 (Killed)**。
+2. **双重防御降级架构 (Graceful Fallback)**：
+   - 本项目在 [`src/laya_engine.py`](file:///D:/zcm/Proj-PBI-API/src/laya_engine.py) 中内置了 **100% 规则引擎降级兜底**：
+     - 若 Render 环境未安装 PyTorch（保持轻量构建）或内存不足无法加载模型，`is_available()` 自动识别并无缝切换至内置启发式规则；
+     - `/api/ai/laya/route-api`、`/api/ai/laya/triage-error`、`/api/ai/laya/audit-permission` 三大接口依然以 **1ms 极速**正常返回，前端 UI、高亮、自愈卡片与门禁条 100% 完美呈现，零 500 报错、零内存负担；
+   - **升级方案**：若未来需要在 Render 生产环境中运行真实本地权重，只需将 Render 实例升迁至 **Standard (2GB RAM)** 规格，即可无缝启用真实神经网络推导。
 

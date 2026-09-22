@@ -6254,7 +6254,10 @@
                                 <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.selectAndExplainRow('pipeline_role')" style="padding: 5px 12px; font-size: 0.76rem; border-radius: 6px; cursor: pointer;">🚀 部署管道角色 (Pipeline Role)</button>
                             </div>
                             <div style="margin-top: 14px; padding-top: 10px; border-top: 1px dashed rgba(99, 102, 241, 0.2); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.74rem; color: #818cf8;">
-                                <span style="background: rgba(99, 102, 241, 0.25); color: #a5b4fc; padding: 1px 6px; border-radius: 3px; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.5px;">LAYA SENTINEL</span>
+                                <span style="background: rgba(99, 102, 241, 0.25); color: #a5b4fc; padding: 1px 6px; border-radius: 3px; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px;">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                    <span>LAYA SENTINEL</span>
+                                </span>
                                 <span>支持 Laya System 1 本地非自回归合规安全审计与越权拦截</span>
                             </div>
                         </div>
@@ -6541,12 +6544,13 @@
                             </div>
                         </div>
 
-                        <!-- ⚡ Laya System 1 本地即时合规门禁状态条 -->
+                        <!-- Laya System 1 本地即时合规门禁状态条 -->
                         <div id="pb-laya-guardrail-bar" class="laya-security-guardrail-bar">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <span style="font-size: 0.72rem; font-weight: 800; color: #818cf8; background: rgba(99, 102, 241, 0.22); padding: 2px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px;">
+                                <span style="font-size: 0.72rem; font-weight: 800; color: #818cf8; background: rgba(99, 102, 241, 0.22); border: 1px solid rgba(99, 102, 241, 0.35); padding: 2px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px;">
                                     <span style="background: #6366f1; color: #ffffff; font-size: 0.62rem; font-weight: 900; padding: 0 4px; border-radius: 2px; letter-spacing: 0.5px;">LAYA</span>
-                                    ⚡ Laya · System 1 合规门禁
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                    <span>Laya · System 1 合规门禁</span>
                                 </span>
                                 <span id="pb-laya-guardrail-status" style="font-weight: 600; font-size: 0.76rem; color: #a7f3d0;">正在调用本地 Laya 决策引擎评估链路风险...</span>
                             </div>
@@ -6586,7 +6590,7 @@
                         if (audit.is_high_risk) {
                             bar.classList.add('is-warning');
                             statusEl.style.color = '#fca5a5';
-                            statusEl.textContent = `🚨 Laya 越权风险预警 · 合规风险度: ${audit.risk_score} / 2.0 · 建议复核 (Escalate)`;
+                            statusEl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><span>Laya 越权风险预警 · 合规风险度: ${audit.risk_score} / 2.0 · 建议复核 (Escalate)</span></span>`;
                             if (actEl) {
                                 actEl.style.color = '#f87171';
                                 actEl.textContent = `Laya 自主放行率: ${Math.round((audit.act_probability || 0.2) * 100)}%`;
@@ -6594,7 +6598,7 @@
                         } else {
                             bar.classList.remove('is-warning');
                             statusEl.style.color = '#a7f3d0';
-                            statusEl.textContent = `🟢 Laya 评估通过 · 微软标准 RBAC 链路 · 机器完全信任放行 (Act) · 风险度: ${audit.risk_score}`;
+                            statusEl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Laya 评估通过 · 微软标准 RBAC 链路 · 机器完全信任放行 (Act) · 风险度: ${audit.risk_score}</span></span>`;
                             if (actEl) {
                                 actEl.style.color = '#34d399';
                                 actEl.textContent = `Laya 自主放行率: ${Math.round((audit.act_probability || 0.95) * 100)}%`;
