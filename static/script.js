@@ -1157,40 +1157,52 @@ window.updateListCounts = function() {
 
 
 window.toggleSettingsSection = function(listId, labelEl) {
-
     const list = document.getElementById(listId);
-
     const headerBar = document.querySelector(`.grid-header-bar[data-list-id="${listId}"]`);
-
-    const icon = labelEl ? labelEl.querySelector('.collapse-icon') : null;
-
+    const icon = labelEl ? labelEl.querySelector('.collapse-icon') : (document.querySelector(`label[onclick*="'${listId}'"] .collapse-icon`));
     
-
     if (!list) return;
-
-    const isHidden = list.style.display === 'none';
-
+    const isHidden = list.style.display === 'none' || (window.getComputedStyle && window.getComputedStyle(list).display === 'none');
     
-
     if (isHidden) {
-
         list.style.display = 'flex';
-
         if (headerBar) headerBar.style.display = 'flex';
-
         if (icon) icon.textContent = '▼';
-
+        try { localStorage.setItem('pbi-settings-collapse-' + listId, 'open'); } catch(e) {}
     } else {
-
         list.style.display = 'none';
-
         if (headerBar) headerBar.style.display = 'none';
-
         if (icon) icon.textContent = '▶';
-
+        try { localStorage.setItem('pbi-settings-collapse-' + listId, 'closed'); } catch(e) {}
     }
-
 };
+
+// 恢复设置界面中各字典列表的展开/折叠偏好（默认保持折叠）
+window.restoreSettingsCollapseStates = function() {
+    const listIds = ['workspace-list', 'dataset-list', 'report-list'];
+    listIds.forEach(listId => {
+        const list = document.getElementById(listId);
+        const headerBar = document.querySelector(`.grid-header-bar[data-list-id="${listId}"]`);
+        const icon = document.querySelector(`label[onclick*="${listId}"] .collapse-icon`);
+        if (!list) return;
+
+        let state = 'closed';
+        try {
+            state = localStorage.getItem('pbi-settings-collapse-' + listId) || 'closed';
+        } catch(e) {}
+
+        if (state === 'open') {
+            list.style.display = 'flex';
+            if (headerBar) headerBar.style.display = 'flex';
+            if (icon) icon.textContent = '▼';
+        } else {
+            list.style.display = 'none';
+            if (headerBar) headerBar.style.display = 'none';
+            if (icon) icon.textContent = '▶';
+        }
+    });
+};
+
 
 
 
@@ -6601,7 +6613,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         'pbi_workspaces', 'pbi_datasets', 'pbi_reports', 'pbi-xmla-history',
                         'pbi_xmla_last_dataset', 'pbi_xmla_last_table', 'pbi-selected-workspaces',
                         'pbi-selected-datasets', 'pbi-selected-reports', 'pbi-active-workspace',
-                        'pbi-active-dataset', 'pbi-active-report', 'pbi_cached_tenant_users'
+                        'pbi-active-dataset', 'pbi-active-report', 'pbi_cached_tenant_users',
+                        'pbi-settings-collapse-workspace-list', 'pbi-settings-collapse-dataset-list',
+                        'pbi-settings-collapse-report-list', 'pbi-settings-active-tab', 'pbi-settings-scroll-top'
                     ];
                     if (data && data.data && typeof data.data === 'object') {
                         for (const [key, value] of Object.entries(data.data)) {
@@ -8172,6 +8186,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const layaSearchBtn = document.getElementById('btn-laya-intent-search');
 
     window.handleLayaIntentSearch = async function(query) {
+        if (typeof window.isLayaEnabled === 'function' && !window.isLayaEnabled()) {
+            if (window.showNotification) {
+                window.showNotification('⚪ Laya 智能决策引擎当前处于关闭状态，请在全局设置中开启', 'info');
+            }
+            return;
+        }
+
         const input = document.getElementById('api-search-input');
         const q = (query || (input ? input.value : '')).trim();
         if (!q) return;
@@ -8729,6 +8750,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ⚡ Laya System 1 错误秒级预诊与自愈处理
     window.triggerLayaErrorTriage = async function(errText) {
+        if (typeof window.isLayaEnabled === 'function' && !window.isLayaEnabled()) {
+            return;
+        }
+
         const triageCard = document.getElementById('laya-error-triage-card');
         if (!triageCard) return;
 
@@ -10402,10 +10427,42 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
                 window.updateAuthModeVisibility(activeAuthMode);
                 const isInteractive = (data.AUTH_MODE === 'interactive' || data.IS_INTERACTIVE);
+                let targetTab = isInteractive ? 'interactive' : 'legacy';
+                try {
+                    const savedTab = localStorage.getItem('pbi-settings-active-tab');
+                    if (savedTab === 'interactive' || savedTab === 'legacy') {
+                        targetTab = savedTab;
+                    }
+                } catch(e) {}
+
                 if (window.switchAuthSettingsTab) {
-                    window.switchAuthSettingsTab(isInteractive ? 'interactive' : 'legacy');
+                    window.switchAuthSettingsTab(targetTab);
                 }
+
+                // 恢复工作区、数据集、报表的展开/折叠状态（默认折叠）
+                if (window.restoreSettingsCollapseStates) {
+                    window.restoreSettingsCollapseStates();
+                }
+
+                // 恢复 Laya 一键开关状态
+                if (window.syncLayaEngineUI) {
+                    window.syncLayaEngineUI();
+                }
+
                 if (window.updateAuthCardsVisualStatus) await window.updateAuthCardsVisualStatus();
+
+                // 平滑恢复用户上次在设置面板中的滚动条位置
+                const settingsModalBody = settingsModal.querySelector('.modal-body');
+                if (settingsModalBody) {
+                    try {
+                        const savedScroll = parseInt(localStorage.getItem('pbi-settings-scroll-top') || '0', 10);
+                        if (savedScroll > 0) {
+                            setTimeout(() => {
+                                settingsModalBody.scrollTop = savedScroll;
+                            }, 50);
+                        }
+                    } catch(e) {}
+                }
             } catch (err) {
                 console.error('Failed to load settings:', err);
             }
@@ -10415,6 +10472,10 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
 
         window.switchAuthSettingsTab = function(tab) {
             window._currentAuthSettingsTab = tab;
+            try {
+                localStorage.setItem('pbi-settings-active-tab', tab);
+            } catch(e) {}
+
             const btnInteractive = document.getElementById('tab-btn-interactive');
             const btnLegacy = document.getElementById('tab-btn-legacy');
             const panelInteractive = document.getElementById('panel-auth-interactive');
@@ -10731,7 +10792,109 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
             }
         };
 
+        if (btnSettings) {
+            btnSettings.addEventListener('click', () => {
+                if (window.restoreSettingsCollapseStates) {
+                    window.restoreSettingsCollapseStates();
+                }
+            }, true);
+        }
         setupFLIPModal(btnSettings, closeSettingsBtn, settingsModal, loadSettings);
+
+        // 监听全局设置面板内部滚动，平滑记忆最后阅读与编辑视口
+        const settingsBodyEl = settingsModal.querySelector('.modal-body');
+        if (settingsBodyEl) {
+            settingsBodyEl.addEventListener('scroll', () => {
+                try {
+                    localStorage.setItem('pbi-settings-scroll-top', String(settingsBodyEl.scrollTop));
+                } catch(e) {}
+            }, { passive: true });
+        }
+
+        // =========================================================================
+        // Laya System 1 智能决策引擎全局总控状态 (Laya Master Controller)
+        // =========================================================================
+        window.isLayaEnabled = function() {
+            try {
+                return localStorage.getItem('pbi-laya-enabled') !== 'false';
+            } catch(e) {
+                return true;
+            }
+        };
+
+        window.syncLayaEngineUI = function() {
+            const isEnabled = window.isLayaEnabled();
+            const switchEl = document.getElementById('laya-global-switch');
+            const badgeEl = document.getElementById('laya-global-badge');
+            const cardEl = document.getElementById('laya-global-toggle-card');
+            const triageCard = document.getElementById('laya-error-triage-card');
+            const pbLayaBadge = document.getElementById('pb-btn-laya-badge');
+            const layaSearchBtn = document.getElementById('btn-laya-intent-search');
+
+            if (switchEl) switchEl.checked = isEnabled;
+            if (badgeEl) {
+                if (isEnabled) {
+                    badgeEl.innerHTML = '🟢 运行中';
+                    badgeEl.style.background = 'rgba(34, 197, 94, 0.18)';
+                    badgeEl.style.color = '#22c55e';
+                    badgeEl.style.borderColor = 'rgba(34, 197, 94, 0.35)';
+                } else {
+                    badgeEl.innerHTML = '⚪ 已停用';
+                    badgeEl.style.background = 'rgba(255, 255, 255, 0.06)';
+                    badgeEl.style.color = 'var(--text-secondary)';
+                    badgeEl.style.borderColor = 'var(--panel-border)';
+                }
+            }
+            if (cardEl) {
+                if (isEnabled) {
+                    cardEl.classList.add('is-active');
+                    cardEl.classList.remove('is-disabled');
+                } else {
+                    cardEl.classList.remove('is-active');
+                    cardEl.classList.add('is-disabled');
+                }
+            }
+            if (!isEnabled && triageCard) {
+                triageCard.classList.remove('visible');
+            }
+            if (pbLayaBadge) {
+                if (isEnabled) {
+                    pbLayaBadge.style.opacity = '1';
+                    pbLayaBadge.title = 'Laya 智能因果分析已就绪';
+                } else {
+                    pbLayaBadge.style.opacity = '0.4';
+                    pbLayaBadge.title = 'Laya 智能决策引擎已停用';
+                }
+            }
+            if (layaSearchBtn) {
+                if (isEnabled) {
+                    layaSearchBtn.style.opacity = '1';
+                    layaSearchBtn.title = 'Laya 自然语言意图直达';
+                } else {
+                    layaSearchBtn.style.opacity = '0.5';
+                    layaSearchBtn.title = 'Laya 智能决策引擎已停用，点击前往设置开启';
+                }
+            }
+        };
+
+        window.toggleLayaEngine = function(enabled) {
+            try {
+                localStorage.setItem('pbi-laya-enabled', enabled ? 'true' : 'false');
+            } catch(e) {}
+
+            window.syncLayaEngineUI();
+
+            if (window.showNotification) {
+                window.showNotification(
+                    enabled ? '⚡ 已开启 Laya 智能决策引擎 (System 1 Reasoning)' : '⚪ 已关闭 Laya 智能决策引擎',
+                    enabled ? 'success' : 'info'
+                );
+            }
+        };
+
+        // 页面初始化时同步一次 Laya UI 状态
+        window.syncLayaEngineUI();
+
 
 
 

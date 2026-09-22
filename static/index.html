@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260922_v1845">
+    <link rel="stylesheet" href="/static/style.css?v=20260922_v2035">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -2679,23 +2679,23 @@
                     </div>
 
                     <!-- C. 用户全景权限链路专属工具栏 -->
-                    <div id="pb-user-assets-toolbar" style="display: none; align-items: center; gap: 8px;">
-                        <button type="button" id="pb-btn-refresh-lineage" class="btn-wf-sm" onclick="window.PermissionBlueprint.refreshUserAssetsLineage(this)" title="全景穿透刷新：重新拉取顶栏选中资产与底层数据网关连接" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; transition: all 0.2s;">
+                    <div id="pb-user-assets-toolbar" style="display: none; align-items: center; gap: 6px; flex-shrink: 0; white-space: nowrap; flex-wrap: nowrap;">
+                        <button type="button" id="pb-btn-refresh-lineage" class="btn-wf-sm" onclick="window.PermissionBlueprint.refreshUserAssetsLineage(this)" title="全景穿透刷新：重新拉取顶栏选中资产与底层数据网关连接" style="height: 28px; padding: 0 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0;">
                             <svg class="pb-refresh-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.3s;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-                            <span class="pb-refresh-label">刷新链路</span>
+                            <span class="pb-refresh-label" style="white-space: nowrap;">刷新链路</span>
                         </button>
-                        <button type="button" id="pb-btn-filter-bottlenecks" class="btn-wf-sm" onclick="window.PermissionBlueprint.toggleBottleneckFilter(this)" title="断点速查：仅高亮所有受限、阻断与离线项，淡化正常项" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; transition: all 0.2s;">
-                            <span>⚠️ 仅看受限与阻断</span>
+                        <button type="button" id="pb-btn-filter-bottlenecks" class="btn-wf-sm" onclick="window.PermissionBlueprint.toggleBottleneckFilter(this)" title="断点速查：仅高亮所有受限、阻断与离线项，淡化正常项" style="height: 28px; padding: 0 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0;">
+                            <span style="white-space: nowrap;">⚠️ 仅看受限与阻断</span>
                         </button>
-                        <button type="button" id="pb-btn-explain-causality" class="btn-wf-sm" onclick="window.PermissionBlueprint.explainActiveCausality(this)" title="解析关系 (Laya 智能合规审计)：深度解析当前选中小卡片与关联高亮卡片之间的因果权限链路及治理合规性" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; transition: all 0.2s;">
-                            <span>🔗 解析卡片关系</span>
-                            <span style="font-size: 0.6rem; color: #818cf8; font-weight: 800; background: rgba(99, 102, 241, 0.18); border: 1px solid rgba(99, 102, 241, 0.35); padding: 0 4px; border-radius: 3px; letter-spacing: 0.5px;">LAYA</span>
+                        <button type="button" id="pb-btn-explain-causality" class="btn-wf-sm" onclick="window.PermissionBlueprint.explainActiveCausality(this)" title="解析关系 (Laya 智能合规审计)：深度解析当前选中小卡片与关联高亮卡片之间的因果权限链路及治理合规性" style="height: 28px; padding: 0 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0;">
+                            <span style="white-space: nowrap;">🔗 解析卡片关系</span>
+                            <span id="pb-btn-laya-badge" style="font-size: 0.6rem; color: #818cf8; font-weight: 800; background: rgba(99, 102, 241, 0.18); border: 1px solid rgba(99, 102, 241, 0.35); padding: 0 4px; border-radius: 3px; letter-spacing: 0.5px; white-space: nowrap;">LAYA</span>
                         </button>
-                        <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.resetUserAssetsItemsOrder()" title="恢复各卡片内部权限条目的默认排列顺序" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer;">
+                        <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.resetUserAssetsItemsOrder()" title="恢复各卡片内部权限条目的默认排列顺序" style="height: 28px; padding: 0 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; white-space: nowrap; flex-shrink: 0;">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
-                            <span>重置条目顺序</span>
+                            <span style="white-space: nowrap;">重置条目顺序</span>
                         </button>
-                        <button type="button" class="icon-btn zen-mode-btn" onclick="window.toggleZenMode()" title="沉浸全屏模式 (Zen Mode)" style="width: 28px; height: 28px; padding: 0; border-radius: 6px; border: 1px solid var(--overlay-10); background: transparent; transition: all 0.2s; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;">
+                        <button type="button" class="icon-btn zen-mode-btn" onclick="window.toggleZenMode()" title="沉浸全屏模式 (Zen Mode)" style="width: 28px; height: 28px; padding: 0; border-radius: 6px; border: 1px solid var(--overlay-10); background: transparent; transition: all 0.2s; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-expand"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-collapse" style="display: none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
                         </button>
@@ -2819,6 +2819,30 @@
                             <button type="button" id="btn-create-snapshot" class="icon-btn" title="另存为新快照 (Save As New Profile)" style="height: 29px; width: 30px; padding: 0; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s;">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- Laya System 1 智能决策引擎一键总控中心 -->
+                    <div id="laya-global-toggle-card" class="laya-global-toggle-card is-active">
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div style="width: 24px; height: 24px; border-radius: 6px; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.35); display: flex; align-items: center; justify-content: center; color: #818cf8; flex-shrink: 0;">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+                                </div>
+                                <div>
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <span style="font-weight: 700; font-size: 0.76rem; color: var(--text-primary);">Laya 智能决策引擎 (System 1 Reasoning)</span>
+                                        <span id="laya-global-badge" style="font-size: 0.60rem; font-weight: 700; padding: 1px 6px; border-radius: 10px; background: rgba(34, 197, 94, 0.18); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.35);">🟢 运行中</span>
+                                    </div>
+                                    <div style="font-size: 0.63rem; color: var(--text-secondary); margin-top: 1px;">
+                                        一键控制全站 API 错误秒级预诊自愈、权限链路因果智能合规审计与自然语言直达
+                                    </div>
+                                </div>
+                            </div>
+                            <label class="laya-toggle-switch" title="一键开启或关闭 Laya 智能决策引擎">
+                                <input type="checkbox" id="laya-global-switch" checked onchange="window.toggleLayaEngine(this.checked)">
+                                <span class="laya-toggle-slider"></span>
+                            </label>
                         </div>
                     </div>
 
@@ -2991,7 +3015,7 @@
                     </div>
                     <div class="form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="toggleSettingsSection('workspace-list', this)" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_WORKSPACES (工作区字典 / groupId) <span id="workspace-count" style="margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 0.7rem; background: var(--overlay-10); color: var(--accent); font-weight: 600;">(0 rows)</span></label>
+                            <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="toggleSettingsSection('workspace-list', this)" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▶</span> PBI_WORKSPACES (工作区字典 / groupId) <span id="workspace-count" style="margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 0.7rem; background: var(--overlay-10); color: var(--accent); font-weight: 600;">(0 rows)</span></label>
                             <div style="display: flex; gap: 6px;">
                                 <button type="button" onclick="verifySelectedGuid('groups', 'workspace-list', this)" class="btn-verify" title="验证选中工作区 (Verify Selected)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></button>
                                 <button type="button" onclick="scanItems('workspaces', this)" class="btn-scan" title="从云端扫描同步工作区 (Scan Workspaces)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>
@@ -3001,20 +3025,20 @@
                         <!-- Grid Column Headers with Sort & Resizable Handles -->
                         <div style="overflow-x: auto; padding-bottom: 8px;">
                             <div style="min-width: fit-content;">
-                                <div class="grid-header-bar" data-list-id="workspace-list" style="display: flex; gap: 8px; align-items: center; padding: 4px 0; margin-top: 6px; border-bottom: 1px solid var(--panel-border); font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); user-select: none;">
+                                <div class="grid-header-bar" data-list-id="workspace-list" style="display: none; gap: 8px; align-items: center; padding: 4px 0; margin-top: 6px; border-bottom: 1px solid var(--panel-border); font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); user-select: none;">
                                     <span style="width: 18px; flex-shrink: 0;"></span>
                                     <div class="grid-col-header" data-col="alias" onclick="sortSettingsList('workspace-list', 'alias', event)" style="width: 180px; min-width: 120px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Workspace (工作区)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'workspace-list', 'alias')"></span></span></div>
                                     <div class="grid-col-header" data-col="id" onclick="sortSettingsList('workspace-list', 'id', event)" style="width: 320px; min-width: 200px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>GUID (标识符)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'workspace-list', 'id')"></span></span></div>
                                     <div class="grid-col-header" data-col="type" onclick="sortSettingsList('workspace-list', 'type', event)" style="width: 210px; min-width: 160px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Type & State (属性与状态)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'workspace-list', 'type')"></span></span></div>
                                     <span style="width: 20px; flex-shrink: 0;"></span>
                                 </div>
-                                <div id="workspace-list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
+                                <div id="workspace-list" style="display: none; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
                             </div>
                         </div>
                     </div>
                     <div class="form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="toggleSettingsSection('dataset-list', this)" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_DATASETS (数据集字典 / datasetId) <span id="dataset-count" style="margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 0.7rem; background: var(--overlay-10); color: var(--accent); font-weight: 600;">(0 rows)</span></label>
+                            <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="toggleSettingsSection('dataset-list', this)" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▶</span> PBI_DATASETS (数据集字典 / datasetId) <span id="dataset-count" style="margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 0.7rem; background: var(--overlay-10); color: var(--accent); font-weight: 600;">(0 rows)</span></label>
                             <div style="display: flex; gap: 6px;">
                                 <button type="button" onclick="verifySelectedGuid('datasets', 'dataset-list', this)" class="btn-verify" title="验证选中语义模型 (Verify Selected)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></button>
                                 <button type="button" onclick="scanItems('datasets', this)" class="btn-scan" title="从云端扫描同步语义模型 (Scan Datasets)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>
@@ -3024,20 +3048,20 @@
                         <!-- Grid Column Headers with Sort & Resizable Handles -->
                         <div style="overflow-x: auto; padding-bottom: 8px;">
                             <div style="min-width: fit-content;">
-                                <div class="grid-header-bar" data-list-id="dataset-list" style="display: flex; gap: 8px; align-items: center; padding: 4px 0; margin-top: 6px; border-bottom: 1px solid var(--panel-border); font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); user-select: none;">
+                                <div class="grid-header-bar" data-list-id="dataset-list" style="display: none; gap: 8px; align-items: center; padding: 4px 0; margin-top: 6px; border-bottom: 1px solid var(--panel-border); font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); user-select: none;">
                                     <span style="width: 18px; flex-shrink: 0;"></span>
                                     <div class="grid-col-header" data-col="alias" onclick="sortSettingsList('dataset-list', 'alias', event)" style="width: 180px; min-width: 120px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Dataset (语义模型)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'dataset-list', 'alias')"></span></span></div>
                                     <div class="grid-col-header" data-col="id" onclick="sortSettingsList('dataset-list', 'id', event)" style="width: 320px; min-width: 200px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>GUID (标识符)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'dataset-list', 'id')"></span></span></div>
                                     <div class="grid-col-header" data-col="type" onclick="sortSettingsList('dataset-list', 'type', event)" style="width: 160px; min-width: 140px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Type & State (属性与状态)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'dataset-list', 'type')"></span></span></div>
                                     <span style="width: 20px; flex-shrink: 0;"></span>
                                 </div>
-                                <div id="dataset-list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
+                                <div id="dataset-list" style="display: none; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
                             </div>
                         </div>
                     </div>
                     <div class="form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="toggleSettingsSection('report-list', this)" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▼</span> PBI_REPORTS (报表字典 / reportId) <span id="report-count" style="margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 0.7rem; background: var(--overlay-10); color: var(--accent); font-weight: 600;">(0 rows)</span></label>
+                            <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="toggleSettingsSection('report-list', this)" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▶</span> PBI_REPORTS (报表字典 / reportId) <span id="report-count" style="margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 0.7rem; background: var(--overlay-10); color: var(--accent); font-weight: 600;">(0 rows)</span></label>
                             <div style="display: flex; gap: 6px;">
                                 <button type="button" onclick="verifySelectedGuid('reports', 'report-list', this)" class="btn-verify" title="验证选中报表 (Verify Selected)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></button>
                                 <button type="button" onclick="scanItems('reports', this)" class="btn-scan" title="从云端扫描同步报表 (Scan Reports)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>
@@ -3047,14 +3071,14 @@
                         <!-- Grid Column Headers with Sort & Resizable Handles -->
                         <div style="overflow-x: auto; padding-bottom: 8px;">
                             <div style="min-width: fit-content;">
-                                <div class="grid-header-bar" data-list-id="report-list" style="display: flex; gap: 8px; align-items: center; padding: 4px 0; margin-top: 6px; border-bottom: 1px solid var(--panel-border); font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); user-select: none;">
+                                <div class="grid-header-bar" data-list-id="report-list" style="display: none; gap: 8px; align-items: center; padding: 4px 0; margin-top: 6px; border-bottom: 1px solid var(--panel-border); font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); user-select: none;">
                                     <span style="width: 18px; flex-shrink: 0;"></span>
                                     <div class="grid-col-header" data-col="alias" onclick="sortSettingsList('report-list', 'alias', event)" style="width: 180px; min-width: 120px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Report (报表)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'report-list', 'alias')"></span></span></div>
                                     <div class="grid-col-header" data-col="id" onclick="sortSettingsList('report-list', 'id', event)" style="width: 320px; min-width: 200px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>GUID (标识符)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'report-list', 'id')"></span></span></div>
                                     <div class="grid-col-header" data-col="type" onclick="sortSettingsList('report-list', 'type', event)" style="width: 160px; min-width: 140px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Type & State (属性与状态)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'report-list', 'type')"></span></span></div>
                                     <span style="width: 20px; flex-shrink: 0;"></span>
                                 </div>
-                                <div id="report-list" style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
+                                <div id="report-list" style="display: none; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
                             </div>
                         </div>
                     </div>
@@ -3309,8 +3333,8 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260919_v1440"></script>
-    <script src="/static/script.js?v=20260922_v1845"></script>
-    <script src="/static/permission_blueprint.js?v=20260922_v1845"></script>
+    <script src="/static/script.js?v=20260922_v2105"></script>
+    <script src="/static/permission_blueprint.js?v=20260922_v2105"></script>
 
 
 

@@ -6570,42 +6570,57 @@
                     `;
 
                     // 异步调用本地 Laya System 1 权限合规门禁审计
-                    fetch('/api/ai/laya/audit-permission', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            role: titleText,
-                            user_title: 'Power BI Analyst',
-                            workspace_type: moduleTitle,
-                            permissions: forwardTargets
-                        })
-                    })
-                    .then(r => r.json())
-                    .then(audit => {
+                    if (typeof window.isLayaEnabled === 'function' && !window.isLayaEnabled()) {
                         const bar = document.getElementById('pb-laya-guardrail-bar');
                         const statusEl = document.getElementById('pb-laya-guardrail-status');
                         const actEl = document.getElementById('pb-laya-guardrail-action');
-                        if (!bar || !statusEl) return;
-
-                        if (audit.is_high_risk) {
-                            bar.classList.add('is-warning');
-                            statusEl.style.color = '#fca5a5';
-                            statusEl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><span>Laya 越权风险预警 · 合规风险度: ${audit.risk_score} / 2.0 · 建议复核 (Escalate)</span></span>`;
-                            if (actEl) {
-                                actEl.style.color = '#f87171';
-                                actEl.textContent = `Laya 自主放行率: ${Math.round((audit.act_probability || 0.2) * 100)}%`;
-                            }
-                        } else {
+                        if (bar && statusEl) {
                             bar.classList.remove('is-warning');
-                            statusEl.style.color = '#a7f3d0';
-                            statusEl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Laya 评估通过 · 微软标准 RBAC 链路 · 机器完全信任放行 (Act) · 风险度: ${audit.risk_score}</span></span>`;
+                            statusEl.style.color = 'var(--text-secondary)';
+                            statusEl.innerHTML = `<span>⚪ Laya 决策引擎已停用 (可在全局环境配置中一键重新开启)</span>`;
                             if (actEl) {
-                                actEl.style.color = '#34d399';
-                                actEl.textContent = `Laya 自主放行率: ${Math.round((audit.act_probability || 0.95) * 100)}%`;
+                                actEl.style.color = 'var(--text-secondary)';
+                                actEl.textContent = '已停用';
                             }
                         }
-                    })
-                    .catch(e => console.warn('Laya audit fetch error:', e));
+                    } else {
+                        fetch('/api/ai/laya/audit-permission', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                role: titleText,
+                                user_title: 'Power BI Analyst',
+                                workspace_type: moduleTitle,
+                                permissions: forwardTargets
+                            })
+                        })
+                        .then(r => r.json())
+                        .then(audit => {
+                            const bar = document.getElementById('pb-laya-guardrail-bar');
+                            const statusEl = document.getElementById('pb-laya-guardrail-status');
+                            const actEl = document.getElementById('pb-laya-guardrail-action');
+                            if (!bar || !statusEl) return;
+
+                            if (audit.is_high_risk) {
+                                bar.classList.add('is-warning');
+                                statusEl.style.color = '#fca5a5';
+                                statusEl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><span>Laya 越权风险预警 · 合规风险度: ${audit.risk_score} / 2.0 · 建议复核 (Escalate)</span></span>`;
+                                if (actEl) {
+                                    actEl.style.color = '#f87171';
+                                    actEl.textContent = `Laya 自主放行率: ${Math.round((audit.act_probability || 0.2) * 100)}%`;
+                                }
+                            } else {
+                                bar.classList.remove('is-warning');
+                                statusEl.style.color = '#a7f3d0';
+                                statusEl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Laya 评估通过 · 微软标准 RBAC 链路 · 机器完全信任放行 (Act) · 风险度: ${audit.risk_score}</span></span>`;
+                                if (actEl) {
+                                    actEl.style.color = '#34d399';
+                                    actEl.textContent = `Laya 自主放行率: ${Math.round((audit.act_probability || 0.95) * 100)}%`;
+                                }
+                            }
+                        })
+                        .catch(e => console.warn('Laya audit fetch error:', e));
+                    }
                 }
 
                 if (summary) {
