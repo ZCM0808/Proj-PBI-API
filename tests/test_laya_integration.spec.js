@@ -470,8 +470,11 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
       }
       window.PermissionBlueprint.matrixFitToScreen = true;
       window.PermissionBlueprint.switchMainTab('matrix');
-      window.PermissionBlueprint.applyMatrixFitScale();
     });
+
+    await page.waitForTimeout(300);
+    await page.evaluate(() => window.PermissionBlueprint.applyMatrixFitScale());
+    await page.waitForTimeout(200);
 
     const fitBtn = page.locator('#pb-btn-matrix-fit');
     await expect(fitBtn).toBeVisible({ timeout: 15000 });
@@ -596,8 +599,18 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     const catPillCount = await page.locator('.pb-cat-tag-pill').count();
     expect(catPillCount).toBe(0);
 
-    // 8. 验证用户全景左下角图例为逐行纵向排版面板并附带详实解释
-    const legendCard = page.locator('.pb-category-legend');
+    // 8. 验证用户全景左下角图例默认收起为小圆圈，点击切换长久展开 (Pinned)
+    const legendContainer = page.locator('#pb-user-assets-legend');
+    await expect(legendContainer).toBeAttached();
+    const triggerBtn = legendContainer.locator('.pb-legend-trigger');
+    await expect(triggerBtn).toBeVisible();
+
+    // 点击小圆圈 -> 展开锁定 (is-pinned)
+    await triggerBtn.click({ force: true });
+    await page.waitForTimeout(300);
+    await expect(legendContainer).toHaveClass(/is-pinned/);
+
+    const legendCard = legendContainer.locator('.pb-category-legend');
     await expect(legendCard).toBeVisible();
     await expect(legendCard.locator('.pb-legend-title')).toContainText('权限分类与标识图例');
     const legendRows = legendCard.locator('.pb-legend-row');
@@ -606,6 +619,23 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     expect(legendText).toContain('官方分配身份');
     expect(legendText).toContain('衍生能力权限');
     expect(legendText).toContain('承载环境资产');
+
+    // 再次点击图钉按钮 -> 取消锁定并收缩
+    const pinBtn = legendContainer.locator('.pb-legend-pin-hint');
+    await pinBtn.click({ force: true });
+    await page.waitForTimeout(300);
+    await expect(legendContainer).not.toHaveClass(/is-pinned/);
+
+    // 9. 验证小卡片标题与角色官方标准权威命名 (中英双语 + 角色派生)
+    const wsRoleProp = page.locator('.pb-asset-card-row[data-row-id="ws_role"] .pb-asset-prop-name');
+    await expect(wsRoleProp).toBeVisible();
+    const wsRoleText = await wsRoleProp.innerText();
+    expect(wsRoleText).toMatch(/Workspace Role:\s*(ADMIN|VIEWER|MEMBER|CONTRIBUTOR|UNSPECIFIED|NO USER)/i);
+
+    const modelReadProp = page.locator('.pb-asset-card-row[data-row-id="model_read"] .pb-asset-prop-name');
+    await expect(modelReadProp).toBeVisible();
+    const modelReadText = await modelReadProp.innerText();
+    expect(modelReadText).toContain('Permission: Read');
   });
 
 });
