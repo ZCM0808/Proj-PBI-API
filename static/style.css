@@ -9029,9 +9029,13 @@ body.light-theme .btn-wf-sm.active-filter,
 #pb-blueprint-toolbar {
     flex-shrink: 0 !important;
     white-space: nowrap !important;
-    display: flex !important;
-    align-items: center !important;
+    align-items: center;
     flex-wrap: nowrap !important;
+}
+#pb-user-assets-toolbar[style*="display: none"],
+#pb-matrix-toolbar[style*="display: none"],
+#pb-blueprint-toolbar[style*="display: none"] {
+    display: none !important;
 }
 #pb-user-assets-toolbar .btn-wf-sm,
 #pb-user-assets-toolbar button,

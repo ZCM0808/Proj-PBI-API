@@ -309,5 +309,74 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     expect(isEnabledActive).toBe('true');
   });
 
+  test('UI: Permission Blueprint 3 views toggle their toolbars exclusively without mixing', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+    // 等待蓝图模块挂载
+    await page.waitForFunction(() => typeof window.PermissionBlueprint !== 'undefined', { timeout: 15000 });
+
+    // 切换至蓝图模块
+    await page.evaluate(() => {
+      if (typeof window.switchAppModule === 'function') {
+        window.switchAppModule('permission_blueprint');
+      }
+    });
+
+    const bpToolbar = page.locator('#pb-blueprint-toolbar');
+    const mxToolbar = page.locator('#pb-matrix-toolbar');
+    const uaToolbar = page.locator('#pb-user-assets-toolbar');
+
+    // 1. 切换至 🗺️ 权限流转蓝图
+    await page.evaluate(() => window.PermissionBlueprint.switchMainTab('blueprint'));
+    await expect(bpToolbar).toBeVisible();
+    await expect(mxToolbar).toBeHidden();
+    await expect(uaToolbar).toBeHidden();
+
+    // 2. 切换至 🏛️ 6 层推导矩阵
+    await page.evaluate(() => window.PermissionBlueprint.switchMainTab('matrix'));
+    await expect(bpToolbar).toBeHidden();
+    await expect(mxToolbar).toBeVisible();
+    await expect(uaToolbar).toBeHidden();
+
+    // 3. 切换至 🌐 用户全景权限链路
+    await page.evaluate(() => window.PermissionBlueprint.switchMainTab('user_assets'));
+    await expect(bpToolbar).toBeHidden();
+    await expect(mxToolbar).toBeHidden();
+    await expect(uaToolbar).toBeVisible();
+  });
+
+  test('UI: API Explorer response panel DOM hierarchy and layout is clean and aligned', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+    // 切换至 API 资源树
+    await page.evaluate(() => {
+      if (typeof window.switchAppModule === 'function') {
+        window.switchAppModule('api_tree');
+      }
+    });
+
+    // 验证 DOM 层级正确闭合：.response-header 与 .response-body 必须互为同级子元素
+    const isHierarchyValid = await page.evaluate(() => {
+      const container = document.querySelector('.response-container');
+      const header = document.querySelector('.response-header');
+      const body = document.querySelector('.response-body');
+      if (!container || !header || !body) return false;
+
+      // header 绝不能包含 body
+      const headerContainsBody = header.contains(body);
+      // container 必须同时为 header 和 body 的直接父级
+      const bothDirectChildren = (header.parentElement === container) && (body.parentElement === container);
+
+      return !headerContainsBody && bothDirectChildren;
+    });
+
+    expect(isHierarchyValid).toBe(true);
+
+    const resHeader = page.locator('.response-header');
+    const resBody = page.locator('.response-body');
+    await expect(resHeader).toBeVisible();
+    await expect(resBody).toBeVisible();
+  });
+
 });
 
