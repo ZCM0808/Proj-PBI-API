@@ -286,7 +286,7 @@
     // 蓝图运行时单例
     class PermissionBlueprintEngine {
         constructor() {
-            this.activePresetKey = 'preset_developer';
+            this.activePresetKey = null;
             this.currentModelKey = 'model_sales';
             this.currentWorkspaceId = '';
             this.currentWorkspaceName = '';
@@ -4451,38 +4451,18 @@
             const container = document.getElementById('pb-user-assets-container');
             if (!container) return;
 
-            // 1. 获取当前具体租户与用户主体
+            // 1. 获取当前具体租户与用户主体 (严格遵循用户选择，未选则为 null，绝不擅自设置默认用户)
             const tenantId = localStorage.getItem('pbi_tenant_id') || document.getElementById('set-tenant')?.value || document.getElementById('set-interactive-tenant')?.value || '';
             let user = null;
             if (this.activePresetKey && USER_PRESETS[this.activePresetKey] && this.activePresetKey !== 'none') {
                 user = USER_PRESETS[this.activePresetKey];
-            } else {
-                const liveUser = document.getElementById('set-username')?.value || document.getElementById('set-interactive-username')?.value || '';
-                if (liveUser) {
-                    user = {
-                        name: liveUser.split('@')[0],
-                        upn: liveUser,
-                        roleTag: '当前组织登录账号',
-                        roleColor: '#38bdf8',
-                        state: {
-                            isGuestUser: false,
-                            tenantAllowExport: true,
-                            tenantAllowWebModeling: true,
-                            workspaceRole: 'Admin',
-                            canReadModel: true,
-                            sharePermission: 'ReadBuild',
-                            gatewayOnline: true,
-                            hasAccessToAllDataConnections: true
-                        }
-                    };
-                }
             }
 
             const isGuest = Boolean(user?.state?.isGuestUser || user?.upn?.includes('#ext#') || user?.roleTag?.includes('Guest'));
             // 彻底解耦：租户级管理员 (Tenant Admin) vs 工作区级管理员 (Workspace Admin)
             // 严谨治理：普通成员即使被分配了工作区 Admin，在租户级也只是 TENANT MEMBER，绝不可越权篡位为 POWER BI ADMINISTRATOR！
             const isTenantAdmin = Boolean(user?.state?.isTenantAdmin === true || (user?.roleTag && user.roleTag.toLowerCase().includes('tenant admin')));
-            const wsRole = user?.state?.workspaceRole || 'Viewer';
+            const wsRole = user ? (user?.state?.workspaceRole || 'Viewer') : '';
             const isWsAdmin = wsRole === 'Admin';
             const isMember = wsRole === 'Member';
             const isContributor = wsRole === 'Contributor';
@@ -4677,7 +4657,7 @@
             // 6 个大卡片组装辅助函数 (横向固定不超出屏幕，固定不能移动，内部小卡片可上下移动)
             const buildTierCardHtml = (tierId, title, sub, statusClass, statusText, bodyHtml) => {
                 return `
-                    <div class="pb-asset-tier-card" data-tier-id="${tierId}">
+                    <div class="pb-asset-tier-card" id="pb-module-card-${tierId}" data-tier-id="${tierId}">
                         <div class="pb-card-header">
                             <div class="pb-card-header-top">
                                 <h4 class="pb-card-title" title="${title}">${title}</h4>
@@ -4716,8 +4696,8 @@
             // Module 2: Workspace (工作区治理角色层)
             let colWorkspaceBody = '';
             const wsHeaderStatusClass = hasSelectedWs ? 'enabled' : 'disabled';
-            const wsRoleCaps = (wsRole || 'VIEWER').toUpperCase();
-            const wsHeaderStatusText = hasSelectedWs ? `ROLE: ${wsRoleCaps}` : '⚠️ 未选择';
+            const wsRoleCaps = user ? (wsRole || 'VIEWER').toUpperCase() : 'NO USER';
+            const wsHeaderStatusText = hasSelectedWs ? (user ? `ROLE: ${wsRoleCaps}` : '⚠️ 未指定主体') : '⚠️ 未选择';
             if (!hasSelectedWs) {
                 colWorkspaceBody = `
                     <div style="padding: 16px 10px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">

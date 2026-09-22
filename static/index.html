@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260922_v2118">
+    <link rel="stylesheet" href="/static/style.css?v=20260922_v2140">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -2623,83 +2623,83 @@
             <!-- View C: Permission Blueprint & Matrix Workspace (保留蓝图画布并无缝融合 6 层矩阵) -->
             <div id="view-permission_blueprint" class="workspace-view" style="display: none; flex: 1; flex-direction: column; height: 100%; min-width: 0; position: relative; overflow: hidden;">
                 <!-- 顶部控制栏 (提供蓝图与 6 层矩阵无缝选项卡切换) -->
-                <div class="pb-canvas-header glass-panel" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 14px; border-bottom: 1px solid var(--overlay-10); background: var(--panel-bg); flex-shrink: 0; z-index: 20;">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <!-- 蓝图、理论推导矩阵与用户全景链路分段切换器 -->
-                        <div class="pb-view-tabs" style="display: inline-flex; padding: 2px; background: rgba(0, 0, 0, 0.25); border: 1px solid var(--overlay-10); border-radius: 6px;">
-                            <button type="button" id="pb-tab-blueprint-btn" class="pb-view-tab-btn" onclick="window.PermissionBlueprint.switchMainTab('blueprint')">
-                                <span>🗺️ 权限流转蓝图</span>
-                            </button>
-                            <button type="button" id="pb-tab-matrix-btn" class="pb-view-tab-btn" onclick="window.PermissionBlueprint.switchMainTab('matrix')">
-                                <span>🏛️ 6 层推导矩阵</span>
-                            </button>
-                            <button type="button" id="pb-tab-user-assets-btn" class="pb-view-tab-btn" onclick="window.PermissionBlueprint.switchMainTab('user_assets')">
-                                <span>🌐 用户全景权限链路</span>
-                            </button>
+                <div class="pb-canvas-header glass-panel" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 14px; border-bottom: 1px solid var(--overlay-10); background: var(--panel-bg); flex-shrink: 0; z-index: 20; overflow: hidden; width: 100%; box-sizing: border-box;">
+                    <!-- 内部可横向滚动区域 (容纳所有 Tab、主体徽章及专属工具栏，视口过窄时内部平滑横向滚动) -->
+                    <div class="pb-canvas-header-scroll-container" style="display: flex; align-items: center; justify-content: space-between; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0; min-width: 0;">
+                            <!-- 蓝图、理论推导矩阵与用户全景链路分段切换器 -->
+                            <div class="pb-view-tabs" style="display: inline-flex; padding: 2px; background: rgba(0, 0, 0, 0.25); border: 1px solid var(--overlay-10); border-radius: 6px; flex-shrink: 0;">
+                                <button type="button" id="pb-tab-blueprint-btn" class="pb-view-tab-btn" onclick="window.PermissionBlueprint.switchMainTab('blueprint')">
+                                    <span>🗺️ 权限流转蓝图</span>
+                                </button>
+                                <button type="button" id="pb-tab-matrix-btn" class="pb-view-tab-btn" onclick="window.PermissionBlueprint.switchMainTab('matrix')">
+                                    <span>🏛️ 8 层推导矩阵</span>
+                                </button>
+                                <button type="button" id="pb-tab-user-assets-btn" class="pb-view-tab-btn" onclick="window.PermissionBlueprint.switchMainTab('user_assets')">
+                                    <span>🌐 用户全景权限链路</span>
+                                </button>
+                            </div>
+                            <span class="gtb-auth-badge" id="pb-top-simulated-badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; font-size: 0.68rem; padding: 2px 8px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1;" title="当前模拟主体与资产联动状态">
+                                当前主体: 通用基准
+                            </span>
                         </div>
-                        <span class="gtb-auth-badge" id="pb-top-simulated-badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; font-size: 0.68rem; padding: 2px 8px;">
-                            当前主体: 通用基准
-                        </span>
-                    </div>
 
-                    <!-- A. 蓝图模式专属画布工具栏 (默认展示) -->
-                    <div id="pb-blueprint-toolbar" style="display: flex; align-items: center; gap: 6px;">
-                        <button type="button" id="pb-btn-pulse" class="btn-wf-sm" onclick="window.PermissionBlueprint.togglePulse()" title="开启/关闭动态光效脉冲" style="height: 28px; padding: 0 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer;">
-                            <span>⚡ 脉冲</span>
-                        </button>
-                        <div style="display: flex; align-items: center; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; overflow: hidden; height: 28px;">
-                            <button type="button" class="btn-tool-icon" onclick="window.PermissionBlueprint.zoomCanvas(-0.15)" title="缩小画布 (Zoom Out)" style="width: 28px; height: 100%; border: none; background: transparent; cursor: pointer; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
-                            <span id="pb-zoom-label" style="font-size: 0.70rem; padding: 0 6px; min-width: 42px; text-align: center; color: var(--text-primary); font-weight: 600; font-family: monospace;">100%</span>
-                            <button type="button" class="btn-tool-icon" onclick="window.PermissionBlueprint.zoomCanvas(0.15)" title="放大画布 (Zoom In)" style="width: 28px; height: 100%; border: none; background: transparent; cursor: pointer; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                        <!-- 右侧工具栏操作区：专属工具栏容器 -->
+                        <div class="pb-canvas-header-right" style="display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: auto;">
+                            <!-- A. 蓝图模式专属画布工具栏 (默认展示) -->
+                            <div id="pb-blueprint-toolbar" style="display: flex; align-items: center; gap: 6px;">
+                                <button type="button" id="pb-btn-pulse" class="btn-wf-sm" onclick="window.PermissionBlueprint.togglePulse()" title="开启/关闭动态光效脉冲" style="height: 28px; padding: 0 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer;">
+                                    <span>⚡ 脉冲</span>
+                                </button>
+                                <div style="display: flex; align-items: center; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; overflow: hidden; height: 28px;">
+                                    <button type="button" class="btn-tool-icon" onclick="window.PermissionBlueprint.zoomCanvas(-0.15)" title="缩小画布 (Zoom Out)" style="width: 28px; height: 100%; border: none; background: transparent; cursor: pointer; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                                    <span id="pb-zoom-label" style="font-size: 0.70rem; padding: 0 6px; min-width: 42px; text-align: center; color: var(--text-primary); font-weight: 600; font-family: monospace;">100%</span>
+                                    <button type="button" class="btn-tool-icon" onclick="window.PermissionBlueprint.zoomCanvas(0.15)" title="放大画布 (Zoom In)" style="width: 28px; height: 100%; border: none; background: transparent; cursor: pointer; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                                </div>
+                                <button type="button" id="pb-btn-locate-all" class="btn-wf-sm" onclick="window.PermissionBlueprint.locateAndFitAllNodes()" title="聚焦全景：一键居中适配所有卡片" style="height: 28px; padding: 0 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer;">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+                                    <span>适应全屏</span>
+                                </button>
+                                <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.resetLayout()" title="重置卡片默认标准拓扑排版" style="height: 28px; padding: 0 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer;">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                                    <span>重置排版</span>
+                                </button>
+                            </div>
+
+                            <!-- B. 矩阵模式专属工具栏 (切换到矩阵时显示) -->
+                            <div id="pb-matrix-toolbar" style="display: none; align-items: center; gap: 8px;">
+                                <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.renderMatrix()" title="重新计算并刷新矩阵" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer;">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                                    <span>刷新矩阵</span>
+                                </button>
+                            </div>
+
+                            <!-- C. 用户全景权限链路专属工具栏 -->
+                            <div id="pb-user-assets-toolbar" style="display: none; align-items: center; gap: 6px; flex-shrink: 0; white-space: nowrap; flex-wrap: nowrap;">
+                                <button type="button" id="pb-btn-refresh-lineage" class="btn-wf-sm" onclick="window.PermissionBlueprint.refreshUserAssetsLineage(this)" title="全景穿透刷新：重新拉取顶栏选中资产与底层数据网关连接" style="height: 28px; padding: 0 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0;">
+                                    <svg class="pb-refresh-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.3s;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                                    <span class="pb-refresh-label" style="white-space: nowrap;">刷新链路</span>
+                                </button>
+                                <button type="button" id="pb-btn-filter-bottlenecks" class="btn-wf-sm" onclick="window.PermissionBlueprint.toggleBottleneckFilter(this)" title="断点速查：仅高亮所有受限、阻断与离线项，淡化正常项" style="height: 28px; padding: 0 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0;">
+                                    <span style="white-space: nowrap;">⚠️ 仅看受限与阻断</span>
+                                </button>
+                                <button type="button" id="pb-btn-explain-causality" class="btn-wf-sm" onclick="window.PermissionBlueprint.explainActiveCausality(this)" title="解析关系 (Laya 智能合规审计)：深度解析当前选中小卡片与关联高亮卡片之间的因果权限链路及治理合规性" style="height: 28px; padding: 0 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0;">
+                                    <span style="white-space: nowrap;">🔗 解析卡片关系</span>
+                                    <span id="pb-btn-laya-badge" style="font-size: 0.6rem; color: #818cf8; font-weight: 800; background: rgba(99, 102, 241, 0.18); border: 1px solid rgba(99, 102, 241, 0.35); padding: 0 4px; border-radius: 3px; letter-spacing: 0.5px; white-space: nowrap;">LAYA</span>
+                                </button>
+                                <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.resetUserAssetsItemsOrder()" title="恢复各卡片内部权限条目的默认排列顺序" style="height: 28px; padding: 0 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; white-space: nowrap; flex-shrink: 0;">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                                    <span style="white-space: nowrap;">重置条目顺序</span>
+                                </button>
+                            </div>
                         </div>
-                        <button type="button" id="pb-btn-locate-all" class="btn-wf-sm" onclick="window.PermissionBlueprint.locateAndFitAllNodes()" title="聚焦全景：一键居中适配所有卡片" style="height: 28px; padding: 0 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer;">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
-                            <span>适应全屏</span>
-                        </button>
-                        <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.resetLayout()" title="重置卡片默认标准拓扑排版" style="height: 28px; padding: 0 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer;">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
-                            <span>重置排版</span>
-                        </button>
-                        <button type="button" class="icon-btn zen-mode-btn" onclick="window.toggleZenMode()" title="开启蓝图沉浸模式 (Focus Mode)" style="width: 28px; height: 28px; padding: 0; border-radius: 6px; border: 1px solid var(--overlay-10); background: transparent; transition: all 0.2s; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-expand"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-collapse" style="display: none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
-                        </button>
                     </div>
 
-                    <!-- B. 矩阵模式专属工具栏 (切换到矩阵时显示) -->
-                    <div id="pb-matrix-toolbar" style="display: none; align-items: center; gap: 8px;">
-                        <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.renderMatrix()" title="重新计算并刷新矩阵" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer;">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-                            <span>刷新矩阵</span>
-                        </button>
-                        <button type="button" class="icon-btn zen-mode-btn" onclick="window.toggleZenMode()" title="沉浸全屏模式 (Zen Mode)" style="width: 28px; height: 28px; padding: 0; border-radius: 6px; border: 1px solid var(--overlay-10); background: transparent; transition: all 0.2s; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-expand"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-collapse" style="display: none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
-                        </button>
-                    </div>
-
-                    <!-- C. 用户全景权限链路专属工具栏 -->
-                    <div id="pb-user-assets-toolbar" style="display: none; align-items: center; gap: 6px; flex-shrink: 0; white-space: nowrap; flex-wrap: nowrap;">
-                        <button type="button" id="pb-btn-refresh-lineage" class="btn-wf-sm" onclick="window.PermissionBlueprint.refreshUserAssetsLineage(this)" title="全景穿透刷新：重新拉取顶栏选中资产与底层数据网关连接" style="height: 28px; padding: 0 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0;">
-                            <svg class="pb-refresh-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.3s;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-                            <span class="pb-refresh-label" style="white-space: nowrap;">刷新链路</span>
-                        </button>
-                        <button type="button" id="pb-btn-filter-bottlenecks" class="btn-wf-sm" onclick="window.PermissionBlueprint.toggleBottleneckFilter(this)" title="断点速查：仅高亮所有受限、阻断与离线项，淡化正常项" style="height: 28px; padding: 0 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0;">
-                            <span style="white-space: nowrap;">⚠️ 仅看受限与阻断</span>
-                        </button>
-                        <button type="button" id="pb-btn-explain-causality" class="btn-wf-sm" onclick="window.PermissionBlueprint.explainActiveCausality(this)" title="解析关系 (Laya 智能合规审计)：深度解析当前选中小卡片与关联高亮卡片之间的因果权限链路及治理合规性" style="height: 28px; padding: 0 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0;">
-                            <span style="white-space: nowrap;">🔗 解析卡片关系</span>
-                            <span id="pb-btn-laya-badge" style="font-size: 0.6rem; color: #818cf8; font-weight: 800; background: rgba(99, 102, 241, 0.18); border: 1px solid rgba(99, 102, 241, 0.35); padding: 0 4px; border-radius: 3px; letter-spacing: 0.5px; white-space: nowrap;">LAYA</span>
-                        </button>
-                        <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.resetUserAssetsItemsOrder()" title="恢复各卡片内部权限条目的默认排列顺序" style="height: 28px; padding: 0 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; white-space: nowrap; flex-shrink: 0;">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
-                            <span style="white-space: nowrap;">重置条目顺序</span>
-                        </button>
-                        <button type="button" class="icon-btn zen-mode-btn" onclick="window.toggleZenMode()" title="沉浸全屏模式 (Zen Mode)" style="width: 28px; height: 28px; padding: 0; border-radius: 6px; border: 1px solid var(--overlay-10); background: transparent; transition: all 0.2s; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-expand"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-collapse" style="display: none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
-                        </button>
-                    </div>
+                    <!-- 🌐 顶层绝对常驻全屏模式切换按钮：脱离内部水平滚动容器，100% 永远固定在顶栏最右侧，绝不被任何内部长按钮顶出视口！ -->
+                    <button type="button" id="pb-global-zen-btn" class="icon-btn zen-mode-btn" onclick="window.toggleZenMode()" title="沉浸全屏模式 (Zen Mode)" style="width: 28px; height: 28px; padding: 0; border-radius: 6px; border: 1px solid var(--overlay-10); background: transparent; transition: all 0.2s; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-left: 8px; z-index: 25;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-expand"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-collapse" style="display: none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
+                    </button>
                 </div>
 
                 <!-- 1. 蓝图主画布视口 (Canvas Viewport - 完整保留交互与连线) -->
@@ -3333,8 +3333,8 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260919_v1440"></script>
-    <script src="/static/script.js?v=20260922_v2118"></script>
-    <script src="/static/permission_blueprint.js?v=20260922_v2118"></script>
+    <script src="/static/script.js?v=20260922_v2140"></script>
+    <script src="/static/permission_blueprint.js?v=20260922_v2140"></script>
 
 
 

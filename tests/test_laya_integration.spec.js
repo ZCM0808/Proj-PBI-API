@@ -378,5 +378,84 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     await expect(resBody).toBeVisible();
   });
 
+  test('UI: User assets matrix respects unselected principal and shows NO PRINCIPAL', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.PermissionBlueprint !== 'undefined', { timeout: 15000 });
+
+    await page.evaluate(() => {
+      if (typeof window.switchAppModule === 'function') {
+        window.switchAppModule('permission_blueprint');
+      }
+      window.PermissionBlueprint.activePresetKey = null;
+      window.PermissionBlueprint.selectedPrincipal = null;
+      window.PermissionBlueprint.switchMainTab('user_assets');
+    });
+
+    // 检查 Tenant 模块与 Workspace 模块在未选用户时的状态提示
+    const tenantHeader = page.locator('#pb-module-card-tenant');
+    await expect(tenantHeader).toBeVisible({ timeout: 15000 });
+
+    const tenantHeaderText = await tenantHeader.innerText();
+    expect(tenantHeaderText).toContain('NO PRINCIPAL');
+
+    const wsHeader = page.locator('#pb-module-card-workspace');
+    await expect(wsHeader).toBeVisible({ timeout: 15000 });
+    const wsHeaderText = await wsHeader.innerText();
+    expect(wsHeaderText).toContain('工作区');
+    expect(wsHeaderText).toContain('未选择');
+  });
+
+  test('UI: Zen fullscreen button is always visible in user assets view', async ({ page }) => {
+    await page.setViewportSize({ width: 1200, height: 800 });
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.PermissionBlueprint !== 'undefined', { timeout: 15000 });
+
+    await page.evaluate(() => {
+      if (typeof window.switchAppModule === 'function') {
+        window.switchAppModule('permission_blueprint');
+      }
+      window.PermissionBlueprint.switchMainTab('user_assets');
+    });
+
+    const zenBtn = page.locator('#pb-global-zen-btn');
+    await expect(zenBtn).toBeVisible({ timeout: 15000 });
+
+    const box = await zenBtn.boundingBox();
+    expect(box).not.toBeNull();
+    if (box) {
+      expect(box.x + box.width).toBeLessThanOrEqual(1205);
+      expect(box.width).toBeGreaterThanOrEqual(28);
+    }
+  });
+
+  test('UI: Permission Matrix L7 and L8 tiers retain minimum width and are not squeezed into vertical strips', async ({ page }) => {
+    await page.setViewportSize({ width: 1200, height: 800 });
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.PermissionBlueprint !== 'undefined', { timeout: 15000 });
+
+    await page.evaluate(() => {
+      if (typeof window.switchAppModule === 'function') {
+        window.switchAppModule('permission_blueprint');
+      }
+      window.PermissionBlueprint.switchMainTab('matrix');
+    });
+
+    const tier7 = page.locator('.pb-tier-col[data-tier="7"]');
+    const tier8 = page.locator('.pb-tier-col[data-tier="8"]');
+
+    await expect(tier7).toBeVisible({ timeout: 15000 });
+    await expect(tier8).toBeVisible({ timeout: 15000 });
+
+    const box7 = await tier7.boundingBox();
+    const box8 = await tier8.boundingBox();
+
+    expect(box7).not.toBeNull();
+    expect(box8).not.toBeNull();
+    if (box7 && box8) {
+      expect(box7.width).toBeGreaterThanOrEqual(200);
+      expect(box8.width).toBeGreaterThanOrEqual(200);
+    }
+  });
+
 });
 
