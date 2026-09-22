@@ -568,6 +568,18 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     if (await refreshRow.count() > 0) {
       await expect(refreshRow).not.toHaveClass(/pb-causality-target/);
     }
+
+    // 5. 验证点击 WRITE 卡片时的因果链路：超集蕴含 Read + Build，自然解锁报表层的 VIEW, EDIT, EXPORT
+    const writeRow = page.locator('.pb-asset-card-row[data-row-id="model_write"]');
+    await expect(writeRow).toBeVisible({ timeout: 10000 });
+    await writeRow.click();
+    await page.waitForTimeout(300);
+
+    const reportEditRow = page.locator('.pb-asset-card-row[data-row-id="report_edit"]');
+    await expect(reportViewRow).toHaveClass(/pb-causality-target/);
+    await expect(reportEditRow).toHaveClass(/pb-causality-target/);
+    const reportExportRow = page.locator('.pb-asset-card-row[data-row-id="report_export"]');
+    await expect(reportExportRow).toHaveClass(/pb-causality-target/);
   });
 
 });

@@ -5463,14 +5463,14 @@
                 'ws_delete': [],
                 'ws_lineage': [],
 
-                // 3. 语义模型官方权限 -> 影响模型读取、构建与报表查看导出
+                // 3. 语义模型官方权限 -> 影响模型读取、构建与报表查看导出 (遵循层级超集规范：Write 权包含 Build + Read 能力)
                 'model_permission': [
                     'model_read', 'model_build', 'model_write', 'model_reshare', 'model_gac_ols', 'model_rls',
-                    'report_view', 'report_export'
+                    'report_view', 'report_edit', 'report_export', 'report_sub'
                 ],
                 'model_read': ['report_view'],
-                'model_build': ['report_export'],
-                'model_write': ['report_edit'],
+                'model_build': ['report_view', 'report_export'],
+                'model_write': ['report_view', 'report_edit', 'report_export', 'report_sub'],
                 'model_gac_ols': ['report_view', 'report_export'],
                 'model_rls': ['report_view', 'report_export'],
                 'model_reshare': ['report_share'],
