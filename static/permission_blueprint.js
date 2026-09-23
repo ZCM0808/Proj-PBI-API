@@ -379,11 +379,11 @@
             const selectedWsIds = Array.from(window.selectedGtbWorkspaceIds || []);
             const selectedDsIds = Array.from(window.selectedGtbDatasetIds || []);
             // 🚨 严格以顶栏选择为唯一依据：顶栏没选就是没选，绝不背着顶栏从 localStorage 偷取旧工作区
-            const wsId = selectedWsIds.length > 0 ? selectedWsIds[0] : '';
-            const dsId = selectedDsIds.length > 0 ? selectedDsIds[0] : '';
+            let wsId = selectedWsIds.length > 0 ? selectedWsIds[0] : '';
+            let dsId = selectedDsIds.length > 0 ? selectedDsIds[0] : '';
 
             const wsList = window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
-            const wsObj = wsId ? wsList.find(w => String(w.id).toLowerCase() === String(wsId).toLowerCase()) : null;
+            let wsObj = wsId ? wsList.find(w => String(w.id).toLowerCase() === String(wsId).toLowerCase()) : null;
             this.currentWorkspaceId = wsId;
             this.currentWorkspaceName = wsObj ? (wsObj.alias || wsObj.name || wsObj.displayName || wsObj.id) : '';
 
@@ -4620,14 +4620,30 @@
             const isAdmin = isWsAdmin; // 保留供工作区及其下游治理使用
 
             // 2. 严格检查是否选择了具体工作区 (绝无盲目取第一项的非预期兜底)
-            const rawWsData = window.cleanseCrossDomainWorkspaces ? window.cleanseCrossDomainWorkspaces(window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : []) : [];
+            let rawWsData = window.cleanseCrossDomainWorkspaces ? window.cleanseCrossDomainWorkspaces(window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : []) : [];
+            if (!rawWsData || rawWsData.length === 0) {
+                try {
+                    const fallbackWs = JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+                    rawWsData = window.cleanseCrossDomainWorkspaces ? window.cleanseCrossDomainWorkspaces(fallbackWs) : fallbackWs;
+                } catch(e) {}
+            }
             const selectedWsIds = Array.from(window.selectedGtbWorkspaceIds || []);
             // 🚨 严格以顶栏当前选中的工作区为唯一权威依据：顶栏没选就是没选，绝不回退到任何旧状态
             let curWsId = '';
-            if (selectedWsIds.length > 0 && rawWsData.some(w => String(w.id).toLowerCase() === selectedWsIds[0].toLowerCase())) {
-                curWsId = selectedWsIds[0];
+            if (selectedWsIds.length > 0) {
+                const matchedWs = rawWsData.find(w => String(w.id).toLowerCase() === selectedWsIds[0].toLowerCase());
+                if (matchedWs) {
+                    curWsId = matchedWs.id;
+                } else {
+                    curWsId = selectedWsIds[0];
+                }
+            } else if (this.currentWorkspaceId) {
+                curWsId = this.currentWorkspaceId;
+            } else {
+                const activeWsVal = document.getElementById('active-workspace')?.value;
+                if (activeWsVal) curWsId = activeWsVal;
             }
-            let curWs = curWsId ? rawWsData.find(w => String(w.id).toLowerCase() === curWsId.toLowerCase()) : null;
+            let curWs = curWsId ? (rawWsData.find(w => String(w.id).toLowerCase() === curWsId.toLowerCase()) || { id: curWsId, name: curWsId, alias: curWsId }) : null;
 
             // 3. 严格检查是否选择了具体语义模型 —— 完全依赖顶栏已选模型，不在卡片内部提供选择
             const allDatasets = window.getMergedGtbDatasets ? window.getMergedGtbDatasets() : JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
@@ -4955,18 +4971,89 @@
                     </div>
                 `;
             } else {
-                const wsRoleZhMap = { 'ADMIN': '工作区管理员', 'MEMBER': '工作区成员', 'CONTRIBUTOR': '工作区参与者', 'VIEWER': '只读查看者', 'NO USER': '未指定主体' };
-                const wsRoleZh = user ? (wsRoleZhMap[wsRoleCaps] || '只读查看者') : '未指定主体';
-                const wsRoleDisplayName = user ? `Workspace Role: ${wsRoleCaps} (${wsRoleZh})` : 'Workspace Role: Unspecified (未指定主体)';
-                const t2Status = isAdmin ? 'bypassed' : (isPrivileged ? 'enabled' : (isViewer ? 'warn' : 'disabled'));
+                const wsRoleNormalized = user ? (wsRole || 'Viewer').toUpperCase() : 'NO USER';
+
+                // 官方 4 大内置治理角色判断与状态派生 (权威 RBAC 模型)
+                const isAdminAssigned = (wsRoleNormalized === 'ADMIN');
+                const adminStatusClass = isAdminAssigned ? 'bypassed' : 'disabled';
+                const adminStatusText = isAdminAssigned ? '⚡ ADMIN' : '❌ DENIED';
+                const adminDesc = isAdminAssigned
+                    ? `【当前分配角色】在目标工作区 [${wsName}] 被分配最高级别 [Admin - 工作区管理员] 治理身份，统领成员管理、删除工作区、发布应用及下属所有资产`
+                    : `【未授予角色】未被分配工作区 Admin 角色，无权管理工作区成员名单及执行工作区生命周期删除`;
+
+                const isMemberAssigned = (wsRoleNormalized === 'MEMBER');
+                const isMemberIncluded = (wsRoleNormalized === 'ADMIN');
+                const memberStatusClass = isMemberAssigned ? 'enabled' : (isMemberIncluded ? 'enabled' : 'disabled');
+                const memberStatusText = isMemberAssigned ? '✅ MEMBER' : (isMemberIncluded ? '✅ INCLUDED' : '❌ DENIED');
+                const memberDesc = isMemberAssigned
+                    ? `【当前分配角色】在目标工作区 [${wsName}] 被分配 [Member - 工作区成员] 身份，具备应用打包发布、添加 Viewer、模型与报表协同编辑特权`
+                    : (isMemberIncluded ? `【特权涵盖】已作为最高 Admin 角色特权超集，完全涵盖工作区 Member 的所有发布与管理能力` : `【未授予角色】当前未分配 Member 角色，无权打包发布企业应用程序`);
+
+                const isContribAssigned = (wsRoleNormalized === 'CONTRIBUTOR');
+                const isContribIncluded = (wsRoleNormalized === 'ADMIN' || wsRoleNormalized === 'MEMBER');
+                const contribStatusClass = isContribAssigned ? 'enabled' : (isContribIncluded ? 'enabled' : 'disabled');
+                const contribStatusText = isContribAssigned ? '✅ CONTRIBUTOR' : (isContribIncluded ? '✅ INCLUDED' : '❌ DENIED');
+                const contribDesc = isContribAssigned
+                    ? `【当前分配角色】在目标工作区 [${wsName}] 被分配 [Contributor - 工作区参与者] 身份，享有模型创建、报表编辑及计划刷新的开发特权，无权发布应用`
+                    : (isContribIncluded ? `【特权涵盖】已作为上级角色 [${wsRoleNormalized}] 特权超集，完全涵盖 Contributor 的资产创建与模型编辑特权` : `【未授予角色】当前为 Viewer 只读身份，未授予 Contributor 资产创建与编辑特权`);
+
+                const isViewerAssigned = (wsRoleNormalized === 'VIEWER');
+                const isViewerIncluded = (wsRoleNormalized === 'ADMIN' || wsRoleNormalized === 'MEMBER' || wsRoleNormalized === 'CONTRIBUTOR');
+                const viewerStatusClass = isViewerAssigned ? 'warn' : (isViewerIncluded ? 'enabled' : 'disabled');
+                const viewerStatusText = isViewerAssigned ? '⚠️ VIEWER' : (isViewerIncluded ? '✅ INCLUDED' : '❌ DENIED');
+                const viewerDesc = isViewerAssigned
+                    ? `【当前分配角色】在目标工作区 [${wsName}] 被分配 [Viewer - 只读查看者] 身份，受行级安全 (RLS) 约束，仅允许交互浏览报表，禁止修改资产`
+                    : `【基础涵盖】已作为上级角色特权基础，享有免受限制的报表交互浏览与底层数据钻取访问能力`;
+
                 const wsItems = [
-                    { id: 'ws_role', isHero: true, cat: 'assigned', name: wsRoleDisplayName, desc: `【分配角色】在目标工作区 [${wsName}] 被官方分配 [${wsRoleCaps} - ${wsRoleZh}] 治理身份，作为源头直接决定下游所有模型、报表与连接的权限派生`, statusClass: t2Status, statusText: wsRoleCaps === 'ADMIN' ? '⚡ ADMIN' : `✅ ${wsRoleCaps}`, badge: 'ROLE' },
+                    // 1. Admin 角色
+                    {
+                        id: isAdminAssigned ? 'ws_role' : 'ws_role_admin',
+                        isHero: isAdminAssigned,
+                        cat: 'assigned',
+                        name: 'Workspace Role: Admin (工作区管理员)',
+                        desc: adminDesc,
+                        statusClass: adminStatusClass,
+                        statusText: adminStatusText,
+                        badge: 'ROLE'
+                    },
+                    // 2. Member 角色
+                    {
+                        id: isMemberAssigned ? 'ws_role' : 'ws_role_member',
+                        isHero: isMemberAssigned,
+                        cat: isMemberAssigned ? 'assigned' : 'derived',
+                        name: 'Workspace Role: Member (工作区成员)',
+                        desc: memberDesc,
+                        statusClass: memberStatusClass,
+                        statusText: memberStatusText,
+                        badge: 'ROLE'
+                    },
+                    // 3. Contributor 角色
+                    {
+                        id: isContribAssigned ? 'ws_role' : 'ws_role_contributor',
+                        isHero: isContribAssigned,
+                        cat: isContribAssigned ? 'assigned' : 'derived',
+                        name: 'Workspace Role: Contributor (工作区参与者)',
+                        desc: contribDesc,
+                        statusClass: contribStatusClass,
+                        statusText: contribStatusText,
+                        badge: 'ROLE'
+                    },
+                    // 4. Viewer 角色 (未指定主体时由 Viewer 承接 ws_role 兼容)
+                    {
+                        id: (isViewerAssigned || (!user && wsRoleNormalized === 'NO USER')) ? 'ws_role' : 'ws_role_viewer',
+                        isHero: (isViewerAssigned || (!user && wsRoleNormalized === 'NO USER')),
+                        cat: (isViewerAssigned || (!user && wsRoleNormalized === 'NO USER')) ? 'assigned' : 'derived',
+                        name: 'Workspace Role: Viewer (只读查看者 / Read)',
+                        desc: viewerDesc,
+                        statusClass: viewerStatusClass,
+                        statusText: (!user && wsRoleNormalized === 'NO USER') ? '⚠️ NO USER' : viewerStatusText,
+                        badge: 'ROLE'
+                    },
+                    // 5. 工作区核心管理与配置特权 (向下兼容测试选择器与 ACL 呈现)
                     { id: 'ws_members', cat: 'derived', name: 'Permission: Manage Access (管理工作区成员)', desc: isAdmin ? '【由工作区角色派生】拥有最高管理权，可向组织成员分配、修改或撤销工作区各级角色' : (isMember ? '【由工作区角色派生】仅允许向他人授予 Viewer(查看者) 角色，无法分配更高角色' : '【由工作区角色派生】无成员管理权限，禁止变更工作区成员名单与权限'), statusClass: isAdmin ? 'enabled' : (isMember ? 'warn' : 'disabled'), statusText: isAdmin ? '✅ CAN MANAGE' : (isMember ? '⚠️ CAN INVITE VIEWERS' : '❌ CANNOT MANAGE'), badge: 'PERMISSIONS' },
-                    { id: 'ws_edit', cat: 'derived', name: 'Capability: Create & Edit (新建与修改资产)', desc: isPrivileged ? `【由工作区角色派生】由当前 [${wsRoleCaps}] 角色派生资产编辑特权，允许新建、修改、重命名或删除模型与报表` : '【由工作区角色派生】当前为 Viewer 只读角色，禁止修改或新增工作区任何资产', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ CAN EDIT' : '❌ CANNOT EDIT', badge: 'ASSETS' },
-                    { id: 'ws_app', cat: 'derived', name: 'Capability: Publish App (发布与更新应用)', desc: (isAdmin || isMember) ? `【由工作区角色派生】由当前 [${wsRoleCaps}] 角色派生，允许将该工作区报表打包发布或更新为企业级应用程序 (App)` : '【由工作区角色派生】仅 Admin/Member 角色具备组织应用发布与受众打包权限', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ CAN PUBLISH' : '❌ CANNOT PUBLISH', badge: 'APP' },
-                    { id: 'ws_capacity', cat: 'derived', name: 'Resource: Fabric F64 Dedicated Capacity (企业专用容量)', desc: '【承载环境】挂载企业专用容量 (Fabric F64)，享有独立计算算力与 Direct Lake 加速通道', statusClass: 'enabled', statusText: '⚡ CAN ACCESS', badge: 'CAPACITY' },
                     { id: 'ws_delete', cat: 'derived', name: 'Operation: Delete Workspace (删除工作区)', desc: isAdmin ? '【由工作区角色派生】仅工作区 Admin 角色具备永久删除整个工作区及其包含全量资产的最高权限' : '【由工作区角色派生】非 Admin 角色，禁止执行工作区级别的永久删除操作', statusClass: isAdmin ? 'enabled' : 'disabled', statusText: isAdmin ? '✅ CAN DELETE' : '❌ CANNOT DELETE', badge: 'DELETE' },
-                    { id: 'ws_lineage', cat: 'derived', name: 'Feature: Data Lineage View (端到端数据血缘)', desc: isPrivileged ? `【由工作区角色派生】由当前 [${wsRoleCaps}] 角色派生，允许查看完整的端到端数据血缘拓扑关系图` : '【由工作区角色派生】仅可查看自身有权访问的局部资产血缘片段', statusClass: isPrivileged ? 'enabled' : 'warn', statusText: isPrivileged ? '✅ FULL LINEAGE' : '⚠️ PARTIAL VIEW', badge: 'LINEAGE' },
+                    { id: 'ws_capacity', cat: 'derived', name: 'Resource: Fabric F64 Dedicated Capacity (企业专用容量)', desc: '【承载环境】挂载企业专用容量 (Fabric F64)，享有独立计算算力与 Direct Lake 加速通道', statusClass: 'enabled', statusText: '⚡ CAN ACCESS', badge: 'CAPACITY' },
                     { id: 'ws_target', cat: 'env', name: `Workspace Container: ${wsName.toUpperCase()} (目标工作区容器)`, desc: `【承载环境】工作区名称: ${wsName} · 容器 ID: ${curWs.id}`, statusClass: 'enabled', statusText: '✅ READY', badge: 'WORKSPACE' }
                 ];
                 colWorkspaceBody = renderTierItemsHtml('workspace', wsItems);
@@ -5572,11 +5659,35 @@
 
                 // 2. 工作区官方角色 -> 影响工作区内全量资产治理、模型全权、报表全权、连接运维与部署管道
                 'ws_role': [
-                    'ws_members', 'ws_edit', 'ws_app', 'ws_capacity', 'ws_delete', 'ws_lineage',
+                    'ws_role_admin', 'ws_role_member', 'ws_role_contributor', 'ws_role_viewer',
+                    'ws_members', 'ws_capacity', 'ws_delete',
                     'model_permission', 'model_read', 'model_build', 'model_write', 'model_reshare', 'model_rls', 'model_gac_ols',
                     'report_access', 'report_view', 'report_edit', 'report_export', 'report_sub', 'report_share',
                     'conn_refresh', 'conn_owner', 'conn_share', 'conn_user_perm',
                     'pipeline_deploy', 'pipeline_diff', 'pipeline_rules', 'pipeline_manage'
+                ],
+                'ws_role_admin': [
+                    'ws_role_member', 'ws_role_contributor', 'ws_role_viewer',
+                    'ws_members', 'ws_capacity', 'ws_delete',
+                    'model_permission', 'model_read', 'model_build', 'model_write', 'model_reshare', 'model_rls', 'model_gac_ols',
+                    'report_access', 'report_view', 'report_edit', 'report_export', 'report_sub', 'report_share',
+                    'conn_refresh', 'conn_owner', 'conn_share', 'conn_user_perm',
+                    'pipeline_deploy', 'pipeline_diff', 'pipeline_rules', 'pipeline_manage'
+                ],
+                'ws_role_member': [
+                    'ws_role_contributor', 'ws_role_viewer', 'ws_members',
+                    'model_permission', 'model_read', 'model_build', 'model_write', 'model_reshare',
+                    'report_access', 'report_view', 'report_edit', 'report_export', 'report_sub', 'report_share',
+                    'conn_share', 'conn_user_perm', 'pipeline_deploy'
+                ],
+                'ws_role_contributor': [
+                    'ws_role_viewer',
+                    'model_permission', 'model_read', 'model_build', 'model_write',
+                    'report_access', 'report_view', 'report_edit', 'report_export', 'report_sub',
+                    'conn_refresh', 'conn_user_perm'
+                ],
+                'ws_role_viewer': [
+                    'model_read', 'report_view'
                 ],
                 'ws_members': ['model_reshare', 'report_share', 'conn_share'],
                 'ws_edit': ['model_write', 'report_edit'],
@@ -6589,6 +6700,10 @@
                     'tenant_id': { title: 'TENANT ID', module: '🏢 1. TENANT', unrenderedBadge: '⚠️ 租户策略 · 尚未加载', unrenderedReason: '当前尚未加载租户全局策略' },
 
                     'ws_role': { title: 'WORKSPACE ROLE', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
+                    'ws_role_admin': { title: 'ROLE: ADMIN', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
+                    'ws_role_member': { title: 'ROLE: MEMBER', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
+                    'ws_role_contributor': { title: 'ROLE: CONTRIBUTOR', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
+                    'ws_role_viewer': { title: 'ROLE: VIEWER', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
                     'ws_members': { title: 'MANAGE MEMBERS', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
                     'ws_edit': { title: 'EDIT CONTENT', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
                     'ws_app': { title: 'PUBLISH APP', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },

@@ -646,6 +646,15 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     await expect(subTitle).toBeVisible();
     await expect(mainTitle).toHaveText('Permission: Manage Access');
     await expect(subTitle).toHaveText('(管理工作区成员)');
+
+    // 11. 验证工作区模块完整呈现 Power BI 官方四大治理角色 (Admin, Member, Contributor, Viewer)
+    const wsTierCard = page.locator('.pb-asset-tier-card[data-tier-id="workspace"]');
+    await expect(wsTierCard).toBeVisible();
+    const wsCardText = await wsTierCard.innerText();
+    expect(wsCardText).toContain('Workspace Role: Admin');
+    expect(wsCardText).toContain('Workspace Role: Member');
+    expect(wsCardText).toContain('Workspace Role: Contributor');
+    expect(wsCardText).toContain('Workspace Role: Viewer');
   });
 
 });

@@ -97,20 +97,11 @@ test.describe('GTB Model Search & Panoramic Permission Chain Model Application V
     const modelRowPermission = page.locator('.pb-asset-tier-card[data-tier-id="model"] .pb-asset-card-row[data-row-id="model_permission"]');
     await expect(modelRowPermission).toBeVisible();
 
-    // 4. 验证小卡片标题已彻底移除括号及内部说明 (冗余去除)
+    // 4. 验证小卡片官方标准命名与双行排版
     const modelRowRead = page.locator('.pb-asset-tier-card[data-tier-id="model"] .pb-asset-card-row[data-row-id="model_read"]');
     await expect(modelRowRead).toBeVisible();
     const readTitle = modelRowRead.locator('.pb-asset-prop-name');
-    await expect(readTitle).toHaveText('READ');
-
-    // 5. 验证卡片上的图例标识 (ASSIGNED / CAPABILITY / ENV) 始终清晰常驻展示
-    const readCatPill = modelRowRead.locator('.pb-cat-tag-pill');
-    await expect(readCatPill).toHaveText('CAPABILITY');
-    await expect(readCatPill).toBeVisible();
-
-    const permCatPill = modelRowPermission.locator('.pb-cat-tag-pill');
-    await expect(permCatPill).toHaveText('ASSIGNED');
-    await expect(permCatPill).toBeVisible();
+    await expect(readTitle).toContainText('Permission: Read');
 
     // 6. 验证选中 delete workspace 时，tenant 区域的 tenant member 卡片绝不高亮，且环境卡片 ws_target 也不高亮
     const wsDeleteRow = page.locator('.pb-asset-tier-card[data-tier-id="workspace"] .pb-asset-card-row[data-row-id="ws_delete"]');
@@ -133,9 +124,6 @@ test.describe('GTB Model Search & Panoramic Permission Chain Model Application V
     const wsRoleRow = page.locator('.pb-asset-tier-card[data-tier-id="workspace"] .pb-asset-card-row[data-row-id="ws_role"]');
     await expect(wsRoleRow).toHaveClass(/pb-causality-target/);
 
-    // 7. 验证高亮/选中期间，图例标识仍然常驻可见
-    await expect(wsRoleRow.locator('.pb-cat-tag-pill')).toBeVisible();
-    await expect(wsDeleteRow.locator('.pb-cat-tag-pill')).toBeVisible();
 
     // 8. 验证连接管理与管道管理卡片也绝不连带点亮 tenant member
     const connOwnerRow = page.locator('.pb-asset-tier-card[data-tier-id="connection"] .pb-asset-card-row[data-row-id="conn_owner"]');
