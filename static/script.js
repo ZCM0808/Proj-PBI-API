@@ -13189,15 +13189,31 @@ window.openNoteModal = function() {
                 }
             });
 
-            // 监听编辑器内容变更，实时刷新所见即所得 (WYSIWYG) 控件
+            // 监听编辑器内容变更与光标移动，实时刷新所见即所得 (WYSIWYG) 控件
             let widgetDebounceTimer = null;
-            cm.on('change', () => {
+            const debouncedRenderWidgets = (delay = 120) => {
                 if (widgetDebounceTimer) clearTimeout(widgetDebounceTimer);
                 widgetDebounceTimer = setTimeout(() => {
                     if (window.renderEditorWidgets) {
                         window.renderEditorWidgets(cm);
                     }
-                }, 150);
+                }, delay);
+            };
+
+            cm.on('change', () => debouncedRenderWidgets(120));
+            cm.on('cursorActivity', () => debouncedRenderWidgets(100));
+            cm.on('blur', () => debouncedRenderWidgets(60));
+
+            cm.on('keydown', (editor, e) => {
+                if (e.key === 'Escape') {
+                    // 按下 Escape 键平滑退出源码编辑，移开光标并强制立即恢复预览卡片
+                    const cur = editor.getCursor();
+                    const lineText = editor.getLine(cur.line) || '';
+                    editor.setCursor({ line: cur.line, ch: lineText.length });
+                    if (window.renderEditorWidgets) {
+                        window.renderEditorWidgets(editor);
+                    }
+                }
             });
         }
 
@@ -13356,7 +13372,7 @@ window._createEditorImageWidget = function(cm, lineIdx, startCh, endCh, alt, url
     const editBtn = document.createElement('button');
     editBtn.type = 'button';
     editBtn.className = 'cm-widget-action-btn';
-    editBtn.title = '展开编辑 Markdown 源码';
+    editBtn.title = '展开编辑 Markdown 源码 (光标移开或按 Esc 键即可恢复预览)';
     editBtn.innerHTML = '✏️';
     editBtn.onclick = (e) => {
         e.stopPropagation();
@@ -13430,7 +13446,7 @@ window._createEditorAttachmentWidget = function(cm, lineIdx, startCh, endCh, tex
         </span>
         <span class="cm-widget-actions">
             <a href="${url}" target="_blank" download class="cm-widget-action-btn" title="下载 / 查看附件" onclick="event.stopPropagation();">⬇️</a>
-            <button type="button" class="cm-widget-action-btn btn-edit" title="展开编辑 Markdown 源码">✏️</button>
+            <button type="button" class="cm-widget-action-btn btn-edit" title="展开编辑 Markdown 源码 (光标移开或按 Esc 键即可恢复预览)">✏️</button>
         </span>
     `;
 
