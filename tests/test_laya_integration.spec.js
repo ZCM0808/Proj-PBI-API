@@ -176,6 +176,8 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
       localStorage.setItem('pb-active-main-tab', 'user_assets');
     });
     await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.PermissionBlueprint !== 'undefined' && document.getElementById('pb-btn-explain-causality') !== null, { timeout: 15000 });
+    await page.waitForTimeout(300);
 
     // 验证蓝图工具栏【解析卡片关系】按钮上含有 LAYA 微标
     const explainBtn = page.locator('#pb-btn-explain-causality');

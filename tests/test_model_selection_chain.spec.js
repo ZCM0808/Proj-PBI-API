@@ -89,6 +89,11 @@ test.describe('GTB Model Search & Panoramic Permission Chain Model Application V
         { id: 'ws-apac-101', name: 'DA_APAC_PROD', alias: 'DA_APAC_PROD' },
         { id: 'ws-emea-102', name: 'DA_EMEA_PROD', alias: 'DA_EMEA_PROD' }
       ]));
+      localStorage.setItem('pbi_datasets', JSON.stringify([
+        { id: 'ds-apac-01', name: 'apac_channel_performance_analytics', alias: 'apac_channel_performance_analytics', workspaceId: 'ws-apac-101' },
+        { id: 'ds-fin-02', name: 'finance_ledger_model', alias: 'finance_ledger_model', workspaceId: 'ws-apac-101' },
+        { id: 'ds-emea-03', name: 'emea_supply_chain', alias: 'emea_supply_chain', workspaceId: 'ws-emea-102' }
+      ]));
       window.selectedGtbWorkspaceIds = new Set(['ws-apac-101']);
       if (window.updateGlobalTopbarDropdowns) {
         window.updateGlobalTopbarDropdowns();

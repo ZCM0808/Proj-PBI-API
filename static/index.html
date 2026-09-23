@@ -51,7 +51,7 @@
             // 3. 动态注入 CSS 变量与当前激活模块可见性（0ms 物理杜绝页面刷新时的视图跳动闪烁）
             var sidebarWidth = localStorage.getItem('pbi-sidebar-width');
             var requestHeight = localStorage.getItem('pbi-request-height');
-            var savedMod = localStorage.getItem('pbi-active-module') || 'workflows';
+            var savedMod = localStorage.getItem('pbi-active-module') || 'permission_blueprint';
             var styleStr = '';
             if (sidebarWidth) {
                 var wVal = sidebarWidth.endsWith('px') ? sidebarWidth : sidebarWidth + 'px';
@@ -109,7 +109,7 @@
                 }
 
                 // 提前恢复上次激活的模块视图 DOM 显式内联属性
-                var savedMod = localStorage.getItem('pbi-active-module') || 'workflows';
+                var savedMod = localStorage.getItem('pbi-active-module') || 'permission_blueprint';
                 var allSidebarPanes = document.querySelectorAll('.sidebar-pane');
                 for (var i = 0; i < allSidebarPanes.length; i++) {
                     allSidebarPanes[i].style.display = 'none';
@@ -835,6 +835,10 @@
                             <h3 id="wf-board-title" style="font-size: 0.95rem; margin: 0; white-space: nowrap; color: var(--text-primary); font-weight: 700;">⚡ Report &amp; Dataset Datasource Inspector</h3>
                         </div>
                         <div style="display: flex; align-items: center; gap: 8px;">
+                            <button type="button" class="btn-quick-switch-bp" onclick="window.switchAppModule('permission_blueprint');" style="background: rgba(99, 102, 241, 0.14); border: 1px solid rgba(99, 102, 241, 0.35); color: #818cf8; padding: 4px 10px; border-radius: 6px; font-size: 0.74rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s;" title="快速切换到权限流转蓝图与用户全景权限链路">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1.5"></rect><rect x="15" y="3" width="6" height="6" rx="1.5"></rect><rect x="9" y="15" width="6" height="6" rx="1.5"></rect></svg>
+                                <span>🕸️ 全景权限链路卡片</span>
+                            </button>
                             <button type="button" class="icon-btn zen-mode-btn" onclick="window.toggleZenMode()" title="开启沉浸模式 (Focus Mode)" style="width: 28px; height: 28px; padding: 0; border-radius: 6px; border: 1px solid var(--overlay-10); background: transparent; transition: all 0.2s; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-expand"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-collapse" style="display: none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
@@ -2243,8 +2247,10 @@
                         </h2>
 
                         <div style="display: flex; align-items: center; gap: 8px;">
-
-                            
+                            <button type="button" class="btn-quick-switch-bp" onclick="window.switchAppModule('permission_blueprint');" style="background: rgba(99, 102, 241, 0.14); border: 1px solid rgba(99, 102, 241, 0.35); color: #818cf8; padding: 4px 10px; border-radius: 6px; font-size: 0.74rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s;" title="快速切换到权限流转蓝图与用户全景权限链路">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1.5"></rect><rect x="15" y="3" width="6" height="6" rx="1.5"></rect><rect x="9" y="15" width="6" height="6" rx="1.5"></rect></svg>
+                                <span>🕸️ 全景权限链路卡片</span>
+                            </button>
                             <button type="button" class="icon-btn zen-mode-btn" onclick="window.toggleZenMode()" title="开启沉浸模式 (Focus Mode)" style="width: 26px; height: 26px; padding: 0; border-radius: 6px; border: 1px solid var(--overlay-10); background: transparent; transition: all 0.2s; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-expand"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-collapse" style="display: none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
@@ -3357,7 +3363,7 @@
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260919_v1440"></script>
     <script src="/static/script.js?v=20260922_v2230"></script>
-    <script src="/static/permission_blueprint.js?v=20260923_v1248"></script>
+    <script src="/static/permission_blueprint.js?v=20260923_v1318"></script>
 
 
 

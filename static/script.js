@@ -15875,7 +15875,7 @@ window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded)
         }
 
         // 恢复上次激活的模块 (Workflows vs API Tree vs Permission Blueprint)
-        const savedModule = window._pendingModule || localStorage.getItem('pbi-active-module') || 'workflows';
+        const savedModule = window._pendingModule || localStorage.getItem('pbi-active-module') || 'permission_blueprint';
         delete window._pendingModule;
         window.switchAppModule(savedModule);
 
