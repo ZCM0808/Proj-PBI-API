@@ -2552,6 +2552,76 @@ body.light-theme .note-history-item.active .note-item-filename,
     letter-spacing: 0.5px;
 }
 
+/* 行内退出源码、恢复卡片预览的浮动小药丸 */
+.cm-inline-restore-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px;
+    margin-left: 10px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: #ffffff !important;
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+    user-select: none;
+    vertical-align: middle;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: fadeInPill 0.25s ease-out;
+}
+
+.cm-inline-restore-pill:hover {
+    background: linear-gradient(135deg, #4f46e5, #4338ca);
+    transform: translateY(-1px) scale(1.05);
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.6);
+}
+
+@keyframes fadeInPill {
+    from {
+        opacity: 0;
+        transform: scale(0.85) translateY(2px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* EasyMDE 只读预览模式 (editor-preview) 内部附件与图片自适应优化 */
+.editor-preview img {
+    max-height: 240px;
+    max-width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    display: block;
+    margin: 12px 0;
+}
+
+.editor-preview a[href*="/api/notes/files/"] {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    margin: 4px 6px 4px 0;
+    background: var(--card-bg, rgba(255, 255, 255, 0.08));
+    border: 1px solid var(--panel-border, rgba(255, 255, 255, 0.15));
+    border-radius: 16px;
+    color: var(--accent, #818cf8) !important;
+    text-decoration: none !important;
+    font-weight: 500;
+    font-size: 0.84rem;
+    transition: all 0.2s ease;
+}
+
+.editor-preview a[href*="/api/notes/files/"]:hover {
+    background: var(--panel-border, rgba(255, 255, 255, 0.15));
+    border-color: var(--accent, #818cf8);
+    transform: translateY(-1px);
+}
+
 /* 全屏大图预览遮罩与动效 */
 .note-image-preview-overlay {
     position: fixed;

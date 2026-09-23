@@ -293,6 +293,33 @@ test.describe('0918 Improvement v3 Requirements Verification', () => {
       return true;
     });
     expect(pasteDefenseOk).toBe(true);
+
+    // 1. 测试点击附件胶囊卡片上的 ✏️ 展开源码
+    const editBtn = fileWidget.locator('.btn-edit');
+    await editBtn.click();
+
+    // 验证源码展开，且行内出现【👁️ 恢复卡片预览 (Esc)】小药丸
+    const restorePill = page.locator('.cm-inline-restore-pill');
+    await expect(restorePill).toBeVisible({ timeout: 3000 });
+    await expect(restorePill).toContainText('恢复卡片预览');
+
+    // 2. 测试按下 Escape 键立即恢复卡片预览
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.cm-inline-restore-pill')).toHaveCount(0);
+    await expect(page.locator('.cm-widget-attachment')).toBeAttached();
+    await page.waitForTimeout(300);
+
+    // 3. 测试再次展开源码后，点击 EasyMDE 顶部工具栏上的 👁️ (preview) 按钮同样成功恢复卡片预览
+    const newEditBtn = page.locator('.cm-widget-attachment .btn-edit').first();
+    await newEditBtn.click();
+    await expect(page.locator('.cm-inline-restore-pill')).toBeVisible({ timeout: 3000 });
+
+    const toolbarPreviewBtn = page.locator('.editor-toolbar button.preview, .editor-toolbar button[title*="Preview"]').first();
+    await toolbarPreviewBtn.click();
+
+    // 验证源码被成功重新折叠为卡片，且小药丸退出
+    await expect(page.locator('.cm-inline-restore-pill')).toHaveCount(0);
+    await expect(page.locator('.cm-widget-attachment')).toBeAttached();
   });
 
 });

@@ -13201,8 +13201,13 @@ window.openNoteModal = function() {
             };
 
             cm.on('change', () => debouncedRenderWidgets(120));
-            cm.on('cursorActivity', () => debouncedRenderWidgets(100));
-            cm.on('blur', () => debouncedRenderWidgets(60));
+            cm.on('cursorActivity', () => {
+                if (cm._justOpenedSource && Date.now() - cm._justOpenedSource < 400) {
+                    return;
+                }
+                debouncedRenderWidgets(150);
+            });
+            cm.on('blur', () => debouncedRenderWidgets(100));
 
             cm.on('keydown', (editor, e) => {
                 if (e.key === 'Escape') {
@@ -13211,7 +13216,7 @@ window.openNoteModal = function() {
                     const lineText = editor.getLine(cur.line) || '';
                     editor.setCursor({ line: cur.line, ch: lineText.length });
                     if (window.renderEditorWidgets) {
-                        window.renderEditorWidgets(editor);
+                        window.renderEditorWidgets(editor, true);
                     }
                 }
             });
@@ -13250,6 +13255,35 @@ window.openNoteModal = function() {
         window._activeNoteFilename = savedFn;
     }
 
+    // 智能拦截与增强工具栏 preview 按钮：若编辑区存在展开的媒体源码，优先一键折叠为所见即所得卡片预览
+    const previewBtn = noteModal.querySelector('.editor-toolbar button.preview, .editor-toolbar button[title*="Preview"]');
+    if (previewBtn && !previewBtn._enhancedBound) {
+        previewBtn._enhancedBound = true;
+        previewBtn.addEventListener('click', (e) => {
+            const cm = easyMDE && easyMDE.codemirror;
+            if (!cm) return;
+            if (typeof easyMDE.isPreviewActive === 'function' && !easyMDE.isPreviewActive()) {
+                const cursor = cm.getCursor();
+                const curLineText = cm.getLine(cursor.line) || '';
+                const hasRawMedia = /(!\[.*?\]\(.*?\)|\[.*?\]\(.*?\))/.test(curLineText);
+                if (hasRawMedia || window._currentRestoreMarker) {
+                    e.stopImmediatePropagation();
+                    e.preventDefault();
+                    if (window._currentRestoreMarker) {
+                        try { window._currentRestoreMarker.clear(); } catch (_) {}
+                        window._currentRestoreMarker = null;
+                    }
+                    cm.setCursor({ line: cursor.line, ch: curLineText.length });
+                    window.renderEditorWidgets(cm, true);
+                    if (window.showNotification) {
+                        window.showNotification('✅ 已退出源码，恢复所见即所得卡片预览', 'success', 2000);
+                    }
+                    return;
+                }
+            }
+        }, true);
+    }
+
     // Load history
     window.searchNotes();
 };
@@ -13258,7 +13292,38 @@ window.openNoteModal = function() {
 // 所见即所得 (WYSIWYG) Widget 渲染引擎
 // ==========================================
 
-window.renderEditorWidgets = function(cm) {
+window._currentRestoreMarker = null;
+
+// 在展开的源码末尾挂载显式的“👁️ 恢复卡片预览”交互按钮
+window._showInlineRestoreButton = function(cm, lineIdx, ch) {
+    if (cm) cm._justOpenedSource = Date.now();
+    if (window._currentRestoreMarker) {
+        try { window._currentRestoreMarker.clear(); } catch (_) {}
+        window._currentRestoreMarker = null;
+    }
+
+    const pill = document.createElement('span');
+    pill.className = 'cm-inline-restore-pill';
+    pill.innerHTML = '👁️ 恢复卡片预览 (Esc)';
+    pill.title = '点击退出源码编辑，立即恢复所见即所得卡片预览 (或按键盘 Esc 键)';
+    pill.onclick = (e) => {
+        e.stopPropagation();
+        try { pill._bookmark.clear(); } catch (_) {}
+        window._currentRestoreMarker = null;
+        const lineLen = cm.getLine(lineIdx)?.length || 0;
+        cm.setCursor({ line: lineIdx, ch: lineLen });
+        window.renderEditorWidgets(cm, true);
+        if (window.showNotification) {
+            window.showNotification('✅ 已恢复卡片预览', 'success', 1500);
+        }
+    };
+
+    const bookmark = cm.setBookmark({ line: lineIdx, ch }, { widget: pill, insertLeft: false });
+    pill._bookmark = bookmark;
+    window._currentRestoreMarker = bookmark;
+};
+
+window.renderEditorWidgets = function(cm, forceRender = false) {
     if (!cm || cm._renderingWidgets) return;
     cm._renderingWidgets = true;
 
@@ -13288,9 +13353,15 @@ window.renderEditorWidgets = function(cm) {
                 const startCh = match.index;
                 const endCh = match.index + fullMatch.length;
 
-                // 若光标正在该范围内输入，暂时不折叠以方便用户编辑
-                if (cursor.line === lineIdx && cursor.ch >= startCh && cursor.ch <= endCh) {
+                // 若非强制渲染，且光标正在该范围内输入，暂时不折叠以方便用户编辑
+                if (!forceRender && cursor.line === lineIdx && cursor.ch > startCh && cursor.ch < endCh) {
                     continue;
+                }
+
+                // 折叠成功后清除可能存在的行内恢复按钮
+                if (window._currentRestoreMarker) {
+                    try { window._currentRestoreMarker.clear(); } catch (_) {}
+                    window._currentRestoreMarker = null;
                 }
 
                 const widgetEl = window._createEditorImageWidget(cm, lineIdx, startCh, endCh, alt, url);
@@ -13318,9 +13389,14 @@ window.renderEditorWidgets = function(cm) {
 
                 if (!isNoteFile) continue;
 
-                // 若光标正在该范围内输入，暂时不折叠
-                if (cursor.line === lineIdx && cursor.ch >= startCh && cursor.ch <= endCh) {
+                // 若非强制渲染，且光标正在该范围内输入，暂时不折叠
+                if (!forceRender && cursor.line === lineIdx && cursor.ch > startCh && cursor.ch < endCh) {
                     continue;
+                }
+
+                if (window._currentRestoreMarker) {
+                    try { window._currentRestoreMarker.clear(); } catch (_) {}
+                    window._currentRestoreMarker = null;
                 }
 
                 const widgetEl = window._createEditorAttachmentWidget(cm, lineIdx, startCh, endCh, text, url);
@@ -13372,13 +13448,14 @@ window._createEditorImageWidget = function(cm, lineIdx, startCh, endCh, alt, url
     const editBtn = document.createElement('button');
     editBtn.type = 'button';
     editBtn.className = 'cm-widget-action-btn';
-    editBtn.title = '展开编辑 Markdown 源码 (光标移开或按 Esc 键即可恢复预览)';
+    editBtn.title = '展开编辑 Markdown 源码 (光标移开、按 Esc 或点击行内小药丸即可恢复卡片预览)';
     editBtn.innerHTML = '✏️';
     editBtn.onclick = (e) => {
         e.stopPropagation();
         if (wrapper._marker) wrapper._marker.clear();
         cm.focus();
         cm.setCursor({ line: lineIdx, ch: startCh + 2 });
+        window._showInlineRestoreButton(cm, lineIdx, endCh);
     };
 
     actions.appendChild(viewBtn);
@@ -13400,6 +13477,7 @@ window._createEditorImageWidget = function(cm, lineIdx, startCh, endCh, alt, url
         if (wrapper._marker) wrapper._marker.clear();
         cm.focus();
         cm.setCursor({ line: lineIdx, ch: startCh + 2 });
+        window._showInlineRestoreButton(cm, lineIdx, endCh);
     };
 
     card.appendChild(header);
@@ -13446,7 +13524,7 @@ window._createEditorAttachmentWidget = function(cm, lineIdx, startCh, endCh, tex
         </span>
         <span class="cm-widget-actions">
             <a href="${url}" target="_blank" download class="cm-widget-action-btn" title="下载 / 查看附件" onclick="event.stopPropagation();">⬇️</a>
-            <button type="button" class="cm-widget-action-btn btn-edit" title="展开编辑 Markdown 源码 (光标移开或按 Esc 键即可恢复预览)">✏️</button>
+            <button type="button" class="cm-widget-action-btn btn-edit" title="展开编辑 Markdown 源码 (光标移开、按 Esc 或点击行内小药丸即可恢复卡片预览)">✏️</button>
         </span>
     `;
 
@@ -13457,6 +13535,7 @@ window._createEditorAttachmentWidget = function(cm, lineIdx, startCh, endCh, tex
             if (wrapper._marker) wrapper._marker.clear();
             cm.focus();
             cm.setCursor({ line: lineIdx, ch: startCh + 1 });
+            window._showInlineRestoreButton(cm, lineIdx, endCh);
         };
     }
 
@@ -13465,6 +13544,7 @@ window._createEditorAttachmentWidget = function(cm, lineIdx, startCh, endCh, tex
         if (wrapper._marker) wrapper._marker.clear();
         cm.focus();
         cm.setCursor({ line: lineIdx, ch: startCh + 1 });
+        window._showInlineRestoreButton(cm, lineIdx, endCh);
     };
 
     return wrapper;
