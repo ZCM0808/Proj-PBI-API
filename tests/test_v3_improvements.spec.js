@@ -19,7 +19,7 @@ test.describe.serial('0918 Improvement v3 Requirements Verification', () => {
   test.afterEach(async () => {
     // 状态清理：移除动态路由，直接同步关闭所有弹窗并排空异步动画定时器
     try {
-      await page.unroute(url => url.pathname.includes('/api/search-notes'));
+      await page.unroute('**/api/search-notes*');
     } catch (_) {}
     await page.evaluate(() => {
       const nm = document.getElementById('modal-note');
@@ -195,7 +195,7 @@ test.describe.serial('0918 Improvement v3 Requirements Verification', () => {
 
   test('Requirement 7: Quick Note filename auto-sync, active note highlighting, and compact header space', async () => {
     // 拦截服务端 search-notes 请求，返回稳定的受控数据
-    await page.route(url => url.pathname.includes('/api/search-notes'), async route => {
+    await page.route('**/api/search-notes*', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -258,7 +258,7 @@ test.describe.serial('0918 Improvement v3 Requirements Verification', () => {
 
   test('Requirement 8: Quick Note WYSIWYG widgets, clean text paste defense, and authoritative content auto-loading', async () => {
     // 1. 拦截笔记数据，包含权威内容及图片/附件 Markdown
-    await page.route(url => url.pathname.includes('/api/search-notes'), async route => {
+    await page.route('**/api/search-notes*', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',

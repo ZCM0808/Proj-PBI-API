@@ -2594,6 +2594,46 @@ body.light-theme .note-history-item.active .note-item-filename,
     }
 }
 
+/* AI 思考中微交互动效 */
+.ai-thinking-bubble {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.84rem;
+    color: var(--text-secondary);
+    user-select: none;
+}
+
+.ai-thinking-dots {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.ai-thinking-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--accent, #6366f1);
+    opacity: 0.4;
+    animation: aiDotPulse 1.4s infinite ease-in-out both;
+}
+
+.ai-thinking-dot:nth-child(1) { animation-delay: -0.32s; }
+.ai-thinking-dot:nth-child(2) { animation-delay: -0.16s; }
+.ai-thinking-dot:nth-child(3) { animation-delay: 0s; }
+
+@keyframes aiDotPulse {
+    0%, 80%, 100% {
+        transform: scale(0.65);
+        opacity: 0.3;
+    }
+    40% {
+        transform: scale(1.35);
+        opacity: 1;
+    }
+}
+
 /* EasyMDE 只读预览模式 (editor-preview) 内部附件与图片自适应优化 */
 .editor-preview img {
     max-height: 240px;

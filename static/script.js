@@ -14839,59 +14839,42 @@ window.updateHarnessStats = function() {
     window.handleAiStream = async function(url, payload) {
 
         const msgs = document.getElementById('ai-chat-messages');
-
         const loadingDiv = document.createElement('div');
-
         loadingDiv.style.cssText = 'align-self: flex-start; background: var(--overlay-10); padding: 10px 14px; border-radius: 12px; border-bottom-left-radius: 2px; max-width: 85%; color: var(--text-secondary); opacity: 0; transform: translateY(10px); transition: all 0.3s ease-out;';
-
-        loadingDiv.textContent = 'Thinking...';
-
+        loadingDiv.innerHTML = `
+            <div class="ai-thinking-bubble">
+                <span style="font-size: 0.95rem; display: inline-block;">🧠</span>
+                <span>正在思考中</span>
+                <span class="ai-thinking-dots">
+                    <span class="ai-thinking-dot"></span>
+                    <span class="ai-thinking-dot"></span>
+                    <span class="ai-thinking-dot"></span>
+                </span>
+            </div>
+        `;
         msgs.appendChild(loadingDiv);
 
-        
-
         void loadingDiv.offsetWidth;
-
         loadingDiv.style.opacity = '1';
-
         loadingDiv.style.transform = 'translateY(0)';
-
         msgs.scrollTop = Math.max(0, msgs.scrollHeight - msgs.clientHeight * 0.66);
 
-
-
         try {
-
             const res = await fetch(url, {
-
                 method: 'POST',
-
                 headers: { 'Content-Type': 'application/json' },
-
                 body: JSON.stringify(payload)
-
             });
 
-
-
             if (!res.ok) {
-
                 const data = await res.json();
-
                 loadingDiv.textContent = "Sorry, unable to connect to AI: " + (data.message || "未知错误");
-
                 loadingDiv.style.color = "var(--error)";
-
                 return;
-
             }
 
-
-
-            loadingDiv.textContent = '';
-
-            loadingDiv.style.color = 'var(--text-primary)';
-
+            let hasReceivedFirstToken = false;
+            let hasToolCard = false;
             let fullText = '';
 
 
@@ -14959,14 +14942,8 @@ window.updateHarnessStats = function() {
                                 window.aiSessionId = data.session_id;
 
                             } else if (data.type === 'tool_request') {
-
-                                // Hide the empty text bubble when a tool is requested
-
-                                if (!fullText.trim()) {
-
-                                    loadingDiv.style.display = 'none';
-
-                                }
+                                hasToolCard = true;
+                                loadingDiv.style.display = 'none';
 
                                 
 
@@ -15061,39 +15038,31 @@ window.updateHarnessStats = function() {
                                 btnReject.onclick = () => handleAction(false);
 
                             } else if (data.type === 'text') {
-
-                                fullText += data.text;
-
-                                if (typeof marked !== 'undefined') {
-
-                                    loadingDiv.innerHTML = marked.parse(fullText);
-
-                                } else {
-
-                                    loadingDiv.textContent = fullText;
-
+                                if (!hasReceivedFirstToken) {
+                                    hasReceivedFirstToken = true;
+                                    loadingDiv.innerHTML = '';
+                                    loadingDiv.style.color = 'var(--text-primary)';
                                 }
-
+                                fullText += data.text;
+                                if (typeof marked !== 'undefined') {
+                                    loadingDiv.innerHTML = marked.parse(fullText);
+                                } else {
+                                    loadingDiv.textContent = fullText;
+                                }
                                 msgs.scrollTop = Math.max(0, msgs.scrollHeight - msgs.clientHeight * 0.66);
-
                             }
-
                         } else {
-
                             loadingDiv.textContent = "Sorry, an error occurred: " + (data.message || "未知错误");
-
                             loadingDiv.style.color = "var(--error)";
-
                         }
-
                     } catch (e) {
-
                         // ignore incomplete json parses gracefully
-
                     }
-
                 }
+            }
 
+            if (!hasReceivedFirstToken && !hasToolCard) {
+                loadingDiv.innerHTML = '<span style="color: var(--text-secondary); font-style: italic;">(模型未返回任何文本内容)</span>';
             }
 
         } catch (e) {
