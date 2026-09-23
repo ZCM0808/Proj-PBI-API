@@ -2368,6 +2368,9 @@ body.light-theme .note-history-item.active .note-item-filename,
     overflow-x: hidden !important;
     overflow-y: hidden !important;
     word-break: break-word !important;
+    font-size: 14px !important;
+    line-height: 1.6 !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, monospace !important;
 }
 
 .note-editor-wrapper .CodeMirror-scroll {
@@ -2395,6 +2398,231 @@ body.light-theme .note-history-item.active .note-item-filename,
     word-break: break-all !important;
     overflow-wrap: anywhere !important;
     white-space: pre-wrap !important;
+    font-size: 14px !important;
+    line-height: 1.6 !important;
+}
+
+/* 彻底剥离与限制剪贴板富文本注入后的字号爆炸：所有内联标签限制最大字号 */
+.note-editor-wrapper .CodeMirror pre.CodeMirror-line * {
+    font-size: inherit !important;
+    line-height: inherit !important;
+}
+
+/* ==========================================
+   所见即所得 (WYSIWYG) 图片与附件组件样式
+   ========================================== */
+
+.cm-widget-image {
+    display: inline-block;
+    vertical-align: middle;
+    margin: 8px 0;
+    max-width: 100%;
+    user-select: none;
+}
+
+.cm-widget-image-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--card-bg, rgba(255, 255, 255, 0.05));
+    border: 1px solid var(--panel-border, rgba(255, 255, 255, 0.12));
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    max-width: 480px;
+}
+
+.cm-widget-image-card:hover {
+    border-color: var(--accent, #6366f1);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.25);
+}
+
+.cm-widget-image-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: var(--nav-bg, rgba(0, 0, 0, 0.25));
+    border-bottom: 1px solid var(--panel-border, rgba(255, 255, 255, 0.08));
+    font-size: 0.76rem;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.cm-widget-image-title {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 320px;
+}
+
+.cm-widget-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cm-widget-action-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary, #94a3b8);
+    cursor: pointer;
+    font-size: 0.8rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.cm-widget-action-btn:hover {
+    background: var(--panel-border, rgba(255, 255, 255, 0.12));
+    color: var(--text-primary, #ffffff);
+    transform: scale(1.08);
+}
+
+.cm-widget-image-thumb {
+    max-height: 220px;
+    max-width: 100%;
+    object-fit: contain;
+    display: block;
+    cursor: pointer;
+    background: rgba(0, 0, 0, 0.15);
+    transition: filter 0.2s ease;
+}
+
+.cm-widget-image-thumb:hover {
+    filter: brightness(1.05);
+}
+
+/* 所见即所得附件胶囊卡片 */
+.cm-widget-attachment {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px;
+    margin: 4px 6px 4px 0;
+    background: var(--card-bg, rgba(255, 255, 255, 0.06));
+    border: 1px solid var(--panel-border, rgba(255, 255, 255, 0.15));
+    border-radius: 20px;
+    font-size: 0.82rem;
+    color: var(--text-primary, #e2e8f0);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    vertical-align: middle;
+    user-select: none;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cm-widget-attachment:hover {
+    background: var(--panel-border, rgba(255, 255, 255, 0.12));
+    border-color: var(--accent, #6366f1);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+}
+
+.cm-widget-file-icon {
+    font-size: 1.05rem;
+    line-height: 1;
+}
+
+.cm-widget-file-body {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cm-widget-file-name {
+    font-weight: 500;
+    max-width: 220px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cm-widget-file-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(99, 102, 241, 0.25);
+    color: #818cf8;
+    letter-spacing: 0.5px;
+}
+
+/* 全屏大图预览遮罩与动效 */
+.note-image-preview-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 99999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.note-image-preview-overlay.active {
+    opacity: 1;
+}
+
+.note-image-preview-container {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transform: scale(0.92);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.note-image-preview-overlay.active .note-image-preview-container {
+    transform: scale(1);
+}
+
+.note-image-preview-container img {
+    max-width: 90vw;
+    max-height: 85vh;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.note-image-preview-caption {
+    color: #cbd5e1;
+    font-size: 0.88rem;
+    margin-bottom: 8px;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+    font-weight: 500;
+}
+
+.close-preview-btn {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.close-preview-btn:hover {
+    background: rgba(239, 68, 68, 0.8);
+    transform: rotate(90deg);
 }
 
 /* Quick Note 精致纯图标小按钮 */

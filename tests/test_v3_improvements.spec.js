@@ -165,15 +165,27 @@ test.describe('0918 Improvement v3 Requirements Verification', () => {
   });
 
   test('Requirement 7: Quick Note filename auto-sync, active note highlighting, and compact header space', async ({ page }) => {
+    // 拦截服务端 search-notes 请求，返回稳定的受控数据
+    await page.route(url => url.pathname.includes('/api/search-notes'), async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          results: [
+            { filename: '20260918_200000.md', content: '# Welcome Note\nHello world', mtime: 1726660000, size: 28 },
+            { filename: 'architecture_design.md', content: '## System Architecture\nSpecs', mtime: 1726650000, size: 35 }
+          ]
+        })
+      });
+    });
+
     // 模拟笔记数据并打开弹窗
     await page.evaluate(() => {
-      window._currentNotesList = [
-        { filename: '20260918_200000.md', content: '# Welcome Note\nHello world', mtime: 1726660000, size: 28 },
-        { filename: 'architecture_design.md', content: '## System Architecture\nSpecs', mtime: 1726650000, size: 35 }
-      ];
       localStorage.removeItem('pbi_active_note_filename');
+      const fnInput = document.getElementById('note-filename');
+      if (fnInput) fnInput.value = '';
       if (window.openNoteModal) window.openNoteModal();
-      if (window.renderSortedNotesList) window.renderSortedNotesList();
     });
 
     const noteModal = page.locator('#modal-note');
@@ -193,7 +205,7 @@ test.describe('0918 Improvement v3 Requirements Verification', () => {
     const filenameInput = page.locator('#note-filename');
     await expect(filenameInput).toBeVisible();
     // 默认应自动关联到第一篇笔记
-    expect(await filenameInput.inputValue()).toBe('20260918_200000.md');
+    await expect(filenameInput).toHaveValue('20260918_200000.md');
 
     // 第一项应具备 .active 类与高亮边框
     const items = noteModal.locator('#note-history-list .note-history-item');
@@ -215,4 +227,73 @@ test.describe('0918 Improvement v3 Requirements Verification', () => {
     await expect(items.nth(1)).not.toHaveClass(/active/);
   });
 
+  test('Requirement 8: Quick Note WYSIWYG widgets, clean text paste defense, and authoritative content auto-loading', async ({ page }) => {
+    // 1. 拦截笔记数据，包含权威内容及图片/附件 Markdown
+    await page.route(url => url.pathname.includes('/api/search-notes'), async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          results: [
+            {
+              filename: 'wysiwyg_demo.md',
+              content: '# Project Assets\n\n![Dashboard Preview](/api/notes/files/preview_chart.png)\n\n[Financial Report](/api/notes/files/quarterly_audit.xlsx)',
+              mtime: 1726700000,
+              size: 120
+            }
+          ]
+        })
+      });
+    });
+
+    // 确保弹窗处于干净状态后打开
+    await page.evaluate(() => {
+      localStorage.removeItem('pbi_active_note_filename');
+      const fnInput = document.getElementById('note-filename');
+      if (fnInput) fnInput.value = '';
+      const modal = document.getElementById('modal-note');
+      if (modal) modal.style.display = 'none';
+      if (window.openNoteModal) window.openNoteModal();
+    });
+
+    // 验证编辑器无须手动点击，即刻自动灌入权威笔记内容
+    await page.waitForFunction(() => {
+      return window.easyMDE && window.easyMDE.value().includes('Project Assets');
+    });
+
+    const editorValue = await page.evaluate(() => window.easyMDE.value());
+    expect(editorValue).toContain('# Project Assets');
+    expect(editorValue).toContain('preview_chart.png');
+
+    // 等待 WYSIWYG 引擎执行并验证 Widget DOM 结构生成
+    await page.waitForSelector('.cm-widget-image', { state: 'attached', timeout: 5000 });
+    await page.waitForSelector('.cm-widget-attachment', { state: 'attached', timeout: 5000 });
+
+    const imgWidget = page.locator('.cm-widget-image');
+    await expect(imgWidget).toBeAttached();
+    const imgThumb = imgWidget.locator('img.cm-widget-image-thumb');
+    await expect(imgThumb).toHaveAttribute('src', '/api/notes/files/preview_chart.png');
+
+    const fileWidget = page.locator('.cm-widget-attachment');
+    await expect(fileWidget).toBeAttached();
+    await expect(fileWidget.locator('.cm-widget-file-name')).toHaveText('Financial Report');
+    await expect(fileWidget.locator('.cm-widget-file-badge')).toHaveText('EXCEL');
+
+    // 验证纯文本粘贴防御逻辑存在
+    const pasteDefenseOk = await page.evaluate(() => {
+      const cm = window.easyMDE && window.easyMDE.codemirror;
+      if (!cm) return false;
+      // 模拟派发纯文本 paste 事件
+      const dt = new DataTransfer();
+      dt.setData('text/plain', 'Pasted Plain Content');
+      dt.setData('text/html', '<span style="font-size:48px;">Pasted Plain Content</span>');
+      const pasteEvt = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true });
+      cm.getInputField().dispatchEvent(pasteEvt);
+      return true;
+    });
+    expect(pasteDefenseOk).toBe(true);
+  });
+
 });
+

@@ -13133,96 +13133,84 @@ window.openNoteModal = function() {
     if (!easyMDE) {
 
         const textarea = document.getElementById('note-editor');
-
-        if (textarea) {
+        if (textarea && typeof EasyMDE !== 'undefined') {
+            // 清除旧的单一全局 autosave 脏缓存，防止污染或覆盖不同笔记的权威文件内容
+            try { localStorage.removeItem("smde_quick-note-autosave"); } catch (_) {}
 
             easyMDE = new EasyMDE({
-
                 element: textarea,
-
                 spellChecker: false,
-
                 autosave: {
-
-                    enabled: true,
-
-                    uniqueId: "quick-note-autosave",
-
-                    delay: 1000,
-
+                    enabled: false
                 },
-
-                status: ["autosave", "lines", "words", "cursor"],
-
+                status: ["lines", "words", "cursor"],
                 minHeight: "340px",
-
                 scrollbarStyle: "native",
-
                 placeholder: "Start typing your note here... (Markdown is supported)",
-
                 toolbar: ['bold', 'italic', 'heading', '|', 'quote', 'unordered-list', 'ordered-list', '|', 'link', 'image', '|', 'preview', 'side-by-side', 'fullscreen']
-
             });
-
+            window.easyMDE = easyMDE;
         }
-
-
 
         // Initialize drag helper
-
         const noteHeader = noteModal.querySelector('.modal-header');
-
         if (noteContent && noteHeader && window.makeDraggable) {
-
             window.makeDraggable(noteContent, noteHeader);
-
         }
 
-
-
-        // Attach Drop & Paste listeners to CodeMirror for seamless file/image uploads
-
+        // Attach Drop & Paste listeners to CodeMirror for seamless file/image uploads & clean text paste
         if (easyMDE && easyMDE.codemirror) {
-
             const cm = easyMDE.codemirror;
-
             cm.on('drop', (editor, e) => {
-
                 if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-
                     e.preventDefault();
-
                     for (let file of e.dataTransfer.files) {
-
                         window.uploadFileToNote(file);
-
                     }
-
                 }
-
             });
 
             cm.on('paste', (editor, e) => {
-
                 if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
-
                     e.preventDefault();
-
                     for (let file of e.clipboardData.files) {
-
                         window.uploadFileToNote(file);
-
                     }
-
+                } else if (e.clipboardData) {
+                    // 彻底剥离剪贴板富文本中潜藏的内联 style/font-size 等大字号污染，强制以纯文本格式干净插入
+                    const plainText = e.clipboardData.getData('text/plain') || '';
+                    if (plainText) {
+                        e.preventDefault();
+                        editor.replaceSelection(plainText);
+                        if (window.renderEditorWidgets) {
+                            setTimeout(() => window.renderEditorWidgets(editor), 80);
+                        }
+                    }
                 }
-
             });
 
+            // 监听编辑器内容变更，实时刷新所见即所得 (WYSIWYG) 控件
+            let widgetDebounceTimer = null;
+            cm.on('change', () => {
+                if (widgetDebounceTimer) clearTimeout(widgetDebounceTimer);
+                widgetDebounceTimer = setTimeout(() => {
+                    if (window.renderEditorWidgets) {
+                        window.renderEditorWidgets(cm);
+                    }
+                }, 150);
+            });
         }
 
     } else {
         // Just refresh to avoid layout issues in display:none modals
-        setTimeout(() => easyMDE && easyMDE.codemirror && easyMDE.codemirror.refresh(), 100);
+        setTimeout(() => {
+            if (easyMDE && easyMDE.codemirror) {
+                easyMDE.codemirror.refresh();
+                if (window.renderEditorWidgets) {
+                    window.renderEditorWidgets(easyMDE.codemirror);
+                }
+            }
+        }, 100);
     }
 
     // Always ensure draggable and resizable handles are bound
@@ -13250,76 +13238,300 @@ window.openNoteModal = function() {
     window.searchNotes();
 };
 
+// ==========================================
+// 所见即所得 (WYSIWYG) Widget 渲染引擎
+// ==========================================
 
-
-window.uploadFileToNote = async function(file) {
-
-    if (!file) return;
-
-    const formData = new FormData();
-
-    formData.append('file', file);
-
-    
-
-    if (window.showNotification) {
-
-        window.showNotification(`⏳ 正在上传附件 [${file.name}]...`, 'info');
-
-    }
-
-    
+window.renderEditorWidgets = function(cm) {
+    if (!cm || cm._renderingWidgets) return;
+    cm._renderingWidgets = true;
 
     try {
-
-        const res = await fetch('/api/notes/upload', {
-
-            method: 'POST',
-
-            body: formData
-
-        });
-
-        const data = await res.json();
-
-        if (data.success && data.markdown) {
-
-            if (typeof easyMDE !== 'undefined' && easyMDE) {
-
-                const cm = easyMDE.codemirror;
-
-                const cursor = cm.getCursor();
-
-                cm.replaceRange(`\n${data.markdown}\n`, cursor);
-
-                cm.focus();
-
+        // 清理所有历史自定义 Widget 标记
+        const existingMarks = cm.getAllMarks();
+        for (let mark of existingMarks) {
+            if (mark._isCustomNoteWidget) {
+                mark.clear();
             }
-
-            if (window.showNotification) {
-
-                window.showNotification(`✅ 附件 [${file.name}] 上传成功并已插入笔记！`, 'success');
-
-            }
-
-        } else {
-
-            throw new Error(data.error || 'Upload failed');
-
         }
 
+        const cursor = cm.getCursor();
+        const lineCount = cm.lineCount();
+
+        for (let lineIdx = 0; lineIdx < lineCount; lineIdx++) {
+            const lineText = cm.getLine(lineIdx);
+            if (!lineText) continue;
+
+            // 1. 扫描图片: !\[(.*?)\]\((.*?)\)
+            const imgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+            let match;
+            while ((match = imgRegex.exec(lineText)) !== null) {
+                const fullMatch = match[0];
+                const alt = match[1] || '图片';
+                const url = match[2].trim();
+                const startCh = match.index;
+                const endCh = match.index + fullMatch.length;
+
+                // 若光标正在该范围内输入，暂时不折叠以方便用户编辑
+                if (cursor.line === lineIdx && cursor.ch >= startCh && cursor.ch <= endCh) {
+                    continue;
+                }
+
+                const widgetEl = window._createEditorImageWidget(cm, lineIdx, startCh, endCh, alt, url);
+                const marker = cm.markText(
+                    { line: lineIdx, ch: startCh },
+                    { line: lineIdx, ch: endCh },
+                    { replacedWith: widgetEl, clearOnEnter: true, handleMouseEvents: true }
+                );
+                marker._isCustomNoteWidget = true;
+                widgetEl._marker = marker;
+            }
+
+            // 2. 扫描附件/文档: [text](url) (排除以 ! 开头的图片链接)
+            const fileRegex = /(^|[^!])\[([^\]]+)\]\(([^)]+)\)/g;
+            while ((match = fileRegex.exec(lineText)) !== null) {
+                const prefix = match[1] || '';
+                const text = match[2];
+                const url = match[3].trim();
+                const startCh = match.index + prefix.length;
+                const endCh = startCh + (match[0].length - prefix.length);
+
+                // 只对附件/文件链接进行美化：指向 /api/notes/files/ 或具备常见文件后缀
+                const isNoteFile = url.includes('/api/notes/files/') || 
+                    /\.(pdf|xlsx?|docx?|pptx?|zip|rar|7z|tar|gz|csv|pbix?|pbit|ps1|bat|sh|py|sql|json|txt|md)$/i.test(url.split('?')[0]);
+
+                if (!isNoteFile) continue;
+
+                // 若光标正在该范围内输入，暂时不折叠
+                if (cursor.line === lineIdx && cursor.ch >= startCh && cursor.ch <= endCh) {
+                    continue;
+                }
+
+                const widgetEl = window._createEditorAttachmentWidget(cm, lineIdx, startCh, endCh, text, url);
+                const marker = cm.markText(
+                    { line: lineIdx, ch: startCh },
+                    { line: lineIdx, ch: endCh },
+                    { replacedWith: widgetEl, clearOnEnter: true, handleMouseEvents: true }
+                );
+                marker._isCustomNoteWidget = true;
+                widgetEl._marker = marker;
+            }
+        }
     } catch (err) {
+        console.warn('WYSIWYG widget render error:', err);
+    } finally {
+        cm._renderingWidgets = false;
+    }
+};
 
-        console.error('Note file upload error:', err);
+window._createEditorImageWidget = function(cm, lineIdx, startCh, endCh, alt, url) {
+    const wrapper = document.createElement('span');
+    wrapper.className = 'cm-widget-image';
+    wrapper.setAttribute('contenteditable', 'false');
 
-        if (window.showNotification) {
+    const card = document.createElement('div');
+    card.className = 'cm-widget-image-card';
 
-            window.showNotification(`❌ 上传失败: ${err.message}`, 'error');
+    const header = document.createElement('div');
+    header.className = 'cm-widget-image-header';
 
-        }
+    const title = document.createElement('span');
+    title.className = 'cm-widget-image-title';
+    title.textContent = '🖼️ ' + (alt || '图片预览');
+    title.title = `${alt} (${url})`;
 
+    const actions = document.createElement('div');
+    actions.className = 'cm-widget-actions';
+
+    const viewBtn = document.createElement('button');
+    viewBtn.type = 'button';
+    viewBtn.className = 'cm-widget-action-btn';
+    viewBtn.title = '放大查看大图';
+    viewBtn.innerHTML = '🔍';
+    viewBtn.onclick = (e) => {
+        e.stopPropagation();
+        window.previewFullImage(url, alt);
+    };
+
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'cm-widget-action-btn';
+    editBtn.title = '展开编辑 Markdown 源码';
+    editBtn.innerHTML = '✏️';
+    editBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (wrapper._marker) wrapper._marker.clear();
+        cm.focus();
+        cm.setCursor({ line: lineIdx, ch: startCh + 2 });
+    };
+
+    actions.appendChild(viewBtn);
+    actions.appendChild(editBtn);
+    header.appendChild(title);
+    header.appendChild(actions);
+
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = alt;
+    img.className = 'cm-widget-image-thumb';
+    img.loading = 'lazy';
+    img.onclick = (e) => {
+        e.stopPropagation();
+        window.previewFullImage(url, alt);
+    };
+    img.ondblclick = (e) => {
+        e.stopPropagation();
+        if (wrapper._marker) wrapper._marker.clear();
+        cm.focus();
+        cm.setCursor({ line: lineIdx, ch: startCh + 2 });
+    };
+
+    card.appendChild(header);
+    card.appendChild(img);
+    wrapper.appendChild(card);
+    return wrapper;
+};
+
+window._createEditorAttachmentWidget = function(cm, lineIdx, startCh, endCh, text, url) {
+    const wrapper = document.createElement('span');
+    wrapper.className = 'cm-widget-attachment';
+    wrapper.setAttribute('contenteditable', 'false');
+
+    const cleanUrl = url.split('?')[0].split('#')[0];
+    const ext = cleanUrl.includes('.') ? cleanUrl.split('.').pop().toLowerCase() : '';
+    let icon = '📎';
+    let badgeText = (ext || 'FILE').toUpperCase();
+
+    if (['xlsx', 'xls', 'csv'].includes(ext)) {
+        icon = '📊';
+        badgeText = 'EXCEL';
+    } else if (['pdf'].includes(ext)) {
+        icon = '📑';
+        badgeText = 'PDF';
+    } else if (['doc', 'docx'].includes(ext)) {
+        icon = '📄';
+        badgeText = 'WORD';
+    } else if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
+        icon = '📦';
+        badgeText = 'ZIP';
+    } else if (['pbix', 'pbit'].includes(ext)) {
+        icon = '🟡';
+        badgeText = 'PBI';
+    } else if (['ps1', 'bat', 'sh', 'py', 'sql', 'js', 'json'].includes(ext)) {
+        icon = '⚙️';
+        badgeText = 'CODE';
     }
 
+    wrapper.innerHTML = `
+        <span class="cm-widget-file-icon">${icon}</span>
+        <span class="cm-widget-file-body">
+            <span class="cm-widget-file-name" title="${text}">${text}</span>
+            <span class="cm-widget-file-badge">${badgeText}</span>
+        </span>
+        <span class="cm-widget-actions">
+            <a href="${url}" target="_blank" download class="cm-widget-action-btn" title="下载 / 查看附件" onclick="event.stopPropagation();">⬇️</a>
+            <button type="button" class="cm-widget-action-btn btn-edit" title="展开编辑 Markdown 源码">✏️</button>
+        </span>
+    `;
+
+    const editBtn = wrapper.querySelector('.btn-edit');
+    if (editBtn) {
+        editBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (wrapper._marker) wrapper._marker.clear();
+            cm.focus();
+            cm.setCursor({ line: lineIdx, ch: startCh + 1 });
+        };
+    }
+
+    wrapper.ondblclick = (e) => {
+        e.stopPropagation();
+        if (wrapper._marker) wrapper._marker.clear();
+        cm.focus();
+        cm.setCursor({ line: lineIdx, ch: startCh + 1 });
+    };
+
+    return wrapper;
+};
+
+// 全屏图片高清放大预览模态框
+window.previewFullImage = function(url, title = '') {
+    let previewModal = document.getElementById('note-image-preview-modal');
+    if (!previewModal) {
+        previewModal = document.createElement('div');
+        previewModal.id = 'note-image-preview-modal';
+        previewModal.className = 'modal-overlay note-image-preview-overlay';
+        previewModal.onclick = (e) => {
+            if (e.target === previewModal || e.target.closest('.close-preview-btn')) {
+                previewModal.classList.remove('active');
+                setTimeout(() => { previewModal.style.display = 'none'; }, 200);
+            }
+        };
+        previewModal.innerHTML = `
+            <div class="note-image-preview-container">
+                <button type="button" class="close-preview-btn" title="关闭大图">✕</button>
+                <div class="note-image-preview-caption" id="note-preview-caption"></div>
+                <img id="note-preview-full-img" src="" alt="Full Preview" />
+            </div>
+        `;
+        document.body.appendChild(previewModal);
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && previewModal.style.display === 'flex') {
+                previewModal.classList.remove('active');
+                setTimeout(() => { previewModal.style.display = 'none'; }, 200);
+            }
+        });
+    }
+
+    const imgEl = previewModal.querySelector('#note-preview-full-img');
+    const capEl = previewModal.querySelector('#note-preview-caption');
+    if (imgEl) imgEl.src = url;
+    if (capEl) capEl.textContent = title || url;
+
+    previewModal.style.display = 'flex';
+    requestAnimationFrame(() => {
+        previewModal.classList.add('active');
+    });
+};
+
+window.uploadFileToNote = async function(file) {
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    if (window.showNotification) {
+        window.showNotification(`⏳ 正在上传附件 [${file.name}]...`, 'info');
+    }
+    
+    try {
+        const res = await fetch('/api/notes/upload', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        if (data.success && data.markdown) {
+            if (typeof easyMDE !== 'undefined' && easyMDE) {
+                const cm = easyMDE.codemirror;
+                const cursor = cm.getCursor();
+                cm.replaceRange(`\n${data.markdown}\n`, cursor);
+                cm.focus();
+                if (window.renderEditorWidgets) {
+                    setTimeout(() => window.renderEditorWidgets(cm), 100);
+                }
+            }
+            if (window.showNotification) {
+                window.showNotification(`✅ 附件 [${file.name}] 上传成功并已插入笔记！`, 'success');
+            }
+        } else {
+            throw new Error(data.error || 'Upload failed');
+        }
+    } catch (err) {
+        console.error('Note file upload error:', err);
+        if (window.showNotification) {
+            window.showNotification(`❌ 上传失败: ${err.message}`, 'error');
+        }
+    }
 };
 
 
@@ -13536,6 +13748,9 @@ window.setActiveNote = function(filename, content = null, syncEditor = true) {
     }
     if (syncEditor && easyMDE && content !== null && content !== undefined) {
         easyMDE.value(content);
+        if (window.renderEditorWidgets && easyMDE.codemirror) {
+            setTimeout(() => window.renderEditorWidgets(easyMDE.codemirror), 60);
+        }
     }
     window.highlightActiveNoteItem();
 };
@@ -13644,34 +13859,26 @@ window.renderSortedNotesList = function() {
         listEl.appendChild(item);
     });
 
-    // 智能同步活跃笔记与文件名 (防御内容存在而 filename 为空的问题)
+    // 智能同步活跃笔记与文件名 (以服务端权威笔记最新数据即刻填充编辑器，杜绝显示旧内容或延迟刷新)
     const fnInput = document.getElementById('note-filename');
     let curFn = (fnInput?.value || window._activeNoteFilename || localStorage.getItem('pbi_active_note_filename') || '').trim();
 
     if (!curFn) {
-        // 如果当前 filename 为空，检查是否有正在编辑的内容与某一已有笔记匹配
-        const editorContent = (easyMDE ? easyMDE.value() : '').trim();
-        if (editorContent) {
-            const matchedNote = sorted.find(n => (n.content || '').trim() === editorContent);
-            if (matchedNote) {
-                curFn = matchedNote.filename;
-                window.setActiveNote(matchedNote.filename, null, false);
-            }
-        }
-        // 如果仍为空且列表中存在笔记，则默认激活第一篇最新笔记
-        if (!curFn && sorted.length > 0) {
-            window.setActiveNote(sorted[0].filename, sorted[0].content, !editorContent);
+        // 如果当前 filename 为空且列表中存在笔记，则默认激活第一篇最新笔记
+        if (sorted.length > 0) {
+            window.setActiveNote(sorted[0].filename, sorted[0].content, true);
             curFn = sorted[0].filename;
         }
     } else {
-        // 存在记录的活跃文件名，同步设置并高亮
-        if (fnInput && !fnInput.value.trim()) {
-            fnInput.value = curFn;
-        }
-        // 若编辑区尚为空，而该文件存在，则加载内容
+        // 存在记录的活跃文件名，在服务端返回的列表中查找最新版本
         const matchedNote = sorted.find(n => n.filename.toLowerCase() === curFn.toLowerCase());
-        if (matchedNote && easyMDE && !easyMDE.value().trim()) {
-            easyMDE.value(matchedNote.content);
+        if (matchedNote) {
+            // 无论编辑区之前是何状态，强制同步权威最新内容，消除点击左侧才能刷新的问题
+            window.setActiveNote(matchedNote.filename, matchedNote.content, true);
+        } else if (sorted.length > 0) {
+            // 若记录的文件名已不存在，默认激活第一篇
+            window.setActiveNote(sorted[0].filename, sorted[0].content, true);
+            curFn = sorted[0].filename;
         }
     }
 
