@@ -1,14 +1,43 @@
 const { test, expect } = require('@playwright/test');
 
-test.describe('0918 Improvement v3 Requirements Verification', () => {
+test.describe.serial('0918 Improvement v3 Requirements Verification', () => {
+  let page;
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeAll(async ({ browser }) => {
+    page = await browser.newPage();
+    // 拦截慢速外部字体请求，避免国内 Windows 环境网络挂起等待超时
+    await page.route(/fonts\.(googleapis|gstatic)\.com/, route => route.abort());
     await page.setViewportSize({ width: 1280, height: 850 });
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
   });
 
-  test('Requirement 2: Quick Note modal action buttons (Sort, New, Save) have clearly visible SVG icons with width/height > 0', async ({ page }) => {
+  test.afterAll(async () => {
+    if (page) await page.close();
+  });
+
+  test.afterEach(async () => {
+    // 状态清理：移除动态路由，直接同步关闭所有弹窗并排空异步动画定时器
+    try {
+      await page.unroute(url => url.pathname.includes('/api/search-notes'));
+    } catch (_) {}
+    await page.evaluate(() => {
+      const nm = document.getElementById('modal-note');
+      if (nm) {
+        nm.classList.remove('closing');
+        nm.style.display = 'none';
+      }
+      const um = document.getElementById('universal-modal-overlay');
+      if (um) {
+        um.classList.remove('closing');
+        um.style.display = 'none';
+      }
+      localStorage.removeItem('pbi_active_note_filename');
+    });
+    await page.waitForTimeout(250);
+  });
+
+  test('Requirement 2: Quick Note modal action buttons (Sort, New, Save) have clearly visible SVG icons with width/height > 0', async () => {
     await page.evaluate(() => {
       if (window.openNoteModal) window.openNoteModal();
     });
@@ -42,7 +71,7 @@ test.describe('0918 Improvement v3 Requirements Verification', () => {
     }
   });
 
-  test('Requirement 3: Quick Note editor has no duplicate CodeMirror-vscrollbar (CodeMirror-vscrollbar is display: none)', async ({ page }) => {
+  test('Requirement 3: Quick Note editor has no duplicate CodeMirror-vscrollbar (CodeMirror-vscrollbar is display: none)', async () => {
     await page.evaluate(() => {
       if (window.openNoteModal) window.openNoteModal();
     });
@@ -60,7 +89,7 @@ test.describe('0918 Improvement v3 Requirements Verification', () => {
     expect(scrollDisplay).not.toBe('none');
   });
 
-  test('Requirement 4: Universal Modal Visible Fields list supports handleDragAutoScroll', async ({ page }) => {
+  test('Requirement 4: Universal Modal Visible Fields list supports handleDragAutoScroll', async () => {
     // Open Universal Modal with 25 columns to make the dropdown scrollable
     await page.evaluate(() => {
       const sampleRow = {};
@@ -117,7 +146,7 @@ test.describe('0918 Improvement v3 Requirements Verification', () => {
     expect(scrollTestResult.scrolledUp).toBe(true);
   });
 
-  test('Requirement 5: Quick Note button is moved to #global-topbar and placed before #gtb-btn-refresh', async ({ page }) => {
+  test('Requirement 5: Quick Note button is moved to #global-topbar and placed before #gtb-btn-refresh', async () => {
     const noteBtn = page.locator('#global-topbar #btn-note');
     await expect(noteBtn).toBeVisible();
 
@@ -135,7 +164,7 @@ test.describe('0918 Improvement v3 Requirements Verification', () => {
     expect(isBeforeRefresh).toBe(true);
   });
 
-  test('Requirement 6: Quick Note search input has a clear button with dynamic visibility and clear action', async ({ page }) => {
+  test('Requirement 6: Quick Note search input has a clear button with dynamic visibility and clear action', async () => {
     await page.evaluate(() => {
       if (window.openNoteModal) window.openNoteModal();
     });
@@ -164,7 +193,7 @@ test.describe('0918 Improvement v3 Requirements Verification', () => {
     await expect(clearBtn).toBeHidden();
   });
 
-  test('Requirement 7: Quick Note filename auto-sync, active note highlighting, and compact header space', async ({ page }) => {
+  test('Requirement 7: Quick Note filename auto-sync, active note highlighting, and compact header space', async () => {
     // 拦截服务端 search-notes 请求，返回稳定的受控数据
     await page.route(url => url.pathname.includes('/api/search-notes'), async route => {
       await route.fulfill({
@@ -227,7 +256,7 @@ test.describe('0918 Improvement v3 Requirements Verification', () => {
     await expect(items.nth(1)).not.toHaveClass(/active/);
   });
 
-  test('Requirement 8: Quick Note WYSIWYG widgets, clean text paste defense, and authoritative content auto-loading', async ({ page }) => {
+  test('Requirement 8: Quick Note WYSIWYG widgets, clean text paste defense, and authoritative content auto-loading', async () => {
     // 1. 拦截笔记数据，包含权威内容及图片/附件 Markdown
     await page.route(url => url.pathname.includes('/api/search-notes'), async route => {
       await route.fulfill({
@@ -298,10 +327,10 @@ test.describe('0918 Improvement v3 Requirements Verification', () => {
     const editBtn = fileWidget.locator('.btn-edit');
     await editBtn.click();
 
-    // 验证源码展开，且行内出现【👁️ 恢复卡片预览 (Esc)】小药丸
+    // 验证源码展开，且行内出现【👁️ 收起 (Esc)】微型小胶囊
     const restorePill = page.locator('.cm-inline-restore-pill');
     await expect(restorePill).toBeVisible({ timeout: 3000 });
-    await expect(restorePill).toContainText('恢复卡片预览');
+    await expect(restorePill).toContainText('收起');
 
     // 2. 测试按下 Escape 键立即恢复卡片预览
     await page.keyboard.press('Escape');

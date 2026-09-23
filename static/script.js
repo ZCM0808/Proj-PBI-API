@@ -13304,8 +13304,8 @@ window._showInlineRestoreButton = function(cm, lineIdx, ch) {
 
     const pill = document.createElement('span');
     pill.className = 'cm-inline-restore-pill';
-    pill.innerHTML = '👁️ 恢复卡片预览 (Esc)';
-    pill.title = '点击退出源码编辑，立即恢复所见即所得卡片预览 (或按键盘 Esc 键)';
+    pill.innerHTML = '👁️ 收起 (Esc)';
+    pill.title = '收起源码并恢复卡片预览 (Esc)';
     pill.onclick = (e) => {
         e.stopPropagation();
         try { pill._bookmark.clear(); } catch (_) {}

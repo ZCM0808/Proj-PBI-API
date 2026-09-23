@@ -2,7 +2,7 @@ const { defineConfig, devices } = require('@playwright/test');
 
 module.exports = defineConfig({
   testDir: './tests',
-  fullyParallel: true,
+  fullyParallel: false,
   retries: 0,
   workers: 1,
   reporter: [['list'], ['html', { open: 'never' }]],
@@ -23,7 +23,13 @@ module.exports = defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: {
-          args: ['--no-proxy-server']
+          args: [
+            '--no-proxy-server',
+            '--disable-background-networking',
+            '--disable-component-update',
+            '--disable-background-timer-throttling',
+            '--disable-renderer-backgrounding'
+          ]
         }
       },
     },
