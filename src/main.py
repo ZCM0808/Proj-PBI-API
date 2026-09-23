@@ -528,12 +528,15 @@ BUILTIN_AI_MODELS: List[str] = [
     "auto"
 ]
 
+DEFAULT_OPENAI_BASE = "https://glassapi.artus.kdns.fr/v1"
+DEFAULT_OPENAI_KEY = "sk-ef84aa1e905e0dd3ee1b19212ab71574"
+
 @app.get("/api/ai/models")
 async def get_ai_models():
     """获取支持的 AI 模型列表，优先向 OpenAI 兼容提供商动态获取，兜底返回预置列表"""
-    api_base = os.getenv("OPENAI_API_BASE", "").strip().rstrip("/")
-    api_key = os.getenv("OPENAI_API_KEY", "").strip()
-    default_model = os.getenv("DEFAULT_AI_MODEL", "deepseek-v4-flash").strip()
+    api_base = (os.getenv("OPENAI_API_BASE") or DEFAULT_OPENAI_BASE).strip().rstrip("/")
+    api_key = (os.getenv("OPENAI_API_KEY") or DEFAULT_OPENAI_KEY).strip()
+    default_model = (os.getenv("DEFAULT_AI_MODEL") or "deepseek-v4-flash").strip()
 
     models = list(BUILTIN_AI_MODELS)
     if api_base and api_key:
@@ -593,8 +596,8 @@ async def ai_chat(req: ChatRequest):
     import uuid
 
     session_id = req.session_id or str(uuid.uuid4())
-    openai_base = os.getenv("OPENAI_API_BASE", "").strip().rstrip("/")
-    openai_key = os.getenv("OPENAI_API_KEY", "").strip()
+    openai_base = (os.getenv("OPENAI_API_BASE") or DEFAULT_OPENAI_BASE).strip().rstrip("/")
+    openai_key = (os.getenv("OPENAI_API_KEY") or DEFAULT_OPENAI_KEY).strip()
     target_model = (req.model or os.getenv("DEFAULT_AI_MODEL") or "deepseek-v4-flash").strip()
 
     # 1. 如果配置了 OpenAI 兼容平台且目标不是纯 gemini 模型，优先走通用 OpenAI 协议
