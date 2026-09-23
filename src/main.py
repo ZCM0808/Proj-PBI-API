@@ -18,7 +18,10 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-import httpx
+try:
+    import httpx
+except ImportError:
+    httpx = None  # type: ignore[assignment]
 import pyotp  # type: ignore[import-untyped]
 import qrcode  # type: ignore[import-untyped]
 import requests  # type: ignore[import-untyped]
@@ -539,7 +542,7 @@ async def get_ai_models():
     default_model = (os.getenv("DEFAULT_AI_MODEL") or "deepseek-v4-flash").strip()
 
     models = list(BUILTIN_AI_MODELS)
-    if api_base and api_key:
+    if api_base and api_key and httpx is not None:
         try:
             async with httpx.AsyncClient(timeout=4.0) as client:
                 res = await client.get(
@@ -601,7 +604,7 @@ async def ai_chat(req: ChatRequest):
     target_model = (req.model or os.getenv("DEFAULT_AI_MODEL") or "deepseek-v4-flash").strip()
 
     # 1. 如果配置了 OpenAI 兼容平台且目标不是纯 gemini 模型，优先走通用 OpenAI 协议
-    if openai_base and openai_key and not target_model.startswith("gemini-"):
+    if openai_base and openai_key and httpx is not None and not target_model.startswith("gemini-"):
         if session_id not in _openai_chat_sessions:
             _openai_chat_sessions[session_id] = []
         history = _openai_chat_sessions[session_id]
