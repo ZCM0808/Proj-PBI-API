@@ -636,6 +636,16 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     await expect(modelReadProp).toBeVisible();
     const modelReadText = await modelReadProp.innerText();
     expect(modelReadText).toContain('Permission: Read');
+
+    // 10. 验证括号中的中文解释独立放在新行 (.pb-prop-sub-name)，字号与样式分层
+    const wsMembersProp = page.locator('.pb-asset-card-row[data-row-id="ws_members"] .pb-asset-prop-name');
+    await expect(wsMembersProp).toBeVisible();
+    const mainTitle = wsMembersProp.locator('.pb-prop-main-name');
+    const subTitle = wsMembersProp.locator('.pb-prop-sub-name');
+    await expect(mainTitle).toBeVisible();
+    await expect(subTitle).toBeVisible();
+    await expect(mainTitle).toHaveText('Permission: Manage Access');
+    await expect(subTitle).toHaveText('(管理工作区成员)');
   });
 
 });

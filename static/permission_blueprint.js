@@ -4829,6 +4829,14 @@
                         .replace(/^【认证机制】/, '<strong class="pb-desc-tag tag-gw">【认证机制】</strong>');
 
                     const cleanName = item.name || '';
+                    let mainName = cleanName;
+                    let subName = '';
+                    const nameMatch = cleanName.match(/^(.*?)\s*([\(\（][^\)\）]+[\)\）])$/);
+                    if (nameMatch) {
+                        mainName = nameMatch[1].trim();
+                        subName = nameMatch[2].trim();
+                    }
+
                     const cat = item.cat || 'derived';
                     const catLabelMap = {
                         'assigned': 'ASSIGNED',
@@ -4851,7 +4859,10 @@
                                             <circle cx="15" cy="19" r="1.5"></circle>
                                         </svg>
                                     </span>
-                                    <span class="pb-asset-prop-name" title="${cleanName}">${cleanName}</span>
+                                    <span class="pb-asset-prop-name" title="${cleanName}">
+                                        <span class="pb-prop-main-name">${mainName}</span>
+                                        ${subName ? `<span class="pb-prop-sub-name">${subName}</span>` : ''}
+                                    </span>
                                 </div>
                                 ${(() => {
                                     const SVG_CHECK = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px; display: inline-block;"><polyline points="20 6 9 17 4 12"></polyline></svg>`;

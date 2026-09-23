@@ -8439,14 +8439,9 @@ body.light-theme .pb-card-header-status.status-bypassed .pb-status-indicator-tex
     box-shadow: 0 4px 14px rgba(99, 102, 241, 0.18);
 }
 .pb-asset-card-row.is-hero-role .pb-asset-prop-name {
-    font-size: 0.88rem !important;
-    font-weight: 850 !important;
     color: #e0e7ff !important;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.2px;
     line-height: 1.25;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 body.light-theme .pb-asset-card-row.is-hero-role,
 [data-theme="light"] .pb-asset-card-row.is-hero-role {
@@ -8767,13 +8762,51 @@ body.light-theme .pb-asset-card-row:hover,
     color: var(--accent);
 }
 .pb-asset-prop-name {
-    font-size: 0.86rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    line-height: 1.3;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+/* 主权限/操作名称 (英文官方全称) */
+.pb-prop-main-name {
+    font-size: 0.81rem;
     font-weight: 750;
     color: var(--text-primary);
-    line-height: 1.35;
+    line-height: 1.25;
     word-break: normal;
     overflow-wrap: break-word;
-    white-space: normal;
+}
+
+/* 独立换行的中文解释说明 (小字号、温和副色调) */
+.pb-prop-sub-name {
+    font-size: 0.67rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    line-height: 1.2;
+    margin-top: 2px;
+    letter-spacing: 0.2px;
+    opacity: 0.88;
+}
+
+body.light-theme .pb-prop-sub-name,
+[data-theme="light"] .pb-prop-sub-name {
+    color: #64748b !important;
+}
+
+/* 核心英雄角色卡片双行专属字号层级 */
+.pb-asset-card-row.is-hero-role .pb-prop-main-name {
+    font-size: 0.88rem;
+    font-weight: 850;
+    letter-spacing: 0.2px;
+}
+.pb-asset-card-row.is-hero-role .pb-prop-sub-name {
+    font-size: 0.69rem;
+    font-weight: 700;
+    color: #f59e0b; /* 琥珀金提示 */
 }
 
 /* 状态药丸胶囊 */
