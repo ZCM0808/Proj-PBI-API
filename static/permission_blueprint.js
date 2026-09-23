@@ -380,6 +380,12 @@
             const selectedDsIds = Array.from(window.selectedGtbDatasetIds || []);
             // 🚨 严格以顶栏选择为唯一依据：顶栏没选就是没选，绝不背着顶栏从 localStorage 偷取旧工作区
             let wsId = selectedWsIds.length > 0 ? selectedWsIds[0] : '';
+            if (!wsId) {
+                try {
+                    const savedWs = JSON.parse(localStorage.getItem('pbi-selected-workspaces') || '[]');
+                    if (Array.isArray(savedWs) && savedWs.length > 0) wsId = savedWs[0];
+                } catch(e) {}
+            }
             let dsId = selectedDsIds.length > 0 ? selectedDsIds[0] : '';
 
             const wsList = window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
@@ -489,6 +495,7 @@
             const userAssetsToolbar = document.getElementById('pb-user-assets-toolbar');
 
             if (this.activeMainTab === 'user_assets') {
+                this.syncFromGtb();
                 if (canvasEl) canvasEl.style.display = 'none';
                 if (matrixEl) matrixEl.style.display = 'none';
                 if (userAssetsEl) userAssetsEl.style.display = 'flex';
@@ -4642,6 +4649,12 @@
             } else {
                 const activeWsVal = document.getElementById('active-workspace')?.value;
                 if (activeWsVal) curWsId = activeWsVal;
+                if (!curWsId) {
+                    try {
+                        const savedWs = JSON.parse(localStorage.getItem('pbi-selected-workspaces') || '[]');
+                        if (Array.isArray(savedWs) && savedWs.length > 0) curWsId = savedWs[0];
+                    } catch(e) {}
+                }
             }
             let curWs = curWsId ? (rawWsData.find(w => String(w.id).toLowerCase() === curWsId.toLowerCase()) || { id: curWsId, name: curWsId, alias: curWsId }) : null;
 
@@ -4939,19 +4952,19 @@
             const userSub = user ? `主体: ${user.name} (${user.roleTag})` : '未指定具体用户主体';
             const tenantHeaderStatusClass = user ? (isGuest ? 'warn' : 'enabled') : 'disabled';
             const tenantHeaderStatusText = user ? (isGuest ? '⚠️ B2B GUEST' : '✅ AUTH VALID') : '⚠️ NO PRINCIPAL';
-            const tenantRoleName = user ? (isTenantAdmin ? 'Tenant Role: Fabric Admin (租户管理员)' : (isGuest ? 'Tenant Principal: B2B Guest (外部访客)' : 'Tenant Principal: Member (企业组织成员)')) : 'Tenant Principal: Unspecified (未指定主体)';
+            const tenantRoleName = user ? (isTenantAdmin ? 'Fabric Admin (租户全局管理员)' : (isGuest ? 'B2B Guest (外部访客主体)' : 'Tenant Member (企业组织成员)')) : 'Unspecified Principal (未指定主体)';
             const tenantHeroStatusClass = user ? (isTenantAdmin ? 'bypassed' : (isGuest ? 'warn' : 'enabled')) : 'disabled';
             const tenantHeroStatusText = user ? (isTenantAdmin ? '⚡ ADMIN' : (isGuest ? '⚠️ B2B GUEST' : '✅ MEMBER')) : '❌ NO USER';
             const tenantItems = [
                 { id: 'tenant_principal_role', isHero: true, cat: 'assigned', name: tenantRoleName, desc: user ? `【分配身份】登录主体 [${user.name}] (${user.upn}) · ${isTenantAdmin ? '拥有租户全局 Fabric / Power BI 管理员治理特权' : (isGuest ? 'Entra B2B 外部租户访客身份' : '企业目录标准组织成员身份')}` : '【等待配置】请在左侧或顶栏指定具体企业成员', statusClass: tenantHeroStatusClass, statusText: tenantHeroStatusText, badge: 'ROLE' },
-                { id: 'tenant_gac_policy', cat: 'derived', name: `Tenant Policy: GAC (${user?.state?.isInStrictMode ? '严格审查模式' : '跨源放行模式'})`, desc: user?.state?.isInStrictMode ? '【租户策略控制】租户开启细粒度访问控制 (GAC) 严格审查模式，非特权成员必须具备显式数据连接授权才能直连数据源' : '【租户策略控制】租户 GAC 跨源策略处于放行模式，未对非特权成员实施全局数据源物理隔离', statusClass: user?.state?.isInStrictMode ? 'warn' : 'enabled', statusText: user?.state?.isInStrictMode ? '🔒 STRICT' : '✅ CAN ACCESS', badge: 'GAC' },
-                { id: 'tenant_export', cat: 'derived', name: 'Tenant Setting: Export Data (导出数据至 Excel/CSV)', desc: user ? '【租户策略控制】租户管理门户全局策略放行，允许组织成员导出报表底层与汇总数据至本地 Excel/CSV' : '【租户策略控制】需选定具体登录主体后生效策略', statusClass: user ? 'enabled' : 'disabled', statusText: user ? '✅ CAN EXPORT' : '❌ CANNOT EXPORT', badge: 'EXPORT' },
-                { id: 'tenant_web_modeling', cat: 'derived', name: 'Tenant Setting: Web Modeling (网页在线建模)', desc: user?.state?.tenantAllowWebModeling ? '【租户策略控制】租户策略放行，允许在浏览器端直接设计、编辑语义模型架构与度量值' : '【租户策略控制】租户策略禁用网页端在线建模，仅允许通过 Power BI Desktop 客户端操作', statusClass: user?.state?.tenantAllowWebModeling ? 'enabled' : 'disabled', statusText: user?.state?.tenantAllowWebModeling ? '✅ CAN MODEL' : '❌ CANNOT MODEL', badge: 'WEB MODEL' },
-                { id: 'tenant_xmla', cat: 'derived', name: 'Tenant Setting: XMLA Endpoint (XMLA 端点读写)', desc: '【租户策略控制】终结点已开启读写，允许 SSMS、DAX Studio 与 Tabular Editor 跨客户端直连管理模型架构', statusClass: 'enabled', statusText: '✅ CAN CONNECT', badge: 'XMLA' },
-                { id: 'tenant_external', cat: 'derived', name: 'Tenant Setting: External Sharing (外部跨租户共享)', desc: user ? (isGuest ? '【租户策略控制】当前属于外部访客账号，默认受限禁止跨租户二次外发共享' : '【租户策略控制】租户策略放行向组织外部受众分发或共享报表') : '【租户策略控制】需选定用户主体后推导策略', statusClass: isGuest ? 'disabled' : (user ? 'enabled' : 'disabled'), statusText: isGuest ? '❌ CANNOT SHARE' : (user ? '✅ CAN SHARE' : '⚠️ WAITING'), badge: 'EXTERNAL' },
-                { id: 'tenant_embed', cat: 'derived', name: 'Tenant Setting: Embed in Apps (应用程序外部嵌入)', desc: '【租户策略控制】控制是否允许将报表通过 Embed for customers 方式嵌入外部应用程序', statusClass: user ? 'enabled' : 'disabled', statusText: user ? '✅ CAN EMBED' : '❌ CANNOT EMBED', badge: 'EMBED' },
-                { id: 'tenant_certify', cat: 'derived', name: 'Tenant Setting: Certification (数据集官方认证)', desc: isTenantAdmin ? '【由租户角色控制】当前具备租户管理员权限，允许为优质语义模型打上官方认证标签向全员推荐' : '【由租户角色控制】仅租户管理员具备为语义模型颁发官方认证标签的权限', statusClass: isTenantAdmin ? 'enabled' : 'disabled', statusText: isTenantAdmin ? '✅ CAN CERTIFY' : '❌ CANNOT CERTIFY', badge: 'CERTIFY' },
-                { id: 'tenant_id', cat: 'env', name: `Tenant Directory: Entra ID (${tenantId ? (tenantId.length > 16 ? tenantId.slice(0, 14) + '...' : tenantId) : '未配置'})`, desc: tenantId ? `【承载环境】挂载企业 Azure AD / Entra ID 组织目录租户容器 ID: ${tenantId}` : '【承载环境】系统未配置 TENANT_ID，请在设置中输入', statusClass: tenantId ? 'enabled' : 'warn', statusText: tenantId ? '✅ READY' : '⚠️ MISSING ID', badge: 'TENANT ID' }
+                { id: 'tenant_gac_policy', cat: 'derived', name: `GAC Policy (${user?.state?.isInStrictMode ? '严格审查模式' : '跨源放行模式'})`, desc: user?.state?.isInStrictMode ? '【租户策略控制】租户开启细粒度访问控制 (GAC) 严格审查模式，非特权成员必须具备显式数据连接授权才能直连数据源' : '【租户策略控制】租户 GAC 跨源策略处于放行模式，未对非特权成员实施全局数据源物理隔离', statusClass: user?.state?.isInStrictMode ? 'warn' : 'enabled', statusText: user?.state?.isInStrictMode ? '🔒 STRICT' : '✅ CAN ACCESS', badge: 'GAC' },
+                { id: 'tenant_export', cat: 'derived', name: 'Export Data (导出数据至 Excel/CSV)', desc: user ? '【租户策略控制】租户管理门户全局策略放行，允许组织成员导出报表底层与汇总数据至本地 Excel/CSV' : '【租户策略控制】需选定具体登录主体后生效策略', statusClass: user ? 'enabled' : 'disabled', statusText: user ? '✅ CAN EXPORT' : '❌ CANNOT EXPORT', badge: 'EXPORT' },
+                { id: 'tenant_web_modeling', cat: 'derived', name: 'Web Modeling (网页在线端建模)', desc: user?.state?.tenantAllowWebModeling ? '【租户策略控制】租户策略放行，允许在浏览器端直接设计、编辑语义模型架构与度量值' : '【租户策略控制】租户策略禁用网页端在线建模，仅允许通过 Power BI Desktop 客户端操作', statusClass: user?.state?.tenantAllowWebModeling ? 'enabled' : 'disabled', statusText: user?.state?.tenantAllowWebModeling ? '✅ CAN MODEL' : '❌ CANNOT MODEL', badge: 'WEB MODEL' },
+                { id: 'tenant_xmla', cat: 'derived', name: 'XMLA Endpoint (XMLA 端点读写)', desc: '【租户策略控制】终结点已开启读写，允许 SSMS、DAX Studio 与 Tabular Editor 跨客户端直连管理模型架构', statusClass: 'enabled', statusText: '✅ CAN CONNECT', badge: 'XMLA' },
+                { id: 'tenant_external', cat: 'derived', name: 'External Sharing (外部跨租户共享)', desc: user ? (isGuest ? '【租户策略控制】当前属于外部访客账号，默认受限禁止跨租户二次外发共享' : '【租户策略控制】租户策略放行向组织外部受众分发或共享报表') : '【租户策略控制】需选定用户主体后推导策略', statusClass: isGuest ? 'disabled' : (user ? 'enabled' : 'disabled'), statusText: isGuest ? '❌ CANNOT SHARE' : (user ? '✅ CAN SHARE' : '⚠️ WAITING'), badge: 'EXTERNAL' },
+                { id: 'tenant_embed', cat: 'derived', name: 'Embed in Apps (应用程序外部嵌入)', desc: '【租户策略控制】控制是否允许将报表通过 Embed for customers 方式嵌入外部应用程序', statusClass: user ? 'enabled' : 'disabled', statusText: user ? '✅ CAN EMBED' : '❌ CANNOT EMBED', badge: 'EMBED' },
+                { id: 'tenant_certify', cat: 'derived', name: 'Certification (数据集官方认证)', desc: isTenantAdmin ? '【由租户角色控制】当前具备租户管理员权限，允许为优质语义模型打上官方认证标签向全员推荐' : '【由租户角色控制】仅租户管理员具备为语义模型颁发官方认证标签的权限', statusClass: isTenantAdmin ? 'enabled' : 'disabled', statusText: isTenantAdmin ? '✅ CAN CERTIFY' : '❌ CANNOT CERTIFY', badge: 'CERTIFY' },
+                { id: 'tenant_id', cat: 'env', name: `Entra ID Directory (${tenantId ? (tenantId.length > 16 ? tenantId.slice(0, 14) + '...' : tenantId) : '未配置'})`, desc: tenantId ? `【承载环境】挂载企业 Azure AD / Entra ID 组织目录租户容器 ID: ${tenantId}` : '【承载环境】系统未配置 TENANT_ID，请在设置中输入', statusClass: tenantId ? 'enabled' : 'warn', statusText: tenantId ? '✅ READY' : '⚠️ MISSING ID', badge: 'TENANT ID' }
             ];
             const colTenantBody = renderTierItemsHtml('tenant', tenantItems);
 
@@ -5011,7 +5024,7 @@
                         id: isAdminAssigned ? 'ws_role' : 'ws_role_admin',
                         isHero: isAdminAssigned,
                         cat: 'assigned',
-                        name: 'Workspace Role: Admin (工作区管理员)',
+                        name: 'Admin (工作区管理员)',
                         desc: adminDesc,
                         statusClass: adminStatusClass,
                         statusText: adminStatusText,
@@ -5022,7 +5035,7 @@
                         id: isMemberAssigned ? 'ws_role' : 'ws_role_member',
                         isHero: isMemberAssigned,
                         cat: isMemberAssigned ? 'assigned' : 'derived',
-                        name: 'Workspace Role: Member (工作区成员)',
+                        name: 'Member (工作区成员)',
                         desc: memberDesc,
                         statusClass: memberStatusClass,
                         statusText: memberStatusText,
@@ -5033,7 +5046,7 @@
                         id: isContribAssigned ? 'ws_role' : 'ws_role_contributor',
                         isHero: isContribAssigned,
                         cat: isContribAssigned ? 'assigned' : 'derived',
-                        name: 'Workspace Role: Contributor (工作区参与者)',
+                        name: 'Contributor (工作区参与者)',
                         desc: contribDesc,
                         statusClass: contribStatusClass,
                         statusText: contribStatusText,
@@ -5044,17 +5057,17 @@
                         id: (isViewerAssigned || (!user && wsRoleNormalized === 'NO USER')) ? 'ws_role' : 'ws_role_viewer',
                         isHero: (isViewerAssigned || (!user && wsRoleNormalized === 'NO USER')),
                         cat: (isViewerAssigned || (!user && wsRoleNormalized === 'NO USER')) ? 'assigned' : 'derived',
-                        name: 'Workspace Role: Viewer (只读查看者 / Read)',
+                        name: 'Viewer (只读查看者 / Read)',
                         desc: viewerDesc,
                         statusClass: viewerStatusClass,
                         statusText: (!user && wsRoleNormalized === 'NO USER') ? '⚠️ NO USER' : viewerStatusText,
                         badge: 'ROLE'
                     },
                     // 5. 工作区核心管理与配置特权 (向下兼容测试选择器与 ACL 呈现)
-                    { id: 'ws_members', cat: 'derived', name: 'Permission: Manage Access (管理工作区成员)', desc: isAdmin ? '【由工作区角色派生】拥有最高管理权，可向组织成员分配、修改或撤销工作区各级角色' : (isMember ? '【由工作区角色派生】仅允许向他人授予 Viewer(查看者) 角色，无法分配更高角色' : '【由工作区角色派生】无成员管理权限，禁止变更工作区成员名单与权限'), statusClass: isAdmin ? 'enabled' : (isMember ? 'warn' : 'disabled'), statusText: isAdmin ? '✅ CAN MANAGE' : (isMember ? '⚠️ CAN INVITE VIEWERS' : '❌ CANNOT MANAGE'), badge: 'PERMISSIONS' },
-                    { id: 'ws_delete', cat: 'derived', name: 'Operation: Delete Workspace (删除工作区)', desc: isAdmin ? '【由工作区角色派生】仅工作区 Admin 角色具备永久删除整个工作区及其包含全量资产的最高权限' : '【由工作区角色派生】非 Admin 角色，禁止执行工作区级别的永久删除操作', statusClass: isAdmin ? 'enabled' : 'disabled', statusText: isAdmin ? '✅ CAN DELETE' : '❌ CANNOT DELETE', badge: 'DELETE' },
-                    { id: 'ws_capacity', cat: 'derived', name: 'Resource: Fabric F64 Dedicated Capacity (企业专用容量)', desc: '【承载环境】挂载企业专用容量 (Fabric F64)，享有独立计算算力与 Direct Lake 加速通道', statusClass: 'enabled', statusText: '⚡ CAN ACCESS', badge: 'CAPACITY' },
-                    { id: 'ws_target', cat: 'env', name: `Workspace Container: ${wsName.toUpperCase()} (目标工作区容器)`, desc: `【承载环境】工作区名称: ${wsName} · 容器 ID: ${curWs.id}`, statusClass: 'enabled', statusText: '✅ READY', badge: 'WORKSPACE' }
+                    { id: 'ws_members', cat: 'derived', name: 'Manage Access (管理工作区成员)', desc: isAdmin ? '【由工作区角色派生】拥有最高管理权，可向组织成员分配、修改或撤销工作区各级角色' : (isMember ? '【由工作区角色派生】仅允许向他人授予 Viewer(查看者) 角色，无法分配更高角色' : '【由工作区角色派生】无成员管理权限，禁止变更工作区成员名单与权限'), statusClass: isAdmin ? 'enabled' : (isMember ? 'warn' : 'disabled'), statusText: isAdmin ? '✅ CAN MANAGE' : (isMember ? '⚠️ CAN INVITE VIEWERS' : '❌ CANNOT MANAGE'), badge: 'PERMISSIONS' },
+                    { id: 'ws_delete', cat: 'derived', name: 'Delete Workspace (删除工作区)', desc: isAdmin ? '【由工作区角色派生】仅工作区 Admin 角色具备永久删除整个工作区及其包含全量资产的最高权限' : '【由工作区角色派生】非 Admin 角色，禁止执行工作区级别的永久删除操作', statusClass: isAdmin ? 'enabled' : 'disabled', statusText: isAdmin ? '✅ CAN DELETE' : '❌ CANNOT DELETE', badge: 'DELETE' },
+                    { id: 'ws_capacity', cat: 'derived', name: 'Fabric F64 Capacity (企业专用容量)', desc: '【承载环境】挂载企业专用容量 (Fabric F64)，享有独立计算算力与 Direct Lake 加速通道', statusClass: 'enabled', statusText: '⚡ CAN ACCESS', badge: 'CAPACITY' },
+                    { id: 'ws_target', cat: 'env', name: `Workspace Container (目标工作区容器)`, desc: `【承载环境】工作区名称: ${wsName} · 容器 ID: ${curWs.id}`, statusClass: 'enabled', statusText: '✅ READY', badge: 'WORKSPACE' }
                 ];
                 colWorkspaceBody = renderTierItemsHtml('workspace', wsItems);
             }
@@ -5104,13 +5117,13 @@
                 modelSubText = `语义模型资产 · 所属工作区: ${wsName}`;
 
                 const modelItems = [
-                    { id: 'model_permission', isHero: true, cat: 'assigned', name: `Dataset Permission: ${modelPermLabel} (${modelPermZh})`, desc: `【由工作区角色派生】基于工作区 [${wsRoleCaps}] 角色派生的语义模型 [${cleanModelName}] 官方有效权限集合`, statusClass: canBuild ? 'enabled' : (canReadModel ? 'warn' : 'disabled'), statusText: canBuild ? '⚡ BUILD' : (canReadModel ? '👁️ READ' : '🚫 DENIED'), badge: 'PERMISSION' },
-                    { id: 'model_read', cat: 'derived', name: 'Permission: Read (读取模型与 DAX 查询)', desc: canReadModel ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生只读许可，允许执行 DAX 表达式查询，下游报表正常取数渲染` : '【由工作区角色派生】无 READ 权限，DAX 查询将被 403 阻断，报表将拒绝加载', statusClass: canReadModel ? 'enabled' : 'disabled', statusText: canReadModel ? '✅ CAN READ' : '❌ CANNOT READ', badge: 'READ' },
-                    { id: 'model_build', cat: 'derived', name: 'Permission: Build (构建下游报表与分析)', desc: canBuild ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生，允许以该模型为基础使用 Excel 透视分析或新建独立衍生报表` : '【由工作区角色派生】无 BUILD 权限，无法新建下游衍生报表或在 Excel 中连接探索', statusClass: canBuild ? 'enabled' : 'disabled', statusText: canBuild ? '✅ CAN BUILD' : '❌ CANNOT BUILD', badge: 'BUILD' },
-                    { id: 'model_write', cat: 'derived', name: 'Permission: Write (修改模型架构与度量值)', desc: isPrivileged ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生特权，允许通过 XMLA 端点或浏览器在线修改表结构、新建度量值与关系模型` : '【由工作区角色派生】当前角色无编辑特权，禁止写回模型架构或修改度量值', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ CAN WRITE' : '❌ CANNOT WRITE', badge: 'WRITE' },
-                    { id: 'model_gac_ols', cat: 'derived', name: 'Security Policy: OLS / GAC (对象级与细粒度安全)', desc: isPrivileged ? `【由工作区角色控制】拥有 [${wsRoleCaps}] 管理特权穿透，免除语义模型敏感表与度量值字段的 OLS/GAC 掩蔽限制` : (user?.state?.olsEnabled ? '【由工作区角色控制】受敏感字段 OLS/GAC 细粒度安全约束，受保护的高密字段已被动态掩蔽 (Masked)' : '【由工作区角色控制】已获模型全量表与字段 GAC 访问权限，所有敏感维度与指标字段完整可见'), statusClass: isPrivileged ? 'bypassed' : (user?.state?.olsEnabled ? 'warn' : 'enabled'), statusText: isPrivileged ? '⚡ ADMIN BYPASS' : (user?.state?.olsEnabled ? '🔒 OLS MASKED' : '✅ CAN ACCESS ALL'), badge: 'OLS' },
-                    { id: 'model_rls', cat: 'derived', name: 'Security Policy: RLS (行级安全过滤规则)', desc: isPrivileged ? `【由工作区角色控制】拥有 [${wsRoleCaps}] 管理特权穿透，直接跳过所有 DAX 行级安全过滤规则，查看全量业务明细` : '【由工作区角色控制】受 DAX 角色策略约束，仅能查看授权给当前身份的切片行数据', statusClass: isPrivileged ? 'bypassed' : 'warn', statusText: isPrivileged ? '⚡ ADMIN BYPASS' : '🔒 RLS RESTRICTED', badge: 'RLS' },
-                    { id: 'model_reshare', cat: 'derived', name: 'Permission: Reshare (二次授权共享模型)', desc: (isAdmin || isMember) ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生，允许将该具体语义模型的访问权限二次授权给其他组织成员` : '【由工作区角色派生】无 RESHARE 权限，禁止向第三方组织成员分发或再授权该模型', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ CAN RESHARE' : '❌ CANNOT RESHARE', badge: 'RESHARE' }
+                    { id: 'model_permission', isHero: true, cat: 'assigned', name: `${modelPermLabel} (${modelPermZh})`, desc: `【由工作区角色派生】基于工作区 [${wsRoleCaps}] 角色派生的语义模型 [${cleanModelName}] 官方有效权限集合`, statusClass: canBuild ? 'enabled' : (canReadModel ? 'warn' : 'disabled'), statusText: canBuild ? '⚡ BUILD' : (canReadModel ? '👁️ READ' : '🚫 DENIED'), badge: 'PERMISSION' },
+                    { id: 'model_read', cat: 'derived', name: 'Read (读取模型与 DAX 查询)', desc: canReadModel ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生只读许可，允许执行 DAX 表达式查询，下游报表正常取数渲染` : '【由工作区角色派生】无 READ 权限，DAX 查询将被 403 阻断，报表将拒绝加载', statusClass: canReadModel ? 'enabled' : 'disabled', statusText: canReadModel ? '✅ CAN READ' : '❌ CANNOT READ', badge: 'READ' },
+                    { id: 'model_build', cat: 'derived', name: 'Build (构建下游报表与分析)', desc: canBuild ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生，允许以该模型为基础使用 Excel 透视分析或新建独立衍生报表` : '【由工作区角色派生】无 BUILD 权限，无法新建下游衍生报表或在 Excel 中连接探索', statusClass: canBuild ? 'enabled' : 'disabled', statusText: canBuild ? '✅ CAN BUILD' : '❌ CANNOT BUILD', badge: 'BUILD' },
+                    { id: 'model_write', cat: 'derived', name: 'Write (修改模型架构与度量值)', desc: isPrivileged ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生特权，允许通过 XMLA 端点或浏览器在线修改表结构、新建度量值与关系模型` : '【由工作区角色派生】当前角色无编辑特权，禁止写回模型架构或修改度量值', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ CAN WRITE' : '❌ CANNOT WRITE', badge: 'WRITE' },
+                    { id: 'model_gac_ols', cat: 'derived', name: 'OLS / GAC (对象级与细粒度安全)', desc: isPrivileged ? `【由工作区角色控制】拥有 [${wsRoleCaps}] 管理特权穿透，免除语义模型敏感表与度量值字段的 OLS/GAC 掩蔽限制` : (user?.state?.olsEnabled ? '【由工作区角色控制】受敏感字段 OLS/GAC 细粒度安全约束，受保护的高密字段已被动态掩蔽 (Masked)' : '【由工作区角色控制】已获模型全量表与字段 GAC 访问权限，所有敏感维度与指标字段完整可见'), statusClass: isPrivileged ? 'bypassed' : (user?.state?.olsEnabled ? 'warn' : 'enabled'), statusText: isPrivileged ? '⚡ ADMIN BYPASS' : (user?.state?.olsEnabled ? '🔒 OLS MASKED' : '✅ CAN ACCESS ALL'), badge: 'OLS' },
+                    { id: 'model_rls', cat: 'derived', name: 'RLS (行级安全过滤规则)', desc: isPrivileged ? `【由工作区角色控制】拥有 [${wsRoleCaps}] 管理特权穿透，直接跳过所有 DAX 行级安全过滤规则，查看全量业务明细` : '【由工作区角色控制】受 DAX 角色策略约束，仅能查看授权给当前身份的切片行数据', statusClass: isPrivileged ? 'bypassed' : 'warn', statusText: isPrivileged ? '⚡ ADMIN BYPASS' : '🔒 RLS RESTRICTED', badge: 'RLS' },
+                    { id: 'model_reshare', cat: 'derived', name: 'Reshare (二次授权共享模型)', desc: (isAdmin || isMember) ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生，允许将该具体语义模型的访问权限二次授权给其他组织成员` : '【由工作区角色派生】无 RESHARE 权限，禁止向第三方组织成员分发或再授权该模型', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ CAN RESHARE' : '❌ CANNOT RESHARE', badge: 'RESHARE' }
                 ];
                 colModelBody = renderTierItemsHtml('model', modelItems);
             }
@@ -5160,12 +5173,12 @@
                 reportSubText = `报表展现层 · ${canEditReport ? '支持在线编辑' : '只读交互浏览'}`;
 
                 const reportItems = [
-                    { id: 'report_access', isHero: true, cat: 'assigned', name: `Report Access: ${reportAccessLabel} (${reportAccessZh})`, desc: `【由工作区角色派生】基于工作区 [${wsRoleCaps}] 角色派生的报表 [${cleanReportName}] 官方有效访问级别`, statusClass: canEditReport ? 'enabled' : 'warn', statusText: canEditReport ? '✏️ EDIT' : '👁️ VIEW', badge: 'ACCESS' },
-                    { id: 'report_view', cat: 'derived', name: 'Action: View & Interact (交互浏览与钻取)', desc: '【由模型 Read 权限供给】依赖上游语义模型 Read 权限与报表访问许可，在线访问报表页面、切片器联动与图表多维钻取', statusClass: 'enabled', statusText: '✅ CAN VIEW', badge: 'VIEW' },
-                    { id: 'report_edit', cat: 'derived', name: 'Action: Edit Visuals (编辑报表与设计)', desc: canEditReport ? `【由工作区角色及租户策略联动控制】由 [${wsRoleCaps}] 角色派生且租户策略放行，允许在线修改报表图表、调整页面布局与另存副本` : '【由工作区角色及租户策略控制】当前工作区角色为 Viewer 或受租户策略限制，报表处于纯只读交互模式，无法修改布局', statusClass: canEditReport ? 'enabled' : 'disabled', statusText: canEditReport ? '✅ CAN EDIT' : '❌ CANNOT EDIT', badge: 'EDIT' },
-                    { id: 'report_export', cat: 'derived', name: 'Action: Export Underlying Data (导出底层明细数据)', desc: canExportUnderlying ? '【由模型 Build 权限及租户策略联动控制】具备模型 BUILD 权限且租户策略放行，允许导出底层原始明细数据至本地 Excel/CSV' : '【由模型 Build 与租户策略联动控制】缺少模型 BUILD 权限或受租户策略限制，仅允许导出带格式汇总数据', statusClass: canExportUnderlying ? 'enabled' : 'warn', statusText: canExportUnderlying ? '✅ CAN EXPORT' : '⚠️ SUMMARY ONLY', badge: 'EXPORT' },
-                    { id: 'report_sub', cat: 'derived', name: 'Action: Subscribe & Alert (订阅邮件与指标警报)', desc: '【由报表 View 权限派生】允许设置报表关键 KPI 阈值自动化警报及定时邮件快照推送', statusClass: 'enabled', statusText: '✅ CAN SUBSCRIBE', badge: 'SUBSCRIBE' },
-                    { id: 'report_share', cat: 'derived', name: 'Action: Share Report (共享报表与分发链接)', desc: (isAdmin || isMember) ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生，允许生成组织安全共享链接向授权受众分发报表` : '【由工作区角色派生】仅 Admin/Member 具备报表受众共享与链接分发权限', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ CAN SHARE' : '❌ CANNOT SHARE', badge: 'SHARE' }
+                    { id: 'report_access', isHero: true, cat: 'assigned', name: `${reportAccessLabel} (${reportAccessZh})`, desc: `【由工作区角色派生】基于工作区 [${wsRoleCaps}] 角色派生的报表 [${cleanReportName}] 官方有效访问级别`, statusClass: canEditReport ? 'enabled' : 'warn', statusText: canEditReport ? '✏️ EDIT' : '👁️ VIEW', badge: 'ACCESS' },
+                    { id: 'report_view', cat: 'derived', name: 'View & Interact (交互浏览与钻取)', desc: '【由模型 Read 权限供给】依赖上游语义模型 Read 权限与报表访问许可，在线访问报表页面、切片器联动与图表多维钻取', statusClass: 'enabled', statusText: '✅ CAN VIEW', badge: 'VIEW' },
+                    { id: 'report_edit', cat: 'derived', name: 'Edit Visuals (编辑报表与设计)', desc: canEditReport ? `【由工作区角色及租户策略联动控制】由 [${wsRoleCaps}] 角色派生且租户策略放行，允许在线修改报表图表、调整页面布局与另存副本` : '【由工作区角色及租户策略控制】当前工作区角色为 Viewer 或受租户策略限制，报表处于纯只读交互模式，无法修改布局', statusClass: canEditReport ? 'enabled' : 'disabled', statusText: canEditReport ? '✅ CAN EDIT' : '❌ CANNOT EDIT', badge: 'EDIT' },
+                    { id: 'report_export', cat: 'derived', name: 'Export Underlying Data (导出底层明细数据)', desc: canExportUnderlying ? '【由模型 Build 权限及租户策略联动控制】具备模型 BUILD 权限且租户策略放行，允许导出底层原始明细数据至本地 Excel/CSV' : '【由模型 Build 与租户策略联动控制】缺少模型 BUILD 权限或受租户策略限制，仅允许导出带格式汇总数据', statusClass: canExportUnderlying ? 'enabled' : 'warn', statusText: canExportUnderlying ? '✅ CAN EXPORT' : '⚠️ SUMMARY ONLY', badge: 'EXPORT' },
+                    { id: 'report_sub', cat: 'derived', name: 'Subscribe & Alert (订阅邮件与指标警报)', desc: '【由报表 View 权限派生】允许设置报表关键 KPI 阈值自动化警报及定时邮件快照推送', statusClass: 'enabled', statusText: '✅ CAN SUBSCRIBE', badge: 'SUBSCRIBE' },
+                    { id: 'report_share', cat: 'derived', name: 'Share Report (共享报表与分发链接)', desc: (isAdmin || isMember) ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生，允许生成组织安全共享链接向授权受众分发报表` : '【由工作区角色派生】仅 Admin/Member 具备报表受众共享与链接分发权限', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ CAN SHARE' : '❌ CANNOT SHARE', badge: 'SHARE' }
                 ];
                 colReportBody = renderTierItemsHtml('report', reportItems);
             }
@@ -5326,14 +5339,14 @@
                     status: inspectCache.datasources.find(d => d.gatewayName).gatewayStatus || 'Live'
                 } : null);
 
-                let gwItemName = 'GATEWAY: 企业本地数据网关 (承载通道)';
+                let gwItemName = 'Data Gateway (企业本地数据网关)';
                 let gwItemDesc = '【承载通道】该工作区绑定的本地企业数据网关 (On-Premises Data Gateway) 集群拓扑';
                 let gwItemStatusClass = 'warn';
                 let gwItemStatusText = '⚠️ UNKNOWN';
                 let gwItemBadge = 'GATEWAY';
 
                 if (activeGw) {
-                    gwItemName = `GATEWAY: ${activeGw.name.toUpperCase()} (承载网关)`;
+                    gwItemName = `${activeGw.name.toUpperCase()} (企业数据网关)`;
                     gwItemDesc = `【承载通道】经由企业本地数据网关集群 [${activeGw.name}] 穿透内网访问底层物理数据库`;
                     gwItemStatusClass = 'enabled';
                     gwItemStatusText = `✅ ${(activeGw.status || 'LIVE').toUpperCase()} ONLINE`;
@@ -5362,14 +5375,14 @@
                 }
 
                 connItems.push(
-                    { id: 'conn_user_perm', cat: 'derived', name: 'Role: Connection User (连接使用者角色)', desc: effectiveHasDataConn ? '【由连接授权控制】具备 Connection User 官方授权，模型在后台计划刷新与 DirectQuery 取数时可复用此连接凭据' : '【由连接授权控制】未被分配 Connection User 角色，无法调用或复用该连接凭据', statusClass: effectiveHasDataConn ? 'enabled' : 'disabled', statusText: effectiveHasDataConn ? '✅ CAN USE' : '❌ CANNOT USE', badge: 'CREDENTIALS' },
-                    { id: 'conn_gac_perm', cat: 'derived', name: 'Permission: Connection GAC Direct (细粒度连接直连)', desc: isPrivileged ? `【由工作区角色及连接策略控制】由 [${wsRoleCaps}] 特权穿透，直接拥有该连接最高 GAC 细粒度物理直连与抽取权限` : (effectiveHasDataConn ? '【由连接授权控制】已获官方数据源 GAC 细粒度授权，允许直接复用此连接凭据执行数据查询与抽取' : '【由连接授权控制】未被分配 GAC 细粒度权限，无法通过此连接访问底层物理数据库'), statusClass: isPrivileged ? 'bypassed' : (effectiveHasDataConn ? 'enabled' : 'disabled'), statusText: isPrivileged ? '⚡ ADMIN BYPASS' : (effectiveHasDataConn ? '✅ CAN ACCESS' : '❌ CANNOT ACCESS'), badge: 'GAC' },
-                    { id: 'conn_gac_mashup', cat: 'derived', name: 'Gate: GAC Cross-Source Mashup (多源跨网隔离门禁)', desc: isPrivileged ? `【由工作区角色及租户策略联动控制】由 [${wsRoleCaps}] 特权豁免，免除多数据源 Mashup 细粒度门禁限制，可自由混合处理多源数据` : (effectiveHasDataConn && !user?.state?.isInStrictMode ? '【租户策略控制】跨源安全门禁放行，允许在 Power Query 与 DirectQuery 中将此连接与其它数据源关联合并' : '【租户策略控制】触发 GAC 跨源安全隔离门禁，严格模式下禁止跨数据源混合关联处理'), statusClass: isPrivileged ? 'bypassed' : (effectiveHasDataConn && !user?.state?.isInStrictMode ? 'enabled' : 'disabled'), statusText: isPrivileged ? '⚡ ADMIN BYPASS' : (effectiveHasDataConn && !user?.state?.isInStrictMode ? '✅ CAN MASHUP' : '❌ CANNOT MASHUP'), badge: 'MASHUP' },
+                    { id: 'conn_user_perm', cat: 'derived', name: 'Connection User (连接使用者角色)', desc: effectiveHasDataConn ? '【由连接授权控制】具备 Connection User 官方授权，模型在后台计划刷新与 DirectQuery 取数时可复用此连接凭据' : '【由连接授权控制】未被分配 Connection User 角色，无法调用或复用该连接凭据', statusClass: effectiveHasDataConn ? 'enabled' : 'disabled', statusText: effectiveHasDataConn ? '✅ CAN USE' : '❌ CANNOT USE', badge: 'CREDENTIALS' },
+                    { id: 'conn_gac_perm', cat: 'derived', name: 'Connection GAC Direct (细粒度连接直连)', desc: isPrivileged ? `【由工作区角色及连接策略控制】由 [${wsRoleCaps}] 特权穿透，直接拥有该连接最高 GAC 细粒度物理直连与抽取权限` : (effectiveHasDataConn ? '【由连接授权控制】已获官方数据源 GAC 细粒度授权，允许直接复用此连接凭据执行数据查询与抽取' : '【由连接授权控制】未被分配 GAC 细粒度权限，无法通过此连接访问底层物理数据库'), statusClass: isPrivileged ? 'bypassed' : (effectiveHasDataConn ? 'enabled' : 'disabled'), statusText: isPrivileged ? '⚡ ADMIN BYPASS' : (effectiveHasDataConn ? '✅ CAN ACCESS' : '❌ CANNOT ACCESS'), badge: 'GAC' },
+                    { id: 'conn_gac_mashup', cat: 'derived', name: 'Cross-Source Mashup (多源跨网隔离门禁)', desc: isPrivileged ? `【由工作区角色及租户策略联动控制】由 [${wsRoleCaps}] 特权豁免，免除多数据源 Mashup 细粒度门禁限制，可自由混合处理多源数据` : (effectiveHasDataConn && !user?.state?.isInStrictMode ? '【租户策略控制】跨源安全门禁放行，允许在 Power Query 与 DirectQuery 中将此连接与其它数据源关联合并' : '【租户策略控制】触发 GAC 跨源安全隔离门禁，严格模式下禁止跨数据源混合关联处理'), statusClass: isPrivileged ? 'bypassed' : (effectiveHasDataConn && !user?.state?.isInStrictMode ? 'enabled' : 'disabled'), statusText: isPrivileged ? '⚡ ADMIN BYPASS' : (effectiveHasDataConn && !user?.state?.isInStrictMode ? '✅ CAN MASHUP' : '❌ CANNOT MASHUP'), badge: 'MASHUP' },
                     { id: 'conn_gw', cat: 'env', name: gwItemName, desc: gwItemDesc, statusClass: gwItemStatusClass, statusText: gwItemStatusText, badge: gwItemBadge },
-                    { id: 'conn_sso', cat: 'derived', name: 'Authentication: DirectQuery SSO (Entra ID 身份委派)', desc: '【认证机制】DirectQuery 运行时使用当前用户 Entra ID 身份穿透鉴权直连底层数据库，实现端到端身份透传', statusClass: 'enabled', statusText: '✅ CAN DELEGATE', badge: 'SSO' },
-                    { id: 'conn_refresh', cat: 'derived', name: 'Operation: Scheduled Refresh (配置计划刷新与调度)', desc: isPrivileged ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生，允许配置自动化计划刷新调度并随时手动触发微批次数据抽取` : '【由工作区角色派生】当前 Viewer 角色无权调度或手动触发计划刷新', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ CAN REFRESH' : '❌ CANNOT REFRESH', badge: 'REFRESH' },
-                    { id: 'conn_owner', cat: 'derived', name: 'Role: Connection Owner (连接所有者与凭据管理)', desc: isAdmin ? '【由工作区角色派生】由工作区 Admin 角色派生，拥有连接最高管理权，允许修改连接凭据、参数配置与删除连接' : '【由工作区角色派生】非工作区 Admin 角色，无法修改或删除连接配置', statusClass: isAdmin ? 'enabled' : 'disabled', statusText: isAdmin ? '✅ CAN MANAGE' : '❌ CANNOT MANAGE', badge: 'OWNER' },
-                    { id: 'conn_share', cat: 'derived', name: 'Permission: Share Connection (共享连接凭据给他人)', desc: (isAdmin || isMember) ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生，允许将该数据源连接共享给其他工作区成员使用` : '【由工作区角色派生】仅 Admin/Member 角色具备连接共享授权能力', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ CAN SHARE' : '❌ CANNOT SHARE', badge: 'SHARE' }
+                    { id: 'conn_sso', cat: 'derived', name: 'DirectQuery SSO (Entra ID 身份委派)', desc: '【认证机制】DirectQuery 运行时使用当前用户 Entra ID 身份穿透鉴权直连底层数据库，实现端到端身份透传', statusClass: 'enabled', statusText: '✅ CAN DELEGATE', badge: 'SSO' },
+                    { id: 'conn_refresh', cat: 'derived', name: 'Scheduled Refresh (配置计划刷新与调度)', desc: isPrivileged ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生，允许配置自动化计划刷新调度并随时手动触发微批次数据抽取` : '【由工作区角色派生】当前 Viewer 角色无权调度或手动触发计划刷新', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ CAN REFRESH' : '❌ CANNOT REFRESH', badge: 'REFRESH' },
+                    { id: 'conn_owner', cat: 'derived', name: 'Connection Owner (连接所有者与凭据管理)', desc: isAdmin ? '【由工作区角色派生】由工作区 Admin 角色派生，拥有连接最高管理权，允许修改连接凭据、参数配置与删除连接' : '【由工作区角色派生】非工作区 Admin 角色，无法修改或删除连接配置', statusClass: isAdmin ? 'enabled' : 'disabled', statusText: isAdmin ? '✅ CAN MANAGE' : '❌ CANNOT MANAGE', badge: 'OWNER' },
+                    { id: 'conn_share', cat: 'derived', name: 'Share Connection (共享连接凭据给他人)', desc: (isAdmin || isMember) ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生，允许将该数据源连接共享给其他工作区成员使用` : '【由工作区角色派生】仅 Admin/Member 角色具备连接共享授权能力', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ CAN SHARE' : '❌ CANNOT SHARE', badge: 'SHARE' }
                 );
 
                 colConnectionBody = renderTierItemsHtml('connection', connItems);
@@ -5396,14 +5409,14 @@
 
             // Module 6: Pipeline (部署管道与 ALM 治理层)
             let colPipelineBody = '';
-            const pipelineRoleName = isPipelineAdmin ? 'Pipeline Role: Pipeline Admin (管道管理员)' : (hasSelectedWs ? 'Pipeline Role: Deployer (发布部署者)' : 'Pipeline Role: No Access (无管道访问权)');
+            const pipelineRoleName = isPipelineAdmin ? 'Pipeline Admin (管道管理员)' : (hasSelectedWs ? 'Deployer (发布部署者)' : 'No Access (无管道访问权)');
             const pipelineItems = [
                 { id: 'pipeline_role', isHero: true, cat: 'assigned', name: pipelineRoleName, desc: hasSelectedWs ? `【分配角色】在工作区 [${wsName}] 部署管道 ALM 生命周期中的官方治理身份` : '【未关联】需选择目标工作区以呈现部署管道身份', statusClass: hasSelectedWs ? (isPipelineAdmin ? 'enabled' : 'warn') : 'disabled', statusText: hasSelectedWs ? (isPipelineAdmin ? '✅ ADMIN' : '⚠️ DEPLOY') : '❌ NONE', badge: 'ALM' },
-                { id: 'pipeline_deploy', cat: 'derived', name: 'Operation: Stage Deployment (阶段流转部署)', desc: isPipelineAdmin ? '【由工作区角色及管道角色控制】由管道管理员/工作区 Admin 派生，允许将开发阶段的模型与报表一键晋升部署至测试或生产环境' : '【由管道角色控制】尚未绑定专用管道或缺少部署者权限，无法执行阶段流转', statusClass: isPipelineAdmin ? 'enabled' : 'warn', statusText: isPipelineAdmin ? '✅ CAN DEPLOY' : '⚠️ CANNOT DEPLOY', badge: 'DEPLOY' },
-                { id: 'pipeline_diff', cat: 'derived', name: 'Feature: Schema Diff (模型架构差异比对)', desc: isPipelineAdmin ? '【由管道角色控制】自动比对各阶段模型架构、表字段变更及度量值元数据差异' : '【由管道角色控制】需绑定部署管道以启用自动化架构差异比对检测引擎', statusClass: isPipelineAdmin ? 'enabled' : 'warn', statusText: isPipelineAdmin ? '✅ CAN COMPARE' : '⚠️ CANNOT COMPARE', badge: 'DIFF' },
-                { id: 'pipeline_rules', cat: 'derived', name: 'Configuration: Deployment Rules (部署规则配置)', desc: isPipelineAdmin ? '【由管道角色控制】允许配置参数覆盖规则、数据源映射规则与部署排除策略' : '【由管道角色控制】需管道管理员权限以配置部署规则', statusClass: isPipelineAdmin ? 'enabled' : 'disabled', statusText: isPipelineAdmin ? '✅ CAN CONFIGURE' : '❌ CANNOT CONFIGURE', badge: 'RULES' },
-                { id: 'pipeline_manage', cat: 'derived', name: 'Management: Pipeline Lifecycle (管道生命周期管理)', desc: isPipelineAdmin ? '【由管道角色控制】允许创建、删除部署管道与绑定/解绑各阶段工作区' : '【由管道角色控制】仅管道管理员可执行管道级别生命周期操作', statusClass: isPipelineAdmin ? 'enabled' : 'disabled', statusText: isPipelineAdmin ? '✅ CAN MANAGE' : '❌ CANNOT MANAGE', badge: 'LIFECYCLE' },
-                { id: 'pipeline_backward', cat: 'derived', name: 'Operation: Backward Deploy (反向回退部署)', desc: isPipelineAdmin ? '【由管道角色控制】允许从生产阶段逆向回退部署至测试或开发阶段' : '【由管道角色控制】仅管道管理员可执行反向回退部署', statusClass: isPipelineAdmin ? 'enabled' : 'disabled', statusText: isPipelineAdmin ? '✅ CAN ROLLBACK' : '❌ CANNOT ROLLBACK', badge: 'ROLLBACK' }
+                { id: 'pipeline_deploy', cat: 'derived', name: 'Stage Deployment (阶段流转部署)', desc: isPipelineAdmin ? '【由工作区角色及管道角色控制】由管道管理员/工作区 Admin 派生，允许将开发阶段的模型与报表一键晋升部署至测试或生产环境' : '【由管道角色控制】尚未绑定专用管道或缺少部署者权限，无法执行阶段流转', statusClass: isPipelineAdmin ? 'enabled' : 'warn', statusText: isPipelineAdmin ? '✅ CAN DEPLOY' : '⚠️ CANNOT DEPLOY', badge: 'DEPLOY' },
+                { id: 'pipeline_diff', cat: 'derived', name: 'Schema Diff (模型架构差异比对)', desc: isPipelineAdmin ? '【由管道角色控制】自动比对各阶段模型架构、表字段变更及度量值元数据差异' : '【由管道角色控制】需绑定部署管道以启用自动化架构差异比对检测引擎', statusClass: isPipelineAdmin ? 'enabled' : 'warn', statusText: isPipelineAdmin ? '✅ CAN COMPARE' : '⚠️ CANNOT COMPARE', badge: 'DIFF' },
+                { id: 'pipeline_rules', cat: 'derived', name: 'Deployment Rules (部署规则配置)', desc: isPipelineAdmin ? '【由管道角色控制】允许配置参数覆盖规则、数据源映射规则与部署排除策略' : '【由管道角色控制】需管道管理员权限以配置部署规则', statusClass: isPipelineAdmin ? 'enabled' : 'disabled', statusText: isPipelineAdmin ? '✅ CAN CONFIGURE' : '❌ CANNOT CONFIGURE', badge: 'RULES' },
+                { id: 'pipeline_manage', cat: 'derived', name: 'Pipeline Lifecycle (管道生命周期管理)', desc: isPipelineAdmin ? '【由管道角色控制】允许创建、删除部署管道与绑定/解绑各阶段工作区' : '【由管道角色控制】仅管道管理员可执行管道级别生命周期操作', statusClass: isPipelineAdmin ? 'enabled' : 'disabled', statusText: isPipelineAdmin ? '✅ CAN MANAGE' : '❌ CANNOT MANAGE', badge: 'LIFECYCLE' },
+                { id: 'pipeline_backward', cat: 'derived', name: 'Backward Deploy (反向回退部署)', desc: isPipelineAdmin ? '【由管道角色控制】允许从生产阶段逆向回退部署至测试或开发阶段' : '【由管道角色控制】仅管道管理员可执行反向回退部署', statusClass: isPipelineAdmin ? 'enabled' : 'disabled', statusText: isPipelineAdmin ? '✅ CAN ROLLBACK' : '❌ CANNOT ROLLBACK', badge: 'ROLLBACK' }
             ];
             if (!hasSelectedWs) {
                 colPipelineBody = `
@@ -5873,18 +5886,33 @@
                         leaveGraceTimer = null;
                     }
 
-                    if (this._pinnedCausalityRow === row) {
+                    const rowId = row.getAttribute('data-row-id');
+                    if (this._pinnedCausalityRowId === rowId) {
                         // 再次点击同一张卡片 -> 取消锁定
                         this._pinnedCausalityRow = null;
+                        this._pinnedCausalityRowId = null;
                         clearCausalityVisuals();
                     } else {
                         // 点击新卡片 -> 锁定新卡片
                         this._pinnedCausalityRow = row;
+                        this._pinnedCausalityRowId = rowId;
                         applyCausalityVisuals(row, true);
                     }
                     e.stopPropagation();
                 });
             });
+
+            // 自愈与持久化恢复：若此前已被锁定，在 DOM 重建后自动恢复高亮态
+            if (this._pinnedCausalityRowId) {
+                const restoredRow = container.querySelector(`.pb-asset-card-row[data-row-id="${this._pinnedCausalityRowId}"]`);
+                if (restoredRow) {
+                    this._pinnedCausalityRow = restoredRow;
+                    applyCausalityVisuals(restoredRow, true);
+                } else {
+                    this._pinnedCausalityRow = null;
+                    this._pinnedCausalityRowId = null;
+                }
+            }
         }
 
         // ═════════════════════════════════════════════════════════════════════

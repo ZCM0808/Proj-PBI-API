@@ -626,16 +626,16 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     await page.waitForTimeout(300);
     await expect(legendContainer).not.toHaveClass(/is-pinned/);
 
-    // 9. 验证小卡片标题与角色官方标准权威命名 (中英双语 + 角色派生)
+    // 9. 验证小卡片标题直接展示官方核心治理角色 (Admin/Member/Contributor/Viewer)
     const wsRoleProp = page.locator('.pb-asset-card-row[data-row-id="ws_role"] .pb-asset-prop-name');
     await expect(wsRoleProp).toBeVisible();
     const wsRoleText = await wsRoleProp.innerText();
-    expect(wsRoleText).toMatch(/Workspace Role:\s*(ADMIN|VIEWER|MEMBER|CONTRIBUTOR|UNSPECIFIED|NO USER)/i);
+    expect(wsRoleText).toMatch(/(ADMIN|VIEWER|MEMBER|CONTRIBUTOR)/i);
 
     const modelReadProp = page.locator('.pb-asset-card-row[data-row-id="model_read"] .pb-asset-prop-name');
     await expect(modelReadProp).toBeVisible();
     const modelReadText = await modelReadProp.innerText();
-    expect(modelReadText).toContain('Permission: Read');
+    expect(modelReadText).toContain('Read');
 
     // 10. 验证括号中的中文解释独立放在新行 (.pb-prop-sub-name)，字号与样式分层
     const wsMembersProp = page.locator('.pb-asset-card-row[data-row-id="ws_members"] .pb-asset-prop-name');
@@ -644,17 +644,17 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     const subTitle = wsMembersProp.locator('.pb-prop-sub-name');
     await expect(mainTitle).toBeVisible();
     await expect(subTitle).toBeVisible();
-    await expect(mainTitle).toHaveText('Permission: Manage Access');
+    await expect(mainTitle).toHaveText('Manage Access');
     await expect(subTitle).toHaveText('(管理工作区成员)');
 
     // 11. 验证工作区模块完整呈现 Power BI 官方四大治理角色 (Admin, Member, Contributor, Viewer)
     const wsTierCard = page.locator('.pb-asset-tier-card[data-tier-id="workspace"]');
     await expect(wsTierCard).toBeVisible();
     const wsCardText = await wsTierCard.innerText();
-    expect(wsCardText).toContain('Workspace Role: Admin');
-    expect(wsCardText).toContain('Workspace Role: Member');
-    expect(wsCardText).toContain('Workspace Role: Contributor');
-    expect(wsCardText).toContain('Workspace Role: Viewer');
+    expect(wsCardText).toContain('Admin');
+    expect(wsCardText).toContain('Member');
+    expect(wsCardText).toContain('Contributor');
+    expect(wsCardText).toContain('Viewer');
   });
 
 });

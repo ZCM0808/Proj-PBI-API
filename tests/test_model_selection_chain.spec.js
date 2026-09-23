@@ -20,6 +20,8 @@ test.describe('GTB Model Search & Panoramic Permission Chain Model Application V
       ]));
 
       // 预设选定工作区为 ws-apac-101
+      localStorage.setItem('pbi-selected-workspaces', JSON.stringify(['ws-apac-101']));
+      localStorage.setItem('pbi-active-workspace', 'ws-apac-101');
       window.selectedGtbWorkspaceIds = new Set(['ws-apac-101']);
       window.selectedGtbDatasetIds = new Set();
       window._gtbDsInitialized = false;
@@ -31,6 +33,25 @@ test.describe('GTB Model Search & Panoramic Permission Chain Model Application V
   });
 
   test('验证 1: 顶栏模型下拉框搜索 apac 时仅展示匹配该关键字的模型，绝不带出该工作区下所有模型', async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem('pbi_workspaces', JSON.stringify([
+        { id: 'ws-apac-101', name: 'DA_APAC_PROD', alias: 'DA_APAC_PROD' },
+        { id: 'ws-emea-102', name: 'DA_EMEA_PROD', alias: 'DA_EMEA_PROD' }
+      ]));
+      localStorage.setItem('pbi_datasets', JSON.stringify([
+        { id: 'ds-apac-01', name: 'apac_channel_performance_analytics', alias: 'apac_channel_performance_analytics', workspaceId: 'ws-apac-101' },
+        { id: 'ds-fin-02', name: 'finance_ledger_model', alias: 'finance_ledger_model', workspaceId: 'ws-apac-101' },
+        { id: 'ds-emea-03', name: 'emea_supply_chain', alias: 'emea_supply_chain', workspaceId: 'ws-emea-102' }
+      ]));
+      localStorage.setItem('pbi-selected-workspaces', JSON.stringify(['ws-apac-101']));
+      localStorage.setItem('pbi-active-workspace', 'ws-apac-101');
+      window.selectedGtbWorkspaceIds = new Set(['ws-apac-101']);
+      window.selectedGtbDatasetIds = new Set();
+      if (window.updateGlobalTopbarDropdowns) {
+        window.updateGlobalTopbarDropdowns();
+      }
+    });
+
     const dsTrigger = page.locator('#gtb-ds-trigger');
     const dsDropdown = page.locator('#gtb-ds-dropdown');
     const dsSearchInput = page.locator('#gtb-ds-search-input');
@@ -63,8 +84,18 @@ test.describe('GTB Model Search & Panoramic Permission Chain Model Application V
   test('验证 2: 搜索并选中某个模型后，全景权限链路中的 MODEL 模块即刻应用并渲染该选中的模型', async ({ page }) => {
     // 1. 切换到权限流转蓝图模块并选择全景权限链路 Tab
     await page.evaluate(() => {
+      localStorage.setItem('pbi-selected-workspaces', JSON.stringify(['ws-apac-101']));
+      localStorage.setItem('pbi_workspaces', JSON.stringify([
+        { id: 'ws-apac-101', name: 'DA_APAC_PROD', alias: 'DA_APAC_PROD' },
+        { id: 'ws-emea-102', name: 'DA_EMEA_PROD', alias: 'DA_EMEA_PROD' }
+      ]));
+      window.selectedGtbWorkspaceIds = new Set(['ws-apac-101']);
+      if (window.updateGlobalTopbarDropdowns) {
+        window.updateGlobalTopbarDropdowns();
+      }
       window.switchAppModule('permission_blueprint');
       if (window.PermissionBlueprint) {
+        window.PermissionBlueprint.syncFromGtb();
         window.PermissionBlueprint.switchMainTab('user_assets');
       }
     });
@@ -101,7 +132,7 @@ test.describe('GTB Model Search & Panoramic Permission Chain Model Application V
     const modelRowRead = page.locator('.pb-asset-tier-card[data-tier-id="model"] .pb-asset-card-row[data-row-id="model_read"]');
     await expect(modelRowRead).toBeVisible();
     const readTitle = modelRowRead.locator('.pb-asset-prop-name');
-    await expect(readTitle).toContainText('Permission: Read');
+    await expect(readTitle).toContainText('Read');
 
     // 6. 验证选中 delete workspace 时，tenant 区域的 tenant member 卡片绝不高亮，且环境卡片 ws_target 也不高亮
     const wsDeleteRow = page.locator('.pb-asset-tier-card[data-tier-id="workspace"] .pb-asset-card-row[data-row-id="ws_delete"]');
