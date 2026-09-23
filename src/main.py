@@ -662,9 +662,11 @@ async def ai_chat(req: ChatRequest):
                                     if choices:
                                         delta = choices[0].get("delta", {})
                                         content = delta.get("content", "")
-                                        if content:
-                                            accumulated_text += content
-                                            yield f"data: {json.dumps({'success': True, 'type': 'text', 'text': content})}\n\n"
+                                        reasoning = delta.get("reasoning_content", "")
+                                        text_chunk = content or reasoning
+                                        if text_chunk:
+                                            accumulated_text += text_chunk
+                                            yield f"data: {json.dumps({'success': True, 'type': 'text', 'text': text_chunk})}\n\n"
                                 except Exception:
                                     continue
 
@@ -675,6 +677,8 @@ async def ai_chat(req: ChatRequest):
                     _openai_chat_sessions[session_id] = history[-40:]
 
                 yield "data: [DONE]\n\n"
+            except httpx.TimeoutException:
+                yield f"data: {json.dumps({'success': False, 'message': '上游模型响应超时，建议切换为 gpt-5.6-luna 或稍后重试'})}\n\n"
             except Exception as e:
                 yield f"data: {json.dumps({'success': False, 'message': str(e)})}\n\n"
 
