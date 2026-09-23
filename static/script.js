@@ -458,7 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
     style.textContent = `.wf-console { overflow-y: auto !important; }`;
 
     document.head.appendChild(style);
-
+    if (window.loadAiModelsList) window.loadAiModelsList();
 });
 
 
@@ -14623,7 +14623,7 @@ window.updateHarnessStats = function() {
             win.style.visibility = 'visible';
 
             win.style.pointerEvents = 'auto';
-
+            if (window.loadAiModelsList) window.loadAiModelsList();
             setTimeout(() => document.getElementById('ai-chat-input').focus(), 250);
 
         } else {
@@ -14757,13 +14757,81 @@ window.updateHarnessStats = function() {
 
 
         input.value = '';
-
         msgs.scrollTop = Math.max(0, msgs.scrollHeight - msgs.clientHeight * 0.66);
 
+        const currentModel = window.getSelectedAiModel ? window.getSelectedAiModel() : 'deepseek-v4-flash';
+        await window.handleAiStream('/api/chat', { 
+            message: text, 
+            session_id: window.aiSessionId,
+            model: currentModel
+        });
+    };
 
+    window.getSelectedAiModel = function() {
+        const select = document.getElementById('ai-model-select');
+        return select ? select.value : (localStorage.getItem('pbi_ai_selected_model') || 'deepseek-v4-flash');
+    };
 
-        await window.handleAiStream('/api/chat', { message: text, session_id: window.aiSessionId });
+    window.handleAiModelChange = function(select) {
+        if (!select) return;
+        if (select.value === '__custom__') {
+            const customModel = prompt('请输入自定义模型名称 (例如 deepseek-v4-flash, qwen3.8-flash-next 等):', '');
+            if (customModel && customModel.trim()) {
+                const trimmed = customModel.trim();
+                let opt = Array.from(select.options).find(o => o.value === trimmed);
+                if (!opt) {
+                    opt = document.createElement('option');
+                    opt.value = trimmed;
+                    opt.textContent = '⚡ ' + trimmed;
+                    select.insertBefore(opt, select.lastElementChild);
+                }
+                select.value = trimmed;
+                localStorage.setItem('pbi_ai_selected_model', trimmed);
+                if (window.showNotification) window.showNotification(`已切换至模型: ${trimmed}`, 'success', 2000);
+            } else {
+                select.value = localStorage.getItem('pbi_ai_selected_model') || 'deepseek-v4-flash';
+            }
+            return;
+        }
+        localStorage.setItem('pbi_ai_selected_model', select.value);
+        if (window.showNotification) {
+            window.showNotification(`已切换至模型: ${select.value}`, 'success', 2000);
+        }
+    };
 
+    window.loadAiModelsList = async function() {
+        const select = document.getElementById('ai-model-select');
+        if (!select || select._loaded) return;
+        try {
+            const res = await fetch('/api/ai/models');
+            const data = await res.json();
+            if (data.success && data.models && data.models.length > 0) {
+                select._loaded = true;
+                const saved = localStorage.getItem('pbi_ai_selected_model') || data.default || 'deepseek-v4-flash';
+                select.innerHTML = '';
+
+                data.models.forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m;
+                    opt.textContent = m;
+                    select.appendChild(opt);
+                });
+
+                if (saved && !data.models.includes(saved) && saved !== '__custom__') {
+                    const customOpt = document.createElement('option');
+                    customOpt.value = saved;
+                    customOpt.textContent = '⚡ ' + saved;
+                    select.appendChild(customOpt);
+                }
+
+                const customEntry = document.createElement('option');
+                customEntry.value = '__custom__';
+                customEntry.textContent = '➕ 自定义模型 (Custom)...';
+                select.appendChild(customEntry);
+
+                select.value = saved;
+            }
+        } catch (_) {}
     };
 
 

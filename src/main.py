@@ -18,6 +18,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
+import httpx
 import pyotp  # type: ignore[import-untyped]
 import qrcode  # type: ignore[import-untyped]
 import requests  # type: ignore[import-untyped]
@@ -486,6 +487,7 @@ def get_project_memory():
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
+    model: Optional[str] = None
 
 class ToolApproveRequest(BaseModel):
     session_id: str
@@ -495,6 +497,65 @@ class ToolApproveRequest(BaseModel):
 
 # 全局状态，用于保存用户的持续会话上下文 (因为工具调用需要多轮记忆)
 _chat_sessions: Dict[str, Any] = {}
+_openai_chat_sessions: Dict[str, List[Dict[str, str]]] = {}
+
+BUILTIN_AI_MODELS: List[str] = [
+    "deepseek-v4-flash",
+    "deepseek-ai/deepseek-v4-flash",
+    "deepseek-ai/deepseek-v4-flash-0731",
+    "glm-4.7-flash",
+    "glm-4.5-flash",
+    "gpt-5.6-luna",
+    "gpt-oss-120b",
+    "agnes-3.0-flash",
+    "agnes-2.5-pro",
+    "agnes-2.0-flash",
+    "agnes-image-2.0-flash",
+    "qwen3.8-flash-next",
+    "openrouter/free",
+    "gemini-3.1-flash-lite",
+    "moonshotai/kimi-k2.7-code",
+    "nemotron-3-120b-a12b",
+    "nvidia/nemotron-3-super-120b-a12b",
+    "c4ai-aya-vision-32b",
+    "cohere-north-mini-code",
+    "command-a-plus-05-2026",
+    "mimo-v2.6-flash",
+    "nex-agi/nex-n2.5-pro:free",
+    "voxtral-small-2507",
+    "flux-1-schnell",
+    "@cf/black-forest-labs/flux-1-schnell",
+    "auto"
+]
+
+@app.get("/api/ai/models")
+async def get_ai_models():
+    """获取支持的 AI 模型列表，优先向 OpenAI 兼容提供商动态获取，兜底返回预置列表"""
+    api_base = os.getenv("OPENAI_API_BASE", "").strip().rstrip("/")
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    default_model = os.getenv("DEFAULT_AI_MODEL", "deepseek-v4-flash").strip()
+
+    models = list(BUILTIN_AI_MODELS)
+    if api_base and api_key:
+        try:
+            async with httpx.AsyncClient(timeout=4.0) as client:
+                res = await client.get(
+                    f"{api_base}/models",
+                    headers={"Authorization": f"Bearer {api_key}", "User-Agent": "Mozilla/5.0"}
+                )
+                if res.status_code == 200:
+                    data = res.json()
+                    dynamic_models = [m.get("id") for m in data.get("data", []) if m.get("id")]
+                    if dynamic_models:
+                        models = sorted(list(set(dynamic_models)))
+        except Exception:
+            pass
+
+    return {
+        "success": True,
+        "default": default_model,
+        "models": models
+    }
 
 def run_powershell(command: str) -> str:
     """Executes a PowerShell command on the host machine and returns the output. USE CAREFULLY."""
@@ -531,6 +592,89 @@ async def ai_chat(req: ChatRequest):
     import json
     import uuid
 
+    session_id = req.session_id or str(uuid.uuid4())
+    openai_base = os.getenv("OPENAI_API_BASE", "").strip().rstrip("/")
+    openai_key = os.getenv("OPENAI_API_KEY", "").strip()
+    target_model = (req.model or os.getenv("DEFAULT_AI_MODEL") or "deepseek-v4-flash").strip()
+
+    # 1. 如果配置了 OpenAI 兼容平台且目标不是纯 gemini 模型，优先走通用 OpenAI 协议
+    if openai_base and openai_key and not target_model.startswith("gemini-"):
+        if session_id not in _openai_chat_sessions:
+            _openai_chat_sessions[session_id] = []
+        history = _openai_chat_sessions[session_id]
+
+        project_kb = get_project_memory()
+        messages_to_send: List[Dict[str, str]] = []
+        if not history:
+            messages_to_send.append({
+                "role": "system",
+                "content": f"You are a helpful assistant for Power BI and data engineering.\n=== 专属项目知识库 ===\n{project_kb}"
+            })
+        else:
+            messages_to_send.extend(history)
+
+        messages_to_send.append({"role": "user", "content": req.message})
+
+        async def openai_event_generator():
+            accumulated_text = ""
+            try:
+                yield f"data: {json.dumps({'success': True, 'type': 'session_info', 'session_id': session_id, 'model': target_model})}\n\n"
+
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    async with client.stream(
+                        "POST",
+                        f"{openai_base}/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {openai_key}",
+                            "Content-Type": "application/json",
+                            "User-Agent": "Mozilla/5.0"
+                        },
+                        json={
+                            "model": target_model,
+                            "messages": messages_to_send,
+                            "stream": True
+                        }
+                    ) as response:
+                        if response.status_code != 200:
+                            err_body = await response.aread()
+                            err_str = err_body.decode('utf-8', errors='ignore')
+                            err_payload = {'success': False, 'message': f'API Error {response.status_code}: {err_str}'}
+                            yield f"data: {json.dumps(err_payload)}\n\n"
+                            yield "data: [DONE]\n\n"
+                            return
+
+                        async for line in response.aiter_lines():
+                            if not line:
+                                continue
+                            if line.startswith("data: "):
+                                data_str = line[6:].strip()
+                                if data_str == "[DONE]":
+                                    break
+                                try:
+                                    chunk_data = json.loads(data_str)
+                                    choices = chunk_data.get("choices", [])
+                                    if choices:
+                                        delta = choices[0].get("delta", {})
+                                        content = delta.get("content", "")
+                                        if content:
+                                            accumulated_text += content
+                                            yield f"data: {json.dumps({'success': True, 'type': 'text', 'text': content})}\n\n"
+                                except Exception:
+                                    continue
+
+                history.append({"role": "user", "content": req.message})
+                if accumulated_text:
+                    history.append({"role": "assistant", "content": accumulated_text})
+                if len(history) > 40:
+                    _openai_chat_sessions[session_id] = history[-40:]
+
+                yield "data: [DONE]\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'success': False, 'message': str(e)})}\n\n"
+
+        return StreamingResponse(openai_event_generator(), media_type="text/event-stream")
+
+    # 2. 备用或兜底：Gemini 原生 SDK 链路
     import google.generativeai as genai
     global _current_api_key
 
@@ -538,14 +682,13 @@ async def ai_chat(req: ChatRequest):
     valid_keys = _get_valid_api_keys()
 
     if not valid_keys:
-        return {"success": False, "message": "Backend missing GEMINI_API_KEY in .env"}
+        return {"success": False, "message": "Backend missing AI API Key (both OpenAI and Gemini are unconfigured)"}
 
     # 优先使用已证明可用的 Key，防止掉入 429 陷阱
     if _current_api_key and _current_api_key in valid_keys:
         valid_keys.remove(_current_api_key)
         valid_keys.insert(0, _current_api_key)
 
-    session_id = req.session_id or str(uuid.uuid4())
     chat = _chat_sessions.get(session_id)
 
     last_error = None
@@ -553,8 +696,8 @@ async def ai_chat(req: ChatRequest):
         for api_key in valid_keys:
             try:
                 genai.configure(api_key=api_key)
-                # 向模型注入工具！(赋能执行系统命令)
-                model = genai.GenerativeModel("gemini-3.5-flash", tools=[run_powershell])
+                gemini_model = target_model if target_model.startswith("gemini-") else "gemini-3.5-flash"
+                model = genai.GenerativeModel(gemini_model, tools=[run_powershell])
                 chat = model.start_chat(history=[])
                 _chat_sessions[session_id] = chat
                 _current_api_key = api_key
@@ -577,8 +720,7 @@ async def ai_chat(req: ChatRequest):
 
         async def event_generator():
             try:
-                # 告诉前端当前的 Session ID
-                yield f"data: {json.dumps({'success': True, 'type': 'session_info', 'session_id': session_id})}\n\n"
+                yield f"data: {json.dumps({'success': True, 'type': 'session_info', 'session_id': session_id, 'model': 'gemini'})}\n\n"
 
                 async for chunk in response:
                     # 拦截特殊的 Tool Call（函数调用申请）
@@ -590,7 +732,6 @@ async def ai_chat(req: ChatRequest):
                                 try:
                                     args_dict = dict(fc.args) if hasattr(fc, 'args') else {}
                                 except Exception:
-                                    # Fallback for protobuf mapping
                                     args_dict = {k: v for k, v in fc.args.items()} if hasattr(fc.args, 'items') else {}
 
                                 payload = {
@@ -599,17 +740,14 @@ async def ai_chat(req: ChatRequest):
                                     'name': fc.name,
                                     'args': args_dict
                                 }
-                                # 向前端抛出拦截卡片，并中断本次回复流！等待前端人工审批
                                 yield f"data: {json.dumps(payload)}\n\n"
                                 yield "data: [DONE]\n\n"
                                 return
 
-                    # 普通聊天文本，正常输出
                     try:
                         if chunk.text:
                             yield f"data: {json.dumps({'success': True, 'type': 'text', 'text': chunk.text})}\n\n"
                     except ValueError:
-                        # 兼容有些 SDK 版本在存在 function_call 时访问 text 会报错
                         pass
                 yield "data: [DONE]\n\n"
             except Exception as e:
