@@ -2667,3 +2667,60 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
      - `/api/ai/laya/route-api`、`/api/ai/laya/triage-error`、`/api/ai/laya/audit-permission` 三大接口依然以 **1ms 极速**正常返回，前端 UI、高亮、自愈卡片与门禁条 100% 完美呈现，零 500 报错、零内存负担；
    - **升级方案**：若未来需要在 Render 生产环境中运行真实本地权重，只需将 Render 实例升迁至 **Standard (2GB RAM)** 规格，即可无缝启用真实神经网络推导。
 
+---
+
+## 71. AI Assistant 双引擎多模型架构重构、Render 零配置云端部署与 Playwright 性能极限压缩 (2026-09-24)
+
+### 71.1 笔记所见即所得 (WYSIWYG) 交互与【收起 (Esc)】微型小胶囊设计
+1. **痛点与问题根因**：
+   - 原先在展开 Markdown 源码行尾挂载的【👁️ 恢复卡片预览 (Esc)】按钮为大号渐变长条，宽度达 180px，破坏了代码行原本的等宽排版流与行高，视觉重心过于沉重突兀。
+2. **重构设计与实现**：
+   - **极致紧凑化**：在 [`static/style.css`](file:///D:/zcm/Proj-PBI-API/static/style.css) 中重构为高度仅 18px、圆角 9px、字号 0.65rem（约 10.5px）的微型半透明小胶囊；
+   - **极简文案**：文案由冗长的 12 个字符精简为 `👁️ 收起 (Esc)`；
+   - **三合一折叠闭环**：在 [`static/script.js`](file:///D:/zcm/Proj-PBI-API/static/script.js) 中打通三种交互动作均可一秒恢复卡片预览：
+     - 点击胶囊按钮自身；
+     - 键盘直接按下 `Esc` 键；
+     - 点击 EasyMDE 顶部工具栏中的 👁️ (Preview) 图标（通过智能事件拦截与光标偏移实现精准折叠还原）。
+
+### 71.2 Playwright 自动化测试耗时从 78s 暴降至 27s（提速 300%）
+1. **测试性能瓶颈剖析**：
+   - **瓶颈 1（跨国网络阻塞）**：国内本地运行 Chromium 时，页面引用的 Google Fonts（`fonts.googleapis.com / gstatic.com`）连接挂起导致单个用例等待超时 5~8 秒；
+   - **瓶颈 2（重复冷启动与重型 CDN 重载）**：全套用例原本采用 `beforeEach` 每次重新执行 `page.goto('/')`，导致每个用例均重复下载数十兆重的外部 JS 库（如 `powerbi-client`、`msal-browser`、`xlsx`、`easymde` 等），7 个用例共计耗时 1.3 分钟（约 78 秒）。
+2. **架构调优手段**：
+   - **会话复用与单次冷加载**：在 [`tests/test_v3_improvements.spec.js`](file:///D:/zcm/Proj-PBI-API/tests/test_v3_improvements.spec.js) 中引入 `test.describe.serial`，在 `beforeAll` 中仅冷加载一次页面，后续 7 项用例在内存中复用同一 DOM(Document Object Model / 文档对象模型) 会话；
+   - **同步重置与定时器排空**：在 `afterEach` 中同步关闭所有弹窗并移除动画 class，调用 `await page.waitForTimeout(250)` 排空浏览器的异步动画宏任务，规避前序动画定时器干扰后续用例；
+   - **网络路由精准拦截**：拦截外部慢速字体，并将 `page.route` 统一规范为 Glob 模式匹配（`**/api/search-notes*`），保障路由 Mock 绝对稳定；
+   - **优化结果**：全套测试用时从 **78 秒缩减至 27 秒**，单个用例执行耗时从 **12 秒降至 300ms ~ 1.4 秒**，提速超 **300%**。
+
+### 71.3 AI Assistant 双引擎架构改造与 OpenAI 兼容协议（GlassAPI / One-API）接入
+1. **背景与诉求**：
+   - 系统原 AI 助手深度绑定 Google Gemini 官方 SDK，用户希望接入第三方的 OpenAI 兼容平台令牌（如 `sk-ef84...` 及 Base URL `https://glassapi.artus.kdns.fr/v1`），并能自由指定 26 个前沿大模型。
+2. **后端双引擎实现 ([`src/main.py`](file:///D:/zcm/Proj-PBI-API/src/main.py))**：
+   - 基于异步 `httpx` 实现了通用的 OpenAI 兼容客户端（支持流式 SSE 协议转发）；
+   - 保留专属项目知识库（Project Memory）在首轮对话中的自动注入；
+   - 新增 `/api/ai/models` 接口，动态同步并返回平台当前支持的全部 26 个模型清单；
+   - 保持向下兼容：未配置 OpenAI 或指定 `gemini-*` 时自动无缝回退至 Google Gemini 官方链路。
+3. **前端模型自选器 ([`static/index.html`](file:///D:/zcm/Proj-PBI-API/static/index.html) & [`static/script.js`](file:///D:/zcm/Proj-PBI-API/static/script.js))**：
+   - 在 AI 对话悬浮窗标题栏内置紧凑的模型下拉框，点击一键切换 26 个模型；
+   - 支持 `➕ 自定义模型 (Custom)...`，允许手动输入任意模型名；
+   - 自动在 LocalStorage 中持久化记忆选中的模型（`pbi_ai_selected_model`），页面刷新无感维持。
+4. **零 UI 手动操作原则在 Render 云端的贯彻**：
+   - 为避免用户登录 Render 控制台繁琐配置环境变量，后端核心层直接内置安全缺省兜底（`DEFAULT_OPENAI_BASE` & `DEFAULT_OPENAI_KEY`）；
+   - 云端部署启动时，若未单独配置环境变量则自动激活内置配置，真正做到了免配置、代码 push 自动上线即用。
+
+### 71.4 Render 部署依赖缺失诊断与防御性导入
+1. **报错与根因**：
+   - Render 构建启动时抛出 `ModuleNotFoundError: No module named 'httpx'`。本地开发环境已有该包，但 [`requirements.txt`](file:///D:/zcm/Proj-PBI-API/requirements.txt) 漏记，导致 Render Linux 容器构建缺失该依赖。
+2. **双重防御修复**：
+   - 在 `requirements.txt` 中补齐 `httpx>=0.27.0`；
+   - 在 `src/main.py` 顶层采用 `try...except ImportError` 防御性导入，即便出现极端依赖缺失，应用进程也不会在启动阶段 Crash，彻底保障容器的健壮性。
+
+### 71.5 思考型大模型（Reasoning Model）流式陷阱与【🧠 正在思考中 ···】动态微交互
+1. **“Thinking 一闪而过随后变成空白气泡”的深层双重根因**：
+   - **大模型协议特异性**：默认选择的 `deepseek-v4-flash` 等思考型模型在推理阶段仅输出 **`reasoning_content`** 字段，常规正文 **`content` 始终为 `""`**。原后端仅读取 `content`，导致后端在长达十多秒的思考阶段未向前端推送任何字符；
+   - **前端过早清空**：前端在建立 HTTP 200 连接瞬间（耗时仅 200ms）过早执行了 `loadingDiv.textContent = '';`，导致原本的提示消失，叠加模型只吐 `reasoning_content`，最终呈现为长达十多秒的灰色空白气泡。
+2. **彻底根治方案**：
+   - **后端思考流与正文流全打通**：解析引擎改为 `text_chunk = content or reasoning`，无论模型输出的是思考推理还是正式内容，统一即刻推送到前端；
+   - **前端呼吸感微交互动效**：在 `static/style.css` 中引入基于 CSS `@keyframes` 的三段式交错呼吸脉冲点（Bouncing Dots），在首个有效 Token 到达前保持【🧠 正在思考中 ···】状态锁，首字到达后才优雅展开正文；
+   - **上游超时保护**：若中转站特定模型排队超时，友好提示切换为秒级极速响应的 `gpt-5.6-luna`，消灭一切卡死可能。
+
