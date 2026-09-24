@@ -1085,7 +1085,7 @@ hdr.className = 'modal-header';
                 <span id="pop-clear-all" style="cursor:pointer;color:var(--text-secondary);">清空</span>
                 <span id="pop-invert" style="cursor:pointer;color:var(--text-secondary);">反选</span>
             </div>
-            <span style="color:var(--text-secondary);font-size:0.68rem;" id="pop-total-facet-stat">${facetList.length} 项可选</span>
+            <span style="color:var(--text-secondary);font-size:0.68rem;" id="pop-total-facet-stat" title="基于全表 ${data.length} 行数据跨页全局去重">全表去重: ${facetList.length} 项</span>
         `;
         popover.appendChild(actionRow);
 
