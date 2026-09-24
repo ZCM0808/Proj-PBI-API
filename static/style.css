@@ -7981,6 +7981,9 @@ body.light-theme .pb-view-tab-btn.active,
     min-width: 1844px;
     box-sizing: border-box;
     transform-origin: 0 0;
+    transition: none;
+}
+.pb-matrix-stage.animating {
     transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .pb-matrix-container::-webkit-scrollbar {

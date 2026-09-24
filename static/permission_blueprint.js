@@ -4225,7 +4225,13 @@
                 </div>
             `;
 
-            matrixEl.innerHTML = `<div id="pb-matrix-stage" class="pb-matrix-stage">${bannerHtml + col1Html + col2Html + col3Html + col4Html + col5Html + col6Html + col7Html + col8Html}</div>`;
+            let stageEl = document.getElementById('pb-matrix-stage');
+            const colsContent = bannerHtml + col1Html + col2Html + col3Html + col4Html + col5Html + col6Html + col7Html + col8Html;
+            if (!stageEl || stageEl.parentElement !== matrixEl) {
+                matrixEl.innerHTML = `<div id="pb-matrix-stage" class="pb-matrix-stage">${colsContent}</div>`;
+            } else {
+                stageEl.innerHTML = colsContent;
+            }
             this.applyMatrixFitScale();
 
             // 渲染 What-If 动态影响指向线（DOM 更新后需 rAF 等待布局稳定）
@@ -4295,6 +4301,11 @@
 
         // ⚡ 切换 8 层推导矩阵一屏全览 / 1:1 原始比例模式
         toggleMatrixFitToScreen(btn) {
+            const stageEl = document.getElementById('pb-matrix-stage');
+            if (stageEl) {
+                stageEl.classList.add('animating');
+                setTimeout(() => stageEl.classList.remove('animating'), 320);
+            }
             this.matrixFitToScreen = !this.matrixFitToScreen;
             try {
                 localStorage.setItem('pb_matrix_fit_to_screen', this.matrixFitToScreen ? 'true' : 'false');

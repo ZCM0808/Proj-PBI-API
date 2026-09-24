@@ -2762,3 +2762,13 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
    - 遵照需求在 [`static/index.html`](file:///D:/zcm/Proj-PBI-API/static/index.html) 中彻底移除 `#wf-gum-filter-pills`（全部 (All)、⚠️ 提权异常、🛡️ 管理员、👁️ 纯只读）；
    - 在 [`static/script.js`](file:///D:/zcm/Proj-PBI-API/static/script.js) 中同步剥离 `pillFilter` 过滤逻辑与 `window.setGumPillFilter` 函数；
    - 静态资源版本号升级至 `?v=20260924_v2145`。
+
+
+### 71.9 8 层推导矩阵 What-If 小卡片切换镜头缩放抖动根治 (Matrix Fit-to-Screen Zoom Flicker Defense)
+1. **现象与深层根因定位 (Root Cause Analysis)**：
+   - **DOM 舞台反复销毁重建**：原 [`static/permission_blueprint.js`](file:///D:/zcm/Proj-PBI-API/static/permission_blueprint.js) 中的 `renderMatrix()` 在卡片切换时采用 `matrixEl.innerHTML = '<div id="pb-matrix-stage"...'`。这彻底销毁了已有舞台节点，新创建的节点初始状态缺少内联缩放样式，CSS 默认按 `scale(1.0)` 100% 原始大小挂载；
+   - **全局 CSS 过渡在重绘时被误触发**：[`static/style.css`](file:///D:/zcm/Proj-PBI-API/static/style.css) 中的 `.pb-matrix-stage` 默认声明了 `transition: transform 0.25s, width 0.25s`。当 JS 在极短时间内为新节点赋值 `scale(0.68)` 时，浏览器将其识别为属性变更，错误地触发了 250ms 的镜头缩放补间动画，导致肉眼可见的“猛然放大到 100% 随后缩回 68%”的弹跳抽搐。
+2. **根治方案 (In-Place DOM Mutation & Scoped Transitions)**：
+   - **舞台节点原地复用**：`renderMatrix()` 优化为检查并复用既有的 `#pb-matrix-stage` 容器（仅通过 `stageEl.innerHTML = colsContent` 替换 8 列子内容），其父级 `transform: scale(...)` 矩阵在切换时恒定保持不变，从物理上消灭样式重置；
+   - **过渡动画作用域收敛**：移除了 `.pb-matrix-stage` 上硬编码的全局 `transition`，改为仅在用户手动点击顶部【一屏全览 / 原始比例】按钮时通过添加 `.animating` 类驱动 0.25s 丝滑缩放，卡片切换期间过渡恒为 `none`；
+   - **双端静态缓存同步递增**：[`static/index.html`](file:///D:/zcm/Proj-PBI-API/static/index.html) 中 `style.css` 与 `permission_blueprint.js` 版本号同步升级为 `?v=20260924_v2155`。
