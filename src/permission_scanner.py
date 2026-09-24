@@ -64,6 +64,7 @@ async def scan_permissions_deep(
     target_ws_set = {w.lower() for w in target_ws_list}
 
     workspaces: List[Dict[str, Any]] = []
+    has_admin_rights: bool = True
 
     now = time.time()
     cached_workspaces: List[Dict[str, Any]] = _TENANT_WORKSPACES_CACHE.get("workspaces", [])
@@ -94,6 +95,8 @@ async def scan_permissions_deep(
                                 cached_workspaces.append(workspaces[0])
                 except Exception as ex:
                     ex_msg = str(ex)
+                    if "401" in ex_msg or "unauthorized" in ex_msg.lower():
+                        has_admin_rights = False
                     if "429" in ex_msg or "exceeded the amount of requests" in ex_msg.lower():
                         if cached_single:
                             workspaces = [cached_single]
@@ -121,7 +124,10 @@ async def scan_permissions_deep(
                         _TENANT_WORKSPACES_CACHE["timestamp"] = now
                         _TENANT_WORKSPACES_CACHE["workspaces"] = all_fetched
                         workspaces = [w for w in all_fetched if str(w.get("id", "")).lower() in target_ws_set]
-                except Exception:
+                except Exception as ex:
+                    ex_msg = str(ex)
+                    if "401" in ex_msg or "unauthorized" in ex_msg.lower():
+                        has_admin_rights = False
                     if not workspaces:
                         # 降级：并发逐个请求
                         async def _fetch_one(wid: str) -> Optional[Dict[str, Any]]:
@@ -146,6 +152,8 @@ async def scan_permissions_deep(
                         _TENANT_WORKSPACES_CACHE["workspaces"] = workspaces
                 except Exception as ex:
                     ex_msg = str(ex)
+                    if "401" in ex_msg or "unauthorized" in ex_msg.lower():
+                        has_admin_rights = False
                     if "429" in ex_msg or "exceeded the amount of requests" in ex_msg.lower():
                         if cached_workspaces:
                             workspaces = cached_workspaces
@@ -331,8 +339,11 @@ async def scan_permissions_deep(
 
     # 3. 深度穿透模式：并发请求 /admin/users/{userId}/artifactAccess 获取合并生效快照 (受控并发与 429 退避)
     artifact_access_cache: Dict[str, List[Dict[str, Any]]] = {}
-    if deep_scan and primary_to_aliases:
+    if deep_scan and primary_to_aliases and has_admin_rights:
         async def fetch_user_artifact_access(uid_key: str) -> tuple[str, List[Dict[str, Any]]]:
+            nonlocal has_admin_rights
+            if not has_admin_rights:
+                return uid_key.strip().lower(), []
             items: List[Dict[str, Any]] = []
             clean_id = uid_key.strip()
             quoted_id = quote(clean_id, safe='')
@@ -341,6 +352,8 @@ async def scan_permissions_deep(
                 max_retries = 3
                 retry_delay = 1.0
                 while url:
+                    if not has_admin_rights:
+                        break
                     current_url: str = url
                     attempt = 0
                     while attempt < max_retries:
@@ -364,6 +377,10 @@ async def scan_permissions_deep(
                         except Exception as ex:
                             attempt += 1
                             ex_str = str(ex).lower()
+                            if "401" in ex_str or "unauthorized" in ex_str:
+                                has_admin_rights = False
+                                url = None
+                                break
                             # 遭遇 429 Rate Limit 或临时网络限流时进行指数退避
                             if ("429" in ex_str or "rate" in ex_str or "throttled" in ex_str) and attempt < max_retries:
                                 await asyncio.sleep(retry_delay)

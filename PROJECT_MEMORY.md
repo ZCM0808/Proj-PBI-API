@@ -2735,3 +2735,15 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
      - **交互与快捷键**：支持“首页/上一页/快速输入跳转/下一页/尾页”及全局 `Alt+Left` / `Alt+Right` 极速翻页；
      - **导出完整性**：表头复制与全局导出（`copySelectedColumnsData`）依然保持面向当前筛选后的全量数据集 (`visibleData`)，兼顾渲染性能与业务数据完整性；
      - **缓存防御**：在 [`static/index.html`](file:///D:/zcm/Proj-PBI-API/static/index.html) 中同步更新版本号至 `?v=20260924_v2110`。
+
+
+### 71.7 分页栏排版防换行、用户/矩阵行数统计双重澄清与 401 熔断防御
+1. **“每页”文字异常折行排版修复**：
+   - **根因分析**：分页栏容器原先具有 `flex-wrap: wrap` 且子元素未设置不折行规则，在容器宽度或两端对齐压缩时导致两个汉字发生强制换行；
+   - **解决方案**：在 [`static/universal_modal.js`](file:///D:/zcm/Proj-PBI-API/static/universal_modal.js) 中强制声明 `white-space: nowrap !important; flex-shrink: 0;` 并移除无序换行，确保每页数量下拉框与文字标签在任意分辨率下始终居中一行齐平。
+2. **“筛选结果: 30 / 30 条记录”统计口径澄清与双维度显现**：
+   - **根因分析**：原先搜索栏旁的统计计数直接读取的是底层匹配的“人员主体总数”（选中的工作区如 `DA_APAC_BI_QA` 中恰好包含 30 位直属授权人员），而矩阵渲染层是将每个用户与其拥有权限的多个语义模型笛卡尔交叉展开为多行，导致用户看到屏幕上有多行数据但统计提示却写着“30 条记录”，产生认知困惑；
+   - **解决方案**：在 [`static/script.js`](file:///D:/zcm/Proj-PBI-API/static/script.js) 中重构计数逻辑，同时统计**人员主体数**与**展开后矩阵权限项数**，格式升级为：“已收录: 30 位授权用户 (展开矩阵共 X 项权限)”，数据逻辑严丝合缝、一目了然。
+3. **深度穿透模式 (Deep Scan) 401 Unauthorized 熔断短路机制**：
+   - **根因分析**：若当前账号非全租户管理员，点击深度分析时会尝试调用 `/admin/users/{userId}/artifactAccess`。原代码对近千名用户发起并发请求，每个请求遭遇 401 后重试导致耗时高达数分钟；
+   - **解决方案**：在 [`src/permission_scanner.py`](file:///D:/zcm/Proj-PBI-API/src/permission_scanner.py) 中引入 `has_admin_rights` 动态探针。只要首个 `/admin` 请求捕获 401，立即将探针置为 `False` 并瞬间熔断所有并发协程，直接秒级回退至直属权限聚合视图，规避一切多余网络阻塞。

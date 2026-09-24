@@ -1270,12 +1270,12 @@ hdr.className = 'modal-header';
         const endDisplay = endIndex;
 
         paginationBar.innerHTML = `
-            <div style="display:flex;align-items:center;gap:10px;color:var(--text-secondary);flex-wrap:wrap;">
-                <span>共 <strong style="color:var(--text-primary);font-weight:600;">${totalCount}</strong> 条记录</span>
-                ${totalCount > 0 ? `<span style="opacity:0.8;">(当前显示第 ${startDisplay} - ${endDisplay} 条)</span>` : ''}
-                <div style="display:inline-flex;align-items:center;gap:6px;margin-left:6px;">
-                    <span>每页:</span>
-                    <select id="uni-page-size-select" class="wf-input" style="padding:1px 6px;font-size:0.74rem;min-height:24px;height:24px;border-radius:4px;background:var(--dropdown-bg,#1a1a24);cursor:pointer;border:1px solid var(--panel-border);">
+            <div style="display:flex;align-items:center;gap:10px;color:var(--text-secondary);white-space:nowrap;flex-shrink:0;">
+                <span style="white-space:nowrap;flex-shrink:0;">共 <strong style="color:var(--text-primary);font-weight:600;">${totalCount}</strong> 条记录</span>
+                ${totalCount > 0 ? `<span style="opacity:0.8;white-space:nowrap;flex-shrink:0;">(第 ${startDisplay} - ${endDisplay} 条)</span>` : ''}
+                <div style="display:inline-flex;align-items:center;gap:6px;margin-left:6px;white-space:nowrap;flex-shrink:0;">
+                    <span style="white-space:nowrap;flex-shrink:0;user-select:none;">每页:</span>
+                    <select id="uni-page-size-select" class="wf-input" style="padding:1px 6px;font-size:0.74rem;min-height:24px;height:24px;border-radius:4px;background:var(--dropdown-bg,#1a1a24);cursor:pointer;border:1px solid var(--panel-border);white-space:nowrap;flex-shrink:0;">
                         <option value="25" ${pageSize === 25 ? 'selected' : ''}>25 条</option>
                         <option value="50" ${pageSize === 50 ? 'selected' : ''}>50 条</option>
                         <option value="100" ${pageSize === 100 ? 'selected' : ''}>100 条 (推荐)</option>
@@ -1285,25 +1285,25 @@ hdr.className = 'modal-header';
                     </select>
                 </div>
             </div>
-            <div style="display:flex;align-items:center;gap:5px;flex-wrap:nowrap;">
-                <button type="button" id="uni-pg-first" class="btn-wf-sm btn-wf-secondary uni-pg-btn" style="height:24px;padding:0 7px;font-size:0.74rem;display:inline-flex;align-items:center;gap:3px;cursor:pointer;${currentPage <= 1 || isAll ? 'opacity:0.4;cursor:not-allowed;' : ''}" title="首页" ${currentPage <= 1 || isAll ? 'disabled' : ''}>
+            <div style="display:flex;align-items:center;gap:5px;flex-wrap:nowrap;white-space:nowrap;flex-shrink:0;">
+                <button type="button" id="uni-pg-first" class="btn-wf-sm btn-wf-secondary uni-pg-btn" style="height:24px;padding:0 7px;font-size:0.74rem;display:inline-flex;align-items:center;gap:3px;cursor:pointer;white-space:nowrap;flex-shrink:0;${currentPage <= 1 || isAll ? 'opacity:0.4;cursor:not-allowed;' : ''}" title="首页" ${currentPage <= 1 || isAll ? 'disabled' : ''}>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="11 17 6 12 11 7"></polyline><polyline points="18 17 13 12 18 7"></polyline></svg>
                     <span>首页</span>
                 </button>
-                <button type="button" id="uni-pg-prev" class="btn-wf-sm btn-wf-secondary uni-pg-btn" style="height:24px;padding:0 7px;font-size:0.74rem;display:inline-flex;align-items:center;gap:3px;cursor:pointer;${currentPage <= 1 || isAll ? 'opacity:0.4;cursor:not-allowed;' : ''}" title="上一页" ${currentPage <= 1 || isAll ? 'disabled' : ''}>
+                <button type="button" id="uni-pg-prev" class="btn-wf-sm btn-wf-secondary uni-pg-btn" style="height:24px;padding:0 7px;font-size:0.74rem;display:inline-flex;align-items:center;gap:3px;cursor:pointer;white-space:nowrap;flex-shrink:0;${currentPage <= 1 || isAll ? 'opacity:0.4;cursor:not-allowed;' : ''}" title="上一页" ${currentPage <= 1 || isAll ? 'disabled' : ''}>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
                     <span>上一页</span>
                 </button>
-                <div style="display:inline-flex;align-items:center;gap:3px;margin:0 4px;color:var(--text-secondary);">
-                    <span>第</span>
-                    <input type="number" id="uni-pg-jump-input" min="1" max="${totalPages}" value="${currentPage}" style="width:42px;height:22px;padding:0 3px;text-align:center;font-size:0.74rem;border-radius:4px;border:1px solid var(--panel-border);background:var(--overlay-5);color:var(--text-primary);" ${isAll ? 'disabled' : ''} />
-                    <span>/ ${totalPages} 页</span>
+                <div style="display:inline-flex;align-items:center;gap:3px;margin:0 4px;color:var(--text-secondary);white-space:nowrap;flex-shrink:0;">
+                    <span style="white-space:nowrap;">第</span>
+                    <input type="number" id="uni-pg-jump-input" min="1" max="${totalPages}" value="${currentPage}" style="width:42px;height:22px;padding:0 3px;text-align:center;font-size:0.74rem;border-radius:4px;border:1px solid var(--panel-border);background:var(--overlay-5);color:var(--text-primary);flex-shrink:0;" ${isAll ? 'disabled' : ''} />
+                    <span style="white-space:nowrap;">/ ${totalPages} 页</span>
                 </div>
-                <button type="button" id="uni-pg-next" class="btn-wf-sm btn-wf-secondary uni-pg-btn" style="height:24px;padding:0 7px;font-size:0.74rem;display:inline-flex;align-items:center;gap:3px;cursor:pointer;${currentPage >= totalPages || isAll ? 'opacity:0.4;cursor:not-allowed;' : ''}" title="下一页" ${currentPage >= totalPages || isAll ? 'disabled' : ''}>
+                <button type="button" id="uni-pg-next" class="btn-wf-sm btn-wf-secondary uni-pg-btn" style="height:24px;padding:0 7px;font-size:0.74rem;display:inline-flex;align-items:center;gap:3px;cursor:pointer;white-space:nowrap;flex-shrink:0;${currentPage >= totalPages || isAll ? 'opacity:0.4;cursor:not-allowed;' : ''}" title="下一页" ${currentPage >= totalPages || isAll ? 'disabled' : ''}>
                     <span>下一页</span>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </button>
-                <button type="button" id="uni-pg-last" class="btn-wf-sm btn-wf-secondary uni-pg-btn" style="height:24px;padding:0 7px;font-size:0.74rem;display:inline-flex;align-items:center;gap:3px;cursor:pointer;${currentPage >= totalPages || isAll ? 'opacity:0.4;cursor:not-allowed;' : ''}" title="末页" ${currentPage >= totalPages || isAll ? 'disabled' : ''}>
+                <button type="button" id="uni-pg-last" class="btn-wf-sm btn-wf-secondary uni-pg-btn" style="height:24px;padding:0 7px;font-size:0.74rem;display:inline-flex;align-items:center;gap:3px;cursor:pointer;white-space:nowrap;flex-shrink:0;${currentPage >= totalPages || isAll ? 'opacity:0.4;cursor:not-allowed;' : ''}" title="末页" ${currentPage >= totalPages || isAll ? 'disabled' : ''}>
                     <span>末页</span>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="13 17 18 12 13 7"></polyline><polyline points="6 17 11 12 6 7"></polyline></svg>
                 </button>

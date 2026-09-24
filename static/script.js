@@ -19968,7 +19968,7 @@ window.runGlobalUserManager = async function() {
 
             const payload = {
                 scope: scope,
-                workspace_id: selectedWss[0] || null,
+                workspace_id: (scope === 'workspaces') ? (selectedWss[0] || null) : null,
                 workspace_ids: (scope === 'workspaces') ? selectedWss : null,
                 deep_scan: true
             };
@@ -20491,8 +20491,27 @@ window.filterGumTable = function() {
 
     window._lastGumFiltered = filtered;
     if (statsSpan) {
-        const total = scopeBaseline.length;
-        statsSpan.textContent = `筛选结果: ${filtered.length} / ${total} 条记录`;
+        const totalUsers = scopeBaseline.length;
+        let matrixRowCount = 0;
+        filtered.forEach(d => {
+            const wsId = (d.workspaceId || d.wsId || '').toLowerCase();
+            let mCount = 0;
+            if (Array.isArray(d.datasetsDetail) && d.datasetsDetail.length > 0) {
+                mCount = d.datasetsDetail.length;
+            } else if (window._cachedWorkspaceDatasets && window._cachedWorkspaceDatasets[d.workspaceId]) {
+                mCount = (window._cachedWorkspaceDatasets[d.workspaceId] || []).length;
+            } else if (Array.isArray(window.allDatasets) && wsId) {
+                mCount = window.allDatasets.filter(ds => (ds.workspaceId || ds.wsId || '').toLowerCase() === wsId).length;
+            }
+            matrixRowCount += Math.max(1, mCount);
+        });
+
+        const isFiltered = (filtered.length !== totalUsers);
+        if (isFiltered) {
+            statsSpan.innerHTML = `命中: <strong style="color:var(--accent); font-weight:600;">${filtered.length}</strong> / ${totalUsers} 位用户 <span style="opacity:0.8; font-size:0.75rem;">(对应 <strong>${matrixRowCount}</strong> 项权限)</span>`;
+        } else {
+            statsSpan.innerHTML = `已收录: <strong style="color:var(--accent); font-weight:600;">${totalUsers}</strong> 位授权用户 <span style="opacity:0.8; font-size:0.75rem;">(展开矩阵共 <strong>${matrixRowCount}</strong> 项权限)</span>`;
+        }
     }
 
     // 渲染实时内嵌表格
