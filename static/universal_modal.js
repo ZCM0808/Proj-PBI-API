@@ -10,6 +10,10 @@ window.showUniversalDataModal = function(options) {
         style.textContent = `
             .uni-modal-table tbody tr { transition: background 0.2s; }
             .uni-modal-table tbody tr:hover { background: var(--overlay-10) !important; }
+            .uni-modal-table tbody tr:hover td.uni-row-num-td,
+            .uni-modal-table tbody tr:hover td.uni-sticky-col {
+                background: var(--overlay-15, rgba(255, 255, 255, 0.08)) !important;
+            }
             
             /* Enhanced Comfortable & High-Contrast Scrollbars for Modal Body */
             #universal-modal-body::-webkit-scrollbar {
@@ -1273,16 +1277,17 @@ hdr.className = 'modal-header';
             <div style="display:flex;align-items:center;gap:10px;color:var(--text-secondary);white-space:nowrap;flex-shrink:0;">
                 <span style="white-space:nowrap;flex-shrink:0;">共 <strong style="color:var(--text-primary);font-weight:600;">${totalCount}</strong> 条记录</span>
                 ${totalCount > 0 ? `<span style="opacity:0.8;white-space:nowrap;flex-shrink:0;">(第 ${startDisplay} - ${endDisplay} 条)</span>` : ''}
-                <div style="display:inline-flex;align-items:center;gap:6px;margin-left:6px;white-space:nowrap;flex-shrink:0;">
-                    <span style="white-space:nowrap;flex-shrink:0;user-select:none;">每页:</span>
-                    <select id="uni-page-size-select" class="wf-input" style="padding:1px 6px;font-size:0.74rem;min-height:24px;height:24px;border-radius:4px;background:var(--dropdown-bg,#1a1a24);cursor:pointer;border:1px solid var(--panel-border);white-space:nowrap;flex-shrink:0;">
-                        <option value="25" ${pageSize === 25 ? 'selected' : ''}>25 条</option>
-                        <option value="50" ${pageSize === 50 ? 'selected' : ''}>50 条</option>
-                        <option value="100" ${pageSize === 100 ? 'selected' : ''}>100 条 (推荐)</option>
-                        <option value="200" ${pageSize === 200 ? 'selected' : ''}>200 条</option>
-                        <option value="500" ${pageSize === 500 ? 'selected' : ''}>500 条</option>
-                        <option value="all" ${pageSize === 'all' ? 'selected' : ''}>全部 (全量展开)</option>
+                <div style="display:inline-flex;align-items:center;gap:4px;margin-left:6px;white-space:nowrap;flex-shrink:0;">
+                    <span style="white-space:nowrap;flex-shrink:0;user-select:none;font-size:0.75rem;">每页:</span>
+                    <select id="uni-page-size-select" class="wf-input" style="width:58px;min-width:58px;max-width:64px;padding:1px 4px;font-size:0.74rem;min-height:24px;height:24px;border-radius:4px;background:var(--dropdown-bg,#1a1a24);cursor:pointer;border:1px solid var(--panel-border);white-space:nowrap;flex-shrink:0;text-align:center;">
+                        <option value="25" ${pageSize === 25 ? 'selected' : ''}>25</option>
+                        <option value="50" ${pageSize === 50 ? 'selected' : ''}>50</option>
+                        <option value="100" ${pageSize === 100 ? 'selected' : ''}>100</option>
+                        <option value="200" ${pageSize === 200 ? 'selected' : ''}>200</option>
+                        <option value="500" ${pageSize === 500 ? 'selected' : ''}>500</option>
+                        <option value="all" ${pageSize === 'all' ? 'selected' : ''}>全部</option>
                     </select>
+                    <span style="white-space:nowrap;flex-shrink:0;user-select:none;font-size:0.75rem;">条</span>
                 </div>
             </div>
             <div style="display:flex;align-items:center;gap:5px;flex-wrap:nowrap;white-space:nowrap;flex-shrink:0;">
@@ -1415,14 +1420,30 @@ hdr.className = 'modal-header';
 
         let lastSelectedCol = null;
 
+        const showRowIndex = options.showRowIndex !== false && !columns.includes('#');
+        const rowNumWidth = 46;
+
         // Render Colgroup & Head with Visual Column Resizers
         colgroup.innerHTML = '';
         thead.innerHTML = '';
         const trHead = document.createElement('tr');
+
+        if (showRowIndex) {
+            const colNumEl = document.createElement('col');
+            colNumEl.style.width = rowNumWidth + 'px';
+            colNumEl.setAttribute('data-col', '__row_num__');
+            colgroup.appendChild(colNumEl);
+
+            const thIdx = document.createElement('th');
+            thIdx.style.cssText = `position:sticky; left:0; top:0; z-index:28; width:${rowNumWidth}px; min-width:${rowNumWidth}px; max-width:${rowNumWidth}px; text-align:center; padding:10px 4px; background:var(--bg-color); border-bottom:1px solid var(--panel-border); border-right:1px solid var(--panel-border); font-size:0.75rem; color:var(--text-secondary); user-select:none; box-sizing:border-box;`;
+            thIdx.innerHTML = '#';
+            thIdx.title = '序号 / 行号';
+            trHead.appendChild(thIdx);
+        }
         
         const activeCols = columns.filter(c => selectedCols.has(c));
         const colStickyLeft = {};
-        let cumulativeLeft = 0;
+        let cumulativeLeft = showRowIndex ? rowNumWidth : 0;
         let lastFrozenCol = null;
 
         activeCols.forEach(col => {
@@ -1676,7 +1697,7 @@ hdr.className = 'modal-header';
         tbody.innerHTML = '';
         if (totalCount === 0) {
             const emptyTr = document.createElement('tr');
-            emptyTr.innerHTML = `<td colspan="${selectedCols.size}" style="padding:16px;text-align:center;color:var(--text-secondary);">No matching records found.</td>`;
+            emptyTr.innerHTML = `<td colspan="${selectedCols.size + (showRowIndex ? 1 : 0)}" style="padding:16px;text-align:center;color:var(--text-secondary);">No matching records found.</td>`;
             tbody.appendChild(emptyTr);
             renderPaginationControls(totalCount, totalPages, startIndex, endIndex, isAll);
             return;
@@ -1684,14 +1705,21 @@ hdr.className = 'modal-header';
 
         // Fast String Concatenation Engine for blazing fast render
         let htmlRows = '';
-        pageData.forEach(row => {
+        const numCellSticky = `position: sticky; left: 0; z-index: 12; width: ${rowNumWidth}px; min-width: ${rowNumWidth}px; max-width: ${rowNumWidth}px; text-align: center; padding: 6px 4px; background: var(--bg-color); border-bottom: 1px solid var(--panel-border); border-right: 1px solid var(--panel-border); font-size: 0.72rem; color: var(--text-secondary); font-family: 'Fira Code', monospace; user-select: none; box-sizing: border-box;`;
+
+        pageData.forEach((row, rIdx) => {
             htmlRows += `<tr>`;
+            if (showRowIndex) {
+                const globalRowNumber = startIndex + rIdx + 1;
+                htmlRows += `<td class="uni-row-num-td" style="${numCellSticky}">${globalRowNumber}</td>`;
+            }
             columns.forEach(col => {
                 if (!selectedCols.has(col)) return;
                 
                 const isSelectedCol = selectedColForCopy.has(col);
                 const isFrozen = frozenCols.has(col);
                 const isLastFrozen = (col === lastFrozenCol);
+                const stickyClass = isFrozen ? 'uni-sticky-col' : '';
                 const colHighlight = isSelectedCol ? 'background: rgba(99, 102, 241, 0.08) !important;' : '';
                 const frozenShadow = isLastFrozen ? 'box-shadow: 3px 0 8px -2px rgba(0,0,0,0.35); border-right: 2px solid var(--accent, #6366f1) !important;' : '';
                 const frozenSticky = isFrozen ? `position: sticky; left: ${colStickyLeft[col]}px; z-index: 10; background: var(--bg-color);` : '';
@@ -1704,7 +1732,7 @@ hdr.className = 'modal-header';
                 if (options.cellRenderer) {
                     const customHtml = options.cellRenderer(col, val, row);
                     if (customHtml !== undefined) {
-                        htmlRows += `<td style="${cellCommonStyle}">${customHtml}</td>`;
+                        htmlRows += `<td class="${stickyClass}" style="${cellCommonStyle}">${customHtml}</td>`;
                         return;
                     }
                 }
@@ -1723,7 +1751,7 @@ hdr.className = 'modal-header';
                     cellHtml = str.replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 }
                 
-                htmlRows += `<td title="${cellTitle}" style="${cellCommonStyle}">${cellHtml}</td>`;
+                htmlRows += `<td class="${stickyClass}" title="${cellTitle}" style="${cellCommonStyle}">${cellHtml}</td>`;
             });
             htmlRows += `</tr>`;
         });

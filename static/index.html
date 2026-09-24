@@ -1562,7 +1562,7 @@
                                         <!-- Visual Charts & Dashboard Container -->
                                         <div id="wf-gum-dashboard-charts" style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px;"></div>
 
-                                        <!-- Result Table Trigger & Quick Filter Pills -->
+                                        <!-- Result Table Trigger -->
                                         <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--overlay-5); border-radius: 6px; border: 1px solid var(--overlay-10);">
                                             <div style="display: flex; align-items: center; gap: 8px;">
                                                 <button type="button" class="btn-wf-sm btn-wf-primary" onclick="window.openGumResultModal()" title="以全屏/大弹窗打开全局权限矩阵表格" style="display: flex; align-items: center; gap: 6px;">
@@ -1570,13 +1570,6 @@
                                                     全屏弹窗矩阵 (Universal Modal)
                                                 </button>
                                                 <span id="wf-gum-stats" style="color: var(--accent); font-size: 0.8rem; font-weight: 500;"></span>
-                                            </div>
-                                            <!-- Filter Pills -->
-                                            <div id="wf-gum-filter-pills" style="display: flex; align-items: center; gap: 6px;">
-                                                <button type="button" class="gum-filter-pill active" onclick="window.setGumPillFilter('all', this)">全部 (All)</button>
-                                                <button type="button" class="gum-filter-pill warning" onclick="window.setGumPillFilter('elevated', this)">⚠️ 提权异常</button>
-                                                <button type="button" class="gum-filter-pill" onclick="window.setGumPillFilter('admin', this)">🛡️ 管理员</button>
-                                                <button type="button" class="gum-filter-pill" onclick="window.setGumPillFilter('viewer', this)">👁️ 纯只读</button>
                                             </div>
                                         </div>
                                     </div>
@@ -3361,8 +3354,8 @@
     <script src="/static/translations.js?v=20260906_v1225"></script>
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
-    <script src="/static/universal_modal.js?v=20260924_v2135"></script>
-    <script src="/static/script.js?v=20260924_v2135"></script>
+    <script src="/static/universal_modal.js?v=20260924_v2145"></script>
+    <script src="/static/script.js?v=20260924_v2145"></script>
     <script src="/static/permission_blueprint.js?v=20260923_v1318"></script>
 
 

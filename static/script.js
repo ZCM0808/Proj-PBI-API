@@ -20219,13 +20219,6 @@ window.renderGumDashboardCharts = function() {
     `;
 };
 
-window.setGumPillFilter = function(filterType, btn) {
-    window._gumPillFilter = filterType;
-    document.querySelectorAll('#wf-gum-filter-pills .gum-filter-pill').forEach(el => el.classList.remove('active'));
-    if (btn) btn.classList.add('active');
-    window.filterGumTable();
-};
-
 // --- Targeted Principals (定向用户审计与级联筛选) ---
 
 window.renderGumTargetTags = function() {
@@ -20394,7 +20387,6 @@ window.filterGumTable = function() {
     const statsSpan = document.getElementById('wf-gum-stats');
     const resultWrap = document.getElementById('wf-gum-result-wrap');
     const clearBtn = document.getElementById('wf-gum-search-clear');
-    const pillFilter = window._gumPillFilter || 'all';
     const scope = window.gumAuditScope || 'tenant';
     const selectedWss = window.getSelectedWorkspaces ? window.getSelectedWorkspaces() : [];
     const selectedWsSet = new Set(selectedWss.map(w => w.toLowerCase()));
@@ -20460,11 +20452,6 @@ window.filterGumTable = function() {
             }
             if (!matched) return false;
         }
-
-        // Pill Match
-        if (pillFilter === 'elevated' && !d.isElevated) return false;
-        if (pillFilter === 'admin' && d.effectiveRole !== 'Admin' && d.directRole !== 'Admin') return false;
-        if (pillFilter === 'viewer' && (d.effectiveRole !== 'Viewer' || d.isElevated)) return false;
 
         // Multi-Token Text Match
         if (tokens.length > 0) {

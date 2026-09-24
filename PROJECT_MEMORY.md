@@ -2747,3 +2747,18 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
 3. **深度穿透模式 (Deep Scan) 401 Unauthorized 熔断短路机制**：
    - **根因分析**：若当前账号非全租户管理员，点击深度分析时会尝试调用 `/admin/users/{userId}/artifactAccess`。原代码对近千名用户发起并发请求，每个请求遭遇 401 后重试导致耗时高达数分钟；
    - **解决方案**：在 [`src/permission_scanner.py`](file:///D:/zcm/Proj-PBI-API/src/permission_scanner.py) 中引入 `has_admin_rights` 动态探针。只要首个 `/admin` 请求捕获 401，立即将探针置为 `False` 并瞬间熔断所有并发协程，直接秒级回退至直属权限聚合视图，规避一切多余网络阻塞。
+
+
+### 71.8 弹窗矩阵序号列 (#) 冻结挂载、每页选择器紧凑化与快速过滤胶囊按钮清理
+1. **矩阵最左侧添加序号列标明行数 (#)**：
+   - 在 [`static/universal_modal.js`](file:///D:/zcm/Proj-PBI-API/static/universal_modal.js) 中新增 `showRowIndex` 引擎，若数据源列中无自带 `#`，则在最左侧（`left: 0`）动态注入冻结序号列（表头 `#`，宽度 46px，内容为全局跨页行号 `${startIndex + rIdx + 1}`）；
+   - 后续冻结列自动衔接在 46px 之后，且在悬浮高亮时全行联动高亮，完美实现 Excel 级行号标明。
+2. **每页条数选择框瘦身与紧凑化**：
+   - 移除了选项中冗余的“条 (推荐)”、“(全量展开)”等长文本，简化为纯数字（25 / 50 / 100 / 200 / 500 / 全部）；
+   - 下拉框宽度由近 140px 极致压缩至 58px 居中对齐，排版格式为 `每页: [ 50 ▾ ] 条`，彻底消除分页栏两端拥挤挤压。
+3. **“设置每页50条仍显示共30条”的业务逻辑确认**：
+   - 澄清说明：当且仅当数据总量大于单页容量时才会切片分页；若当前单工作区扫描出的数据总量即为 30 条（30 < 50），第 1 页展示全部 30 条，左侧信息精准指示 `共 30 条记录 (第 1 - 30 条)`，数据逻辑完全闭环。
+4. **移除快速过滤标签胶囊 (Filter Pills)**：
+   - 遵照需求在 [`static/index.html`](file:///D:/zcm/Proj-PBI-API/static/index.html) 中彻底移除 `#wf-gum-filter-pills`（全部 (All)、⚠️ 提权异常、🛡️ 管理员、👁️ 纯只读）；
+   - 在 [`static/script.js`](file:///D:/zcm/Proj-PBI-API/static/script.js) 中同步剥离 `pillFilter` 过滤逻辑与 `window.setGumPillFilter` 函数；
+   - 静态资源版本号升级至 `?v=20260924_v2145`。
