@@ -2724,3 +2724,14 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
    - **前端呼吸感微交互动效**：在 `static/style.css` 中引入基于 CSS `@keyframes` 的三段式交错呼吸脉冲点（Bouncing Dots），在首个有效 Token 到达前保持【🧠 正在思考中 ···】状态锁，首字到达后才优雅展开正文；
    - **上游超时保护**：若中转站特定模型排队超时，友好提示切换为秒级极速响应的 `gpt-5.6-luna`，消灭一切卡死可能。
 
+### 71.6 全局用户管理 (GUM) 非租户管理员接口降级与全屏权限矩阵分页引擎
+1. **401 Unauthorized 扫描失败根因与自动智能降级**：
+   - **痛点根因**：当前登录账号具备工作区管理/成员权限，但未被赋予 Power BI 全租户管理员特权 (Tenant Administrator)。调用 `/admin/groups?$top=500&$expand=users,datasets` 必定触发微软云端 `401 Client Error: Unauthorized`，导致原流程中断并提示“拉取未完成”；
+   - **解决方案**：在 [`src/permission_scanner.py`](file:///D:/zcm/Proj-PBI-API/src/permission_scanner.py) 的 `scan_candidate_users` 中构建了双通道容灾机制。当 `/admin/groups` 抛出 401/403/404 时，自动平滑降级至标准组织工作区通道（`/groups?$top=1000` + 并发提取各工作区 `/groups/{wid}/users`），在秒级内成功无感穿透并聚合 946 位真实候选用户名单，并在前端呈现友好提示。
+2. **全屏弹窗矩阵 (Universal Modal) 高性能分页系统**：
+   - **痛点**：在全景权限穿透审计中，上千名用户与多语义模型交叉生成数千至上万行矩阵数据。原组件全量一次性插入 DOM，极易引发浏览器主线程严重卡顿或无响应；
+   - **解决方案**：在 [`static/universal_modal.js`](file:///D:/zcm/Proj-PBI-API/static/universal_modal.js) 中打造了极客级纯血分页系统：
+     - **页面切片 (Page Slicing)**：默认每页 100 条（支持 25 / 50 / 100 / 200 / 500 / 全部展开自由切换，并在 LocalStorage 中记忆首选项）；
+     - **交互与快捷键**：支持“首页/上一页/快速输入跳转/下一页/尾页”及全局 `Alt+Left` / `Alt+Right` 极速翻页；
+     - **导出完整性**：表头复制与全局导出（`copySelectedColumnsData`）依然保持面向当前筛选后的全量数据集 (`visibleData`)，兼顾渲染性能与业务数据完整性；
+     - **缓存防御**：在 [`static/index.html`](file:///D:/zcm/Proj-PBI-API/static/index.html) 中同步更新版本号至 `?v=20260924_v2110`。

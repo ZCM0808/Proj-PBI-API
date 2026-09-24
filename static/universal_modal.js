@@ -45,6 +45,20 @@ window.showUniversalDataModal = function(options) {
                 scrollbar-color: var(--overlay-30, rgba(255, 255, 255, 0.35)) var(--overlay-5, rgba(255, 255, 255, 0.04));
             }
 
+            /* Pagination Bar & Navigation Buttons */
+            .uni-pg-btn {
+                transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease !important;
+            }
+            .uni-pg-btn:hover:not(:disabled) {
+                transform: translateY(-1px);
+                border-color: var(--accent, #6366f1) !important;
+                color: var(--accent, #6366f1) !important;
+                background: var(--overlay-10) !important;
+            }
+            .uni-pg-btn:active:not(:disabled) {
+                transform: scale(0.96);
+            }
+
             /* Column Header Filter Popover & Buttons */
             .uni-col-filter-popover {
                 position: fixed;
@@ -210,6 +224,19 @@ window.showUniversalDataModal = function(options) {
     let sortState = Array.isArray(savedPrefs.sortState) ? savedPrefs.sortState : []; // Array of {index, asc}
     const colWidths = (savedPrefs.colWidths && typeof savedPrefs.colWidths === 'object') ? savedPrefs.colWidths : {};
 
+    // Pagination state (default 100 rows per page to prevent thousands of DOM rows freezing browser)
+    let pageSize = (function() {
+        if (options.pageSize) return options.pageSize;
+        try {
+            const saved = localStorage.getItem('pbi_universal_modal_page_size');
+            if (saved === 'all') return 'all';
+            const num = parseInt(saved, 10);
+            if ([25, 50, 100, 200, 500].includes(num)) return num;
+        } catch(e) {}
+        return 100;
+    })();
+    let currentPage = 1;
+
     // Column Filters state (key: colName, value: Set of checked string values)
     const columnFilters = {};
     let updateResetColFiltersBtn = null;
@@ -352,6 +379,7 @@ hdr.className = 'modal-header';
         searchInput.style.cssText = 'width:200px;padding:4px 8px;min-height:unset;font-size:0.8rem;';
         searchInput.onkeyup = (e) => {
             searchText = e.target.value.toLowerCase();
+            currentPage = 1;
             renderTable();
         };
         hdrActions.appendChild(searchInput);
@@ -681,6 +709,7 @@ hdr.className = 'modal-header';
             Object.keys(columnFilters).forEach(k => delete columnFilters[k]);
             if (typeof closeColumnFilterPopover === 'function') closeColumnFilterPopover();
             if (updateResetColFiltersBtn) updateResetColFiltersBtn();
+            currentPage = 1;
             renderTable();
         };
         filterRight.appendChild(resetColFiltersBtn);
@@ -928,6 +957,14 @@ hdr.className = 'modal-header';
     table.appendChild(tbody);
     body.appendChild(table);
     panel.appendChild(body);
+
+    // Pagination Footer Bar (固定底部状态与翻页控制器)
+    const paginationBar = document.createElement('div');
+    paginationBar.id = 'uni-modal-pagination-bar';
+    paginationBar.className = 'uni-modal-pagination-bar';
+    paginationBar.style.cssText = 'padding:7px 16px;background:var(--bg-color);border-top:1px solid var(--overlay-10);display:flex;align-items:center;justify-content:space-between;font-size:0.75rem;flex-shrink:0;z-index:20;user-select:none;gap:12px;';
+    panel.appendChild(paginationBar);
+
     overlay.appendChild(panel);
     document.body.appendChild(overlay);
 
@@ -1149,6 +1186,7 @@ hdr.className = 'modal-header';
             delete columnFilters[col];
             closeColumnFilterPopover();
             if (updateResetColFiltersBtn) updateResetColFiltersBtn();
+            currentPage = 1;
             renderTable();
         };
 
@@ -1176,6 +1214,7 @@ hdr.className = 'modal-header';
             }
             closeColumnFilterPopover();
             if (updateResetColFiltersBtn) updateResetColFiltersBtn();
+            currentPage = 1;
             renderTable();
         };
 
@@ -1225,16 +1264,148 @@ hdr.className = 'modal-header';
     };
     document.addEventListener('mousedown', handleGlobalMouseDownForPopover);
 
+    const renderPaginationControls = (totalCount, totalPages, startIndex, endIndex, isAll) => {
+        if (!paginationBar) return;
+        const startDisplay = totalCount === 0 ? 0 : startIndex + 1;
+        const endDisplay = endIndex;
+
+        paginationBar.innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px;color:var(--text-secondary);flex-wrap:wrap;">
+                <span>共 <strong style="color:var(--text-primary);font-weight:600;">${totalCount}</strong> 条记录</span>
+                ${totalCount > 0 ? `<span style="opacity:0.8;">(当前显示第 ${startDisplay} - ${endDisplay} 条)</span>` : ''}
+                <div style="display:inline-flex;align-items:center;gap:6px;margin-left:6px;">
+                    <span>每页:</span>
+                    <select id="uni-page-size-select" class="wf-input" style="padding:1px 6px;font-size:0.74rem;min-height:24px;height:24px;border-radius:4px;background:var(--dropdown-bg,#1a1a24);cursor:pointer;border:1px solid var(--panel-border);">
+                        <option value="25" ${pageSize === 25 ? 'selected' : ''}>25 条</option>
+                        <option value="50" ${pageSize === 50 ? 'selected' : ''}>50 条</option>
+                        <option value="100" ${pageSize === 100 ? 'selected' : ''}>100 条 (推荐)</option>
+                        <option value="200" ${pageSize === 200 ? 'selected' : ''}>200 条</option>
+                        <option value="500" ${pageSize === 500 ? 'selected' : ''}>500 条</option>
+                        <option value="all" ${pageSize === 'all' ? 'selected' : ''}>全部 (全量展开)</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:5px;flex-wrap:nowrap;">
+                <button type="button" id="uni-pg-first" class="btn-wf-sm btn-wf-secondary uni-pg-btn" style="height:24px;padding:0 7px;font-size:0.74rem;display:inline-flex;align-items:center;gap:3px;cursor:pointer;${currentPage <= 1 || isAll ? 'opacity:0.4;cursor:not-allowed;' : ''}" title="首页" ${currentPage <= 1 || isAll ? 'disabled' : ''}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="11 17 6 12 11 7"></polyline><polyline points="18 17 13 12 18 7"></polyline></svg>
+                    <span>首页</span>
+                </button>
+                <button type="button" id="uni-pg-prev" class="btn-wf-sm btn-wf-secondary uni-pg-btn" style="height:24px;padding:0 7px;font-size:0.74rem;display:inline-flex;align-items:center;gap:3px;cursor:pointer;${currentPage <= 1 || isAll ? 'opacity:0.4;cursor:not-allowed;' : ''}" title="上一页" ${currentPage <= 1 || isAll ? 'disabled' : ''}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    <span>上一页</span>
+                </button>
+                <div style="display:inline-flex;align-items:center;gap:3px;margin:0 4px;color:var(--text-secondary);">
+                    <span>第</span>
+                    <input type="number" id="uni-pg-jump-input" min="1" max="${totalPages}" value="${currentPage}" style="width:42px;height:22px;padding:0 3px;text-align:center;font-size:0.74rem;border-radius:4px;border:1px solid var(--panel-border);background:var(--overlay-5);color:var(--text-primary);" ${isAll ? 'disabled' : ''} />
+                    <span>/ ${totalPages} 页</span>
+                </div>
+                <button type="button" id="uni-pg-next" class="btn-wf-sm btn-wf-secondary uni-pg-btn" style="height:24px;padding:0 7px;font-size:0.74rem;display:inline-flex;align-items:center;gap:3px;cursor:pointer;${currentPage >= totalPages || isAll ? 'opacity:0.4;cursor:not-allowed;' : ''}" title="下一页" ${currentPage >= totalPages || isAll ? 'disabled' : ''}>
+                    <span>下一页</span>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </button>
+                <button type="button" id="uni-pg-last" class="btn-wf-sm btn-wf-secondary uni-pg-btn" style="height:24px;padding:0 7px;font-size:0.74rem;display:inline-flex;align-items:center;gap:3px;cursor:pointer;${currentPage >= totalPages || isAll ? 'opacity:0.4;cursor:not-allowed;' : ''}" title="末页" ${currentPage >= totalPages || isAll ? 'disabled' : ''}>
+                    <span>末页</span>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="13 17 18 12 13 7"></polyline><polyline points="6 17 11 12 6 7"></polyline></svg>
+                </button>
+            </div>
+        `;
+
+        const sel = paginationBar.querySelector('#uni-page-size-select');
+        if (sel) {
+            sel.onchange = (e) => {
+                const val = e.target.value;
+                pageSize = (val === 'all') ? 'all' : parseInt(val, 10);
+                try {
+                    localStorage.setItem('pbi_universal_modal_page_size', String(pageSize));
+                } catch(err) {}
+                currentPage = 1;
+                renderTable();
+                body.scrollTop = 0;
+            };
+        }
+
+        const btnFirst = paginationBar.querySelector('#uni-pg-first');
+        if (btnFirst && !btnFirst.disabled) {
+            btnFirst.onclick = () => {
+                currentPage = 1;
+                renderTable();
+                body.scrollTop = 0;
+            };
+        }
+
+        const btnPrev = paginationBar.querySelector('#uni-pg-prev');
+        if (btnPrev && !btnPrev.disabled) {
+            btnPrev.onclick = () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderTable();
+                    body.scrollTop = 0;
+                }
+            };
+        }
+
+        const btnNext = paginationBar.querySelector('#uni-pg-next');
+        if (btnNext && !btnNext.disabled) {
+            btnNext.onclick = () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderTable();
+                    body.scrollTop = 0;
+                }
+            };
+        }
+
+        const btnLast = paginationBar.querySelector('#uni-pg-last');
+        if (btnLast && !btnLast.disabled) {
+            btnLast.onclick = () => {
+                currentPage = totalPages;
+                renderTable();
+                body.scrollTop = 0;
+            };
+        }
+
+        const jumpInput = paginationBar.querySelector('#uni-pg-jump-input');
+        if (jumpInput && !jumpInput.disabled) {
+            const handleJump = () => {
+                let target = parseInt(jumpInput.value, 10);
+                if (isNaN(target)) target = 1;
+                if (target < 1) target = 1;
+                if (target > totalPages) target = totalPages;
+                if (target !== currentPage) {
+                    currentPage = target;
+                    renderTable();
+                    body.scrollTop = 0;
+                } else {
+                    jumpInput.value = currentPage;
+                }
+            };
+            jumpInput.onkeydown = (e) => {
+                if (e.key === 'Enter') handleJump();
+            };
+            jumpInput.onchange = handleJump;
+        }
+    };
+
     const renderTable = () => {
         const visibleData = getFilteredData();
-        
+        const totalCount = visibleData.length;
+        const isAll = (pageSize === 'all');
+        const totalPages = isAll ? 1 : Math.max(1, Math.ceil(totalCount / pageSize));
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startIndex = isAll ? 0 : (currentPage - 1) * pageSize;
+        const endIndex = isAll ? totalCount : Math.min(startIndex + pageSize, totalCount);
+        const pageData = isAll ? visibleData : visibleData.slice(startIndex, endIndex);
+
         // Update stats
         const statsEl = hdrTitle.querySelector('#uni-modal-stats');
         if (statsEl) {
-            if (visibleData.length !== data.length) {
-                statsEl.textContent = `${visibleData.length}/${data.length} rows / ${selectedCols.size} cols`;
+            const pageTag = isAll ? '' : ` (第 ${currentPage}/${totalPages} 页)`;
+            if (totalCount !== data.length) {
+                statsEl.textContent = `${totalCount}/${data.length} rows${pageTag} / ${selectedCols.size} cols`;
             } else {
-                statsEl.textContent = `${visibleData.length} rows / ${selectedCols.size} cols`;
+                statsEl.textContent = `${totalCount} rows${pageTag} / ${selectedCols.size} cols`;
             }
         }
 
@@ -1458,6 +1629,7 @@ hdr.className = 'modal-header';
                     }
                 }
                 savePreferences();
+                currentPage = 1;
                 renderTable();
             };
 
@@ -1502,16 +1674,17 @@ hdr.className = 'modal-header';
 
         // Render Body
         tbody.innerHTML = '';
-        if (visibleData.length === 0) {
+        if (totalCount === 0) {
             const emptyTr = document.createElement('tr');
             emptyTr.innerHTML = `<td colspan="${selectedCols.size}" style="padding:16px;text-align:center;color:var(--text-secondary);">No matching records found.</td>`;
             tbody.appendChild(emptyTr);
+            renderPaginationControls(totalCount, totalPages, startIndex, endIndex, isAll);
             return;
         }
 
         // Fast String Concatenation Engine for blazing fast render
         let htmlRows = '';
-        visibleData.forEach(row => {
+        pageData.forEach(row => {
             htmlRows += `<tr>`;
             columns.forEach(col => {
                 if (!selectedCols.has(col)) return;
@@ -1555,15 +1728,38 @@ hdr.className = 'modal-header';
             htmlRows += `</tr>`;
         });
         tbody.innerHTML = htmlRows;
+        renderPaginationControls(totalCount, totalPages, startIndex, endIndex, isAll);
     };
 
     renderTable();
 
-    // Global Ctrl+C / Cmd+C shortcut listener for copying columns & ESC for closing filter popover
+    // Global Ctrl+C / Cmd+C shortcut listener for copying columns & ESC for closing filter popover & Alt+Arrows for pagination
     const handleKeyDown = (e) => {
         if (e.key === 'Escape' && activeFilterPopover) {
             e.stopPropagation();
             closeColumnFilterPopover();
+            return;
+        }
+        if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'PageUp')) {
+            const vData = getFilteredData();
+            const tPages = (pageSize === 'all') ? 1 : Math.max(1, Math.ceil(vData.length / pageSize));
+            if (currentPage > 1 && pageSize !== 'all') {
+                e.preventDefault();
+                currentPage--;
+                renderTable();
+                body.scrollTop = 0;
+            }
+            return;
+        }
+        if (e.altKey && (e.key === 'ArrowRight' || e.key === 'PageDown')) {
+            const vData = getFilteredData();
+            const tPages = (pageSize === 'all') ? 1 : Math.max(1, Math.ceil(vData.length / pageSize));
+            if (currentPage < tPages && pageSize !== 'all') {
+                e.preventDefault();
+                currentPage++;
+                renderTable();
+                body.scrollTop = 0;
+            }
             return;
         }
         if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C')) {

@@ -650,6 +650,9 @@ async def scan_candidate_users(
     warning_msg: Optional[str] = None
     rate_limited = False
 
+    # 规范化目标工作区集合
+    target_ws_set = {str(w).strip().lower() for w in (workspace_ids or []) if str(w).strip()}
+
     # 若缓存极其新鲜 (例如最近 15 秒内刚刚更新)，直接复用内存快照，保护租户请求频次
     if cached_workspaces and cache_age < 15:
         workspaces = cached_workspaces
@@ -682,15 +685,50 @@ async def scan_candidate_users(
                         "users": []
                     }
             else:
-                if cached_workspaces:
-                    workspaces = cached_workspaces
-                    has_valid_cache = True
-                    warning_msg = f"⚠️ 云端网络波动，已自动加载高可用内存快照 ({ex_str[:80]})"
-                else:
-                    return {"success": False, "message": f"拉取工作区失败: {ex_str}", "users": []}
+                # 尝试智能降级：非全租户管理员账号 (401/403/404) 自动降级为标准组织工作区通道 (/groups + 并发各工作区 /users)
+                fallback_success = False
+                try:
+                    ws_res = await asyncio.to_thread(cli.request, "GET", "/groups?$top=1000")
+                    raw_workspaces = ws_res.get("value", [])
+                    if raw_workspaces:
+                        target_list = raw_workspaces
+                        # 若指定了工作区范围，则优先精准拉取指定工作区，大幅节省耗时
+                        if scope == "workspaces" and target_ws_set:
+                            target_list = [w for w in raw_workspaces if str(w.get("id", "")).lower() in target_ws_set]
+
+                        sem = asyncio.Semaphore(12)
+                        async def _fetch_ws_users(w: Dict[str, Any]) -> Dict[str, Any]:
+                            wid = w.get("id") or ""
+                            async with sem:
+                                try:
+                                    u_res = await asyncio.to_thread(cli.request, "GET", f"/groups/{wid}/users")
+                                    w_copy = dict(w)
+                                    w_copy["users"] = u_res.get("value", [])
+                                    return w_copy
+                                except Exception:
+                                    w_copy = dict(w)
+                                    w_copy["users"] = []
+                                    return w_copy
+
+                        workspaces = await asyncio.gather(*[_fetch_ws_users(w) for w in target_list])
+                        if workspaces:
+                            _TENANT_WORKSPACES_CACHE["timestamp"] = now
+                            _TENANT_WORKSPACES_CACHE["workspaces"] = workspaces
+                            has_valid_cache = True
+                            fallback_success = True
+                            warning_msg = f"💡 当前账号未被授予全租户管理员特权 (Tenant Admin)，已智能降级为标准授权模式（已同步 {len(workspaces)} 个授权工作区成员）"
+                except Exception:
+                    pass
+
+                if not fallback_success:
+                    if cached_workspaces:
+                        workspaces = cached_workspaces
+                        has_valid_cache = True
+                        warning_msg = f"⚠️ 云端网络波动，已自动加载高可用内存快照 ({ex_str[:80]})"
+                    else:
+                        return {"success": False, "message": f"拉取工作区失败: {ex_str}", "users": []}
 
     # 过滤工作区范围
-    target_ws_set = {str(w).strip().lower() for w in (workspace_ids or []) if str(w).strip()}
     if scope == "workspaces" and target_ws_set:
         filtered_workspaces = [w for w in workspaces if str(w.get("id", "")).lower() in target_ws_set]
         found_ids = {str(w.get("id", "")).lower() for w in filtered_workspaces}
