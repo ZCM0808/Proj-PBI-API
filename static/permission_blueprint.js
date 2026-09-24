@@ -4803,7 +4803,14 @@
             const topBadge = document.getElementById('pb-top-simulated-badge');
             if (topBadge) {
                 const userText = user ? `${user.name} (${user.roleTag})` : '未选择用户主体';
-                topBadge.textContent = `主体: ${userText} · 工作区: ${hasSelectedWs ? wsName : '未选择'} · 模型: ${hasSelectedModel ? (curModel.alias || curModel.name) : '未选择'} · 报表: ${hasSelectedReport ? (curReport.alias || curReport.name) : '未选择'}`;
+                const modelBadgeText = hasSelectedModel ? resolveModelDisplayName(curModel) : '未选择';
+                const reportBadgeText = hasSelectedReport ? resolveReportDisplayName(curReport) : '未选择';
+                const badgeFullText = `主体: ${userText} · 工作区: ${hasSelectedWs ? wsName : '未选择'} · 模型: ${modelBadgeText} · 报表: ${reportBadgeText}`;
+                topBadge.textContent = badgeFullText;
+                topBadge.title = badgeFullText;
+                topBadge.style.maxWidth = 'none';
+                topBadge.style.flexShrink = '0';
+                topBadge.style.whiteSpace = 'nowrap';
                 topBadge.style.background = hasSelectedWs ? 'rgba(99, 102, 241, 0.15)' : 'rgba(148, 163, 184, 0.15)';
                 topBadge.style.color = hasSelectedWs ? '#818cf8' : '#94a3b8';
             }
@@ -4959,8 +4966,7 @@
             };
 
             // Module 1: Tenant (租户全局策略层)
-            const tenantTitleSub = tenantId ? `租户 ID: ${tenantId}` : '租户 ID 未配置';
-            const userSub = user ? `主体: ${user.name} (${user.roleTag})` : '未指定具体用户主体';
+            const tenantSub = (user ? user.name : '') || localStorage.getItem('pbi_tenant_name') || tenantId || 'Default Tenant';
             const tenantHeaderStatusClass = user ? (isGuest ? 'warn' : 'enabled') : 'disabled';
             const tenantHeaderStatusText = user ? (isGuest ? '⚠️ B2B GUEST' : '✅ AUTH VALID') : '⚠️ NO PRINCIPAL';
             const tenantRoleName = user ? (isTenantAdmin ? 'Fabric Admin (租户全局管理员)' : (isGuest ? 'B2B Guest (外部访客主体)' : 'Tenant Member (企业组织成员)')) : 'Unspecified Principal (未指定主体)';
@@ -5088,11 +5094,11 @@
             let modelTitleText = '🗄️ 3. MODEL';
             let modelStatusBadge = '⚠️ 等待工作区';
             let modelStatusClass = 'disabled';
-            let modelSubText = '未选择模型';
+            let modelSubText = '未选择';
 
             if (!hasSelectedWs) {
-                modelTitleText = '🗄️ 3. MODEL (等待工作区)';
-                modelSubText = '等待指定目标工作区';
+                modelTitleText = '🗄️ 3. MODEL';
+                modelSubText = '未选择';
                 colModelBody = `
                     <div style="padding: 16px 10px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
                         <div style="font-size: 1.3rem; margin-bottom: 6px;">🗄️</div>
@@ -5103,10 +5109,10 @@
                     </div>
                 `;
             } else if (!hasSelectedModel) {
-                modelTitleText = '🗄️ 3. MODEL (未选择)';
+                modelTitleText = '🗄️ 3. MODEL';
                 modelStatusBadge = '⚠️ 尚未选择';
                 modelStatusClass = 'warn';
-                modelSubText = '请在顶栏挑选模型';
+                modelSubText = '未选择';
                 colModelBody = `
                     <div style="padding: 16px 10px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
                         <div style="font-size: 1.3rem; margin-bottom: 6px;">🗄️</div>
@@ -5122,10 +5128,10 @@
                 const canBuild = isPrivileged || Boolean(user?.state?.sharePermission && String(user?.state?.sharePermission).includes('Build'));
                 const modelPermLabel = canBuild ? 'READ + BUILD' : (canReadModel ? 'READ ONLY' : 'NO ACCESS');
                 const modelPermZh = canBuild ? '读取与构建' : (canReadModel ? '只读访问' : '无访问权限');
-                modelTitleText = `🗄️ 3. MODEL: ${cleanModelName.toUpperCase()}`;
+                modelTitleText = '🗄️ 3. MODEL';
                 modelStatusBadge = canBuild ? '⚡ READ + BUILD' : (canReadModel ? '👁️ READ ONLY' : '🚫 NO ACCESS');
                 modelStatusClass = canBuild ? 'enabled' : (canReadModel ? 'warn' : 'disabled');
-                modelSubText = `语义模型资产 · 所属工作区: ${wsName}`;
+                modelSubText = cleanModelName;
 
                 const modelItems = [
                     { id: 'model_permission', isHero: true, cat: 'assigned', name: `${modelPermLabel} (${modelPermZh})`, desc: `【由工作区角色派生】基于工作区 [${wsRoleCaps}] 角色派生的语义模型 [${cleanModelName}] 官方有效权限集合`, statusClass: canBuild ? 'enabled' : (canReadModel ? 'warn' : 'disabled'), statusText: canBuild ? '⚡ BUILD' : (canReadModel ? '👁️ READ' : '🚫 DENIED'), badge: 'PERMISSION' },
@@ -5144,11 +5150,11 @@
             let reportTitleText = '📊 4. REPORT';
             let reportStatusBadge = '⚠️ 等待工作区';
             let reportStatusClass = 'disabled';
-            let reportSubText = '未选择报表';
+            let reportSubText = '未选择';
 
             if (!hasSelectedWs) {
-                reportTitleText = '📊 4. REPORT (等待工作区)';
-                reportSubText = '等待指定目标工作区';
+                reportTitleText = '📊 4. REPORT';
+                reportSubText = '未选择';
                 colReportBody = `
                     <div style="padding: 16px 10px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
                         <div style="font-size: 1.3rem; margin-bottom: 6px;">📊</div>
@@ -5159,10 +5165,10 @@
                     </div>
                 `;
             } else if (!hasSelectedReport) {
-                reportTitleText = '📊 4. REPORT (未选择)';
+                reportTitleText = '📊 4. REPORT';
                 reportStatusBadge = '⚠️ 尚未选择';
                 reportStatusClass = 'warn';
-                reportSubText = '请在顶栏挑选报表';
+                reportSubText = '未选择';
                 colReportBody = `
                     <div style="padding: 16px 10px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
                         <div style="font-size: 1.3rem; margin-bottom: 6px;">📊</div>
@@ -5178,10 +5184,10 @@
                 const canExportUnderlying = Boolean(user?.state?.sharePermission?.includes('Build') || isPrivileged) && Boolean(user?.state?.tenantAllowExport);
                 const reportAccessLabel = canEditReport ? 'EDIT + VIEW' : 'VIEW ONLY';
                 const reportAccessZh = canEditReport ? '编辑与查看' : '只读查看';
-                reportTitleText = `📊 4. REPORT: ${cleanReportName.toUpperCase()}`;
+                reportTitleText = '📊 4. REPORT';
                 reportStatusBadge = canEditReport ? '✏️ EDIT + VIEW' : '👁️ VIEW ONLY';
                 reportStatusClass = canEditReport ? 'enabled' : 'warn';
-                reportSubText = `报表展现层 · ${canEditReport ? '支持在线编辑' : '只读交互浏览'}`;
+                reportSubText = cleanReportName;
 
                 const reportItems = [
                     { id: 'report_access', isHero: true, cat: 'assigned', name: `${reportAccessLabel} (${reportAccessZh})`, desc: `【由工作区角色派生】基于工作区 [${wsRoleCaps}] 角色派生的报表 [${cleanReportName}] 官方有效访问级别`, statusClass: canEditReport ? 'enabled' : 'warn', statusText: canEditReport ? '✏️ EDIT' : '👁️ VIEW', badge: 'ACCESS' },
@@ -5401,19 +5407,19 @@
 
             const activeGwName = (inspectCache?.gateways && inspectCache.gateways[0]?.name) || (inspectCache?.datasources?.find(d => d.gatewayName)?.gatewayName) || '';
             let connTitleText = '🔌 5. CONNECTION';
-            let connSubText = '未关联具体模型';
+            let connSubText = primaryConnName || (hasSelectedModel ? 'Direct Connection' : '未选择');
             if (!hasSelectedWs) {
-                connTitleText = '🔌 5. CONNECTION (等待工作区)';
-                connSubText = '等待指定目标工作区';
+                connTitleText = '🔌 5. CONNECTION';
+                connSubText = '未选择';
             } else if (!hasSelectedModel) {
-                connTitleText = '🔌 5. CONNECTION (未关联)';
-                connSubText = '请在顶栏挑选模型以解析连接';
+                connTitleText = '🔌 5. CONNECTION';
+                connSubText = '未选择';
             } else if (primaryConnName) {
-                connTitleText = `🔌 5. CONNECTION: ${primaryConnName.toUpperCase()}`;
-                connSubText = `经由网关: ${activeGwName ? activeGwName.toUpperCase() : '云端直连通道'} · 凭据鉴权就绪`;
+                connTitleText = '🔌 5. CONNECTION';
+                connSubText = primaryConnName;
             } else {
-                connTitleText = '🔌 5. CONNECTION (云端数据通道)';
-                connSubText = `经由网关: ${activeGwName ? activeGwName.toUpperCase() : '云端直连通道'} · 凭据鉴权就绪`;
+                connTitleText = '🔌 5. CONNECTION';
+                connSubText = 'Direct Connection';
             }
             const connStatusLabel = !hasSelectedWs ? '⚠️ 未选' : (!hasSelectedModel ? '⚠️ 未选模型' : '✅ CONNECTED');
             const connStatusClass = !hasSelectedWs ? 'disabled' : (!hasSelectedModel ? 'warn' : 'enabled');
@@ -5444,15 +5450,16 @@
             }
             const pipelineStatusLabel = !hasSelectedWs ? '⚠️ 未选' : (isPipelineAdmin ? '✅ 管道就绪' : '⚠️ 未绑定管道');
             const pipelineStatusClass = !hasSelectedWs ? 'disabled' : (isPipelineAdmin ? 'enabled' : 'warn');
+            const pipelineSubText = hasSelectedWs ? (isPipelineAdmin ? `${wsName} Pipeline` : (curWs?.pipelineName || '未绑定管道')) : '未选择';
 
             // 资产模块大卡片字典映射 (6 个固定大卡片，横向固定不超出屏幕，固定不能移动)
             const cardsMap = {
-                'tenant': buildTierCardHtml('tenant', '🏢 1. TENANT (租户策略)', userSub, tenantHeaderStatusClass, tenantHeaderStatusText, colTenantBody),
-                'workspace': buildTierCardHtml('workspace', '📁 2. WORKSPACE (工作区)', wsName, wsHeaderStatusClass, wsHeaderStatusText, colWorkspaceBody),
+                'tenant': buildTierCardHtml('tenant', '🏢 1. TENANT', tenantSub, tenantHeaderStatusClass, tenantHeaderStatusText, colTenantBody),
+                'workspace': buildTierCardHtml('workspace', '📁 2. WORKSPACE', wsName, wsHeaderStatusClass, wsHeaderStatusText, colWorkspaceBody),
                 'model': buildTierCardHtml('model', modelTitleText, modelSubText, modelStatusClass, modelStatusBadge, colModelBody),
                 'report': buildTierCardHtml('report', reportTitleText, reportSubText, reportStatusClass, reportStatusBadge, colReportBody),
                 'connection': buildTierCardHtml('connection', connTitleText, connSubText, connStatusClass, connStatusLabel, colConnectionBody),
-                'pipeline': buildTierCardHtml('pipeline', '🚀 6. PIPELINE (部署管道)', hasSelectedWs ? 'ALM 流转治理' : '等待工作区', pipelineStatusClass, pipelineStatusLabel, colPipelineBody)
+                'pipeline': buildTierCardHtml('pipeline', '🚀 6. PIPELINE', pipelineSubText, pipelineStatusClass, pipelineStatusLabel, colPipelineBody)
             };
 
             // 6 个大卡片固定按照 1-6 标准流转顺序平分屏幕宽，不能移动
