@@ -52,12 +52,11 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
 
   test('UI: API Explorer natural language intent routing works', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.switchAppModule === 'function' && typeof window.handleLayaIntentSearch === 'function', { timeout: 15000 });
 
     // 切换到 API 资源树视图
     await page.evaluate(() => {
-      if (typeof window.switchAppModule === 'function') {
-        window.switchAppModule('api_tree');
-      }
+      window.switchAppModule('api_tree');
     });
 
     // 定位搜索框与闪电意图按钮
@@ -228,6 +227,7 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     });
 
     // 1. 打开全局环境配置弹窗
+    await page.waitForFunction(() => typeof window.isLayaEnabled === 'function' && typeof window.setupFLIPModal === 'function', { timeout: 15000 });
     const btnSettings = page.locator('#btn-settings');
     await expect(btnSettings).toBeVisible({ timeout: 10000 });
     await btnSettings.click();
@@ -281,6 +281,7 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     // 1. 打开全局设置弹窗
+    await page.waitForFunction(() => typeof window.isLayaEnabled === 'function' && typeof window.setupFLIPModal === 'function', { timeout: 15000 });
     await page.locator('#btn-settings').click();
     await expect(page.locator('#settings-modal')).toBeVisible();
 

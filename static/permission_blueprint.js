@@ -6358,606 +6358,162 @@
             const key = `${normSrc}->${normTgt}`;
 
             const DICT = {
-                // 1. 租户官方身份 -> 租户各项安全策略
-                'tenant_principal_role->tenant_gac_policy': {
-                    reason: '租户特权管理员身份 (Global Admin / Fabric Admin) 掌控全租户范围内的 GAC(General Availability Channel / 通用访问通道) 与数据安全策略。',
-                    isReasonable: '✅ 完全合理 (符合微软最高特权准入机制与全局策略委派标准)',
-                    tip: '若非必要，建议严格限制租户管理员账号数量，遵循 PoLP(Principle of Least Privilege / 最低特权原则)。'
-                },
-                'tenant_principal_role->tenant_export': {
-                    reason: '租户管理员有权在 Admin Portal(管理门户) 中开启或关闭组织级数据导出至 Excel/CSV 权限。',
-                    isReasonable: '✅ 完全合理 (属于 DLP(Data Loss Prevention / 数据防泄漏) 核心顶层门禁)',
-                    tip: '若租户层禁用导出，工作区任何角色均无法突破限制。'
-                },
-                'tenant_principal_role->tenant_web_modeling': {
-                    reason: '控制全租户是否允许在 Service 网页端直接修改语义模型结构与编辑关系。',
-                    isReasonable: '✅ 完全合理 (保障企业模型集中治理与单一真实源)',
-                    tip: '大型组织常关闭此项以强制要求使用 Desktop/Git 进行元数据版本控制。'
-                },
-                'tenant_principal_role->tenant_xmla': {
-                    reason: '掌控租户级 XMLA(XML for Analysis / 分析用可扩展标记语言) 读写端点策略，决定外部开发工具 (如 Tabular Editor、VS Code) 能否直连。',
-                    isReasonable: '✅ 完全合理 (企业级 BI 与自动化 CI/CD(持续集成与交付) 必需的治理门禁)',
-                    tip: '生产环境推荐启用 ReadWrite 并结合专用服务主体鉴权。'
-                },
-                'tenant_principal_role->tenant_external': {
-                    reason: '掌控 Azure AD B2B 外部用户协作开关，决定报表是否允许分发给组织外部访客。',
-                    isReasonable: '✅ 完全合理 (网络边界与外部跨域合规防护标准)',
-                    tip: '涉及外部客户嵌入或跨租户审计时必须启用。'
-                },
-                'tenant_principal_role->tenant_embed': {
-                    reason: '控制是否允许生成 Embed Token 将报表无缝嵌入到 SaaS 门户或客户自定义应用程序。',
-                    isReasonable: '✅ 完全合理 (嵌入式应用架构的关键授权点)',
-                    tip: '通常需结合服务主体 (Service Principal) 与专用容量资源运作。'
-                },
-                'tenant_principal_role->tenant_certify': {
-                    reason: '租户管理员指定授权安全组，只有指定组内成员方可将语义模型标记为官方认证 (Certified)。',
-                    isReasonable: '✅ 完全合理 (防止认证泛滥，维护组织黄金数据集权威)',
-                    tip: '建议仅向数据治理委员会或核心 COE 团队开放认证权限。'
-                },
-                'tenant_gac_policy->conn_gac_perm': {
-                    reason: '租户级网关通道许可直接决定底层数据连接是否允许调用 GAC 网关通道进行物理寻址。',
-                    isReasonable: '✅ 完全合理 (基础设施网络通信的策略前提)',
-                    tip: '若租户阻止网关流量，所有本地数据源连接将报告离线。'
-                },
-                'tenant_gac_policy->conn_gac_mashup': {
-                    reason: '租户跨数据源混搭策略决定 Power Query Mashup 引擎能否合并不同网络安全级别的数据源。',
-                    isReasonable: '✅ 完全合理 (防止数据在混搭过程中非预期流向低安全级数据源)',
-                    tip: '混搭涉及不同隐私级别 (Private / Organizational) 时受此约束。'
-                },
-                'tenant_export->report_export': {
-                    reason: '租户级导出数据策略为顶层绝对门禁，直接决定前端报表能否导出汇总或底层明细数据。',
-                    isReasonable: '✅ 完全合理 (自上而下的绝对合规拦截)',
-                    tip: '当报表无法导出数据时，首先排查租户导出白名单配置。'
-                },
-                'tenant_web_modeling->model_write': {
-                    reason: '租户 Web 建模策略若关闭，用户无法在浏览器中对语义模型执行写入、新建计算表或新建度量值。',
-                    isReasonable: '✅ 完全合理 (在线建模能力的物理开关)',
-                    tip: '未开启时需在 Power BI Desktop 中编辑并重新发布。'
-                },
-                'tenant_web_modeling->report_edit': {
-                    reason: '租户在线建模策略联动影响报表视图在线新建报表级度量值 (Report-level Measures)。',
-                    isReasonable: '✅ 完全合理 (与底层模型写入权限保持连贯)',
-                    tip: '报表级度量值仅保存在报表内，不回写语义模型。'
-                },
-                'tenant_xmla->model_write': {
-                    reason: '语义模型若要接受来自外部脚本、TMDL 或自动化部署的架构修改，必须依托 XMLA 读写端点。',
-                    isReasonable: '✅ 完全合理 (现代 Fabric 代码化建模的规范标准)',
-                    tip: 'Premium/Fabric 容量必须将 XMLA 设为 ReadWrite 才能生效。'
-                },
-                'tenant_external->report_share': {
-                    reason: '报表共享给组织外部邮件地址时，必须通过租户外部协作策略的安全校验。',
-                    isReasonable: '✅ 完全合理 (杜绝内部敏感数据越权共享至外网)',
-                    tip: '需确保接收方已加入组织的 Azure AD 外部来宾主体。'
-                },
-                'tenant_embed->report_view': {
-                    reason: '外部应用嵌入式查看 (Embed for Customers) 依赖租户层生成的安全令牌 (Embed Token) 支撑渲染。',
-                    isReasonable: '✅ 完全合理 (应用集成消费的官方标准模型)',
-                    tip: '嵌入端最终用户无需 Power BI Pro 许可证，按容量计费。'
-                },
-                'tenant_certify->model_permission': {
-                    reason: '获得组织官方认证的数据集在目录中享有优先展示特权，其模型治理状态提升为权威黄金数据源。',
-                    isReasonable: '✅ 完全合理 (数据治理等级直接背书模型访问可信度)',
-                    tip: '业务部门应优先连接 Certified 模型构建下游报表。'
-                },
+                // 1. 租户全局策略
+                'tenant_principal_role->tenant_gac_policy': { reason: 'Tenant Role ➔ 全局安全策略，管控数据网关通道' },
+                'tenant_principal_role->tenant_export': { reason: 'Tenant Role ➔ 组织最高管理，全局控制导出开关' },
+                'tenant_principal_role->tenant_web_modeling': { reason: 'Tenant Role ➔ 企业集中治理，控制在线建模开关' },
+                'tenant_principal_role->tenant_xmla': { reason: 'Tenant Role ➔ 架构治理门禁，控制 XMLA 读写端点' },
+                'tenant_principal_role->tenant_external': { reason: 'Tenant Role ➔ 跨域合规防护，管控外部共享边界' },
+                'tenant_principal_role->tenant_embed': { reason: 'Tenant Role ➔ 应用集成策略，管控 Embed Token 生成' },
+                'tenant_principal_role->tenant_certify': { reason: 'Tenant Role ➔ 黄金数据认证，背书官方模型权威' },
+                'tenant_gac_policy->conn_gac_perm': { reason: 'Tenant Policy ➔ 网关网络策略，决定物理直连寻址' },
+                'tenant_gac_policy->conn_gac_mashup': { reason: 'Tenant Policy ➔ 跨源安全隔离，控制混搭合并计算' },
+                'tenant_export->report_export': { reason: 'Tenant Export ➔ 组织级顶层门禁，绝对约束前端导出' },
+                'tenant_web_modeling->model_write': { reason: 'Tenant Web Modeling ➔ 在线建模门禁，控制 Web 端修改' },
+                'tenant_web_modeling->report_edit': { reason: 'Tenant Web Modeling ➔ 在线建模策略，联动报表度量值编写' },
+                'tenant_xmla->model_write': { reason: 'Tenant XMLA ➔ 外部开发端点，支撑代码化建模与部署' },
+                'tenant_external->report_share': { reason: 'Tenant External ➔ 外部协作门禁，约束外网分发共享' },
+                'tenant_embed->report_view': { reason: 'Tenant Embed ➔ 嵌入式令牌生成，支撑第三方应用查看' },
+                'tenant_certify->model_permission': { reason: 'Tenant Certification ➔ 官方认证背书，提升模型治理可信度' },
 
-                // 2. 工作区官方角色 -> 工作区治理及下辖全量资产
-                'ws_role->ws_edit': {
-                    reason: '工作区 Admin/Member/Contributor 角色赋予在工作区内上传、创建与更新内容的核心能力。',
-                    isReasonable: '✅ 完全合理 (创作型角色与只读消费角色的经典隔离)',
-                    tip: '仅需查看报表的业务人员应配置为 Viewer。'
-                },
-                'ws_role->ws_app': {
-                    reason: '工作区 Admin/Member 拥有发布和更新工作区组织应用 (App) 及配置受众 (Audience) 的特权。',
-                    isReasonable: '✅ 完全合理 (应用发布权限属于发布者与管理员)',
-                    tip: '通过 App 分发可防止业务人员直接触碰工作区底层资产。'
-                },
-                'ws_role->ws_capacity': {
-                    reason: '工作区管理员有权将工作区挂载至专用的 Fabric/Premium 容量或切换为共享容量。',
-                    isReasonable: '✅ 完全合理 (计算资源分配与账单计费维度的管理权)',
-                    tip: '仅容量管理员或被授权的主体可指定目标容量。'
-                },
-                'ws_role->ws_delete': {
-                    reason: '工作区级最高删除与重置权，仅 Admin 角色可执行永久销毁操作。',
-                    isReasonable: '✅ 完全合理 (高危破坏性操作严格收敛至唯一最高特权)',
-                    tip: '删除工作区会连带销毁所有模型、报表及凭据，不可逆。'
-                },
-                'ws_role->ws_lineage': {
-                    reason: '特权角色 (Admin/Member/Contributor) 可查看工作区端到端完整数据血缘拓扑与上游依赖。',
-                    isReasonable: '✅ 完全合理 (保障开发与运维人员的架构全局洞察力)',
-                    tip: 'Viewer 角色仅可查看其有权访问的具体资产片段。'
-                },
-                'ws_role->model_permission': {
-                    reason: '工作区角色对工作区内部的所有语义模型具有直接向下继承特权，无需针对单个模型重复分配权限。',
-                    isReasonable: '⚡ 特权穿透与合理继承 (容器级授权自动下发)',
-                    tip: '若需要向特定用户仅开放单个模型，应在模型层面单独配置共享而不是加入工作区。'
-                },
-                'ws_role->model_read': {
-                    reason: '工作区任何成员 (包括 Viewer) 均拥有该工作区内所有语义模型的底层数据读取能力。',
-                    isReasonable: '✅ 完全合理 (工作区成员的基础数据访问权益)',
-                    tip: '读取权限是前端图表呈现与 DAX(数据分析表达式) 计算的物理先决条件。'
-                },
-                'ws_role->model_build': {
-                    reason: '工作区 Admin/Member/Contributor 默认拥有 Build 权限，允许基于该模型构建新报表或在 Excel 中连接。',
-                    isReasonable: '✅ 完全合理 (内容创作者的探索与自助式 BI 能力)',
-                    tip: 'Viewer 默认不具备 Build 权限，无法基于该模型自行新建报表。'
-                },
-                'ws_role->model_write': {
-                    reason: 'Admin/Member/Contributor 拥有对语义模型的元数据与架构修改写入权。',
-                    isReasonable: '✅ 完全合理 (开发与管理职责所需)',
-                    tip: 'Viewer 角色绝对禁止写入模型。'
-                },
-                'ws_role->model_reshare': {
-                    reason: 'Admin/Member 拥有将模型转授权给其他用户的重新共享权。',
-                    isReasonable: '✅ 完全合理 (转授权力与工作区管理级别一致)',
-                    tip: 'Contributor 默认无重新共享权，确保授权合规可控。'
-                },
-                'ws_role->model_rls': {
-                    reason: '微软官方机制：工作区 Admin/Member/Contributor 角色默认自动绕过 (Bypass) RLS(行级安全性)，直视全量未过滤数据；仅 Viewer 角色受 RLS 限制。',
-                    isReasonable: '⚡ 官方特权绕过行为 (符合微软官方调试与开发规范)',
-                    tip: '若要测试 RLS 规则，开发人员需在 Desktop/Service 中使用“作为角色查看 (View as role)”功能。'
-                },
-                'ws_role->model_gac_ols': {
-                    reason: '对象级安全性对工作区 Admin/Member 同样自动绕过，确保运维管理人员能正常查看所有物理表与列。',
-                    isReasonable: '⚡ 特权穿透 (管理员不受元数据隐藏限制)',
-                    tip: 'OLS(对象级安全) 仅在面对最终消费者 (Viewer 或独立分配者) 时严格生效。'
-                },
-                'ws_role->report_access': {
-                    reason: '工作区成员身份自动成为工作区下辖所有报表的合法访问者。',
-                    isReasonable: '✅ 完全合理 (容器继承，简化权限维护)',
-                    tip: '无需为工作区成员单独配置报表权限。'
-                },
-                'ws_role->report_view': {
-                    reason: '所有工作区角色均具备打开并查看报表可视化页面的基础权限。',
-                    isReasonable: '✅ 完全合理 (最基础的用户交互权益)',
-                    tip: '数据内容进一步受底层模型读取与 RLS 约束。'
-                },
-                'ws_role->report_edit': {
-                    reason: 'Admin/Member/Contributor 具备在 Service 网页端编辑报表画布、调整视觉对象与新建页面的权限。',
-                    isReasonable: '✅ 完全合理 (内容创作者的标准工作流)',
-                    tip: 'Viewer 角色只能只读查看，无法保存任何修改。'
-                },
-                'ws_role->report_export': {
-                    reason: '工作区协作角色具备导出报表至 PDF/PPT 及导出数据切片的能力。',
-                    isReasonable: '✅ 完全合理 (受租户全局导出策略共同约束)',
-                    tip: '若租户禁用导出，此能力将被静默拦截。'
-                },
-                'ws_role->report_sub': {
-                    reason: '工作区成员均可为自己或他人创建报表定时订阅与快照邮件推送。',
-                    isReasonable: '✅ 完全合理 (提高报表日常触达与协作效率)',
-                    tip: '向他人订阅邮件通常要求具备 Member 或 Pro 许可。'
-                },
-                'ws_role->report_share': {
-                    reason: 'Admin/Member 拥有从工作区直接生成报表分享链接并赋予外部受众的特权。',
-                    isReasonable: '✅ 完全合理 (资产分发的核心治理职责)',
-                    tip: '共享时可勾选是否允许收件人连带构建或访问基础数据集。'
-                },
-                'ws_role->conn_refresh': {
-                    reason: '工作区 Admin/Member 拥有配置语义模型定时刷新排程并手动触发单次刷新的控制权。',
-                    isReasonable: '✅ 完全合理 (数据保鲜与日常运维的基础保障)',
-                    tip: '刷新成功还取决于数据源凭据是否有效及网关是否在线。'
-                },
-                'ws_role->conn_owner': {
-                    reason: '工作区 Admin 对工作区内绑定的数据源连接具备最高接管与配置权。',
-                    isReasonable: '✅ 完全合理 (防止数据源孤儿化，确保运维连续性)',
-                    tip: '当原连接创建者离职时，Admin 可无缝接管凭据。'
-                },
-                'ws_role->conn_share': {
-                    reason: 'Admin/Member 角色具备将工作区可复用数据源连接共享给其他协作者的授权能力。',
-                    isReasonable: '✅ 完全合理 (提升企业数据连接复用率)',
-                    tip: '共享连接仅授权使用通道，不暴露明文账号密码。'
-                },
-                'ws_role->conn_user_perm': {
-                    reason: '工作区角色决定成员在工作区关联数据源上的默认使用凭据与连接上下文。',
-                    isReasonable: '✅ 完全合理 (工作区与数据源的紧密耦合关系)',
-                    tip: 'DirectQuery 直连模式下建议开启 SSO 透传当前用户身份。'
-                },
-                'ws_role->pipeline_deploy': {
-                    reason: '工作区若绑定至部署管道，工作区 Admin/Member 可执行一键跨阶段晋升部署。',
-                    isReasonable: '✅ 完全合理 (规范化 ALM(应用程序生命周期管理) 发布流转的必要权限)',
-                    tip: '发布前必须比对架构差异，确保向下兼容。'
-                },
-                'ws_role->pipeline_diff': {
-                    reason: '工作区特权成员可查看开发阶段与目标阶段的模型及报表架构差异 (Schema Diff)。',
-                    isReasonable: '✅ 完全合理 (发布影响面预评估的核心工具)',
-                    tip: '差异比对会自动高亮新建、修改与删除的表及字段。'
-                },
-                'ws_role->pipeline_rules': {
-                    reason: 'Admin 角色有权在部署管道中配置参数覆盖与数据源重定向规则。',
-                    isReasonable: '✅ 完全合理 (实现环境隔离与连接串自动切换的最佳实践)',
-                    tip: '防止生产环境误连开发数据库。'
-                },
-                'ws_role->pipeline_manage': {
-                    reason: '工作区 Admin 拥有将工作区与部署管道各阶段相互绑定或解绑的生命周期管理权。',
-                    isReasonable: '✅ 完全合理 (管道拓扑关系的定义权)',
-                    tip: '解绑不会删除工作区内部资产。'
-                },
+                // 2. 工作区官方角色
+                'ws_role->ws_edit': { reason: 'Workspace Role ➔ 角色权限拆解，放行工作区内容编辑' },
+                'ws_role->ws_app': { reason: 'Workspace Role ➔ 组织应用分发，放行应用打包发布' },
+                'ws_role->ws_capacity': { reason: 'Workspace Role ➔ 计算资源治理，管理容量挂载' },
+                'ws_delete->ws_role': { reason: 'Workspace Role ➔ 最高销毁特权，仅 Admin 可删除工作区' },
+                'ws_role->ws_delete': { reason: 'Workspace Role ➔ 最高销毁特权，仅 Admin 可删除工作区' },
+                'ws_role->ws_lineage': { reason: 'Workspace Role ➔ 拓扑血缘视图，展现全局数据链路' },
+                'ws_role->model_permission': { reason: 'Workspace Role ➔ 容器级继承，统领工作区全部语义模型' },
+                'ws_role->model_read': { reason: 'Workspace Role ➔ 底层数据读取，支撑图表渲染' },
+                'ws_role->model_build': { reason: 'Workspace Role ➔ 自助分析特权，允许二次建模' },
+                'ws_role->model_write': { reason: 'Workspace Role ➔ 架构维护特权，允许模型写入' },
+                'ws_role->model_reshare': { reason: 'Workspace Role ➔ 资产转授特权，允许再次共享' },
+                'ws_role->model_rls': { reason: 'Workspace Role ➔ 特权角色自动绕过 RLS 过滤' },
+                'ws_role->model_gac_ols': { reason: 'Workspace Role ➔ 特权角色不受对象级安全隐藏限制' },
+                'ws_role->report_access': { reason: 'Workspace Role ➔ 容器级直接继承，放行报表访问' },
+                'ws_role->report_view': { reason: 'Workspace Role ➔ 容器级直接继承，放行报表查看' },
+                'ws_role->report_edit': { reason: 'Workspace Role ➔ 内容创作者特权，允许编辑报表' },
+                'ws_role->report_export': { reason: 'Workspace Role ➔ 协同协作赋权，允许数据导出' },
+                'ws_role->report_sub': { reason: 'Workspace Role ➔ 消息触达赋权，允许创建订阅' },
+                'ws_role->report_share': { reason: 'Workspace Role ➔ 资产治理特权，允许链接分发' },
+                'ws_role->conn_refresh': { reason: 'Workspace Role ➔ 运维调度权限，控制计划刷新' },
+                'ws_role->conn_owner': { reason: 'Workspace Role ➔ 数据源所有权管理，接管连接凭据' },
+                'ws_role->conn_share': { reason: 'Workspace Role ➔ 数据源复用管理，对外共享连接' },
+                'ws_role->conn_user_perm': { reason: 'Workspace Role ➔ 默认连接上下文，提供访问凭据' },
+                'ws_role->pipeline_deploy': { reason: 'Workspace Role ➔ 管道晋升部署，跨阶段发布' },
+                'ws_role->pipeline_diff': { reason: 'Workspace Role ➔ 架构差异扫描，比对变更细节' },
+                'ws_role->pipeline_rules': { reason: 'Workspace Role ➔ 部署规则配置，重定向数据源' },
+                'ws_role->pipeline_manage': { reason: 'Workspace Role ➔ 阶段拓扑管理，绑定或解绑工作区' },
 
-                // 工作区衍生治理项
-                'ws_edit->model_write': {
-                    reason: '工作区内容编辑权直接赋予向语义模型提交架构更新与度量值编写的能力。',
-                    isReasonable: '✅ 完全合理 (模型构建者的核心职责)',
-                    tip: '可通过 Git 集成实现多人协同编辑与冲突解决。'
-                },
-                'ws_edit->report_edit': {
-                    reason: '工作区内容编辑权赋予对报表页面布局、图表类型与筛选器的完全设计能力。',
-                    isReasonable: '✅ 完全合理 (报表开发者的基本功)',
-                    tip: '编辑后的报表可直接保存并覆盖当前版本。'
-                },
-                'ws_app->report_view': {
-                    reason: '组织应用 (App) 是报表面向全企业大范围只读分发的主流形态。',
-                    isReasonable: '✅ 完全合理 (实现创作环境与消费环境的物理隔离)',
-                    tip: '业务受众通过 App 访问，无需工作区任何直接成员角色。'
-                },
-                'ws_app->report_share': {
-                    reason: '组织应用支持为不同受众群体配置独立的分发策略与只读共享链接。',
-                    isReasonable: '✅ 完全合理 (细粒度受众分组分发治理)',
-                    tip: '可通过 Azure AD 组精准指定每个受众 Tab 的可见人群。'
-                },
-                'ws_capacity->model_write': {
-                    reason: '高级容量解除单模型 1GB 内存限制，开启大型语义模型存储格式与按需分页加载。',
-                    isReasonable: '✅ 完全合理 (计算与存储资源支撑大规模企业级写入)',
-                    tip: '支持数十 GB 级别的超大模型在线刷新与秒级响应。'
-                },
+                // 工作区内部衍生
+                'ws_edit->model_write': { reason: 'Edit Content ➔ 内容编辑特权，支持模型更新' },
+                'ws_edit->report_edit': { reason: 'Edit Content ➔ 报表设计特权，允许编辑画布' },
+                'ws_app->report_view': { reason: 'Publish App ➔ 应用只读分发，面向全员提供报表查看' },
+                'ws_app->report_share': { reason: 'Publish App ➔ 应用受众分组，配置独立分发策略' },
+                'ws_capacity->model_write': { reason: 'Capacity Access ➔ 高级计算与存储，支持大规模写入' },
 
-                // 3. 语义模型官方权限 -> 原子能力与报表
-                'model_permission->model_read': {
-                    reason: '语义模型顶层权限拆解，读取 (Read) 权限为最底层数据提取与 DAX 查询的准入门槛。',
-                    isReasonable: '✅ 完全合理 (细粒度原子权限的官方拆解)',
-                    tip: '任何报表渲染或连接模型必须具备 Read 权限。'
-                },
-                'model_permission->model_build': {
-                    reason: '构建 (Build) 权限赋予用户基于该模型新建下游报表、在 Excel 中分析 (Analyze in Excel) 及导出明细数据的权利。',
-                    isReasonable: '✅ 完全合理 (自助式 BI 与二次开发的核心权限)',
-                    tip: '若仅允许查看预设报表，请勿向最终用户分配 Build 权限。'
-                },
-                'model_permission->model_write': {
-                    reason: '写入 (Write) 权限赋予用户修改模型元数据、表关系、字段属性与度量值定义的架构权。',
-                    isReasonable: '✅ 完全合理 (开发者与数据工程师必备)',
-                    tip: '建议通过工作区角色间接管理，尽量避免单独分配 Write。'
-                },
-                'model_permission->model_reshare': {
-                    reason: '重新共享 (Reshare) 权限允许被授权者将该模型进一步转授权给其他用户。',
-                    isReasonable: '✅ 完全合理 (去中心化协作机制)',
-                    tip: '生产模型应谨慎下发 Reshare，防止权限扩散失控。'
-                },
-                'model_permission->model_gac_ols': {
-                    reason: '模型权限与对象级安全性联动，决定特定角色是否能感知到被隐藏的物理表或列。',
-                    isReasonable: '🛡️ 高级安全合规 (敏感元数据级别的绝对屏蔽)',
-                    tip: '被 OLS 隐藏的列在用户视角下如同物理不存在一样，连度量值引用也会抛错。'
-                },
-                'model_permission->model_rls': {
-                    reason: '模型权限与行级安全性联动，决定是否需要根据当前用户身份执行 DAX 规则动态裁剪数据行。',
-                    isReasonable: '🛡️ 核心合规防护 (保障数据多租户隔离与部门边界)',
-                    tip: '最终用户在模型上必须被映射到具体的 RLS 角色方可生效。'
-                },
-                'model_permission->report_view': {
-                    reason: '报表实质是语义模型的可视化前端，模型权限直接决定报表能否成功取数渲染。',
-                    isReasonable: '✅ 完全合理 (前后端依赖因果)',
-                    tip: '若模型权限被收回，前端报表将直接报错无法呈现数据。'
-                },
-                'model_permission->report_export': {
-                    reason: '导出的明细数据直接源自语义模型底层表，模型权限直接约束导出行为。',
-                    isReasonable: '✅ 完全合理 (数据外发防护链条不可或缺的一环)',
-                    tip: '导出明细必须具备模型 Build 权限。'
-                },
-                'model_read->report_view': {
-                    reason: '报表可视化图表渲染必须向模型引擎发送 DAX 查询，模型 Read 权限是唯一的数据通道。',
-                    isReasonable: '✅ 完全合理 (绝对因果关系：无数据则无图表)',
-                    tip: '报表打不开时，首要检查用户在基础数据集上是否具有 Read 权限。'
-                },
-                'model_build->report_export': {
-                    reason: '导出“包含底层架构的明细数据”时，Power BI 强制要求拥有 Build 权限以防止越权嗅探未公开数据结构。',
-                    isReasonable: '🛡️ 深度防御机制 (防止利用报表界面偷取原始底层数据)',
-                    tip: '无 Build 权限的用户只能导出当前视觉对象汇总后的计算结果。'
-                },
-                'model_write->report_edit': {
-                    reason: '在报表编辑界面新建或调整模型级度量值、修改字段格式时，必须对模型具有写入权。',
-                    isReasonable: '✅ 完全合理 (保障模型元数据单一维护源)',
-                    tip: '纯报表设计（如拖拽排版、改颜色）不强制要求模型 Write。'
-                },
-                'model_gac_ols->report_view': {
-                    reason: '如果报表中的某个图表使用了被 OLS 策略隐藏的字段，该图表将直接报错并提示无法加载数据。',
-                    isReasonable: '🛡️ 严格安全隔离 (确保敏感列绝不在前端漏出)',
-                    tip: '设计公共报表时应避免将受限敏感字段直接放入全局视觉对象。'
-                },
-                'model_gac_ols->report_export': {
-                    reason: '导出的数据集中绝对不会包含被 OLS 屏蔽的列，即使原始物理表包含该列。',
-                    isReasonable: '🛡️ 字段级防泄密 (防止导出绕过前端展示策略)',
-                    tip: '导出引擎与查询引擎共享同一套 OLS 元数据过滤字典。'
-                },
-                'model_rls->report_view': {
-                    reason: 'RLS 在后台透明向每个视觉对象的 DAX 查询注入过滤谓词，报表图表仅呈现当前主体授权看到的数据行。',
-                    isReasonable: '🛡️ 行级动态安全核心 (一套报表服务万人千面的基石)',
-                    tip: '报表总计与汇总卡片也会同步反映 RLS 过滤后的精准合计数。'
-                },
-                'model_rls->report_export': {
-                    reason: '从报表导出的 Excel/CSV 数据严格继承 RLS 过滤结果，绝不可能导出他人有权查看的数据行。',
-                    isReasonable: '🛡️ 闭环合规保障 (防止通过导出功能窃取未授权行)',
-                    tip: '无论是汇总导出还是明细导出，均无法穿透 RLS 边界。'
-                },
-                'model_reshare->report_share': {
-                    reason: '共享报表时若勾选“允许收件人共享报表和基础数据集”，必须依托当前主体在模型上的 Reshare 权限。',
-                    isReasonable: '✅ 完全合理 (授权传递合规性检验)',
-                    tip: '若无模型 Reshare 权，该勾选项将被强制置灰禁用。'
-                },
+                // 3. 语义模型
+                'model_permission->model_read': { reason: 'Model Permission ➔ 基础数据读取，必需准入门槛' },
+                'model_permission->model_build': { reason: 'Model Permission ➔ 探索与二次开发，放行 Build 权限' },
+                'model_permission->model_write': { reason: 'Model Permission ➔ 架构维护权限，允许模型元数据写入' },
+                'model_permission->model_reshare': { reason: 'Model Permission ➔ 资产转授权限，允许再次分发' },
+                'model_permission->model_gac_ols': { reason: 'Model Permission ➔ 联动 OLS，控制敏感列感知' },
+                'model_permission->model_rls': { reason: 'Model Permission ➔ 联动 RLS，执行动态行级裁剪' },
+                'model_permission->report_view': { reason: 'Model Permission ➔ 数据根基授权，决定前端图表可用性' },
+                'model_permission->report_export': { reason: 'Model Permission ➔ 底层数据授权，约束数据导出边界' },
+                'model_read->report_view': { reason: 'Model Read ➔ 数据读取通道，报表渲染必需先决条件' },
+                'model_build->report_export': { reason: 'Model Build ➔ 深度构建特权，允许导出底层明细数据' },
+                'model_write->report_edit': { reason: 'Model Write ➔ 架构写入特权，支持度量值与在线修改' },
+                'model_gac_ols->report_view': { reason: 'OLS ➔ 列级安全防护，隐藏未授权字段' },
+                'model_gac_ols->report_export': { reason: 'OLS ➔ 导出防泄密，过滤受限字段' },
+                'model_rls->report_view': { reason: 'RLS ➔ 行级数据安全，注入动态过滤谓词' },
+                'model_rls->report_export': { reason: 'RLS ➔ 闭环合规导出，仅导出授权数据行' },
+                'model_reshare->report_share': { reason: 'Model Reshare ➔ 模型转授权限，允许连带共享基础模型' },
 
-                // 4. 报表官方访问级别
-                'report_access->report_view': {
-                    reason: '报表资产自身访问级别是打开报表 Web 页面的第一道也是最直接的门禁。',
-                    isReasonable: '✅ 完全合理 (资产自身访问控制的基础)',
-                    tip: '支持通过直接分享、应用分发或工作区角色多途径赋予。'
-                },
-                'report_access->report_edit': {
-                    reason: '被赋予报表写入/编辑访问权的主体可进入报表在线编辑画布。',
-                    isReasonable: '✅ 完全合理 (前端设计权限的入口)',
-                    tip: '仅对报表自身有权编辑，不会影响底层模型架构。'
-                },
-                'report_access->report_export': {
-                    reason: '报表访问级别决定是否允许将该报表导出为 PowerPoint、PDF 快照或数据文件。',
-                    isReasonable: '✅ 完全合理 (遵循报表所有者设定的导出策略)',
-                    tip: '受报表设置中的“导出数据”下拉选项约束。'
-                },
-                'report_access->report_sub': {
-                    reason: '具备报表访问权的用户可以创建定时推送订阅，将最新报表快照定期推送到指定邮箱。',
-                    isReasonable: '✅ 完全合理 (业务日常例行追踪的便利功能)',
-                    tip: '订阅邮件会在报表计划刷新完成后按需触发。'
-                },
-                'report_access->report_share': {
-                    reason: '具备报表再共享权限的主体可将该报表继续向其他业务协作者分发。',
-                    isReasonable: '✅ 完全合理 (敏捷业务协同的核心驱动力)',
-                    tip: '受租户外部共享开关与工作区角色策略共同约束。'
-                },
-                'report_view->report_sub': {
-                    reason: '能看到报表内容是设定定时邮件推送与快照订阅的操作前置。',
-                    isReasonable: '✅ 完全合理 (行为递进逻辑)',
-                    tip: '若报表访问被阻断，关联订阅也将自动暂停发送。'
-                },
-                'report_view->report_export': {
-                    reason: '在报表页面中点击视觉对象的“...”菜单导出数据的前提是用户能正常加载该页面。',
-                    isReasonable: '✅ 完全合理 (交互式导出的标准前置)',
-                    tip: '页面级别的导出体验最贴近业务人员的直觉操作。'
-                },
-                'report_edit->report_export': {
-                    reason: '报表编辑者天然具备导出其所设计的报表全部布局与对应数据的能力。',
-                    isReasonable: '✅ 完全合理 (创作者特权的合理延伸)',
-                    tip: '包含下载 .pbix 文件的能力 (若租户策略允许)。'
-                },
-                'report_edit->report_share': {
-                    reason: '能够编辑报表的人员对报表内容质量负责，通常被允许将定稿报表向业务方共享。',
-                    isReasonable: '✅ 完全合理 (发布与协作流程自然闭环)',
-                    tip: '建议共享前对报表各项视觉对象进行充分自测验证。'
-                },
+                // 4. 报表
+                'report_access->report_view': { reason: 'Report Access ➔ 报表自身门禁，放行前端页面加载' },
+                'report_access->report_edit': { reason: 'Report Access ➔ 画布编辑准入，进入在线设计视图' },
+                'report_access->report_export': { reason: 'Report Access ➔ 报表所有者策略，决定数据导出许可' },
+                'report_access->report_sub': { reason: 'Report Access ➔ 资产访问权，支持配置定时推送' },
+                'report_access->report_share': { reason: 'Report Access ➔ 报表分发权，允许生成共享链接' },
+                'report_view->report_sub': { reason: 'Report View ➔ 可视化交互前置，支撑创建邮件订阅' },
+                'report_view->report_export': { reason: 'Report View ➔ 页面视觉交互，支持菜单单表导出' },
+                'report_edit->report_export': { reason: 'Report Edit ➔ 创作者特权，允许导出全布局与明细' },
+                'report_edit->report_share': { reason: 'Report Edit ➔ 成果定稿交付，支持向业务方共享' },
 
-                // 5. 数据源连接与网关
-                'conn_default_ds->conn_user_perm': {
-                    reason: '底层物理数据源必须配置有效的身份验证凭据 (OAuth2 / SQL 用户名密码 / 密钥)，方可供模型调用。',
-                    isReasonable: '✅ 完全合理 (物理数据存储访问的强制凭据机制)',
-                    tip: '凭据过期或密码变更将导致模型刷新瞬间失败。'
-                },
-                'conn_default_ds->conn_gac_perm': {
-                    reason: '数据源若部署在企业本地数据中心或私有云，必须通过 GAC 与企业网关通道进行网络路由寻址。',
-                    isReasonable: '✅ 完全合理 (内网安全穿透与流量加密的通道基础设施)',
-                    tip: '需确保网关服务处于 Running 活跃状态且版本保持最新。'
-                },
-                'conn_default_ds->conn_gac_mashup': {
-                    reason: '多源混合建模时，网关决定不同连接之间能否安全交换数据并协同计算。',
-                    isReasonable: '✅ 完全合理 (Power Query 引擎跨源查询折叠与安全隔离机制)',
-                    tip: '若提示混搭错误，请在 Desktop 中将数据源隐私级别设为一致。'
-                },
-                'conn_default_ds->conn_gw': {
-                    reason: '物理数据源连接与具体本地数据网关集群绑定，由网关集群承担查询代理与负载均衡。',
-                    isReasonable: '✅ 完全合理 (企业级高可用网关集群架构标准)',
-                    tip: '集群内有多台机器时，单机宕机可自动故障转移。'
-                },
-                'conn_default_ds->conn_sso': {
-                    reason: 'DirectQuery 直连数据源可开启 SSO 身份委派，将前端报表查看者身份直传数据库执行审计。',
-                    isReasonable: '🛡️ 高级端到端安全 (实现数据库行级与对象级权限无缝复用)',
-                    tip: '需配置 Kerberos 受限委派或 Azure AD 凭据映射。'
-                },
-                'conn_default_ds->conn_refresh': {
-                    reason: '导入模式的语义模型数据保鲜完全依赖数据源连接的稳定可用性与刷新调度。',
-                    isReasonable: '✅ 完全合理 (数据管道周期性同步的物理链路)',
-                    tip: '刷新超时通常是底层数据库慢查询或网络波动引起。'
-                },
-                'conn_default_ds->conn_share': {
-                    reason: '企业标准数据源连接可在工作区甚至跨租户复用，由管理员共享给其他数据工程师。',
-                    isReasonable: '✅ 完全合理 (避免重复创建冗余连接与分散管理密码)',
-                    tip: '仅共享凭据使用通道，协作者绝对看不到明文密码。'
-                },
-                'conn_default_ds->model_read': {
-                    reason: '数据源连接是语义模型的数据根源，无论是定时导入还是 DirectQuery 直连，连接故障均导致模型数据缺失。',
-                    isReasonable: '✅ 完全合理 (底层数据管道到顶层业务模型的核心因果)',
-                    tip: '全景链路排错时，若模型数据异常，首先验证底层数据源连通性。'
-                },
-                'conn_user_perm->model_read': {
-                    reason: '用于访问数据源的用户凭据在数据库端拥有的 SELECT 权限直接决定模型能抽取到哪些数据表。',
-                    isReasonable: '✅ 完全合理 (数据库层面的物理权限准入控制)',
-                    tip: '数据库账号权限不足会导致刷新时抛出 SQL 权限被拒绝错误。'
-                },
-                'conn_user_perm->conn_refresh': {
-                    reason: '计划刷新调度器使用保存的凭据在后台以无人值守模式向数据源发起连接。',
-                    isReasonable: '✅ 完全合理 (后台异步刷新的鉴权凭据保障)',
-                    tip: '凭据失效 (如密码定期过期) 是导致定时刷新失败的头号原因。'
-                },
-                'conn_gac_perm->conn_gac_mashup': {
-                    reason: '网关通道授权是跨数据源混搭计算合法展开的基础。',
-                    isReasonable: '✅ 完全合理 (网络通道与数据混搭引擎的配合)',
-                    tip: '确保网关版本支持跨源混搭协议。'
-                },
-                'conn_gac_perm->model_read': {
-                    reason: '经由网关通道的安全传输确保内网数据库记录能够被云端语义模型完整接收与反序列化。',
-                    isReasonable: '✅ 完全合理 (混合云架构数据上云的安全通道)',
-                    tip: '网关网络带宽与延迟直接影响 DirectQuery 报表响应速度。'
-                },
-                'conn_gac_mashup->model_read': {
-                    reason: '跨数据源混搭与查询折叠 (Query Folding) 产出的最终数据表直接注入到语义模型供前端分析。',
-                    isReasonable: '✅ 完全合理 (ETL 管道清洗加工成果与模型的结合)',
-                    tip: '尽可能让计算在源库折叠，避免大量数据拉到本地网关后再做过滤。'
-                },
-                'conn_gw->model_read': {
-                    reason: '网关在线健康状态直接决定模型能否向企业内网数据源成功发起 DAX 或 SQL 查询。',
-                    isReasonable: '✅ 完全合理 (物理服务器与服务守护进程的基础保障)',
-                    tip: '网关离线时，所有基于该网关的模型刷新与直连报表立即中断。'
-                },
-                'conn_gw->conn_refresh': {
-                    reason: '定时刷新任务在触发时向本地数据网关发送拉取指令，网关状态决定刷新能否启动。',
-                    isReasonable: '✅ 完全合理 (异步刷新任务调度的网络跳板)',
-                    tip: '在 Service 管理门户中可查看网关集群的实时运行状态与负载。'
-                },
-                'conn_sso->model_read': {
-                    reason: '在开启 SSO 的 DirectQuery 模型中，每个用户看到的都是源数据库根据其个人身份执行过滤后的精准结果。',
-                    isReasonable: '🛡️ 企业级单点登录透传 (消除多套权限系统维护成本)',
-                    tip: '需确保终端用户的 Azure AD 身份与目标数据库用户建立映射关系。'
-                },
-                'conn_refresh->model_read': {
-                    reason: '计划刷新周期性将源库变更写入语义模型内存缓存，确保报表用户读取到最新的业务数据。',
-                    isReasonable: '✅ 完全合理 (数据保鲜与时效性的生命线)',
-                    tip: 'Pro 每天最多 8 次，Premium/Fabric 每天最多 48 次，支持分钟级刷新。'
-                },
-                'conn_owner->conn_share': {
-                    reason: '连接所有者对连接具有排他性支配权，拥有向他人授权复用该连接的完全决策权。',
-                    isReasonable: '✅ 完全合理 (基础设施所有权治理机制)',
-                    tip: '所有者离职时应及时将连接管理权转移给团队公共账号或工作区 Admin。'
-                },
-                'conn_owner->conn_refresh': {
-                    reason: '连接所有者负责在连接出现凭据失效、网关变动时重新测试并修复连接，恢复刷新能力。',
-                    isReasonable: '✅ 完全合理 (故障自愈与运维责任归属)',
-                    tip: '可通过 API(应用程序编程接口) 自动化监听连接健康度并告警。'
-                },
-                'conn_owner->conn_user_perm': {
-                    reason: '连接所有者负责录入与维护保存的认证凭据（如更新数据库密码或刷新 OAuth Token）。',
-                    isReasonable: '✅ 完全合理 (机密凭据保管的核心责任)',
-                    tip: '建议采用托管标识 (Managed Identity) 彻底消除密码管理烦恼。'
-                },
-                'conn_share->conn_user_perm': {
-                    reason: '被共享连接的协作者获得使用该凭据查询数据的授权，但无法读取密码明文。',
-                    isReasonable: '✅ 完全合理 (安全凭据分级委派规范)',
-                    tip: '符合企业级数据资产安全分层原则。'
-                },
+                // 5. 连接与网关
+                'conn_default_ds->conn_user_perm': { reason: 'Data Connection ➔ 物理存储连接凭据，提供鉴权凭证' },
+                'conn_default_ds->conn_gac_perm': { reason: 'Data Connection ➔ 网关网络通道寻址，实现内网穿透' },
+                'conn_default_ds->conn_gac_mashup': { reason: 'Data Connection ➔ 跨源安全隔离，协同多源混搭' },
+                'conn_default_ds->conn_gw': { reason: 'Data Connection ➔ 网关集群绑定，提供高可用代理' },
+                'conn_default_ds->conn_sso': { reason: 'Data Connection ➔ DirectQuery 单点登录，透传用户身份' },
+                'conn_default_ds->conn_refresh': { reason: 'Data Connection ➔ 底层物理数据源，支撑计划刷新同步' },
+                'conn_default_ds->conn_share': { reason: 'Data Connection ➔ 连接复用共享，授权通道而不泄露密码' },
+                'conn_default_ds->model_read': { reason: 'Data Connection ➔ 底层数据管道，提供原始数据抽取' },
+                'conn_user_perm->model_read': { reason: 'User Credential ➔ 库表查询权限，决定数据抽取范围' },
+                'conn_user_perm->conn_refresh': { reason: 'User Credential ➔ 无人值守鉴权，确保后台刷新成功' },
+                'conn_gac_perm->conn_gac_mashup': { reason: 'GAC Direct Read ➔ 网关授权通道，支撑跨源混搭折叠' },
+                'conn_gac_perm->model_read': { reason: 'GAC Direct Read ➔ 安全传输通道，内网数据反序列化' },
+                'conn_gac_mashup->model_read': { reason: 'GAC Mashup ➔ ETL加工成果直接注入语义模型' },
+                'conn_gw->model_read': { reason: 'Gateway Status ➔ 代理服务在线，保障 DirectQuery 实时查询' },
+                'conn_gw->conn_refresh': { reason: 'Gateway Status ➔ 网关运行状态，决定本地数据拉取通道' },
+                'conn_sso->model_read': { reason: 'DirectQuery SSO ➔ 身份透明透传，无缝复用数据库级权限' },
+                'conn_refresh->model_read': { reason: 'Data Refresh ➔ 数据保鲜通道，周期同步源库更新' },
+                'conn_owner->conn_share': { reason: 'Connection Owner ➔ 基础设施排他权，掌控连接对外共享' },
+                'conn_owner->conn_refresh': { reason: 'Connection Owner ➔ 连接责任人，维护凭据可用性与刷新' },
+                'conn_owner->conn_user_perm': { reason: 'Connection Owner ➔ 凭据保管责任，负责密码录入与更新' },
+                'conn_share->conn_user_perm': { reason: 'Share Connection ➔ 安全分级委派，授权使用通道' },
 
                 // 6. 部署管道
-                'pipeline_role->pipeline_deploy': {
-                    reason: '部署管道角色 (Pipeline Admin / Deployer) 是执行开发 (Dev) 到测试 (Test) 或生产 (Prod) 晋升部署的总门禁。',
-                    isReasonable: '✅ 完全合理 (ALM 软件交付生命周期标准化控制)',
-                    tip: '生产阶段的部署应严格控制权限，遵循发布变更管理流程。'
-                },
-                'pipeline_role->pipeline_diff': {
-                    reason: '管道角色允许在执行部署前，一键自动扫描比对两个阶段之间的元数据变更细节。',
-                    isReasonable: '✅ 完全合理 (变更管理与发布影响分析的核心工具)',
-                    tip: '清晰展示哪些报表视觉对象被更改，哪些表结构被调整。'
-                },
-                'pipeline_role->pipeline_rules': {
-                    reason: '管道管理员拥有配置部署规则的权限，确保部署到新阶段后参数与数据源自动切换。',
-                    isReasonable: '✅ 完全合理 (环境解耦与持续集成的关键支撑)',
-                    tip: '无需人工修改代码，彻底杜绝手工发布失误。'
-                },
-                'pipeline_role->pipeline_manage': {
-                    reason: '管道最高管理员拥有新增、删除部署管道以及解绑或调整工作区阶段的生命周期管理权。',
-                    isReasonable: '✅ 完全合理 (DevOps 基础设施生命周期管控)',
-                    tip: '一个工作区只能绑定至一个部署管道的一个阶段。'
-                },
-                'pipeline_role->pipeline_backward': {
-                    reason: '当生产阶段发现严重回归缺陷时，管道管理员可执行逆向回退部署将稳定版本恢复。',
-                    isReasonable: '🛡️ 灾备与故障回退底线 (高危特权操作)',
-                    tip: '回退操作需谨慎，建议先在测试阶段验证回退脚本。'
-                },
-                'pipeline_diff->pipeline_deploy': {
-                    reason: '架构差异比对是跨阶段晋升部署前必须经过的确认环节，防止盲目发布产生破坏性变更。',
-                    isReasonable: '✅ 完全合理 (工程化发布防呆机制)',
-                    tip: '若发现架构存在冲突或删除关键字段，应提前通知下游消费团队。'
-                },
-                'pipeline_rules->pipeline_deploy': {
-                    reason: '在将开发阶段部署到生产阶段时，预设的部署规则会自动拦截并替换数据源连接参数。',
-                    isReasonable: '✅ 完全合理 (环境自动化隔离的标准规范)',
-                    tip: '确保生产环境自动直连生产数据库，保护开发测试数据不污染生产。'
-                },
-                'pipeline_manage->pipeline_deploy': {
-                    reason: '管道生命周期的配置状态直接决定部署流程是否通畅、阶段工作区是否成功绑定。',
-                    isReasonable: '✅ 完全合理 (基础设施配置与业务发布的必然联动)',
-                    tip: '绑定工作区时需确保各阶段工作区均处于容量支持范围内。'
-                },
-                'pipeline_manage->pipeline_rules': {
-                    reason: '管道管理员负责维护规则清单，支持新增参数映射规则或删除过期规则。',
-                    isReasonable: '✅ 完全合理 (规则库的主动生命周期维护)',
-                    tip: '可配置数据源规则与参数规则双重重定向策略。'
-                },
-                'pipeline_manage->pipeline_backward': {
-                    reason: '只有管道管理员具备发起跨阶段反向部署并覆盖目标阶段工作区的极高破坏性权限。',
-                    isReasonable: '✅ 完全合理 (最高风险权限严格收敛于唯一管理员)',
-                    tip: '反向部署会彻底覆盖开发阶段资产，建议事先做好代码备份。'
-                },
-                'pipeline_backward->pipeline_deploy': {
-                    reason: '反向部署是部署晋升流转的一种逆向特殊执行路径，遵循相同的部署事务与元数据传输协议。',
-                    isReasonable: '✅ 完全合理 (统一底层 ALM 传输引擎)',
-                    tip: '部署过程具有事务一致性，若单个资产部署失败将自动整体回滚。'
-                },
+                'pipeline_role->pipeline_deploy': { reason: 'Pipeline Role ➔ 交付生命周期控制，执行阶段晋升部署' },
+                'pipeline_role->pipeline_diff': { reason: 'Pipeline Role ➔ 变更影响分析，扫描元数据架构差异' },
+                'pipeline_role->pipeline_rules': { reason: 'Pipeline Role ➔ 环境自动化隔离，配置连接串重定向' },
+                'pipeline_role->pipeline_manage': { reason: 'Pipeline Role ➔ DevOps 设施管理，绑定或解绑阶段' },
+                'pipeline_role->pipeline_backward': { reason: 'Pipeline Role ➔ 灾备回退控制，执行逆向回退恢复' },
+                'pipeline_diff->pipeline_deploy': { reason: 'Schema Diff ➔ 架构比对确认，防呆确认后晋升部署' },
+                'pipeline_rules->pipeline_deploy': { reason: 'Pipeline Rules ➔ 规则自动重定向，隔离不同阶段数据源' },
+                'pipeline_manage->pipeline_deploy': { reason: 'Manage Pipeline ➔ 拓扑结构绑定，决定阶段发布路径' },
+                'pipeline_manage->pipeline_rules': { reason: 'Manage Pipeline ➔ 规则库维护，管理参数与连接映射' },
+                'pipeline_manage->pipeline_backward': { reason: 'Manage Pipeline ➔ 最高回退特权，覆盖目标阶段资产' },
+                'pipeline_backward->pipeline_deploy': { reason: 'Backward Deploy ➔ 逆向回退执行路径，遵循原子性事务' },
 
-                // 7. 工作区管理员具体角色直连
-                'ws_role_admin->report_share': {
-                    reason: '当前用户被显式分配了工作区管理员 (Admin) 角色。作为该工作区资产的最高管理者，管理员天然具备该工作区内所有资产的完全控制与分发权，无需依赖底层模型二次共享或间接授权，即可直接生成报表链接并进行组织内外共享与协同。',
-                    isReasonable: '✅ 直接授权权威性 (工作区 Admin 角色直接赋予资产分发权)',
-                    tip: '若需要限制报表对外分发，应在工作区设置或租户管理门户中针对特定安全组进行共享策略收敛。'
-                },
-                'ws_role_admin->report_view': {
-                    reason: '工作区管理员 (Admin) 角色对工作区内所有报表具有完全管理与读取特权，可不受限制地在线打开、交互与查看报表最新渲染内容。',
-                    isReasonable: '✅ 最高角色直接赋权 (Admin 角色天然包含查看与交互能力)',
-                    tip: 'Admin 角色查看报表时亦会自动绕过 RLS 过滤，查看全量真实数据。'
-                },
-                'ws_role_admin->report_edit': {
-                    reason: '工作区管理员拥有对该工作区全部资产的设计与编辑特权，可直接进入报表编辑画布、调整视觉对象排版、新建度量值并保存版本。',
-                    isReasonable: '✅ 创作管理权 (工作区 Admin 直接授予前端完全设计权)',
-                    tip: '报表编辑保存后将直接影响工作区其他协作者的可见视图。'
-                },
-                'ws_role_admin->report_export': {
-                    reason: '工作区管理员具备从报表中导出汇总数据、明细底层数据以及导出为 PowerPoint/PDF 的完全权限。',
-                    isReasonable: '✅ 特权直接放行 (Admin 角色直接解锁所有导出模式)',
-                    tip: '导出明细数据仍受租户层“导出至 Excel”全局安全门禁制约。'
-                },
-                'ws_role_admin->report_sub': {
-                    reason: '工作区管理员可为自己及工作区内其他用户、外部收件人创建定时邮件订阅与报警通知。',
-                    isReasonable: '✅ 协同推送赋权 (Admin 角色支持全员订阅管理)',
-                    tip: '向他人推送订阅需确保收件人具备基础访问许可。'
-                },
-                'ws_role_admin->model_write': {
-                    reason: '工作区管理员拥有对语义模型架构的完全写入与更新权，允许通过 XMLA 端点、Web 建模或 Desktop 发布修改模型结构。',
-                    isReasonable: '✅ 模型所有者特权 (Admin 对数据模型具备最高管理权)',
-                    tip: '建议重要生产模型的架构修改通过 Git 版本控制与部署管道统一管理。'
-                },
-                'ws_role_admin->model_read': {
-                    reason: '工作区管理员默认具备对工作区所有语义模型的无条件读取特权，支撑所有下游计算与数据探索。',
-                    isReasonable: '✅ 基础读取权威 (工作区 Admin 默认放行全模型数据读取)',
-                    tip: '读取能力是前端报表能够成功取数渲染的基础。'
-                },
-                'ws_role_admin->model_build': {
-                    reason: '工作区管理员默认拥有语义模型构建 (Build) 权限，允许基于该数据集新建报表、在 Excel 中进行分析。',
-                    isReasonable: '✅ 自助探索赋权 (Admin 自带高级构建与二次分析特权)',
-                    tip: 'Build 权限是进行自助式探索与连接分析的核心通道。'
-                },
-                'ws_role_admin->model_reshare': {
-                    reason: '工作区管理员具备将语义模型向其他主体重新共享与授权的决策权。',
-                    isReasonable: '✅ 授权派生特权 (Admin 角色掌控资产再分发控制权)',
-                    tip: '可单独指定接收者是否连带获得 Build 权限。'
-                },
-                'ws_role_admin->conn_refresh': {
-                    reason: '工作区管理员拥有配置数据刷新计划、绑定网关通道及手动触发模型刷新的完全操作权。',
-                    isReasonable: '✅ 数据运维特权 (Admin 直接负责数据保鲜与计划调度)',
-                    tip: '刷新成功需确保关联的底层数据源凭据有效且网关在线。'
-                },
-                'ws_role_admin->conn_owner': {
-                    reason: '工作区管理员对工作区内绑定的数据源连接具备接管与管理员级支配权。',
-                    isReasonable: '✅ 基础设施最高管辖权 (保障运维连续性)',
-                    tip: '当原连接创建者离职时，Admin 可无缝接管凭据。'
-                },
-                'ws_role_admin->conn_share': {
-                    reason: '工作区管理员有权将工作区绑定的数据源连接复用共享给其他协作者。',
-                    isReasonable: '✅ 连接分发权 (提升企业连接资产复用率)',
-                    tip: '共享连接仅授权使用通道，不暴露明文账号密码。'
-                },
-                'ws_role_admin->pipeline_deploy': {
-                    reason: '工作区管理员拥有触发部署管道晋升部署并覆盖目标工作区阶段资产的完全权限。',
-                    isReasonable: '✅ 发布管控权 (Admin 与 Pipeline 角色协同保障发布安全)',
-                    tip: '发布前请利用架构差异比对 (Diff) 评估变更影响面。'
-                }
+                // 7. 工作区具体角色直连
+                'ws_role_admin->report_share': { reason: 'Admin ➔ 完全控制，最高管理者' },
+                'ws_role_admin->report_view': { reason: 'Admin ➔ 完全控制，最高管理者' },
+                'ws_role_admin->report_edit': { reason: 'Admin ➔ 完全控制，最高管理者' },
+                'ws_role_admin->report_export': { reason: 'Admin ➔ 完全控制，最高管理者' },
+                'ws_role_admin->report_sub': { reason: 'Admin ➔ 完全控制，最高管理者' },
+                'ws_role_admin->model_write': { reason: 'Admin ➔ 完全控制，最高管理者' },
+                'ws_role_admin->model_read': { reason: 'Admin ➔ 完全控制，最高管理者' },
+                'ws_role_admin->model_build': { reason: 'Admin ➔ 完全控制，最高管理者' },
+                'ws_role_admin->model_reshare': { reason: 'Admin ➔ 完全控制，最高管理者' },
+                'ws_role_admin->conn_refresh': { reason: 'Admin ➔ 完全控制，最高管理者' },
+                'ws_role_admin->conn_owner': { reason: 'Admin ➔ 完全控制，最高管理者' },
+                'ws_role_admin->conn_share': { reason: 'Admin ➔ 完全控制，最高管理者' },
+                'ws_role_admin->pipeline_deploy': { reason: 'Admin ➔ 完全控制，最高管理者' },
+                'ws_role_admin->pipeline_diff': { reason: 'Admin ➔ 完全控制，最高管理者' },
+                'ws_role_admin->pipeline_rules': { reason: 'Admin ➔ 完全控制，最高管理者' },
+                'ws_role_admin->pipeline_manage': { reason: 'Admin ➔ 完全控制，最高管理者' },
+
+                'ws_role_member->report_share': { reason: 'Member ➔ 协作编辑，拥有模型与报表修改权' },
+                'ws_role_member->report_view': { reason: 'Member ➔ 协作编辑，拥有报表查看权' },
+                'ws_role_member->report_edit': { reason: 'Member ➔ 协作编辑，拥有报表编辑权' },
+                'ws_role_member->report_export': { reason: 'Member ➔ 协作编辑，拥有数据导出权' },
+                'ws_role_member->report_sub': { reason: 'Member ➔ 协作编辑，拥有订阅推送权' },
+                'ws_role_member->model_write': { reason: 'Member ➔ 协作编辑，拥有模型写入权' },
+                'ws_role_member->model_read': { reason: 'Member ➔ 协作编辑，拥有数据读取权' },
+                'ws_role_member->model_build': { reason: 'Member ➔ 协作编辑，拥有模型构建权' },
+                'ws_role_member->model_reshare': { reason: 'Member ➔ 协作编辑，拥有模型转授权' },
+
+                'ws_role_contributor->report_view': { reason: 'Contributor ➔ 内容创建，拥有报表查看权' },
+                'ws_role_contributor->report_edit': { reason: 'Contributor ➔ 内容创建，拥有报表编辑权' },
+                'ws_role_contributor->report_export': { reason: 'Contributor ➔ 内容创建，拥有数据导出权' },
+                'ws_role_contributor->model_write': { reason: 'Contributor ➔ 内容创建，拥有模型写入权' },
+                'ws_role_contributor->model_read': { reason: 'Contributor ➔ 内容创建，拥有数据读取权' },
+                'ws_role_contributor->model_build': { reason: 'Contributor ➔ 内容创建，拥有模型构建权' },
+
+                'ws_role_viewer->report_view': { reason: 'Viewer ➔ 只读查看，仅限前端交互浏览' },
+                'ws_role_viewer->model_read': { reason: 'Viewer ➔ 只读查看，仅限前端数据读取' }
             };
 
             let matched = DICT[key];
@@ -6969,58 +6525,58 @@
             }
             if (matched) return matched;
 
-            // 智能动态权限流转关系合成器 (彻底告别空泛套话，针对任意关联动态合成精准流转因果)
+            // 智能动态权限流转关系合成器 (针对任意未收录关联动态合成精简关系)
             const getMeta = (id) => {
                 const map = {
-                    'tenant_principal_role': { title: 'Principal Role (租户身份)', module: '租户全局' },
-                    'tenant_gac_policy': { title: 'Dataset Tenant Policy (租户策略)', module: '租户全局' },
-                    'tenant_export': { title: 'Export to Excel (组织级导出)', module: '租户全局' },
-                    'tenant_web_modeling': { title: 'Web Modeling (Web建模)', module: '租户全局' },
-                    'tenant_xmla': { title: 'XMLA Endpoint (XMLA端点)', module: '租户全局' },
-                    'tenant_external': { title: 'External Sharing (外部共享)', module: '租户全局' },
-                    'tenant_embed': { title: 'Embed for External (外部嵌入)', module: '租户全局' },
-                    'tenant_certify': { title: 'Certification (官方认证)', module: '租户全局' },
-                    'ws_role': { title: 'Workspace Role (工作区角色)', module: '工作区' },
-                    'ws_role_admin': { title: 'Admin (工作区管理员)', module: '工作区' },
-                    'ws_role_member': { title: 'Member (工作区成员)', module: '工作区' },
-                    'ws_role_contributor': { title: 'Contributor (工作区参与者)', module: '工作区' },
-                    'ws_role_viewer': { title: 'Viewer (工作区查看者)', module: '工作区' },
-                    'ws_edit': { title: 'Edit Content (编辑内容)', module: '工作区' },
-                    'ws_app': { title: 'Publish App (发布组织应用)', module: '工作区' },
-                    'ws_capacity': { title: 'Capacity Access (挂载容量)', module: '工作区' },
-                    'ws_delete': { title: 'Delete Workspace (删除工作区)', module: '工作区' },
-                    'ws_lineage': { title: 'Lineage View (血缘拓扑)', module: '工作区' },
-                    'model_permission': { title: 'Role Permission (模型综合权限)', module: '语义模型' },
-                    'model_read': { title: 'READ (数据读取)', module: '语义模型' },
-                    'model_build': { title: 'BUILD (模型构建与分析)', module: '语义模型' },
-                    'model_write': { title: 'WRITE (模型元数据写入)', module: '语义模型' },
-                    'model_reshare': { title: 'RESHARE (模型重新共享)', module: '语义模型' },
-                    'model_rls': { title: 'RLS (行级安全性)', module: '语义模型' },
-                    'model_gac_ols': { title: 'GAC / OLS (对象级安全)', module: '语义模型' },
-                    'report_access': { title: 'Report Access (报表访问)', module: '报表' },
-                    'report_view': { title: 'VIEW & INTERACT (在线交互查看)', module: '报表' },
-                    'report_edit': { title: 'EDIT VISUALS (编辑视觉画布)', module: '报表' },
-                    'report_export': { title: 'EXPORT DATA (导出数据切片)', module: '报表' },
-                    'report_sub': { title: 'SUBSCRIBE & ALERT (订阅与通知)', module: '报表' },
-                    'report_share': { title: 'SHARE REPORT (共享报表链接)', module: '报表' },
-                    'conn_default_ds': { title: 'Data Connection (数据源连接)', module: '数据源连接' },
-                    'conn_user_perm': { title: 'User Credential (凭据与访问权限)', module: '数据源连接' },
-                    'conn_refresh': { title: 'Scheduled Refresh (计划刷新)', module: '数据源连接' },
-                    'conn_owner': { title: 'Connection Owner (连接所有者)', module: '数据源连接' },
-                    'conn_share': { title: 'Share Connection (共享连接)', module: '数据源连接' },
-                    'conn_gw': { title: 'Gateway Status (网关集群状态)', module: '数据源连接' },
-                    'conn_sso': { title: 'DirectQuery SSO (SSO单点登录)', module: '数据源连接' },
-                    'conn_gac_perm': { title: 'GAC Direct Read (GAC通道直读)', module: '数据源连接' },
-                    'conn_gac_mashup': { title: 'GAC Mashup (跨源混搭)', module: '数据源连接' },
-                    'pipeline_role': { title: 'Pipeline Role (部署管道角色)', module: '部署管道' },
-                    'pipeline_deploy': { title: 'Stage Deployment (阶段发布)', module: '部署管道' },
-                    'pipeline_diff': { title: 'Schema Diff (架构比对)', module: '部署管道' },
-                    'pipeline_rules': { title: 'Configure Rules (部署规则)', module: '部署管道' },
-                    'pipeline_manage': { title: 'Manage Pipeline (管道生命周期)', module: '部署管道' },
-                    'pipeline_backward': { title: 'Backward Deploy (反向回退部署)', module: '部署管道' }
+                    'tenant_principal_role': { title: 'Principal Role', module: '租户全局' },
+                    'tenant_gac_policy': { title: 'Tenant Policy', module: '租户全局' },
+                    'tenant_export': { title: 'Tenant Export', module: '租户全局' },
+                    'tenant_web_modeling': { title: 'Web Modeling', module: '租户全局' },
+                    'tenant_xmla': { title: 'XMLA Endpoint', module: '租户全局' },
+                    'tenant_external': { title: 'External Sharing', module: '租户全局' },
+                    'tenant_embed': { title: 'Tenant Embed', module: '租户全局' },
+                    'tenant_certify': { title: 'Certification', module: '租户全局' },
+                    'ws_role': { title: 'Workspace Role', module: '工作区' },
+                    'ws_role_admin': { title: 'Admin', module: '工作区' },
+                    'ws_role_member': { title: 'Member', module: '工作区' },
+                    'ws_role_contributor': { title: 'Contributor', module: '工作区' },
+                    'ws_role_viewer': { title: 'Viewer', module: '工作区' },
+                    'ws_edit': { title: 'Edit Content', module: '工作区' },
+                    'ws_app': { title: 'Publish App', module: '工作区' },
+                    'ws_capacity': { title: 'Capacity', module: '工作区' },
+                    'ws_delete': { title: 'Delete Workspace', module: '工作区' },
+                    'ws_lineage': { title: 'Lineage View', module: '工作区' },
+                    'model_permission': { title: 'Model Permission', module: '语义模型' },
+                    'model_read': { title: 'Model Read', module: '语义模型' },
+                    'model_build': { title: 'Model Build', module: '语义模型' },
+                    'model_write': { title: 'Model Write', module: '语义模型' },
+                    'model_reshare': { title: 'Model Reshare', module: '语义模型' },
+                    'model_rls': { title: 'RLS', module: '语义模型' },
+                    'model_gac_ols': { title: 'OLS', module: '语义模型' },
+                    'report_access': { title: 'Report Access', module: '报表' },
+                    'report_view': { title: 'Report View', module: '报表' },
+                    'report_edit': { title: 'Report Edit', module: '报表' },
+                    'report_export': { title: 'Report Export', module: '报表' },
+                    'report_sub': { title: 'Report Subscribe', module: '报表' },
+                    'report_share': { title: 'Report Share', module: '报表' },
+                    'conn_default_ds': { title: 'Data Connection', module: '数据源连接' },
+                    'conn_user_perm': { title: 'User Credential', module: '数据源连接' },
+                    'conn_refresh': { title: 'Scheduled Refresh', module: '数据源连接' },
+                    'conn_owner': { title: 'Connection Owner', module: '数据源连接' },
+                    'conn_share': { title: 'Share Connection', module: '数据源连接' },
+                    'conn_gw': { title: 'Gateway Status', module: '数据源连接' },
+                    'conn_sso': { title: 'DirectQuery SSO', module: '数据源连接' },
+                    'conn_gac_perm': { title: 'GAC Direct Read', module: '数据源连接' },
+                    'conn_gac_mashup': { title: 'GAC Mashup', module: '数据源连接' },
+                    'pipeline_role': { title: 'Pipeline Role', module: '部署管道' },
+                    'pipeline_deploy': { title: 'Stage Deployment', module: '部署管道' },
+                    'pipeline_diff': { title: 'Schema Diff', module: '部署管道' },
+                    'pipeline_rules': { title: 'Configure Rules', module: '部署管道' },
+                    'pipeline_manage': { title: 'Manage Pipeline', module: '部署管道' },
+                    'pipeline_backward': { title: 'Backward Deploy', module: '部署管道' }
                 };
                 if (map[id]) return map[id];
-                if (id.startsWith('conn_real_ds_')) return { title: 'Data Connection (具体数据源)', module: '数据源连接' };
+                if (id.startsWith('conn_real_ds_')) return { title: 'Data Connection', module: '数据源连接' };
                 return { title: id, module: '权限资产' };
             };
 
@@ -7028,9 +6584,7 @@
             const tgtInfo = getMeta(normTgt);
 
             return {
-                reason: `【${srcInfo.module} ➔ ${tgtInfo.module} 权限流转】由 [${srcInfo.title}] 直接向下派生并赋能 [${tgtInfo.title}]；作为因果依据源头，上游策略在生效时自动为下游操作打通合规准入通道，确保权限流转透明且可追溯。`,
-                isReasonable: `✅ 完全合规 (由 ${srcInfo.module} 官方标准下发至 ${tgtInfo.module})`,
-                tip: `若 [${tgtInfo.title}] 出现权限异常，请首先核对上游 [${srcInfo.title}] 的授权配置状态。`
+                reason: `${srcInfo.title} ➔ 直接派生并赋能 ${tgtInfo.title}`
             };
         }
 
@@ -7410,7 +6964,7 @@
                         const explanation = this.getLinkExplanation(srcId, rowId);
 
                         cardsHtml += `
-                            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 7px; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px;">
+                            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 7px; padding: 9px 13px; display: flex; flex-direction: column; gap: 6px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
                                     <div style="display: flex; align-items: center; gap: 8px;">
                                         <strong style="font-size: 0.88rem; color: var(--text-primary); letter-spacing: 0.2px;">${srcTitle}</strong>
@@ -7418,13 +6972,8 @@
                                     </div>
                                     ${statusBadgeHtml}
                                 </div>
-                                <div style="font-size: 0.8rem; line-height: 1.55; color: var(--text-primary); opacity: 0.9;">
+                                <div style="font-size: 0.81rem; line-height: 1.45; color: var(--text-primary); font-weight: 500;">
                                     ${explanation.reason}
-                                </div>
-                                <div style="font-size: 0.73rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; line-height: 1.4; padding-top: 5px; border-top: 1px dashed rgba(255, 255, 255, 0.06); min-width: 0;">
-                                    <span style="font-weight: 500; color: #6ee7b7; flex-shrink: 0;">${explanation.isReasonable}</span>
-                                    <span style="opacity: 0.3; flex-shrink: 0;">·</span>
-                                    <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${explanation.tip}">${explanation.tip}</span>
                                 </div>
                             </div>
                         `;
@@ -7460,7 +7009,7 @@
                         const explanation = this.getLinkExplanation(rowId, tgtId);
 
                         cardsHtml += `
-                            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 7px; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px;">
+                            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 7px; padding: 9px 13px; display: flex; flex-direction: column; gap: 6px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
                                     <div style="display: flex; align-items: center; gap: 8px;">
                                         <strong style="font-size: 0.88rem; color: var(--text-primary); letter-spacing: 0.2px;">${tgtTitle}</strong>
@@ -7468,13 +7017,8 @@
                                     </div>
                                     ${statusBadgeHtml}
                                 </div>
-                                <div style="font-size: 0.8rem; line-height: 1.55; color: var(--text-primary); opacity: 0.9;">
+                                <div style="font-size: 0.81rem; line-height: 1.45; color: var(--text-primary); font-weight: 500;">
                                     ${explanation.reason}
-                                </div>
-                                <div style="font-size: 0.73rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; line-height: 1.4; padding-top: 5px; border-top: 1px dashed rgba(255, 255, 255, 0.06); min-width: 0;">
-                                    <span style="font-weight: 500; color: #6ee7b7; flex-shrink: 0;">${explanation.isReasonable}</span>
-                                    <span style="opacity: 0.3; flex-shrink: 0;">·</span>
-                                    <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${explanation.tip}">${explanation.tip}</span>
                                 </div>
                             </div>
                         `;
