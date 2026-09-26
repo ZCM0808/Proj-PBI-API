@@ -742,6 +742,30 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     expect(wsCardText).toContain('Member');
     expect(wsCardText).toContain('Contributor');
     expect(wsCardText).toContain('Viewer');
+
+    // 12. 验证点击 Admin 打开因果弹窗时：跨模块隔离生效，下游派生中绝对不含同模块的 Manage Access
+    const wsAdminRow = page.locator('.pb-asset-card-row.is-hero-role[data-tier-id="workspace"]');
+    if (await wsAdminRow.count() > 0) {
+      await wsAdminRow.click({ force: true });
+      await page.evaluate(() => {
+        if (window.PermissionBlueprint && typeof window.PermissionBlueprint.explainActiveCausality === 'function') {
+          window.PermissionBlueprint.explainActiveCausality();
+        }
+      });
+      const modal = page.locator('#pb-explain-causality-modal');
+      await expect(modal).toBeVisible({ timeout: 5000 });
+      const modalContent = await modal.innerText();
+      // 确保下游派生段绝对不含 Manage Access / 管理工作区成员
+      const downstreamPart = modalContent.split('当前卡片向下赋能与影响的资产')[1] || '';
+      expect(downstreamPart).not.toContain('Manage Access');
+      expect(downstreamPart).not.toContain('管理工作区成员');
+      // 关闭弹窗
+      await page.evaluate(() => {
+        if (window.PermissionBlueprint && typeof window.PermissionBlueprint.closeExplainModal === 'function') {
+          window.PermissionBlueprint.closeExplainModal();
+        }
+      });
+    }
   });
 
 });
