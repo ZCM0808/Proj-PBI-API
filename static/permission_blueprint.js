@@ -6038,26 +6038,27 @@
                 'report_export': [],
                 'report_share': [],
 
-                // 5. 官方连接与网关 -> 影响底层数据通道抽取、GAC物理直连与自动化计划刷新 (与模型前端只读 DAX 消费严格解耦)
+                // 5. 官方连接与网关 -> 影响底层数据通道抽取、GAC物理直连与计划刷新
                 'conn_default_ds': ['conn_user_perm', 'conn_gac_perm', 'conn_gw', 'conn_sso', 'conn_refresh', 'conn_share'],
                 'conn_inspecting': ['conn_gw'],
-                'conn_user_perm': ['conn_refresh'],
+                'conn_user_perm': [],
                 'conn_gac_perm': ['conn_gac_mashup'],
                 'conn_gac_mashup': [],
-                'conn_gw': ['conn_refresh'],
+                'conn_gw': [],
                 'conn_sso': [],
                 'conn_refresh': [],
                 'conn_owner': ['conn_share', 'conn_refresh', 'conn_user_perm'],
                 'conn_share': ['conn_user_perm'],
 
-                // 6. 部署管道官方角色 -> 影响生命周期管理、阶段流转部署与规则配置
+                // 6. 部署管道官方角色 -> 管道唯一授权源头，统领生命周期管理、阶段流转部署与规则配置
                 'pipeline_role': [
                     'pipeline_deploy', 'pipeline_diff', 'pipeline_rules', 'pipeline_manage', 'pipeline_backward'
                 ],
-                'pipeline_diff': ['pipeline_deploy'],
-                'pipeline_rules': ['pipeline_deploy'],
-                'pipeline_manage': ['pipeline_deploy', 'pipeline_rules', 'pipeline_backward'],
-                'pipeline_backward': ['pipeline_deploy']
+                'pipeline_deploy': [],
+                'pipeline_diff': [],
+                'pipeline_rules': [],
+                'pipeline_manage': ['pipeline_backward'],
+                'pipeline_backward': []
             };
 
             // 构建反向推导索引 (Reverse Causality: Target Item -> Its Source Enablers)
