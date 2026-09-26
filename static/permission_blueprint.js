@@ -6020,9 +6020,8 @@
                 'ws_delete': [],
                 'ws_lineage': [],
 
-                // 3. 语义模型官方权限 -> 影响模型读取、构建与报表查看导出 (遵循层级超集规范：Write 权包含 Build + Read 能力)
+                // 3. 语义模型官方权限 -> 跨模块向下赋能下游报表在线查看、交互与导出
                 'model_permission': [
-                    'model_read', 'model_build', 'model_write', 'model_reshare', 'model_gac_ols', 'model_rls',
                     'report_view', 'report_edit', 'report_export', 'report_sub'
                 ],
                 'model_read': ['report_view'],
@@ -6032,9 +6031,9 @@
                 'model_rls': ['report_view', 'report_export'],
                 'model_reshare': ['report_share'],
 
-                // 4. 报表官方访问级别 -> 影响在线交互、编辑与明细导出
+                // 4. 报表官方访问级别 -> 跨模块赋权下游导出与分享通道
                 'report_access': [
-                    'report_view', 'report_edit', 'report_export', 'report_sub', 'report_share'
+                    'report_export', 'report_share'
                 ],
                 'report_view': ['report_sub', 'report_export'],
                 'report_edit': ['report_export'],
@@ -7189,14 +7188,34 @@
                     if (activeAliasId) selfIdSet.add(activeAliasId);
                 }
 
-                // 智能去重清洗器：排除自身、合并抽象 ws_role 与具体角色、消除同 DOM 实体与相同标题重复
-                const sanitizeIds = (idList) => {
+                const currentMeta = getItemMeta(rowId);
+                const currentModule = currentMeta ? currentMeta.module : '';
+
+                // 智能去重清洗器：排除自身、合并抽象 ws_role 与具体角色、消除同 DOM 实体与相同标题重复，并强隔离同 Module 伪上游
+                const sanitizeIds = (idList, isUpstream = false) => {
                     if (!Array.isArray(idList)) return [];
                     let list = idList.filter(id => !selfIdSet.has(id));
 
                     // 若列表中同时存在具体的 ws_role_xxx 与抽象 ws_role，直接剔除通用的 ws_role
                     if (list.some(id => id.startsWith('ws_role_'))) {
                         list = list.filter(id => id !== 'ws_role');
+                    }
+
+                    // ⚡ 跨模块真源头防线：在上游依据中，坚决剔除同属于当前 Module 的同层衍生卡片（如模型层内的 READ + BUILD），
+                    // 确保上游依据 100% 聚焦于跨层级的真正显式赋权实体（如工作区 Admin 角色或租户策略）！
+                    if (isUpstream && currentModule) {
+                        list = list.filter(id => {
+                            const meta = getItemMeta(id);
+                            // 铁律：上游依据绝对不能来自同一个 Module
+                            if (meta && meta.module && meta.module === currentModule) {
+                                return false;
+                            }
+                            // 铁律：上游依据不能是其它模块的被动派生总览卡 (cat: derived 且非主角色)
+                            if (id === 'model_permission' || id === 'report_access') {
+                                return false;
+                            }
+                            return true;
+                        });
                     }
 
                     const seenDom = new Set();
@@ -7224,8 +7243,8 @@
                     return result;
                 };
 
-                const reverseSources = sanitizeIds(rawReverse);
-                const forwardTargets = sanitizeIds(rawForward.filter(id => !reverseSources.includes(id)));
+                const reverseSources = sanitizeIds(rawReverse, true);
+                const forwardTargets = sanitizeIds(rawForward.filter(id => !reverseSources.includes(id)), false);
                 const totalLinked = reverseSources.length + forwardTargets.length;
 
                 // 构建 HTML 内容：上游在前，下游在后
