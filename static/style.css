@@ -8764,7 +8764,7 @@ body.light-theme .pb-card-header-status.status-bypassed .pb-status-indicator-tex
     border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: 8px;
     transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease, opacity 0.25s ease, filter 0.25s ease;
-    cursor: default;
+    cursor: pointer;
     position: relative;
     user-select: text;
     -webkit-user-select: text;
@@ -9139,7 +9139,7 @@ body.pb-is-dragging-card * {
     flex: 1 1 auto;
     user-select: text !important;
     -webkit-user-select: text !important;
-    cursor: text;
+    cursor: pointer;
 }
 
 /* 主权限/操作名称 (英文官方全称) */
@@ -9152,7 +9152,7 @@ body.pb-is-dragging-card * {
     overflow-wrap: break-word;
     user-select: text !important;
     -webkit-user-select: text !important;
-    cursor: text;
+    cursor: pointer;
 }
 
 /* 独立换行的中文解释说明 (小字号、温和副色调) */
@@ -9165,7 +9165,7 @@ body.pb-is-dragging-card * {
     letter-spacing: 0.2px;
     user-select: text !important;
     -webkit-user-select: text !important;
-    cursor: text;
+    cursor: pointer;
     opacity: 0.88;
 }
 
@@ -9256,7 +9256,7 @@ body.light-theme .pb-asset-status-pill.status-bypassed,
     width: 100%;
     user-select: text !important;
     -webkit-user-select: text !important;
-    cursor: text;
+    cursor: pointer;
 }
 .pb-asset-prop-desc {
     font-size: 0.70rem;
@@ -9267,7 +9267,7 @@ body.light-theme .pb-asset-status-pill.status-bypassed,
     width: 100%;
     user-select: text !important;
     -webkit-user-select: text !important;
-    cursor: text;
+    cursor: pointer;
 }
 .pb-asset-tag-pill {
     font-size: 0.58rem;
@@ -9281,7 +9281,7 @@ body.light-theme .pb-asset-status-pill.status-bypassed,
     align-self: flex-start;
     user-select: text !important;
     -webkit-user-select: text !important;
-    cursor: text;
+    cursor: pointer;
 }
 body.light-theme .pb-asset-tag-pill,
 [data-theme="light"] .pb-asset-tag-pill {

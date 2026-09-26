@@ -5974,7 +5974,7 @@
                 ],
                 'tenant_gac_policy': ['conn_gac_perm', 'conn_gac_mashup'],
                 'tenant_export': ['report_export'],
-                'tenant_web_modeling': ['model_write', 'report_edit'],
+                'tenant_web_modeling': ['model_write'],
                 'tenant_xmla': ['model_write'],
                 'tenant_external': [],
                 'tenant_embed': [],
@@ -6006,9 +6006,9 @@
                 'ws_role_viewer': [
                     'model_read', 'report_view'
                 ],
-                'ws_edit': ['model_write', 'report_edit'],
+                'ws_edit': [],
                 'ws_app': [],
-                'ws_capacity': ['model_write', 'conn_refresh'],
+                'ws_capacity': [],
                 'ws_delete': [],
                 'ws_lineage': [],
 
@@ -6017,10 +6017,10 @@
                     'report_view', 'report_edit', 'report_export', 'report_sub'
                 ],
                 'model_read': ['report_view'],
-                'model_build': ['report_view', 'report_export'],
-                'model_write': ['report_view', 'report_edit', 'report_export', 'report_sub'],
-                'model_gac_ols': ['report_view', 'report_export'],
-                'model_rls': ['report_view', 'report_export'],
+                'model_build': ['report_export'],
+                'model_write': ['report_view', 'report_edit', 'report_export'],
+                'model_gac_ols': [],
+                'model_rls': [],
                 'model_reshare': ['report_share'],
 
                 // 4. 报表官方访问级别 -> 跨模块赋权下游导出与分享通道
@@ -6090,7 +6090,8 @@
 
             const clearCausalityVisuals = () => {
                 this._activeCausalityRow = null;
-                allRows.forEach(r => {
+                const rows = container.querySelectorAll('.pb-asset-card-row');
+                rows.forEach(r => {
                     r.classList.remove('pb-causality-active', 'pb-causality-pinned', 'pb-causality-target', 'pb-causality-dimmed');
                 });
             };
@@ -6107,9 +6108,10 @@
                 if (!rowId) return;
 
                 const linkedIds = new Set(getLinkedRowIds(rowId));
+                const rows = container.querySelectorAll('.pb-asset-card-row');
 
                 // 标记源卡片、关联目标卡片与其余淡化卡片（差量平滑接替，杜绝全局闪亮）
-                allRows.forEach(r => {
+                rows.forEach(r => {
                     if (r === activeRow) {
                         r.classList.add('pb-causality-active');
                         r.classList.toggle('pb-causality-pinned', isPinned);
@@ -6888,16 +6890,147 @@
                     reason: '反向部署是部署晋升流转的一种逆向特殊执行路径，遵循相同的部署事务与元数据传输协议。',
                     isReasonable: '✅ 完全合理 (统一底层 ALM 传输引擎)',
                     tip: '部署过程具有事务一致性，若单个资产部署失败将自动整体回滚。'
+                },
+
+                // 7. 工作区管理员具体角色直连
+                'ws_role_admin->report_share': {
+                    reason: '当前用户被显式分配了工作区管理员 (Admin) 角色。作为该工作区资产的最高管理者，管理员天然具备该工作区内所有资产的完全控制与分发权，无需依赖底层模型二次共享或间接授权，即可直接生成报表链接并进行组织内外共享与协同。',
+                    isReasonable: '✅ 直接授权权威性 (工作区 Admin 角色直接赋予资产分发权)',
+                    tip: '若需要限制报表对外分发，应在工作区设置或租户管理门户中针对特定安全组进行共享策略收敛。'
+                },
+                'ws_role_admin->report_view': {
+                    reason: '工作区管理员 (Admin) 角色对工作区内所有报表具有完全管理与读取特权，可不受限制地在线打开、交互与查看报表最新渲染内容。',
+                    isReasonable: '✅ 最高角色直接赋权 (Admin 角色天然包含查看与交互能力)',
+                    tip: 'Admin 角色查看报表时亦会自动绕过 RLS 过滤，查看全量真实数据。'
+                },
+                'ws_role_admin->report_edit': {
+                    reason: '工作区管理员拥有对该工作区全部资产的设计与编辑特权，可直接进入报表编辑画布、调整视觉对象排版、新建度量值并保存版本。',
+                    isReasonable: '✅ 创作管理权 (工作区 Admin 直接授予前端完全设计权)',
+                    tip: '报表编辑保存后将直接影响工作区其他协作者的可见视图。'
+                },
+                'ws_role_admin->report_export': {
+                    reason: '工作区管理员具备从报表中导出汇总数据、明细底层数据以及导出为 PowerPoint/PDF 的完全权限。',
+                    isReasonable: '✅ 特权直接放行 (Admin 角色直接解锁所有导出模式)',
+                    tip: '导出明细数据仍受租户层“导出至 Excel”全局安全门禁制约。'
+                },
+                'ws_role_admin->report_sub': {
+                    reason: '工作区管理员可为自己及工作区内其他用户、外部收件人创建定时邮件订阅与报警通知。',
+                    isReasonable: '✅ 协同推送赋权 (Admin 角色支持全员订阅管理)',
+                    tip: '向他人推送订阅需确保收件人具备基础访问许可。'
+                },
+                'ws_role_admin->model_write': {
+                    reason: '工作区管理员拥有对语义模型架构的完全写入与更新权，允许通过 XMLA 端点、Web 建模或 Desktop 发布修改模型结构。',
+                    isReasonable: '✅ 模型所有者特权 (Admin 对数据模型具备最高管理权)',
+                    tip: '建议重要生产模型的架构修改通过 Git 版本控制与部署管道统一管理。'
+                },
+                'ws_role_admin->model_read': {
+                    reason: '工作区管理员默认具备对工作区所有语义模型的无条件读取特权，支撑所有下游计算与数据探索。',
+                    isReasonable: '✅ 基础读取权威 (工作区 Admin 默认放行全模型数据读取)',
+                    tip: '读取能力是前端报表能够成功取数渲染的基础。'
+                },
+                'ws_role_admin->model_build': {
+                    reason: '工作区管理员默认拥有语义模型构建 (Build) 权限，允许基于该数据集新建报表、在 Excel 中进行分析。',
+                    isReasonable: '✅ 自助探索赋权 (Admin 自带高级构建与二次分析特权)',
+                    tip: 'Build 权限是进行自助式探索与连接分析的核心通道。'
+                },
+                'ws_role_admin->model_reshare': {
+                    reason: '工作区管理员具备将语义模型向其他主体重新共享与授权的决策权。',
+                    isReasonable: '✅ 授权派生特权 (Admin 角色掌控资产再分发控制权)',
+                    tip: '可单独指定接收者是否连带获得 Build 权限。'
+                },
+                'ws_role_admin->conn_refresh': {
+                    reason: '工作区管理员拥有配置数据刷新计划、绑定网关通道及手动触发模型刷新的完全操作权。',
+                    isReasonable: '✅ 数据运维特权 (Admin 直接负责数据保鲜与计划调度)',
+                    tip: '刷新成功需确保关联的底层数据源凭据有效且网关在线。'
+                },
+                'ws_role_admin->conn_owner': {
+                    reason: '工作区管理员对工作区内绑定的数据源连接具备接管与管理员级支配权。',
+                    isReasonable: '✅ 基础设施最高管辖权 (保障运维连续性)',
+                    tip: '当原连接创建者离职时，Admin 可无缝接管凭据。'
+                },
+                'ws_role_admin->conn_share': {
+                    reason: '工作区管理员有权将工作区绑定的数据源连接复用共享给其他协作者。',
+                    isReasonable: '✅ 连接分发权 (提升企业连接资产复用率)',
+                    tip: '共享连接仅授权使用通道，不暴露明文账号密码。'
+                },
+                'ws_role_admin->pipeline_deploy': {
+                    reason: '工作区管理员拥有触发部署管道晋升部署并覆盖目标工作区阶段资产的完全权限。',
+                    isReasonable: '✅ 发布管控权 (Admin 与 Pipeline 角色协同保障发布安全)',
+                    tip: '发布前请利用架构差异比对 (Diff) 评估变更影响面。'
                 }
             };
 
-            if (DICT[key]) return DICT[key];
+            let matched = DICT[key];
+            if (!matched && normSrc.startsWith('ws_role_')) {
+                matched = DICT[`ws_role->${normTgt}`];
+            }
+            if (!matched && normTgt.startsWith('ws_role_')) {
+                matched = DICT[`${normSrc}->ws_role`];
+            }
+            if (matched) return matched;
 
-            // 智能自适应规则推导引擎 (针对未显式列出的组合执行通用推导)
+            // 智能动态权限流转关系合成器 (彻底告别空泛套话，针对任意关联动态合成精准流转因果)
+            const getMeta = (id) => {
+                const map = {
+                    'tenant_principal_role': { title: 'Principal Role (租户身份)', module: '租户全局' },
+                    'tenant_gac_policy': { title: 'Dataset Tenant Policy (租户策略)', module: '租户全局' },
+                    'tenant_export': { title: 'Export to Excel (组织级导出)', module: '租户全局' },
+                    'tenant_web_modeling': { title: 'Web Modeling (Web建模)', module: '租户全局' },
+                    'tenant_xmla': { title: 'XMLA Endpoint (XMLA端点)', module: '租户全局' },
+                    'tenant_external': { title: 'External Sharing (外部共享)', module: '租户全局' },
+                    'tenant_embed': { title: 'Embed for External (外部嵌入)', module: '租户全局' },
+                    'tenant_certify': { title: 'Certification (官方认证)', module: '租户全局' },
+                    'ws_role': { title: 'Workspace Role (工作区角色)', module: '工作区' },
+                    'ws_role_admin': { title: 'Admin (工作区管理员)', module: '工作区' },
+                    'ws_role_member': { title: 'Member (工作区成员)', module: '工作区' },
+                    'ws_role_contributor': { title: 'Contributor (工作区参与者)', module: '工作区' },
+                    'ws_role_viewer': { title: 'Viewer (工作区查看者)', module: '工作区' },
+                    'ws_edit': { title: 'Edit Content (编辑内容)', module: '工作区' },
+                    'ws_app': { title: 'Publish App (发布组织应用)', module: '工作区' },
+                    'ws_capacity': { title: 'Capacity Access (挂载容量)', module: '工作区' },
+                    'ws_delete': { title: 'Delete Workspace (删除工作区)', module: '工作区' },
+                    'ws_lineage': { title: 'Lineage View (血缘拓扑)', module: '工作区' },
+                    'model_permission': { title: 'Role Permission (模型综合权限)', module: '语义模型' },
+                    'model_read': { title: 'READ (数据读取)', module: '语义模型' },
+                    'model_build': { title: 'BUILD (模型构建与分析)', module: '语义模型' },
+                    'model_write': { title: 'WRITE (模型元数据写入)', module: '语义模型' },
+                    'model_reshare': { title: 'RESHARE (模型重新共享)', module: '语义模型' },
+                    'model_rls': { title: 'RLS (行级安全性)', module: '语义模型' },
+                    'model_gac_ols': { title: 'GAC / OLS (对象级安全)', module: '语义模型' },
+                    'report_access': { title: 'Report Access (报表访问)', module: '报表' },
+                    'report_view': { title: 'VIEW & INTERACT (在线交互查看)', module: '报表' },
+                    'report_edit': { title: 'EDIT VISUALS (编辑视觉画布)', module: '报表' },
+                    'report_export': { title: 'EXPORT DATA (导出数据切片)', module: '报表' },
+                    'report_sub': { title: 'SUBSCRIBE & ALERT (订阅与通知)', module: '报表' },
+                    'report_share': { title: 'SHARE REPORT (共享报表链接)', module: '报表' },
+                    'conn_default_ds': { title: 'Data Connection (数据源连接)', module: '数据源连接' },
+                    'conn_user_perm': { title: 'User Credential (凭据与访问权限)', module: '数据源连接' },
+                    'conn_refresh': { title: 'Scheduled Refresh (计划刷新)', module: '数据源连接' },
+                    'conn_owner': { title: 'Connection Owner (连接所有者)', module: '数据源连接' },
+                    'conn_share': { title: 'Share Connection (共享连接)', module: '数据源连接' },
+                    'conn_gw': { title: 'Gateway Status (网关集群状态)', module: '数据源连接' },
+                    'conn_sso': { title: 'DirectQuery SSO (SSO单点登录)', module: '数据源连接' },
+                    'conn_gac_perm': { title: 'GAC Direct Read (GAC通道直读)', module: '数据源连接' },
+                    'conn_gac_mashup': { title: 'GAC Mashup (跨源混搭)', module: '数据源连接' },
+                    'pipeline_role': { title: 'Pipeline Role (部署管道角色)', module: '部署管道' },
+                    'pipeline_deploy': { title: 'Stage Deployment (阶段发布)', module: '部署管道' },
+                    'pipeline_diff': { title: 'Schema Diff (架构比对)', module: '部署管道' },
+                    'pipeline_rules': { title: 'Configure Rules (部署规则)', module: '部署管道' },
+                    'pipeline_manage': { title: 'Manage Pipeline (管道生命周期)', module: '部署管道' },
+                    'pipeline_backward': { title: 'Backward Deploy (反向回退部署)', module: '部署管道' }
+                };
+                if (map[id]) return map[id];
+                if (id.startsWith('conn_real_ds_')) return { title: 'Data Connection (具体数据源)', module: '数据源连接' };
+                return { title: id, module: '权限资产' };
+            };
+
+            const srcInfo = getMeta(normSrc);
+            const tgtInfo = getMeta(normTgt);
+
             return {
-                reason: '基于微软 Fabric & Power BI 统一 RBAC(基于角色的访问控制) 与资产安全继承规范，上层安全策略直接约束或赋能下层资产。',
-                isReasonable: '✅ 完全合理 (符合容器层级派生与最小权限安全标准)',
-                tip: '全景链路排错时，若下游受限，请沿着高亮因果链路逐级向上追溯授权源。'
+                reason: `【${srcInfo.module} ➔ ${tgtInfo.module} 权限流转】由 [${srcInfo.title}] 直接向下派生并赋能 [${tgtInfo.title}]；作为因果依据源头，上游策略在生效时自动为下游操作打通合规准入通道，确保权限流转透明且可追溯。`,
+                isReasonable: `✅ 完全合规 (由 ${srcInfo.module} 官方标准下发至 ${tgtInfo.module})`,
+                tip: `若 [${tgtInfo.title}] 出现权限异常，请首先核对上游 [${srcInfo.title}] 的授权配置状态。`
             };
         }
 
@@ -7195,14 +7328,21 @@
                             }
 
                             // 铁律 4: 直接授权权威性原则 (Direct Causality of Assigned Role)
-                            // 当前用户被分配了权威工作区角色（如 Admin）时，报表共享 (Share Report) 的直接原因就是该角色！
-                            // 坚决排除外围策略门禁 (tenant_external)、应用发布 (ws_app) 与跨模块间接派生 (model_reshare)，上游只保留直接原因！
+                            // 当前用户被分配了权威工作区角色（如 Admin）时，下辖资产特权的直接原因就是该角色！
+                            // 坚决排除跨模块间接推导 (如 model_read / model_build / model_write / model_reshare) 与外围门禁 (如 tenant_* / ws_app) 作为伪上游！
                             if (activeHeroAlias) {
-                                if (rowId === 'report_share' && id === 'model_reshare') {
-                                    return false;
+                                if (rowId.startsWith('report_') || rowId.startsWith('model_')) {
+                                    if (id !== activeHeroAlias && (id.startsWith('model_') || id.startsWith('tenant_') || id === 'ws_app' || id.startsWith('ws_role_'))) {
+                                        return false;
+                                    }
                                 }
-                                if (id === 'tenant_external' || id === 'tenant_embed' || id === 'ws_app') {
-                                    return false;
+                                if (rowId.startsWith('conn_')) {
+                                    if (id.startsWith('tenant_') || id === 'ws_app' || id === 'ws_capacity') {
+                                        return false;
+                                    }
+                                    if (id.startsWith('ws_role_') && id !== activeHeroAlias) {
+                                        return false;
+                                    }
                                 }
                             }
                         }
