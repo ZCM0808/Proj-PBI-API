@@ -5981,31 +5981,29 @@
                 'tenant_embed': ['report_view'],
                 'tenant_certify': ['model_permission'],
 
-                // 2. 工作区官方角色 -> 影响工作区内全量资产治理、模型全权、报表全权、连接运维与部署管道
+                // 2. 工作区官方角色 -> 影响工作区内各管理特权、模型全权、报表全权、连接运维与部署管道
                 'ws_role': [
-                    'ws_role_admin', 'ws_role_member', 'ws_role_contributor', 'ws_role_viewer',
-                    'ws_members', 'ws_capacity', 'ws_delete',
+                    'ws_members', 'ws_capacity', 'ws_delete', 'ws_edit', 'ws_app',
                     'model_permission', 'model_read', 'model_build', 'model_write', 'model_reshare', 'model_rls', 'model_gac_ols',
                     'report_access', 'report_view', 'report_edit', 'report_export', 'report_sub', 'report_share',
                     'conn_refresh', 'conn_owner', 'conn_share', 'conn_user_perm',
                     'pipeline_deploy', 'pipeline_diff', 'pipeline_rules', 'pipeline_manage'
                 ],
                 'ws_role_admin': [
-                    'ws_role_member', 'ws_role_contributor', 'ws_role_viewer',
-                    'ws_members', 'ws_capacity', 'ws_delete',
+                    'ws_members', 'ws_capacity', 'ws_delete', 'ws_edit', 'ws_app',
                     'model_permission', 'model_read', 'model_build', 'model_write', 'model_reshare', 'model_rls', 'model_gac_ols',
                     'report_access', 'report_view', 'report_edit', 'report_export', 'report_sub', 'report_share',
                     'conn_refresh', 'conn_owner', 'conn_share', 'conn_user_perm',
                     'pipeline_deploy', 'pipeline_diff', 'pipeline_rules', 'pipeline_manage'
                 ],
                 'ws_role_member': [
-                    'ws_role_contributor', 'ws_role_viewer', 'ws_members',
+                    'ws_members', 'ws_edit', 'ws_app',
                     'model_permission', 'model_read', 'model_build', 'model_write', 'model_reshare',
                     'report_access', 'report_view', 'report_edit', 'report_export', 'report_sub', 'report_share',
                     'conn_share', 'conn_user_perm', 'pipeline_deploy'
                 ],
                 'ws_role_contributor': [
-                    'ws_role_viewer',
+                    'ws_edit',
                     'model_permission', 'model_read', 'model_build', 'model_write',
                     'report_access', 'report_view', 'report_edit', 'report_export', 'report_sub',
                     'conn_refresh', 'conn_user_perm'
@@ -7202,16 +7200,23 @@
                     }
 
                     // ⚡ 跨模块真源头防线：在上游依据中，坚决剔除同属于当前 Module 的同层衍生卡片（如模型层内的 READ + BUILD），
-                    // 确保上游依据 100% 聚焦于跨层级的真正显式赋权实体（如工作区 Admin 角色或租户策略）！
-                    if (isUpstream && currentModule) {
+                    // 并剔除用户未被直接赋予的其他工作区角色（如用户是 Admin 时，上游绝不显示未分配的 Member）
+                    if (isUpstream) {
+                        const activeHeroWsEl = container ? container.querySelector('.pb-asset-card-row.is-hero-role[data-tier-id="workspace"]') : null;
+                        const activeHeroAlias = activeHeroWsEl ? (activeHeroWsEl.getAttribute('data-alias-id') || activeHeroWsEl.getAttribute('data-row-id')) : null;
+
                         list = list.filter(id => {
                             const meta = getItemMeta(id);
-                            // 铁律：上游依据绝对不能来自同一个 Module
-                            if (meta && meta.module && meta.module === currentModule) {
+                            // 铁律 1: 上游依据绝对不能来自同一个 Module
+                            if (currentModule && meta && meta.module && meta.module === currentModule) {
                                 return false;
                             }
-                            // 铁律：上游依据不能是其它模块的被动派生总览卡 (cat: derived 且非主角色)
+                            // 铁律 2: 上游依据不能是其它模块的被动派生总览卡 (cat: derived 且非主角色)
                             if (id === 'model_permission' || id === 'report_access') {
+                                return false;
+                            }
+                            // 铁律 3: 若当前工作区已分配了生效角色（如 Admin），上游坚决排除用户未被赋予的其他角色（如 ws_role_member、ws_role_contributor）
+                            if (activeHeroAlias && id.startsWith('ws_role_') && id !== activeHeroAlias) {
                                 return false;
                             }
                             return true;
