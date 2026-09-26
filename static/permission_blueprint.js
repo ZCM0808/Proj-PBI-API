@@ -7169,76 +7169,72 @@
                 };
                 this._findAssetRow = findAssetRow;
 
-                // 收集正向下游赋权与反向上游前置依赖 (展示全部因果链路，若未在画板加载则附带直观备注说明)
-                const forwardTargets = (this.CAUSALITY_MAP ? (this.CAUSALITY_MAP[rowId] || []) : [])
-                    .filter(id => id !== rowId);
-                // 针对动态连接
+                // 收集正向下游赋权与反向上游前置依赖，并进行严密清洗与去重
+                const rawForward = (this.CAUSALITY_MAP ? (this.CAUSALITY_MAP[rowId] || []) : []);
                 if (rowId.startsWith('conn_real_ds_') && this.CAUSALITY_MAP) {
                     const dyn = (this.CAUSALITY_MAP['conn_default_ds'] || []).filter(id => id !== rowId);
-                    dyn.forEach(d => { if (!forwardTargets.includes(d)) forwardTargets.push(d); });
+                    dyn.forEach(d => { if (!rawForward.includes(d)) rawForward.push(d); });
                 }
 
-                const reverseSources = (this.REVERSE_MAP ? (this.REVERSE_MAP[rowId] || []) : [])
-                    .filter(id => id !== rowId && !forwardTargets.includes(id));
-                const totalLinked = forwardTargets.length + reverseSources.length;
+                const rawReverse = (this.REVERSE_MAP ? (this.REVERSE_MAP[rowId] || []) : []);
+                const activeAliasId = activeRow ? activeRow.getAttribute('data-alias-id') : null;
+                if (activeAliasId && this.REVERSE_MAP && this.REVERSE_MAP[activeAliasId]) {
+                    this.REVERSE_MAP[activeAliasId].forEach(s => { if (!rawReverse.includes(s)) rawReverse.push(s); });
+                }
 
-                // 构建 HTML 内容
-                let cardsHtml = '';
+                // 自身排除标识集合 (防自身成环)
+                const selfIdSet = new Set([rowId, activeAliasId].filter(Boolean));
+                if (rowId === 'ws_role' || (activeAliasId && activeAliasId.startsWith('ws_role_'))) {
+                    selfIdSet.add('ws_role');
+                    if (activeAliasId) selfIdSet.add(activeAliasId);
+                }
 
-                // 1. 下游派生卡片剖析
-                if (forwardTargets.length > 0) {
-                    cardsHtml += `
-                        <div style="font-size: 0.76rem; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; margin-top: 4px; letter-spacing: 0.3px;">
-                            <span>⬇️ 下游派生 (${forwardTargets.length})</span>
-                        </div>
-                    `;
-                    forwardTargets.forEach(tgtId => {
-                        const tgtEl = findAssetRow(tgtId);
-                        const meta = getItemMeta(tgtId);
-                        const isRendered = !!tgtEl;
+                // 智能去重清洗器：排除自身、合并抽象 ws_role 与具体角色、消除同 DOM 实体与相同标题重复
+                const sanitizeIds = (idList) => {
+                    if (!Array.isArray(idList)) return [];
+                    let list = idList.filter(id => !selfIdSet.has(id));
 
-                        const tgtTitle = isRendered ? (tgtEl.querySelector('.pb-asset-prop-name')?.textContent?.trim() || meta.title) : meta.title;
-                        const tgtTierCard = isRendered ? tgtEl.closest('.pb-asset-tier-card') : null;
-                        const tgtModule = tgtTierCard ? (tgtTierCard.querySelector('.pb-card-title')?.textContent?.trim() || meta.module) : meta.module;
+                    // 若列表中同时存在具体的 ws_role_xxx 与抽象 ws_role，直接剔除通用的 ws_role
+                    if (list.some(id => id.startsWith('ws_role_'))) {
+                        list = list.filter(id => id !== 'ws_role');
+                    }
 
-                        let statusBadgeHtml = '';
+                    const seenDom = new Set();
+                    const seenTitles = new Set();
+                    const result = [];
 
-                        if (isRendered) {
-                            const tgtStatusPill = tgtEl.querySelector('.pb-asset-status-pill')?.textContent?.trim() || '';
-                            const tgtStatusClass = tgtEl.classList.contains('status-disabled') ? 'status-disabled' : (tgtEl.classList.contains('status-warn') ? 'status-warn' : 'status-enabled');
-                            statusBadgeHtml = `<span class="pb-asset-status-pill ${tgtStatusClass}" style="font-size: 0.7rem; padding: 1px 7px;">${tgtStatusPill}</span>`;
-                        } else {
-                            statusBadgeHtml = `<span style="background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.68rem; padding: 1px 7px; border-radius: 3px; font-weight: 500;" title="${meta.unrenderedReason || '当前画板尚未加载该项资产'}">${meta.unrenderedBadge || '⚠️ 尚未加载'}</span>`;
+                    for (const id of list) {
+                        const el = findAssetRow(id);
+                        if (el) {
+                            if (el === activeRow) continue;
+                            const elRowId = el.getAttribute('data-row-id');
+                            const elAliasId = el.getAttribute('data-alias-id');
+                            if (selfIdSet.has(elRowId) || selfIdSet.has(elAliasId)) continue;
+                            if (seenDom.has(el)) continue;
                         }
 
-                        const explanation = this.getLinkExplanation(rowId, tgtId);
+                        const meta = getItemMeta(id);
+                        const title = el ? (el.querySelector('.pb-asset-prop-name')?.textContent?.trim() || meta.title) : meta.title;
+                        if (title && seenTitles.has(title)) continue;
 
-                        cardsHtml += `
-                            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 7px; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
-                                    <div style="display: flex; align-items: center; gap: 8px;">
-                                        <strong style="font-size: 0.88rem; color: var(--text-primary); letter-spacing: 0.2px;">${tgtTitle}</strong>
-                                        <span style="font-size: 0.7rem; color: var(--text-secondary); background: rgba(255, 255, 255, 0.04); padding: 1px 6px; border-radius: 3px;">${tgtModule}</span>
-                                    </div>
-                                    ${statusBadgeHtml}
-                                </div>
-                                <div style="font-size: 0.8rem; line-height: 1.55; color: var(--text-primary); opacity: 0.9;">
-                                    ${explanation.reason}
-                                </div>
-                                <div style="font-size: 0.73rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; line-height: 1.4; padding-top: 5px; border-top: 1px dashed rgba(255, 255, 255, 0.06); min-width: 0;">
-                                    <span style="font-weight: 500; color: #6ee7b7; flex-shrink: 0;">${explanation.isReasonable}</span>
-                                    <span style="opacity: 0.3; flex-shrink: 0;">·</span>
-                                    <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${explanation.tip}">${explanation.tip}</span>
-                                </div>
-                            </div>
-                        `;
-                    });
-                }
+                        if (el) seenDom.add(el);
+                        if (title) seenTitles.add(title);
+                        result.push(id);
+                    }
+                    return result;
+                };
 
-                // 2. 上游依赖卡片剖析
+                const reverseSources = sanitizeIds(rawReverse);
+                const forwardTargets = sanitizeIds(rawForward.filter(id => !reverseSources.includes(id)));
+                const totalLinked = reverseSources.length + forwardTargets.length;
+
+                // 构建 HTML 内容：上游在前，下游在后
+                let cardsHtml = '';
+
+                // 1. 上游前置依赖依据剖析 (优先置前展示)
                 if (reverseSources.length > 0) {
                     cardsHtml += `
-                        <div style="font-size: 0.76rem; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; margin-top: ${forwardTargets.length > 0 ? '8px' : '4px'}; letter-spacing: 0.3px;">
+                        <div style="font-size: 0.76rem; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; margin-top: 4px; letter-spacing: 0.3px;">
                             <span>⬆️ 上游依据 (${reverseSources.length})</span>
                         </div>
                     `;
@@ -7269,6 +7265,56 @@
                                     <div style="display: flex; align-items: center; gap: 8px;">
                                         <strong style="font-size: 0.88rem; color: var(--text-primary); letter-spacing: 0.2px;">${srcTitle}</strong>
                                         <span style="font-size: 0.7rem; color: var(--text-secondary); background: rgba(255, 255, 255, 0.04); padding: 1px 6px; border-radius: 3px;">${srcModule}</span>
+                                    </div>
+                                    ${statusBadgeHtml}
+                                </div>
+                                <div style="font-size: 0.8rem; line-height: 1.55; color: var(--text-primary); opacity: 0.9;">
+                                    ${explanation.reason}
+                                </div>
+                                <div style="font-size: 0.73rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; line-height: 1.4; padding-top: 5px; border-top: 1px dashed rgba(255, 255, 255, 0.06); min-width: 0;">
+                                    <span style="font-weight: 500; color: #6ee7b7; flex-shrink: 0;">${explanation.isReasonable}</span>
+                                    <span style="opacity: 0.3; flex-shrink: 0;">·</span>
+                                    <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${explanation.tip}">${explanation.tip}</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+
+                // 2. 下游派生卡片剖析 (置后展示)
+                if (forwardTargets.length > 0) {
+                    cardsHtml += `
+                        <div style="font-size: 0.76rem; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; margin-top: ${reverseSources.length > 0 ? '8px' : '4px'}; letter-spacing: 0.3px;">
+                            <span>⬇️ 下游派生 (${forwardTargets.length})</span>
+                        </div>
+                    `;
+                    forwardTargets.forEach(tgtId => {
+                        const tgtEl = findAssetRow(tgtId);
+                        const meta = getItemMeta(tgtId);
+                        const isRendered = !!tgtEl;
+
+                        const tgtTitle = isRendered ? (tgtEl.querySelector('.pb-asset-prop-name')?.textContent?.trim() || meta.title) : meta.title;
+                        const tgtTierCard = isRendered ? tgtEl.closest('.pb-asset-tier-card') : null;
+                        const tgtModule = tgtTierCard ? (tgtTierCard.querySelector('.pb-card-title')?.textContent?.trim() || meta.module) : meta.module;
+
+                        let statusBadgeHtml = '';
+
+                        if (isRendered) {
+                            const tgtStatusPill = tgtEl.querySelector('.pb-asset-status-pill')?.textContent?.trim() || '';
+                            const tgtStatusClass = tgtEl.classList.contains('status-disabled') ? 'status-disabled' : (tgtEl.classList.contains('status-warn') ? 'status-warn' : 'status-enabled');
+                            statusBadgeHtml = `<span class="pb-asset-status-pill ${tgtStatusClass}" style="font-size: 0.7rem; padding: 1px 7px;">${tgtStatusPill}</span>`;
+                        } else {
+                            statusBadgeHtml = `<span style="background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.68rem; padding: 1px 7px; border-radius: 3px; font-weight: 500;" title="${meta.unrenderedReason || '当前画板尚未加载该项资产'}">${meta.unrenderedBadge || '⚠️ 尚未加载'}</span>`;
+                        }
+
+                        const explanation = this.getLinkExplanation(rowId, tgtId);
+
+                        cardsHtml += `
+                            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 7px; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <strong style="font-size: 0.88rem; color: var(--text-primary); letter-spacing: 0.2px;">${tgtTitle}</strong>
+                                        <span style="font-size: 0.7rem; color: var(--text-secondary); background: rgba(255, 255, 255, 0.04); padding: 1px 6px; border-radius: 3px;">${tgtModule}</span>
                                     </div>
                                     ${statusBadgeHtml}
                                 </div>
@@ -7323,10 +7369,10 @@
                             </div>
                         </div>
 
-                        <!-- 联动统计速览 (单色克制) -->
+                        <!-- 联动统计速览 (单色克制：上游在先，下游在后) -->
                         <div style="display: flex; align-items: center; justify-content: space-between; padding: 4px 10px; background: rgba(255, 255, 255, 0.015); border-radius: 6px; font-size: 0.74rem; color: var(--text-secondary);">
                             <span>⚡ 关联 <strong style="color: var(--text-primary); font-size: 0.82rem;">${totalLinked}</strong> 项资产权限</span>
-                            <span>⬇️ 派生: <strong style="color: var(--text-primary);">${forwardTargets.length}</strong> · ⬆️ 依据: <strong style="color: var(--text-primary);">${reverseSources.length}</strong></span>
+                            <span>⬆️ 依据: <strong style="color: var(--text-primary);">${reverseSources.length}</strong> · ⬇️ 派生: <strong style="color: var(--text-primary);">${forwardTargets.length}</strong></span>
                         </div>
 
                         <!-- 关联因果卡片列表 -->
