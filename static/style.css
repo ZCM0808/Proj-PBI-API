@@ -8578,7 +8578,8 @@ body.light-theme .pb-flow-pill-text,
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
     transition: border-color 0.25s ease, box-shadow 0.25s ease;
     box-sizing: border-box;
-    user-select: none;
+    user-select: text;
+    -webkit-user-select: text;
     position: relative;
     overflow: hidden;
 }
@@ -8599,7 +8600,7 @@ body.light-theme .pb-asset-tier-card:hover,
     box-shadow: 0 4px 14px rgba(99, 102, 241, 0.12) !important;
 }
 
-/* 卡片固定头部 - 不允许移动大卡片 */
+/* 卡片固定头部 - 支持文本选中复制 */
 .pb-asset-tier-card .pb-card-header {
     padding: 8px 10px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -8607,7 +8608,8 @@ body.light-theme .pb-asset-tier-card:hover,
     display: flex;
     flex-direction: column;
     gap: 4px;
-    user-select: none;
+    user-select: text;
+    -webkit-user-select: text;
     cursor: default;
     flex-shrink: 0;
 }
@@ -8637,6 +8639,9 @@ body.light-theme .pb-asset-tier-card .pb-card-header,
     text-overflow: ellipsis;
     flex: 1 1 auto;
     min-width: 0;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    cursor: text;
 }
 .pb-card-sub {
     font-size: 0.68rem;
@@ -8646,6 +8651,9 @@ body.light-theme .pb-asset-tier-card .pb-card-header,
     overflow-wrap: break-word;
     white-space: normal;
     width: 100%;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    cursor: text;
 }
 
 /* 标题处非按钮化状态指示文本 (Status Indicator - Non-Button Design) */
@@ -8746,7 +8754,7 @@ body.light-theme .pb-card-header-status.status-bypassed .pb-status-indicator-tex
     border-radius: 4px;
 }
 
-/* 权限小卡片 (如“企业具体租户凭据”) - 支持在卡片内上下拖拽移动，物理零重叠 */
+/* 权限小卡片 (如“企业具体租户凭据”) - 支持文本选中复制，支持通过手柄上下拖拽排序 */
 .pb-asset-card-row {
     display: flex;
     flex-direction: column;
@@ -8756,9 +8764,10 @@ body.light-theme .pb-card-header-status.status-bypassed .pb-status-indicator-tex
     border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: 8px;
     transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease, opacity 0.25s ease, filter 0.25s ease;
-    cursor: grab;
+    cursor: default;
     position: relative;
-    user-select: none;
+    user-select: text;
+    -webkit-user-select: text;
     box-sizing: border-box;
 }
 .pb-asset-card-row:active {
@@ -9099,12 +9108,26 @@ body.light-theme .pb-asset-card-row:hover,
     color: var(--text-secondary);
     opacity: 0.45;
     cursor: grab;
+    user-select: none !important;
+    -webkit-user-select: none !important;
     flex-shrink: 0;
     transition: opacity 0.2s, color 0.2s;
 }
-.pb-asset-card-row:hover .pb-row-drag-handle {
+.pb-row-drag-handle svg,
+.pb-row-drag-handle svg * {
+    pointer-events: none;
+}
+.pb-asset-card-row:hover .pb-row-drag-handle,
+.pb-row-drag-handle:hover {
     opacity: 0.9;
     color: var(--accent);
+}
+.pb-row-drag-handle:active {
+    cursor: grabbing !important;
+}
+body.pb-is-dragging-card,
+body.pb-is-dragging-card * {
+    cursor: grabbing !important;
 }
 .pb-asset-prop-name {
     display: flex;
@@ -9114,6 +9137,9 @@ body.light-theme .pb-asset-card-row:hover,
     line-height: 1.3;
     min-width: 0;
     flex: 1 1 auto;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    cursor: text;
 }
 
 /* 主权限/操作名称 (英文官方全称) */
@@ -9124,6 +9150,9 @@ body.light-theme .pb-asset-card-row:hover,
     line-height: 1.25;
     word-break: normal;
     overflow-wrap: break-word;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    cursor: text;
 }
 
 /* 独立换行的中文解释说明 (小字号、温和副色调) */
@@ -9134,6 +9163,9 @@ body.light-theme .pb-asset-card-row:hover,
     line-height: 1.2;
     margin-top: 2px;
     letter-spacing: 0.2px;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    cursor: text;
     opacity: 0.88;
 }
 
@@ -9215,13 +9247,16 @@ body.light-theme .pb-asset-status-pill.status-bypassed,
     border-color: #e9d5ff !important;
 }
 
-/* 小卡片第二行：说明文字 + 标签 (纵向排列，说明文字占满整宽，绝不生硬截断) */
+/* 小卡片第二行：说明文字 + 标签 (纵向排列，说明文字占满整宽，支持选中复制) */
 .pb-asset-row-bottom {
     display: flex;
     flex-direction: column;
     gap: 3px;
     min-width: 0;
     width: 100%;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    cursor: text;
 }
 .pb-asset-prop-desc {
     font-size: 0.70rem;
@@ -9230,6 +9265,9 @@ body.light-theme .pb-asset-status-pill.status-bypassed,
     word-break: break-word;
     white-space: normal;
     width: 100%;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    cursor: text;
 }
 .pb-asset-tag-pill {
     font-size: 0.58rem;
@@ -9241,6 +9279,9 @@ body.light-theme .pb-asset-status-pill.status-bypassed,
     font-family: monospace;
     white-space: nowrap;
     align-self: flex-start;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    cursor: text;
 }
 body.light-theme .pb-asset-tag-pill,
 [data-theme="light"] .pb-asset-tag-pill {
@@ -9352,26 +9393,18 @@ body.light-theme .pb-desc-tag.tag-ok,
     box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.4), 0 0 18px rgba(245, 158, 11, 0.45), 0 2px 10px rgba(0, 0, 0, 0.3) !important;
 }
 
-/* 2. 因果高亮：被动连带点亮的下游目标卡片 (Target Derivative) */
-@keyframes pbCausalityPulse {
-    0%, 100% {
-        box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.28), 0 0 8px rgba(56, 189, 248, 0.32), 0 2px 6px rgba(0, 0, 0, 0.2);
-    }
-    50% {
-        box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.48), 0 0 18px rgba(56, 189, 248, 0.58), 0 3px 12px rgba(56, 189, 248, 0.25);
-    }
-}
+/* 2. 因果高亮：被动连带点亮的下游目标卡片 (Target Derivative) - 静态清晰高亮，杜绝呼吸频闪 */
 .pb-asset-card-row.pb-causality-target,
 .pb-asset-card-row.is-hero-role.pb-causality-target {
-    border-color: rgba(56, 189, 248, 0.28) !important;
-    border-top-color: rgba(56, 189, 248, 0.28) !important;
-    border-right-color: rgba(56, 189, 248, 0.28) !important;
-    border-bottom-color: rgba(56, 189, 248, 0.28) !important;
-    background: rgba(56, 189, 248, 0.12) !important;
-    animation: pbCausalityPulse 2s infinite ease-in-out;
+    border-color: rgba(56, 189, 248, 0.35) !important;
+    border-top-color: rgba(56, 189, 248, 0.35) !important;
+    border-right-color: rgba(56, 189, 248, 0.35) !important;
+    border-bottom-color: rgba(56, 189, 248, 0.35) !important;
+    background: rgba(56, 189, 248, 0.14) !important;
+    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.35), 0 0 12px rgba(56, 189, 248, 0.32), 0 2px 6px rgba(0, 0, 0, 0.2) !important;
     transform: translateY(-1px);
     z-index: 4;
-    transition: all 0.25s ease-out !important;
+    transition: all 0.2s ease-out !important;
 }
 
 /* 强制左边框坚守图例色彩，绝不被任何因果或激活状态覆盖 */
@@ -9568,7 +9601,8 @@ body.light-theme .btn-wf-sm.active-filter,
     min-width: 0 !important;
     display: flex !important;
     align-items: center !important;
-    justify-content: space-between !important;
+    justify-content: flex-start !important;
+    gap: 8px !important;
     overflow-x: auto !important;
     scrollbar-width: none !important;
     -ms-overflow-style: none !important;
@@ -9686,6 +9720,13 @@ body.light-theme .laya-toggle-slider,
 [data-theme="light"] .laya-toggle-slider {
     background-color: #e2e8f0;
     border-color: #cbd5e1;
+}
+
+/* 用户全景权限链路顶部状态徽章 - 支持文本选中复制 */
+#pb-top-simulated-badge {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    cursor: text;
 }
 body.light-theme .laya-toggle-slider:before,
 [data-theme="light"] .laya-toggle-slider:before {

@@ -89,11 +89,13 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
     await explainBtn.click();
     await expect(modal).toBeVisible();
     await expect(modal).toContainText('当前解析主体');
-    await expect(modal).toContainText('为什么会有链接？');
-    await expect(modal).toContainText('架构是否合理？');
+    await expect(modal).not.toContainText('为什么会有链接？');
+    await expect(modal).not.toContainText('架构是否合理？');
 
-    // Verify relationship targets exist
-    await expect(modal).toContainText('派生能力');
+    // Verify relationship targets exist without redundant badge words
+    await expect(modal).toContainText('下游派生');
+    await expect(modal).not.toContainText('前置依据');
+    await expect(modal).not.toContainText('派生能力');
 
     // Close modal
     await closeBtn.click();

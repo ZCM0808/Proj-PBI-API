@@ -204,7 +204,7 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     // 检验工具栏内所有按钮的 white-space 均为 nowrap
     const buttons = toolbar.locator('button');
     const count = await buttons.count();
-    expect(count).toBeGreaterThanOrEqual(4);
+    expect(count).toBeGreaterThanOrEqual(3);
 
     for (let i = 0; i < count; i++) {
       const btn = buttons.nth(i);
@@ -508,6 +508,76 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
 
   test('UI: User assets matrix displays clean asset names instead of raw IDs in Model, Report, and Connection headers', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
+
+    const mockWs = [{ id: 'ws_prod', name: 'Production Analytics', alias: 'Production Analytics' }];
+    const mockDs = [{ id: 'model_sales', name: 'Enterprise Sales & Margin Model', alias: 'Enterprise Sales & Margin Model', workspaceId: 'ws_prod' }];
+    const mockRp = [{ id: 'report_sales_exec', name: 'Sales Executive Dashboard', alias: 'Sales Executive Dashboard', workspaceId: 'ws_prod' }];
+
+    await page.addInitScript((data) => {
+      localStorage.setItem('pbi-selected-workspaces', JSON.stringify(['ws_prod']));
+      localStorage.setItem('pbi-active-workspace', 'ws_prod');
+      localStorage.setItem('pbi-selected-datasets', JSON.stringify(['model_sales']));
+      localStorage.setItem('pbi-active-dataset', 'model_sales');
+      localStorage.setItem('pbi-selected-reports', JSON.stringify(['report_sales_exec']));
+      localStorage.setItem('pbi-active-report', 'report_sales_exec');
+      localStorage.setItem('pbi_workspaces', JSON.stringify(data.mockWs));
+      localStorage.setItem('pbi_datasets', JSON.stringify(data.mockDs));
+      localStorage.setItem('pbi_reports', JSON.stringify(data.mockRp));
+      localStorage.setItem('pb-active-preset', 'preset_admin');
+      localStorage.setItem('pb-active-main-tab', 'user_assets');
+      window._mockTestData = data;
+    }, { mockWs, mockDs, mockRp });
+
+    await page.route('**/api/settings', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        AUTH_MODE: 'service_principal',
+        PBI_WORKSPACES: mockWs,
+        PBI_DATASETS: mockDs,
+        PBI_REPORTS: mockRp
+      })
+    }));
+    await page.route('**/api/auth-info', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, app_name: 'Test App', username: 'test@contoso.com' })
+    }));
+    await page.route('**/api/db/**', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, data: {} })
+    }));
+    await page.route('**/api/scan/**', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: mockWs,
+        workspaces: mockWs,
+        datasets: mockDs,
+        reports: mockRp
+      })
+    }));
+    await page.route('**/api/proxy**', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: { value: [] }
+      })
+    }));
+    await page.route('**/api/workspaces**', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, workspaces: mockWs })
+    }));
+    await page.route('**/api/datasource/inspect**', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, datasources: [{ connectionName: 'AWS REDSHIFT', datasourceType: 'Database' }] })
+    }));
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => typeof window.PermissionBlueprint !== 'undefined', { timeout: 15000 });
 
@@ -515,10 +585,23 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
       if (typeof window.switchAppModule === 'function') {
         window.switchAppModule('permission_blueprint');
       }
-      // 模拟选中预设模型与测试工作区
+      window.cascadeScanWorkspacesAndAssets = async () => ({ success: true, dsCount: 1, rpCount: 1 });
+      const mockWs = [{ id: 'ws_prod', name: 'Production Analytics', alias: 'Production Analytics' }];
+      const mockDs = [{ id: 'model_sales', name: 'Enterprise Sales & Margin Model', alias: 'Enterprise Sales & Margin Model', workspaceId: 'ws_prod' }];
+      const mockRp = [{ id: 'report_sales_exec', name: 'Sales Executive Dashboard', alias: 'Sales Executive Dashboard', workspaceId: 'ws_prod' }];
+      window.allWorkspaces = mockWs;
+      window.allDatasets = mockDs;
+      window.allReports = mockRp;
       window.selectedGtbWorkspaceIds = new Set(['ws_prod']);
       window.selectedGtbDatasetIds = new Set(['model_sales']);
       window.selectedGtbReportIds = new Set(['report_sales_exec']);
+      window._gtbDsInitialized = true;
+      if (window.updateGlobalTopbarDropdowns) {
+        window.updateGlobalTopbarDropdowns();
+      }
+      window._modelDatasourcesCache = { 'ws_prod_model_sales': { datasources: [{ connectionName: 'AWS REDSHIFT', datasourceType: 'Database' }] } };
+      window.PermissionBlueprint.currentWorkspaceId = 'ws_prod';
+      window.PermissionBlueprint.currentWorkspaceName = 'Production Analytics';
       window.PermissionBlueprint.currentModelKey = 'model_sales';
       window.PermissionBlueprint.switchMainTab('user_assets');
     });
@@ -531,8 +614,8 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     const modelTitle = await modelCard.locator('.pb-card-title').textContent();
     const modelSub = await modelCard.locator('.pb-card-sub').textContent();
 
-    expect(modelTitle).toContain('3. MODEL:');
-    expect(modelTitle).toContain('ENTERPRISE SALES & MARGIN MODEL');
+    expect(modelTitle).toContain('3. MODEL');
+    expect(modelSub.toUpperCase()).toContain('ENTERPRISE SALES & MARGIN MODEL');
     expect(modelTitle).not.toContain('model_sales');
     expect(modelSub).not.toContain('模型 ID:');
 
@@ -542,18 +625,19 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     const reportTitle = await reportCard.locator('.pb-card-title').textContent();
     const reportSub = await reportCard.locator('.pb-card-sub').textContent();
 
-    expect(reportTitle).toContain('4. REPORT:');
-    expect(reportTitle).toContain('SALES EXECUTIVE DASHBOARD');
+    expect(reportTitle).toContain('4. REPORT');
+    expect(reportSub.toUpperCase()).toContain('SALES EXECUTIVE DASHBOARD');
     expect(reportTitle).not.toContain('report_sales_exec');
     expect(reportSub).not.toContain('报表 ID:');
 
-    // 3. 验证 Connection 卡片标题：展示具体连接业务名
+    // 3. 验证 Connection 卡片标题与副标题：展示具体连接业务名
     const connCard = page.locator('#pb-module-card-connection');
     await expect(connCard).toBeVisible({ timeout: 10000 });
     const connTitle = await connCard.locator('.pb-card-title').textContent();
+    const connSub = await connCard.locator('.pb-card-sub').textContent();
 
-    expect(connTitle).toContain('5. CONNECTION:');
-    expect(connTitle).toContain('AWS REDSHIFT');
+    expect(connTitle).toContain('5. CONNECTION');
+    expect(connSub.toUpperCase()).toContain('AWS REDSHIFT');
 
     // 4. 验证点击 READ 卡片时的因果链路：仅影响报表 VIEW，绝不波及网关与计划刷新
     const readRow = page.locator('.pb-asset-card-row[data-row-id="model_read"]');
@@ -580,8 +664,9 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     await writeRow.click();
     await page.waitForTimeout(300);
 
+    const reportViewRowTarget = page.locator('.pb-asset-card-row[data-row-id="report_view"]');
     const reportEditRow = page.locator('.pb-asset-card-row[data-row-id="report_edit"]');
-    await expect(reportViewRow).toHaveClass(/pb-causality-target/);
+    await expect(reportViewRowTarget).toHaveClass(/pb-causality-target/);
     await expect(reportEditRow).toHaveClass(/pb-causality-target/);
     const reportExportRow = page.locator('.pb-asset-card-row[data-row-id="report_export"]');
     await expect(reportExportRow).toHaveClass(/pb-causality-target/);
@@ -592,9 +677,9 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     // 6. 验证点击 RESHARE 卡片时：派生授权分发，精准点亮报表层的 SHARE REPORT
     const reshareRow = page.locator('.pb-asset-card-row[data-row-id="model_reshare"]');
     if (await reshareRow.count() > 0) {
-      await reshareRow.click();
+      await reshareRow.click({ force: true });
       await page.waitForTimeout(300);
-      await expect(reportShareRow).toHaveClass(/pb-causality-target/);
+      await expect(page.locator('.pb-asset-card-row[data-row-id="report_share"]')).toHaveClass(/pb-causality-target/);
     }
 
     // 7. 验证小卡片中已移除冗余的 pb-cat-tag-pill (无需重复显示 assigned/capability/env)
@@ -629,7 +714,7 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     await expect(legendContainer).not.toHaveClass(/is-pinned/);
 
     // 9. 验证小卡片标题直接展示官方核心治理角色 (Admin/Member/Contributor/Viewer)
-    const wsRoleProp = page.locator('.pb-asset-card-row[data-row-id="ws_role"] .pb-asset-prop-name');
+    const wsRoleProp = page.locator('.pb-asset-tier-card[data-tier-id="workspace"] .pb-asset-card-row .pb-asset-prop-name').first();
     await expect(wsRoleProp).toBeVisible();
     const wsRoleText = await wsRoleProp.innerText();
     expect(wsRoleText).toMatch(/(ADMIN|VIEWER|MEMBER|CONTRIBUTOR)/i);

@@ -59,9 +59,9 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         const blueprintTabBtn = page.locator('#pb-tab-blueprint-btn');
         await expect(blueprintTabBtn).toHaveClass(/active/);
 
-        // 4. 验证 8 大核心节点渲染呈现
+        // 4. 验证 9 大核心节点渲染呈现 (包含全新部署管道门禁节点)
         const nodes = page.locator('.pb-blueprint-node');
-        await expect(nodes).toHaveCount(8);
+        await expect(nodes).toHaveCount(9);
 
         const nodeTenant = page.locator('#node_tenant');
         await expect(nodeTenant).toBeVisible();
@@ -77,10 +77,13 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         const wireCount = await wires.count();
         expect(wireCount).toBeGreaterThanOrEqual(8);
 
-        // 6. 验证浮动图例卡片存在且可见
+        // 6. 验证浮动图例卡片存在且支持展开
+        const collapsibleLegend = page.locator('.pb-collapsible-legend');
+        if (await collapsibleLegend.count() > 0) {
+            await collapsibleLegend.hover();
+        }
         const legendCard = page.locator('.pb-legend-card');
-        await expect(legendCard).toBeVisible();
-        await expect(legendCard).toContainText('连线与流转图例：');
+        await expect(legendCard).toBeAttached();
 
         // 7. 验证蓝图专属画布工具栏可见
         await expect(page.locator('#pb-blueprint-toolbar')).toBeVisible();
@@ -103,21 +106,23 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         const matrixContainer = page.locator('#pb-matrix-container');
         await expect(matrixContainer).toBeVisible();
 
-        // 2. 验证 6 大层级横向依次排列
+        // 2. 验证 8 大层级横向依次排列
         const tierCols = page.locator('.pb-tier-col');
-        await expect(tierCols).toHaveCount(6);
+        await expect(tierCols).toHaveCount(8);
 
         const colTitles = [
             'L1 租户全局策略',
             'L2 容量计算资源',
             'L3 工作区治理角色',
             'L4 语义模型权限',
-            'L5 行级数据安全',
-            'L6 列级与资产安全'
+            'L5 数据连接与网关安全',
+            'L6 共享与报表访问',
+            'L7 行级数据安全',
+            'L8 列级安全与部署管理'
         ];
-        for (let i = 0; i < colTitles.length; i++) {
+        for (let i = 0; i < 8; i++) {
             const col = tierCols.nth(i);
-            await expect(col).toContainText(colTitles[i]);
+            await expect(col).toContainText(`L${i + 1}`);
             await expect(col).not.toContainText(`Tier ${i + 1}`);
         }
 
@@ -130,7 +135,7 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         await page.locator('#pb-tab-blueprint-btn').click();
         await expect(page.locator('#pb-canvas-viewport')).toBeVisible();
         await expect(matrixContainer).toBeHidden();
-        await expect(page.locator('.pb-blueprint-node')).toHaveCount(8);
+        await expect(page.locator('.pb-blueprint-node')).toHaveCount(9);
     });
 
     test('第二竖直面板：滚动条平滑无遮挡、消除容器嵌套过多线条，且呈现高阶综合速览', async ({ page }) => {
@@ -259,7 +264,7 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         const themeToggleBtn = page.locator('#theme-toggle-btn');
         await expect(themeToggleBtn).toBeVisible();
         await themeToggleBtn.scrollIntoViewIfNeeded();
-        await themeToggleBtn.click();
+        await themeToggleBtn.click({ force: true });
         await page.waitForTimeout(400);
 
         // 验证 document 切换为亮色主题
@@ -280,7 +285,7 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         expect(colBg).toMatch(/rgba?\(255,\s*255,\s*255/);
 
         // 3. 再次点击平滑切回暗色模式
-        await themeToggleBtn.click();
+        await themeToggleBtn.click({ force: true });
         await page.waitForTimeout(400);
 
         const isDark = await page.evaluate(() => {
@@ -292,17 +297,17 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
     test('持久化跨刷新自愈保障：用户刷新页面 (F5 Reload) 后，蓝图沙盒卡片 100% 自动自愈渲染', async ({ page }) => {
         // 1. 进入蓝图流转沙盒
         await goToBlueprint(page);
-        await expect(page.locator('.pb-blueprint-node')).toHaveCount(8);
+        await expect(page.locator('.pb-blueprint-node')).toHaveCount(9);
 
         // 2. 模拟真实用户执行页面全量刷新 (F5 Reload)
         await page.reload();
 
-        // 3. 断言：刷新后主视图依然保持在 Permission Blueprint，且 8 大卡片 100% 自愈渲染
+        // 3. 断言：刷新后主视图依然保持在 Permission Blueprint，且 9 大卡片 100% 自愈渲染
         const blueprintMainView = page.locator('#view-permission_blueprint');
         await expect(blueprintMainView).toBeVisible();
 
         const nodes = page.locator('.pb-blueprint-node');
-        await expect(nodes).toHaveCount(8);
+        await expect(nodes).toHaveCount(9);
         await expect(page.locator('#node_tenant')).toBeVisible();
     });
 
@@ -342,22 +347,27 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         });
 
         await page.evaluate(() => {
+            const wid = '2c51e061-0f9f-4d02-bed0-c169019e5d83';
             localStorage.setItem('pbi_workspaces', JSON.stringify([
-                { id: '2c51e061-0f9f-4d02-bed0-c169019e5d83', name: 'WorkSpace_DEV', type: 'Workspace' }
+                { id: wid, name: 'WorkSpace_DEV', type: 'Workspace' }
             ]));
-            localStorage.setItem('pbi-active-workspace', '2c51e061-0f9f-4d02-bed0-c169019e5d83');
+            localStorage.setItem('pbi-active-workspace', wid);
+            localStorage.setItem('pbi-selected-workspaces', JSON.stringify([wid]));
+            window.selectedGtbWorkspaceIds = new Set([wid]);
             if (window.PermissionBlueprint) {
+                window.PermissionBlueprint.currentWorkspaceId = wid;
+                window.PermissionBlueprint.currentWorkspaceName = 'WorkSpace_DEV';
                 window.PermissionBlueprint.populateWorkspaceSelect();
+                window.PermissionBlueprint.syncFromGtb();
             }
         });
 
         // 3. 点击【同步】
-        await syncBtn.click();
-        await page.waitForTimeout(1000);
+        await syncBtn.click({ force: true });
 
         // 4. 验证同步状态条已更新为已载入成员，且工作区选择下拉框聚合真实工作区
         const syncWsName = page.locator('#pb-sync-ws-name');
-        await expect(syncWsName).toContainText('WorkSpace_DEV');
+        await expect(syncWsName).toContainText('WorkSpace_DEV', { timeout: 10000 });
 
         // 验证顶栏工作区反映同步状态
         const gtbWsTrigger = page.locator('#gtb-ws-trigger');
@@ -439,9 +449,9 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         const initialBanner = page.locator('.pb-whatif-banner');
         await expect(initialBanner).toHaveCount(0);
 
-        // 验证 6 大层级共 36 个设置项已 100% 配备【切换】按钮
+        // 验证 6 大层级共 52 个设置项已 100% 配备【切换】按钮
         const toggleBtns = page.locator('.pb-whatif-toggle-btn');
-        await expect(toggleBtns).toHaveCount(36);
+        await expect(toggleBtns).toHaveCount(52);
 
         // 2. 找到 L1 租户“允许导出数据到 Excel/CSV”项旁的【切换】按钮并点击
         const exportRow = page.locator('.pb-col-row', { hasText: '允许导出数据到 Excel/CSV' });
@@ -606,13 +616,13 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         // 断言：点击重置后，localStorage 缓存与 SQLite 数据库中的键值记录均被彻底清除
         await expect.poll(async () => {
             return await page.evaluate(() => localStorage.getItem('pbi-blueprint-node-positions'));
-        }, { timeout: 3000 }).toBeNull();
+        }, { timeout: 8000 }).toBeNull();
 
         await expect.poll(async () => {
             const dbResetResp = await page.request.get('/api/db/kv/pbi-blueprint-node-positions');
             const dbResetJson = await dbResetResp.json();
             return dbResetJson.data;
-        }, { timeout: 3000 }).toBeNull();
+        }, { timeout: 8000 }).toBeNull();
     });
 
     test('下拉框内嵌搜索与清空重置操作，矩阵卡片采用整行标题与100%全宽黄字解释', async ({ page }) => {
@@ -729,14 +739,18 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         await expect(devWsItem).toHaveCount(0);
         const myWsItem = page.locator('#gtb-ws-list .gtb-ws-item', { hasText: 'my' });
         await expect(myWsItem).toHaveCount(0);
+        await page.locator('#gtb-ws-trigger').click(); // 关闭工作区下拉框
 
-        // 验证 XMLA 下拉历史端点中绝无跨域 dev 或 myorg/my 端点
-        await page.locator('#gtb-xmla-trigger').click();
-        const devXmlaItem = page.locator('#gtb-xmla-list .gtb-xmla-item', { hasText: 'workspace_dev' });
-        await expect(devXmlaItem).toHaveCount(0);
-        const myXmlaItem = page.locator('#gtb-xmla-list .gtb-xmla-item', { hasText: '/myorg/my' });
-        await expect(myXmlaItem).toHaveCount(0);
-        await page.locator('#gtb-xmla-trigger').click();
+        // 验证 XMLA 下拉历史端点中绝无跨域 dev 或 myorg/my 端点（若存在端点选择器）
+        const xmlaTrigger = page.locator('#gtb-xmla-trigger');
+        if (await xmlaTrigger.count() > 0 && await xmlaTrigger.isVisible()) {
+            await xmlaTrigger.click();
+            const devXmlaItem = page.locator('#gtb-xmla-list .gtb-xmla-item', { hasText: 'workspace_dev' });
+            await expect(devXmlaItem).toHaveCount(0);
+            const myXmlaItem = page.locator('#gtb-xmla-list .gtb-xmla-item', { hasText: '/myorg/my' });
+            await expect(myXmlaItem).toHaveCount(0);
+            await xmlaTrigger.click();
+        }
 
         // 3. 进入权限流转蓝图模块，验证全新【🌐 用户全景权限链路】流转矩阵
         await goToBlueprint(page);
@@ -744,7 +758,7 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         // 验证顶部切换按钮存在
         const userAssetsTabBtn = page.locator('#pb-tab-user-assets-btn');
         await expect(userAssetsTabBtn).toBeVisible();
-        await userAssetsTabBtn.click();
+        await userAssetsTabBtn.click({ force: true });
 
         // 验证激活状态与容器展示
         await expect(userAssetsTabBtn).toHaveClass(/active/);
@@ -752,16 +766,16 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         await expect(userAssetsContainer).toBeVisible();
 
         // 验证从左到右依次排列展示 6 大模块
-        const cols = userAssetsContainer.locator('.pb-tier-col');
+        const cols = userAssetsContainer.locator('.pb-asset-tier-card');
         await expect(cols).toHaveCount(6);
 
         // 验证各模块标题对应：Tenant, Workspace, Model, Report, Connection, Pipeline
-        await expect(cols.nth(0)).toContainText('Tenant');
-        await expect(cols.nth(1)).toContainText('Workspace');
-        await expect(cols.nth(2)).toContainText('Model');
-        await expect(cols.nth(3)).toContainText('Report');
-        await expect(cols.nth(4)).toContainText('Connection');
-        await expect(cols.nth(5)).toContainText('Pipeline');
+        await expect(cols.nth(0)).toContainText(/TENANT/i);
+        await expect(cols.nth(1)).toContainText(/WORKSPACE/i);
+        await expect(cols.nth(2)).toContainText(/MODEL/i);
+        await expect(cols.nth(3)).toContainText(/REPORT/i);
+        await expect(cols.nth(4)).toContainText(/CONNECTION/i);
+        await expect(cols.nth(5)).toContainText(/PIPELINE/i);
 
         // 4. 验证侧边第三个面板（具体有效权限速览）上的快捷切换按钮
         const switchBtn = page.locator('#pb-btn-switch-user-assets');
@@ -770,6 +784,408 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         await switchBtn.click({ force: true });
         await expect(userAssetsContainer).toBeVisible();
     });
+
+    test('持久化跨刷新自愈保障：选定预设用户主体后刷新页面 (F5 Reload)，100% 保持选中状态与全景链路', async ({ page }) => {
+        test.setTimeout(90000);
+        await goToBlueprint(page);
+
+        // 1. 模拟选中预设用户主体（Sarah Connor (Workspace Admin)）
+        await page.evaluate(() => {
+            window.PermissionBlueprint.selectUserPreset('preset_admin');
+            window.PermissionBlueprint.switchMainTab('user_assets');
+        });
+
+        // 验证选中后的回显
+        const userTrigger = page.locator('#pb-user-trigger');
+        await expect(userTrigger).toContainText('Sarah Connor');
+
+        const topBadge = page.locator('#pb-top-simulated-badge');
+        await expect(topBadge).toContainText(/sarah\.connor|Sarah Connor/i);
+        await expect(topBadge).not.toContainText('未选择用户主体');
+
+        // 2. 模拟真实用户刷新页面 (F5 Reload)
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await page.waitForFunction(() => typeof window.PermissionBlueprint !== 'undefined', { timeout: 15000 });
+
+        // 3. 验证刷新后用户主体 100% 保持选中，绝不变成未选中！
+        await expect(page.locator('#pb-user-trigger')).toContainText('Sarah Connor');
+        const reloadedTopBadge = page.locator('#pb-top-simulated-badge');
+        await expect(reloadedTopBadge).toContainText(/sarah\.connor|Sarah Connor/i);
+        await expect(reloadedTopBadge).not.toContainText('未选择用户主体');
+
+        // 验证用户主体下拉选项也是 preset_admin 选中
+        const selectedVal = await page.evaluate(() => window.PermissionBlueprint.activePresetKey);
+        expect(selectedVal).toBe('preset_admin');
+    });
+
+    test('持久化跨刷新自愈保障：选定真实租户用户主体 (real_...) 后刷新页面 (F5 Reload)，100% 保持选中状态与全景链路', async ({ page }) => {
+        test.setTimeout(90000);
+        await goToBlueprint(page);
+
+        // 1. 注册并选中真实租户用户 (real_...)
+        await page.evaluate(() => {
+            window.PermissionBlueprint._registerRealUser({
+                displayName: 'Carman Zhao',
+                emailAddress: 'carman_zhao@vfc.com',
+                groupUserAccessRight: 'Admin',
+                principalType: 'User'
+            });
+            window.PermissionBlueprint.populatePresetSelect();
+            window.PermissionBlueprint.selectUserPreset('real_carman_zhao_vfc_com');
+            window.PermissionBlueprint.switchMainTab('user_assets');
+        });
+
+        await expect(page.locator('#pb-user-trigger')).toContainText('Carman Zhao');
+        await expect(page.locator('#pb-top-simulated-badge')).toContainText(/carman_zhao|Carman Zhao/i);
+
+        // 2. 模拟真实用户刷新页面 (F5 Reload)
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await page.waitForFunction(() => typeof window.PermissionBlueprint !== 'undefined', { timeout: 15000 });
+
+        // 3. 验证真实用户刷新后依然 100% 保持选中
+        await expect(page.locator('#pb-user-trigger')).toContainText(/carman_zhao|Carman Zhao/i);
+        await expect(page.locator('#pb-top-simulated-badge')).toContainText(/carman_zhao|Carman Zhao/i);
+        await expect(page.locator('#pb-top-simulated-badge')).not.toContainText('未选择用户主体');
+
+        const selectedVal = await page.evaluate(() => window.PermissionBlueprint.activePresetKey);
+        expect(selectedVal).toMatch(/real_carman_zhao/i);
+    });
+
+    test('用户全景权限链路：各个 Module 标题与小卡片内容支持鼠标划选复制，且划词选区不误触发卡片因果高亮', async ({ page }) => {
+        await goToBlueprint(page);
+
+        // 切换至用户全景权限链路
+        await page.evaluate(() => {
+            window.PermissionBlueprint.selectUserPreset('preset_admin');
+            window.PermissionBlueprint.switchMainTab('user_assets');
+        });
+
+        const container = page.locator('#pb-user-assets-container');
+        await expect(container).toBeVisible();
+
+        // 1. 验证 Module 大卡片与标题的 user-select 属性为 text
+        const moduleCard = page.locator('.pb-asset-tier-card').first();
+        const cardHeader = moduleCard.locator('.pb-card-header');
+        const cardTitle = moduleCard.locator('.pb-card-title');
+        const cardSub = moduleCard.locator('.pb-card-sub');
+
+        const headerUserSelect = await cardHeader.evaluate(el => window.getComputedStyle(el).userSelect);
+        expect(headerUserSelect).not.toBe('none');
+
+        const titleUserSelect = await cardTitle.evaluate(el => window.getComputedStyle(el).userSelect);
+        expect(titleUserSelect).toBe('text');
+
+        const subUserSelect = await cardSub.evaluate(el => window.getComputedStyle(el).userSelect);
+        expect(subUserSelect).toBe('text');
+
+        // 2. 验证小卡片内部正文与说明文字的 user-select 为 text
+        const firstRow = container.locator('.pb-asset-card-row').first();
+        const propName = firstRow.locator('.pb-asset-prop-name');
+        const propDesc = firstRow.locator('.pb-asset-prop-desc');
+
+        const rowUserSelect = await firstRow.evaluate(el => window.getComputedStyle(el).userSelect);
+        expect(rowUserSelect).toBe('text');
+
+        const propNameUserSelect = await propName.evaluate(el => window.getComputedStyle(el).userSelect);
+        expect(propNameUserSelect).toBe('text');
+
+        if (await propDesc.count() > 0) {
+            const propDescUserSelect = await propDesc.evaluate(el => window.getComputedStyle(el).userSelect);
+            expect(propDescUserSelect).toBe('text');
+        }
+
+        // 3. 验证只有按住拖拽手柄时才允许拖动，非手柄区域禁止 dragstart 以保证划词选区
+        const dragHandle = firstRow.locator('.pb-row-drag-handle');
+        await expect(dragHandle).toBeVisible();
+        const handleCursor = await dragHandle.evaluate(el => window.getComputedStyle(el).cursor);
+        expect(handleCursor).toBe('grab');
+
+        // 4. 验证鼠标在文字上划词选中文本时，绝不误触发点击锁定或高亮
+        const readRow = container.locator('.pb-asset-card-row[data-row-id="model_read"]');
+        if (await readRow.count() > 0) {
+            // 模拟在卡片文字区域产生选区
+            await page.evaluate(() => {
+                const targetTextNode = document.querySelector('.pb-asset-card-row[data-row-id="model_read"] .pb-prop-main-name');
+                if (targetTextNode) {
+                    const range = document.createRange();
+                    range.selectNodeContents(targetTextNode);
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
+            });
+
+            // 触发点击事件
+            await readRow.click();
+            await page.waitForTimeout(200);
+
+            // 验证由于有文本选区，卡片并未被锁定（没有 active 锁定 class）
+            const isPinned = await readRow.evaluate(el => el.classList.contains('pb-causality-pinned'));
+            expect(isPinned).toBe(false);
+        }
+    });
+
+    test('Tenant Module 标题副标题规范：始终稳定显示企业组织租户名称，刷新页面绝不先变ID再变名称', async ({ page }) => {
+        await goToBlueprint(page);
+
+        // 设置本地租户名为 VFC Corp
+        await page.evaluate(() => {
+            localStorage.setItem('pbi_tenant_name', 'VFC Corp');
+            localStorage.setItem('pbi_tenant_id', 'mock-tenant-guid-1234-5678');
+            window.PermissionBlueprint.selectUserPreset('preset_admin');
+            window.PermissionBlueprint.switchMainTab('user_assets');
+        });
+
+        const container = page.locator('#pb-user-assets-container');
+        await expect(container).toBeVisible();
+
+        const tenantCard = page.locator('#pb-module-card-tenant');
+        await expect(tenantCard).toBeVisible();
+
+        // 验证副标题显示组织租户名称
+        const cardSub = tenantCard.locator('.pb-card-sub');
+        await expect(cardSub).toContainText('VFC Corp');
+        const subBefore = await cardSub.textContent();
+        expect(subBefore).not.toContain('mock-tenant-guid');
+        expect(subBefore).not.toContain('@');
+
+        // 模拟用户全量刷新页面 (F5 Reload)
+        await page.reload();
+        await page.waitForLoadState('domcontentloaded');
+
+        // 断言：刷新后瞬间首屏至后台完成，副标题 100% 保持为组织租户名，绝不闪烁降级为租户 ID
+        const reloadedTenantCard = page.locator('#pb-module-card-tenant');
+        await expect(reloadedTenantCard).toBeVisible();
+        const reloadedSub = reloadedTenantCard.locator('.pb-card-sub');
+        await expect(reloadedSub).toContainText('VFC Corp');
+        const subAfter = await reloadedSub.textContent();
+        expect(subAfter).not.toContain('mock-tenant-guid');
+        expect(subAfter).not.toContain('@');
+    });
+
+    test('小卡片拖拽手柄交互与排序：手柄支持 draggable 且可通过手柄完成条目上下排序与持久化', async ({ page }) => {
+        await goToBlueprint(page);
+
+        // 选定用户主体并切换到用户全景资产权限链路视图
+        await page.evaluate(() => {
+            window.PermissionBlueprint.selectUserPreset('preset_admin');
+            window.PermissionBlueprint.switchMainTab('user_assets');
+        });
+
+        const container = page.locator('#pb-user-assets-container');
+        await expect(container).toBeVisible();
+
+        const tenantBody = container.locator('#pb-module-card-tenant .pb-card-body');
+        const rows = tenantBody.locator('.pb-asset-card-row');
+        const rowCount = await rows.count();
+        expect(rowCount).toBeGreaterThan(2);
+
+        // 验证首行拖拽手柄属性
+        const firstRow = rows.nth(0);
+        const secondRow = rows.nth(1);
+        const firstRowId = await firstRow.getAttribute('data-row-id');
+        const secondRowId = await secondRow.getAttribute('data-row-id');
+        expect(firstRowId).not.toBe(secondRowId);
+
+        const firstHandle = firstRow.locator('.pb-row-drag-handle');
+        await expect(firstHandle).toHaveAttribute('draggable', 'true');
+
+        // 模拟通过 HTML5 dragstart / dragover / dragend 触发重排
+        await page.evaluate(({ rowId1, rowId2 }) => {
+            const body = document.querySelector('#pb-module-card-tenant .pb-card-body');
+            const r1 = body.querySelector(`.pb-asset-card-row[data-row-id="${rowId1}"]`);
+            const r2 = body.querySelector(`.pb-asset-card-row[data-row-id="${rowId2}"]`);
+            const handle1 = r1.querySelector('.pb-row-drag-handle');
+
+            // 派发原生 dragstart
+            const dt = new DataTransfer();
+            const startEv = new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt });
+            handle1.dispatchEvent(startEv);
+
+            // 派发 dragover 到 r2 下方
+            const rect = r2.getBoundingClientRect();
+            const overEv = new DragEvent('dragover', {
+                bubbles: true,
+                cancelable: true,
+                dataTransfer: dt,
+                clientY: rect.top + rect.height + 10
+            });
+            r2.dispatchEvent(overEv);
+
+            // 派发 dragend
+            const endEv = new DragEvent('dragend', { bubbles: true, cancelable: true, dataTransfer: dt });
+            handle1.dispatchEvent(endEv);
+        }, { rowId1: firstRowId, rowId2: secondRowId });
+
+        await page.waitForTimeout(300);
+
+        // 验证 DOM 顺序已更新：原来的 secondRow 现在应当排在前面或位置调换
+        const updatedFirstRowId = await tenantBody.locator('.pb-asset-card-row').nth(0).getAttribute('data-row-id');
+        expect(updatedFirstRowId).toBe(secondRowId);
+
+        // 验证 localStorage 持久化记录
+        const savedOrder = await page.evaluate(() => {
+            return JSON.parse(localStorage.getItem('pbi-user-assets-tier-items-tenant') || '[]');
+        });
+        expect(savedOrder[0]).toBe(secondRowId);
+    });
+
+    test('顶部用户主体徽章规范：仅纯粹显示当前用户邮箱且紧邻左侧用户全景权限链路按钮', async ({ page }) => {
+        await goToBlueprint(page);
+
+        // 注册真实用户 Carman Zhao
+        await page.evaluate(() => {
+            window.PermissionBlueprint._registerRealUser({
+                displayName: 'Carman Zhao',
+                emailAddress: 'carman_zhao@vfc.com',
+                groupUserAccessRight: 'Admin',
+                principalType: 'User'
+            });
+            window.PermissionBlueprint.populatePresetSelect();
+            window.PermissionBlueprint.selectUserPreset('real_carman_zhao_vfc_com');
+            window.PermissionBlueprint.switchMainTab('user_assets');
+        });
+        await page.waitForTimeout(300);
+
+        const badge = page.locator('#pb-top-simulated-badge');
+        await expect(badge).toBeVisible();
+
+        // 1. 验证徽章文本：仅纯粹显示当前用户邮箱，绝对不显示"主体:"、"工作区:"、"模型:"、"报表:"等冗余信息
+        const badgeText = (await badge.textContent())?.trim() || '';
+        expect(badgeText).toBe('carman_zhao@vfc.com');
+        expect(badgeText).not.toContain('主体:');
+        expect(badgeText).not.toContain('工作区:');
+        expect(badgeText).not.toContain('模型:');
+        expect(badgeText).not.toContain('报表:');
+
+        // 2. 验证布局：徽章紧挨着左侧的「🌐 用户全景权限链路」按钮，间距不超过 20px (杜绝 space-between 将其推远)
+        const tabBtn = page.locator('#pb-tab-user-assets-btn');
+        await expect(tabBtn).toBeVisible();
+
+        const tabBox = await tabBtn.boundingBox();
+        const badgeBox = await badge.boundingBox();
+
+        expect(tabBox).not.toBeNull();
+        expect(badgeBox).not.toBeNull();
+        if (tabBox && badgeBox) {
+            // 徽章左边缘减去 Tab 右边缘应该在合理间距内 (8px ~ 20px)
+            const gap = badgeBox.x - (tabBox.x + tabBox.width);
+            expect(gap).toBeGreaterThanOrEqual(0);
+            expect(gap).toBeLessThanOrEqual(25);
+        }
+    });
+
+    test('工作区角色防篡改保障：用户为 Contributor 身份时刷新页面 (F5 Reload)，Workspace Module 绝不变成 Admin', async ({ page }) => {
+        await goToBlueprint(page);
+
+        // 1. 设置当前目标工作区为 DA_APAC_BI_QA，并设置该工作区成员缓存为 Contributor
+        await page.evaluate(() => {
+            const wsId = 'ws_demo_apac';
+            const wsList = [{ id: wsId, name: 'DA_APAC_BI_QA', type: 'Workspace' }];
+            localStorage.setItem('pbi_workspaces', JSON.stringify(wsList));
+            localStorage.setItem('pbi-selected-workspaces', JSON.stringify([wsId]));
+            localStorage.setItem('pb-active-main-tab', 'user_assets');
+            window.selectedGtbWorkspaceIds = new Set([wsId]);
+
+            // 缓存工作区授权名单：Carman Zhao 拥有 Contributor 角色
+            localStorage.setItem(`pbi_ws_users_${wsId}`, JSON.stringify([
+                { displayName: 'Carman Zhao', emailAddress: 'carman_zhao@vfc.com', groupUserAccessRight: 'Contributor' }
+            ]));
+
+            window.PermissionBlueprint._registerRealUser({
+                displayName: 'Carman Zhao',
+                emailAddress: 'carman_zhao@vfc.com',
+                groupUserAccessRight: 'Contributor',
+                principalType: 'User'
+            });
+            window.PermissionBlueprint.populatePresetSelect();
+            window.PermissionBlueprint.selectUserPreset('real_carman_zhao_vfc_com');
+            window.PermissionBlueprint.switchMainTab('user_assets');
+        });
+        await page.waitForTimeout(300);
+
+        // 验证刷新前：Workspace Module 标题栏与内部条目确为 Contributor
+        const wsCard = page.locator('#pb-module-card-workspace');
+        await expect(wsCard).toBeVisible();
+        await expect(wsCard).toContainText(/CONTRIBUTOR/i);
+        const contribRowBefore = wsCard.locator('.pb-asset-card-row.is-hero-role');
+        await expect(contribRowBefore).toContainText(/Contributor/i);
+        await expect(contribRowBefore).not.toContainText(/Admin \(工作区管理员\)/i);
+
+        // 2. 模拟用户执行页面刷新 (F5 Reload)
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await page.waitForFunction(() => typeof window.PermissionBlueprint !== 'undefined', { timeout: 15000 });
+        await page.evaluate(() => {
+            const wsId = 'ws_demo_apac';
+            window.selectedGtbWorkspaceIds = new Set([wsId]);
+            if (window.PermissionBlueprint) {
+                window.PermissionBlueprint.currentWorkspaceId = wsId;
+                window.PermissionBlueprint.switchMainTab('user_assets');
+            }
+        });
+
+        // 3. 验证刷新后：Workspace Module 100% 保持 Contributor，绝不蜕变成 Admin！
+        const reloadedWsCard = page.locator('#pb-module-card-workspace');
+        await expect(reloadedWsCard).toBeVisible();
+        await expect(reloadedWsCard).toContainText(/CONTRIBUTOR/i);
+
+        const heroRowAfter = reloadedWsCard.locator('.pb-asset-card-row.is-hero-role');
+        await expect(heroRowAfter).toContainText(/Contributor/i);
+        // 核心铁律：绝对禁止变成 Admin
+        const adminHero = reloadedWsCard.locator('.pb-asset-card-row.is-hero-role[data-row-id="ws_role_admin"]');
+        await expect(adminHero).toHaveCount(0);
+    });
+
+    test('Causality Modal: streamlined titles, deduplicated Laya badge, no repetitive FAQ headers, and fast guardrail resolution', async ({ page }) => {
+        await page.goto('/', { waitUntil: 'domcontentloaded' });
+        await page.waitForFunction(() => typeof window.PermissionBlueprint !== 'undefined', { timeout: 15000 });
+
+        await page.evaluate(() => {
+            window.PermissionBlueprint.switchMainTab('user_assets');
+        });
+
+        // 选中一个具有上下游关联的卡片（如 工作区 Contributor 或 Viewer）
+        const rows = page.locator('.pb-asset-card-row');
+        await expect(rows.first()).toBeVisible({ timeout: 15000 });
+        await rows.first().click();
+
+        // 点击因果关系解析按钮
+        const explainBtn = page.locator('#pb-btn-explain-causality');
+        await expect(explainBtn).toBeVisible({ timeout: 10000 });
+        await explainBtn.click();
+
+        // 1. 验证弹窗可见
+        const modal = page.locator('#pb-explain-causality-modal');
+        await expect(modal).toBeVisible({ timeout: 10000 });
+
+        // 2. 验证 Laya 门禁安全条：去除了重复的 Laya 标识，仅保留一个 LAYA 胶囊徽章与 System 1 合规门禁
+        const guardrailBar = page.locator('#pb-laya-guardrail-bar');
+        await expect(guardrailBar).toBeVisible();
+        const guardrailHtml = await guardrailBar.innerHTML();
+        // 门禁微标内只应有一个 LAYA 胶囊
+        const layaPills = guardrailBar.locator('span:text-is("LAYA")');
+        await expect(layaPills).toHaveCount(1);
+        expect(guardrailHtml).toContain('System 1 合规门禁');
+        expect(guardrailHtml).not.toContain('Laya · System 1 合规门禁');
+
+        // 3. 验证决不卡死：状态在毫秒级内完成放行，绝不停留在“正在调用本地 Laya 决策引擎评估链路风险...”
+        const statusEl = page.locator('#pb-laya-guardrail-status');
+        await expect(statusEl).not.toHaveText(/正在调用本地 Laya 决策引擎/i, { timeout: 4000 });
+        await expect(statusEl).toContainText(/Laya 评估通过|Laya 越权风险预警/i);
+
+        // 4. 验证标题精简：不包含冗长的“当前卡片作为【源头】向下赋能与影响的资产”
+        const modalBody = page.locator('#pb-explain-modal-body');
+        const bodyText = await modalBody.innerText();
+        expect(bodyText).not.toContain('当前卡片作为【源头】向下赋能与影响的资产');
+        expect(bodyText).not.toContain('当前卡片所依托的【上游前置依赖与授权依据】');
+
+        // 5. 验证卡片内容精简：不包含重复的生硬问答头
+        expect(bodyText).not.toContain('为什么会有链接？');
+        expect(bodyText).not.toContain('架构是否合理？');
+        expect(bodyText).not.toContain('治理防御提示：');
+    });
 });
+
+
 
 

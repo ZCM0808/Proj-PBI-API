@@ -66,6 +66,20 @@ class LayaDecisionEngine:
                 logger.warning(f"Failed to load Laya model: {exc}")
                 raise exc
 
+    def _ensure_warmup_started(self) -> None:
+        """Trigger background warmup if explicitly enabled via LAYA_WARMUP=1."""
+        if os.getenv("LAYA_WARMUP", "0") != "1":
+            return
+        if self._agent is not None or not self.is_available():
+            return
+        if not self._load_lock.locked():
+            def _async_load() -> None:
+                try:
+                    self._get_agent()
+                except Exception:
+                    pass
+            threading.Thread(target=_async_load, daemon=True).start()
+
     def get_status(self) -> Dict[str, Any]:
         """Return current engine readiness and memory status."""
         available = self.is_available()
@@ -88,11 +102,12 @@ class LayaDecisionEngine:
         if not clean_query:
             return {"category": "groups", "confidence": 0.0, "fallback": True}
 
-        if not self.is_available():
+        if not self.is_available() or self._agent is None:
+            self._ensure_warmup_started()
             return self._fallback_route(clean_query)
 
         try:
-            agent = self._get_agent()
+            agent = self._agent
             state = {"user_intent": clean_query}
             questions = {
                 "category": {
@@ -160,11 +175,12 @@ class LayaDecisionEngine:
         if not clean_err:
             return {"cause": "unknown", "confidence": 0.0, "fallback": True}
 
-        if not self.is_available():
+        if not self.is_available() or self._agent is None:
+            self._ensure_warmup_started()
             return self._fallback_triage(clean_err)
 
         try:
-            agent = self._get_agent()
+            agent = self._agent
             state = {"error_message": clean_err[:1000]}
             questions = {
                 "cause": {
@@ -277,11 +293,12 @@ class LayaDecisionEngine:
         permissions: List[str],
     ) -> Dict[str, Any]:
         """Evaluate privilege escalation or overpermission risks on canvas."""
-        if not self.is_available():
+        if not self.is_available() or self._agent is None:
+            self._ensure_warmup_started()
             return self._fallback_audit(role, permissions)
 
         try:
-            agent = self._get_agent()
+            agent = self._agent
             state = {
                 "user_role": role,
                 "user_title": user_title,

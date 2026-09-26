@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260924_v2155">
+    <link rel="stylesheet" href="/static/style.css?v=20260926_v2015">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -2623,28 +2623,26 @@
             <div id="view-permission_blueprint" class="workspace-view" style="display: none; flex: 1; flex-direction: column; height: 100%; min-width: 0; position: relative; overflow: hidden;">
                 <!-- 顶部控制栏 (提供蓝图与 6 层矩阵无缝选项卡切换) -->
                 <div class="pb-canvas-header glass-panel" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 14px; border-bottom: 1px solid var(--overlay-10); background: var(--panel-bg); flex-shrink: 0; z-index: 20; overflow: hidden; width: 100%; box-sizing: border-box;">
-                    <!-- 内部可横向滚动区域 (容纳所有 Tab、主体徽章及专属工具栏，视口过窄时内部平滑横向滚动) -->
-                    <div class="pb-canvas-header-scroll-container" style="display: flex; align-items: center; justify-content: space-between; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; gap: 10px;">
-                        <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0; min-width: 0;">
-                            <!-- 蓝图、理论推导矩阵与用户全景链路分段切换器 -->
-                            <div class="pb-view-tabs" style="display: inline-flex; padding: 2px; background: rgba(0, 0, 0, 0.25); border: 1px solid var(--overlay-10); border-radius: 6px; flex-shrink: 0;">
-                                <button type="button" id="pb-tab-blueprint-btn" class="pb-view-tab-btn" onclick="window.PermissionBlueprint.switchMainTab('blueprint')">
-                                    <span>🗺️ 权限流转蓝图</span>
-                                </button>
-                                <button type="button" id="pb-tab-matrix-btn" class="pb-view-tab-btn" onclick="window.PermissionBlueprint.switchMainTab('matrix')">
-                                    <span>🏛️ 8 层推导矩阵</span>
-                                </button>
-                                <button type="button" id="pb-tab-user-assets-btn" class="pb-view-tab-btn" onclick="window.PermissionBlueprint.switchMainTab('user_assets')">
-                                    <span>🌐 用户全景权限链路</span>
-                                </button>
-                            </div>
-                            <span class="gtb-auth-badge" id="pb-top-simulated-badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; font-size: 0.68rem; padding: 2px 10px; white-space: nowrap; flex-shrink: 0;" title="当前模拟主体与资产联动状态">
-                                当前主体: 通用基准
-                            </span>
+                    <!-- 内部可横向滚动区域 (仅容纳 Tab 和主体徽章，视口过窄时徽章优雅弹性自适应，绝不挤压右侧工具栏) -->
+                    <div class="pb-canvas-header-scroll-container" style="display: flex; align-items: center; justify-content: flex-start; gap: 8px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none;">
+                        <div class="pb-view-tabs" style="display: inline-flex; padding: 2px; background: rgba(0, 0, 0, 0.25); border: 1px solid var(--overlay-10); border-radius: 6px; flex-shrink: 0;">
+                            <button type="button" id="pb-tab-blueprint-btn" class="pb-view-tab-btn" onclick="window.PermissionBlueprint.switchMainTab('blueprint')">
+                                <span>🗺️ 权限流转蓝图</span>
+                            </button>
+                            <button type="button" id="pb-tab-matrix-btn" class="pb-view-tab-btn" onclick="window.PermissionBlueprint.switchMainTab('matrix')">
+                                <span>🏛️ 8 层推导矩阵</span>
+                            </button>
+                            <button type="button" id="pb-tab-user-assets-btn" class="pb-view-tab-btn" onclick="window.PermissionBlueprint.switchMainTab('user_assets')">
+                                <span>🌐 用户全景权限链路</span>
+                            </button>
                         </div>
+                        <span class="gtb-auth-badge" id="pb-top-simulated-badge" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8; font-size: 0.68rem; padding: 2px 10px; white-space: nowrap; flex-shrink: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis;" title="当前模拟主体与资产联动状态">
+                            未选择用户主体
+                        </span>
+                    </div>
 
-                        <!-- 右侧工具栏操作区：专属工具栏容器 -->
-                        <div class="pb-canvas-header-right" style="display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: auto;">
+                    <!-- 右侧工具栏操作区：专属工具栏容器 (脱离滚动容器，常驻最右侧，绝不被任何内部元素挤出视口！) -->
+                    <div class="pb-canvas-header-right" style="display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: auto; z-index: 22;">
                             <!-- A. 蓝图模式专属画布工具栏 (默认展示) -->
                             <div id="pb-blueprint-toolbar" style="display: flex; align-items: center; gap: 6px;">
                                 <button type="button" id="pb-btn-pulse" class="btn-wf-sm" onclick="window.PermissionBlueprint.togglePulse()" title="开启/关闭动态光效脉冲" style="height: 28px; padding: 0 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer;">
@@ -2692,7 +2690,6 @@
                                 </button>
                             </div>
                         </div>
-                    </div>
 
                     <!-- 🌐 顶层绝对常驻全屏模式切换按钮：脱离内部水平滚动容器，100% 永远固定在顶栏最右侧，绝不被任何内部长按钮顶出视口！ -->
                     <button type="button" id="pb-global-zen-btn" class="icon-btn zen-mode-btn" onclick="window.toggleZenMode()" title="沉浸全屏模式 (Zen Mode)" style="width: 28px; height: 28px; padding: 0; border-radius: 6px; border: 1px solid var(--overlay-10); background: transparent; transition: all 0.2s; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-left: 8px; z-index: 25;">
@@ -3333,7 +3330,7 @@
             <div class="modal-header" style="border-bottom: 1px solid var(--overlay-10); padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; cursor: move; user-select: none;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="font-size: 1.2rem;">🔗</span>
-                    <h3 id="pb-explain-modal-title" style="margin: 0; font-size: 1.02rem; color: var(--text-primary); font-weight: 700;">权限卡片因果关联与治理合规深度解析</h3>
+                    <h3 id="pb-explain-modal-title" style="margin: 0; font-size: 1.02rem; color: var(--text-primary); font-weight: 700;">卡片权限关联与合规解析</h3>
                 </div>
                 <button type="button" class="close-btn" onclick="window.PermissionBlueprint.closeExplainModal()" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
             </div>
@@ -3351,8 +3348,8 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260924_v2145"></script>
-    <script src="/static/script.js?v=20260924_v2145"></script>
-    <script src="/static/permission_blueprint.js?v=20260924_v2220"></script>
+    <script src="/static/script.js?v=20260926_v1700"></script>
+    <script src="/static/permission_blueprint.js?v=20260926_v2015"></script>
 
 
 

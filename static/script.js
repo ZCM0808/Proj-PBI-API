@@ -2878,14 +2878,21 @@ window.renderGlobalTopbar = async function() {
     const topbar = document.getElementById('global-topbar');
     if (!topbar) return;
 
+    // 0. 0ms 瞬时预热直出：先从本地持久化缓存恢复租户名称，彻底杜绝刷新页面时闪烁为 "加载中..." 或一串 ID
+    const initialTenantNameEl = document.getElementById('gtb-tenant-name');
+    const cachedTenantName = localStorage.getItem('pbi_tenant_name') || '';
+    if (initialTenantNameEl && cachedTenantName && cachedTenantName !== '加载中...' && cachedTenantName !== '未配置') {
+        initialTenantNameEl.textContent = cachedTenantName;
+    }
+
     // 1. 初始化并回显认证模式 (Auth Mode) 及具体应用名称 / 用户名
     try {
         let authMode = 'service_principal';
         let appName = localStorage.getItem('pbi_app_name') || '';
         let clientId = '';
         let username = '';
-        let tenantId = '';
-        let tenantName = '';
+        let tenantId = localStorage.getItem('pbi_tenant_id') || '';
+        let tenantName = cachedTenantName || '';
 
         const setRes = await fetch('/api/settings');
         const settings = await setRes.json();
@@ -2894,7 +2901,7 @@ window.renderGlobalTopbar = async function() {
             clientId = settings.CLIENT_ID || '';
             username = settings.USERNAME || '';
             tenantId = settings.TENANT_ID || '';
-            tenantName = settings.TENANT_NAME || '';
+            if (settings.TENANT_NAME) tenantName = settings.TENANT_NAME;
         }
 
         const authInfoRes = await fetch('/api/auth-info');
@@ -2904,6 +2911,15 @@ window.renderGlobalTopbar = async function() {
             if (authInfo.username) username = authInfo.username;
             if (authInfo.tenant_id) tenantId = authInfo.tenant_id;
             if (authInfo.tenant_name) tenantName = authInfo.tenant_name;
+        }
+
+        // 持续化固化最新租户名称与 ID，实现永久 0ms 稳定直出
+        if (tenantName && tenantName !== '加载中...' && tenantName !== '未配置') {
+            localStorage.setItem('pbi_tenant_name', tenantName);
+            window._cachedTenantName = tenantName;
+        }
+        if (tenantId) {
+            localStorage.setItem('pbi_tenant_id', tenantId);
         }
 
         // 回显最左侧租户信息 (Tenant)
@@ -2934,6 +2950,11 @@ window.renderGlobalTopbar = async function() {
         }
         if (tenantDetailIdEl) {
             tenantDetailIdEl.textContent = tenantId || '未配置 Tenant ID';
+        }
+
+        // 若权限蓝图已加载且处于用户全景资产链路流转矩阵，静默通知对齐
+        if (window.PermissionBlueprint && window.PermissionBlueprint.activeMainTab === 'user_assets' && typeof window.PermissionBlueprint.renderUserAssetsMatrix === 'function') {
+            window.PermissionBlueprint.renderUserAssetsMatrix();
         }
 
         // 回显认证模式 (Auth Mode)
@@ -6614,6 +6635,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         'pbi_xmla_last_dataset', 'pbi_xmla_last_table', 'pbi-selected-workspaces',
                         'pbi-selected-datasets', 'pbi-selected-reports', 'pbi-active-workspace',
                         'pbi-active-dataset', 'pbi-active-report', 'pbi_cached_tenant_users',
+                        'pb-active-preset', 'pb-cached-user-presets', 'pb-active-main-tab',
                         'pbi-settings-collapse-workspace-list', 'pbi-settings-collapse-dataset-list',
                         'pbi-settings-collapse-report-list', 'pbi-settings-active-tab', 'pbi-settings-scroll-top'
                     ];
@@ -17354,7 +17376,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'pbi_workspaces', 'pbi_datasets', 'pbi_reports', 'pbi-xmla-history',
             'pbi_xmla_last_dataset', 'pbi_xmla_last_table', 'pbi-selected-workspaces',
             'pbi-selected-datasets', 'pbi-selected-reports', 'pbi-active-workspace',
-            'pbi-active-dataset', 'pbi-active-report', 'pbi_cached_tenant_users'
+            'pbi-active-dataset', 'pbi-active-report', 'pbi_cached_tenant_users',
+            'pb-active-preset', 'pb-cached-user-presets', 'pb-active-main-tab'
         ];
 
         if (!ignoredKeys.includes(key)) {
