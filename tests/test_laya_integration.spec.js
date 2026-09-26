@@ -769,6 +769,30 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
         }
       });
     }
+
+    // 13. 验证点击 Share Report 打开因果弹窗时：直接授权权威性生效，上游依据唯独只有当前分配的 Admin 角色！
+    await page.evaluate(() => {
+      if (window.PermissionBlueprint && typeof window.PermissionBlueprint.selectAndExplainRow === 'function') {
+        window.PermissionBlueprint.selectAndExplainRow('report_share');
+      }
+    });
+    const modal = page.locator('#pb-explain-causality-modal');
+    await expect(modal).toBeVisible({ timeout: 5000 });
+      const modalContent = await modal.innerText();
+      // 验证上游依据精准为 1 项，且包含 Admin (工作区管理员)
+      expect(modalContent).toContain('上游依据 (1)');
+      expect(modalContent).toContain('Admin');
+      // 绝对不含伪上游：模型重新共享、发布工作区应用、租户外部共享
+      const upstreamPart = modalContent.split('当前卡片向下赋能与影响的资产')[0] || modalContent;
+      expect(upstreamPart).not.toContain('RESHARE');
+      expect(upstreamPart).not.toContain('Publish App');
+      expect(upstreamPart).not.toContain('EXTERNAL SHARING');
+      // 关闭弹窗
+      await page.evaluate(() => {
+        if (window.PermissionBlueprint && typeof window.PermissionBlueprint.closeExplainModal === 'function') {
+          window.PermissionBlueprint.closeExplainModal();
+        }
+      });
   });
 
 });

@@ -5976,8 +5976,8 @@
                 'tenant_export': ['report_export'],
                 'tenant_web_modeling': ['model_write', 'report_edit'],
                 'tenant_xmla': ['model_write'],
-                'tenant_external': ['report_share'],
-                'tenant_embed': ['report_view'],
+                'tenant_external': [],
+                'tenant_embed': [],
                 'tenant_certify': ['model_permission'],
 
                 // 2. 工作区官方角色 -> 纯粹跨模块业务赋权（直接影响模型资产、报表、连接运维与部署管道，杜绝工作区内自环与操作特权混杂）
@@ -6007,7 +6007,7 @@
                     'model_read', 'report_view'
                 ],
                 'ws_edit': ['model_write', 'report_edit'],
-                'ws_app': ['report_view', 'report_share'],
+                'ws_app': [],
                 'ws_capacity': ['model_write', 'conn_refresh'],
                 'ws_delete': [],
                 'ws_lineage': [],
@@ -7192,6 +7192,18 @@
                             const activeHeroAlias = activeHeroWsEl ? (activeHeroWsEl.getAttribute('data-alias-id') || activeHeroWsEl.getAttribute('data-row-id')) : null;
                             if (activeHeroAlias && id.startsWith('ws_role_') && id !== activeHeroAlias) {
                                 return false;
+                            }
+
+                            // 铁律 4: 直接授权权威性原则 (Direct Causality of Assigned Role)
+                            // 当前用户被分配了权威工作区角色（如 Admin）时，报表共享 (Share Report) 的直接原因就是该角色！
+                            // 坚决排除外围策略门禁 (tenant_external)、应用发布 (ws_app) 与跨模块间接派生 (model_reshare)，上游只保留直接原因！
+                            if (activeHeroAlias) {
+                                if (rowId === 'report_share' && id === 'model_reshare') {
+                                    return false;
+                                }
+                                if (id === 'tenant_external' || id === 'tenant_embed' || id === 'ws_app') {
+                                    return false;
+                                }
                             }
                         }
                         return true;
