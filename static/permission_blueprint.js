@@ -5360,8 +5360,7 @@
                     // 5. 工作区核心管理与配置特权 (向下兼容测试选择器与 ACL 呈现)
                     { id: 'ws_edit', cat: 'derived', name: 'Edit Content (编辑报表与模型)', desc: (isAdmin || isMember || isContribIncluded || isContribAssigned) ? '【由工作区角色派生】允许在工作区内创建、修改报表与语义模型架构，并执行计划刷新' : '【由工作区角色限制】当前为 Viewer 只读身份，受工作区 RBAC 限制，无权编辑或创建任何资产', statusClass: (isAdmin || isMember || isContribIncluded || isContribAssigned) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember || isContribIncluded || isContribAssigned) ? '✅ CAN EDIT' : '❌ CANNOT EDIT', badge: 'CONTENT' },
                     { id: 'ws_app', cat: 'derived', name: 'Publish App (发布工作区应用)', desc: (isAdmin || isMember) ? '【由工作区角色派生】允许发布、配置并向全组织受众分发包含此工作区报表与仪表板的组织应用 (Power BI App)' : '【由工作区角色限制】非 Admin / Member 角色，禁止发布或更新工作区组织应用', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '⚡ CAN PUBLISH' : '❌ CANNOT PUBLISH', badge: 'APP' },
-                    { id: 'ws_members', cat: 'derived', name: 'Manage Access (管理工作区成员)', desc: isAdmin ? '【操作特权 (Capability)】由 Admin 角色赋予最高成员管理特权，可向组织成员分配、修改或撤销工作区官方角色 (非角色本身)' : (isMember ? '【操作特权 (Capability)】由 Member 角色赋予受限邀请特权，仅允许向他人授予 Viewer(查看者) 角色' : '【操作特权 (Capability)】无成员管理特权，受工作区 RBAC 限制禁止变更工作区成员与角色'), statusClass: isAdmin ? 'enabled' : (isMember ? 'warn' : 'disabled'), statusText: isAdmin ? '✅ CAN MANAGE' : (isMember ? '⚠️ CAN INVITE VIEWERS' : '❌ CANNOT MANAGE'), badge: 'PERMISSIONS' },
-                    { id: 'ws_delete', cat: 'derived', name: 'Delete Workspace (删除工作区)', desc: isAdmin ? '【由工作区角色派生】仅工作区 Admin 角色具备永久删除整个工作区及其包含全量资产的最高权限' : '【由工作区角色派生】非 Admin 角色，禁止执行工作区级别的永久删除操作', statusClass: isAdmin ? 'enabled' : 'disabled', statusText: isAdmin ? '✅ CAN DELETE' : '❌ CANNOT DELETE', badge: 'DELETE' },
+                    { id: 'ws_delete', cat: 'derived', name: 'Delete Workspace (删除工作区)', desc: isAdmin ? '【由工作区角色派生】仅工作区 Admin 角色具备永久删除整个工作区及其包含全量资产的最高权限' : '【由工作区角色限制】非 Admin 角色，禁止执行工作区级别的永久删除操作', statusClass: isAdmin ? 'enabled' : 'disabled', statusText: isAdmin ? '✅ CAN DELETE' : '❌ CANNOT DELETE', badge: 'DELETE' },
                     { id: 'ws_capacity', cat: 'derived', name: 'Fabric F64 Capacity (企业专用容量)', desc: '【承载环境】挂载企业专用容量 (Fabric F64)，享有独立计算算力与 Direct Lake 加速通道', statusClass: 'enabled', statusText: '⚡ CAN ACCESS', badge: 'CAPACITY' },
                     { id: 'ws_target', cat: 'env', name: `Workspace Container (目标工作区容器)`, desc: `【承载环境】工作区名称: ${wsName} · 容器 ID: ${curWs.id}`, statusClass: 'enabled', statusText: '✅ READY', badge: 'WORKSPACE' }
                 ];
@@ -6007,7 +6006,6 @@
                 'ws_role_viewer': [
                     'model_read', 'report_view'
                 ],
-                'ws_members': ['model_reshare', 'report_share', 'conn_share'],
                 'ws_edit': ['model_write', 'report_edit'],
                 'ws_app': ['report_view', 'report_share'],
                 'ws_capacity': ['model_write', 'conn_refresh'],
@@ -6441,11 +6439,6 @@
                 },
 
                 // 2. 工作区官方角色 -> 工作区治理及下辖全量资产
-                'ws_role->ws_members': {
-                    reason: '工作区 Admin 角色拥有增删工作区成员与调整角色的最高权限，Member 角色可添加具有相同或更低角色的成员。',
-                    isReasonable: '✅ 完全合理 (工作区容器级 RBAC(基于角色的访问控制) 权限分配标准)',
-                    tip: '建议工作区 Admin 至少配置 2 人以防单点失联。'
-                },
                 'ws_role->ws_edit': {
                     reason: '工作区 Admin/Member/Contributor 角色赋予在工作区内上传、创建与更新内容的核心能力。',
                     isReasonable: '✅ 完全合理 (创作型角色与只读消费角色的经典隔离)',
@@ -6578,21 +6571,6 @@
                 },
 
                 // 工作区衍生治理项
-                'ws_members->model_reshare': {
-                    reason: '具备成员管理权的主体，天然具备将工作区内的语义模型转授权他人的治理资格。',
-                    isReasonable: '✅ 完全合理 (转授权力与成员管理权力职责高度对齐)',
-                    tip: '防止无管理权的普通协作者随意散播核心资产。'
-                },
-                'ws_members->report_share': {
-                    reason: '管理工作区成员者拥有将报表链接分发给新用户的权限。',
-                    isReasonable: '✅ 完全合理 (协同管理规范)',
-                    tip: '共享时应注意区分是授予查看还是编辑权限。'
-                },
-                'ws_members->conn_share': {
-                    reason: '具备管理身份的用户可将数据源网关连接授权给工作区其他分析师使用。',
-                    isReasonable: '✅ 完全合理 (网关连接复用机制)',
-                    tip: '受权人仅能使用该连接查询，无法导出凭据明文。'
-                },
                 'ws_edit->model_write': {
                     reason: '工作区内容编辑权直接赋予向语义模型提交架构更新与度量值编写的能力。',
                     isReasonable: '✅ 完全合理 (模型构建者的核心职责)',
@@ -7035,7 +7013,6 @@
                     'ws_role_member': { title: 'ROLE: MEMBER', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
                     'ws_role_contributor': { title: 'ROLE: CONTRIBUTOR', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
                     'ws_role_viewer': { title: 'ROLE: VIEWER', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
-                    'ws_members': { title: 'MANAGE ACCESS (操作特权)', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
                     'ws_edit': { title: 'EDIT CONTENT', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
                     'ws_app': { title: 'PUBLISH APP', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
                     'ws_capacity': { title: 'CAPACITY ACCESS', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },

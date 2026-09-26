@@ -725,14 +725,17 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     expect(modelReadText).toContain('Read');
 
     // 10. 验证括号中的中文解释独立放在新行 (.pb-prop-sub-name)，字号与样式分层
-    const wsMembersProp = page.locator('.pb-asset-card-row[data-row-id="ws_members"] .pb-asset-prop-name');
-    await expect(wsMembersProp).toBeVisible();
-    const mainTitle = wsMembersProp.locator('.pb-prop-main-name');
-    const subTitle = wsMembersProp.locator('.pb-prop-sub-name');
+    const adminProp = page.locator('.pb-asset-card-row[data-row-id="ws_role_admin"], .pb-asset-card-row[data-alias-id="ws_role_admin"]').locator('.pb-asset-prop-name').first();
+    await expect(adminProp).toBeVisible();
+    const mainTitle = adminProp.locator('.pb-prop-main-name');
+    const subTitle = adminProp.locator('.pb-prop-sub-name');
     await expect(mainTitle).toBeVisible();
     await expect(subTitle).toBeVisible();
-    await expect(mainTitle).toHaveText('Manage Access');
-    await expect(subTitle).toHaveText('(管理工作区成员)');
+    await expect(mainTitle).toHaveText('Admin');
+    await expect(subTitle).toHaveText('(工作区管理员)');
+
+    // 10.1 验证画板上绝无 Manage Access (已彻底清洗拔除)
+    await expect(page.locator('.pb-asset-card-row[data-row-id="ws_members"]')).toHaveCount(0);
 
     // 11. 验证工作区模块完整呈现 Power BI 官方四大治理角色 (Admin, Member, Contributor, Viewer)
     const wsTierCard = page.locator('.pb-asset-tier-card[data-tier-id="workspace"]');
