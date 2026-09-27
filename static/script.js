@@ -6162,7 +6162,161 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         }
 
-
+        // 3. 补全收录所有文档中挖掘的内部服务与未公开微服务资源 (Internal & Undocumented Services)
+        const internalCategory = 'Internal Services (内部专属微服务)';
+        categories[internalCategory] = [
+            {
+                name: 'Get Model Security & Strict Mode Context (获取模型 GAC 严格模式与连接安全)',
+                operationId: 'internal_get_model_security',
+                description: '【核心内部微服务】查询语义模型的底层建模上下文与细粒度访问控制 (GAC) 状态。服务端的 securityInfo 返回 isInStrictMode（是否为严格模式）、hasAccessToAllDataConnections（当前登录用户是否具备全部数据源连接凭据）以及 isModelOwner（是否为模型所有者）。非模型 Owner 打开 Power Query 的前置硬门禁。',
+                method: 'GET',
+                path: '/metadata/modeling/getModel/{modelId}?languageLocale=en-US&requestQueryEditingInfo=true',
+                body: '',
+                prerequisites: [
+                    '🔒 **WABI 集群直连**：目标端点为微软区域建模微服务（*.analysis.windows.net）。',
+                    '🔑 **Delegated Token**：需要具备包含 Power BI 作用域的用户委派访问令牌。'
+                ],
+                flag: 'Modeling',
+                isFabric: false,
+                isInternal: true,
+                host: 'https://{cluster}.analysis.windows.net',
+                category: internalCategory
+            },
+            {
+                name: 'Get Diagram Canvas Layouts (获取关系视图画布布局)',
+                operationId: 'internal_get_diagram_layouts',
+                description: '【内部建模微服务】读取语义模型在 Web 浏览器端关系视图画布上的表实体位置、坐标、拖拽折叠状态及表间关系连线排布。',
+                method: 'GET',
+                path: '/metadata/modeling/diagramLayouts?modelId={modelId}',
+                body: '',
+                prerequisites: [
+                    '🔒 **Web Modeling**：仅在启用了网页端建模的模型上支持画布拓扑检索。'
+                ],
+                flag: 'Modeling',
+                isFabric: false,
+                isInternal: true,
+                host: 'https://{cluster}.analysis.windows.net',
+                category: internalCategory
+            },
+            {
+                name: 'Save Model Version Snapshot (保存模型架构版本变更)',
+                operationId: 'internal_save_model_version',
+                description: '【内部建模微服务】在浏览器端直接修改表架构、新建度量值或更新关系时，向底部分析服务引擎提交架构版本变更存盘快照。',
+                method: 'POST',
+                path: '/metadata/modeling/saveVersion',
+                body: JSON.stringify({
+                    "modelId": "{modelId}",
+                    "clientVersion": "2.0",
+                    "comment": "Schema update from web modeling"
+                }, null, 2),
+                prerequisites: [
+                    '✏️ **Write 权限**：调用者必须具备语义模型 Write 特权或工作区 Contributor 以上角色。'
+                ],
+                flag: 'Modeling',
+                isFabric: false,
+                isInternal: true,
+                host: 'https://{cluster}.analysis.windows.net',
+                category: internalCategory
+            },
+            {
+                name: 'Get Query Application Status (获取 M 查询批量应用状态)',
+                operationId: 'internal_get_apply_queries_status',
+                description: '【内部建模微服务】Power Query 编辑保存后，异步轮询 M 表达式计算折叠并在语义模型 Analysis Services 中编译刷新架构的进度状态。',
+                method: 'GET',
+                path: '/metadata/modeling/applyQueriesStatus?modelId={modelId}',
+                body: '',
+                prerequisites: [],
+                flag: 'Modeling',
+                isFabric: false,
+                isInternal: true,
+                host: 'https://{cluster}.analysis.windows.net',
+                category: internalCategory
+            },
+            {
+                name: 'Launch Web Power Query Mashup Editor (Web PQ 编辑器入口会话)',
+                operationId: 'internal_launch_mashup_editor',
+                description: '【内部数据清洗微服务】微软 Power Query 在线编辑器的微前端入口，通过 SSO 身份委派启动 Web 端数据清洗会话。若 isInStrictMode=false 且非 owner，前端在此步骤前阻断。',
+                method: 'GET',
+                path: '/MashupEditor?workspaceId={workspaceId}&datasetId={modelId}',
+                body: '',
+                prerequisites: [
+                    '🛡️ **GAC / Owner 条件**：必须满足 isModelOwner == true 或 (isInStrictMode == true && hasAccessToAllDataConnections == true)。'
+                ],
+                flag: 'PowerQuery',
+                isFabric: false,
+                isInternal: true,
+                host: 'https://powerquery.microsoft.com',
+                category: internalCategory
+            },
+            {
+                name: 'Get Query & Step Dependent Graph (查询步骤与跨源依赖拓扑图)',
+                operationId: 'internal_pq_step_dependent_graph',
+                description: '【内部数据清洗微服务】解析 Power Query 内部各查询间的步骤依赖（Applied Steps），构建多源数据混搭（Cross-Source Mashup）的有向无环图（DAG），检验是否存在跨网段越权安全漏洞。',
+                method: 'POST',
+                path: '/api/editor/{sessionId}/queryAndStepDependentGraph',
+                body: JSON.stringify({
+                    "sessionId": "{sessionId}",
+                    "includeDataMashup": true
+                }, null, 2),
+                prerequisites: [
+                    '⚡ **Mashup Session**：必须在活跃的 Power Query 会话环境下发起调用。'
+                ],
+                flag: 'PowerQuery',
+                isFabric: false,
+                isInternal: true,
+                host: 'https://powerquery.microsoft.com',
+                category: internalCategory
+            },
+            {
+                name: 'Get Session Connection Credentials & Access (查询会话底层连接凭据与访问权限)',
+                operationId: 'internal_pq_get_connections',
+                description: '【内部连接微服务】探测与校验当前 Power Query 会话引用的所有底层连接状态、Gateway 绑定健康度与 GAC 数据访问凭据。',
+                method: 'GET',
+                path: '/api/connections/get?sessionId={sessionId}',
+                body: '',
+                prerequisites: [
+                    '🔌 **Connection 访问权**：用于验证调用方是否具备全部被引用数据连接的使用者角色。'
+                ],
+                flag: 'PowerQuery',
+                isFabric: false,
+                isInternal: true,
+                host: 'https://powerquery.microsoft.com',
+                category: internalCategory
+            },
+            {
+                name: 'Get Workspace Delegated Tenant Setting Overrides (工作区级 GAC 委派覆盖策略)',
+                operationId: 'internal_fabric_ws_delegated_settings',
+                description: '【Fabric 内部治理微服务】查询租户全局安全策略在具体工作区维度的委派覆盖配置（Delegated Settings），审计工作区是否被准许单独覆盖租户安全策略。',
+                method: 'GET',
+                path: '/v1/admin/workspaces/delegatedTenantSettingOverrides?workspaceId={workspaceId}',
+                body: '',
+                prerequisites: [
+                    '🔒 **Fabric Admin 特权**：调用者必须具备租户管理员或容量委派权限。'
+                ],
+                flag: 'Fabric Admin',
+                isFabric: true,
+                isInternal: true,
+                host: 'https://api.fabric.microsoft.com',
+                category: internalCategory
+            },
+            {
+                name: 'Get Capacity Delegated Tenant Setting Overrides (企业容量级委派覆盖策略)',
+                operationId: 'internal_fabric_capacity_delegated_settings',
+                description: '【Fabric 内部治理微服务】查询租户全局安全策略在 Fabric F SKU 或 Premium P SKU 企业专用容量维度的委派覆盖配置。',
+                method: 'GET',
+                path: '/v1/admin/capacities/delegatedTenantSettingOverrides?capacityId={capacityId}',
+                body: '',
+                prerequisites: [
+                    '💎 **Capacity Admin**：需要具备容量管理员访问特权。'
+                ],
+                flag: 'Fabric Admin',
+                isFabric: true,
+                isInternal: true,
+                host: 'https://api.fabric.microsoft.com',
+                category: internalCategory
+            }
+        ];
+        totalApisCalculated += categories[internalCategory].length;
 
         // 更新总数
 

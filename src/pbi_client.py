@@ -164,8 +164,17 @@ class PBIClient:
             url = f"{base_url}{endpoint}"
 
         # [安全验证] 双重防御：确保组装后的 URL 必须指向官方域
-        if not (url.startswith("https://api.powerbi.com/") or url.startswith("https://api.fabric.microsoft.com/")):
-            raise Exception("Security Violation: Target URL must belong to Power BI or Fabric domains.")
+        allowed_prefixes = (
+            "https://api.powerbi.com/",
+            "https://api.fabric.microsoft.com/",
+            "https://powerquery.microsoft.com/",
+        )
+        is_official = any(url.startswith(p) for p in allowed_prefixes)
+        if not is_official and (url.startswith("https://") and ".analysis.windows.net/" in url):
+            is_official = True
+
+        if not is_official:
+            raise Exception("Security Violation: Target URL must belong to Power BI, Fabric, WABI Analysis or Power Query official domains.")
 
         # 获取对应类型的 Token 并生成 headers
         token = self._get_token(api_type)
@@ -235,3 +244,76 @@ class PBIClient:
             except ValueError:
                 return {"status_code": response.status_code, "text": response.text}
         return {"status_code": response.status_code}
+
+    def get_internal_model_security(self, model_id: str, cluster_url: Optional[str] = None, custom_token: Optional[str] = None) -> Dict[str, Any]:
+        """
+        调用微软内部 WABI 建模微服务 (modeling/getModel)，实时探测语义模型的真实 GAC 状态与连接安全上下文。
+        """
+        cluster = (cluster_url or os.getenv("PBI_WABI_CLUSTER") or "wabi-south-east-asia-b-primary-redirect.analysis.windows.net").strip()
+        if cluster.startswith("http://") or cluster.startswith("https://"):
+            from urllib.parse import urlparse
+            cluster = urlparse(cluster).netloc
+
+        target_url = f"https://{cluster}/metadata/modeling/getModel/{model_id}?languageLocale=en-US&requestQueryEditingInfo=true"
+
+        token = custom_token or self._get_token("powerbi")
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "X-PowerBI-User-Locale": "en-US",
+        }
+
+        session = get_shared_session()
+        try:
+            resp = session.get(target_url, headers=headers, timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                sec_info = data.get("securityInfo", {})
+                return {
+                    "success": True,
+                    "is_live": True,
+                    "cluster": cluster,
+                    "model_id": model_id,
+                    "security_info": {
+                        "isInStrictMode": sec_info.get("isInStrictMode", False),
+                        "hasAccessToAllDataConnections": sec_info.get("hasAccessToAllDataConnections", False),
+                        "isModelOwner": sec_info.get("isModelOwner", False),
+                    },
+                    "raw_security_info": sec_info,
+                }
+            elif resp.status_code == 429:
+                return {
+                    "success": False,
+                    "status_code": 429,
+                    "error": "微软云端 WABI 微服务限流节流 (HTTP 429 Too Many Requests)，请稍后重试",
+                    "cluster": cluster,
+                }
+            elif resp.status_code == 404:
+                return {
+                    "success": False,
+                    "status_code": 404,
+                    "error": f"模型未在当前 WABI 集群 [{cluster}] 找到 (PowerBIEntityNotFound)，可能该模型归属于其他地理区域集群",
+                    "cluster": cluster,
+                }
+            elif resp.status_code in (401, 403):
+                return {
+                    "success": False,
+                    "status_code": resp.status_code,
+                    "error": f"访问微软 WABI 内部接口被拒绝 (HTTP {resp.status_code})，请检查 Access Token 是否具有有效权限",
+                    "cluster": cluster,
+                }
+            else:
+                return {
+                    "success": False,
+                    "status_code": resp.status_code,
+                    "error": f"WABI 接口返回异常状态码: HTTP {resp.status_code}",
+                    "cluster": cluster,
+                }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "cluster": cluster,
+            }
+

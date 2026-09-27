@@ -4760,6 +4760,63 @@
             return result;
         }
 
+        // ⚡ 实时调用微软内部微服务 (modeling/getModel) 探测语义模型的真实 GAC 严格模式与连接安全状态
+        async fetchLiveModelGacStatus(workspaceId, datasetId, forceRefresh = false) {
+            if (!datasetId) return null;
+            if (!window._modelLiveGacCache) {
+                try {
+                    const cached = sessionStorage.getItem('pbi_model_live_gac_cache');
+                    window._modelLiveGacCache = cached ? JSON.parse(cached) : {};
+                } catch(e) {
+                    window._modelLiveGacCache = {};
+                }
+            }
+            const cacheKey = `${workspaceId || 'global'}_${datasetId}`;
+            if (!forceRefresh && window._modelLiveGacCache[cacheKey]) {
+                return window._modelLiveGacCache[cacheKey];
+            }
+
+            this._fetchingLiveGac = this._fetchingLiveGac || {};
+            if (this._fetchingLiveGac[cacheKey]) {
+                return null;
+            }
+            this._fetchingLiveGac[cacheKey] = true;
+
+            let token = '';
+            try {
+                token = window.currentPbiToken || (window.getEffectiveAccessToken ? window.getEffectiveAccessToken() : '') || localStorage.getItem('pbi_token') || sessionStorage.getItem('pbi_token') || '';
+            } catch(e) {}
+
+            try {
+                const url = `/api/fabric/inspect-gac-status?model_id=${encodeURIComponent(datasetId)}&workspace_id=${encodeURIComponent(workspaceId || '')}`;
+                const headers = { 'Accept': 'application/json' };
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+                const res = await fetch(url, { method: 'GET', headers: headers });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.success && data.security_info) {
+                        window._modelLiveGacCache[cacheKey] = data;
+                        try {
+                            sessionStorage.setItem('pbi_model_live_gac_cache', JSON.stringify(window._modelLiveGacCache));
+                        } catch(e) {}
+                        delete this._fetchingLiveGac[cacheKey];
+                        // 触发静默局部重新渲染，更新全景画板上真实 Model GAC 与 Workspace GAC 开关卡片状态
+                        if (this.activeMainTab === 'user_assets') {
+                            this.renderUserAssetsMatrix();
+                        }
+                        return data;
+                    }
+                }
+            } catch (err) {
+                console.warn('[Live GAC Inspector] Failed to probe internal WABI service:', err);
+            } finally {
+                delete this._fetchingLiveGac[cacheKey];
+            }
+            return null;
+        }
+
         // 🌐 真实 API 穿透：查询目标工作区 (Workspace) 的真实授权用户与直接角色 (ACL)
         async fetchWorkspaceUsers(workspaceId, force = false) {
             if (!workspaceId) return [];
@@ -4858,6 +4915,9 @@
                     rawWsData = window.cleanseCrossDomainWorkspaces ? window.cleanseCrossDomainWorkspaces(fallbackWs) : fallbackWs;
                 } catch(e) {}
             }
+            if ((!rawWsData || rawWsData.length === 0) && Array.isArray(window.allWorkspaces) && window.allWorkspaces.length > 0) {
+                rawWsData = window.allWorkspaces;
+            }
             const selectedWsIds = Array.from(window.selectedGtbWorkspaceIds || []);
             // 🚨 严格以顶栏当前选中的工作区为唯一权威依据：顶栏没选就是没选，绝不回退到任何旧状态
             let curWsId = '';
@@ -4932,7 +4992,16 @@
             const isAdmin = isWsAdmin; // 保留供工作区及其下游治理使用
 
             // 3. 严格检查是否选择了具体语义模型 —— 完全依赖顶栏已选模型，不在卡片内部提供选择
-            const allDatasets = window.getMergedGtbDatasets ? window.getMergedGtbDatasets() : JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
+            let allDatasets = window.getMergedGtbDatasets ? window.getMergedGtbDatasets() : JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
+            if (Array.isArray(window.allDatasets) && window.allDatasets.length > 0) {
+                const existingDsIds = new Set(allDatasets.map(d => String(d.id).toLowerCase()));
+                window.allDatasets.forEach(d => {
+                    if (d && d.id && !existingDsIds.has(String(d.id).toLowerCase())) {
+                        allDatasets.push(d);
+                        existingDsIds.add(String(d.id).toLowerCase());
+                    }
+                });
+            }
             const selectedDsIds = Array.from(window.selectedGtbDatasetIds || []);
             let curModel = null;
             // 优先通过顶栏已选模型 ID 精准匹配
@@ -4977,7 +5046,16 @@
             const hasSelectedModel = Boolean(curModel);
 
             // 4. 严格检查是否选择了具体报表 —— 完全依赖顶栏已选报表，不在卡片内部提供选择
-            const allReports = window.getMergedGtbReports ? window.getMergedGtbReports() : JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+            let allReports = window.getMergedGtbReports ? window.getMergedGtbReports() : JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+            if (Array.isArray(window.allReports) && window.allReports.length > 0) {
+                const existingRpIds = new Set(allReports.map(r => String(r.id).toLowerCase()));
+                window.allReports.forEach(r => {
+                    if (r && r.id && !existingRpIds.has(String(r.id).toLowerCase())) {
+                        allReports.push(r);
+                        existingRpIds.add(String(r.id).toLowerCase());
+                    }
+                });
+            }
             const selectedRpIds = Array.from(window.selectedGtbReportIds || []);
             let curReport = null;
             if (selectedRpIds.length > 0) {
@@ -5230,9 +5308,28 @@
                 `;
             };
 
-            // ⚡ 核心演进：动态工作区与模型 GAC 严格模式推导 (严禁将容器级设置误绑为纯个人属性)
+            // ⚡ 实时内部服务探针：若当前选定了语义模型，异步触发 WABI modeling/getModel 内部微服务
+            let liveGacData = null;
+            if (curModel && curModel.id) {
+                const gacCacheKey = `${curWsId || 'global'}_${curModel.id}`;
+                if (!window._modelLiveGacCache) {
+                    try {
+                        const cached = sessionStorage.getItem('pbi_model_live_gac_cache');
+                        window._modelLiveGacCache = cached ? JSON.parse(cached) : {};
+                    } catch(e) {
+                        window._modelLiveGacCache = {};
+                    }
+                }
+                liveGacData = window._modelLiveGacCache[gacCacheKey] || null;
+                if (!liveGacData && !this._fetchingLiveGac?.[gacCacheKey]) {
+                    this.fetchLiveModelGacStatus(curWsId, curModel.id);
+                }
+            }
+
+            // ⚡ 核心演进：动态工作区与模型 GAC 严格模式推导 (支持微软内部建模微服务实时真实验证)
             // 1. 若当前处于 What-If 演练且用户显式覆盖过 isInStrictMode，以演练设定为最高优先
-            // 2. 否则根据真实工作区与模型环境智能判定：
+            // 2. 🌟 微软内部微服务实时探针：若已成功握手 WABI modeling/getModel，直接采纳服务端实时权威真值！
+            // 3. 否则根据真实工作区与模型环境智能判定：
             //    - 真实 PROD 环境 (DA_APAC_BI_PROD / 包含 PROD 或 Production) 实测已由管理员启用 GAC -> true
             //    - 真实 QA / DEV 环境 (DA_APAC_BI_QA / 包含 QA 或 DEV) 实测未启用 GAC -> false
             //    - 虚拟预设主体：遵循预设内置的 state.isInStrictMode 设定 (预设管理员/开发者默认为 true)
@@ -5240,6 +5337,8 @@
             const wsFullNameUpper = `${wsName} ${curWsId}`.toUpperCase();
             if (this.simulationOverrides && this.simulationOverrides['isInStrictMode'] !== undefined) {
                 isStrictGacMode = Boolean(this.simulationOverrides['isInStrictMode']);
+            } else if (liveGacData && liveGacData.security_info && liveGacData.security_info.isInStrictMode !== undefined) {
+                isStrictGacMode = Boolean(liveGacData.security_info.isInStrictMode);
             } else if (wsFullNameUpper.includes('PROD') || wsFullNameUpper.includes('PRODUCTION')) {
                 isStrictGacMode = true;
             } else if (wsFullNameUpper.includes('QA') || wsFullNameUpper.includes('DEV')) {
@@ -5385,12 +5484,14 @@
                         id: 'ws_gac_setting',
                         cat: 'derived',
                         name: `Workspace GAC Setting (${isStrictGacMode ? '细粒度访问控制已启用' : '细粒度控制未开启'})`,
-                        desc: isStrictGacMode
-                            ? `【工作区连接配置】已在 Workspace > Settings > Data connections 启用 "Enable granular access control for all data connections"，全区模型继承 isInStrictMode=true 细粒度管控模式`
-                            : `【工作区连接配置】当前工作区未启用 GAC 细粒度开关 (isInStrictMode=false)，处于传统 Owner 独占模式，非 Owner 用户受前端限制`,
+                        desc: liveGacData
+                            ? `【${liveGacData.is_live ? '微软内部微服务实时验证' : '已验证基线响应'}】来自集群 [${liveGacData.cluster || 'wabi-paas-1'}]：工作区数据连接 GAC 细粒度控制已${isStrictGacMode ? '开启' : '关闭'} (isInStrictMode=${isStrictGacMode})，工作区内所有语义模型统一继承此细粒度安全管辖策略。`
+                            : (isStrictGacMode
+                                ? `【工作区连接配置】已在 Workspace > Settings > Data connections 启用 "Enable granular access control for all data connections"，全区模型继承 isInStrictMode=true 细粒度管控模式`
+                                : `【工作区连接配置】当前工作区未启用 GAC 细粒度开关 (isInStrictMode=false)，处于传统 Owner 独占模式，非 Owner 用户受前端限制`),
                         statusClass: isStrictGacMode ? 'enabled' : 'disabled',
                         statusText: isStrictGacMode ? '🛡️ GAC ON (Strict)' : '⚠️ GAC OFF (Legacy)',
-                        badge: 'GAC SWITCH'
+                        badge: liveGacData ? (liveGacData.is_live ? '⚡ LIVE WABI' : '🛡️ BASELINE') : 'GAC SWITCH'
                     },
                     { id: 'ws_capacity', cat: 'derived', name: 'Fabric F64 Capacity (企业专用容量)', desc: '【承载环境】挂载企业专用容量 (Fabric F64)，享有独立计算算力与 Direct Lake 加速通道', statusClass: 'enabled', statusText: '⚡ CAN ACCESS', badge: 'CAPACITY' },
                     { id: 'ws_target', cat: 'env', name: `Workspace Container (目标工作区容器)`, desc: `【承载环境】工作区名称: ${wsName} · 容器 ID: ${curWs.id}`, statusClass: 'enabled', statusText: '✅ READY', badge: 'WORKSPACE' }
@@ -5449,7 +5550,19 @@
                     { id: 'model_write', cat: 'derived', name: 'Write (修改模型架构与度量值)', desc: isPrivileged ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生特权，允许通过 XMLA 端点或浏览器在线修改表结构、新建度量值与关系模型` : '【由工作区角色派生】当前角色无编辑特权，禁止写回模型架构或修改度量值', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ CAN WRITE' : '❌ CANNOT WRITE', badge: 'WRITE' },
                     { id: 'model_rls', cat: 'derived', name: 'RLS (行级安全过滤规则)', desc: isPrivileged ? `【由工作区角色控制】拥有 [${wsRoleCaps}] 管理特权穿透，直接跳过所有 DAX 行级安全过滤规则，查看全量业务明细` : '【由工作区角色控制】受 DAX 角色策略约束，仅能查看授权给当前身份的切片行数据', statusClass: isPrivileged ? 'bypassed' : 'warn', statusText: isPrivileged ? '⚡ ADMIN BYPASS' : '🔒 RLS RESTRICTED', badge: 'RLS' },
                     { id: 'model_ols', cat: 'derived', name: 'OLS (对象级与敏感列安全)', desc: isPrivileged ? `【由工作区角色控制】拥有 [${wsRoleCaps}] 管理特权穿透，免除语义模型敏感表与度量值字段的 OLS 掩蔽限制` : (user?.state?.olsEnabled ? '【由工作区角色控制】受敏感字段 OLS 列级安全约束，受保护的高密字段已被动态掩蔽 (Masked)' : '【由工作区角色控制】当前模型未启用 OLS 保护，所有表与字段对只读用户完整可见'), statusClass: isPrivileged ? 'bypassed' : (user?.state?.olsEnabled ? 'warn' : 'enabled'), statusText: isPrivileged ? '⚡ ADMIN BYPASS' : (user?.state?.olsEnabled ? '🔒 OLS MASKED' : '✅ ALL COLUMNS VISIBLE'), badge: 'OLS' },
-                    { id: 'model_gac', cat: 'derived', name: 'Model GAC (模型细粒度访问控制)', desc: isStrictGacMode ? '【受租户门禁与工作区 GAC 开关双重管辖】工作区已勾选启用数据连接细粒度控制 (isInStrictMode=true)，语义模型进入严格审查模式，微观对象与跨源 Mashup 均需校验连接凭据' : '【受租户门禁与工作区 GAC 开关双重管辖】工作区未开启 GAC 开关 (isInStrictMode=false)，处于传统 Owner 独占模式，非模型 Owner 无法进入 Power Query 编辑', statusClass: isStrictGacMode ? 'warn' : 'disabled', statusText: isStrictGacMode ? '🛡️ GAC STRICT ENFORCED' : '⚠️ GAC DISABLED (Legacy)', badge: 'GAC' },
+                    {
+                        id: 'model_gac',
+                        cat: 'derived',
+                        name: 'Model GAC (模型细粒度访问控制)',
+                        desc: liveGacData
+                            ? `【受租户门禁与工作区 GAC 双重管辖 · ${liveGacData.is_live ? 'WABI 实时探针' : '已验证基线'}】${liveGacData.cluster ? `集群 [${liveGacData.cluster}] · ` : ''}isInStrictMode=${isStrictGacMode} · hasAccessToAllDataConnections=${Boolean(liveGacData.security_info?.hasAccessToAllDataConnections)} · isModelOwner=${Boolean(liveGacData.security_info?.isModelOwner)}。${isStrictGacMode ? '语义模型已进入严格审查模式，微观对象与跨源 Mashup 均需严格校验连接凭据。' : '模型处于传统 Owner 独占模式，非模型 Owner 无法进入 Power Query 编辑。'}`
+                            : (isStrictGacMode
+                                ? '【受租户门禁与工作区 GAC 开关双重管辖】工作区已勾选启用数据连接细粒度控制 (isInStrictMode=true)，语义模型进入严格审查模式，微观对象与跨源 Mashup 均需校验连接凭据'
+                                : '【受租户门禁与工作区 GAC 开关双重管辖】工作区未开启 GAC 开关 (isInStrictMode=false)，处于传统 Owner 独占模式，非模型 Owner 无法进入 Power Query 编辑'),
+                        statusClass: isStrictGacMode ? 'warn' : 'disabled',
+                        statusText: isStrictGacMode ? '🛡️ GAC STRICT ENFORCED' : '⚠️ GAC DISABLED (Legacy)',
+                        badge: liveGacData ? (liveGacData.is_live ? '⚡ LIVE WABI' : '🛡️ BASELINE') : 'GAC'
+                    },
                     { id: 'model_reshare', cat: 'derived', name: 'Reshare (二次授权共享模型)', desc: (isAdmin || isMember) ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生，允许将该具体语义模型的访问权限二次授权给其他组织成员` : '【由工作区角色派生】无 RESHARE 权限，禁止向第三方组织成员分发或再授权该模型', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ CAN RESHARE' : '❌ CANNOT RESHARE', badge: 'RESHARE' }
                 ];
                 colModelBody = renderTierItemsHtml('model', modelItems);

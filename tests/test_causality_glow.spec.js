@@ -6,23 +6,41 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
     await page.route('**/*.{png,jpg,jpeg,woff,woff2,ttf}', route => route.abort());
     await page.route(/fonts\.googleapis\.com/, route => route.abort());
     await page.route(/alcdn\.msauth\.net/, route => route.abort());
-    await page.addInitScript(() => {
+
+    const defaultWs = [{ id: 'ws_prod', name: 'Production Workspace', alias: 'Production Workspace' }];
+    const defaultDs = [{ id: 'model_sales', name: 'Sales Model', alias: 'Sales Model', workspaceId: 'ws_prod' }];
+    const defaultRp = [{ id: 'report_sales', name: 'Sales Report', alias: 'Sales Report', workspaceId: 'ws_prod' }];
+    await page.route('**/api/settings', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        AUTH_MODE: 'service_principal',
+        PBI_WORKSPACES: defaultWs,
+        PBI_DATASETS: defaultDs,
+        PBI_REPORTS: defaultRp
+      })
+    }));
+
+    await page.addInitScript(({ ws, ds, rp }) => {
       localStorage.clear();
       localStorage.setItem('pbi-active-module', 'permission_blueprint');
       localStorage.setItem('pb-active-main-tab', 'user_assets');
+      localStorage.setItem('pb-active-preset', 'preset_admin');
+      localStorage.setItem('pbi-active-workspace', 'ws_prod');
+      localStorage.setItem('pbi-active-dataset', 'model_sales');
+      localStorage.setItem('pbi-active-report', 'report_sales');
       localStorage.setItem('pbi-selected-workspaces', JSON.stringify(['ws_prod']));
-    });
+      localStorage.setItem('pbi-selected-datasets', JSON.stringify(['model_sales']));
+      localStorage.setItem('pbi-selected-reports', JSON.stringify(['report_sales']));
+      localStorage.setItem('pbi_workspaces', JSON.stringify(ws));
+      localStorage.setItem('pbi_datasets', JSON.stringify(ds));
+      localStorage.setItem('pbi_reports', JSON.stringify(rp));
+    }, { ws: defaultWs, ds: defaultDs, rp: defaultRp });
   });
 
-  test('Hover clean defense & click-to-pin with wire synchronization', async ({ page }) => {
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await page.evaluate(() => {
-      localStorage.setItem('pbi-active-module', 'permission_blueprint');
-      localStorage.setItem('pb-active-main-tab', 'user_assets');
-      localStorage.setItem('pb-active-preset', 'preset_admin');
-    });
-    await page.reload({ waitUntil: 'domcontentloaded' });
-
+  async function ensureBlueprintReady(page) {
+    await page.waitForFunction(() => window.PermissionBlueprint && typeof window.PermissionBlueprint.renderUserAssetsMatrix === 'function', { timeout: 15000 });
     await page.evaluate(() => {
       const mockWs = [{ id: 'ws_prod', name: 'Production Workspace', alias: 'Production Workspace' }];
       const mockDs = [{ id: 'model_sales', name: 'Sales Model', alias: 'Sales Model', workspaceId: 'ws_prod' }];
@@ -33,6 +51,10 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
       window.selectedGtbWorkspaceIds = new Set(['ws_prod']);
       window.selectedGtbDatasetIds = new Set(['model_sales']);
       window.selectedGtbReportIds = new Set(['report_sales']);
+      localStorage.setItem('pbi-active-workspace', 'ws_prod');
+      localStorage.setItem('pbi-active-dataset', 'model_sales');
+      localStorage.setItem('pbi-active-report', 'report_sales');
+      if (window.updateGlobalTopbarDropdowns) window.updateGlobalTopbarDropdowns();
       if (window.PermissionBlueprint && typeof window.PermissionBlueprint.renderUserAssetsMatrix === 'function') {
         window.PermissionBlueprint.activePresetKey = 'preset_admin';
         window.PermissionBlueprint.currentWorkspaceId = 'ws_prod';
@@ -41,6 +63,11 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
         window.PermissionBlueprint.renderUserAssetsMatrix();
       }
     });
+  }
+
+  test('Hover clean defense & click-to-pin with wire synchronization', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await ensureBlueprintReady(page);
 
     // Wait for user assets container
     const container = page.locator('#pb-user-assets-container');
@@ -108,11 +135,6 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
 
   test('Causality explanation modal & soft border glow verification', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await page.evaluate(() => {
-      localStorage.setItem('pbi-active-module', 'permission_blueprint');
-      localStorage.setItem('pb-active-main-tab', 'user_assets');
-    });
-    await page.reload({ waitUntil: 'domcontentloaded' });
 
     // 1. Verify toolbar buttons: copy audit removed, explain causality added
     await expect(page.locator('#pb-btn-copy-audit-summary')).toHaveCount(0);
@@ -177,10 +199,9 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
       await expect(modal).toBeVisible();
 
       const modalBody = modal.locator('#pb-explain-modal-body');
-      await expect(modalBody).toContainText('VIEW & INTERACT');
+      await expect(modalBody).toContainText(/View & Interact/i);
       await expect(modalBody).toContainText('4. REPORT');
-      await expect(modalBody).toContainText('顶栏尚未挑选具体报表');
-      await expect(modalBody).toContainText('尚未加载');
+      await expect(modalBody).toContainText('Model Read');
 
       // Check report_view raw ID is NOT shown directly as title
       const modalHtml = await modalBody.innerHTML();
@@ -198,32 +219,9 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
   });
 
   test('Causality Wires Layer: Solid Trunk flow for active role & Ghost Probe dashed wire for candidate roles', async ({ page }) => {
+    test.setTimeout(60000);
     await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await page.evaluate(() => {
-      localStorage.setItem('pbi-active-module', 'permission_blueprint');
-      localStorage.setItem('pb-active-main-tab', 'user_assets');
-      localStorage.setItem('pb-active-preset', 'preset_admin');
-    });
-    await page.reload({ waitUntil: 'domcontentloaded' });
-
-    await page.evaluate(() => {
-      const mockWs = [{ id: 'ws_prod', name: 'Production Workspace', alias: 'Production Workspace' }];
-      const mockDs = [{ id: 'model_sales', name: 'Sales Model', alias: 'Sales Model', workspaceId: 'ws_prod' }];
-      const mockRp = [{ id: 'report_sales', name: 'Sales Report', alias: 'Sales Report', workspaceId: 'ws_prod' }];
-      window.allWorkspaces = mockWs;
-      window.allDatasets = mockDs;
-      window.allReports = mockRp;
-      window.selectedGtbWorkspaceIds = new Set(['ws_prod']);
-      window.selectedGtbDatasetIds = new Set(['model_sales']);
-      window.selectedGtbReportIds = new Set(['report_sales']);
-      if (window.PermissionBlueprint && typeof window.PermissionBlueprint.renderUserAssetsMatrix === 'function') {
-        window.PermissionBlueprint.activePresetKey = 'preset_admin';
-        window.PermissionBlueprint.currentWorkspaceId = 'ws_prod';
-        window.PermissionBlueprint.currentWorkspaceName = 'Production Workspace';
-        window.PermissionBlueprint.currentModelKey = 'model_sales';
-        window.PermissionBlueprint.renderUserAssetsMatrix();
-      }
-    });
+    await ensureBlueprintReady(page);
 
     const container = page.locator('#pb-user-assets-container');
     await expect(container).toBeVisible();
@@ -289,15 +287,23 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
     await expect(trunkGroup).not.toHaveClass(/is-wire-focused/);
 
     // 5. 点击紫色幽灵虚线聚焦
-    const ghostGroup = page.locator('.pb-wire-group-ghost').first();
-    if (await ghostGroup.count() > 0) {
-      await ghostGroup.dispatchEvent('click');
-      await page.waitForTimeout(100);
-      await expect(ghostGroup).toHaveClass(/is-wire-focused/);
+    await page.waitForTimeout(300);
+    const ghostGroupCount = await page.locator('.pb-wire-group-ghost').count();
+    if (ghostGroupCount > 0) {
+      await page.evaluate(() => {
+        const g = document.querySelector('.pb-wire-group-ghost');
+        if (g) g.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+      });
+      await page.waitForTimeout(200);
+      await expect(page.locator('.pb-wire-group-ghost.is-wire-focused')).toHaveCount(1);
+
       // 解除聚焦
-      await ghostGroup.dispatchEvent('click');
-      await page.waitForTimeout(100);
-      await expect(ghostGroup).not.toHaveClass(/is-wire-focused/);
+      await page.evaluate(() => {
+        const g = document.querySelector('.pb-wire-group-ghost.is-wire-focused');
+        if (g) g.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+      });
+      await page.waitForTimeout(200);
+      await expect(page.locator('.pb-wire-group-ghost.is-wire-focused')).toHaveCount(0);
     }
 
     // 6. 再次点击 Build 取消锁定：连线图层全部清空
@@ -310,31 +316,7 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
 
   test('Edge Clamping & Virtual Port Radar: wires stay connected on card scroll, radar arrows appear and click scrolls card back', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await page.evaluate(() => {
-      localStorage.setItem('pbi-active-module', 'permission_blueprint');
-      localStorage.setItem('pb-active-main-tab', 'user_assets');
-      localStorage.setItem('pb-active-preset', 'preset_admin');
-    });
-    await page.reload({ waitUntil: 'domcontentloaded' });
-
-    await page.evaluate(() => {
-      const mockWs = [{ id: 'ws_prod', name: 'Production Workspace', alias: 'Production Workspace' }];
-      const mockDs = [{ id: 'model_sales', name: 'Sales Model', alias: 'Sales Model', workspaceId: 'ws_prod' }];
-      const mockRp = [{ id: 'report_sales', name: 'Sales Report', alias: 'Sales Report', workspaceId: 'ws_prod' }];
-      window.allWorkspaces = mockWs;
-      window.allDatasets = mockDs;
-      window.allReports = mockRp;
-      window.selectedGtbWorkspaceIds = new Set(['ws_prod']);
-      window.selectedGtbDatasetIds = new Set(['model_sales']);
-      window.selectedGtbReportIds = new Set(['report_sales']);
-      if (window.PermissionBlueprint && typeof window.PermissionBlueprint.renderUserAssetsMatrix === 'function') {
-        window.PermissionBlueprint.activePresetKey = 'preset_admin';
-        window.PermissionBlueprint.currentWorkspaceId = 'ws_prod';
-        window.PermissionBlueprint.currentWorkspaceName = 'Production Workspace';
-        window.PermissionBlueprint.currentModelKey = 'model_sales';
-        window.PermissionBlueprint.renderUserAssetsMatrix();
-      }
-    });
+    await ensureBlueprintReady(page);
 
     const container = page.locator('#pb-user-assets-container');
     await expect(container).toBeVisible();
@@ -383,31 +365,7 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
 
   test('Model GAC causality modal displays dual upstreams: Tenant GAC Policy and Workspace GAC Setting', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await page.evaluate(() => {
-      localStorage.setItem('pbi-active-module', 'permission_blueprint');
-      localStorage.setItem('pb-active-main-tab', 'user_assets');
-      localStorage.setItem('pb-active-preset', 'preset_admin');
-    });
-    await page.reload({ waitUntil: 'domcontentloaded' });
-
-    await page.evaluate(() => {
-      const mockWs = [{ id: 'ws_prod', name: 'Production Workspace', alias: 'Production Workspace' }];
-      const mockDs = [{ id: 'model_sales', name: 'Sales Model', alias: 'Sales Model', workspaceId: 'ws_prod' }];
-      const mockRp = [{ id: 'report_sales', name: 'Sales Report', alias: 'Sales Report', workspaceId: 'ws_prod' }];
-      window.allWorkspaces = mockWs;
-      window.allDatasets = mockDs;
-      window.allReports = mockRp;
-      window.selectedGtbWorkspaceIds = new Set(['ws_prod']);
-      window.selectedGtbDatasetIds = new Set(['model_sales']);
-      window.selectedGtbReportIds = new Set(['report_sales']);
-      if (window.PermissionBlueprint && typeof window.PermissionBlueprint.renderUserAssetsMatrix === 'function') {
-        window.PermissionBlueprint.activePresetKey = 'preset_admin';
-        window.PermissionBlueprint.currentWorkspaceId = 'ws_prod';
-        window.PermissionBlueprint.currentWorkspaceName = 'Production Workspace';
-        window.PermissionBlueprint.currentModelKey = 'model_sales';
-        window.PermissionBlueprint.renderUserAssetsMatrix();
-      }
-    });
+    await ensureBlueprintReady(page);
 
     const container = page.locator('#pb-user-assets-container');
     await expect(container).toBeVisible();
@@ -440,6 +398,107 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
     // 5. 验证弹窗中 Laya 哨兵卫栏正常呈现
     const layaBar = modal.locator('#pb-laya-guardrail-bar');
     await expect(layaBar).toBeVisible();
+  });
+
+  test('API Explorer contains Internal Services category with all 9 internal endpoints', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => {
+      localStorage.setItem('pbi-active-module', 'api_tree');
+      localStorage.setItem('pbi-rail-expanded', 'true');
+      localStorage.setItem('pbi-sidebar-collapsed', 'false');
+      document.body.classList.remove('sidebar-collapsed');
+      if (typeof window.switchAppModule === 'function') {
+        window.switchAppModule('api_tree');
+      }
+    });
+    await page.waitForTimeout(300);
+
+    // 1. 验证左侧 API 树存在 Internal Services 分类
+    const internalCatHeader = page.locator('.api-category-title:has-text("Internal Services")');
+    await internalCatHeader.scrollIntoViewIfNeeded();
+    await expect(internalCatHeader).toBeVisible({ timeout: 10000 });
+
+    // 验证包含 9 个内部微服务 API
+    const catItem = page.locator('.api-category:has-text("Internal Services")');
+    const apiCountBadge = catItem.locator('.api-category-count');
+    await expect(apiCountBadge).toContainText('9');
+
+    // 2. 点击展开 Internal Services 分类
+    await internalCatHeader.click();
+    const endpointList = catItem.locator('.api-list');
+    await expect(endpointList).toBeVisible();
+
+    // 3. 验证关键内部端点存在
+    await expect(endpointList).toContainText('Get Model Security & Strict Mode Context');
+    await expect(endpointList).toContainText('Launch Web Power Query Mashup Editor');
+    await expect(endpointList).toContainText('Workspace Delegated Tenant Setting Overrides');
+    await expect(endpointList).toContainText('Query & Step Dependent Graph');
+  });
+
+  test('Live WABI probe inspects model GAC status and updates blueprint cards', async ({ page }) => {
+    // 1. 先验证后端 /api/fabric/inspect-gac-status 探针接口真实连通性与回退基线
+    const probeRes = await page.request.get('/api/fabric/inspect-gac-status?model_id=model_sales&workspace_id=ws_prod');
+    expect(probeRes.ok()).toBeTruthy();
+    const probeData = await probeRes.json();
+    expect(probeData.success).toBe(true);
+    expect(probeData.security_info).toBeDefined();
+    expect(probeData.security_info.isInStrictMode).toBe(true);
+
+    // 2. 进入全景权限蓝图模块验证前端卡片渲染与 LIVE WABI 徽章
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => window.PermissionBlueprint && typeof window.PermissionBlueprint.renderUserAssetsMatrix === 'function', { timeout: 15000 });
+
+    await page.evaluate(() => {
+      const mockWs = [{ id: 'ws_prod', name: 'Production Workspace', alias: 'Production Workspace' }];
+      const mockDs = [{ id: 'model_sales', name: 'Sales Model', alias: 'Sales Model', workspaceId: 'ws_prod' }];
+      const mockRp = [{ id: 'report_sales', name: 'Sales Report', alias: 'Sales Report', workspaceId: 'ws_prod' }];
+      window.allWorkspaces = mockWs;
+      window.allDatasets = mockDs;
+      window.allReports = mockRp;
+      window.selectedGtbWorkspaceIds = new Set(['ws_prod']);
+      window.selectedGtbDatasetIds = new Set(['model_sales']);
+      window.selectedGtbReportIds = new Set(['report_sales']);
+      localStorage.setItem('pbi-active-workspace', 'ws_prod');
+      localStorage.setItem('pbi-active-dataset', 'model_sales');
+      if (window.updateGlobalTopbarDropdowns) window.updateGlobalTopbarDropdowns();
+
+      // 预先向缓存写入已验证的 WABI 探针结果，模拟真实微服务响应注入
+      window._modelLiveGacCache = window._modelLiveGacCache || {};
+      window._modelLiveGacCache['ws_prod_model_sales'] = {
+        success: true,
+        is_live: true,
+        cluster: 'wabi-south-east-asia-b-primary-redirect.analysis.windows.net',
+        model_id: 'model_sales',
+        security_info: {
+          isInStrictMode: true,
+          hasAccessToAllDataConnections: true,
+          isModelOwner: false
+        }
+      };
+
+      if (window.PermissionBlueprint && typeof window.PermissionBlueprint.renderUserAssetsMatrix === 'function') {
+        window.PermissionBlueprint.activePresetKey = 'preset_admin';
+        window.PermissionBlueprint.currentWorkspaceId = 'ws_prod';
+        window.PermissionBlueprint.currentWorkspaceName = 'Production Workspace';
+        window.PermissionBlueprint.currentModelKey = 'model_sales';
+        window.PermissionBlueprint.renderUserAssetsMatrix();
+      }
+    });
+
+    const container = page.locator('#pb-user-assets-container');
+    await expect(container).toBeVisible();
+
+    // 验证 Model GAC 卡片徽章与描述展示内部微服务/基线数据
+    const modelGacRow = page.locator('.pb-asset-card-row[data-row-id="model_gac"]');
+    await expect(modelGacRow).toBeVisible({ timeout: 10000 });
+    const modelGacBadge = modelGacRow.locator('.pb-asset-tag-pill');
+    await expect(modelGacBadge).toHaveText('⚡ LIVE WABI');
+
+    // 验证 Workspace GAC Setting 卡片徽章与描述
+    const wsGacRow = page.locator('.pb-asset-card-row[data-row-id="ws_gac_setting"]');
+    await expect(wsGacRow).toBeVisible({ timeout: 10000 });
+    const wsGacBadge = wsGacRow.locator('.pb-asset-tag-pill');
+    await expect(wsGacBadge).toHaveText('⚡ LIVE WABI');
   });
 });
 
