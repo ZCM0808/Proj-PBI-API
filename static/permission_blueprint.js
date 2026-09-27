@@ -7604,7 +7604,15 @@
                                 statusEl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><span>Laya 越权风险预警 · 合规风险度: ${audit.risk_score || 1.8} / 2.0 · 建议复核 (Escalate)</span></span>`;
                                 if (actEl) {
                                     actEl.style.color = '';
-                                    actEl.textContent = `Laya 自主放行率: ${Math.round((audit.act_probability || 0.3) * 100)}%`;
+                                    const actPct = Math.round((audit.act_probability || 0.3) * 100);
+                                    const escPct = 100 - actPct;
+                                    const noulPct = Math.round((audit.noul_probability || 0.85) * 100);
+                                    const probs = audit.probabilities || {};
+                                    const p0 = Math.round((probs['0'] || 0.1) * 100);
+                                    const p1 = Math.round((probs['1'] || 0.2) * 100);
+                                    const p2 = Math.round((probs['2'] || 0.7) * 100);
+                                    actEl.textContent = `Laya 自主放行率: ${actPct}%`;
+                                    actEl.title = `📊 Laya System 1 决策概率分布全景：\n• 决策倾向: 自主放行 (Act) ${actPct}% · 提级人工复核 (Escalate) ${escPct}%\n• 越权置信概率 (Noul): ${noulPct}%\n• 三阶严重度分布: [常规放行: ${p0}% | 建议关注: ${p1}% | 越权高危: ${p2}%]`;
                                 }
                             } else {
                                 const scoreVal = audit && typeof audit.risk_score === 'number' ? audit.risk_score : 0.2;
@@ -7615,7 +7623,15 @@
                                 statusEl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Laya 评估通过 · 微软标准 RBAC 链路 · 机器完全信任放行 (Act) · 风险度: ${scoreVal}</span></span>`;
                                 if (actEl) {
                                     actEl.style.color = '';
-                                    actEl.textContent = `Laya 自主放行率: ${Math.round(actProb * 100)}%`;
+                                    const actPct = Math.round(actProb * 100);
+                                    const escPct = 100 - actPct;
+                                    const noulPct = Math.round((audit && typeof audit.noul_probability === 'number' ? audit.noul_probability : 0.15) * 100);
+                                    const probs = (audit && audit.probabilities) || {};
+                                    const p0 = Math.round((probs['0'] || 0.8) * 100);
+                                    const p1 = Math.round((probs['1'] || 0.2) * 100);
+                                    const p2 = Math.round((probs['2'] || 0.0) * 100);
+                                    actEl.textContent = `Laya 自主放行率: ${actPct}%`;
+                                    actEl.title = `📊 Laya System 1 决策概率分布全景：\n• 决策倾向: 自主放行 (Act) ${actPct}% · 提级人工复核 (Escalate) ${escPct}%\n• 越权置信概率 (Noul): ${noulPct}%\n• 三阶严重度分布: [常规放行: ${p0}% | 建议关注: ${p1}% | 越权高危: ${p2}%]`;
                                 }
                             }
                         };
