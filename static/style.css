@@ -9553,32 +9553,156 @@ body.light-theme .btn-wf-sm.active-filter,
     filter: drop-shadow(0 0 4px #ffffff) drop-shadow(0 0 10px #e879f9) drop-shadow(0 0 20px rgba(217, 70, 239, 0.95)) !important;
 }
 
-/* 磁吸发光端点圆点 (Magnetic Port Badges) */
+/* 透明超宽点击热区 (Invisible Hitbox) - 确保 20px 宽容范围轻松捕捉鼠标点击与悬浮 */
+.pb-wire-hitbox {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 22px;
+    stroke-linecap: round;
+    pointer-events: stroke;
+    cursor: pointer;
+}
+
+/* ⚡ 连线交互组 (Wire Group: 支持悬浮增强与点击专属聚焦) */
+.pb-wire-group {
+    pointer-events: auto;
+    cursor: pointer;
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), filter 0.3s ease;
+}
+
+.pb-wire-group:hover,
+.pb-wire-group.is-wire-hover {
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.5));
+}
+
+.pb-wire-group:hover .pb-wire-trunk-bg,
+.pb-wire-group.is-wire-hover .pb-wire-trunk-bg {
+    stroke-width: 8px;
+    stroke: rgba(16, 185, 129, 0.45);
+    filter: drop-shadow(0 0 8px #10b981);
+}
+
+.pb-wire-group:hover .pb-wire-trunk,
+.pb-wire-group.is-wire-hover .pb-wire-trunk {
+    stroke-width: 3.5px;
+    filter: drop-shadow(0 0 8px #38bdf8);
+}
+
+.pb-wire-group:hover .pb-wire-ghost-bg,
+.pb-wire-group.is-wire-hover .pb-wire-ghost-bg {
+    stroke-width: 8px;
+    stroke: rgba(232, 121, 249, 0.45);
+}
+
+.pb-wire-group:hover .pb-wire-ghost,
+.pb-wire-group.is-wire-hover .pb-wire-ghost {
+    stroke-width: 3.2px;
+    stroke: #f0abfc;
+    filter: drop-shadow(0 0 8px #e879f9);
+}
+
+.pb-wire-group:hover .pb-wire-port-dot,
+.pb-wire-group.is-wire-hover .pb-wire-port-dot {
+    transform: scale(1.25);
+    filter: drop-shadow(0 0 8px #ffffff) drop-shadow(0 0 12px currentColor);
+}
+
+/* ⚡ 连线点击聚焦激活态 (Single Wire Focused: 白热极光高能脉冲) */
+.pb-wire-group.is-wire-focused {
+    opacity: 1 !important;
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8)) !important;
+}
+
+.pb-wire-group.is-wire-focused .pb-wire-trunk-bg {
+    stroke-width: 10px !important;
+    stroke: rgba(16, 185, 129, 0.6) !important;
+    filter: drop-shadow(0 0 12px #10b981) !important;
+}
+
+.pb-wire-group.is-wire-focused .pb-wire-trunk {
+    stroke-width: 4.2px !important;
+    stroke-dasharray: 10 4 !important;
+    animation: pbWireTrunkFlow 0.6s linear infinite !important;
+    filter: drop-shadow(0 0 4px #ffffff) drop-shadow(0 0 10px #38bdf8) !important;
+}
+
+.pb-wire-group.is-wire-focused .pb-wire-ghost-bg {
+    stroke-width: 10px !important;
+    stroke: rgba(217, 70, 239, 0.6) !important;
+    filter: drop-shadow(0 0 12px #d946ef) !important;
+}
+
+.pb-wire-group.is-wire-focused .pb-wire-ghost {
+    stroke-width: 4.2px !important;
+    stroke: #f0abfc !important;
+    stroke-dasharray: 10 4 !important;
+    animation: pbWireTrunkFlow 0.6s linear infinite !important;
+    filter: drop-shadow(0 0 4px #ffffff) drop-shadow(0 0 12px #e879f9) !important;
+}
+
+.pb-wire-group.is-wire-focused .pb-wire-port-dot {
+    transform: scale(1.35) !important;
+    fill: #ffffff !important;
+    filter: drop-shadow(0 0 8px #ffffff) drop-shadow(0 0 14px currentColor) !important;
+}
+
+/* 当某条特定连线被点击聚焦时，其余无关连线淡化隐入背景 */
+.pb-wire-group.is-wire-dimmed {
+    opacity: 0.1 !important;
+    filter: none !important;
+    transition: opacity 0.3s ease;
+}
+
+/* 磁吸发光端点微光圆点 (Magnetic Port Badges) - 纯白微光核心 + 霓虹彩色光环 */
 .pb-wire-port-dot {
     transform-box: fill-box;
     transform-origin: center;
-    transition: transform 0.25s ease, fill 0.25s ease, filter 0.25s ease, opacity 0.25s ease;
+    transition: transform 0.25s ease, fill 0.25s ease, stroke 0.25s ease, filter 0.25s ease, opacity 0.25s ease;
+    pointer-events: auto;
+    cursor: pointer;
 }
 
-.pb-wire-port-dot.port-trunk {
-    fill: #38bdf8;
-    filter: drop-shadow(0 0 5px #38bdf8);
+/* 绿色主干实线 - 起点微光圆点 (发射源) */
+.pb-wire-port-dot.port-trunk.port-from {
+    fill: #ffffff;
+    stroke: #10b981;
+    stroke-width: 2.2px;
+    filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.95));
 }
 
+/* 绿色主干实线 - 终点微光圆点 (接收端) */
+.pb-wire-port-dot.port-trunk.port-to {
+    fill: #ffffff;
+    stroke: #38bdf8;
+    stroke-width: 2.2px;
+    filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.95));
+}
+
+/* 兼容未拆分 from/to 的选择器 */
+.pb-wire-port-dot.port-trunk:not(.port-from):not(.port-to) {
+    fill: #ffffff;
+    stroke: #38bdf8;
+    stroke-width: 2.2px;
+    filter: drop-shadow(0 0 6px #38bdf8);
+}
+
+/* 紫色幽灵虚线 - 默认常态微光圆点 */
 .pb-wire-port-dot.port-ghost {
-    fill: #c084fc;
-    opacity: 0.75;
-    filter: drop-shadow(0 0 3px #c084fc);
+    fill: #ffffff;
+    stroke: #c084fc;
+    stroke-width: 2px;
+    opacity: 0.85;
+    filter: drop-shadow(0 0 5px rgba(192, 132, 252, 0.85));
 }
 
+/* 紫色幽灵虚线 - 悬浮激活态 (Probe Active) */
 .pb-wire-port-dot.port-ghost.is-probe-active {
     opacity: 1 !important;
     fill: #ffffff !important;
     stroke: #f0abfc !important;
-    stroke-width: 2px !important;
-    filter: drop-shadow(0 0 6px #ffffff) drop-shadow(0 0 12px #e879f9) drop-shadow(0 0 20px rgba(192, 132, 252, 0.9)) !important;
-    transform: scale(1.25);
-    transform-origin: center;
+    stroke-width: 2.5px !important;
+    filter: drop-shadow(0 0 6px #ffffff) drop-shadow(0 0 12px #e879f9) drop-shadow(0 0 20px rgba(192, 132, 252, 0.95)) !important;
+    transform: scale(1.3);
 }
 
 @keyframes pbWireTrunkFlow {

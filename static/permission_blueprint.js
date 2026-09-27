@@ -6254,35 +6254,116 @@
                     const cp2x = isLeftToRight ? (x2 - dx) : (x2 + dx);
                     const d = `M ${x1.toFixed(1)} ${y1.toFixed(1)} C ${cp1x.toFixed(1)} ${y1.toFixed(1)}, ${cp2x.toFixed(1)} ${y2.toFixed(1)}, ${x2.toFixed(1)} ${y2.toFixed(1)}`;
 
+                    const fromRowId = line.fromEl.getAttribute('data-row-id') || '';
+                    const toRowId = line.toEl.getAttribute('data-row-id') || '';
+                    const wireKey = `${fromRowId}->${toRowId}`;
+                    const isWireFocused = Boolean(this._focusedWireKey && this._focusedWireKey === wireKey);
+                    const isWireDimmed = Boolean(this._focusedWireKey && this._focusedWireKey !== wireKey);
+                    const focusClass = isWireFocused ? ' is-wire-focused' : (isWireDimmed ? ' is-wire-dimmed' : '');
+
                     if (line.type === 'trunk') {
                         svgHtml += `
-                            <g class="pb-wire-group-trunk" data-from-id="${line.probeCardId}">
+                            <g class="pb-wire-group pb-wire-group-trunk${focusClass}" data-wire-key="${wireKey}" data-from-id="${fromRowId}" data-to-id="${toRowId}" data-wire-type="trunk">
+                                <path class="pb-wire-hitbox" d="${d}" />
                                 <path class="pb-wire-trunk-bg" d="${d}" />
                                 <path class="pb-wire-trunk" d="${d}" data-wire-type="trunk" />
-                                <circle class="pb-wire-port-dot port-trunk" cx="${x1.toFixed(1)}" cy="${y1.toFixed(1)}" r="3.5" />
-                                <circle class="pb-wire-port-dot port-trunk" cx="${x2.toFixed(1)}" cy="${y2.toFixed(1)}" r="3.5" />
+                                <circle class="pb-wire-port-dot port-trunk port-from" cx="${x1.toFixed(1)}" cy="${y1.toFixed(1)}" r="4.2" data-wire-key="${wireKey}" />
+                                <circle class="pb-wire-port-dot port-trunk port-to" cx="${x2.toFixed(1)}" cy="${y2.toFixed(1)}" r="4.2" data-wire-key="${wireKey}" />
                             </g>
                         `;
                     } else {
                         const isProbeActive = Boolean(this._hoveredProbeCardIds && this._hoveredProbeCardIds.has(line.probeCardId));
                         const activeClass = isProbeActive ? ' is-probe-active' : '';
                         svgHtml += `
-                            <g class="pb-wire-group-ghost${activeClass}" data-probe-card-id="${line.probeCardId}">
+                            <g class="pb-wire-group pb-wire-group-ghost${activeClass}${focusClass}" data-wire-key="${wireKey}" data-from-id="${fromRowId}" data-to-id="${toRowId}" data-probe-card-id="${line.probeCardId}" data-wire-type="ghost">
+                                <path class="pb-wire-hitbox" d="${d}" />
                                 <path class="pb-wire-ghost-bg${activeClass}" d="${d}" data-probe-card-id="${line.probeCardId}" />
                                 <path class="pb-wire-ghost${activeClass}" d="${d}" data-wire-type="ghost" data-probe-card-id="${line.probeCardId}" />
-                                <circle class="pb-wire-port-dot port-ghost${activeClass}" cx="${x1.toFixed(1)}" cy="${y1.toFixed(1)}" r="3.5" data-probe-card-id="${line.probeCardId}" />
-                                <circle class="pb-wire-port-dot port-ghost${activeClass}" cx="${x2.toFixed(1)}" cy="${y2.toFixed(1)}" r="3.5" data-probe-card-id="${line.probeCardId}" />
+                                <circle class="pb-wire-port-dot port-ghost port-from${activeClass}" cx="${x1.toFixed(1)}" cy="${y1.toFixed(1)}" r="4.2" data-probe-card-id="${line.probeCardId}" data-wire-key="${wireKey}" />
+                                <circle class="pb-wire-port-dot port-ghost port-to${activeClass}" cx="${x2.toFixed(1)}" cy="${y2.toFixed(1)}" r="4.2" data-probe-card-id="${line.probeCardId}" data-wire-key="${wireKey}" />
                             </g>
                         `;
                     }
                 });
 
                 wiresGroup.innerHTML = svgHtml;
+
+                // ⚡ 为每条因果导线绑定交互事件：支持悬浮微光提亮与点击单线聚焦 (高亮连线与两侧卡片)
+                wiresGroup.querySelectorAll('.pb-wire-group').forEach(groupEl => {
+                    groupEl.addEventListener('mouseenter', () => {
+                        if (!this._focusedWireKey) {
+                            groupEl.classList.add('is-wire-hover');
+                        }
+                    });
+                    groupEl.addEventListener('mouseleave', () => {
+                        groupEl.classList.remove('is-wire-hover');
+                    });
+                    groupEl.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const wireKey = groupEl.getAttribute('data-wire-key');
+                        const fromId = groupEl.getAttribute('data-from-id');
+                        const toId = groupEl.getAttribute('data-to-id');
+
+                        if (this._focusedWireKey === wireKey) {
+                            // 再次点击同一条连线 -> 解除连线聚焦，恢复当前卡片全局因果态
+                            this._focusedWireKey = null;
+                            if (this._pinnedCausalityRow) {
+                                applyCausalityVisuals(this._pinnedCausalityRow, true);
+                            }
+                        } else {
+                            // 点击新连线 -> 聚焦此连线，高亮连线与两侧卡片，其余淡化
+                            focusSingleWire(wireKey, fromId, toId);
+                        }
+                    });
+                });
             };
             this._renderCausalityWires = renderCausalityWires;
 
+            // ⚡ 聚焦特定单条因果导线：白热高光连线、显示并放大两端微光圆点、高亮两侧卡片、其余淡化
+            const focusSingleWire = (wireKey, fromId, toId) => {
+                this._focusedWireKey = wireKey;
+
+                // 1. 高亮选中的连线，将其余连线淡化隐入背景
+                const curWiresGroup = container.querySelector('#pb-causality-wires-group') || wiresGroup;
+                if (curWiresGroup) {
+                    const allGroups = curWiresGroup.querySelectorAll('.pb-wire-group');
+                    allGroups.forEach(g => {
+                        const k = g.getAttribute('data-wire-key');
+                        if (k === wireKey) {
+                            g.classList.add('is-wire-focused');
+                            g.classList.remove('is-wire-dimmed', 'is-wire-hover');
+                        } else {
+                            g.classList.remove('is-wire-focused', 'is-wire-hover');
+                            g.classList.add('is-wire-dimmed');
+                        }
+                    });
+                }
+
+                // 2. 查找两侧卡片元素 (发射源与接收端)
+                const fromEl = container.querySelector(`.pb-asset-card-row[data-row-id="${fromId}"]`) ||
+                               container.querySelector(`.pb-asset-card-row[data-alias-id="${fromId}"]`);
+                const toEl = container.querySelector(`.pb-asset-card-row[data-row-id="${toId}"]`) ||
+                             container.querySelector(`.pb-asset-card-row[data-alias-id="${toId}"]`);
+
+                // 3. 高亮两侧卡片，将其余所有小卡片全部置灰淡化
+                const rows = container.querySelectorAll('.pb-asset-card-row');
+                rows.forEach(r => {
+                    if (r === fromEl) {
+                        r.classList.add('pb-causality-active');
+                        r.classList.remove('pb-causality-target', 'pb-causality-dimmed');
+                    } else if (r === toEl) {
+                        r.classList.add('pb-causality-target');
+                        r.classList.remove('pb-causality-active', 'pb-causality-dimmed');
+                    } else {
+                        r.classList.add('pb-causality-dimmed');
+                        r.classList.remove('pb-causality-active', 'pb-causality-target');
+                    }
+                });
+            };
+
             const clearCausalityVisuals = () => {
                 this._activeCausalityRow = null;
+                this._focusedWireKey = null;
                 if (this._hoveredProbeCardIds) {
                     this._hoveredProbeCardIds.clear();
                 }
@@ -6299,6 +6380,7 @@
                     clearCausalityVisuals();
                     return;
                 }
+                this._focusedWireKey = null;
                 this._activeCausalityRow = activeRow;
 
                 const rowId = activeRow.getAttribute('data-row-id');

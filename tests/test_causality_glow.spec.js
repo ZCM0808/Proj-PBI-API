@@ -257,7 +257,39 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
       expect(clearedProbeCount).toBe(0);
     }
 
-    // 4. 再次点击 Build 取消锁定：连线图层全部清空
+    // 4. 验证连线点击交互 (Click-to-Focus Wire): 点击绿色主干线或紫色虚线，高亮连线与微光圆点，聚焦两侧卡片
+    const trunkGroup = page.locator('.pb-wire-group-trunk').first();
+    await expect(trunkGroup).toBeVisible();
+    await trunkGroup.dispatchEvent('click');
+    await page.waitForTimeout(100);
+
+    // 验证选中连线获得聚焦态，其他连线淡化
+    await expect(trunkGroup).toHaveClass(/is-wire-focused/);
+    const focusedTrunkDots = trunkGroup.locator('.pb-wire-port-dot');
+    expect(await focusedTrunkDots.count()).toBe(2);
+
+    // 验证两侧卡片保持高亮 (Active & Target)，其余卡片置灰 (Dimmed)
+    const dimmedCardsCount = await page.locator('.pb-causality-dimmed').count();
+    expect(dimmedCardsCount).toBeGreaterThanOrEqual(1);
+
+    // 再次点击同一条连线 -> 解除连线聚焦，恢复卡片全局因果态
+    await trunkGroup.dispatchEvent('click');
+    await page.waitForTimeout(100);
+    await expect(trunkGroup).not.toHaveClass(/is-wire-focused/);
+
+    // 5. 点击紫色幽灵虚线聚焦
+    const ghostGroup = page.locator('.pb-wire-group-ghost').first();
+    if (await ghostGroup.count() > 0) {
+      await ghostGroup.dispatchEvent('click');
+      await page.waitForTimeout(100);
+      await expect(ghostGroup).toHaveClass(/is-wire-focused/);
+      // 解除聚焦
+      await ghostGroup.dispatchEvent('click');
+      await page.waitForTimeout(100);
+      await expect(ghostGroup).not.toHaveClass(/is-wire-focused/);
+    }
+
+    // 6. 再次点击 Build 取消锁定：连线图层全部清空
     await buildRow.click();
     await expect(buildRow).not.toHaveClass(/pb-causality-pinned/);
     await page.waitForTimeout(100);
