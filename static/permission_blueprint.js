@@ -6722,33 +6722,6 @@
             }
         }
 
-        // ═════════════════════════════════════════════════════════════════════
-        // ⚠️ 阻断与受限断点速查切换 (Bottlenecks Focus Filter)
-        // ═════════════════════════════════════════════════════════════════════
-        toggleBottleneckFilter(btnEl) {
-            const container = document.getElementById('pb-user-assets-container');
-            if (!container) return;
-
-            const isFocus = container.classList.toggle('pb-bottlenecks-focus-mode');
-            if (btnEl) btnEl.classList.toggle('active-filter', isFocus);
-
-            if (isFocus) {
-                const disabledCount = container.querySelectorAll('.pb-asset-card-row.status-disabled').length;
-                const warnCount = container.querySelectorAll('.pb-asset-card-row.status-warn').length;
-                const totalIssues = disabledCount + warnCount;
-                if (typeof window.showNotification === 'function') {
-                    if (totalIssues > 0) {
-                        window.showNotification(`⚠️ 已开启断点速查：精准锁定 ${disabledCount} 项阻断与 ${warnCount} 项受限！`, 'warning', 3000);
-                    } else {
-                        window.showNotification('🎉 当前链路全线放行，未检出任何权限阻断或异常限制！', 'success', 2500);
-                    }
-                }
-            } else {
-                if (typeof window.showNotification === 'function') {
-                    window.showNotification('✨ 已退出断点速查，恢复全景权限链路总览', 'info', 2000);
-                }
-            }
-        }
 
         // ═════════════════════════════════════════════════════════════════════
         // 📋 复制权限诊断体检报告至剪贴板 (Copy Audit Summary)

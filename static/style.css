@@ -9506,35 +9506,6 @@ body.light-theme .pb-desc-tag.tag-ok,
     transition: opacity 0.25s ease-out !important;
 }
 
-/* 4. 瓶颈/受限与阻断速查模式 (Bottlenecks Focus Mode) */
-#pb-user-assets-container.pb-bottlenecks-focus-mode .pb-asset-card-row:not(.status-disabled):not(.status-warn) {
-    opacity: 0.2 !important;
-    filter: grayscale(0.85);
-    transition: opacity 0.25s ease-out, filter 0.25s ease-out !important;
-}
-#pb-user-assets-container.pb-bottlenecks-focus-mode .pb-asset-card-row.status-disabled {
-    border-color: #ef4444 !important;
-    background: rgba(239, 68, 68, 0.16) !important;
-    box-shadow: 0 0 14px rgba(239, 68, 68, 0.5) !important;
-    opacity: 1 !important;
-    transform: scale(1.01);
-}
-#pb-user-assets-container.pb-bottlenecks-focus-mode .pb-asset-card-row.status-warn {
-    border-color: #f59e0b !important;
-    background: rgba(245, 158, 11, 0.14) !important;
-    box-shadow: 0 0 12px rgba(245, 158, 11, 0.45) !important;
-    opacity: 1 !important;
-    transform: scale(1.01);
-}
-
-/* 工具栏高亮激活态 */
-.btn-wf-sm.active-filter {
-    background: rgba(245, 158, 11, 0.2) !important;
-    border-color: #f59e0b !important;
-    color: #fbbf24 !important;
-    box-shadow: 0 0 10px rgba(245, 158, 11, 0.3) !important;
-}
-
 /* 亮色模式适配 */
 body.light-theme .pb-asset-card-row.pb-causality-active,
 [data-theme="light"] .pb-asset-card-row.pb-causality-active {

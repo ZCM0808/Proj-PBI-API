@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260927_v1420">
+    <link rel="stylesheet" href="/static/style.css?v=20260927_v1433">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -2681,9 +2681,6 @@
                                     <svg class="pb-refresh-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.3s;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
                                     <span class="pb-refresh-label" style="white-space: nowrap;">刷新链路</span>
                                 </button>
-                                <button type="button" id="pb-btn-filter-bottlenecks" class="btn-wf-sm" onclick="window.PermissionBlueprint.toggleBottleneckFilter(this)" title="断点速查：仅高亮所有受限、阻断与离线项，淡化正常项" style="height: 28px; padding: 0 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0;">
-                                    <span style="white-space: nowrap;">⚠️ 仅看受限与阻断</span>
-                                </button>
                                 <button type="button" id="pb-btn-explain-causality" class="btn-wf-sm" onclick="window.PermissionBlueprint.explainActiveCausality(this)" title="解析关系 (Laya 智能合规审计)：深度解析当前选中小卡片与关联高亮卡片之间的因果权限链路及治理合规性" style="height: 28px; padding: 0 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0;">
                                     <span style="white-space: nowrap;">🔗 解析卡片关系</span>
                                     <span id="pb-btn-laya-badge" style="font-size: 0.6rem; color: #818cf8; font-weight: 800; background: rgba(99, 102, 241, 0.18); border: 1px solid rgba(99, 102, 241, 0.35); padding: 0 4px; border-radius: 3px; letter-spacing: 0.5px; white-space: nowrap;">LAYA</span>
@@ -3335,9 +3332,8 @@
                 <button type="button" class="close-btn" onclick="window.PermissionBlueprint.closeExplainModal()" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
             </div>
             <div id="pb-explain-modal-body" class="modal-body" style="padding: 16px 18px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 14px;"></div>
-            <div class="modal-footer" style="padding: 10px 18px; border-top: 1px solid var(--overlay-10); display: flex; justify-content: space-between; align-items: center;">
-                <div id="pb-explain-modal-summary" style="font-size: 0.74rem; color: var(--text-secondary);"></div>
-                <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="window.PermissionBlueprint.closeExplainModal()">关闭 (Close)</button>
+            <div class="modal-footer" style="padding: 10px 18px; border-top: 1px solid var(--overlay-10); display: flex; align-items: center;">
+                <div id="pb-explain-modal-summary" style="font-size: 0.74rem; color: var(--text-secondary); width: 100%;"></div>
             </div>
         </div>
     </div>
@@ -3349,7 +3345,7 @@
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260924_v2145"></script>
     <script src="/static/script.js?v=20260927_v0937"></script>
-    <script src="/static/permission_blueprint.js?v=20260927_v1424"></script>
+    <script src="/static/permission_blueprint.js?v=20260927_v1433"></script>
 
 
 
