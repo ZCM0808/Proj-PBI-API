@@ -9555,6 +9555,8 @@ body.light-theme .btn-wf-sm.active-filter,
 
 /* 磁吸发光端点圆点 (Magnetic Port Badges) */
 .pb-wire-port-dot {
+    transform-box: fill-box;
+    transform-origin: center;
     transition: transform 0.25s ease, fill 0.25s ease, filter 0.25s ease, opacity 0.25s ease;
 }
 
@@ -9575,7 +9577,7 @@ body.light-theme .btn-wf-sm.active-filter,
     stroke: #f0abfc !important;
     stroke-width: 2px !important;
     filter: drop-shadow(0 0 6px #ffffff) drop-shadow(0 0 12px #e879f9) drop-shadow(0 0 20px rgba(192, 132, 252, 0.9)) !important;
-    transform: scale(1.6);
+    transform: scale(1.25);
     transform-origin: center;
 }
 
