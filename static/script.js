@@ -6162,12 +6162,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         }
 
-        // 3. 补全收录所有文档中挖掘的内部服务与未公开微服务资源 (Internal & Undocumented Services)
+        // 3. 补全收录所有文档与微软底层架构中挖掘的内部服务与未公开微服务资源 (Internal & Undocumented Services - 32 Endpoints)
         const internalCategory = 'Internal Services (内部专属微服务)';
         categories[internalCategory] = [
+            // ── Section 1: Modeling & Analysis Services (WABI 建模与元数据微服务) ──
             {
                 name: 'Get Model Security & Strict Mode Context (获取模型 GAC 严格模式与连接安全)',
-                operationId: 'internal_get_model_security',
+                operationId: 'internal_modeling_get_model_security',
                 description: '【核心内部微服务】查询语义模型的底层建模上下文与细粒度访问控制 (GAC) 状态。服务端的 securityInfo 返回 isInStrictMode（是否为严格模式）、hasAccessToAllDataConnections（当前登录用户是否具备全部数据源连接凭据）以及 isModelOwner（是否为模型所有者）。非模型 Owner 打开 Power Query 的前置硬门禁。',
                 method: 'GET',
                 path: '/metadata/modeling/getModel/{modelId}?languageLocale=en-US&requestQueryEditingInfo=true',
@@ -6184,7 +6185,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             },
             {
                 name: 'Get Diagram Canvas Layouts (获取关系视图画布布局)',
-                operationId: 'internal_get_diagram_layouts',
+                operationId: 'internal_modeling_get_diagram_layouts',
                 description: '【内部建模微服务】读取语义模型在 Web 浏览器端关系视图画布上的表实体位置、坐标、拖拽折叠状态及表间关系连线排布。',
                 method: 'GET',
                 path: '/metadata/modeling/diagramLayouts?modelId={modelId}',
@@ -6200,7 +6201,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             },
             {
                 name: 'Save Model Version Snapshot (保存模型架构版本变更)',
-                operationId: 'internal_save_model_version',
+                operationId: 'internal_modeling_save_version',
                 description: '【内部建模微服务】在浏览器端直接修改表架构、新建度量值或更新关系时，向底部分析服务引擎提交架构版本变更存盘快照。',
                 method: 'POST',
                 path: '/metadata/modeling/saveVersion',
@@ -6220,7 +6221,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             },
             {
                 name: 'Get Query Application Status (获取 M 查询批量应用状态)',
-                operationId: 'internal_get_apply_queries_status',
+                operationId: 'internal_modeling_get_apply_queries_status',
                 description: '【内部建模微服务】Power Query 编辑保存后，异步轮询 M 表达式计算折叠并在语义模型 Analysis Services 中编译刷新架构的进度状态。',
                 method: 'GET',
                 path: '/metadata/modeling/applyQueriesStatus?modelId={modelId}',
@@ -6233,8 +6234,107 @@ document.addEventListener('DOMContentLoaded', async () => {
                 category: internalCategory
             },
             {
+                name: 'Validate DAX Expression & Dependencies (DAX 表达式语法与依赖校验)',
+                operationId: 'internal_modeling_validate_expression',
+                description: '【内部建模微服务】在 Web 端公式编辑栏输入 DAX 表达式时，向后台 Analysis Services 语法分析器发送 AST 解析请求，即时校验语法正误、函数签名与跨表度量值依赖环路。',
+                method: 'POST',
+                path: '/metadata/modeling/validateExpression',
+                body: JSON.stringify({
+                    "modelId": "{modelId}",
+                    "expression": "Total Sales = SUM(Sales[Amount])",
+                    "objectType": "Measure"
+                }, null, 2),
+                prerequisites: [
+                    '👁️ **Model Read**：需要具备目标语义模型的读取或编辑访问权。'
+                ],
+                flag: 'Modeling',
+                isFabric: false,
+                isInternal: true,
+                host: 'https://{cluster}.analysis.windows.net',
+                category: internalCategory
+            },
+            {
+                name: 'Calculate Measure Online Preview (度量值在线动态试算与探针)',
+                operationId: 'internal_modeling_calculate_measure',
+                description: '【内部建模微服务】对新增或暂存的未落盘度量值进行沙箱动态试算，验证执行计划与返回数据切片，避免写入错误度量值污染模型。',
+                method: 'POST',
+                path: '/metadata/modeling/calculateMeasure',
+                body: JSON.stringify({
+                    "modelId": "{modelId}",
+                    "measureName": "Test_Preview_Measure",
+                    "expression": "CALCULATE(SUM(Sales[Amount]), ALL(Sales[Region]))",
+                    "topN": 10
+                }, null, 2),
+                prerequisites: [
+                    '⚡ **Build 特权**：调用者需具备模型的 Build 权限以触发临时查询引擎。'
+                ],
+                flag: 'Modeling',
+                isFabric: false,
+                isInternal: true,
+                host: 'https://{cluster}.analysis.windows.net',
+                category: internalCategory
+            },
+            {
+                name: 'Export TMDL Schema Representation (导出模型 TMDL 格式内部表示)',
+                operationId: 'internal_modeling_get_tmdl',
+                description: '【内部建模微服务】提取语义模型底层表级、度量值与关系定义的 TMDL (Tabular Model Definition Language) 脚本内部文本表示，支持比对版本差异。',
+                method: 'GET',
+                path: '/metadata/modeling/tmdl/{modelId}',
+                body: '',
+                prerequisites: [
+                    '📋 **CompatibilityLevel >= 1571**：模型必须为现代兼容级别或 Fabric 统一容量模型。'
+                ],
+                flag: 'Modeling',
+                isFabric: false,
+                isInternal: true,
+                host: 'https://{cluster}.analysis.windows.net',
+                category: internalCategory
+            },
+            {
+                name: 'Batch Execute Semantic Queries (批量执行内部语义 DAX 查询)',
+                operationId: 'internal_modeling_batch_execute_queries',
+                description: '【内部建模微服务】网页端在线报表设计或数据透视时，底层以批量模式并发提交多个 DAX 查询并返回压缩格式的行列数据集，性能远高于单条执行。',
+                method: 'POST',
+                path: '/metadata/modeling/batchExecuteQueries',
+                body: JSON.stringify({
+                    "modelId": "{modelId}",
+                    "queries": [
+                        { "query": "EVALUATE TOPN(100, Sales)", "serializerSettings": { "incNulls": true } }
+                    ]
+                }, null, 2),
+                prerequisites: [
+                    '📊 **DAX Query**：需要对模型具备 Read 权限。'
+                ],
+                flag: 'Modeling',
+                isFabric: false,
+                isInternal: true,
+                host: 'https://{cluster}.analysis.windows.net',
+                category: internalCategory
+            },
+            {
+                name: 'Explore Model Ad-hoc Session (直连模型轻量切片探索会话)',
+                operationId: 'internal_modeling_explore_model',
+                description: '【内部建模微服务】在不创建正式报表的情况下，快速拉起 Web 端数据探索（Explore）独立会话，支持行列矩阵聚合与即席切片过滤。',
+                method: 'POST',
+                path: '/metadata/modeling/exploreModel/{modelId}',
+                body: JSON.stringify({
+                    "explorationName": "Adhoc_Slice_Session",
+                    "parameters": { "autoAggregate": true }
+                }, null, 2),
+                prerequisites: [
+                    '⚡ **Build 特权**：调用者具备 Build 权限即可开启探索。'
+                ],
+                flag: 'Modeling',
+                isFabric: false,
+                isInternal: true,
+                host: 'https://{cluster}.analysis.windows.net',
+                category: internalCategory
+            },
+
+            // ── Section 2: Power Query Online & Data Prep (数据清洗与 M 引擎) ──
+            {
                 name: 'Launch Web Power Query Mashup Editor (Web PQ 编辑器入口会话)',
-                operationId: 'internal_launch_mashup_editor',
+                operationId: 'internal_pq_launch_mashup_editor',
                 description: '【内部数据清洗微服务】微软 Power Query 在线编辑器的微前端入口，通过 SSO 身份委派启动 Web 端数据清洗会话。若 isInStrictMode=false 且非 owner，前端在此步骤前阻断。',
                 method: 'GET',
                 path: '/MashupEditor?workspaceId={workspaceId}&datasetId={modelId}',
@@ -6284,6 +6384,168 @@ document.addEventListener('DOMContentLoaded', async () => {
                 category: internalCategory
             },
             {
+                name: 'Evaluate M Query Step Preview (M 查询步骤即时求值与数据预览)',
+                operationId: 'internal_pq_evaluate_step',
+                description: '【内部数据清洗微服务】在编辑 Applied Steps 时，向云端 M 表达式评估容器发起求值，返回前 100 行样本数据、数据列分析（Column Profiling）及推导出的数据类型。',
+                method: 'POST',
+                path: '/api/editor/{sessionId}/evaluate',
+                body: JSON.stringify({
+                    "queryName": "Fact_Sales",
+                    "stepName": "Filtered Rows",
+                    "topCount": 100
+                }, null, 2),
+                prerequisites: [
+                    '⚡ **M Evaluation**：需要活跃的会话容器与有效的数据源凭据。'
+                ],
+                flag: 'PowerQuery',
+                isFabric: false,
+                isInternal: true,
+                host: 'https://powerquery.microsoft.com',
+                category: internalCategory
+            },
+            {
+                name: 'Generate Native M Script from Steps (步骤逆向生成原生 M 表达式源码)',
+                operationId: 'internal_pq_generate_m',
+                description: '【内部数据清洗微服务】将用户在可视化 UI 界面上执行的点击操作逆向转译为标准且可执行的 M 语言配方脚本（Mashup Formula Language）。',
+                method: 'POST',
+                path: '/api/editor/{sessionId}/generateM',
+                body: JSON.stringify({
+                    "queryName": "Transform_Customers",
+                    "formatOptions": { "indentation": 4 }
+                }, null, 2),
+                prerequisites: [],
+                flag: 'PowerQuery',
+                isFabric: false,
+                isInternal: true,
+                host: 'https://powerquery.microsoft.com',
+                category: internalCategory
+            },
+            {
+                name: 'Test Data Connection Credentials (实时测试数据源物理连接连通性)',
+                operationId: 'internal_pq_test_connection_credentials',
+                description: '【内部连接微服务】针对特定网关集群或云端 OAuth 认证连接，由服务端微服务向数据源物理地址发起探测请求，验证用户名、密钥或 PAT 令牌是否仍然有效。',
+                method: 'POST',
+                path: '/api/editor/{sessionId}/testConnectionCredentials',
+                body: JSON.stringify({
+                    "connectionDetails": {
+                        "kind": "SQL",
+                        "server": "sql-server-prod.database.windows.net",
+                        "database": "SalesDW"
+                    }
+                }, null, 2),
+                prerequisites: [
+                    '🔐 **Connection Creator/User**：需要具备该连接的创建者或使用者权限。'
+                ],
+                flag: 'PowerQuery',
+                isFabric: false,
+                isInternal: true,
+                host: 'https://powerquery.microsoft.com',
+                category: internalCategory
+            },
+            {
+                name: 'Get Available Connectors Registry (枚举租户环境放行的数据连接器注册表)',
+                operationId: 'internal_pq_available_connectors',
+                description: '【内部数据清洗微服务】获取当前组织租户策略与安全合规管辖下允许使用的全部官方内置及自定义认证连接器（Custom Connectors / .mez / .pqx）白名单。',
+                method: 'GET',
+                path: '/api/editor/{sessionId}/availableConnectors',
+                body: '',
+                prerequisites: [],
+                flag: 'PowerQuery',
+                isFabric: false,
+                isInternal: true,
+                host: 'https://powerquery.microsoft.com',
+                category: internalCategory
+            },
+
+            // ── Section 3: Exploration & Visual Query Engine (前端报表渲染与视觉对象数据查询) ──
+            {
+                name: 'Get Conceptual Schema for Visual Exploration (获取报表视觉交互概念架构)',
+                operationId: 'internal_explore_conceptual_schema',
+                description: '【核心内部微服务】报表加载及字段窗格渲染的核心元数据引擎。返回经过隐藏列过滤、层级维度折叠（Hierarchies）及显示文件夹划分后的视觉交互概念模式。',
+                method: 'POST',
+                path: '/explore/conceptualschema',
+                body: JSON.stringify({
+                    "modelId": "{modelId}",
+                    "clientVersion": "2.0",
+                    "culture": "zh-CN"
+                }, null, 2),
+                prerequisites: [
+                    '👁️ **Model Read**：报表查看者必须具备底层模型的 Read 访问许可。'
+                ],
+                flag: 'Exploration',
+                isFabric: false,
+                isInternal: true,
+                host: 'https://{cluster}.analysis.windows.net',
+                category: internalCategory
+            },
+            {
+                name: 'Query Visual Data Binary Stream (视觉对象底层核心数据查询引擎)',
+                operationId: 'internal_explore_query_data',
+                description: '【最高频核心微服务】Power BI 报表与仪表板卡片、折线图、Matrix 矩阵渲染的真实底层取数通道。前端将视觉对象配置编译为微观 Semantic Query 发送到该端点，返回极致压缩的二进制数据流。',
+                method: 'POST',
+                path: '/public/reports/querydata',
+                body: JSON.stringify({
+                    "version": "1.0.0",
+                    "queries": [
+                        {
+                            "Query": {
+                                "Commands": [
+                                    { "SemanticQueryDataShapeCommand": { "Query": { "Version": 2, "From": [{ "Name": "s", "Entity": "Sales" }] } } }
+                                ]
+                            }
+                        }
+                    ]
+                }, null, 2),
+                prerequisites: [
+                    '⚡ **Model Read + RLS**：自动注入当前登录用户的 RLS 约束。'
+                ],
+                flag: 'Exploration',
+                isFabric: false,
+                isInternal: true,
+                host: 'https://{cluster}.analysis.windows.net',
+                category: internalCategory
+            },
+            {
+                name: 'Get Report Models & Visual Exploration State (提取报表模型绑定与视觉状态)',
+                operationId: 'internal_explore_report_models_state',
+                description: '【内部探索微服务】查询特定报表引用的所有语义模型（支持复合模型 Composite Models / DirectQuery 跨模型连接）的元数据绑定与视觉对象过滤状态上下文。',
+                method: 'POST',
+                path: '/explore/reports/{reportId}/modelsAndExploration',
+                body: JSON.stringify({
+                    "reportId": "{reportId}",
+                    "includeBookmarks": true
+                }, null, 2),
+                prerequisites: [
+                    '📊 **Report View**：调用方需要对报表具备 View 权限。'
+                ],
+                flag: 'Exploration',
+                isFabric: false,
+                isInternal: true,
+                host: 'https://{cluster}.analysis.windows.net',
+                category: internalCategory
+            },
+            {
+                name: 'Generate Quick Insights AI Exploration (语义模型端侧自动机器学习洞察)',
+                operationId: 'internal_explore_quick_insights',
+                description: '【内部 AI 探索微服务】向分析微服务提交即席洞察任务，通过内置的异常检测、相关性分析与趋势突变算法自动发现数据模式并生成视觉卡片建议。',
+                method: 'POST',
+                path: '/explore/getQuickInsights',
+                body: JSON.stringify({
+                    "datasetId": "{modelId}",
+                    "maxInsights": 10
+                }, null, 2),
+                prerequisites: [
+                    '💡 **Quick Insights 租户开关**：租户管理门户必须允许组织成员运行快速见解。'
+                ],
+                flag: 'Exploration',
+                isFabric: false,
+                isInternal: true,
+                host: 'https://{cluster}.analysis.windows.net',
+                category: internalCategory
+            },
+
+            // ── Section 4: Fabric Admin, Capacity & Governance (内部租户治理与容量保护) ──
+            {
                 name: 'Get Workspace Delegated Tenant Setting Overrides (工作区级 GAC 委派覆盖策略)',
                 operationId: 'internal_fabric_ws_delegated_settings',
                 description: '【Fabric 内部治理微服务】查询租户全局安全策略在具体工作区维度的委派覆盖配置（Delegated Settings），审计工作区是否被准许单独覆盖租户安全策略。',
@@ -6310,6 +6572,187 @@ document.addEventListener('DOMContentLoaded', async () => {
                     '💎 **Capacity Admin**：需要具备容量管理员访问特权。'
                 ],
                 flag: 'Fabric Admin',
+                isFabric: true,
+                isInternal: true,
+                host: 'https://api.fabric.microsoft.com',
+                category: internalCategory
+            },
+            {
+                name: 'Get Workspaces Hosted on Capacity (查询容量下承载的工作区清单)',
+                operationId: 'internal_fabric_capacity_workspaces',
+                description: '【内部容量微服务】穿透查询特定 Fabric / Power BI Premium 计算容量下挂载的所有工作区列表、计算单元占用配额与资源峰值占比。',
+                method: 'GET',
+                path: '/internal/capacities/{capacityId}/workspaces',
+                body: '',
+                prerequisites: [
+                    '💎 **Capacity Admin**：需要具备对应容量的 Administrator 角色。'
+                ],
+                flag: 'Fabric Admin',
+                isFabric: true,
+                isInternal: true,
+                host: 'https://api.fabric.microsoft.com',
+                category: internalCategory
+            },
+            {
+                name: 'Get Tenant Feature Flags & Experiments (获取租户内部灰度特性与特性开关)',
+                operationId: 'internal_fabric_tenant_feature_flags',
+                description: '【内部平台微服务】查询租户全局内部功能灰度特性开关、微软内部试验（Experiments/Flighting）状态及未公开发布的预览功能放行名单。',
+                method: 'GET',
+                path: '/internal/tenant/featureFlags',
+                body: '',
+                prerequisites: [
+                    '🔑 **Tenant Token**：租户内部经过认证的任意访问凭据。'
+                ],
+                flag: 'Fabric Admin',
+                isFabric: true,
+                isInternal: true,
+                host: 'https://api.fabric.microsoft.com',
+                category: internalCategory
+            },
+            {
+                name: 'Get Effective Permissions Across Hierarchies (穿透计算多层级最终有效权限)',
+                operationId: 'internal_fabric_effective_permissions',
+                description: '【内部权限矩阵微服务】传入目标用户身份，穿透聚合计算其在租户门户、容量分配、工作区 RBAC、模型分享与 RLS 安全策略下的最终综合有效权限。',
+                method: 'GET',
+                path: '/internal/users/effectivePermissions?userPrincipalName={upn}',
+                body: '',
+                prerequisites: [
+                    '🛡️ **Security Auditor**：需要具备安全审计员或租户全局管理员角色。'
+                ],
+                flag: 'Fabric Admin',
+                isFabric: true,
+                isInternal: true,
+                host: 'https://api.fabric.microsoft.com',
+                category: internalCategory
+            },
+            {
+                name: 'Get Capacity Overload Throttling Radar (监控容量过载保护与熔断状态)',
+                operationId: 'internal_fabric_capacity_throttle_status',
+                description: '【内部运维微服务】实时监控 Fabric 专用容量是否已触发交互式请求延迟排队（Interactive Delay Throttling）或后台长任务直接拒绝熔断（Rejection Mode）。',
+                method: 'POST',
+                path: '/internal/capacities/throttleStatus',
+                body: JSON.stringify({
+                    "capacityId": "{capacityId}",
+                    "lookbackMinutes": 15
+                }, null, 2),
+                prerequisites: [
+                    '💎 **Capacity Admin**：用于预防生产环境容量宕机。'
+                ],
+                flag: 'Fabric Admin',
+                isFabric: true,
+                isInternal: true,
+                host: 'https://api.fabric.microsoft.com',
+                category: internalCategory
+            },
+            {
+                name: 'Get Enterprise Gateway Cluster Health (探测数据网关集群节点健康度与心跳)',
+                operationId: 'internal_pbi_gateway_cluster_health',
+                description: '【内部网关微服务】获取企业级本地数据网关（On-premises Data Gateway）高可用集群中各个物理成员节点的负载比重、内存消耗与通信心跳延迟。',
+                method: 'GET',
+                path: '/internal/gateways/clusterHealth?gatewayClusterId={clusterId}',
+                body: '',
+                prerequisites: [
+                    '🔌 **Gateway Admin**：网关集群管理员凭据。'
+                ],
+                flag: 'Fabric Admin',
+                isFabric: false,
+                isInternal: true,
+                host: 'https://api.powerbi.com',
+                category: internalCategory
+            },
+
+            // ── Section 5: Lineage, Git & Lifecycle (血缘穿透与版本管理) ──
+            {
+                name: 'Get Cross-Artifact Data Pipeline Lineage (跨资产全景血缘追踪微服务)',
+                operationId: 'internal_lifecycle_pipeline_lineage',
+                description: '【内部元数据微服务】跨资产穿透追踪底层物理血缘链条（穿透 Lakehouse -> Warehouse -> Dataflow Gen2 -> Semantic Model -> Report -> Dashboard），提取上下游依赖图谱。',
+                method: 'POST',
+                path: '/metadata/datapipelines/lineage',
+                body: JSON.stringify({
+                    "workspaceId": "{workspaceId}",
+                    "rootArtifactId": "{modelId}",
+                    "depth": 5
+                }, null, 2),
+                prerequisites: [
+                    '🌐 **Lineage Viewer**：工作区只读或查看权限。'
+                ],
+                flag: 'Lifecycle',
+                isFabric: true,
+                isInternal: true,
+                host: 'https://api.fabric.microsoft.com',
+                category: internalCategory
+            },
+            {
+                name: 'Get Git Workspace Uncommitted Changes Diff (Git 工作区未提交变更差异)',
+                operationId: 'internal_lifecycle_git_changes_diff',
+                description: '【内部版本控制微服务】比对当前 Fabric 工作区内存中的定义文件（TMDL / report.json）与连接的 Azure DevOps / GitHub 远程分支差异，返回添加、修改与删除的文件指纹。',
+                method: 'GET',
+                path: '/metadata/versioning/changes/{workspaceId}',
+                body: '',
+                prerequisites: [
+                    '🐙 **Git Integration**：工作区必须已绑定 Git 仓库且用户具备 Git 读写权。'
+                ],
+                flag: 'Lifecycle',
+                isFabric: true,
+                isInternal: true,
+                host: 'https://api.fabric.microsoft.com',
+                category: internalCategory
+            },
+            {
+                name: 'Trigger Fabric Git Commit Snapshot (内部触发 Git 提交并生成同步快照)',
+                operationId: 'internal_lifecycle_git_commit_snapshot',
+                description: '【内部版本控制微服务】将当前工作区全部就绪的变更原子性提交至远程代码分支，生成新的 Commit Hash 并写入版本控制历史。',
+                method: 'POST',
+                path: '/metadata/versioning/commit',
+                body: JSON.stringify({
+                    "workspaceId": "{workspaceId}",
+                    "comment": "Automated sync from PBI Studio",
+                    "mode": "all"
+                }, null, 2),
+                prerequisites: [
+                    '✏️ **Workspace Contributor / Admin**：具备工作区编辑特权。'
+                ],
+                flag: 'Lifecycle',
+                isFabric: true,
+                isInternal: true,
+                host: 'https://api.fabric.microsoft.com',
+                category: internalCategory
+            },
+
+            // ── Section 6: Copilot & AI Semantic Intelligence (AI 语义智能) ──
+            {
+                name: 'Generate DAX Query via Copilot AI (基于自然语言生成专业 DAX 表达式)',
+                operationId: 'internal_copilot_generate_dax',
+                description: '【内部 AI 微服务】将业务人员的自然语言意图结合当前语义模型 Conceptual Schema，调用 Fabric Copilot 大模型生成高性能、语法严密的 DAX 分析查询语句。',
+                method: 'POST',
+                path: '/internal/copilot/daxQuery',
+                body: JSON.stringify({
+                    "modelId": "{modelId}",
+                    "prompt": "Show top 5 customers by sales revenue in 2026 compared with previous year"
+                }, null, 2),
+                prerequisites: [
+                    '🤖 **Copilot Enabled**：租户需开启 Fabric Copilot 开关且挂载 F64/P1 以上容量。'
+                ],
+                flag: 'Copilot',
+                isFabric: true,
+                isInternal: true,
+                host: 'https://api.fabric.microsoft.com',
+                category: internalCategory
+            },
+            {
+                name: 'Explain Measure Business Logic & DAX Plan (AI 解释度量值商业逻辑与执行计划)',
+                operationId: 'internal_copilot_explain_measure',
+                description: '【内部 AI 微服务】针对复杂嵌套或历史遗留的 DAX 度量值，由 Copilot 自动反向解读其业务口径、上下文转换行为及潜在的性能陷阱建议。',
+                method: 'POST',
+                path: '/internal/copilot/explainMeasure',
+                body: JSON.stringify({
+                    "modelId": "{modelId}",
+                    "measureName": "YoY_Growth_Rate"
+                }, null, 2),
+                prerequisites: [
+                    '🤖 **Copilot Enabled**：需要具备 Copilot 服务使用权。'
+                ],
+                flag: 'Copilot',
                 isFabric: true,
                 isInternal: true,
                 host: 'https://api.fabric.microsoft.com',
@@ -7664,6 +8107,54 @@ document.addEventListener('DOMContentLoaded', async () => {
                     flagEl.style.borderColor = 'var(--badge-custom-bg)';
 
                     flagEl.style.background = 'var(--badge-custom-bg)';
+
+                } else if (ep.flag === 'Modeling') {
+
+                    flagEl.style.color = '#c084fc';
+
+                    flagEl.style.borderColor = 'rgba(192, 132, 252, 0.3)';
+
+                    flagEl.style.background = 'rgba(192, 132, 252, 0.08)';
+
+                } else if (ep.flag === 'PowerQuery') {
+
+                    flagEl.style.color = '#34d399';
+
+                    flagEl.style.borderColor = 'rgba(52, 211, 153, 0.3)';
+
+                    flagEl.style.background = 'rgba(52, 211, 153, 0.08)';
+
+                } else if (ep.flag === 'Exploration') {
+
+                    flagEl.style.color = '#fbbf24';
+
+                    flagEl.style.borderColor = 'rgba(251, 191, 36, 0.3)';
+
+                    flagEl.style.background = 'rgba(251, 191, 36, 0.08)';
+
+                } else if (ep.flag === 'Fabric Admin') {
+
+                    flagEl.style.color = '#f43f5e';
+
+                    flagEl.style.borderColor = 'rgba(244, 63, 94, 0.3)';
+
+                    flagEl.style.background = 'rgba(244, 63, 94, 0.08)';
+
+                } else if (ep.flag === 'Lifecycle') {
+
+                    flagEl.style.color = '#818cf8';
+
+                    flagEl.style.borderColor = 'rgba(129, 140, 248, 0.3)';
+
+                    flagEl.style.background = 'rgba(129, 140, 248, 0.08)';
+
+                } else if (ep.flag === 'Copilot') {
+
+                    flagEl.style.color = '#38bdf8';
+
+                    flagEl.style.borderColor = 'rgba(56, 189, 248, 0.3)';
+
+                    flagEl.style.background = 'rgba(56, 189, 248, 0.08)';
 
                 }
 

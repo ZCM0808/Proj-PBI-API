@@ -400,7 +400,7 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
     await expect(layaBar).toBeVisible();
   });
 
-  test('API Explorer contains Internal Services category with all 9 internal endpoints', async ({ page }) => {
+  test('API Explorer contains Internal Services category with all 32 internal endpoints across 6 domains', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.evaluate(() => {
       localStorage.setItem('pbi-active-module', 'api_tree');
@@ -418,21 +418,33 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
     await internalCatHeader.scrollIntoViewIfNeeded();
     await expect(internalCatHeader).toBeVisible({ timeout: 10000 });
 
-    // 验证包含 9 个内部微服务 API
+    // 验证包含 32 个内部微服务 API
     const catItem = page.locator('.api-category:has-text("Internal Services")');
     const apiCountBadge = catItem.locator('.api-category-count');
-    await expect(apiCountBadge).toContainText('9');
+    await expect(apiCountBadge).toContainText('32');
 
     // 2. 点击展开 Internal Services 分类
     await internalCatHeader.click();
     const endpointList = catItem.locator('.api-list');
     await expect(endpointList).toBeVisible();
 
-    // 3. 验证关键内部端点存在
+    // 3. 验证关键领域内部端点存在
+    // Modeling
     await expect(endpointList).toContainText('Get Model Security & Strict Mode Context');
+    await expect(endpointList).toContainText('Validate DAX Expression & Dependencies');
+    // PowerQuery
     await expect(endpointList).toContainText('Launch Web Power Query Mashup Editor');
+    await expect(endpointList).toContainText('Evaluate M Query Step Preview');
+    // Exploration
+    await expect(endpointList).toContainText('Get Conceptual Schema for Visual Exploration');
+    await expect(endpointList).toContainText('Query Visual Data Binary Stream');
+    // Fabric Admin
     await expect(endpointList).toContainText('Workspace Delegated Tenant Setting Overrides');
-    await expect(endpointList).toContainText('Query & Step Dependent Graph');
+    await expect(endpointList).toContainText('Get Capacity Overload Throttling Radar');
+    // Lifecycle
+    await expect(endpointList).toContainText('Get Cross-Artifact Data Pipeline Lineage');
+    // Copilot
+    await expect(endpointList).toContainText('Generate DAX Query via Copilot AI');
   });
 
   test('Live WABI probe inspects model GAC status and updates blueprint cards', async ({ page }) => {
