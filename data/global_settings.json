@@ -935,6 +935,20 @@
             "type": "Abf",
             "state": "Active",
             "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "APAC Channel performance Analytics",
+            "id": "d5c58dd9-48ae-49a1-95ef-a44a10f3991f",
+            "type": "PremiumFiles",
+            "state": "Active",
+            "workspaceId": "7725ad78-b687-465e-89c8-d4fbd9b455e2"
+        },
+        {
+            "alias": "Sales Store Market Day",
+            "id": "3f5b70c5-5b81-432d-a7f8-74853bbd6cec",
+            "type": "PremiumFiles",
+            "state": "Active",
+            "workspaceId": "7725ad78-b687-465e-89c8-d4fbd9b455e2"
         }
     ],
     "PBI_REPORTS": [
@@ -1812,6 +1826,20 @@
             "type": "PaginatedReport (RDL)",
             "state": "Active",
             "workspaceId": "81293c65-8c1b-49ed-9752-58734e364db3"
+        },
+        {
+            "alias": "APAC Channel performance Analytics",
+            "id": "33b277e8-fd48-40a0-af50-95a1fdb4bb96-prod",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "7725ad78-b687-465e-89c8-d4fbd9b455e2"
+        },
+        {
+            "alias": "Sales Store Market Day",
+            "id": "3f5b70c5-5b81-432d-a7f8-74853bbd6cec-report",
+            "type": "PowerBIReport (PBIR)",
+            "state": "Active",
+            "workspaceId": "7725ad78-b687-465e-89c8-d4fbd9b455e2"
         }
     ],
     "PBI_TENANT_NAME": "VFC Corp"
