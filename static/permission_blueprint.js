@@ -7382,6 +7382,12 @@
                             // 当前用户被分配了权威工作区角色（如 Admin）时，下辖资产特权的直接原因就是该角色！
                             // 坚决排除跨模块间接推导 (如 model_read / model_build / model_write / model_reshare) 与外围门禁 (如 tenant_* / ws_app) 作为伪上游！
                             if (activeHeroAlias) {
+                                // 🌟 治理门禁特例：model_gac 受租户安全基线 (tenant_gac_policy) 与工作区连接开关 (ws_gac_setting) 双重管辖，非单一角色特权派生
+                                if (rowId === 'model_gac') {
+                                    if (id === 'tenant_gac_policy' || id === 'ws_gac_setting') {
+                                        return true;
+                                    }
+                                }
                                 if (rowId.startsWith('report_') || rowId.startsWith('model_')) {
                                     if (id !== activeHeroAlias && (id.startsWith('model_') || id.startsWith('tenant_') || id === 'ws_app' || id.startsWith('ws_role_'))) {
                                         return false;

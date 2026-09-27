@@ -380,7 +380,69 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
     // 验证目标卡片 model_build 获得脉冲动效类
     await expect(buildRow).toHaveClass(/pb-radar-scrolled-target/);
   });
+
+  test('Model GAC causality modal displays dual upstreams: Tenant GAC Policy and Workspace GAC Setting', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => {
+      localStorage.setItem('pbi-active-module', 'permission_blueprint');
+      localStorage.setItem('pb-active-main-tab', 'user_assets');
+      localStorage.setItem('pb-active-preset', 'preset_admin');
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
+    await page.evaluate(() => {
+      const mockWs = [{ id: 'ws_prod', name: 'Production Workspace', alias: 'Production Workspace' }];
+      const mockDs = [{ id: 'model_sales', name: 'Sales Model', alias: 'Sales Model', workspaceId: 'ws_prod' }];
+      const mockRp = [{ id: 'report_sales', name: 'Sales Report', alias: 'Sales Report', workspaceId: 'ws_prod' }];
+      window.allWorkspaces = mockWs;
+      window.allDatasets = mockDs;
+      window.allReports = mockRp;
+      window.selectedGtbWorkspaceIds = new Set(['ws_prod']);
+      window.selectedGtbDatasetIds = new Set(['model_sales']);
+      window.selectedGtbReportIds = new Set(['report_sales']);
+      if (window.PermissionBlueprint && typeof window.PermissionBlueprint.renderUserAssetsMatrix === 'function') {
+        window.PermissionBlueprint.activePresetKey = 'preset_admin';
+        window.PermissionBlueprint.currentWorkspaceId = 'ws_prod';
+        window.PermissionBlueprint.currentWorkspaceName = 'Production Workspace';
+        window.PermissionBlueprint.currentModelKey = 'model_sales';
+        window.PermissionBlueprint.renderUserAssetsMatrix();
+      }
+    });
+
+    const container = page.locator('#pb-user-assets-container');
+    await expect(container).toBeVisible();
+
+    // 1. 验证 Model GAC 卡片存在
+    const modelGacRow = page.locator('.pb-asset-card-row[data-row-id="model_gac"]');
+    await expect(modelGacRow).toBeVisible({ timeout: 10000 });
+
+    // 2. 点击 Model GAC 锁定因果焦点
+    await modelGacRow.click();
+    await expect(modelGacRow).toHaveClass(/pb-causality-pinned/);
+
+    // 3. 点击顶部「🔍 因果解析」按钮打开 Laya 弹窗
+    const explainBtn = page.locator('#pb-btn-explain-causality');
+    await expect(explainBtn).toBeVisible();
+    await explainBtn.click();
+
+    // 4. 验证弹窗可见并包含双重上游依据 (Tenant GAC Policy + Workspace GAC Setting)
+    const modal = page.locator('#pb-explain-causality-modal');
+    await expect(modal).toBeVisible();
+
+    // 验证包含上游依据且计数为 2
+    await expect(modal).toContainText('上游依据 (2)');
+    // 验证上游依据中同时包含租户和工作区策略
+    await expect(modal).toContainText('TENANT');
+    await expect(modal).toContainText('Workspace GAC');
+    // 验证下游派生
+    await expect(modal).toContainText('下游派生');
+
+    // 5. 验证弹窗中 Laya 哨兵卫栏正常呈现
+    const layaBar = modal.locator('#pb-laya-guardrail-bar');
+    await expect(layaBar).toBeVisible();
+  });
 });
+
 
 
 
