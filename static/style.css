@@ -4819,6 +4819,92 @@ body.topbar-collapsed #gtb-expand-handle .gtb-handle-icon {
     right: 12px !important;
 }
 
+/* AI 对话消息容器与文本选择加固 */
+#ai-chat-messages,
+#ai-chat-messages * {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+}
+
+/* 彻底修复 Markdown 列表小圆点溢出灰色气泡框的 CSS Bug */
+#ai-chat-messages ul,
+#ai-chat-messages ol {
+    padding-left: 1.5rem !important;
+    margin: 8px 0 !important;
+    list-style-position: outside !important;
+    box-sizing: border-box !important;
+}
+
+#ai-chat-messages li {
+    margin-bottom: 4px !important;
+    line-height: 1.55 !important;
+    word-break: break-word !important;
+}
+
+#ai-chat-messages p {
+    margin-bottom: 6px !important;
+    line-height: 1.55 !important;
+    word-break: break-word !important;
+}
+
+#ai-chat-messages p:last-child {
+    margin-bottom: 0 !important;
+}
+
+#ai-chat-messages pre {
+    background: rgba(0, 0, 0, 0.4) !important;
+    border: 1px solid var(--overlay-15) !important;
+    border-radius: 6px !important;
+    padding: 8px 10px !important;
+    margin: 6px 0 !important;
+    overflow-x: auto !important;
+    font-size: 0.8rem !important;
+}
+
+#ai-chat-messages code {
+    background: rgba(255, 255, 255, 0.08) !important;
+    padding: 2px 5px !important;
+    border-radius: 4px !important;
+    font-size: 0.82rem !important;
+}
+
+/* 消息气泡右上角一键复制按钮 */
+.ai-msg-bubble {
+    position: relative;
+}
+
+.ai-msg-copy-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid var(--overlay-20);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    z-index: 5;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.ai-msg-bubble:hover .ai-msg-copy-btn {
+    opacity: 1;
+}
+
+.ai-msg-copy-btn:hover {
+    background: var(--accent);
+    color: var(--accent-text);
+    border-color: var(--accent);
+    transform: scale(1.05);
+}
+
 .gtb-tenant-box {
     display: flex;
     align-items: center;

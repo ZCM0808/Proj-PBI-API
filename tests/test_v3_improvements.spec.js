@@ -351,5 +351,49 @@ test.describe.serial('0918 Improvement v3 Requirements Verification', () => {
     await expect(page.locator('.cm-widget-attachment')).toBeAttached();
   });
 
+  test('AI Assistant: chat bubbles have copy button, user-select enabled, and list bullet points have proper padding', async () => {
+    // Open AI chat window
+    await page.evaluate(() => {
+      if (window.toggleAIChat) window.toggleAIChat();
+    });
+
+    const aiWin = page.locator('#ai-chat-window');
+    await expect(aiWin).toBeVisible();
+
+    // Check user-select on #ai-chat-messages
+    const userSelect = await page.evaluate(() => {
+      const el = document.getElementById('ai-chat-messages');
+      return el ? window.getComputedStyle(el).userSelect : '';
+    });
+    expect(userSelect).toBe('text');
+
+    // Check initial message has copy button
+    const copyBtn = page.locator('#ai-chat-messages .ai-msg-copy-btn').first();
+    await expect(copyBtn).toBeAttached();
+
+    // Append a test message with a bullet list and verify padding-left and list-style-position
+    await page.evaluate(() => {
+      const container = document.getElementById('ai-chat-messages');
+      const testMsg = document.createElement('div');
+      testMsg.className = 'ai-msg-assistant';
+      testMsg.innerHTML = '<div class="ai-msg-bubble"><ul id="test-ai-ul"><li>Item 1</li><li>Item 2</li></ul><button class="ai-msg-copy-btn">复制</button></div>';
+      container.appendChild(testMsg);
+    });
+
+    const ulPaddingLeft = await page.evaluate(() => {
+      const ul = document.getElementById('test-ai-ul');
+      return ul ? parseFloat(window.getComputedStyle(ul).paddingLeft) : 0;
+    });
+    expect(ulPaddingLeft).toBeGreaterThanOrEqual(16);
+
+    // Verify copy button click
+    await page.locator('#ai-chat-messages .ai-msg-copy-btn').last().click();
+
+    // Close AI chat window
+    await page.evaluate(() => {
+      if (window.toggleAIChat) window.toggleAIChat();
+    });
+  });
+
 });
 

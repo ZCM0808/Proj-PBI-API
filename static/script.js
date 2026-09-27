@@ -15309,24 +15309,20 @@ window.updateHarnessStats = function() {
 
 
 
-    // Close AI window when clicking outside
-
+    // Close AI window when clicking outside (ignoring text selection & right clicks)
     document.addEventListener('mousedown', function(e) {
-
+        if (e.button !== 0) return; // 忽略右键点击，允许唤出浏览器复制菜单
         const win = document.getElementById('ai-chat-window');
-
         const fab = document.getElementById('ai-chat-fab');
-
         if (win && win.style.opacity === '1') {
-
-            if (!win.contains(e.target) && !fab.contains(e.target)) {
-
-                window.toggleAIChat();
-
+            // 如果用户正在划词选择文本或有选中文本，绝不误关闭窗口
+            if (window.getSelection && window.getSelection().toString().trim()) {
+                return;
             }
-
+            if (!win.contains(e.target) && !fab.contains(e.target)) {
+                window.toggleAIChat();
+            }
         }
-
     });
 
 
@@ -15507,7 +15503,8 @@ window.updateHarnessStats = function() {
 
         const msgs = document.getElementById('ai-chat-messages');
         const loadingDiv = document.createElement('div');
-        loadingDiv.style.cssText = 'align-self: flex-start; background: var(--overlay-10); padding: 10px 14px; border-radius: 12px; border-bottom-left-radius: 2px; max-width: 85%; color: var(--text-secondary); opacity: 0; transform: translateY(10px); transition: all 0.3s ease-out;';
+        loadingDiv.className = 'ai-msg-bubble';
+        loadingDiv.style.cssText = 'position: relative; align-self: flex-start; background: var(--overlay-10); padding: 10px 14px; border-radius: 12px; border-bottom-left-radius: 2px; max-width: 85%; color: var(--text-secondary); opacity: 0; transform: translateY(10px); transition: all 0.3s ease-out; user-select: text !important; -webkit-user-select: text !important;';
         loadingDiv.innerHTML = `
             <div class="ai-thinking-bubble">
                 <span style="font-size: 0.95rem; display: inline-block;">🧠</span>
@@ -15726,6 +15723,49 @@ window.updateHarnessStats = function() {
                         // ignore incomplete json parses gracefully
                     }
                 }
+            }
+
+            if (hasReceivedFirstToken && fullText && !loadingDiv.querySelector('.ai-msg-copy-btn')) {
+                const copyBtn = document.createElement('button');
+                copyBtn.type = 'button';
+                copyBtn.className = 'ai-msg-copy-btn';
+                copyBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> 复制';
+                copyBtn.title = '一键复制该条完整回复内容';
+                copyBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    const textToCopy = fullText;
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(textToCopy).then(() => {
+                            copyBtn.innerHTML = '✅ 已复制';
+                            copyBtn.style.color = 'var(--success)';
+                            setTimeout(() => {
+                                copyBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> 复制';
+                                copyBtn.style.color = '';
+                            }, 2000);
+                        }).catch(() => fallbackCopy(textToCopy, copyBtn));
+                    } else {
+                        fallbackCopy(textToCopy, copyBtn);
+                    }
+                };
+                function fallbackCopy(str, btn) {
+                    const ta = document.createElement('textarea');
+                    ta.value = str;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    try {
+                        document.execCommand('copy');
+                        btn.innerHTML = '✅ 已复制';
+                        btn.style.color = 'var(--success)';
+                        setTimeout(() => {
+                            btn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> 复制';
+                            btn.style.color = '';
+                        }, 2000);
+                    } catch (_) {}
+                    document.body.removeChild(ta);
+                }
+                loadingDiv.appendChild(copyBtn);
             }
 
             if (!hasReceivedFirstToken && !hasToolCard) {
