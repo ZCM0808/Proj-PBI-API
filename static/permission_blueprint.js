@@ -5416,8 +5416,9 @@
                     { id: 'model_read', cat: 'derived', name: 'Read (读取模型与 DAX 查询)', desc: canReadModel ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生只读许可，允许执行 DAX 表达式查询，下游报表正常取数渲染` : '【由工作区角色派生】无 READ 权限，DAX 查询将被 403 阻断，报表将拒绝加载', statusClass: canReadModel ? 'enabled' : 'disabled', statusText: canReadModel ? '✅ CAN READ' : '❌ CANNOT READ', badge: 'READ' },
                     { id: 'model_build', cat: 'derived', name: 'Build (构建下游报表与分析)', desc: canBuild ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生，允许以该模型为基础使用 Excel 透视分析或新建独立衍生报表` : '【由工作区角色派生】无 BUILD 权限，无法新建下游衍生报表或在 Excel 中连接探索', statusClass: canBuild ? 'enabled' : 'disabled', statusText: canBuild ? '✅ CAN BUILD' : '❌ CANNOT BUILD', badge: 'BUILD' },
                     { id: 'model_write', cat: 'derived', name: 'Write (修改模型架构与度量值)', desc: isPrivileged ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生特权，允许通过 XMLA 端点或浏览器在线修改表结构、新建度量值与关系模型` : '【由工作区角色派生】当前角色无编辑特权，禁止写回模型架构或修改度量值', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ CAN WRITE' : '❌ CANNOT WRITE', badge: 'WRITE' },
-                    { id: 'model_gac_ols', cat: 'derived', name: 'OLS / GAC (对象级与细粒度安全)', desc: isPrivileged ? `【由工作区角色控制】拥有 [${wsRoleCaps}] 管理特权穿透，免除语义模型敏感表与度量值字段的 OLS/GAC 掩蔽限制` : (user?.state?.olsEnabled ? '【由工作区角色控制】受敏感字段 OLS/GAC 细粒度安全约束，受保护的高密字段已被动态掩蔽 (Masked)' : '【由工作区角色控制】已获模型全量表与字段 GAC 访问权限，所有敏感维度与指标字段完整可见'), statusClass: isPrivileged ? 'bypassed' : (user?.state?.olsEnabled ? 'warn' : 'enabled'), statusText: isPrivileged ? '⚡ ADMIN BYPASS' : (user?.state?.olsEnabled ? '🔒 OLS MASKED' : '✅ CAN ACCESS ALL'), badge: 'OLS' },
                     { id: 'model_rls', cat: 'derived', name: 'RLS (行级安全过滤规则)', desc: isPrivileged ? `【由工作区角色控制】拥有 [${wsRoleCaps}] 管理特权穿透，直接跳过所有 DAX 行级安全过滤规则，查看全量业务明细` : '【由工作区角色控制】受 DAX 角色策略约束，仅能查看授权给当前身份的切片行数据', statusClass: isPrivileged ? 'bypassed' : 'warn', statusText: isPrivileged ? '⚡ ADMIN BYPASS' : '🔒 RLS RESTRICTED', badge: 'RLS' },
+                    { id: 'model_ols', cat: 'derived', name: 'OLS (对象级与敏感列安全)', desc: isPrivileged ? `【由工作区角色控制】拥有 [${wsRoleCaps}] 管理特权穿透，免除语义模型敏感表与度量值字段的 OLS 掩蔽限制` : (user?.state?.olsEnabled ? '【由工作区角色控制】受敏感字段 OLS 列级安全约束，受保护的高密字段已被动态掩蔽 (Masked)' : '【由工作区角色控制】当前模型未启用 OLS 保护，所有表与字段对只读用户完整可见'), statusClass: isPrivileged ? 'bypassed' : (user?.state?.olsEnabled ? 'warn' : 'enabled'), statusText: isPrivileged ? '⚡ ADMIN BYPASS' : (user?.state?.olsEnabled ? '🔒 OLS MASKED' : '✅ ALL COLUMNS VISIBLE'), badge: 'OLS' },
+                    { id: 'model_gac', cat: 'derived', name: 'Model GAC (模型细粒度访问控制)', desc: isPrivileged ? (user?.state?.isInStrictMode ? `【受租户与工作区双重管辖】租户开启严格审查门禁，虽有工作区 [${wsRoleCaps}] 特权穿透，仍需通过网关连接通道审查方可访问微观对象` : `【受租户与工作区双重管辖】租户常规隔离放行 + 工作区 [${wsRoleCaps}] 特权完全穿透，语义模型微观对象与跨源通道全部开放`) : (user?.state?.isInStrictMode ? `【受租户与工作区双重管辖】租户严格门禁与工作区 [${wsRoleCaps}] 只读权限叠加，模型微观对象与跨源流动处于强力细粒度隔离` : `【受租户与工作区双重管辖】租户处于常规隔离模式，受工作区 [${wsRoleCaps}] 只读身份约束，模型微观对象处于标准安全受控状态`), statusClass: user?.state?.isInStrictMode ? (isPrivileged ? 'warn' : 'disabled') : (isPrivileged ? 'enabled' : 'warn'), statusText: user?.state?.isInStrictMode ? (isPrivileged ? '🛡️ AUDIT MONITORED' : '⛔ GAC ISOLATED') : (isPrivileged ? '✅ GAC PASSED' : '🔒 STANDARD GAC'), badge: 'GAC' },
                     { id: 'model_reshare', cat: 'derived', name: 'Reshare (二次授权共享模型)', desc: (isAdmin || isMember) ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生，允许将该具体语义模型的访问权限二次授权给其他组织成员` : '【由工作区角色派生】无 RESHARE 权限，禁止向第三方组织成员分发或再授权该模型', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ CAN RESHARE' : '❌ CANNOT RESHARE', badge: 'RESHARE' }
                 ];
                 colModelBody = renderTierItemsHtml('model', modelItems);
@@ -6029,7 +6030,7 @@
                 'tenant_principal_role': [
                     'tenant_gac_policy', 'tenant_export', 'tenant_web_modeling', 'tenant_xmla', 'tenant_external', 'tenant_embed', 'tenant_certify'
                 ],
-                'tenant_gac_policy': ['conn_gac_perm', 'conn_gac_mashup'],
+                'tenant_gac_policy': ['conn_gac_perm', 'conn_gac_mashup', 'model_gac'],
                 'tenant_export': ['report_export'],
                 'tenant_web_modeling': ['model_write'],
                 'tenant_xmla': ['model_write'],
@@ -6040,30 +6041,30 @@
                 // 2. 工作区官方角色 -> 纯粹跨模块业务赋权与关键治理特权（如删除工作区需要 Admin）
                 'ws_role': [
                     'ws_delete',
-                    'model_permission', 'model_read', 'model_build', 'model_write', 'model_reshare', 'model_rls', 'model_gac_ols',
+                    'model_permission', 'model_read', 'model_build', 'model_write', 'model_reshare', 'model_rls', 'model_ols', 'model_gac',
                     'report_access', 'report_view', 'report_edit', 'report_export', 'report_sub', 'report_share',
                     'conn_refresh', 'conn_owner', 'conn_share', 'conn_user_perm',
                     'pipeline_deploy', 'pipeline_diff', 'pipeline_rules', 'pipeline_manage'
                 ],
                 'ws_role_admin': [
                     'ws_delete',
-                    'model_permission', 'model_read', 'model_build', 'model_write', 'model_reshare', 'model_rls', 'model_gac_ols',
+                    'model_permission', 'model_read', 'model_build', 'model_write', 'model_reshare', 'model_rls', 'model_ols', 'model_gac',
                     'report_access', 'report_view', 'report_edit', 'report_export', 'report_sub', 'report_share',
                     'conn_refresh', 'conn_owner', 'conn_share', 'conn_user_perm',
                     'pipeline_deploy', 'pipeline_diff', 'pipeline_rules', 'pipeline_manage'
                 ],
                 'ws_role_member': [
-                    'model_permission', 'model_read', 'model_build', 'model_write', 'model_reshare',
+                    'model_permission', 'model_read', 'model_build', 'model_write', 'model_reshare', 'model_rls', 'model_ols', 'model_gac',
                     'report_access', 'report_view', 'report_edit', 'report_export', 'report_sub', 'report_share',
                     'conn_share', 'conn_user_perm', 'pipeline_deploy'
                 ],
                 'ws_role_contributor': [
-                    'model_permission', 'model_read', 'model_build', 'model_write',
+                    'model_permission', 'model_read', 'model_build', 'model_write', 'model_rls', 'model_ols', 'model_gac',
                     'report_access', 'report_view', 'report_edit', 'report_export', 'report_sub',
                     'conn_refresh', 'conn_user_perm'
                 ],
                 'ws_role_viewer': [
-                    'model_read', 'report_view'
+                    'model_read', 'report_view', 'model_rls', 'model_ols', 'model_gac'
                 ],
                 'ws_edit': [],
                 'ws_app': [],
@@ -6078,7 +6079,8 @@
                 'model_read': ['report_view'],
                 'model_build': ['report_export'],
                 'model_write': ['report_view', 'report_edit', 'report_export'],
-                'model_gac_ols': [],
+                'model_ols': ['report_view', 'report_export'],
+                'model_gac': ['report_edit', 'report_export'],
                 'model_rls': [],
                 'model_reshare': ['report_share'],
 
@@ -6095,7 +6097,7 @@
                 'conn_default_ds': ['conn_user_perm', 'conn_gac_perm', 'conn_gw', 'conn_sso', 'conn_refresh', 'conn_share'],
                 'conn_inspecting': ['conn_gw'],
                 'conn_user_perm': [],
-                'conn_gac_perm': ['conn_gac_mashup'],
+                'conn_gac_perm': ['conn_gac_mashup', 'model_gac'],
                 'conn_gac_mashup': [],
                 'conn_gw': [],
                 'conn_sso': [],
@@ -6839,6 +6841,7 @@
                 'tenant_principal_role->tenant_certify': { reason: 'Tenant Role ➔ 黄金数据认证，背书官方模型权威' },
                 'tenant_gac_policy->conn_gac_perm': { reason: 'Tenant Policy ➔ 网关网络策略，决定物理直连寻址' },
                 'tenant_gac_policy->conn_gac_mashup': { reason: 'Tenant Policy ➔ 跨源安全隔离，控制混搭合并计算' },
+                'tenant_gac_policy->model_gac': { reason: 'Tenant Policy ➔ 租户全局门禁底线，设定模型细粒度安全基线' },
                 'tenant_export->report_export': { reason: 'Tenant Export ➔ 组织级顶层门禁，绝对约束前端导出' },
                 'tenant_web_modeling->model_write': { reason: 'Tenant Web Modeling ➔ 在线建模门禁，控制 Web 端修改' },
                 'tenant_web_modeling->report_edit': { reason: 'Tenant Web Modeling ➔ 在线建模策略，联动报表度量值编写' },
@@ -6859,8 +6862,9 @@
                 'ws_role->model_build': { reason: 'Workspace Role ➔ 自助分析特权，允许二次建模' },
                 'ws_role->model_write': { reason: 'Workspace Role ➔ 架构维护特权，允许模型写入' },
                 'ws_role->model_reshare': { reason: 'Workspace Role ➔ 资产转授特权，允许再次共享' },
-                'ws_role->model_rls': { reason: 'Workspace Role ➔ 特权角色自动绕过 RLS 过滤' },
-                'ws_role->model_gac_ols': { reason: 'Workspace Role ➔ 特权角色不受对象级安全隐藏限制' },
+                'ws_role->model_rls': { reason: 'Workspace Role ➔ 特权角色自动绕过 RLS 过滤，普通角色受控' },
+                'ws_role->model_ols': { reason: 'Workspace Role ➔ 特权角色不受对象级安全隐藏限制，普通角色受掩蔽' },
+                'ws_role->model_gac': { reason: 'Workspace Role ➔ 工作区容器级执行上下文，与租户门禁共同约束模型微观对象' },
                 'ws_role->report_access': { reason: 'Workspace Role ➔ 容器级直接继承，放行报表访问' },
                 'ws_role->report_view': { reason: 'Workspace Role ➔ 容器级直接继承，放行报表查看' },
                 'ws_role->report_edit': { reason: 'Workspace Role ➔ 内容创作者特权，允许编辑报表' },
@@ -6888,15 +6892,18 @@
                 'model_permission->model_build': { reason: 'Model Permission ➔ 探索与二次开发，放行 Build 权限' },
                 'model_permission->model_write': { reason: 'Model Permission ➔ 架构维护权限，允许模型元数据写入' },
                 'model_permission->model_reshare': { reason: 'Model Permission ➔ 资产转授权限，允许再次分发' },
-                'model_permission->model_gac_ols': { reason: 'Model Permission ➔ 联动 OLS，控制敏感列感知' },
+                'model_permission->model_ols': { reason: 'Model Permission ➔ 联动 OLS，控制敏感列感知' },
+                'model_permission->model_gac': { reason: 'Model Permission ➔ 承载 GAC，落地微观对象安全规则' },
                 'model_permission->model_rls': { reason: 'Model Permission ➔ 联动 RLS，执行动态行级裁剪' },
                 'model_permission->report_view': { reason: 'Model Permission ➔ 数据根基授权，决定前端图表可用性' },
                 'model_permission->report_export': { reason: 'Model Permission ➔ 底层数据授权，约束数据导出边界' },
                 'model_read->report_view': { reason: 'Model Read ➔ 数据读取通道，报表渲染必需先决条件' },
                 'model_build->report_export': { reason: 'Model Build ➔ 深度构建特权，允许导出底层明细数据' },
                 'model_write->report_edit': { reason: 'Model Write ➔ 架构写入特权，支持度量值与在线修改' },
-                'model_gac_ols->report_view': { reason: 'OLS ➔ 列级安全防护，隐藏未授权字段' },
-                'model_gac_ols->report_export': { reason: 'OLS ➔ 导出防泄密，过滤受限字段' },
+                'model_ols->report_view': { reason: 'OLS ➔ 列级安全防护，隐藏未授权字段' },
+                'model_ols->report_export': { reason: 'OLS ➔ 导出防泄密，过滤受限字段' },
+                'model_gac->report_edit': { reason: 'Model GAC ➔ 细粒度对象隔离，约束在线报表设计范围' },
+                'model_gac->report_export': { reason: 'Model GAC ➔ 细粒度导出防泄漏，约束微观指标输出' },
                 'model_rls->report_view': { reason: 'RLS ➔ 行级数据安全，注入动态过滤谓词' },
                 'model_rls->report_export': { reason: 'RLS ➔ 闭环合规导出，仅导出授权数据行' },
                 'model_reshare->report_share': { reason: 'Model Reshare ➔ 模型转授权限，允许连带共享基础模型' },
@@ -6925,6 +6932,7 @@
                 'conn_user_perm->conn_refresh': { reason: 'User Credential ➔ 无人值守鉴权，确保后台刷新成功' },
                 'conn_gac_perm->conn_gac_mashup': { reason: 'GAC Direct Read ➔ 网关授权通道，支撑跨源混搭折叠' },
                 'conn_gac_perm->model_read': { reason: 'GAC Direct Read ➔ 安全传输通道，内网数据反序列化' },
+                'conn_gac_perm->model_gac': { reason: 'GAC Direct Read ➔ 网关授权通道，支撑模型微观对象抽取与鉴权' },
                 'conn_gac_mashup->model_read': { reason: 'GAC Mashup ➔ ETL加工成果直接注入语义模型' },
                 'conn_gw->model_read': { reason: 'Gateway Status ➔ 代理服务在线，保障 DirectQuery 实时查询' },
                 'conn_gw->conn_refresh': { reason: 'Gateway Status ➔ 网关运行状态，决定本地数据拉取通道' },
@@ -7023,7 +7031,8 @@
                     'model_write': { title: 'Model Write', module: '语义模型' },
                     'model_reshare': { title: 'Model Reshare', module: '语义模型' },
                     'model_rls': { title: 'RLS', module: '语义模型' },
-                    'model_gac_ols': { title: 'OLS', module: '语义模型' },
+                    'model_ols': { title: 'OLS', module: '语义模型' },
+                    'model_gac': { title: 'Model GAC', module: '语义模型' },
                     'report_access': { title: 'Report Access', module: '报表' },
                     'report_view': { title: 'Report View', module: '报表' },
                     'report_edit': { title: 'Report Edit', module: '报表' },
@@ -7185,7 +7194,8 @@
                     'model_write': { title: 'WRITE', module: '📊 3. MODEL', unrenderedBadge: '⚠️ 顶栏未选模型 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体语义模型' },
                     'model_reshare': { title: 'RESHARE', module: '📊 3. MODEL', unrenderedBadge: '⚠️ 顶栏未选模型 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体语义模型' },
                     'model_rls': { title: 'RLS', module: '📊 3. MODEL', unrenderedBadge: '⚠️ 顶栏未选模型 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体语义模型' },
-                    'model_gac_ols': { title: 'GAC / OLS', module: '📊 3. MODEL', unrenderedBadge: '⚠️ 顶栏未选模型 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体语义模型' },
+                    'model_ols': { title: 'OLS', module: '📊 3. MODEL', unrenderedBadge: '⚠️ 顶栏未选模型 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体语义模型，对象级安全 (OLS) 处于模型元数据休眠态' },
+                    'model_gac': { title: 'MODEL GAC', module: '📊 3. MODEL', unrenderedBadge: '⚠️ 顶栏未选模型 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体语义模型，模型细粒度访问控制 (GAC) 继承租户与工作区默认策略' },
                     'model_target': { title: 'SEMANTIC MODEL', module: '📊 3. MODEL', unrenderedBadge: '⚠️ 顶栏未选模型 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体语义模型' },
 
                     'report_access': { title: 'REPORT ACCESS', module: '📈 4. REPORT', unrenderedBadge: '⚠️ 顶栏未选报表 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体报表' },
