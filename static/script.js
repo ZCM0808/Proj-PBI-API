@@ -7233,6 +7233,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         'pbi-selected-datasets', 'pbi-selected-reports', 'pbi-active-workspace',
                         'pbi-active-dataset', 'pbi-active-report', 'pbi_cached_tenant_users',
                         'pb-active-preset', 'pb-cached-user-presets', 'pb-active-main-tab',
+                        'pbi-active-module',
                         'pbi-settings-collapse-workspace-list', 'pbi-settings-collapse-dataset-list',
                         'pbi-settings-collapse-report-list', 'pbi-settings-active-tab', 'pbi-settings-scroll-top'
                     ];
@@ -18062,7 +18063,10 @@ document.addEventListener('DOMContentLoaded', () => {
             'pbi_xmla_last_dataset', 'pbi_xmla_last_table', 'pbi-selected-workspaces',
             'pbi-selected-datasets', 'pbi-selected-reports', 'pbi-active-workspace',
             'pbi-active-dataset', 'pbi-active-report', 'pbi_cached_tenant_users',
-            'pb-active-preset', 'pb-cached-user-presets', 'pb-active-main-tab'
+            'pb-active-preset', 'pb-cached-user-presets', 'pb-active-main-tab',
+            'pbi-active-module',
+            'pbi-settings-collapse-workspace-list', 'pbi-settings-collapse-dataset-list',
+            'pbi-settings-collapse-report-list', 'pbi-settings-active-tab', 'pbi-settings-scroll-top'
         ];
 
         if (!ignoredKeys.includes(key)) {

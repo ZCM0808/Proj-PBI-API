@@ -445,6 +445,14 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
     await expect(endpointList).toContainText('Get Cross-Artifact Data Pipeline Lineage');
     // Copilot
     await expect(endpointList).toContainText('Generate DAX Query via Copilot AI');
+
+    // 状态清理：还原激活模块为 permission_blueprint
+    await page.evaluate(() => {
+      localStorage.setItem('pbi-active-module', 'permission_blueprint');
+      if (typeof window.switchAppModule === 'function') {
+        window.switchAppModule('permission_blueprint');
+      }
+    });
   });
 
   test('Live WABI probe inspects model GAC status and updates blueprint cards', async ({ page }) => {
