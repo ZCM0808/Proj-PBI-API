@@ -5361,6 +5361,17 @@
                     { id: 'ws_edit', cat: 'derived', name: 'Edit Content (编辑报表与模型)', desc: (isAdmin || isMember || isContribIncluded || isContribAssigned) ? '【由工作区角色派生】允许在工作区内创建、修改报表与语义模型架构，并执行计划刷新' : '【由工作区角色限制】当前为 Viewer 只读身份，受工作区 RBAC 限制，无权编辑或创建任何资产', statusClass: (isAdmin || isMember || isContribIncluded || isContribAssigned) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember || isContribIncluded || isContribAssigned) ? '✅ CAN EDIT' : '❌ CANNOT EDIT', badge: 'CONTENT' },
                     { id: 'ws_app', cat: 'derived', name: 'Publish App (发布工作区应用)', desc: (isAdmin || isMember) ? '【由工作区角色派生】允许发布、配置并向全组织受众分发包含此工作区报表与仪表板的组织应用 (Power BI App)' : '【由工作区角色限制】非 Admin / Member 角色，禁止发布或更新工作区组织应用', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '⚡ CAN PUBLISH' : '❌ CANNOT PUBLISH', badge: 'APP' },
                     { id: 'ws_delete', cat: 'derived', name: 'Delete Workspace (删除工作区)', desc: isAdmin ? '【由工作区角色派生】仅工作区 Admin 角色具备永久删除整个工作区及其包含全量资产的最高权限' : '【由工作区角色限制】非 Admin 角色，禁止执行工作区级别的永久删除操作', statusClass: isAdmin ? 'enabled' : 'disabled', statusText: isAdmin ? '✅ CAN DELETE' : '❌ CANNOT DELETE', badge: 'DELETE' },
+                    {
+                        id: 'ws_gac_setting',
+                        cat: 'derived',
+                        name: `Workspace GAC Setting (${user?.state?.isInStrictMode ? '细粒度访问控制已启用' : '细粒度控制未开启'})`,
+                        desc: user?.state?.isInStrictMode
+                            ? `【工作区连接配置】已在 Workspace > Settings > Data connections 启用 "Enable granular access control for all data connections"，全区模型继承 isInStrictMode=true 细粒度管控模式`
+                            : `【工作区连接配置】当前工作区未启用 GAC 细粒度开关 (isInStrictMode=false)，处于传统 Owner 独占模式，非 Owner 用户受前端限制`,
+                        statusClass: user?.state?.isInStrictMode ? 'enabled' : 'disabled',
+                        statusText: user?.state?.isInStrictMode ? '🛡️ GAC ON (Strict)' : '⚠️ GAC OFF (Legacy)',
+                        badge: 'GAC SWITCH'
+                    },
                     { id: 'ws_capacity', cat: 'derived', name: 'Fabric F64 Capacity (企业专用容量)', desc: '【承载环境】挂载企业专用容量 (Fabric F64)，享有独立计算算力与 Direct Lake 加速通道', statusClass: 'enabled', statusText: '⚡ CAN ACCESS', badge: 'CAPACITY' },
                     { id: 'ws_target', cat: 'env', name: `Workspace Container (目标工作区容器)`, desc: `【承载环境】工作区名称: ${wsName} · 容器 ID: ${curWs.id}`, statusClass: 'enabled', statusText: '✅ READY', badge: 'WORKSPACE' }
                 ];
@@ -5418,7 +5429,7 @@
                     { id: 'model_write', cat: 'derived', name: 'Write (修改模型架构与度量值)', desc: isPrivileged ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生特权，允许通过 XMLA 端点或浏览器在线修改表结构、新建度量值与关系模型` : '【由工作区角色派生】当前角色无编辑特权，禁止写回模型架构或修改度量值', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ CAN WRITE' : '❌ CANNOT WRITE', badge: 'WRITE' },
                     { id: 'model_rls', cat: 'derived', name: 'RLS (行级安全过滤规则)', desc: isPrivileged ? `【由工作区角色控制】拥有 [${wsRoleCaps}] 管理特权穿透，直接跳过所有 DAX 行级安全过滤规则，查看全量业务明细` : '【由工作区角色控制】受 DAX 角色策略约束，仅能查看授权给当前身份的切片行数据', statusClass: isPrivileged ? 'bypassed' : 'warn', statusText: isPrivileged ? '⚡ ADMIN BYPASS' : '🔒 RLS RESTRICTED', badge: 'RLS' },
                     { id: 'model_ols', cat: 'derived', name: 'OLS (对象级与敏感列安全)', desc: isPrivileged ? `【由工作区角色控制】拥有 [${wsRoleCaps}] 管理特权穿透，免除语义模型敏感表与度量值字段的 OLS 掩蔽限制` : (user?.state?.olsEnabled ? '【由工作区角色控制】受敏感字段 OLS 列级安全约束，受保护的高密字段已被动态掩蔽 (Masked)' : '【由工作区角色控制】当前模型未启用 OLS 保护，所有表与字段对只读用户完整可见'), statusClass: isPrivileged ? 'bypassed' : (user?.state?.olsEnabled ? 'warn' : 'enabled'), statusText: isPrivileged ? '⚡ ADMIN BYPASS' : (user?.state?.olsEnabled ? '🔒 OLS MASKED' : '✅ ALL COLUMNS VISIBLE'), badge: 'OLS' },
-                    { id: 'model_gac', cat: 'derived', name: 'Model GAC (模型细粒度访问控制)', desc: isPrivileged ? (user?.state?.isInStrictMode ? `【受租户与工作区双重管辖】租户开启严格审查门禁，虽有工作区 [${wsRoleCaps}] 特权穿透，仍需通过网关连接通道审查方可访问微观对象` : `【受租户与工作区双重管辖】租户常规隔离放行 + 工作区 [${wsRoleCaps}] 特权完全穿透，语义模型微观对象与跨源通道全部开放`) : (user?.state?.isInStrictMode ? `【受租户与工作区双重管辖】租户严格门禁与工作区 [${wsRoleCaps}] 只读权限叠加，模型微观对象与跨源流动处于强力细粒度隔离` : `【受租户与工作区双重管辖】租户处于常规隔离模式，受工作区 [${wsRoleCaps}] 只读身份约束，模型微观对象处于标准安全受控状态`), statusClass: user?.state?.isInStrictMode ? (isPrivileged ? 'warn' : 'disabled') : (isPrivileged ? 'enabled' : 'warn'), statusText: user?.state?.isInStrictMode ? (isPrivileged ? '🛡️ AUDIT MONITORED' : '⛔ GAC ISOLATED') : (isPrivileged ? '✅ GAC PASSED' : '🔒 STANDARD GAC'), badge: 'GAC' },
+                    { id: 'model_gac', cat: 'derived', name: 'Model GAC (模型细粒度访问控制)', desc: user?.state?.isInStrictMode ? '【受租户门禁与工作区 GAC 开关双重管辖】工作区已勾选启用数据连接细粒度控制 (isInStrictMode=true)，语义模型进入严格审查模式，微观对象与跨源 Mashup 均需校验连接凭据' : '【受租户门禁与工作区 GAC 开关双重管辖】工作区未开启 GAC 开关 (isInStrictMode=false)，处于传统 Owner 独占模式，非模型 Owner 无法进入 Power Query 编辑', statusClass: user?.state?.isInStrictMode ? 'warn' : 'disabled', statusText: user?.state?.isInStrictMode ? '🛡️ GAC STRICT ENFORCED' : '⚠️ GAC DISABLED (Legacy)', badge: 'GAC' },
                     { id: 'model_reshare', cat: 'derived', name: 'Reshare (二次授权共享模型)', desc: (isAdmin || isMember) ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生，允许将该具体语义模型的访问权限二次授权给其他组织成员` : '【由工作区角色派生】无 RESHARE 权限，禁止向第三方组织成员分发或再授权该模型', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ CAN RESHARE' : '❌ CANNOT RESHARE', badge: 'RESHARE' }
                 ];
                 colModelBody = renderTierItemsHtml('model', modelItems);
@@ -6030,7 +6041,7 @@
                 'tenant_principal_role': [
                     'tenant_gac_policy', 'tenant_export', 'tenant_web_modeling', 'tenant_xmla', 'tenant_external', 'tenant_embed', 'tenant_certify'
                 ],
-                'tenant_gac_policy': ['conn_gac_perm', 'conn_gac_mashup', 'model_gac'],
+                'tenant_gac_policy': ['conn_gac_perm', 'conn_gac_mashup', 'ws_gac_setting', 'model_gac'],
                 'tenant_export': ['report_export'],
                 'tenant_web_modeling': ['model_write'],
                 'tenant_xmla': ['model_write'],
@@ -6040,32 +6051,33 @@
 
                 // 2. 工作区官方角色 -> 纯粹跨模块业务赋权与关键治理特权（如删除工作区需要 Admin）
                 'ws_role': [
-                    'ws_delete',
-                    'model_permission', 'model_read', 'model_build', 'model_write', 'model_reshare', 'model_rls', 'model_ols', 'model_gac',
+                    'ws_delete', 'ws_gac_setting',
+                    'model_permission', 'model_read', 'model_build', 'model_write', 'model_reshare', 'model_rls', 'model_ols',
                     'report_access', 'report_view', 'report_edit', 'report_export', 'report_sub', 'report_share',
                     'conn_refresh', 'conn_owner', 'conn_share', 'conn_user_perm',
                     'pipeline_deploy', 'pipeline_diff', 'pipeline_rules', 'pipeline_manage'
                 ],
                 'ws_role_admin': [
-                    'ws_delete',
-                    'model_permission', 'model_read', 'model_build', 'model_write', 'model_reshare', 'model_rls', 'model_ols', 'model_gac',
+                    'ws_delete', 'ws_gac_setting',
+                    'model_permission', 'model_read', 'model_build', 'model_write', 'model_reshare', 'model_rls', 'model_ols',
                     'report_access', 'report_view', 'report_edit', 'report_export', 'report_sub', 'report_share',
                     'conn_refresh', 'conn_owner', 'conn_share', 'conn_user_perm',
                     'pipeline_deploy', 'pipeline_diff', 'pipeline_rules', 'pipeline_manage'
                 ],
                 'ws_role_member': [
-                    'model_permission', 'model_read', 'model_build', 'model_write', 'model_reshare', 'model_rls', 'model_ols', 'model_gac',
+                    'model_permission', 'model_read', 'model_build', 'model_write', 'model_reshare', 'model_rls', 'model_ols',
                     'report_access', 'report_view', 'report_edit', 'report_export', 'report_sub', 'report_share',
                     'conn_share', 'conn_user_perm', 'pipeline_deploy'
                 ],
                 'ws_role_contributor': [
-                    'model_permission', 'model_read', 'model_build', 'model_write', 'model_rls', 'model_ols', 'model_gac',
+                    'model_permission', 'model_read', 'model_build', 'model_write', 'model_rls', 'model_ols',
                     'report_access', 'report_view', 'report_edit', 'report_export', 'report_sub',
                     'conn_refresh', 'conn_user_perm'
                 ],
                 'ws_role_viewer': [
-                    'model_read', 'report_view', 'model_rls', 'model_ols', 'model_gac'
+                    'model_read', 'report_view', 'model_rls', 'model_ols'
                 ],
+                'ws_gac_setting': ['model_gac'],
                 'ws_edit': [],
                 'ws_app': [],
                 'ws_capacity': [],
@@ -6841,6 +6853,7 @@
                 'tenant_principal_role->tenant_certify': { reason: 'Tenant Role ➔ 黄金数据认证，背书官方模型权威' },
                 'tenant_gac_policy->conn_gac_perm': { reason: 'Tenant Policy ➔ 网关网络策略，决定物理直连寻址' },
                 'tenant_gac_policy->conn_gac_mashup': { reason: 'Tenant Policy ➔ 跨源安全隔离，控制混搭合并计算' },
+                'tenant_gac_policy->ws_gac_setting': { reason: 'Tenant Policy ➔ 租户全局政策准许，工作区方可启用细粒度数据连接控制' },
                 'tenant_gac_policy->model_gac': { reason: 'Tenant Policy ➔ 租户全局门禁底线，设定模型细粒度安全基线' },
                 'tenant_export->report_export': { reason: 'Tenant Export ➔ 组织级顶层门禁，绝对约束前端导出' },
                 'tenant_web_modeling->model_write': { reason: 'Tenant Web Modeling ➔ 在线建模门禁，控制 Web 端修改' },
@@ -6857,6 +6870,8 @@
                 'ws_delete->ws_role': { reason: 'Workspace Role ➔ 最高销毁特权，仅 Admin 可删除工作区' },
                 'ws_role->ws_delete': { reason: 'Workspace Role ➔ 最高销毁特权，仅 Admin 可删除工作区' },
                 'ws_role->ws_lineage': { reason: 'Workspace Role ➔ 拓扑血缘视图，展现全局数据链路' },
+                'ws_role->ws_gac_setting': { reason: 'Workspace Admin ➔ 拥有特权在 Workspace Settings 中配置与启用 GAC 细粒度开关' },
+                'ws_gac_setting->model_gac': { reason: 'Workspace GAC Switch ➔ 工作区启用数据连接细粒度控制，驱动语义模型进入 isInStrictMode 严格管控' },
                 'ws_role->model_permission': { reason: 'Workspace Role ➔ 容器级继承，统领工作区全部语义模型' },
                 'ws_role->model_read': { reason: 'Workspace Role ➔ 底层数据读取，支撑图表渲染' },
                 'ws_role->model_build': { reason: 'Workspace Role ➔ 自助分析特权，允许二次建模' },
@@ -6864,7 +6879,6 @@
                 'ws_role->model_reshare': { reason: 'Workspace Role ➔ 资产转授特权，允许再次共享' },
                 'ws_role->model_rls': { reason: 'Workspace Role ➔ 特权角色自动绕过 RLS 过滤，普通角色受控' },
                 'ws_role->model_ols': { reason: 'Workspace Role ➔ 特权角色不受对象级安全隐藏限制，普通角色受掩蔽' },
-                'ws_role->model_gac': { reason: 'Workspace Role ➔ 工作区容器级执行上下文，与租户门禁共同约束模型微观对象' },
                 'ws_role->report_access': { reason: 'Workspace Role ➔ 容器级直接继承，放行报表访问' },
                 'ws_role->report_view': { reason: 'Workspace Role ➔ 容器级直接继承，放行报表查看' },
                 'ws_role->report_edit': { reason: 'Workspace Role ➔ 内容创作者特权，允许编辑报表' },
@@ -7024,6 +7038,7 @@
                     'ws_capacity': { title: 'Capacity', module: '工作区' },
                     'ws_delete': { title: 'Delete Workspace', module: '工作区' },
                     'ws_lineage': { title: 'Lineage View', module: '工作区' },
+                    'ws_gac_setting': { title: 'Workspace GAC Switch', module: '工作区' },
                     'model_permission': { title: 'Model Permission', module: '语义模型' },
                     'model_read': { title: 'Model Read', module: '语义模型' },
                     'model_build': { title: 'Model Build', module: '语义模型' },
@@ -7185,6 +7200,7 @@
                     'ws_capacity': { title: 'CAPACITY ACCESS', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
                     'ws_delete': { title: 'DELETE WORKSPACE', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
                     'ws_lineage': { title: 'LINEAGE VIEW', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
+                    'ws_gac_setting': { title: 'WORKSPACE GAC SWITCH', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前尚未指定工作区，工作区数据连接 GAC 开关处于未决状态' },
                     'ws_target': { title: 'TARGET WORKSPACE', module: '📁 2. WORKSPACE', unrenderedBadge: '⚠️ 顶栏未选工作区 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体工作区' },
 
                     'model_permission': { title: 'ROLE PERMISSION', module: '📊 3. MODEL', unrenderedBadge: '⚠️ 顶栏未选模型 · 尚未加载', unrenderedReason: '当前顶栏尚未挑选具体语义模型' },
