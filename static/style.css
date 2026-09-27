@@ -9513,26 +9513,44 @@ body.light-theme .btn-wf-sm.active-filter,
     transition: opacity 0.3s ease, stroke-width 0.2s ease;
 }
 
-/* 幽灵虚线潜在备选通道 (Ghost Wire: 具备潜力的备用角色源) */
+/* 幽灵虚线柔和发光衬底 */
+.pb-wire-ghost-bg {
+    fill: none;
+    stroke: rgba(168, 85, 247, 0.15);
+    stroke-width: 5px;
+    stroke-linecap: round;
+    opacity: 0.35;
+    transition: opacity 0.25s ease, stroke-width 0.25s ease, stroke 0.25s ease;
+}
+
+.pb-wire-ghost-bg.is-probe-active {
+    stroke: rgba(232, 121, 249, 0.45) !important;
+    stroke-width: 8px !important;
+    opacity: 1 !important;
+    filter: drop-shadow(0 0 8px rgba(217, 70, 239, 0.85)) !important;
+}
+
+/* 幽灵虚线潜在备选通道 (Ghost Wire: 具备潜力的备用角色源 - 增强清晰度与辨识度) */
 .pb-wire-ghost {
     fill: none;
-    stroke: rgba(167, 139, 250, 0.4);
-    stroke-width: 1.6px;
+    stroke: rgba(192, 132, 252, 0.72);
+    stroke-width: 2.2px;
     stroke-linecap: round;
-    stroke-dasharray: 5 6;
-    animation: pbWireGhostFlow 2.8s linear infinite;
-    opacity: 0.38;
+    stroke-dasharray: 6 5;
+    animation: pbWireGhostFlow 2.4s linear infinite;
+    opacity: 0.75;
+    filter: drop-shadow(0 0 3px rgba(168, 85, 247, 0.45));
     transition: opacity 0.25s ease, stroke 0.25s ease, stroke-width 0.25s ease, filter 0.25s ease;
 }
 
-/* 幽灵探针悬浮激活态 (Ghost Probe Active: 鼠标掠过/靠近备选角色卡片瞬间通电) */
+/* 幽灵探针悬浮激活态 (Ghost Probe Active: 鼠标悬浮/靠近备选角色卡片瞬间通电高能激活) */
 .pb-wire-ghost.is-probe-active {
     opacity: 1 !important;
-    stroke: #c084fc !important;
-    stroke-width: 2.6px !important;
-    stroke-dasharray: 8 5 !important;
-    animation: pbWireTrunkFlow 0.85s linear infinite !important;
-    filter: drop-shadow(0 0 8px rgba(192, 132, 252, 0.95)) !important;
+    stroke: #f0abfc !important;
+    stroke-width: 3.6px !important;
+    stroke-dasharray: 9 4.5 !important;
+    animation: pbWireTrunkFlow 0.75s linear infinite !important;
+    filter: drop-shadow(0 0 4px #ffffff) drop-shadow(0 0 10px #e879f9) drop-shadow(0 0 20px rgba(217, 70, 239, 0.95)) !important;
 }
 
 /* 磁吸发光端点圆点 (Magnetic Port Badges) */
@@ -9542,19 +9560,22 @@ body.light-theme .btn-wf-sm.active-filter,
 
 .pb-wire-port-dot.port-trunk {
     fill: #38bdf8;
-    filter: drop-shadow(0 0 4px #38bdf8);
+    filter: drop-shadow(0 0 5px #38bdf8);
 }
 
 .pb-wire-port-dot.port-ghost {
-    fill: #a78bfa;
-    opacity: 0.45;
+    fill: #c084fc;
+    opacity: 0.75;
+    filter: drop-shadow(0 0 3px #c084fc);
 }
 
 .pb-wire-port-dot.port-ghost.is-probe-active {
     opacity: 1 !important;
-    fill: #c084fc !important;
-    filter: drop-shadow(0 0 6px #c084fc) !important;
-    transform: scale(1.4);
+    fill: #ffffff !important;
+    stroke: #f0abfc !important;
+    stroke-width: 2px !important;
+    filter: drop-shadow(0 0 6px #ffffff) drop-shadow(0 0 12px #e879f9) drop-shadow(0 0 20px rgba(192, 132, 252, 0.9)) !important;
+    transform: scale(1.6);
     transform-origin: center;
 }
 
@@ -9581,15 +9602,33 @@ body.light-theme .pb-wire-trunk-bg,
 [data-theme="light"] .pb-wire-trunk-bg {
     stroke: rgba(14, 165, 233, 0.16);
 }
+body.light-theme .pb-wire-ghost-bg,
+[data-theme="light"] .pb-wire-ghost-bg {
+    stroke: rgba(147, 51, 234, 0.12);
+}
+body.light-theme .pb-wire-ghost-bg.is-probe-active,
+[data-theme="light"] .pb-wire-ghost-bg.is-probe-active {
+    stroke: rgba(147, 51, 234, 0.3) !important;
+    stroke-width: 8px !important;
+}
 body.light-theme .pb-wire-ghost,
 [data-theme="light"] .pb-wire-ghost {
-    stroke: rgba(139, 92, 246, 0.42);
-    opacity: 0.45;
+    stroke: rgba(147, 51, 234, 0.72);
+    opacity: 0.8;
+    filter: drop-shadow(0 0 2px rgba(147, 51, 234, 0.3));
 }
 body.light-theme .pb-wire-ghost.is-probe-active,
 [data-theme="light"] .pb-wire-ghost.is-probe-active {
-    stroke: #7c3aed !important;
-    filter: drop-shadow(0 0 6px rgba(124, 58, 237, 0.65)) !important;
+    stroke: #9333ea !important;
+    stroke-width: 3.6px !important;
+    filter: drop-shadow(0 0 4px #c084fc) drop-shadow(0 0 10px rgba(147, 51, 234, 0.85)) !important;
+}
+body.light-theme .pb-wire-port-dot.port-ghost.is-probe-active,
+[data-theme="light"] .pb-wire-port-dot.port-ghost.is-probe-active {
+    fill: #ffffff !important;
+    stroke: #9333ea !important;
+    stroke-width: 2px !important;
+    filter: drop-shadow(0 0 6px #9333ea) !important;
 }
 
 

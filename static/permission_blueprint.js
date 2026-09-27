@@ -6238,9 +6238,10 @@
                         const activeClass = isProbeActive ? ' is-probe-active' : '';
                         svgHtml += `
                             <g class="pb-wire-group-ghost${activeClass}" data-probe-card-id="${line.probeCardId}">
+                                <path class="pb-wire-ghost-bg${activeClass}" d="${d}" data-probe-card-id="${line.probeCardId}" />
                                 <path class="pb-wire-ghost${activeClass}" d="${d}" data-wire-type="ghost" data-probe-card-id="${line.probeCardId}" />
-                                <circle class="pb-wire-port-dot port-ghost${activeClass}" cx="${x1.toFixed(1)}" cy="${y1.toFixed(1)}" r="3" data-probe-card-id="${line.probeCardId}" />
-                                <circle class="pb-wire-port-dot port-ghost${activeClass}" cx="${x2.toFixed(1)}" cy="${y2.toFixed(1)}" r="3" data-probe-card-id="${line.probeCardId}" />
+                                <circle class="pb-wire-port-dot port-ghost${activeClass}" cx="${x1.toFixed(1)}" cy="${y1.toFixed(1)}" r="3.5" data-probe-card-id="${line.probeCardId}" />
+                                <circle class="pb-wire-port-dot port-ghost${activeClass}" cx="${x2.toFixed(1)}" cy="${y2.toFixed(1)}" r="3.5" data-probe-card-id="${line.probeCardId}" />
                             </g>
                         `;
                     }
