@@ -2729,7 +2729,7 @@
                                 capacityType: 'fabric_f64',
                                 workspaceRole: role,
                                 isModelOwner: role === 'Admin',
-                                isInStrictMode: false,
+                                isInStrictMode: Boolean(targetWsName && (targetWsName.toUpperCase().includes('PROD') || targetWsName.toUpperCase().includes('PRODUCTION'))),
                                 hasAccessToAllDataConnections: true,
                                 gatewayOnline: true,
                                 sharePermission: 'ReadBuild',
@@ -5230,6 +5230,26 @@
                 `;
             };
 
+            // ⚡ 核心演进：动态工作区与模型 GAC 严格模式推导 (严禁将容器级设置误绑为纯个人属性)
+            // 1. 若当前处于 What-If 演练且用户显式覆盖过 isInStrictMode，以演练设定为最高优先
+            // 2. 否则根据真实工作区与模型环境智能判定：
+            //    - 真实 PROD 环境 (DA_APAC_BI_PROD / 包含 PROD 或 Production) 实测已由管理员启用 GAC -> true
+            //    - 真实 QA / DEV 环境 (DA_APAC_BI_QA / 包含 QA 或 DEV) 实测未启用 GAC -> false
+            //    - 虚拟预设主体：遵循预设内置的 state.isInStrictMode 设定 (预设管理员/开发者默认为 true)
+            let isStrictGacMode = false;
+            const wsFullNameUpper = `${wsName} ${curWsId}`.toUpperCase();
+            if (this.simulationOverrides && this.simulationOverrides['isInStrictMode'] !== undefined) {
+                isStrictGacMode = Boolean(this.simulationOverrides['isInStrictMode']);
+            } else if (wsFullNameUpper.includes('PROD') || wsFullNameUpper.includes('PRODUCTION')) {
+                isStrictGacMode = true;
+            } else if (wsFullNameUpper.includes('QA') || wsFullNameUpper.includes('DEV')) {
+                isStrictGacMode = false;
+            } else if (user?.state?.isInStrictMode !== undefined) {
+                isStrictGacMode = Boolean(user.state.isInStrictMode);
+            } else {
+                isStrictGacMode = Boolean(this.currentState?.isInStrictMode);
+            }
+
             // Module 1: Tenant (租户全局策略层)
             // 🚨 租户副标题规范：始终呈现清晰的企业组织租户名称，绝不闪烁降级为底层十六进制/GUID 租户 ID！
             const rawTenantName = localStorage.getItem('pbi_tenant_name') ||
@@ -5247,7 +5267,7 @@
             const tenantHeroStatusText = user ? (isTenantAdmin ? '⚡ ADMIN' : (isGuest ? '⚠️ B2B GUEST' : '✅ MEMBER')) : '❌ NO USER';
             const tenantItems = [
                 { id: 'tenant_principal_role', isHero: true, cat: 'assigned', name: tenantRoleName, desc: user ? `【分配身份】登录主体 [${user.name}] (${user.upn}) · ${isTenantAdmin ? '拥有租户全局 Fabric / Power BI 管理员治理特权' : (isGuest ? 'Entra B2B 外部租户访客身份' : '企业目录标准组织成员身份')}` : '【等待配置】请在左侧或顶栏指定具体企业成员', statusClass: tenantHeroStatusClass, statusText: tenantHeroStatusText, badge: 'ROLE' },
-                { id: 'tenant_gac_policy', cat: 'derived', name: `GAC Policy (${user?.state?.isInStrictMode ? '严格审查模式' : '跨源放行模式'})`, desc: user?.state?.isInStrictMode ? '【租户策略控制】租户开启细粒度访问控制 (GAC) 严格审查模式，非特权成员必须具备显式数据连接授权才能直连数据源' : '【租户策略控制】租户 GAC 跨源策略处于放行模式，未对非特权成员实施全局数据源物理隔离', statusClass: user?.state?.isInStrictMode ? 'warn' : 'enabled', statusText: user?.state?.isInStrictMode ? '🔒 STRICT' : '✅ CAN ACCESS', badge: 'GAC' },
+                { id: 'tenant_gac_policy', cat: 'derived', name: `GAC Policy (${isStrictGacMode ? '严格审查模式' : '跨源放行模式'})`, desc: isStrictGacMode ? '【租户策略控制】租户开启细粒度访问控制 (GAC) 严格审查模式，非特权成员必须具备显式数据连接授权才能直连数据源' : '【租户策略控制】租户 GAC 跨源策略处于放行模式，未对非特权成员实施全局数据源物理隔离', statusClass: isStrictGacMode ? 'warn' : 'enabled', statusText: isStrictGacMode ? '🔒 STRICT' : '✅ CAN ACCESS', badge: 'GAC' },
                 { id: 'tenant_export', cat: 'derived', name: 'Export Data (导出数据至 Excel/CSV)', desc: user ? '【租户策略控制】租户管理门户全局策略放行，允许组织成员导出报表底层与汇总数据至本地 Excel/CSV' : '【租户策略控制】需选定具体登录主体后生效策略', statusClass: user ? 'enabled' : 'disabled', statusText: user ? '✅ CAN EXPORT' : '❌ CANNOT EXPORT', badge: 'EXPORT' },
                 { id: 'tenant_web_modeling', cat: 'derived', name: 'Web Modeling (网页在线端建模)', desc: user?.state?.tenantAllowWebModeling ? '【租户策略控制】租户策略放行，允许在浏览器端直接设计、编辑语义模型架构与度量值' : '【租户策略控制】租户策略禁用网页端在线建模，仅允许通过 Power BI Desktop 客户端操作', statusClass: user?.state?.tenantAllowWebModeling ? 'enabled' : 'disabled', statusText: user?.state?.tenantAllowWebModeling ? '✅ CAN MODEL' : '❌ CANNOT MODEL', badge: 'WEB MODEL' },
                 { id: 'tenant_xmla', cat: 'derived', name: 'XMLA Endpoint (XMLA 端点读写)', desc: '【租户策略控制】终结点已开启读写，允许 SSMS、DAX Studio 与 Tabular Editor 跨客户端直连管理模型架构', statusClass: 'enabled', statusText: '✅ CAN CONNECT', badge: 'XMLA' },
@@ -5364,12 +5384,12 @@
                     {
                         id: 'ws_gac_setting',
                         cat: 'derived',
-                        name: `Workspace GAC Setting (${user?.state?.isInStrictMode ? '细粒度访问控制已启用' : '细粒度控制未开启'})`,
-                        desc: user?.state?.isInStrictMode
+                        name: `Workspace GAC Setting (${isStrictGacMode ? '细粒度访问控制已启用' : '细粒度控制未开启'})`,
+                        desc: isStrictGacMode
                             ? `【工作区连接配置】已在 Workspace > Settings > Data connections 启用 "Enable granular access control for all data connections"，全区模型继承 isInStrictMode=true 细粒度管控模式`
                             : `【工作区连接配置】当前工作区未启用 GAC 细粒度开关 (isInStrictMode=false)，处于传统 Owner 独占模式，非 Owner 用户受前端限制`,
-                        statusClass: user?.state?.isInStrictMode ? 'enabled' : 'disabled',
-                        statusText: user?.state?.isInStrictMode ? '🛡️ GAC ON (Strict)' : '⚠️ GAC OFF (Legacy)',
+                        statusClass: isStrictGacMode ? 'enabled' : 'disabled',
+                        statusText: isStrictGacMode ? '🛡️ GAC ON (Strict)' : '⚠️ GAC OFF (Legacy)',
                         badge: 'GAC SWITCH'
                     },
                     { id: 'ws_capacity', cat: 'derived', name: 'Fabric F64 Capacity (企业专用容量)', desc: '【承载环境】挂载企业专用容量 (Fabric F64)，享有独立计算算力与 Direct Lake 加速通道', statusClass: 'enabled', statusText: '⚡ CAN ACCESS', badge: 'CAPACITY' },
@@ -5429,7 +5449,7 @@
                     { id: 'model_write', cat: 'derived', name: 'Write (修改模型架构与度量值)', desc: isPrivileged ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生特权，允许通过 XMLA 端点或浏览器在线修改表结构、新建度量值与关系模型` : '【由工作区角色派生】当前角色无编辑特权，禁止写回模型架构或修改度量值', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ CAN WRITE' : '❌ CANNOT WRITE', badge: 'WRITE' },
                     { id: 'model_rls', cat: 'derived', name: 'RLS (行级安全过滤规则)', desc: isPrivileged ? `【由工作区角色控制】拥有 [${wsRoleCaps}] 管理特权穿透，直接跳过所有 DAX 行级安全过滤规则，查看全量业务明细` : '【由工作区角色控制】受 DAX 角色策略约束，仅能查看授权给当前身份的切片行数据', statusClass: isPrivileged ? 'bypassed' : 'warn', statusText: isPrivileged ? '⚡ ADMIN BYPASS' : '🔒 RLS RESTRICTED', badge: 'RLS' },
                     { id: 'model_ols', cat: 'derived', name: 'OLS (对象级与敏感列安全)', desc: isPrivileged ? `【由工作区角色控制】拥有 [${wsRoleCaps}] 管理特权穿透，免除语义模型敏感表与度量值字段的 OLS 掩蔽限制` : (user?.state?.olsEnabled ? '【由工作区角色控制】受敏感字段 OLS 列级安全约束，受保护的高密字段已被动态掩蔽 (Masked)' : '【由工作区角色控制】当前模型未启用 OLS 保护，所有表与字段对只读用户完整可见'), statusClass: isPrivileged ? 'bypassed' : (user?.state?.olsEnabled ? 'warn' : 'enabled'), statusText: isPrivileged ? '⚡ ADMIN BYPASS' : (user?.state?.olsEnabled ? '🔒 OLS MASKED' : '✅ ALL COLUMNS VISIBLE'), badge: 'OLS' },
-                    { id: 'model_gac', cat: 'derived', name: 'Model GAC (模型细粒度访问控制)', desc: user?.state?.isInStrictMode ? '【受租户门禁与工作区 GAC 开关双重管辖】工作区已勾选启用数据连接细粒度控制 (isInStrictMode=true)，语义模型进入严格审查模式，微观对象与跨源 Mashup 均需校验连接凭据' : '【受租户门禁与工作区 GAC 开关双重管辖】工作区未开启 GAC 开关 (isInStrictMode=false)，处于传统 Owner 独占模式，非模型 Owner 无法进入 Power Query 编辑', statusClass: user?.state?.isInStrictMode ? 'warn' : 'disabled', statusText: user?.state?.isInStrictMode ? '🛡️ GAC STRICT ENFORCED' : '⚠️ GAC DISABLED (Legacy)', badge: 'GAC' },
+                    { id: 'model_gac', cat: 'derived', name: 'Model GAC (模型细粒度访问控制)', desc: isStrictGacMode ? '【受租户门禁与工作区 GAC 开关双重管辖】工作区已勾选启用数据连接细粒度控制 (isInStrictMode=true)，语义模型进入严格审查模式，微观对象与跨源 Mashup 均需校验连接凭据' : '【受租户门禁与工作区 GAC 开关双重管辖】工作区未开启 GAC 开关 (isInStrictMode=false)，处于传统 Owner 独占模式，非模型 Owner 无法进入 Power Query 编辑', statusClass: isStrictGacMode ? 'warn' : 'disabled', statusText: isStrictGacMode ? '🛡️ GAC STRICT ENFORCED' : '⚠️ GAC DISABLED (Legacy)', badge: 'GAC' },
                     { id: 'model_reshare', cat: 'derived', name: 'Reshare (二次授权共享模型)', desc: (isAdmin || isMember) ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生，允许将该具体语义模型的访问权限二次授权给其他组织成员` : '【由工作区角色派生】无 RESHARE 权限，禁止向第三方组织成员分发或再授权该模型', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ CAN RESHARE' : '❌ CANNOT RESHARE', badge: 'RESHARE' }
                 ];
                 colModelBody = renderTierItemsHtml('model', modelItems);
@@ -5688,7 +5708,7 @@
                 connItems.push(
                     { id: 'conn_user_perm', cat: 'derived', name: 'Connection User (连接使用者角色)', desc: effectiveHasDataConn ? '【由连接授权控制】具备 Connection User 官方授权，模型在后台计划刷新与 DirectQuery 取数时可复用此连接凭据' : '【由连接授权控制】未被分配 Connection User 角色，无法调用或复用该连接凭据', statusClass: effectiveHasDataConn ? 'enabled' : 'disabled', statusText: effectiveHasDataConn ? '✅ CAN USE' : '❌ CANNOT USE', badge: 'CREDENTIALS' },
                     { id: 'conn_gac_perm', cat: 'derived', name: 'Connection GAC Direct (细粒度连接直连)', desc: isPrivileged ? `【由工作区角色及连接策略控制】由 [${wsRoleCaps}] 特权穿透，直接拥有该连接最高 GAC 细粒度物理直连与抽取权限` : (effectiveHasDataConn ? '【由连接授权控制】已获官方数据源 GAC 细粒度授权，允许直接复用此连接凭据执行数据查询与抽取' : '【由连接授权控制】未被分配 GAC 细粒度权限，无法通过此连接访问底层物理数据库'), statusClass: isPrivileged ? 'bypassed' : (effectiveHasDataConn ? 'enabled' : 'disabled'), statusText: isPrivileged ? '⚡ ADMIN BYPASS' : (effectiveHasDataConn ? '✅ CAN ACCESS' : '❌ CANNOT ACCESS'), badge: 'GAC' },
-                    { id: 'conn_gac_mashup', cat: 'derived', name: 'Cross-Source Mashup (多源跨网隔离门禁)', desc: isPrivileged ? `【由工作区角色及租户策略联动控制】由 [${wsRoleCaps}] 特权豁免，免除多数据源 Mashup 细粒度门禁限制，可自由混合处理多源数据` : (effectiveHasDataConn && !user?.state?.isInStrictMode ? '【租户策略控制】跨源安全门禁放行，允许在 Power Query 与 DirectQuery 中将此连接与其它数据源关联合并' : '【租户策略控制】触发 GAC 跨源安全隔离门禁，严格模式下禁止跨数据源混合关联处理'), statusClass: isPrivileged ? 'bypassed' : (effectiveHasDataConn && !user?.state?.isInStrictMode ? 'enabled' : 'disabled'), statusText: isPrivileged ? '⚡ ADMIN BYPASS' : (effectiveHasDataConn && !user?.state?.isInStrictMode ? '✅ CAN MASHUP' : '❌ CANNOT MASHUP'), badge: 'MASHUP' },
+                    { id: 'conn_gac_mashup', cat: 'derived', name: 'Cross-Source Mashup (多源跨网隔离门禁)', desc: isPrivileged ? `【由工作区角色及租户策略联动控制】由 [${wsRoleCaps}] 特权豁免，免除多数据源 Mashup 细粒度门禁限制，可自由混合处理多源数据` : (effectiveHasDataConn && !isStrictGacMode ? '【租户策略控制】跨源安全门禁放行，允许在 Power Query 与 DirectQuery 中将此连接与其它数据源关联合并' : '【租户策略控制】触发 GAC 跨源安全隔离门禁，严格模式下禁止跨数据源混合关联处理'), statusClass: isPrivileged ? 'bypassed' : (effectiveHasDataConn && !isStrictGacMode ? 'enabled' : 'disabled'), statusText: isPrivileged ? '⚡ ADMIN BYPASS' : (effectiveHasDataConn && !isStrictGacMode ? '✅ CAN MASHUP' : '❌ CANNOT MASHUP'), badge: 'MASHUP' },
                     { id: 'conn_gw', cat: 'env', name: gwItemName, desc: gwItemDesc, statusClass: gwItemStatusClass, statusText: gwItemStatusText, badge: gwItemBadge },
                     { id: 'conn_sso', cat: 'derived', name: 'DirectQuery SSO (Entra ID 身份委派)', desc: '【认证机制】DirectQuery 运行时使用当前用户 Entra ID 身份穿透鉴权直连底层数据库，实现端到端身份透传', statusClass: 'enabled', statusText: '✅ CAN DELEGATE', badge: 'SSO' },
                     { id: 'conn_refresh', cat: 'derived', name: 'Scheduled Refresh (配置计划刷新与调度)', desc: isPrivileged ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生，允许配置自动化计划刷新调度并随时手动触发微批次数据抽取` : '【由工作区角色派生】当前 Viewer 角色无权调度或手动触发计划刷新', statusClass: isPrivileged ? 'enabled' : 'disabled', statusText: isPrivileged ? '✅ CAN REFRESH' : '❌ CANNOT REFRESH', badge: 'REFRESH' },
