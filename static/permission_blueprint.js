@@ -7130,7 +7130,7 @@
             if (!activeRow) {
                 if (body) {
                     body.innerHTML = `
-                        <div style="padding: 24px 16px; text-align: center; background: rgba(99, 102, 241, 0.05); border: 1px dashed rgba(99, 102, 241, 0.25); border-radius: 10px;">
+                        <div class="pb-explain-empty-card">
                             <div style="font-size: 2rem; margin-bottom: 8px;">💡</div>
                             <div style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">
                                 尚未锁定选中任何权限小卡片
@@ -7146,12 +7146,12 @@
                                 <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.selectAndExplainRow('conn_default_ds')" style="padding: 5px 12px; font-size: 0.76rem; border-radius: 6px; cursor: pointer;">🔌 数据源连接与网关 (Data Connection)</button>
                                 <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.selectAndExplainRow('pipeline_role')" style="padding: 5px 12px; font-size: 0.76rem; border-radius: 6px; cursor: pointer;">🚀 部署管道角色 (Pipeline Role)</button>
                             </div>
-                            <div style="margin-top: 14px; padding-top: 10px; border-top: 1px dashed rgba(99, 102, 241, 0.2); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.74rem; color: #818cf8;">
-                                <span style="background: rgba(99, 102, 241, 0.25); color: #a5b4fc; padding: 1px 6px; border-radius: 3px; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px;">
+                            <div class="pb-laya-sentinel-banner">
+                                <span class="pb-laya-sentinel-badge">
                                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                                     <span>LAYA SENTINEL</span>
                                 </span>
-                                <span>支持 Laya System 1 本地非自回归合规安全审计与越权拦截</span>
+                                <span class="pb-laya-sentinel-text">支持 Laya System 1 本地非自回归合规安全审计与越权拦截</span>
                             </div>
                         </div>
                     `;
@@ -7463,11 +7463,11 @@
                         const explanation = this.getLinkExplanation(srcId, rowId);
 
                         cardsHtml += `
-                            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 7px; padding: 9px 13px; display: flex; flex-direction: column; gap: 6px;">
+                            <div class="pb-explain-relation-card">
                                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
                                     <div style="display: flex; align-items: center; gap: 8px;">
                                         <strong style="font-size: 0.88rem; color: var(--text-primary); letter-spacing: 0.2px;">${srcTitle}</strong>
-                                        <span style="font-size: 0.7rem; color: var(--text-secondary); background: rgba(255, 255, 255, 0.04); padding: 1px 6px; border-radius: 3px;">${srcModule}</span>
+                                        <span class="pb-explain-tag">${srcModule}</span>
                                     </div>
                                     ${statusBadgeHtml}
                                 </div>
@@ -7508,11 +7508,11 @@
                         const explanation = this.getLinkExplanation(rowId, tgtId);
 
                         cardsHtml += `
-                            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 7px; padding: 9px 13px; display: flex; flex-direction: column; gap: 6px;">
+                            <div class="pb-explain-relation-card">
                                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
                                     <div style="display: flex; align-items: center; gap: 8px;">
                                         <strong style="font-size: 0.88rem; color: var(--text-primary); letter-spacing: 0.2px;">${tgtTitle}</strong>
-                                        <span style="font-size: 0.7rem; color: var(--text-secondary); background: rgba(255, 255, 255, 0.04); padding: 1px 6px; border-radius: 3px;">${tgtModule}</span>
+                                        <span class="pb-explain-tag">${tgtModule}</span>
                                     </div>
                                     ${statusBadgeHtml}
                                 </div>
@@ -7534,13 +7534,13 @@
 
                 if (body) {
                     body.innerHTML = `
-                        <!-- 主解析卡片英雄看板与合规门禁微条 (统一纯净克制色系) -->
-                        <div style="background: rgba(255, 255, 255, 0.025); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;">
+                        <!-- 主解析卡片英雄看板与合规门禁微条 (深浅主题自适应) -->
+                        <div class="pb-explain-hero-card">
                             <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span style="font-size: 0.68rem; font-weight: 700; color: var(--text-secondary); background: rgba(255, 255, 255, 0.06); padding: 2px 7px; border-radius: 4px;">当前解析主体</span>
+                                    <span class="pb-explain-tag" style="font-size: 0.68rem; font-weight: 700;">当前解析主体</span>
                                     <h4 style="margin: 0; font-size: 1.02rem; font-weight: 800; color: var(--text-primary);">${titleText}</h4>
-                                    <span style="font-size: 0.7rem; color: var(--text-secondary); background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); padding: 1px 6px; border-radius: 3px; font-weight: 500;">${catLabel}</span>
+                                    <span class="pb-explain-tag">${catLabel}</span>
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <span style="font-size: 0.72rem; color: var(--text-secondary);">${moduleTitle}</span>
@@ -7548,22 +7548,22 @@
                                 </div>
                             </div>
 
-                            <!-- Laya System 1 门禁条 (低调质感) -->
-                            <div id="pb-laya-guardrail-bar" class="laya-security-guardrail-bar" style="margin: 0; padding: 6px 10px; background: rgba(0, 0, 0, 0.2); border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                            <!-- Laya System 1 门禁条 (深浅主题自适应) -->
+                            <div id="pb-laya-guardrail-bar" class="laya-security-guardrail-bar is-pending">
                                 <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
-                                    <span style="font-size: 0.7rem; font-weight: 800; color: #a5b4fc; background: rgba(99, 102, 241, 0.16); border: 1px solid rgba(99, 102, 241, 0.28); padding: 1px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;">
-                                        <span style="background: #6366f1; color: #ffffff; font-size: 0.6rem; font-weight: 900; padding: 0 3px; border-radius: 2px; letter-spacing: 0.5px;">LAYA</span>
+                                    <span class="pb-laya-guardrail-brand">
+                                        <span class="pb-laya-mini-tag">LAYA</span>
                                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                                         <span>System 1 合规门禁</span>
                                     </span>
-                                    <span id="pb-laya-guardrail-status" style="font-weight: 500; font-size: 0.75rem; color: #6ee7b7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">正在评估链路合规风险...</span>
+                                    <span id="pb-laya-guardrail-status" class="pb-laya-guardrail-status-text">正在评估链路合规风险...</span>
                                 </div>
-                                <span id="pb-laya-guardrail-action" style="font-size: 0.68rem; color: var(--text-secondary); background: rgba(255, 255, 255, 0.04); padding: 1px 6px; border-radius: 3px; flex-shrink: 0;">Act / Escalate 计算中</span>
+                                <span id="pb-laya-guardrail-action" class="pb-laya-guardrail-action-pill">Act / Escalate 计算中</span>
                             </div>
                         </div>
 
-                        <!-- 联动统计速览 (单色克制：上游在先，下游在后) -->
-                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 4px 10px; background: rgba(255, 255, 255, 0.015); border-radius: 6px; font-size: 0.74rem; color: var(--text-secondary);">
+                        <!-- 联动统计速览 -->
+                        <div class="pb-explain-summary-strip">
                             <span>⚡ 关联 <strong style="color: var(--text-primary); font-size: 0.82rem;">${totalLinked}</strong> 项资产权限</span>
                             <span>⬆️ 依据: <strong style="color: var(--text-primary);">${reverseSources.length}</strong> · ⬇️ 派生: <strong style="color: var(--text-primary);">${forwardTargets.length}</strong></span>
                         </div>
@@ -7580,11 +7580,12 @@
                         const statusEl = document.getElementById('pb-laya-guardrail-status');
                         const actEl = document.getElementById('pb-laya-guardrail-action');
                         if (bar && statusEl) {
-                            bar.classList.remove('is-warning');
-                            statusEl.style.color = 'var(--text-secondary)';
+                            bar.classList.remove('is-warning', 'is-pass', 'is-pending');
+                            bar.classList.add('is-disabled');
+                            statusEl.style.color = '';
                             statusEl.innerHTML = `<span>⚪ Laya 决策引擎已停用 (可在全局环境配置中一键重新开启)</span>`;
                             if (actEl) {
-                                actEl.style.color = 'var(--text-secondary)';
+                                actEl.style.color = '';
                                 actEl.textContent = '已停用';
                             }
                         }
@@ -7597,21 +7598,23 @@
                             if (!bar || !statusEl) return;
 
                             if (audit && audit.is_high_risk) {
+                                bar.classList.remove('is-pass', 'is-pending', 'is-disabled');
                                 bar.classList.add('is-warning');
-                                statusEl.style.color = '#fca5a5';
+                                statusEl.style.color = '';
                                 statusEl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><span>Laya 越权风险预警 · 合规风险度: ${audit.risk_score || 1.8} / 2.0 · 建议复核 (Escalate)</span></span>`;
                                 if (actEl) {
-                                    actEl.style.color = '#f87171';
+                                    actEl.style.color = '';
                                     actEl.textContent = `Laya 自主放行率: ${Math.round((audit.act_probability || 0.3) * 100)}%`;
                                 }
                             } else {
                                 const scoreVal = audit && typeof audit.risk_score === 'number' ? audit.risk_score : 0.2;
                                 const actProb = audit && typeof audit.act_probability === 'number' ? audit.act_probability : 0.95;
-                                bar.classList.remove('is-warning');
-                                statusEl.style.color = '#a7f3d0';
+                                bar.classList.remove('is-warning', 'is-pending', 'is-disabled');
+                                bar.classList.add('is-pass');
+                                statusEl.style.color = '';
                                 statusEl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Laya 评估通过 · 微软标准 RBAC 链路 · 机器完全信任放行 (Act) · 风险度: ${scoreVal}</span></span>`;
                                 if (actEl) {
-                                    actEl.style.color = '#34d399';
+                                    actEl.style.color = '';
                                     actEl.textContent = `Laya 自主放行率: ${Math.round(actProb * 100)}%`;
                                 }
                             }

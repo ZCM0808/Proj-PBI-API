@@ -10095,23 +10095,277 @@ body.light-theme .pb-wire-radar-anchor.port-ghost .pb-radar-arrow-shape,
     display: flex;
 }
 
-/* 4. 权限蓝图 System 1 安全合规条 */
-.laya-security-guardrail-bar {
-    background: rgba(16, 185, 129, 0.08);
-    border: 1px solid rgba(16, 185, 129, 0.25);
+/* 4. 权限蓝图因果弹窗与 System 1 安全合规条深浅主题适配 */
+.pb-explain-empty-card {
+    padding: 24px 16px;
+    text-align: center;
+    background: rgba(99, 102, 241, 0.05);
+    border: 1px dashed rgba(99, 102, 241, 0.25);
+    border-radius: 10px;
+}
+.pb-explain-hero-card {
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.pb-explain-summary-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 12px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 6px;
-    padding: 8px 12px;
+    font-size: 0.74rem;
+    color: var(--text-secondary);
+}
+.pb-explain-relation-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 7px;
+    padding: 9px 13px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+.pb-explain-relation-card:hover {
+    border-color: rgba(99, 102, 241, 0.3);
+}
+.pb-explain-tag {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 1px 6px;
+    border-radius: 3px;
+}
+
+/* Laya Sentinel 引导条 (未选卡片状态) */
+.pb-laya-sentinel-banner {
+    margin-top: 14px;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(99, 102, 241, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 0.74rem;
+    color: #818cf8;
+}
+.pb-laya-sentinel-badge {
+    background: rgba(99, 102, 241, 0.25);
+    color: #a5b4fc;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Laya System 1 门禁条容器 */
+.laya-security-guardrail-bar {
+    margin: 0;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
     font-size: 0.76rem;
     color: var(--text-primary);
-    transition: all 0.3s ease;
+    transition: all 0.25s ease;
 }
+.pb-laya-guardrail-brand {
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: #a5b4fc;
+    background: rgba(99, 102, 241, 0.16);
+    border: 1px solid rgba(99, 102, 241, 0.28);
+    padding: 1px 6px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+.pb-laya-mini-tag {
+    background: #6366f1;
+    color: #ffffff;
+    font-size: 0.6rem;
+    font-weight: 900;
+    padding: 0 3px;
+    border-radius: 2px;
+    letter-spacing: 0.5px;
+}
+.pb-laya-guardrail-status-text {
+    font-weight: 500;
+    font-size: 0.75rem;
+    color: #6ee7b7;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.pb-laya-guardrail-action-pill {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.04);
+    padding: 1px 6px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+/* 状态分支 (深色模式默认) */
+.laya-security-guardrail-bar.is-pass {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+.laya-security-guardrail-bar.is-pass .pb-laya-guardrail-status-text {
+    color: #a7f3d0;
+}
+.laya-security-guardrail-bar.is-pass .pb-laya-guardrail-action-pill {
+    color: #34d399;
+    background: rgba(16, 185, 129, 0.18);
+}
+
 .laya-security-guardrail-bar.is-warning {
-    background: rgba(239, 68, 68, 0.1);
+    background: rgba(239, 68, 68, 0.12);
     border-color: rgba(239, 68, 68, 0.35);
+}
+.laya-security-guardrail-bar.is-warning .pb-laya-guardrail-status-text {
+    color: #fca5a5;
+}
+.laya-security-guardrail-bar.is-warning .pb-laya-guardrail-action-pill {
+    color: #f87171;
+    background: rgba(239, 68, 68, 0.18);
+}
+
+.laya-security-guardrail-bar.is-disabled {
+    background: rgba(255, 255, 255, 0.02);
+    border-color: rgba(255, 255, 255, 0.06);
+}
+.laya-security-guardrail-bar.is-disabled .pb-laya-guardrail-status-text {
+    color: var(--text-secondary);
+}
+
+/* =========================================================================
+   亮色主题全局深度适配 (Light Theme)
+   ========================================================================= */
+body.light-theme .pb-explain-empty-card,
+[data-theme="light"] .pb-explain-empty-card {
+    background: rgba(99, 102, 241, 0.04);
+    border-color: rgba(99, 102, 241, 0.22);
+}
+body.light-theme .pb-explain-hero-card,
+[data-theme="light"] .pb-explain-hero-card {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+body.light-theme .pb-explain-summary-strip,
+[data-theme="light"] .pb-explain-summary-strip {
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+}
+body.light-theme .pb-explain-relation-card,
+[data-theme="light"] .pb-explain-relation-card {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+body.light-theme .pb-explain-relation-card:hover,
+[data-theme="light"] .pb-explain-relation-card:hover {
+    border-color: #6366f1;
+}
+body.light-theme .pb-explain-tag,
+[data-theme="light"] .pb-explain-tag {
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+    color: #475569;
+}
+body.light-theme .pb-laya-sentinel-banner,
+[data-theme="light"] .pb-laya-sentinel-banner {
+    color: #4338ca;
+    border-top-color: rgba(99, 102, 241, 0.25);
+}
+body.light-theme .pb-laya-sentinel-badge,
+[data-theme="light"] .pb-laya-sentinel-badge {
+    background: rgba(99, 102, 241, 0.12);
+    color: #4338ca;
+}
+
+/* 亮色模式 Laya 门禁条 */
+body.light-theme .laya-security-guardrail-bar,
+[data-theme="light"] .laya-security-guardrail-bar {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+body.light-theme .laya-security-guardrail-bar .pb-laya-guardrail-brand,
+[data-theme="light"] .laya-security-guardrail-bar .pb-laya-guardrail-brand {
+    background: rgba(99, 102, 241, 0.12);
+    border-color: rgba(99, 102, 241, 0.28);
+    color: #4338ca;
+}
+body.light-theme .laya-security-guardrail-bar .pb-laya-mini-tag,
+[data-theme="light"] .laya-security-guardrail-bar .pb-laya-mini-tag {
+    background: #4f46e5;
+}
+body.light-theme .laya-security-guardrail-bar .pb-laya-guardrail-status-text,
+[data-theme="light"] .laya-security-guardrail-bar .pb-laya-guardrail-status-text {
+    color: #047857;
+}
+body.light-theme .laya-security-guardrail-bar .pb-laya-guardrail-action-pill,
+[data-theme="light"] .laya-security-guardrail-bar .pb-laya-guardrail-action-pill {
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+}
+
+/* 亮色模式 Laya 门禁通过态 */
+body.light-theme .laya-security-guardrail-bar.is-pass,
+[data-theme="light"] .laya-security-guardrail-bar.is-pass {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.35);
+}
+body.light-theme .laya-security-guardrail-bar.is-pass .pb-laya-guardrail-status-text,
+[data-theme="light"] .laya-security-guardrail-bar.is-pass .pb-laya-guardrail-status-text {
+    color: #065f46;
+    font-weight: 600;
+}
+body.light-theme .laya-security-guardrail-bar.is-pass .pb-laya-guardrail-action-pill,
+[data-theme="light"] .laya-security-guardrail-bar.is-pass .pb-laya-guardrail-action-pill {
+    color: #047857;
+    background: rgba(16, 185, 129, 0.16);
+    border: 1px solid rgba(16, 185, 129, 0.28);
+    font-weight: 600;
+}
+
+/* 亮色模式 Laya 门禁预警态 */
+body.light-theme .laya-security-guardrail-bar.is-warning,
+[data-theme="light"] .laya-security-guardrail-bar.is-warning {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.35);
+}
+body.light-theme .laya-security-guardrail-bar.is-warning .pb-laya-guardrail-status-text,
+[data-theme="light"] .laya-security-guardrail-bar.is-warning .pb-laya-guardrail-status-text {
+    color: #b91c1c;
+    font-weight: 600;
+}
+body.light-theme .laya-security-guardrail-bar.is-warning .pb-laya-guardrail-action-pill,
+[data-theme="light"] .laya-security-guardrail-bar.is-warning .pb-laya-guardrail-action-pill {
+    color: #991b1b;
+    background: rgba(239, 68, 68, 0.16);
+    border: 1px solid rgba(239, 68, 68, 0.28);
+    font-weight: 600;
 }
 
 /* =========================================================================
