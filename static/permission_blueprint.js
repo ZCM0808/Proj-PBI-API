@@ -5759,7 +5759,7 @@
                     </button>
                     <div class="pb-category-legend pb-legend-card glass-panel">
                         <div class="pb-legend-card-header">
-                            <span class="pb-legend-title">权限分类与标识图例：</span>
+                            <span class="pb-legend-title">图例说明 (Legend)</span>
                             <span class="pb-legend-pin-hint" title="点击切换长久展开">
                                 <svg class="pb-pin-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M12 17v5M5 12V7a5 5 0 0 1 10 0v5l2 2H3l2-2z"></path>
@@ -5767,17 +5767,41 @@
                             </span>
                         </div>
                         <div class="pb-legend-body">
+                            <!-- 1. 权限卡片分类 -->
                             <div class="pb-legend-row">
                                 <span class="pb-legend-dot dot-assigned"></span>
-                                <span class="pb-legend-label"><strong style="color: #fbbf24;">官方分配身份 (ASSIGNED)</strong>：显式分配的权威原始身份与核心治理角色</span>
+                                <span class="pb-legend-label"><strong style="color: #fbbf24;">官方分配身份 (ASSIGNED)</strong>：权威原始身份与核心治理角色</span>
                             </div>
                             <div class="pb-legend-row">
                                 <span class="pb-legend-dot dot-derived"></span>
-                                <span class="pb-legend-label"><strong style="color: #38bdf8;">衍生能力权限 (CAPABILITY)</strong>：基于上游身份与策略推导派生的具体操作能力</span>
+                                <span class="pb-legend-label"><strong style="color: #38bdf8;">衍生能力权限 (CAPABILITY)</strong>：基于上游身份推导派生的具体操作能力</span>
                             </div>
                             <div class="pb-legend-row">
                                 <span class="pb-legend-dot dot-env"></span>
-                                <span class="pb-legend-label"><strong style="color: #94a3b8;">承载环境资产 (ENV)</strong>：权限生效所依赖的目标环境容器、网关通道与租户载体</span>
+                                <span class="pb-legend-label"><strong style="color: #94a3b8;">承载环境资产 (ENV)</strong>：依赖的环境容器、网关通道与租户载体</span>
+                            </div>
+
+                            <!-- 2. 因果连接线图例说明 -->
+                            <div class="pb-legend-section-title">因果连接线图例说明</div>
+                            <div class="pb-legend-row">
+                                <span class="pb-legend-wire-symbol">
+                                    <span class="pb-legend-wire-dot dot-from-trunk"></span>
+                                    <span class="pb-legend-wire-line line-trunk"></span>
+                                    <span class="pb-legend-wire-dot dot-to-trunk"></span>
+                                </span>
+                                <span class="pb-legend-label"><strong style="color: #34d399;">绿色脉冲实线</strong>：当前已生效身份的直接因果赋权通道</span>
+                            </div>
+                            <div class="pb-legend-row">
+                                <span class="pb-legend-wire-symbol">
+                                    <span class="pb-legend-wire-dot dot-ghost"></span>
+                                    <span class="pb-legend-wire-line line-ghost"></span>
+                                    <span class="pb-legend-wire-dot dot-ghost"></span>
+                                </span>
+                                <span class="pb-legend-label"><strong style="color: #c084fc;">紫色点阵虚线</strong>：其他备选合法角色的潜在赋能路径</span>
+                            </div>
+                            <div class="pb-legend-row" style="margin-top: 1px;">
+                                <span style="font-size: 0.72rem; line-height: 1;">💡</span>
+                                <span class="pb-legend-label" style="color: var(--text-tertiary); font-size: 0.62rem;">点击任意连线可独占高亮聚焦该通路与两侧卡片</span>
                             </div>
                         </div>
                     </div>

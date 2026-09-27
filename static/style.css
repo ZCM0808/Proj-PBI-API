@@ -8920,9 +8920,9 @@ body.light-theme .pb-cat-tag-pill.cat-env,
     position: absolute;
     bottom: 40px;
     left: 0;
-    min-width: 250px;
-    max-width: 320px;
-    padding: 9px 13px;
+    min-width: 270px;
+    max-width: 345px;
+    padding: 10px 14px;
     border-radius: 10px;
     background: rgba(15, 23, 42, 0.94);
     backdrop-filter: blur(12px);
@@ -8973,7 +8973,7 @@ body.light-theme .pb-cat-tag-pill.cat-env,
 
 .pb-legend-card-header .pb-legend-title {
     font-weight: 700;
-    font-size: 0.7rem;
+    font-size: 0.72rem;
     color: var(--text-primary);
 }
 
@@ -9030,6 +9030,79 @@ body.light-theme .pb-cat-tag-pill.cat-env,
 .pb-legend-dot.dot-assigned { background: #f59e0b; box-shadow: 0 0 6px rgba(245, 158, 11, 0.4); }
 .pb-legend-dot.dot-derived  { background: #38bdf8; box-shadow: 0 0 6px rgba(56, 189, 248, 0.4); }
 .pb-legend-dot.dot-env      { background: #94a3b8; box-shadow: 0 0 6px rgba(148, 163, 184, 0.4); }
+
+/* ⚡ 图例连线与微光圆点仿真图标 */
+.pb-legend-wire-symbol {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 28px;
+    height: 10px;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.pb-legend-wire-line {
+    position: absolute;
+    top: 50%;
+    left: 2px;
+    right: 2px;
+    height: 2px;
+    transform: translateY(-50%);
+    border-radius: 2px;
+}
+
+.pb-legend-wire-line.line-trunk {
+    background: linear-gradient(90deg, #10b981, #06b6d4, #38bdf8);
+    box-shadow: 0 0 4px rgba(56, 189, 248, 0.5);
+}
+
+.pb-legend-wire-line.line-ghost {
+    background: repeating-linear-gradient(90deg, #c084fc 0, #c084fc 4px, transparent 4px, transparent 7px);
+    box-shadow: 0 0 4px rgba(192, 132, 252, 0.5);
+}
+
+.pb-legend-wire-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #ffffff;
+    position: relative;
+    z-index: 2;
+    flex-shrink: 0;
+    box-sizing: border-box;
+}
+
+.pb-legend-wire-dot.dot-from-trunk {
+    border: 1.5px solid #10b981;
+    box-shadow: 0 0 4px #10b981;
+}
+
+.pb-legend-wire-dot.dot-to-trunk {
+    border: 1.5px solid #38bdf8;
+    box-shadow: 0 0 4px #38bdf8;
+}
+
+.pb-legend-wire-dot.dot-ghost {
+    border: 1.5px solid #c084fc;
+    box-shadow: 0 0 4px #c084fc;
+}
+
+/* 图例模块小分割线与副标题 */
+.pb-legend-section-title {
+    font-size: 0.64rem;
+    font-weight: 700;
+    color: var(--text-tertiary, #94a3b8);
+    margin-top: 5px;
+    padding-top: 5px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+body.light-theme .pb-legend-section-title,
+[data-theme="light"] .pb-legend-section-title {
+    border-top-color: rgba(0, 0, 0, 0.1);
+    color: #64748b;
+}
 
 /* Light theme */
 body.light-theme .pb-collapsible-legend .pb-legend-card,

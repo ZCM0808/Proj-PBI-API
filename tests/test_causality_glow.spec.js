@@ -93,6 +93,16 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
     expect(dimmedCount).toBe(0);
     const wiresAfterUnpin = await page.evaluate(() => document.querySelectorAll('#pb-causality-wires-group *').length);
     expect(wiresAfterUnpin).toBe(0);
+
+    // 5. 验证左下角图例中包含绿色实线与紫色虚线因果连线的含义说明与交互提示
+    const legendTrigger = page.locator('#pb-user-assets-legend .pb-legend-trigger');
+    await expect(legendTrigger).toBeVisible();
+    await legendTrigger.click();
+    const legendCard = page.locator('#pb-user-assets-legend .pb-legend-card');
+    await expect(legendCard).toBeVisible();
+    await expect(legendCard).toContainText('绿色脉冲实线');
+    await expect(legendCard).toContainText('紫色点阵虚线');
+    await expect(legendCard).toContainText('点击任意连线可独占高亮聚焦该通路与两侧卡片');
   });
 
   test('Causality explanation modal & soft border glow verification', async ({ page }) => {
