@@ -13,54 +13,86 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
     });
   });
 
-  test('Smooth causality transition: no full-screen flash on mouse sliding', async ({ page }) => {
+  test('Hover clean defense & click-to-pin with wire synchronization', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.evaluate(() => {
       localStorage.setItem('pbi-active-module', 'permission_blueprint');
       localStorage.setItem('pb-active-main-tab', 'user_assets');
+      localStorage.setItem('pb-active-preset', 'preset_admin');
     });
     await page.reload({ waitUntil: 'domcontentloaded' });
+
+    await page.evaluate(() => {
+      const mockWs = [{ id: 'ws_prod', name: 'Production Workspace', alias: 'Production Workspace' }];
+      const mockDs = [{ id: 'model_sales', name: 'Sales Model', alias: 'Sales Model', workspaceId: 'ws_prod' }];
+      const mockRp = [{ id: 'report_sales', name: 'Sales Report', alias: 'Sales Report', workspaceId: 'ws_prod' }];
+      window.allWorkspaces = mockWs;
+      window.allDatasets = mockDs;
+      window.allReports = mockRp;
+      window.selectedGtbWorkspaceIds = new Set(['ws_prod']);
+      window.selectedGtbDatasetIds = new Set(['model_sales']);
+      window.selectedGtbReportIds = new Set(['report_sales']);
+      if (window.PermissionBlueprint && typeof window.PermissionBlueprint.renderUserAssetsMatrix === 'function') {
+        window.PermissionBlueprint.activePresetKey = 'preset_admin';
+        window.PermissionBlueprint.currentWorkspaceId = 'ws_prod';
+        window.PermissionBlueprint.currentWorkspaceName = 'Production Workspace';
+        window.PermissionBlueprint.currentModelKey = 'model_sales';
+        window.PermissionBlueprint.renderUserAssetsMatrix();
+      }
+    });
 
     // Wait for user assets container
     const container = page.locator('#pb-user-assets-container');
     await expect(container).toBeVisible();
 
-    const rows = page.locator('.pb-asset-card-row');
-    const count = await rows.count();
-    expect(count).toBeGreaterThan(5);
+    const buildRow = page.locator('.pb-asset-card-row[data-row-id="model_build"]');
+    await expect(buildRow).toBeVisible({ timeout: 10000 });
 
-    const firstRow = rows.first();
-    const secondRow = rows.nth(1);
+    const firstRow = page.locator('.pb-asset-card-row').first();
 
-    // 1. Fast sweep (< 50ms): should NOT trigger full dimming immediately (Hover Intent)
-    const box = await firstRow.boundingBox();
-    if (box) {
-      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    } else {
-      await firstRow.hover();
-    }
+    // 1. 悬停防御：鼠标悬浮在小卡片上，绝对不触发任何全屏连线或置灰 (保持画板宁静)
+    await firstRow.hover();
+    await page.waitForTimeout(160);
     let dimmedCount = await page.locator('.pb-causality-dimmed').count();
     expect(dimmedCount).toBe(0);
 
-    // 2. Wait 150ms: hover intent confirms focus, causality visuals applied
-    await page.waitForTimeout(150);
+    let wireCountOnHover = await page.evaluate(() => document.querySelectorAll('#pb-causality-wires-group *').length);
+    expect(wireCountOnHover).toBe(0);
+
+    // 悬停在具备因果关系的 buildRow 上同样绝对不产生连线与置灰
+    await buildRow.hover();
+    await page.waitForTimeout(160);
     dimmedCount = await page.locator('.pb-causality-dimmed').count();
-    const rowInfo = await firstRow.evaluate(el => el.getAttribute('data-row-id'));
-    console.log('Hovered row:', rowInfo, 'dimmedCount:', dimmedCount);
+    expect(dimmedCount).toBe(0);
+    wireCountOnHover = await page.evaluate(() => document.querySelectorAll('#pb-causality-wires-group *').length);
+    expect(wireCountOnHover).toBe(0);
+
+    // 2. 主动点击锁定：只有点击卡片后，才触发因果图谱与高光连线
+    await buildRow.click();
+    await expect(buildRow).toHaveClass(/pb-causality-pinned/);
+    dimmedCount = await page.locator('.pb-causality-dimmed').count();
     expect(dimmedCount).toBeGreaterThanOrEqual(1);
 
-    // 3. Move mouse to second card:
-    // With 60ms gap buffer and state diffing, unrelated rows keep pb-causality-dimmed without popping back to normal
-    await secondRow.hover();
-    await page.waitForTimeout(50);
-    const dimmedDuringTransition = await page.locator('.pb-causality-dimmed').count();
-    expect(dimmedDuringTransition).toBeGreaterThanOrEqual(1);
+    const wireCountAfterClick = await page.evaluate(() => document.querySelectorAll('#pb-causality-wires-group *').length);
+    expect(wireCountAfterClick).toBeGreaterThanOrEqual(1);
 
-    // 4. Move mouse outside to blank area: after grace period (60ms), all rows restore
-    await page.mouse.move(10, 10);
-    await page.waitForTimeout(120);
-    const dimmedAfterLeave = await page.locator('.pb-causality-dimmed').count();
-    expect(dimmedAfterLeave).toBe(0);
+    // 3. 上下移动与滚动跟随：触发列滚动事件后，连线图层平滑跟随更新且保持活跃
+    const modelBody = page.locator('.pb-asset-tier-card[data-tier-id="model"] .pb-card-body');
+    await modelBody.evaluate(el => {
+      el.scrollTop = 20;
+      el.dispatchEvent(new Event('scroll'));
+    });
+    await page.waitForTimeout(50);
+    const wiresAfterScroll = await page.evaluate(() => document.querySelectorAll('#pb-causality-wires-group *').length);
+    expect(wiresAfterScroll).toBeGreaterThanOrEqual(1);
+
+    // 4. 再次点击同一张卡片：取消锁定，连线与置灰完全清空
+    await buildRow.click();
+    await expect(buildRow).not.toHaveClass(/pb-causality-pinned/);
+    dimmedCount = await page.locator('.pb-causality-dimmed').count();
+    expect(dimmedCount).toBe(0);
+    const wiresAfterUnpin = await page.evaluate(() => document.querySelectorAll('#pb-causality-wires-group *').length);
+    expect(wiresAfterUnpin).toBe(0);
   });
 
   test('Causality explanation modal & soft border glow verification', async ({ page }) => {
@@ -233,5 +265,6 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
     expect(wiresRemaining).toBe(0);
   });
 });
+
 
 

@@ -5789,12 +5789,21 @@
             this.initCollapsibleLegends();
         }
 
+        // ⚡ 实时重新计算并更新因果连接线位置 (在卡片上下拖拽排序、容器滚动、窗口缩放时精准跟随)
+        recalculateCausalityWires() {
+            const targetRow = this._pinnedCausalityRow || this._activeCausalityRow;
+            if (targetRow && typeof this._renderCausalityWires === 'function') {
+                this._renderCausalityWires(targetRow);
+            }
+        }
+
         // ⚡ 初始化卡片内部权限条目上下拖拽移动引擎 (Zero-Overlap Guaranteed Item Reordering)
         initUserAssetsItemDrag(container) {
             if (!container) return;
             const bodies = container.querySelectorAll('.pb-asset-tier-card .pb-card-body');
             let draggedRow = null;
             let currentTierId = null;
+            let dragRaf = null;
 
             bodies.forEach(body => {
                 const tierId = body.getAttribute('data-tier-id');
@@ -5834,6 +5843,12 @@
                             }
                             draggedRow = null;
                             currentTierId = null;
+                            if (dragRaf) {
+                                cancelAnimationFrame(dragRaf);
+                                dragRaf = null;
+                            }
+                            // ⚡ 拖拽结束时立即重新计算并更新因果连接线位置，保证最终像素级精准对齐
+                            this.recalculateCausalityWires();
                         });
                     }
 
@@ -5853,6 +5868,14 @@
                             body.insertBefore(draggedRow, row.nextSibling);
                         } else {
                             body.insertBefore(draggedRow, row);
+                        }
+
+                        // ⚡ 拖拽换位时，使用 RAF 节流平滑实时重绘因果连接线，紧贴卡片新坐标
+                        if (!dragRaf) {
+                            dragRaf = requestAnimationFrame(() => {
+                                dragRaf = null;
+                                this.recalculateCausalityWires();
+                            });
                         }
                     });
                 });
@@ -6207,8 +6230,15 @@
                     const sRect = line.fromEl.getBoundingClientRect();
                     const tRect = line.toEl.getBoundingClientRect();
 
-                    // 若卡片完全滚出可视范围则跳过
-                    if (sRect.bottom < containerRect.top || sRect.top > containerRect.bottom ||
+                    const sBody = line.fromEl.closest('.pb-card-body');
+                    const tBody = line.toEl.closest('.pb-card-body');
+                    const sBodyRect = sBody ? sBody.getBoundingClientRect() : containerRect;
+                    const tBodyRect = tBody ? tBody.getBoundingClientRect() : containerRect;
+
+                    // 若卡片完全滚出可视范围或所属 body 裁剪区域则跳过
+                    if (sRect.bottom < sBodyRect.top || sRect.top > sBodyRect.bottom ||
+                        tRect.bottom < tBodyRect.top || tRect.top > tBodyRect.bottom ||
+                        sRect.bottom < containerRect.top || sRect.top > containerRect.bottom ||
                         tRect.bottom < containerRect.top || tRect.top > containerRect.bottom) {
                         return;
                     }
@@ -6251,10 +6281,6 @@
             };
             this._renderCausalityWires = renderCausalityWires;
 
-            // 定时器引用：80ms 悬停意图防抖 (Hover Intent) 与 60ms 间隙容差缓冲 (Leave Gap Buffer)
-            let hoverIntentTimer = null;
-            let leaveGraceTimer = null;
-
             const clearCausalityVisuals = () => {
                 this._activeCausalityRow = null;
                 if (this._hoveredProbeCardIds) {
@@ -6268,7 +6294,7 @@
             };
 
             // 采用差量更新 (State Diffing)，保持持续无关的卡片维持 dimmed，绝不重置回 1.0 导致变亮再变暗
-            const applyCausalityVisuals = (activeRow, isPinned = false) => {
+            const applyCausalityVisuals = (activeRow, isPinned = true) => {
                 if (!activeRow) {
                     clearCausalityVisuals();
                     return;
@@ -6309,9 +6335,11 @@
 
             // 监听每个卡片的 Hover 与 Click
             allRows.forEach(row => {
-                // 悬停联动 (仅在未锁定时生效)
+                // ⚡ 用户核心诉求：鼠标仅悬浮在小卡片上时绝对不触发任何连接线与全屏置灰！保持画板清爽宁静
+                // 仅在已有卡片处于锁定分析状态时，鼠标悬停备选角色才会激活幽灵探针高光通电
                 row.addEventListener('mouseenter', () => {
-                    // 幽灵探针悬浮感知：无论是否锁定，只要鼠标触碰某张备选卡片，该卡片对应的幽灵虚线瞬间高亮通电
+                    if (!this._pinnedCausalityRow) return;
+
                     const cardIds = [row.getAttribute('data-alias-id'), row.getAttribute('data-row-id')].filter(Boolean);
                     if (!this._hoveredProbeCardIds) this._hoveredProbeCardIds = new Set();
                     cardIds.forEach(id => this._hoveredProbeCardIds.add(id));
@@ -6323,33 +6351,11 @@
                             probeEls.forEach(el => el.classList.add('is-probe-active'));
                         });
                     }
-
-                    if (this._pinnedCausalityRow) return;
-
-                    // 1. 消除间隙空窗期：若此前有待清空的计时器（刚离开上一张卡片），立刻取消，避免卡片闪亮
-                    if (leaveGraceTimer) {
-                        clearTimeout(leaveGraceTimer);
-                        leaveGraceTimer = null;
-                    }
-                    if (hoverIntentTimer) {
-                        clearTimeout(hoverIntentTimer);
-                        hoverIntentTimer = null;
-                    }
-
-                    // 如果当前已经在展示此卡片，则无需重复计算
-                    if (this._activeCausalityRow === row) return;
-
-                    // 2. 微防抖意图识别：
-                    // - 如果此前已有激活卡片（鼠标在卡片之间平滑滑动），采用 35ms 超低延迟差量接管；
-                    // - 如果此前无激活卡片（从外部首次掠过），设置 120ms 意图识别防抖，防止掠过时误触发全屏明暗切换。
-                    const delay = this._activeCausalityRow ? 35 : 120;
-                    hoverIntentTimer = setTimeout(() => {
-                        applyCausalityVisuals(row, false);
-                    }, delay);
                 });
 
                 row.addEventListener('mouseleave', () => {
-                    // 离开卡片时释放幽灵探针高亮态
+                    if (!this._pinnedCausalityRow) return;
+
                     const cardIds = [row.getAttribute('data-alias-id'), row.getAttribute('data-row-id')].filter(Boolean);
                     if (this._hoveredProbeCardIds) {
                         cardIds.forEach(id => this._hoveredProbeCardIds.delete(id));
@@ -6359,48 +6365,25 @@
                         const activeProbes = curWiresGroup.querySelectorAll('.is-probe-active');
                         activeProbes.forEach(el => el.classList.remove('is-probe-active'));
                     }
-
-                    if (this._pinnedCausalityRow) return;
-
-                    if (hoverIntentTimer) {
-                        clearTimeout(hoverIntentTimer);
-                        hoverIntentTimer = null;
-                    }
-
-                    // 1. 消除间隙空窗期：移出时不立即清空，给予 60ms 容差缓冲。
-                    // 若鼠标顺势移入下一张卡片，下一个 card 的 mouseenter 会取消该 timer，实现丝滑差量接管，零闪烁。
-                    if (leaveGraceTimer) clearTimeout(leaveGraceTimer);
-                    leaveGraceTimer = setTimeout(() => {
-                        clearCausalityVisuals();
-                    }, 60);
                 });
 
-                // 点击锁定或切换
+                // 点击锁定或切换：只有点击小卡片才触发因果图谱与导线连线
                 row.addEventListener('click', (e) => {
                     // 防止点击按钮等其他内嵌控件干扰
-                    if (e.target.closest('button, input, select')) return;
+                    if (e.target.closest('button, input, select, a')) return;
 
                     // ⚡ 文本选区防御：若用户刚刚在卡片内划选了文本准备复制，绝不误触发点击锁定或切换
                     const selection = window.getSelection();
                     if (selection && selection.toString().trim().length > 0) return;
 
-                    if (hoverIntentTimer) {
-                        clearTimeout(hoverIntentTimer);
-                        hoverIntentTimer = null;
-                    }
-                    if (leaveGraceTimer) {
-                        clearTimeout(leaveGraceTimer);
-                        leaveGraceTimer = null;
-                    }
-
                     const rowId = row.getAttribute('data-row-id');
                     if (this._pinnedCausalityRowId === rowId) {
-                        // 再次点击同一张卡片 -> 取消锁定
+                        // 再次点击同一张卡片 -> 取消锁定并清除全部连线与置灰
                         this._pinnedCausalityRow = null;
                         this._pinnedCausalityRowId = null;
                         clearCausalityVisuals();
                     } else {
-                        // 点击新卡片 -> 锁定新卡片
+                        // 点击新卡片 -> 锁定新卡片并展示因果脉冲连线与高亮图谱
                         this._pinnedCausalityRow = row;
                         this._pinnedCausalityRowId = rowId;
                         applyCausalityVisuals(row, true);
@@ -6409,12 +6392,22 @@
                 });
             });
 
-            // 监听卡片滚动与窗口缩放时的连线跟随更新
+            // ⚡ 监听卡片滚动与窗口缩放时的连线跟随更新
+            // 采用捕获阶段 (capture: true) 统一监听所有卡片列 .pb-card-body 内部滚动，确保 100% 捕获
+            if (!container._hasWiresScrollListener) {
+                container._hasWiresScrollListener = true;
+                container.addEventListener('scroll', () => {
+                    if (this._pinnedCausalityRow || this._activeCausalityRow) {
+                        requestAnimationFrame(() => this.recalculateCausalityWires());
+                    }
+                }, { passive: true, capture: true });
+            }
+
             const cardBodies = container.querySelectorAll('.pb-asset-tier-card .pb-card-body');
             cardBodies.forEach(body => {
                 body.addEventListener('scroll', () => {
-                    if (this._activeCausalityRow) {
-                        requestAnimationFrame(() => renderCausalityWires(this._activeCausalityRow));
+                    if (this._pinnedCausalityRow || this._activeCausalityRow) {
+                        requestAnimationFrame(() => this.recalculateCausalityWires());
                     }
                 }, { passive: true });
             });
@@ -6422,8 +6415,13 @@
             if (!container._hasWiresResizeListener) {
                 container._hasWiresResizeListener = true;
                 window.addEventListener('resize', () => {
-                    if (this._activeCausalityRow) {
-                        requestAnimationFrame(() => renderCausalityWires(this._activeCausalityRow));
+                    if (this._pinnedCausalityRow || this._activeCausalityRow) {
+                        requestAnimationFrame(() => this.recalculateCausalityWires());
+                    }
+                }, { passive: true });
+                window.addEventListener('scroll', () => {
+                    if (this._pinnedCausalityRow || this._activeCausalityRow) {
+                        requestAnimationFrame(() => this.recalculateCausalityWires());
                     }
                 }, { passive: true });
             }
@@ -6812,6 +6810,7 @@
             const targetRow = container.querySelector(`.pb-asset-card-row[data-row-id="${rowId}"]`);
             if (targetRow) {
                 this._pinnedCausalityRow = targetRow;
+                this._pinnedCausalityRowId = rowId;
                 if (typeof this._applyCausalityVisualsFn === 'function') {
                     this._applyCausalityVisualsFn(targetRow, true);
                 }
