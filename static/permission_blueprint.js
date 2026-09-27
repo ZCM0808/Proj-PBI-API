@@ -5965,6 +5965,10 @@
         // ═════════════════════════════════════════════════════════════════════
         initUserAssetsCausalityLinkage(container) {
             if (!container) return;
+            this._activeCausalityRow = null;
+            if (!this._pinnedCausalityRowId) {
+                this._pinnedCausalityRow = null;
+            }
 
             // 官方因果关联图谱 (Causality Map: Source Item -> Derivative/Impacted Items)
             const CAUSALITY_MAP = {
@@ -5980,14 +5984,16 @@
                 'tenant_embed': [],
                 'tenant_certify': ['model_permission'],
 
-                // 2. 工作区官方角色 -> 纯粹跨模块业务赋权（直接影响模型资产、报表、连接运维与部署管道，杜绝工作区内自环与操作特权混杂）
+                // 2. 工作区官方角色 -> 纯粹跨模块业务赋权与关键治理特权（如删除工作区需要 Admin）
                 'ws_role': [
+                    'ws_delete',
                     'model_permission', 'model_read', 'model_build', 'model_write', 'model_reshare', 'model_rls', 'model_gac_ols',
                     'report_access', 'report_view', 'report_edit', 'report_export', 'report_sub', 'report_share',
                     'conn_refresh', 'conn_owner', 'conn_share', 'conn_user_perm',
                     'pipeline_deploy', 'pipeline_diff', 'pipeline_rules', 'pipeline_manage'
                 ],
                 'ws_role_admin': [
+                    'ws_delete',
                     'model_permission', 'model_read', 'model_build', 'model_write', 'model_reshare', 'model_rls', 'model_gac_ols',
                     'report_access', 'report_view', 'report_edit', 'report_export', 'report_sub', 'report_share',
                     'conn_refresh', 'conn_owner', 'conn_share', 'conn_user_perm',
@@ -6084,12 +6090,176 @@
 
             const allRows = container.querySelectorAll('.pb-asset-card-row');
 
+            // ⚡ 挂载或复用全景链路因果连线 SVG 视窗图层 (Causality Wires Layer)
+            let wiresSvg = container.querySelector('#pb-causality-wires-svg');
+            if (!wiresSvg) {
+                wiresSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                wiresSvg.id = 'pb-causality-wires-svg';
+                wiresSvg.setAttribute('class', 'pb-causality-wires-layer');
+                wiresSvg.innerHTML = `
+                    <defs>
+                        <linearGradient id="pb-trunk-flow-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#10b981" />
+                            <stop offset="50%" stop-color="#06b6d4" />
+                            <stop offset="100%" stop-color="#38bdf8" />
+                        </linearGradient>
+                    </defs>
+                    <g id="pb-causality-wires-group"></g>
+                `;
+                container.appendChild(wiresSvg);
+            }
+            const wiresGroup = wiresSvg.querySelector('#pb-causality-wires-group');
+
+            // ⚡ 动态因果连线渲染引擎 (方案 A: 主干高光实流 + 幽灵探针虚线)
+            const renderCausalityWires = (activeRow) => {
+                if (!wiresGroup) return;
+                wiresGroup.innerHTML = '';
+                if (!activeRow) return;
+
+                const rowId = activeRow.getAttribute('data-row-id');
+                const aliasId = activeRow.getAttribute('data-alias-id');
+                if (!rowId) return;
+
+                const containerRect = container.getBoundingClientRect();
+                if (containerRect.width === 0 || containerRect.height === 0) return;
+
+                // 寻找当前生效的工作区角色卡片 (Hero 角色)
+                const activeHeroWsEl = container.querySelector('.pb-asset-card-row.is-hero-role[data-tier-id="workspace"]');
+                const activeHeroAlias = activeHeroWsEl ? (activeHeroWsEl.getAttribute('data-alias-id') || activeHeroWsEl.getAttribute('data-row-id')) : null;
+
+                // 收集上游与下游关联 ID
+                const rawReverse = (REVERSE_MAP[rowId] || []).concat(aliasId && REVERSE_MAP[aliasId] ? REVERSE_MAP[aliasId] : []);
+                const rawForward = (CAUSALITY_MAP[rowId] || []).concat(aliasId && CAUSALITY_MAP[aliasId] ? CAUSALITY_MAP[aliasId] : []);
+
+                const curTierCard = activeRow.closest('.pb-asset-tier-card');
+                const curTierId = curTierCard ? curTierCard.getAttribute('data-tier-id') : null;
+
+                const linesToDraw = [];
+
+                // 1. 上游源头连入 activeRow (上游卡片 -> activeRow)
+                const seenSrc = new Set();
+                const seenSrcEl = new Set();
+                rawReverse.forEach(srcId => {
+                    if (srcId === rowId || srcId === aliasId) return;
+                    if (seenSrc.has(srcId)) return;
+                    seenSrc.add(srcId);
+
+                    let srcEl = container.querySelector(`.pb-asset-card-row[data-row-id="${srcId}"]`) ||
+                                container.querySelector(`.pb-asset-card-row[data-alias-id="${srcId}"]`);
+                    if (srcId === 'ws_role' && !srcEl) {
+                        srcEl = activeHeroWsEl;
+                    }
+                    if (!srcEl || srcEl === activeRow) return;
+                    if (seenSrcEl.has(srcEl)) return;
+                    seenSrcEl.add(srcEl);
+
+                    // 跨模块真因果：同模块内不连自环线
+                    const srcTierCard = srcEl.closest('.pb-asset-tier-card');
+                    const srcTierId = srcTierCard ? srcTierCard.getAttribute('data-tier-id') : null;
+                    if (srcTierId && curTierId && srcTierId === curTierId) return;
+
+                    // 判别类型：主干实流 (trunk) vs 幽灵虚线 (ghost)
+                    let wireType = 'trunk';
+                    const elAlias = srcEl.getAttribute('data-alias-id') || srcEl.getAttribute('data-row-id');
+                    if (srcId.startsWith('ws_role_') || srcId === 'ws_role') {
+                        if (activeHeroAlias && (srcId === activeHeroAlias || elAlias === activeHeroAlias || srcEl === activeHeroWsEl)) {
+                            wireType = 'trunk'; // 真正分配给当前用户的角色 -> 主干实流
+                        } else {
+                            wireType = 'ghost'; // 备选合法角色 -> 幽灵虚线
+                        }
+                    }
+
+                    linesToDraw.push({
+                        fromEl: srcEl,
+                        toEl: activeRow,
+                        type: wireType,
+                        probeCardId: elAlias || srcId
+                    });
+                });
+
+                // 2. activeRow 连向下游派生目标 (activeRow -> 下游卡片)
+                const seenTgt = new Set();
+                rawForward.forEach(tgtId => {
+                    if (tgtId === rowId || tgtId === aliasId) return;
+                    if (seenTgt.has(tgtId)) return;
+                    seenTgt.add(tgtId);
+
+                    const tgtEl = container.querySelector(`.pb-asset-card-row[data-row-id="${tgtId}"]`) ||
+                                  container.querySelector(`.pb-asset-card-row[data-alias-id="${tgtId}"]`);
+                    if (!tgtEl || tgtEl === activeRow) return;
+
+                    const tgtTierCard = tgtEl.closest('.pb-asset-tier-card');
+                    const tgtTierId = tgtTierCard ? tgtTierCard.getAttribute('data-tier-id') : null;
+                    if (tgtTierId && curTierId && tgtTierId === curTierId) return;
+
+                    const elAlias = tgtEl.getAttribute('data-alias-id') || tgtEl.getAttribute('data-row-id');
+                    linesToDraw.push({
+                        fromEl: activeRow,
+                        toEl: tgtEl,
+                        type: 'trunk',
+                        probeCardId: elAlias || tgtId
+                    });
+                });
+
+                // 批量绘制贝塞尔曲线
+                let svgHtml = '';
+                linesToDraw.forEach(line => {
+                    const sRect = line.fromEl.getBoundingClientRect();
+                    const tRect = line.toEl.getBoundingClientRect();
+
+                    // 若卡片完全滚出可视范围则跳过
+                    if (sRect.bottom < containerRect.top || sRect.top > containerRect.bottom ||
+                        tRect.bottom < containerRect.top || tRect.top > containerRect.bottom) {
+                        return;
+                    }
+
+                    const isLeftToRight = sRect.left < tRect.left;
+                    const x1 = (isLeftToRight ? sRect.right : sRect.left) - containerRect.left;
+                    const y1 = sRect.top + sRect.height / 2 - containerRect.top;
+                    const x2 = (isLeftToRight ? tRect.left : tRect.right) - containerRect.left;
+                    const y2 = tRect.top + tRect.height / 2 - containerRect.top;
+
+                    const dx = Math.max(Math.abs(x2 - x1) * 0.45, 26);
+                    const cp1x = isLeftToRight ? (x1 + dx) : (x1 - dx);
+                    const cp2x = isLeftToRight ? (x2 - dx) : (x2 + dx);
+                    const d = `M ${x1.toFixed(1)} ${y1.toFixed(1)} C ${cp1x.toFixed(1)} ${y1.toFixed(1)}, ${cp2x.toFixed(1)} ${y2.toFixed(1)}, ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+
+                    if (line.type === 'trunk') {
+                        svgHtml += `
+                            <g class="pb-wire-group-trunk" data-from-id="${line.probeCardId}">
+                                <path class="pb-wire-trunk-bg" d="${d}" />
+                                <path class="pb-wire-trunk" d="${d}" data-wire-type="trunk" />
+                                <circle class="pb-wire-port-dot port-trunk" cx="${x1.toFixed(1)}" cy="${y1.toFixed(1)}" r="3.5" />
+                                <circle class="pb-wire-port-dot port-trunk" cx="${x2.toFixed(1)}" cy="${y2.toFixed(1)}" r="3.5" />
+                            </g>
+                        `;
+                    } else {
+                        const isProbeActive = Boolean(this._hoveredProbeCardIds && this._hoveredProbeCardIds.has(line.probeCardId));
+                        const activeClass = isProbeActive ? ' is-probe-active' : '';
+                        svgHtml += `
+                            <g class="pb-wire-group-ghost${activeClass}" data-probe-card-id="${line.probeCardId}">
+                                <path class="pb-wire-ghost${activeClass}" d="${d}" data-wire-type="ghost" data-probe-card-id="${line.probeCardId}" />
+                                <circle class="pb-wire-port-dot port-ghost${activeClass}" cx="${x1.toFixed(1)}" cy="${y1.toFixed(1)}" r="3" data-probe-card-id="${line.probeCardId}" />
+                                <circle class="pb-wire-port-dot port-ghost${activeClass}" cx="${x2.toFixed(1)}" cy="${y2.toFixed(1)}" r="3" data-probe-card-id="${line.probeCardId}" />
+                            </g>
+                        `;
+                    }
+                });
+
+                wiresGroup.innerHTML = svgHtml;
+            };
+            this._renderCausalityWires = renderCausalityWires;
+
             // 定时器引用：80ms 悬停意图防抖 (Hover Intent) 与 60ms 间隙容差缓冲 (Leave Gap Buffer)
             let hoverIntentTimer = null;
             let leaveGraceTimer = null;
 
             const clearCausalityVisuals = () => {
                 this._activeCausalityRow = null;
+                if (this._hoveredProbeCardIds) {
+                    this._hoveredProbeCardIds.clear();
+                }
+                renderCausalityWires(null);
                 const rows = container.querySelectorAll('.pb-asset-card-row');
                 rows.forEach(r => {
                     r.classList.remove('pb-causality-active', 'pb-causality-pinned', 'pb-causality-target', 'pb-causality-dimmed');
@@ -6128,6 +6298,9 @@
                         }
                     }
                 });
+
+                // 实时渲染因果导线 (实线脉冲 + 幽灵探针)
+                renderCausalityWires(activeRow);
             };
 
             this._applyCausalityVisualsFn = applyCausalityVisuals;
@@ -6137,6 +6310,19 @@
             allRows.forEach(row => {
                 // 悬停联动 (仅在未锁定时生效)
                 row.addEventListener('mouseenter', () => {
+                    // 幽灵探针悬浮感知：无论是否锁定，只要鼠标触碰某张备选卡片，该卡片对应的幽灵虚线瞬间高亮通电
+                    const cardIds = [row.getAttribute('data-alias-id'), row.getAttribute('data-row-id')].filter(Boolean);
+                    if (!this._hoveredProbeCardIds) this._hoveredProbeCardIds = new Set();
+                    cardIds.forEach(id => this._hoveredProbeCardIds.add(id));
+
+                    const curWiresGroup = container.querySelector('#pb-causality-wires-group') || wiresGroup;
+                    if (curWiresGroup && cardIds.length > 0) {
+                        cardIds.forEach(id => {
+                            const probeEls = curWiresGroup.querySelectorAll(`[data-probe-card-id="${id}"]`);
+                            probeEls.forEach(el => el.classList.add('is-probe-active'));
+                        });
+                    }
+
                     if (this._pinnedCausalityRow) return;
 
                     // 1. 消除间隙空窗期：若此前有待清空的计时器（刚离开上一张卡片），立刻取消，避免卡片闪亮
@@ -6154,14 +6340,25 @@
 
                     // 2. 微防抖意图识别：
                     // - 如果此前已有激活卡片（鼠标在卡片之间平滑滑动），采用 35ms 超低延迟差量接管；
-                    // - 如果此前无激活卡片（从外部首次掠过），设置 80ms 意图识别防抖，防止掠过时误触发全屏明暗切换。
-                    const delay = this._activeCausalityRow ? 35 : 80;
+                    // - 如果此前无激活卡片（从外部首次掠过），设置 120ms 意图识别防抖，防止掠过时误触发全屏明暗切换。
+                    const delay = this._activeCausalityRow ? 35 : 120;
                     hoverIntentTimer = setTimeout(() => {
                         applyCausalityVisuals(row, false);
                     }, delay);
                 });
 
                 row.addEventListener('mouseleave', () => {
+                    // 离开卡片时释放幽灵探针高亮态
+                    const cardIds = [row.getAttribute('data-alias-id'), row.getAttribute('data-row-id')].filter(Boolean);
+                    if (this._hoveredProbeCardIds) {
+                        cardIds.forEach(id => this._hoveredProbeCardIds.delete(id));
+                    }
+                    const curWiresGroup = container.querySelector('#pb-causality-wires-group') || wiresGroup;
+                    if (curWiresGroup) {
+                        const activeProbes = curWiresGroup.querySelectorAll('.is-probe-active');
+                        activeProbes.forEach(el => el.classList.remove('is-probe-active'));
+                    }
+
                     if (this._pinnedCausalityRow) return;
 
                     if (hoverIntentTimer) {
@@ -6210,6 +6407,25 @@
                     e.stopPropagation();
                 });
             });
+
+            // 监听卡片滚动与窗口缩放时的连线跟随更新
+            const cardBodies = container.querySelectorAll('.pb-asset-tier-card .pb-card-body');
+            cardBodies.forEach(body => {
+                body.addEventListener('scroll', () => {
+                    if (this._activeCausalityRow) {
+                        requestAnimationFrame(() => renderCausalityWires(this._activeCausalityRow));
+                    }
+                }, { passive: true });
+            });
+
+            if (!container._hasWiresResizeListener) {
+                container._hasWiresResizeListener = true;
+                window.addEventListener('resize', () => {
+                    if (this._activeCausalityRow) {
+                        requestAnimationFrame(() => renderCausalityWires(this._activeCausalityRow));
+                    }
+                }, { passive: true });
+            }
 
             // 自愈与持久化恢复：若此前已被锁定，在 DOM 重建后自动恢复高亮态
             if (this._pinnedCausalityRowId) {

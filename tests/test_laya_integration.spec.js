@@ -279,6 +279,8 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
 
   test('UI: Laya master switch toggles engine on/off with instant feedback', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => localStorage.setItem('pbi-laya-enabled', 'true'));
+    await page.reload({ waitUntil: 'domcontentloaded' });
 
     // 1. 打开全局设置弹窗
     await page.waitForFunction(() => typeof window.isLayaEnabled === 'function' && typeof window.setupFLIPModal === 'function', { timeout: 15000 });

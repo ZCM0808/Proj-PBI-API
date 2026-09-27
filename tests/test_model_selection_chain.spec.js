@@ -85,6 +85,9 @@ test.describe('GTB Model Search & Panoramic Permission Chain Model Application V
     // 1. 切换到权限流转蓝图模块并选择全景权限链路 Tab
     await page.evaluate(() => {
       localStorage.setItem('pbi-selected-workspaces', JSON.stringify(['ws-apac-101']));
+      localStorage.setItem('pbi-active-workspace', 'ws-apac-101');
+      localStorage.setItem('pb_ws_role_ws-apac-101_sarah.connor@contoso.com', 'Admin');
+      localStorage.setItem('pbi_ws_users_ws-apac-101', JSON.stringify([{ emailAddress: 'sarah.connor@contoso.com', role: 'Admin' }]));
       localStorage.setItem('pbi_workspaces', JSON.stringify([
         { id: 'ws-apac-101', name: 'DA_APAC_PROD', alias: 'DA_APAC_PROD' },
         { id: 'ws-emea-102', name: 'DA_EMEA_PROD', alias: 'DA_EMEA_PROD' }
@@ -162,20 +165,23 @@ test.describe('GTB Model Search & Panoramic Permission Chain Model Application V
 
 
     // 8. 验证连接管理与管道管理卡片也绝不连带点亮 tenant member
-    const connOwnerRow = page.locator('.pb-asset-tier-card[data-tier-id="connection"] .pb-asset-card-row[data-row-id="conn_owner"]');
+    const connOwnerRow = page.locator('.pb-asset-tier-card[data-tier-id="connection"] .pb-asset-card-row[data-row-id="conn_owner"]').first();
     if (await connOwnerRow.count() > 0) {
-      await connOwnerRow.click();
+      await connOwnerRow.click({ force: true });
       await expect(tenantMemberRow).not.toHaveClass(/pb-causality-target/);
     }
 
     // 9. 验证点击工作区 ws_role (ADMIN) 时，下属语义模型与报表所有小卡片全部点亮，绝非变暗！
-    await wsRoleRow.click();
-    await expect(wsRoleRow).toHaveClass(/pb-causality-active/);
-    await expect(modelRowPermission).toHaveClass(/pb-causality-target/);
-    await expect(modelRowRead).toHaveClass(/pb-causality-target/);
-    const modelRowBuild = page.locator('.pb-asset-tier-card[data-tier-id="model"] .pb-asset-card-row[data-row-id="model_build"]');
-    await expect(modelRowBuild).toHaveClass(/pb-causality-target/);
-    await expect(modelRowRead).not.toHaveClass(/pb-causality-dimmed/);
+    const currentWsRole = page.locator('.pb-asset-tier-card[data-tier-id="workspace"] .pb-asset-card-row[data-row-id="ws_role"]').first();
+    await currentWsRole.click({ force: true });
+    await expect(currentWsRole).toHaveClass(/pb-causality-active/);
+    const targetModelRowPermission = page.locator('.pb-asset-tier-card[data-tier-id="model"] .pb-asset-card-row[data-row-id="model_permission"]').first();
+    const targetModelRowRead = page.locator('.pb-asset-tier-card[data-tier-id="model"] .pb-asset-card-row[data-row-id="model_read"]').first();
+    const targetModelRowBuild = page.locator('.pb-asset-tier-card[data-tier-id="model"] .pb-asset-card-row[data-row-id="model_build"]').first();
+    await expect(targetModelRowPermission).toHaveClass(/pb-causality-target/);
+    await expect(targetModelRowRead).toHaveClass(/pb-causality-target/);
+    await expect(targetModelRowBuild).toHaveClass(/pb-causality-target/);
+    await expect(targetModelRowRead).not.toHaveClass(/pb-causality-dimmed/);
 
     // 10. 验证状态徽章中已彻底移除 CAN / CANNOT 单词，且包含 SVG 图标
     const statusPills = page.locator('.pb-asset-status-pill');

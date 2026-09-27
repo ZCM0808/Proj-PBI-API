@@ -9481,6 +9481,119 @@ body.light-theme .btn-wf-sm.active-filter,
     color: #b45309 !important;
 }
 
+/* ⚡ 用户全景权限链路因果导线图层 (Causality Wires Layer) */
+.pb-causality-wires-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 25;
+    overflow: visible;
+}
+
+/* 主干直接高光实流 (Trunk Wire: 直接生效的因果主线) */
+.pb-wire-trunk-bg {
+    fill: none;
+    stroke: rgba(16, 185, 129, 0.22);
+    stroke-width: 5px;
+    stroke-linecap: round;
+    transition: opacity 0.3s ease;
+}
+
+.pb-wire-trunk {
+    fill: none;
+    stroke: url(#pb-trunk-flow-grad);
+    stroke-width: 2.4px;
+    stroke-linecap: round;
+    stroke-dasharray: 8 6;
+    animation: pbWireTrunkFlow 1.2s linear infinite;
+    filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.75));
+    transition: opacity 0.3s ease, stroke-width 0.2s ease;
+}
+
+/* 幽灵虚线潜在备选通道 (Ghost Wire: 具备潜力的备用角色源) */
+.pb-wire-ghost {
+    fill: none;
+    stroke: rgba(167, 139, 250, 0.4);
+    stroke-width: 1.6px;
+    stroke-linecap: round;
+    stroke-dasharray: 5 6;
+    animation: pbWireGhostFlow 2.8s linear infinite;
+    opacity: 0.38;
+    transition: opacity 0.25s ease, stroke 0.25s ease, stroke-width 0.25s ease, filter 0.25s ease;
+}
+
+/* 幽灵探针悬浮激活态 (Ghost Probe Active: 鼠标掠过/靠近备选角色卡片瞬间通电) */
+.pb-wire-ghost.is-probe-active {
+    opacity: 1 !important;
+    stroke: #c084fc !important;
+    stroke-width: 2.6px !important;
+    stroke-dasharray: 8 5 !important;
+    animation: pbWireTrunkFlow 0.85s linear infinite !important;
+    filter: drop-shadow(0 0 8px rgba(192, 132, 252, 0.95)) !important;
+}
+
+/* 磁吸发光端点圆点 (Magnetic Port Badges) */
+.pb-wire-port-dot {
+    transition: transform 0.25s ease, fill 0.25s ease, filter 0.25s ease, opacity 0.25s ease;
+}
+
+.pb-wire-port-dot.port-trunk {
+    fill: #38bdf8;
+    filter: drop-shadow(0 0 4px #38bdf8);
+}
+
+.pb-wire-port-dot.port-ghost {
+    fill: #a78bfa;
+    opacity: 0.45;
+}
+
+.pb-wire-port-dot.port-ghost.is-probe-active {
+    opacity: 1 !important;
+    fill: #c084fc !important;
+    filter: drop-shadow(0 0 6px #c084fc) !important;
+    transform: scale(1.4);
+    transform-origin: center;
+}
+
+@keyframes pbWireTrunkFlow {
+    from {
+        stroke-dashoffset: 28;
+    }
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes pbWireGhostFlow {
+    from {
+        stroke-dashoffset: 22;
+    }
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+/* 亮色模式适配 (Light Theme) */
+body.light-theme .pb-wire-trunk-bg,
+[data-theme="light"] .pb-wire-trunk-bg {
+    stroke: rgba(14, 165, 233, 0.16);
+}
+body.light-theme .pb-wire-ghost,
+[data-theme="light"] .pb-wire-ghost {
+    stroke: rgba(139, 92, 246, 0.42);
+    opacity: 0.45;
+}
+body.light-theme .pb-wire-ghost.is-probe-active,
+[data-theme="light"] .pb-wire-ghost.is-probe-active {
+    stroke: #7c3aed !important;
+    filter: drop-shadow(0 0 6px rgba(124, 58, 237, 0.65)) !important;
+}
+
+
+
 /* =========================================================================
    Laya System 1 Local Decision Engine UI Components & Micro-animations
    ========================================================================= */

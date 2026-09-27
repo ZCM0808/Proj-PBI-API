@@ -4523,7 +4523,7 @@ window.updateGlobalTopbarDropdowns = function() {
                                 return `
                                     <div class="gtb-ws-item gtb-ds-item ${isSel ? 'selected' : ''}" data-search-text="${searchText}" onclick="window.toggleGtbDataset('${mId}')">
                                         <div class="gtb-ws-item-left">
-                                            <input type="checkbox" class="gtb-ws-checkbox gtb-ds-checkbox" ${isSel ? 'checked' : ''} onclick="event.stopPropagation(); window.toggleGtbDataset('${mId}')">
+                                            <input type="checkbox" class="gtb-ws-checkbox gtb-ds-checkbox" ${isSel ? 'checked' : ''} style="pointer-events: none;">
                                             <div class="gtb-ws-item-names">
                                                 <div class="gtb-ws-item-title" title="${mName}">${mName}</div>
                                                 <div class="gtb-ws-item-sub" title="${mId}">${mId}</div>

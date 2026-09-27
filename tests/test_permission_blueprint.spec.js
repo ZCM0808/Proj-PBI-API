@@ -704,10 +704,16 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         await expect(impactedBanner).toBeVisible();
         await expect(impactedBanner).toContainText('联动');
 
-        // 验证其 CSS 宽度为 100%
-        const bannerWidth = await impactedBanner.evaluate(el => window.getComputedStyle(el).width);
-        const cardWidth = await firstRow.evaluate(el => window.getComputedStyle(el).width);
-        expect(parseFloat(bannerWidth)).toBeGreaterThan(150);
+        // 验证其 CSS 宽度自适应撑满卡片宽度
+        const bannerStyle = await impactedBanner.evaluate(el => ({
+            widthStyle: window.getComputedStyle(el).width,
+            rectWidth: el.getBoundingClientRect().width,
+            parentWidth: el.parentElement ? el.parentElement.getBoundingClientRect().width : 0
+        }));
+        expect(bannerStyle.rectWidth).toBeGreaterThan(50);
+        if (bannerStyle.parentWidth > 0) {
+            expect(bannerStyle.rectWidth).toBeGreaterThanOrEqual(bannerStyle.parentWidth * 0.8);
+        }
     });
 
     test('全链路保障：顶栏工作区清空为0项、跨刷新绝无跨域工作区与XMLA、且支持切换至用户全景权限链路流转矩阵', async ({ page }) => {

@@ -6,6 +6,11 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
     await page.route('**/*.{png,jpg,jpeg,woff,woff2,ttf}', route => route.abort());
     await page.route(/fonts\.googleapis\.com/, route => route.abort());
     await page.route(/alcdn\.msauth\.net/, route => route.abort());
+    await page.addInitScript(() => {
+      localStorage.clear();
+      localStorage.setItem('pbi-active-module', 'permission_blueprint');
+      localStorage.setItem('pb-active-main-tab', 'user_assets');
+    });
   });
 
   test('Smooth causality transition: no full-screen flash on mouse sliding', async ({ page }) => {
@@ -28,7 +33,12 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
     const secondRow = rows.nth(1);
 
     // 1. Fast sweep (< 50ms): should NOT trigger full dimming immediately (Hover Intent)
-    await firstRow.hover();
+    const box = await firstRow.boundingBox();
+    if (box) {
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    } else {
+      await firstRow.hover();
+    }
     let dimmedCount = await page.locator('.pb-causality-dimmed').count();
     expect(dimmedCount).toBe(0);
 
@@ -143,5 +153,85 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
       await expect(modelReadRow).not.toHaveClass(/pb-causality-pinned/);
     }
   });
+
+  test('Causality Wires Layer: Solid Trunk flow for active role & Ghost Probe dashed wire for candidate roles', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => {
+      localStorage.setItem('pbi-active-module', 'permission_blueprint');
+      localStorage.setItem('pb-active-main-tab', 'user_assets');
+      localStorage.setItem('pb-active-preset', 'preset_admin');
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
+    await page.evaluate(() => {
+      const mockWs = [{ id: 'ws_prod', name: 'Production Workspace', alias: 'Production Workspace' }];
+      const mockDs = [{ id: 'model_sales', name: 'Sales Model', alias: 'Sales Model', workspaceId: 'ws_prod' }];
+      const mockRp = [{ id: 'report_sales', name: 'Sales Report', alias: 'Sales Report', workspaceId: 'ws_prod' }];
+      window.allWorkspaces = mockWs;
+      window.allDatasets = mockDs;
+      window.allReports = mockRp;
+      window.selectedGtbWorkspaceIds = new Set(['ws_prod']);
+      window.selectedGtbDatasetIds = new Set(['model_sales']);
+      window.selectedGtbReportIds = new Set(['report_sales']);
+      if (window.PermissionBlueprint && typeof window.PermissionBlueprint.renderUserAssetsMatrix === 'function') {
+        window.PermissionBlueprint.activePresetKey = 'preset_admin';
+        window.PermissionBlueprint.currentWorkspaceId = 'ws_prod';
+        window.PermissionBlueprint.currentWorkspaceName = 'Production Workspace';
+        window.PermissionBlueprint.currentModelKey = 'model_sales';
+        window.PermissionBlueprint.renderUserAssetsMatrix();
+      }
+    });
+
+    const container = page.locator('#pb-user-assets-container');
+    await expect(container).toBeVisible();
+
+    // 1. 定位 Build 卡片并点击锁定
+    const buildRow = page.locator('.pb-asset-card-row[data-row-id="model_build"]');
+    await expect(buildRow).toBeVisible({ timeout: 10000 });
+    await buildRow.click();
+    await expect(buildRow).toHaveClass(/pb-causality-pinned/);
+
+    // 2. 验证 SVG 连线图层生成
+    const wiresSvg = page.locator('#pb-causality-wires-svg');
+    await expect(wiresSvg).toBeVisible();
+
+    // 验证主干实线存在 (Admin -> Build 以及 Build -> Export Data)
+    const trunkWires = page.locator('.pb-wire-trunk');
+    const trunkCount = await trunkWires.count();
+    expect(trunkCount).toBeGreaterThanOrEqual(1);
+
+    // 验证幽灵虚线存在 (Member & Contributor 潜在赋能源)
+    const ghostWires = page.locator('.pb-wire-ghost');
+    const ghostCount = await ghostWires.count();
+    expect(ghostCount).toBeGreaterThanOrEqual(1);
+
+    // 验证端点磁吸圆点存在
+    const portDots = page.locator('.pb-wire-port-dot');
+    expect(await portDots.count()).toBeGreaterThanOrEqual(2);
+
+    // 3. 验证幽灵探针悬浮感知 (Ghost Probe Hover Activation)
+    const memberRow = page.locator('.pb-asset-card-row[data-alias-id="ws_role_member"], .pb-asset-card-row[data-row-id="ws_role_member"]');
+    if (await memberRow.count() > 0) {
+      await memberRow.first().scrollIntoViewIfNeeded();
+      await memberRow.first().hover();
+      await page.waitForTimeout(100);
+      const activeProbeCount = await page.evaluate(() => document.querySelectorAll('.pb-wire-ghost.is-probe-active').length);
+      expect(activeProbeCount).toBeGreaterThanOrEqual(1);
+
+      // 移开鼠标后幽灵探针恢复微弱态
+      await page.mouse.move(5, 5);
+      await page.waitForTimeout(60);
+      const clearedProbeCount = await page.evaluate(() => document.querySelectorAll('.pb-wire-ghost.is-probe-active').length);
+      expect(clearedProbeCount).toBe(0);
+    }
+
+    // 4. 再次点击 Build 取消锁定：连线图层全部清空
+    await buildRow.click();
+    await expect(buildRow).not.toHaveClass(/pb-causality-pinned/);
+    await page.waitForTimeout(100);
+    const wiresRemaining = await page.evaluate(() => document.querySelectorAll('#pb-causality-wires-group *').length);
+    expect(wiresRemaining).toBe(0);
+  });
 });
+
 
