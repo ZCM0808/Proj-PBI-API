@@ -6101,6 +6101,16 @@
                         firstDs?.gatewayId || null,
                         firstDs?.datasourceId || null
                     );
+
+                    // ⚡ 穿透刷新微软内部 WABI 探针：清除旧缓存并强制重新拉取 isInStrictMode 真实安全状态
+                    const gacCacheKey = `${curWsId || 'global'}_${curDsId}`;
+                    if (window._modelLiveGacCache) {
+                        delete window._modelLiveGacCache[gacCacheKey];
+                    }
+                    try {
+                        sessionStorage.removeItem('pbi_model_live_gac_cache');
+                    } catch(e) {}
+                    await this.fetchLiveModelGacStatus(curWsId, curDsId, true);
                 }
 
                 // 强制重新渲染矩阵
@@ -6110,11 +6120,11 @@
                 const topBadge = document.getElementById('pb-top-simulated-badge');
                 if (topBadge) {
                     const originalText = topBadge.textContent;
-                    topBadge.textContent = '⚡ 已完成全景权限链路与数据网关状态穿透刷新！';
+                    topBadge.textContent = '⚡ 已完成全景权限链路、数据网关与 WABI GAC 实时探针穿透刷新！';
                     setTimeout(() => { if (topBadge.textContent.startsWith('⚡')) topBadge.textContent = originalText; }, 2500);
                 }
 
-                const toastMsg = curDsId ? '✅ 用户全景权限链路与模型底层官方连接已穿透更新！' : '✅ 用户全景权限链路已刷新 (请在顶栏选择具体模型以检测官方连接)';
+                const toastMsg = curDsId ? '✅ 用户全景权限链路、数据网关与 WABI GAC 状态已穿透更新！' : '✅ 用户全景权限链路已刷新 (请在顶栏选择具体模型以检测官方连接与 GAC)';
                 if (typeof window.showNotification === 'function') {
                     window.showNotification(toastMsg, 'success', 2500);
                 } else if (typeof window.showToast === 'function') {
