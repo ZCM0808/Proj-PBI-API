@@ -9829,6 +9829,187 @@ body.light-theme .pb-wire-port-dot.port-ghost.is-probe-active,
     filter: drop-shadow(0 0 6px #9333ea) !important;
 }
 
+/* =========================================================================
+   离屏雷达探针与边缘磁吸 (Edge Clamped Virtual Port Radar)
+   ========================================================================= */
+
+.pb-wire-radar-anchor {
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.pb-wire-radar-anchor .pb-radar-badge {
+    transform-box: fill-box;
+    transform-origin: center;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), filter 0.22s ease;
+}
+
+.pb-wire-radar-anchor:hover .pb-radar-badge {
+    transform: scale(1.35);
+}
+
+.pb-radar-hitbox {
+    fill: transparent;
+    cursor: pointer;
+}
+
+/* 雷达外层微光光环 */
+.pb-radar-halo {
+    stroke-width: 1.5px;
+    transition: all 0.25s ease;
+}
+
+/* 雷达方向箭头 */
+.pb-radar-arrow-shape {
+    stroke-width: 1px;
+    stroke: #ffffff;
+    stroke-linejoin: round;
+    transition: all 0.25s ease;
+}
+
+/* 雷达中心微光核 */
+.pb-radar-core {
+    fill: #ffffff;
+    filter: drop-shadow(0 0 2px #ffffff);
+}
+
+/* 雷达离屏数量显式微标文字 (Count Badge) */
+.pb-radar-count-text {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, monospace;
+    font-size: 10px;
+    font-weight: 800;
+    fill: #ffffff;
+    letter-spacing: -0.5px;
+    user-select: none;
+    pointer-events: none;
+    dominant-baseline: central;
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8));
+}
+
+/* 绿色主干线源头探针 (Emerald Green) */
+.pb-wire-radar-anchor.port-trunk.port-from .pb-radar-halo {
+    stroke: #10b981;
+    fill: rgba(16, 185, 129, 0.25);
+    filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.8));
+}
+.pb-wire-radar-anchor.port-trunk.port-from .pb-radar-arrow-shape {
+    fill: #10b981;
+    filter: drop-shadow(0 0 4px #10b981);
+}
+
+/* 绿色主干线目标端探针 (Sky Blue) */
+.pb-wire-radar-anchor.port-trunk.port-to .pb-radar-halo {
+    stroke: #38bdf8;
+    fill: rgba(56, 189, 248, 0.25);
+    filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.8));
+}
+.pb-wire-radar-anchor.port-trunk.port-to .pb-radar-arrow-shape {
+    fill: #38bdf8;
+    filter: drop-shadow(0 0 4px #38bdf8);
+}
+
+/* 紫色幽灵虚线探针 (Purple / Violet) */
+.pb-wire-radar-anchor.port-ghost .pb-radar-halo {
+    stroke: #c084fc;
+    fill: rgba(192, 132, 252, 0.25);
+    filter: drop-shadow(0 0 5px rgba(192, 132, 252, 0.8));
+}
+.pb-wire-radar-anchor.port-ghost .pb-radar-arrow-shape {
+    fill: #c084fc;
+    filter: drop-shadow(0 0 4px #c084fc);
+}
+
+/* 紫色幽灵探针悬停激活态 */
+.pb-wire-radar-anchor.port-ghost.is-probe-active .pb-radar-halo {
+    stroke: #f0abfc !important;
+    fill: rgba(240, 171, 252, 0.35) !important;
+    filter: drop-shadow(0 0 8px #e879f9) drop-shadow(0 0 16px rgba(192, 132, 252, 0.95)) !important;
+}
+.pb-wire-radar-anchor.port-ghost.is-probe-active .pb-radar-arrow-shape {
+    fill: #f0abfc !important;
+    filter: drop-shadow(0 0 6px #ffffff) drop-shadow(0 0 10px #f0abfc) !important;
+}
+
+/* 单线聚焦态下的雷达探针微光提亮 */
+.pb-wire-group.is-wire-focused .pb-wire-radar-anchor.port-trunk.port-from .pb-radar-halo {
+    fill: rgba(16, 185, 129, 0.45);
+    filter: drop-shadow(0 0 8px #10b981);
+}
+.pb-wire-group.is-wire-focused .pb-wire-radar-anchor.port-trunk.port-to .pb-radar-halo {
+    fill: rgba(56, 189, 248, 0.45);
+    filter: drop-shadow(0 0 8px #38bdf8);
+}
+.pb-wire-group.is-wire-focused .pb-wire-radar-anchor.port-ghost .pb-radar-halo {
+    fill: rgba(192, 132, 252, 0.45);
+    filter: drop-shadow(0 0 8px #c084fc);
+}
+
+/* 点击雷达定位卡片后的波纹高光动效 (Micro-animation) */
+.pb-radar-scrolled-target {
+    animation: pbRadarCardPulse 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pbRadarCardPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.85), 0 0 20px rgba(56, 189, 248, 0.7);
+        border-color: #38bdf8 !important;
+        transform: scale(1.02);
+    }
+    40% {
+        box-shadow: 0 0 0 8px rgba(56, 189, 248, 0), 0 0 22px rgba(56, 189, 248, 0.4);
+        border-color: #38bdf8 !important;
+        transform: scale(1.01);
+    }
+    100% {
+        box-shadow: none;
+        transform: scale(1);
+    }
+}
+
+/* 亮色模式适配 (Light Theme) */
+body.light-theme .pb-wire-radar-anchor.port-trunk.port-from .pb-radar-halo,
+[data-theme="light"] .pb-wire-radar-anchor.port-trunk.port-from .pb-radar-halo {
+    stroke: #059669;
+    fill: rgba(5, 150, 105, 0.16);
+}
+body.light-theme .pb-wire-radar-anchor.port-trunk.port-to .pb-radar-halo,
+[data-theme="light"] .pb-wire-radar-anchor.port-trunk.port-to .pb-radar-halo {
+    stroke: #0284c7;
+    fill: rgba(2, 132, 199, 0.16);
+}
+body.light-theme .pb-wire-radar-anchor.port-ghost .pb-radar-halo,
+[data-theme="light"] .pb-wire-radar-anchor.port-ghost .pb-radar-halo {
+    stroke: #9333ea;
+    fill: rgba(147, 51, 234, 0.15);
+}
+
+body.light-theme .pb-wire-radar-anchor.port-trunk.port-from .pb-radar-count-text,
+[data-theme="light"] .pb-wire-radar-anchor.port-trunk.port-from .pb-radar-count-text,
+body.light-theme .pb-wire-radar-anchor.port-trunk.port-from .pb-radar-arrow-shape,
+[data-theme="light"] .pb-wire-radar-anchor.port-trunk.port-from .pb-radar-arrow-shape {
+    fill: #059669;
+    stroke: #059669;
+    filter: none;
+}
+
+body.light-theme .pb-wire-radar-anchor.port-trunk.port-to .pb-radar-count-text,
+[data-theme="light"] .pb-wire-radar-anchor.port-trunk.port-to .pb-radar-count-text,
+body.light-theme .pb-wire-radar-anchor.port-trunk.port-to .pb-radar-arrow-shape,
+[data-theme="light"] .pb-wire-radar-anchor.port-trunk.port-to .pb-radar-arrow-shape {
+    fill: #0284c7;
+    stroke: #0284c7;
+    filter: none;
+}
+
+body.light-theme .pb-wire-radar-anchor.port-ghost .pb-radar-count-text,
+[data-theme="light"] .pb-wire-radar-anchor.port-ghost .pb-radar-count-text,
+body.light-theme .pb-wire-radar-anchor.port-ghost .pb-radar-arrow-shape,
+[data-theme="light"] .pb-wire-radar-anchor.port-ghost .pb-radar-arrow-shape {
+    fill: #9333ea;
+    stroke: #9333ea;
+    filter: none;
+}
+
 
 
 /* =========================================================================

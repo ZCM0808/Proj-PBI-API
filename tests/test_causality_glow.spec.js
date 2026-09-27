@@ -10,6 +10,7 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
       localStorage.clear();
       localStorage.setItem('pbi-active-module', 'permission_blueprint');
       localStorage.setItem('pb-active-main-tab', 'user_assets');
+      localStorage.setItem('pbi-selected-workspaces', JSON.stringify(['ws_prod']));
     });
   });
 
@@ -305,6 +306,79 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
     await page.waitForTimeout(100);
     const wiresRemaining = await page.evaluate(() => document.querySelectorAll('#pb-causality-wires-group *').length);
     expect(wiresRemaining).toBe(0);
+  });
+
+  test('Edge Clamping & Virtual Port Radar: wires stay connected on card scroll, radar arrows appear and click scrolls card back', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => {
+      localStorage.setItem('pbi-active-module', 'permission_blueprint');
+      localStorage.setItem('pb-active-main-tab', 'user_assets');
+      localStorage.setItem('pb-active-preset', 'preset_admin');
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
+    await page.evaluate(() => {
+      const mockWs = [{ id: 'ws_prod', name: 'Production Workspace', alias: 'Production Workspace' }];
+      const mockDs = [{ id: 'model_sales', name: 'Sales Model', alias: 'Sales Model', workspaceId: 'ws_prod' }];
+      const mockRp = [{ id: 'report_sales', name: 'Sales Report', alias: 'Sales Report', workspaceId: 'ws_prod' }];
+      window.allWorkspaces = mockWs;
+      window.allDatasets = mockDs;
+      window.allReports = mockRp;
+      window.selectedGtbWorkspaceIds = new Set(['ws_prod']);
+      window.selectedGtbDatasetIds = new Set(['model_sales']);
+      window.selectedGtbReportIds = new Set(['report_sales']);
+      if (window.PermissionBlueprint && typeof window.PermissionBlueprint.renderUserAssetsMatrix === 'function') {
+        window.PermissionBlueprint.activePresetKey = 'preset_admin';
+        window.PermissionBlueprint.currentWorkspaceId = 'ws_prod';
+        window.PermissionBlueprint.currentWorkspaceName = 'Production Workspace';
+        window.PermissionBlueprint.currentModelKey = 'model_sales';
+        window.PermissionBlueprint.renderUserAssetsMatrix();
+      }
+    });
+
+    const container = page.locator('#pb-user-assets-container');
+    await expect(container).toBeVisible();
+
+    // 1. 点击锁定 model_build 卡片
+    const buildRow = page.locator('.pb-asset-card-row[data-row-id="model_build"]');
+    await expect(buildRow).toBeVisible({ timeout: 10000 });
+    await buildRow.click();
+    await expect(buildRow).toHaveClass(/pb-causality-pinned/);
+
+    // 连线存在且初始为微光圆点
+    const wiresGroup = page.locator('#pb-causality-wires-group');
+    await expect(wiresGroup).toBeVisible();
+    const initialDots = wiresGroup.locator('.pb-wire-port-dot');
+    expect(await initialDots.count()).toBeGreaterThanOrEqual(2);
+
+    // 2. 约束高度并模拟向下滚动 model 列，使 model_build 滚出可视区上方 (scrollTop 增大)
+    const modelBody = page.locator('.pb-asset-tier-card[data-tier-id="model"] .pb-card-body');
+    await modelBody.evaluate(el => {
+      el.style.maxHeight = '120px';
+      el.scrollTop = 300;
+      el.dispatchEvent(new Event('scroll'));
+    });
+    await page.waitForTimeout(200);
+
+    // 连线依然存在 (绝不被粗暴截断销毁)
+    const wiresAfterScroll = await page.evaluate(() => document.querySelectorAll('#pb-causality-wires-group path.pb-wire-trunk').length);
+    expect(wiresAfterScroll).toBeGreaterThanOrEqual(1);
+
+    // 验证离屏雷达探针生成 (出现带有方向箭头与提示的 pb-wire-radar-anchor)
+    const radarAnchors = wiresGroup.locator('.pb-wire-radar-anchor');
+    const radarCount = await radarAnchors.count();
+    expect(radarCount).toBeGreaterThanOrEqual(1);
+
+    // 验证雷达探针具有向下吸附探针 (radar-bottom)
+    const bottomRadar = wiresGroup.locator('.pb-wire-radar-anchor.radar-bottom');
+    expect(await bottomRadar.count()).toBeGreaterThanOrEqual(1);
+
+    // 3. 点击雷达探针：触发平滑回滚与高光脉冲
+    await bottomRadar.first().click({ force: true });
+    await page.waitForTimeout(400);
+
+    // 验证目标卡片 model_build 获得脉冲动效类
+    await expect(buildRow).toHaveClass(/pb-radar-scrolled-target/);
   });
 });
 

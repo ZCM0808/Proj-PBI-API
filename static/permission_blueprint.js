@@ -5799,6 +5799,12 @@
                                 </span>
                                 <span class="pb-legend-label"><strong style="color: #c084fc;">紫色点阵虚线</strong>：其他备选合法角色的潜在赋能路径</span>
                             </div>
+                            <div class="pb-legend-row">
+                                <span class="pb-legend-wire-symbol" style="display: inline-flex; align-items: center; justify-content: center; width: 34px; font-size: 0.72rem; color: #38bdf8; font-weight: 700;">
+                                    ▲ N
+                                </span>
+                                <span class="pb-legend-label"><strong style="color: #38bdf8;">离屏雷达探针</strong>：端点滚出视口吸附边缘并显示超出数量，点击平滑回滚至目标卡片</span>
+                            </div>
                             <div class="pb-legend-row" style="margin-top: 1px;">
                                 <span style="font-size: 0.72rem; line-height: 1;">💡</span>
                                 <span class="pb-legend-label" style="color: var(--text-tertiary); font-size: 0.62rem;">点击任意连线可独占高亮聚焦该通路与两侧卡片</span>
@@ -6248,8 +6254,56 @@
                     });
                 });
 
-                // 批量绘制贝塞尔曲线
-                let svgHtml = '';
+                // 端点渲染函数：若卡片在视口内渲染微光圆点；若卡片上下滚出视口则自适应蜕变为带数字计数的微光雷达探针
+                const renderPortEndpoint = (x, y, clampedDir, wireType, role, rowId, cardEl, wireKey, isProbeActive, clusterMeta) => {
+                    const roleClass = role === 'from' ? 'port-from' : 'port-to';
+                    const activeClass = isProbeActive ? ' is-probe-active' : '';
+
+                    if (!clampedDir) {
+                        return `<circle class="pb-wire-port-dot port-${wireType} ${roleClass}${activeClass}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.2" data-card-id="${rowId}" data-wire-key="${wireKey}" />`;
+                    }
+
+                    const count = clusterMeta?.count || 1;
+                    const cardIds = clusterMeta?.cardIds && clusterMeta.cardIds.length > 0 ? clusterMeta.cardIds : [rowId];
+                    const cardTitles = clusterMeta?.cardTitles || [];
+
+                    const badgeW = count > 9 ? 34 : 28;
+                    const halfW = badgeW / 2;
+                    const arrowX = -halfW + 7;
+                    const textX = halfW - 7.5;
+                    const arrowPoints = clampedDir === 'top'
+                        ? `${arrowX.toFixed(1)},-5 ${(arrowX - 4).toFixed(1)},2 ${(arrowX + 4).toFixed(1)},2`
+                        : `${arrowX.toFixed(1)},5 ${(arrowX - 4).toFixed(1)},-2 ${(arrowX + 4).toFixed(1)},-2`;
+
+                    const titleList = cardTitles.filter(Boolean).slice(0, 3).join('、') + (cardTitles.length > 3 ? ` 等${cardTitles.length}个` : '');
+                    const tipText = count > 1
+                        ? `【${titleList}】共 ${count} 个关联卡片已向${clampedDir === 'top' ? '上' : '下'}滚出视口，点击平滑回滚定位`
+                        : `【${cardTitles[0] || cardEl?.querySelector('.pb-asset-title, .pb-asset-name, strong')?.textContent?.trim() || rowId}】已向${clampedDir === 'top' ? '上' : '下'}滚出视口，点击平滑回滚定位`;
+
+                    return `
+                        <g class="pb-wire-radar-anchor radar-${clampedDir} port-${wireType} ${roleClass}${activeClass}"
+                           transform="translate(${x.toFixed(1)}, ${y.toFixed(1)})"
+                           data-wire-key="${wireKey}"
+                           data-card-id="${rowId}"
+                           data-card-ids="${cardIds.join(',')}"
+                           data-clamped-dir="${clampedDir}"
+                           data-role="${role}">
+                            <title>${tipText}</title>
+                            <g class="pb-radar-badge">
+                                <rect class="pb-radar-hitbox" x="${(-halfW - 2).toFixed(1)}" y="-11" width="${(badgeW + 4).toFixed(1)}" height="22" rx="11" fill="transparent" />
+                                <rect class="pb-radar-halo" x="${(-halfW).toFixed(1)}" y="-9" width="${badgeW.toFixed(1)}" height="18" rx="9" />
+                                <polygon class="pb-radar-arrow-shape" points="${arrowPoints}" />
+                                <text class="pb-radar-count-text" x="${textX.toFixed(1)}" y="0.5" text-anchor="middle">${count}</text>
+                            </g>
+                        </g>
+                    `;
+                };
+
+                // 批量绘制贝塞尔曲线 (方案 A: 边缘磁吸吸附 + 离屏雷达探针 + 超出数量显式统计)
+                // 第一步：预扫描所有导线端点的视口可见性与离屏聚类
+                const lineCalculations = [];
+                const offscreenClusters = new Map(); // key -> { dir, tierId, cards: Map(rowId -> el) }
+
                 linesToDraw.forEach(line => {
                     const sRect = line.fromEl.getBoundingClientRect();
                     const tRect = line.toEl.getBoundingClientRect();
@@ -6259,58 +6313,181 @@
                     const sBodyRect = sBody ? sBody.getBoundingClientRect() : containerRect;
                     const tBodyRect = tBody ? tBody.getBoundingClientRect() : containerRect;
 
-                    // 若卡片完全滚出可视范围或所属 body 裁剪区域则跳过
-                    if (sRect.bottom < sBodyRect.top || sRect.top > sBodyRect.bottom ||
-                        tRect.bottom < tBodyRect.top || tRect.top > tBodyRect.bottom ||
-                        sRect.bottom < containerRect.top || sRect.top > containerRect.bottom ||
-                        tRect.bottom < containerRect.top || tRect.top > containerRect.bottom) {
+                    // 严谨边界防御：仅当某一列卡片容器整体完全移出可视大视窗或不可见时才跳过
+                    if (sBodyRect.bottom <= containerRect.top || sBodyRect.top >= containerRect.bottom ||
+                        tBodyRect.bottom <= containerRect.top || tBodyRect.top >= containerRect.bottom ||
+                        (sRect.width === 0 && sBodyRect.width === 0) ||
+                        (tRect.width === 0 && tBodyRect.width === 0)) {
                         return;
                     }
 
-                    const isLeftToRight = sRect.left < tRect.left;
-                    const x1 = (isLeftToRight ? sRect.right : sRect.left) - containerRect.left;
-                    const y1 = sRect.top + sRect.height / 2 - containerRect.top;
-                    const x2 = (isLeftToRight ? tRect.left : tRect.right) - containerRect.left;
-                    const y2 = tRect.top + tRect.height / 2 - containerRect.top;
+                    const isLeftToRight = (sRect.left || sBodyRect.left) < (tRect.left || tBodyRect.left);
+                    const x1 = (isLeftToRight ? (sRect.right || sBodyRect.right - 10) : (sRect.left || sBodyRect.left + 10)) - containerRect.left;
+                    const x2 = (isLeftToRight ? (tRect.left || tBodyRect.left + 10) : (tRect.right || tBodyRect.right - 10)) - containerRect.left;
+
+                    // ⚡ 边缘坐标夹紧 (Edge Clamping): 无论卡片如何上下滚动，连线永不断裂，端点吸附在顶部或底部边缘
+                    const sMinY = (sBodyRect.top + 14) - containerRect.top;
+                    const sMaxY = Math.max((sBodyRect.bottom - 14) - containerRect.top, sMinY);
+                    const rawY1 = sRect.top + sRect.height / 2 - containerRect.top;
+                    let y1 = rawY1;
+                    let fromClamped = null;
+                    if (rawY1 < sMinY) {
+                        y1 = sMinY;
+                        fromClamped = 'top';
+                    } else if (rawY1 > sMaxY) {
+                        y1 = sMaxY;
+                        fromClamped = 'bottom';
+                    }
+
+                    const tMinY = (tBodyRect.top + 14) - containerRect.top;
+                    const tMaxY = Math.max((tBodyRect.bottom - 14) - containerRect.top, tMinY);
+                    const rawY2 = tRect.top + tRect.height / 2 - containerRect.top;
+                    let y2 = rawY2;
+                    let toClamped = null;
+                    if (rawY2 < tMinY) {
+                        y2 = tMinY;
+                        toClamped = 'top';
+                    } else if (rawY2 > tMaxY) {
+                        y2 = tMaxY;
+                        toClamped = 'bottom';
+                    }
+
+                    const fromRowId = line.fromEl.getAttribute('data-row-id') || '';
+                    const toRowId = line.toEl.getAttribute('data-row-id') || '';
+                    const sTierId = line.fromEl.closest('.pb-asset-tier-card')?.getAttribute('data-tier-id') || 'src';
+                    const tTierId = line.toEl.closest('.pb-asset-tier-card')?.getAttribute('data-tier-id') || 'tgt';
+
+                    if (fromClamped) {
+                        const key = `${sTierId}_${fromClamped}`;
+                        if (!offscreenClusters.has(key)) {
+                            offscreenClusters.set(key, { dir: fromClamped, tierId: sTierId, cards: new Map() });
+                        }
+                        offscreenClusters.get(key).cards.set(fromRowId, line.fromEl);
+                    }
+
+                    if (toClamped) {
+                        const key = `${tTierId}_${toClamped}`;
+                        if (!offscreenClusters.has(key)) {
+                            offscreenClusters.set(key, { dir: toClamped, tierId: tTierId, cards: new Map() });
+                        }
+                        offscreenClusters.get(key).cards.set(toRowId, line.toEl);
+                    }
+
+                    lineCalculations.push({
+                        line,
+                        x1, y1, fromClamped, sTierId, fromRowId,
+                        x2, y2, toClamped, tTierId, toRowId,
+                        isLeftToRight
+                    });
+                });
+
+                // 第二步：批量绘制贝塞尔曲线与自适应数字雷达探针
+                let svgHtml = '';
+                lineCalculations.forEach(calc => {
+                    const { line, x1, y1, fromClamped, sTierId, fromRowId, x2, y2, toClamped, tTierId, toRowId, isLeftToRight } = calc;
 
                     const dx = Math.max(Math.abs(x2 - x1) * 0.45, 26);
                     const cp1x = isLeftToRight ? (x1 + dx) : (x1 - dx);
                     const cp2x = isLeftToRight ? (x2 - dx) : (x2 + dx);
-                    const d = `M ${x1.toFixed(1)} ${y1.toFixed(1)} C ${cp1x.toFixed(1)} ${y1.toFixed(1)}, ${cp2x.toFixed(1)} ${y2.toFixed(1)}, ${x2.toFixed(1)} ${y2.toFixed(1)}`;
 
-                    const fromRowId = line.fromEl.getAttribute('data-row-id') || '';
-                    const toRowId = line.toEl.getAttribute('data-row-id') || '';
+                    let cp1y = y1;
+                    let cp2y = y2;
+                    if (fromClamped === 'top' && toClamped === 'top') {
+                        cp1y = y1 + 14;
+                        cp2y = y2 + 14;
+                    } else if (fromClamped === 'bottom' && toClamped === 'bottom') {
+                        cp1y = y1 - 14;
+                        cp2y = y2 - 14;
+                    }
+
+                    const d = `M ${x1.toFixed(1)} ${y1.toFixed(1)} C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+
                     const wireKey = `${fromRowId}->${toRowId}`;
                     const isWireFocused = Boolean(this._focusedWireKey && this._focusedWireKey === wireKey);
                     const isWireDimmed = Boolean(this._focusedWireKey && this._focusedWireKey !== wireKey);
                     const focusClass = isWireFocused ? ' is-wire-focused' : (isWireDimmed ? ' is-wire-dimmed' : '');
 
+                    // 获取聚类离屏元数据 (包含该方向超出的卡片总数、卡片 ID 列表与卡片名称)
+                    let fromClusterMeta = null;
+                    if (fromClamped) {
+                        const cluster = offscreenClusters.get(`${sTierId}_${fromClamped}`);
+                        if (cluster) {
+                            fromClusterMeta = {
+                                count: cluster.cards.size,
+                                cardIds: Array.from(cluster.cards.keys()),
+                                cardTitles: Array.from(cluster.cards.values()).map(el => el.querySelector('.pb-asset-title, .pb-asset-name, strong')?.textContent?.trim() || '')
+                            };
+                        }
+                    }
+
+                    let toClusterMeta = null;
+                    if (toClamped) {
+                        const cluster = offscreenClusters.get(`${tTierId}_${toClamped}`);
+                        if (cluster) {
+                            toClusterMeta = {
+                                count: cluster.cards.size,
+                                cardIds: Array.from(cluster.cards.keys()),
+                                cardTitles: Array.from(cluster.cards.values()).map(el => el.querySelector('.pb-asset-title, .pb-asset-name, strong')?.textContent?.trim() || '')
+                            };
+                        }
+                    }
+
                     if (line.type === 'trunk') {
+                        const fromDot = renderPortEndpoint(x1, y1, fromClamped, 'trunk', 'from', fromRowId, line.fromEl, wireKey, false, fromClusterMeta);
+                        const toDot = renderPortEndpoint(x2, y2, toClamped, 'trunk', 'to', toRowId, line.toEl, wireKey, false, toClusterMeta);
                         svgHtml += `
                             <g class="pb-wire-group pb-wire-group-trunk${focusClass}" data-wire-key="${wireKey}" data-from-id="${fromRowId}" data-to-id="${toRowId}" data-wire-type="trunk">
                                 <path class="pb-wire-hitbox" d="${d}" />
                                 <path class="pb-wire-trunk-bg" d="${d}" />
                                 <path class="pb-wire-trunk" d="${d}" data-wire-type="trunk" />
-                                <circle class="pb-wire-port-dot port-trunk port-from" cx="${x1.toFixed(1)}" cy="${y1.toFixed(1)}" r="4.2" data-wire-key="${wireKey}" />
-                                <circle class="pb-wire-port-dot port-trunk port-to" cx="${x2.toFixed(1)}" cy="${y2.toFixed(1)}" r="4.2" data-wire-key="${wireKey}" />
+                                ${fromDot}
+                                ${toDot}
                             </g>
                         `;
                     } else {
                         const isProbeActive = Boolean(this._hoveredProbeCardIds && this._hoveredProbeCardIds.has(line.probeCardId));
                         const activeClass = isProbeActive ? ' is-probe-active' : '';
+                        const fromDot = renderPortEndpoint(x1, y1, fromClamped, 'ghost', 'from', fromRowId, line.fromEl, wireKey, isProbeActive, fromClusterMeta);
+                        const toDot = renderPortEndpoint(x2, y2, toClamped, 'ghost', 'to', toRowId, line.toEl, wireKey, isProbeActive, toClusterMeta);
                         svgHtml += `
                             <g class="pb-wire-group pb-wire-group-ghost${activeClass}${focusClass}" data-wire-key="${wireKey}" data-from-id="${fromRowId}" data-to-id="${toRowId}" data-probe-card-id="${line.probeCardId}" data-wire-type="ghost">
                                 <path class="pb-wire-hitbox" d="${d}" />
                                 <path class="pb-wire-ghost-bg${activeClass}" d="${d}" data-probe-card-id="${line.probeCardId}" />
                                 <path class="pb-wire-ghost${activeClass}" d="${d}" data-wire-type="ghost" data-probe-card-id="${line.probeCardId}" />
-                                <circle class="pb-wire-port-dot port-ghost port-from${activeClass}" cx="${x1.toFixed(1)}" cy="${y1.toFixed(1)}" r="4.2" data-probe-card-id="${line.probeCardId}" data-wire-key="${wireKey}" />
-                                <circle class="pb-wire-port-dot port-ghost port-to${activeClass}" cx="${x2.toFixed(1)}" cy="${y2.toFixed(1)}" r="4.2" data-probe-card-id="${line.probeCardId}" data-wire-key="${wireKey}" />
+                                ${fromDot}
+                                ${toDot}
                             </g>
                         `;
                     }
                 });
 
                 wiresGroup.innerHTML = svgHtml;
+
+                // ⚡ 为每个离屏雷达探针绑定交互事件：点击一键平滑回滚至目标卡片并施加高光脉冲 (支持多卡片顺序循环召回)
+                wiresGroup.querySelectorAll('.pb-wire-radar-anchor').forEach(anchorEl => {
+                    anchorEl.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const rawIds = anchorEl.getAttribute('data-card-ids') || anchorEl.getAttribute('data-card-id') || '';
+                        const allIds = rawIds.split(',').map(s => s.trim()).filter(Boolean);
+                        if (allIds.length === 0) return;
+
+                        let curIdx = parseInt(anchorEl.getAttribute('data-target-index') || '0', 10);
+                        if (isNaN(curIdx) || curIdx >= allIds.length) curIdx = 0;
+                        const targetCardId = allIds[curIdx];
+                        anchorEl.setAttribute('data-target-index', String((curIdx + 1) % allIds.length));
+
+                        const targetEl = container.querySelector(`.pb-asset-card-row[data-row-id="${targetCardId}"]`) ||
+                                         container.querySelector(`.pb-asset-card-row[data-alias-id="${targetCardId}"]`);
+                        if (targetEl) {
+                            targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            targetEl.classList.add('pb-radar-scrolled-target');
+                            setTimeout(() => {
+                                targetEl.classList.remove('pb-radar-scrolled-target');
+                            }, 1600);
+                        }
+                    });
+                });
 
                 // ⚡ 为每条因果导线绑定交互事件：支持悬浮微光提亮与点击单线聚焦 (高亮连线与两侧卡片)
                 wiresGroup.querySelectorAll('.pb-wire-group').forEach(groupEl => {
