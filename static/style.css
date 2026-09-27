@@ -9517,17 +9517,17 @@ body.light-theme .btn-wf-sm.active-filter,
 .pb-wire-ghost-bg {
     fill: none;
     stroke: rgba(168, 85, 247, 0.15);
-    stroke-width: 5px;
+    stroke-width: 4px;
     stroke-linecap: round;
     opacity: 0.35;
     transition: opacity 0.25s ease, stroke-width 0.25s ease, stroke 0.25s ease;
 }
 
 .pb-wire-ghost-bg.is-probe-active {
-    stroke: rgba(232, 121, 249, 0.45) !important;
-    stroke-width: 8px !important;
-    opacity: 1 !important;
-    filter: drop-shadow(0 0 8px rgba(217, 70, 239, 0.85)) !important;
+    stroke: rgba(217, 70, 239, 0.35) !important;
+    stroke-width: 5px !important;
+    opacity: 0.85 !important;
+    filter: drop-shadow(0 0 4px rgba(217, 70, 239, 0.5)) !important;
 }
 
 /* 幽灵虚线潜在备选通道 (Ghost Wire: 具备潜力的备用角色源 - 增强清晰度与辨识度) */
@@ -9543,14 +9543,14 @@ body.light-theme .btn-wf-sm.active-filter,
     transition: opacity 0.25s ease, stroke 0.25s ease, stroke-width 0.25s ease, filter 0.25s ease;
 }
 
-/* 幽灵探针悬浮激活态 (Ghost Probe Active: 鼠标悬浮/靠近备选角色卡片瞬间通电高能激活) */
+/* 幽灵探针悬浮激活态 (Ghost Probe Active: 鼠标悬浮/靠近备选角色卡片瞬间温和点亮) */
 .pb-wire-ghost.is-probe-active {
     opacity: 1 !important;
-    stroke: #f0abfc !important;
-    stroke-width: 3.6px !important;
-    stroke-dasharray: 9 4.5 !important;
-    animation: pbWireTrunkFlow 0.75s linear infinite !important;
-    filter: drop-shadow(0 0 4px #ffffff) drop-shadow(0 0 10px #e879f9) drop-shadow(0 0 20px rgba(217, 70, 239, 0.95)) !important;
+    stroke: #c084fc !important;
+    stroke-width: 2.6px !important;
+    stroke-dasharray: 7 4 !important;
+    animation: pbWireGhostFlow 1.6s linear infinite !important;
+    filter: drop-shadow(0 0 4px rgba(217, 70, 239, 0.65)) !important;
 }
 
 /* 透明超宽点击热区 (Invisible Hitbox) - 确保 20px 宽容范围轻松捕捉鼠标点击与悬浮 */
@@ -9572,78 +9572,77 @@ body.light-theme .btn-wf-sm.active-filter,
 
 .pb-wire-group:hover,
 .pb-wire-group.is-wire-hover {
-    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.5));
+    filter: drop-shadow(0 0 3px rgba(56, 189, 248, 0.4));
 }
 
 .pb-wire-group:hover .pb-wire-trunk-bg,
 .pb-wire-group.is-wire-hover .pb-wire-trunk-bg {
-    stroke-width: 8px;
-    stroke: rgba(16, 185, 129, 0.45);
-    filter: drop-shadow(0 0 8px #10b981);
+    stroke-width: 5px;
+    stroke: rgba(16, 185, 129, 0.35);
 }
 
 .pb-wire-group:hover .pb-wire-trunk,
 .pb-wire-group.is-wire-hover .pb-wire-trunk {
-    stroke-width: 3.5px;
-    filter: drop-shadow(0 0 8px #38bdf8);
+    stroke-width: 2.6px;
+    filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.5));
 }
 
 .pb-wire-group:hover .pb-wire-ghost-bg,
 .pb-wire-group.is-wire-hover .pb-wire-ghost-bg {
-    stroke-width: 8px;
-    stroke: rgba(232, 121, 249, 0.45);
+    stroke-width: 5px;
+    stroke: rgba(217, 70, 239, 0.3);
 }
 
 .pb-wire-group:hover .pb-wire-ghost,
 .pb-wire-group.is-wire-hover .pb-wire-ghost {
-    stroke-width: 3.2px;
-    stroke: #f0abfc;
-    filter: drop-shadow(0 0 8px #e879f9);
+    stroke-width: 2.5px;
+    stroke: #c084fc;
+    filter: drop-shadow(0 0 4px rgba(217, 70, 239, 0.5));
 }
 
 .pb-wire-group:hover .pb-wire-port-dot,
 .pb-wire-group.is-wire-hover .pb-wire-port-dot {
-    transform: scale(1.25);
-    filter: drop-shadow(0 0 8px #ffffff) drop-shadow(0 0 12px currentColor);
+    transform: scale(1.12);
+    filter: drop-shadow(0 0 4px currentColor);
 }
 
-/* ⚡ 连线点击聚焦激活态 (Single Wire Focused: 白热极光高能脉冲) */
+/* ⚡ 连线点击聚焦激活态 (Single Wire Focused: 克制精致的本色流光，杜绝大面积白爆过曝) */
 .pb-wire-group.is-wire-focused {
     opacity: 1 !important;
-    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8)) !important;
 }
 
 .pb-wire-group.is-wire-focused .pb-wire-trunk-bg {
-    stroke-width: 10px !important;
-    stroke: rgba(16, 185, 129, 0.6) !important;
-    filter: drop-shadow(0 0 12px #10b981) !important;
+    stroke-width: 5.5px !important;
+    stroke: rgba(16, 185, 129, 0.3) !important;
+    filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.5)) !important;
 }
 
 .pb-wire-group.is-wire-focused .pb-wire-trunk {
-    stroke-width: 4.2px !important;
-    stroke-dasharray: 10 4 !important;
-    animation: pbWireTrunkFlow 0.6s linear infinite !important;
-    filter: drop-shadow(0 0 4px #ffffff) drop-shadow(0 0 10px #38bdf8) !important;
+    stroke-width: 2.8px !important;
+    stroke: url(#pb-trunk-flow-grad) !important;
+    stroke-dasharray: 8 5 !important;
+    animation: pbWireTrunkFlow 1.0s linear infinite !important;
+    filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.65)) !important;
 }
 
 .pb-wire-group.is-wire-focused .pb-wire-ghost-bg {
-    stroke-width: 10px !important;
-    stroke: rgba(217, 70, 239, 0.6) !important;
-    filter: drop-shadow(0 0 12px #d946ef) !important;
+    stroke-width: 5.5px !important;
+    stroke: rgba(217, 70, 239, 0.28) !important;
+    filter: drop-shadow(0 0 5px rgba(217, 70, 239, 0.45)) !important;
 }
 
 .pb-wire-group.is-wire-focused .pb-wire-ghost {
-    stroke-width: 4.2px !important;
-    stroke: #f0abfc !important;
-    stroke-dasharray: 10 4 !important;
-    animation: pbWireTrunkFlow 0.6s linear infinite !important;
-    filter: drop-shadow(0 0 4px #ffffff) drop-shadow(0 0 12px #e879f9) !important;
+    stroke-width: 2.8px !important;
+    stroke: #c084fc !important;
+    stroke-dasharray: 7 5 !important;
+    animation: pbWireGhostFlow 1.6s linear infinite !important;
+    filter: drop-shadow(0 0 5px rgba(192, 132, 252, 0.7)) !important;
 }
 
 .pb-wire-group.is-wire-focused .pb-wire-port-dot {
-    transform: scale(1.35) !important;
+    transform: scale(1.15) !important;
     fill: #ffffff !important;
-    filter: drop-shadow(0 0 8px #ffffff) drop-shadow(0 0 14px currentColor) !important;
+    filter: drop-shadow(0 0 5px currentColor) !important;
 }
 
 /* 当某条特定连线被点击聚焦时，其余无关连线淡化隐入背景 */

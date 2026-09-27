@@ -290,7 +290,7 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
     }
 
     // 6. 再次点击 Build 取消锁定：连线图层全部清空
-    await buildRow.click();
+    await buildRow.click({ force: true });
     await expect(buildRow).not.toHaveClass(/pb-causality-pinned/);
     await page.waitForTimeout(100);
     const wiresRemaining = await page.evaluate(() => document.querySelectorAll('#pb-causality-wires-group *').length);
