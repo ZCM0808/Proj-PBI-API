@@ -18,6 +18,10 @@ from src.config import Config
 _GLOBAL_HTTP_SESSION: Optional[requests.Session] = None
 _GLOBAL_TOKEN_CACHE: Dict[str, Dict[str, Any]] = {}
 _GLOBAL_MSAL_CACHE: Optional[SerializableTokenCache] = None
+_CURRENT_ACTIVE_ACCOUNT: Optional[str] = None
+_LAST_SUCCESSFUL_ACCOUNT: Optional[str] = None
+_FAILED_401_ACCOUNTS: set[str] = set()
+
 
 
 def get_shared_msal_cache(cache_file: str = ".msal_token_cache.json") -> SerializableTokenCache:
@@ -104,24 +108,29 @@ class PBIClient:
 
     def _get_token(self, api_type: str = "powerbi") -> str:
         """获取访问令牌 (优先内存缓存 0ms 瞬间返回)"""
+        global _CURRENT_ACTIVE_ACCOUNT, _LAST_SUCCESSFUL_ACCOUNT, _FAILED_401_ACCOUNTS
         api_type_clean = api_type.strip().lower()
         scope = ["https://api.fabric.microsoft.com/.default"] if api_type_clean == "fabric" else self.config.SCOPE
 
         now = time.time()
-        auth_identity = self.config.USERNAME if self.config.AUTH_MODE == "personal" else self.config.CLIENT_ID
-        cache_key = f"{self.config.AUTH_MODE}_{api_type_clean}_{auth_identity}"
-        cached_entry = _GLOBAL_TOKEN_CACHE.get(cache_key)
-        if cached_entry and cached_entry.get("expires_at", 0) > now + 180:
-            return str(cached_entry["token"])
+        active_user = (_CURRENT_ACTIVE_ACCOUNT or self.config.USERNAME or "").strip().lower()
+        if not (active_user and active_user in _FAILED_401_ACCOUNTS):
+            auth_identity = _CURRENT_ACTIVE_ACCOUNT or (self.config.USERNAME if self.config.AUTH_MODE == "personal" else self.config.CLIENT_ID)
+            cache_key = f"{self.config.AUTH_MODE}_{api_type_clean}_{auth_identity}"
+            cached_entry = _GLOBAL_TOKEN_CACHE.get(cache_key)
+            if cached_entry and cached_entry.get("expires_at", 0) > now + 180:
+                cached_acc = str(cached_entry.get("account") or "").strip().lower()
+                if not (cached_acc and cached_acc in _FAILED_401_ACCOUNTS):
+                    return str(cached_entry["token"])
 
-        # 兜底：通用 key 与同模式可用 Token 借用探测
-        generic_key = f"{self.config.AUTH_MODE}_{api_type_clean}_"
-        gen_entry = _GLOBAL_TOKEN_CACHE.get(generic_key)
-        if gen_entry and gen_entry.get("expires_at", 0) > now + 180:
-            return str(gen_entry["token"])
-        for k, v in _GLOBAL_TOKEN_CACHE.items():
-            if k.startswith(f"{self.config.AUTH_MODE}_{api_type_clean}") and v.get("expires_at", 0) > now + 180:
-                return str(v["token"])
+            # 兜底：通用 key 与同模式可用 Token 借用探测
+            generic_key = f"{self.config.AUTH_MODE}_{api_type_clean}_"
+            gen_entry = _GLOBAL_TOKEN_CACHE.get(generic_key)
+            if gen_entry and gen_entry.get("expires_at", 0) > now + 180:
+                gen_acc = str(gen_entry.get("account") or "").strip().lower()
+                if not (gen_acc and gen_acc in _FAILED_401_ACCOUNTS):
+                    return str(gen_entry["token"])
+
 
         result = None
         if self.config.AUTH_MODE == "personal":
@@ -141,6 +150,24 @@ class PBIClient:
             unique_auths = [a for i, a in enumerate(authorities) if a and a not in authorities[:i]]
 
             silent_result = None
+            chosen_username: Optional[str] = None
+
+            def _score_account(acc_item: dict) -> int:
+                u_name = str(acc_item.get("username") or "").strip().lower()
+                r_name = str(acc_item.get("realm") or "").strip().lower()
+                score = 0
+                if _LAST_SUCCESSFUL_ACCOUNT and u_name == _LAST_SUCCESSFUL_ACCOUNT.strip().lower():
+                    score += 200
+                tgt_tenant = (self.config.TENANT_ID or "").strip().lower()
+                if tgt_tenant and r_name == tgt_tenant:
+                    score += 100
+                tgt_user = (self.config.USERNAME or "").strip().lower()
+                if tgt_user and u_name == tgt_user:
+                    score += 50
+                if u_name in _FAILED_401_ACCOUNTS:
+                    score -= 500
+                return score
+
             for cid in unique_cids:
                 for auth in unique_auths:
                     try:
@@ -149,15 +176,17 @@ class PBIClient:
                             authority=auth,
                             token_cache=self.cache
                         )
-                        # 优先查找当前配置的用户名，若无则遍历所有可用账号
-                        accs = app_try.get_accounts(username=self.config.USERNAME) if self.config.USERNAME else []
-                        if not accs:
-                            accs = app_try.get_accounts()
-                        for acc in accs:
+                        raw_accs = app_try.get_accounts()
+                        sorted_accs = sorted(raw_accs, key=_score_account, reverse=True)
+                        for acc in sorted_accs:
+                            acc_u = str(acc.get("username") or "").strip().lower()
+                            if acc_u in _FAILED_401_ACCOUNTS and len(_FAILED_401_ACCOUNTS) < len(raw_accs):
+                                continue
                             try:
                                 s_res = app_try.acquire_token_silent(scope, account=acc)
                                 if s_res and "access_token" in s_res:
                                     silent_result = s_res
+                                    chosen_username = acc.get("username")
                                     break
                             except Exception:
                                 pass
@@ -169,6 +198,7 @@ class PBIClient:
                     break
 
             if silent_result:
+                _CURRENT_ACTIVE_ACCOUNT = chosen_username
                 result = silent_result
             else:
                 # 2. 静默缓存未命中时，尝试账密登录
@@ -223,9 +253,12 @@ class PBIClient:
         if result and "access_token" in result:
             token_val = result["access_token"]
             expires_in = int(result.get("expires_in", 3600))
-            _GLOBAL_TOKEN_CACHE[cache_key] = {
+            auth_identity = _CURRENT_ACTIVE_ACCOUNT or (self.config.USERNAME if self.config.AUTH_MODE == "personal" else self.config.CLIENT_ID)
+            real_cache_key = f"{self.config.AUTH_MODE}_{api_type_clean}_{auth_identity}"
+            _GLOBAL_TOKEN_CACHE[real_cache_key] = {
                 "token": token_val,
-                "expires_at": now + expires_in
+                "expires_at": now + expires_in,
+                "account": _CURRENT_ACTIVE_ACCOUNT,
             }
             return token_val
         raise Exception(f"获取令牌失败: {result.get('error_description', '未知错误') if result else '未返回结果'}")
@@ -249,6 +282,7 @@ class PBIClient:
             api_type: 接口类型 ('powerbi' 或 'fabric')
             kwargs: 传递给 requests.request 的其他参数 (如 params, json, data)
         """
+        global _CURRENT_ACTIVE_ACCOUNT, _LAST_SUCCESSFUL_ACCOUNT, _FAILED_401_ACCOUNTS, _GLOBAL_TOKEN_CACHE
         api_type_clean = api_type.strip().lower()
         base_url = "https://api.fabric.microsoft.com/v1" if api_type_clean == "fabric" else self.config.BASE_URL
 
@@ -296,8 +330,32 @@ class PBIClient:
 
         try:
             response.raise_for_status()
+            if _CURRENT_ACTIVE_ACCOUNT:
+                _LAST_SUCCESSFUL_ACCOUNT = _CURRENT_ACTIVE_ACCOUNT
+                _FAILED_401_ACCOUNTS.discard(_CURRENT_ACTIVE_ACCOUNT.strip().lower())
         except requests.exceptions.HTTPError as e:
-            # 自动降级处理：Personal Workspace (My Workspace) 不支持 /groups/{id} 的 API 路径
+            # 1. 核心自愈：若遇到 401 Unauthorized 且当前为 personal 委托认证模式，尝试自动账号轮换自愈
+            if e.response is not None and e.response.status_code == 401 and self.config.AUTH_MODE == "personal":
+                cur_user = (_CURRENT_ACTIVE_ACCOUNT or self.config.USERNAME or "").strip().lower()
+                if cur_user:
+                    _FAILED_401_ACCOUNTS.add(cur_user)
+                _GLOBAL_TOKEN_CACHE.clear()
+
+                app_check = PublicClientApplication(
+                    client_id="04b07795-8ddb-461a-bbee-02f9e1bf7b46",
+                    authority="https://login.microsoftonline.com/organizations",
+                    token_cache=self.cache
+                )
+                try:
+                    all_avail = [str(a.get("username") or "").strip().lower() for a in app_check.get_accounts()]
+                    remaining = [u for u in all_avail if u and u not in _FAILED_401_ACCOUNTS]
+                    if remaining:
+                        # 仍有未尝试账号，自动切换并重新发起本次请求
+                        return self.request(method, endpoint, api_type, raw_response, **kwargs)
+                except Exception:
+                    pass
+
+            # 2. 自动降级处理：Personal Workspace (My Workspace) 不支持 /groups/{id} 的 API 路径
             # 遇到 GroupNotAccessible 错误时，剥离 /groups/{id} 前缀并重试
             if e.response is not None and e.response.status_code in (401, 403, 400):
                 resp_text = e.response.text.lower()
