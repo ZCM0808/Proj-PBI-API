@@ -20441,13 +20441,13 @@ window.initGumWorkspaceSelector = function() {
     window.syncGumScopeDisplay();
 };
 
-window.openGumUserDropdown = function() {
+window.openGumUserDropdown = function(shouldRender = true) {
     const dropdown = document.getElementById('wf-gum-user-dropdown');
     const chevron = document.getElementById('wf-gum-dropdown-chevron');
     if (dropdown) {
         dropdown.style.display = 'flex';
         if (chevron) chevron.style.transform = 'rotate(180deg)';
-        if (window.renderGumDropdownUsers) window.renderGumDropdownUsers();
+        if (shouldRender && window.renderGumDropdownUsers) window.renderGumDropdownUsers();
     }
 };
 
@@ -20527,6 +20527,10 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
         return;
     }
 
+    const authBanner = document.getElementById('wf-gum-auth-banner');
+    if (authBanner) authBanner.style.display = 'none';
+    window._gumAuthErrorActive = false;
+
     if (scanBtn) {
         scanBtn.disabled = true;
         scanBtn.innerHTML = `
@@ -20598,7 +20602,10 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
             window.showNotification(`⚡ 已呈现最新人员快照 (${candidates.length} 人)`, 'info');
         }
 
+        if (authBanner) authBanner.style.display = 'none';
+        window._gumAuthErrorActive = false;
         window.renderGumDropdownUsers();
+        if (window.openGumUserDropdown) window.openGumUserDropdown(true);
     } catch(e) {
         clearTimeout(timeoutId);
         console.error('Failed to scan candidate users:', e);
@@ -20607,6 +20614,10 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
 
         const isAuthError = /MFA|Device Code|交互式验证|多因素认证|interaction_required|invalid_grant|401|未授权/i.test(errMsg);
         if (isAuthError) {
+            window._gumAuthErrorActive = true;
+            if (authBanner) {
+                authBanner.style.display = 'block';
+            }
             if (dropdownCount) {
                 dropdownCount.innerHTML = '<span style="color:#38bdf8; font-size:0.72rem; font-weight:600;">🔐 需微软设备流安全授权</span>';
             }
@@ -20633,9 +20644,17 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
                 `;
             }
             if (window.showNotification) {
-                window.showNotification('🔐 微软云端账号需要安全授权，请在下拉面板中点击完成授权', 'warning', 8000);
+                window.showNotification('🔐 微软云端账号需要安全授权，已为您自动唤起设备流验证...', 'warning', 8000);
             }
-            if (window.openGumUserDropdown) window.openGumUserDropdown();
+            // 关键：传 false，绝不冲刷覆盖刚刚设置的卡片！
+            if (window.openGumUserDropdown) window.openGumUserDropdown(false);
+
+            // 核心闭环：0.3 秒直接自动弹出设备流模态框，免去用户寻找点击按钮的困扰
+            setTimeout(() => {
+                if (window.triggerGumDeviceCodeAuth) {
+                    window.triggerGumDeviceCodeAuth();
+                }
+            }, 300);
         } else {
             if (dropdownCount) {
                 dropdownCount.innerHTML = `<span style="color:var(--warning); font-size:0.72rem;">⚠️ ${errMsg}</span>`;
@@ -20680,6 +20699,11 @@ window.renderGumDropdownUsers = function(searchTerm = '') {
     const dropdownCount = document.getElementById('wf-gum-dropdown-count');
     const searchHint = document.getElementById('gum-search-hint');
     if (!dropdownList) return;
+
+    // 若当前正在展示设备流安全授权卡片且尚未拉取到候选人，绝对禁止覆盖卡片
+    if (window._gumAuthErrorActive && (!window.gumCandidateUsers || window.gumCandidateUsers.length === 0)) {
+        return;
+    }
 
     // 核心防御：仅使用显式传入的过滤词或全局打字词 _gumSearchFilterTerm，严禁去读 wf-gum-search.value（因为那里显示的是已选用户标签）
     const term = (typeof searchTerm === 'string' ? searchTerm : (window._gumSearchFilterTerm || '')).toLowerCase().trim();
