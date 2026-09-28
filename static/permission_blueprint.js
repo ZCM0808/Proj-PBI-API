@@ -4900,6 +4900,129 @@
             return fetchPromise;
         }
 
+        // 🚀 真实 API 穿透：查询组织部署管道 (Pipelines) 与目标工作区挂载阶段 (Stages)
+        async fetchPipelinesStatus(workspaceId, force = false) {
+            if (!workspaceId) return { bound: false };
+            window._pipelinesCache = window._pipelinesCache || {};
+            if (!force && window._pipelinesCache[workspaceId] !== undefined) {
+                return window._pipelinesCache[workspaceId];
+            }
+            if (this._fetchingPipelines) return this._fetchingPipelines;
+
+            this._fetchingPipelines = (async () => {
+                try {
+                    const res = await fetch('/api/proxy', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ endpoint: '/pipelines', method: 'GET' })
+                    });
+                    if (!res.ok) return { bound: false };
+                    const data = await res.json();
+                    const pipelines = (data && data.success && data.data && Array.isArray(data.data.value)) ? data.data.value : [];
+                    
+                    for (const p of pipelines) {
+                        if (!p || !p.id) continue;
+                        try {
+                            const stageRes = await fetch('/api/proxy', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ endpoint: `/pipelines/${p.id}/stages`, method: 'GET' })
+                            });
+                            if (stageRes.ok) {
+                                const stageData = await stageRes.json();
+                                const stages = (stageData && stageData.success && stageData.data && Array.isArray(stageData.data.value)) ? stageData.data.value : [];
+                                for (const st of stages) {
+                                    if (st && st.workspaceId) {
+                                        const stageName = st.order === 0 ? 'Development (开发)' : (st.order === 1 ? 'Test (测试)' : 'Production (生产)');
+                                        window._pipelinesCache[st.workspaceId] = {
+                                            bound: true,
+                                            pipelineId: p.id,
+                                            pipelineName: p.displayName || p.name || '企业部署管道',
+                                            stageOrder: st.order,
+                                            stageName: stageName
+                                        };
+                                    }
+                                }
+                            }
+                        } catch(e) {}
+                    }
+                    if (!window._pipelinesCache[workspaceId]) {
+                        window._pipelinesCache[workspaceId] = { bound: false };
+                    }
+                    return window._pipelinesCache[workspaceId];
+                } catch (e) {
+                    console.warn('[Pipelines API] 查询部署管道失败:', e);
+                    window._pipelinesCache[workspaceId] = { bound: false };
+                    return { bound: false };
+                } finally {
+                    this._fetchingPipelines = null;
+                }
+            })();
+
+            return this._fetchingPipelines;
+        }
+
+        // 📊 真实 API 穿透：查询报表级直接授权与分享人员名单 (Direct Access Users & Links)
+        async fetchReportPermissions(workspaceId, reportId, force = false) {
+            if (!workspaceId || !reportId) return [];
+            const cacheKey = `${workspaceId}_report_${reportId}`;
+            window._reportPermsCache = window._reportPermsCache || {};
+            if (!force && window._reportPermsCache[cacheKey]) {
+                return window._reportPermsCache[cacheKey];
+            }
+            try {
+                const res = await fetch('/api/proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        endpoint: `/groups/${workspaceId}/reports/${reportId}/users`,
+                        method: 'GET'
+                    })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const users = (data && data.success && data.data && Array.isArray(data.data.value)) ? data.data.value : [];
+                    window._reportPermsCache[cacheKey] = users;
+                    return users;
+                }
+            } catch (e) {
+                console.warn('[Report API] 获取报表独立直接授权用户失败:', e);
+            }
+            return [];
+        }
+
+        // ⏱️ 真实 API 穿透：查询语义模型最近一次数据刷新执行状态与历史心跳
+        async fetchModelRefreshHistory(workspaceId, datasetId, force = false) {
+            if (!workspaceId || !datasetId) return null;
+            const cacheKey = `${workspaceId}_${datasetId}`;
+            window._modelRefreshCache = window._modelRefreshCache || {};
+            if (!force && window._modelRefreshCache[cacheKey]) {
+                return window._modelRefreshCache[cacheKey];
+            }
+            try {
+                const res = await fetch('/api/proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        endpoint: `/groups/${workspaceId}/datasets/${datasetId}/refreshes?$top=1`,
+                        method: 'GET'
+                    })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const refreshes = (data && data.success && data.data && Array.isArray(data.data.value)) ? data.data.value : [];
+                    if (refreshes.length > 0) {
+                        const latest = refreshes[0];
+                        window._modelRefreshCache[cacheKey] = latest;
+                        return latest;
+                    }
+                }
+            } catch (e) {
+                console.warn('[Refresh History API] 获取模型刷新历史失败:', e);
+            }
+            return null;
+        }
+
         // ⚡ 渲染用户全景资产权限链路流转矩阵 (Tenant -> Workspace -> Model -> Report -> Connection -> Pipeline)
         renderUserAssetsMatrix() {
             const container = document.getElementById('pb-user-assets-container');
@@ -5146,10 +5269,13 @@
             const gatewayOnline = hasSelectedModel ? (user?.state?.gatewayOnline !== false) : null;
             const hasDataConn = hasSelectedModel ? (user?.state?.hasAccessToAllDataConnections !== false) : null;
 
-            // 6. 部署管道：只有实际调用 /pipelines API 才能确认；未绑定则如实呈现
-            // 此处保守显示"未检测到关联管道"，不伪造 "${wsName} 专属部署管道"
-            const pipelineBound = false; // 实际管道绑定需通过 /api/proxy 查询，此处保守为 false
-            const isPipelineAdmin = isAdmin && pipelineBound;
+            // 6. 部署管道：自动穿透云端 /pipelines 真实检测挂载阶段与状态
+            const pipelineInfo = (curWsId && window._pipelinesCache && window._pipelinesCache[curWsId]) || null;
+            if (!pipelineInfo && curWsId && !this._fetchingPipelines) {
+                this.fetchPipelinesStatus(curWsId);
+            }
+            const pipelineBound = Boolean(pipelineInfo && pipelineInfo.bound);
+            const isPipelineAdmin = Boolean(isAdmin && pipelineBound);
 
             // 更新顶部主体徽章状态 (仅纯粹显示当前用户邮箱)
             const topBadge = document.getElementById('pb-top-simulated-badge');
@@ -5862,12 +5988,12 @@
 
             // Module 6: Pipeline (部署管道与 ALM 治理层)
             let colPipelineBody = '';
-            const pipelineRoleName = isPipelineAdmin ? 'Pipeline Admin (管道管理员)' : (hasSelectedWs ? 'Deployer (发布部署者)' : 'No Access (无管道访问权)');
+            const pipelineRoleName = isPipelineAdmin ? 'Pipeline Admin (管道管理员)' : (pipelineBound ? `Stage Member (${pipelineInfo?.stageName || '管道阶段'})` : (hasSelectedWs ? 'Deployer (发布部署者)' : 'No Access (无管道访问权)'));
             const pipelineItems = [
-                { id: 'pipeline_role', isHero: true, cat: 'assigned', name: pipelineRoleName, desc: '【路径】Deployment pipelines > Pipeline settings > Access > Add user', statusClass: hasSelectedWs ? (isPipelineAdmin ? 'enabled' : 'warn') : 'disabled', statusText: hasSelectedWs ? (isPipelineAdmin ? '✅ ADMIN' : '⚠️ DEPLOY') : '❌ NONE', badge: 'ALM' },
-                { id: 'pipeline_deploy', cat: 'derived', name: 'Stage Deployment (阶段流转部署)', desc: '【路径】Deployment pipelines > Stage > Deploy to next stage', statusClass: isPipelineAdmin ? 'enabled' : 'warn', statusText: isPipelineAdmin ? '✅ CAN DEPLOY' : '⚠️ CANNOT DEPLOY', badge: 'DEPLOY' },
-                { id: 'pipeline_diff', cat: 'derived', name: 'Schema Diff (模型架构差异比对)', desc: '【路径】Deployment pipelines > Compare changes between stages', statusClass: isPipelineAdmin ? 'enabled' : 'warn', statusText: isPipelineAdmin ? '✅ CAN COMPARE' : '⚠️ CANNOT COMPARE', badge: 'DIFF' },
-                { id: 'pipeline_rules', cat: 'derived', name: 'Deployment Rules (部署规则配置)', desc: '【路径】Deployment pipelines > Target Stage > Deployment rules', statusClass: isPipelineAdmin ? 'enabled' : 'disabled', statusText: isPipelineAdmin ? '✅ CAN CONFIGURE' : '❌ CANNOT CONFIGURE', badge: 'RULES' },
+                { id: 'pipeline_role', isHero: true, cat: 'assigned', name: pipelineRoleName, desc: pipelineBound ? `【当前工作区挂载管道】${pipelineInfo?.pipelineName} · 阶段: ${pipelineInfo?.stageName}` : '【路径】Deployment pipelines > Pipeline settings > Access > Add user', statusClass: hasSelectedWs ? (isPipelineAdmin ? 'enabled' : (pipelineBound ? 'enabled' : 'warn')) : 'disabled', statusText: hasSelectedWs ? (isPipelineAdmin ? '✅ ADMIN' : (pipelineBound ? '✅ STAGE READY' : '⚠️ DEPLOY')) : '❌ NONE', badge: 'ALM' },
+                { id: 'pipeline_deploy', cat: 'derived', name: 'Stage Deployment (阶段流转部署)', desc: '【路径】Deployment pipelines > Stage > Deploy to next stage', statusClass: (isPipelineAdmin || pipelineBound) ? 'enabled' : 'warn', statusText: (isPipelineAdmin || pipelineBound) ? '✅ CAN DEPLOY' : '⚠️ CANNOT DEPLOY', badge: 'DEPLOY' },
+                { id: 'pipeline_diff', cat: 'derived', name: 'Schema Diff (模型架构差异比对)', desc: '【路径】Deployment pipelines > Compare changes between stages', statusClass: (isPipelineAdmin || pipelineBound) ? 'enabled' : 'warn', statusText: (isPipelineAdmin || pipelineBound) ? '✅ CAN COMPARE' : '⚠️ CANNOT COMPARE', badge: 'DIFF' },
+                { id: 'pipeline_rules', cat: 'derived', name: 'Deployment Rules (部署规则配置)', desc: '【路径】Deployment pipelines > Target Stage > Deployment rules', statusClass: (isPipelineAdmin || pipelineBound) ? 'enabled' : 'disabled', statusText: (isPipelineAdmin || pipelineBound) ? '✅ CAN CONFIGURE' : '❌ CANNOT CONFIGURE', badge: 'RULES' },
                 { id: 'pipeline_manage', cat: 'derived', name: 'Pipeline Lifecycle (管道生命周期管理)', desc: '【路径】Deployment pipelines > Create pipeline / Pipeline settings', statusClass: isPipelineAdmin ? 'enabled' : 'disabled', statusText: isPipelineAdmin ? '✅ CAN MANAGE' : '❌ CANNOT MANAGE', badge: 'LIFECYCLE' },
                 { id: 'pipeline_backward', cat: 'derived', name: 'Backward Deploy (反向回退部署)', desc: '【路径】Deployment pipelines > Target Stage > Deploy to previous stage', statusClass: isPipelineAdmin ? 'enabled' : 'disabled', statusText: isPipelineAdmin ? '✅ CAN ROLLBACK' : '❌ CANNOT ROLLBACK', badge: 'ROLLBACK' }
             ];
@@ -5884,9 +6010,9 @@
             } else {
                 colPipelineBody = renderTierItemsHtml('pipeline', pipelineItems);
             }
-            const pipelineStatusLabel = !hasSelectedWs ? '⚠️ 未选' : (isPipelineAdmin ? '✅ 管道就绪' : '⚠️ 未绑定管道');
-            const pipelineStatusClass = !hasSelectedWs ? 'disabled' : (isPipelineAdmin ? 'enabled' : 'warn');
-            const pipelineSubText = hasSelectedWs ? (isPipelineAdmin ? `${wsName} Pipeline` : (curWs?.pipelineName || '未绑定管道')) : '未选择';
+            const pipelineStatusLabel = !hasSelectedWs ? '⚠️ 未选' : (pipelineBound ? `✅ 管道挂载 · ${pipelineInfo?.stageName || '阶段'}` : '⚠️ 未绑定管道');
+            const pipelineStatusClass = !hasSelectedWs ? 'disabled' : (pipelineBound ? 'enabled' : 'warn');
+            const pipelineSubText = hasSelectedWs ? (pipelineBound ? `${pipelineInfo?.pipelineName || wsName} (${pipelineInfo?.stageName || 'Stage'})` : (curWs?.pipelineName || '未绑定管道')) : '未选择';
 
             // 资产模块大卡片字典映射 (6 个固定大卡片，横向固定不超出屏幕，固定不能移动)
             const cardsMap = {
@@ -6066,7 +6192,7 @@
             });
         }
 
-        // ⚡ 穿透刷新用户全景资产权限链路与底层网关连接 (提供全链路显式动效与即时反馈)
+        // ⚡ 穿透刷新用户全景资产权限链路与底层网关连接 (全并发 360° 穿透流水线)
         async refreshUserAssetsLineage(btnEl) {
             const icon = btnEl?.querySelector('.pb-refresh-icon');
             const label = btnEl?.querySelector('.pb-refresh-label');
@@ -6090,6 +6216,20 @@
                     }
                 }
 
+                const selectedReportIds = Array.from(window.selectedGtbReportIds || []);
+                const curReportId = selectedReportIds[0] || '';
+
+                const probeTasks = [];
+
+                if (curWsId) {
+                    // 1. 强制穿透：工作区直接用户名单与角色 ACL (彻底清空旧缓存)
+                    try { localStorage.removeItem(`pbi_ws_users_${curWsId}`); } catch(e) {}
+                    probeTasks.push(this.fetchWorkspaceUsers(curWsId, true));
+
+                    // 2. 强制穿透：组织部署管道真实挂载状态 (消灭 pipelineBound = false)
+                    probeTasks.push(this.fetchPipelinesStatus(curWsId, true));
+                }
+
                 if (curDsId) {
                     const cacheKey = `${curWsId || 'global'}_${curDsId}`;
                     if (window._modelDatasourcesCache) {
@@ -6102,16 +6242,21 @@
                     if (window._realPermissionsCache) {
                         delete window._realPermissionsCache[permCacheKey];
                     }
-                    const connData = await this.fetchModelConnections(curWsId, curDsId, true);
-                    const firstDs = connData?.datasources && connData.datasources[0];
-                    await this.fetchRealAssetPermissions(
-                        curWsId,
-                        curDsId,
-                        firstDs?.gatewayId || null,
-                        firstDs?.datasourceId || null
-                    );
 
-                    // ⚡ 穿透刷新微软内部 WABI 探针：清除旧缓存并强制重新拉取 isInStrictMode 真实安全状态
+                    // 3. 强制穿透：数据源网关连接与在线拓扑
+                    probeTasks.push((async () => {
+                        const connData = await this.fetchModelConnections(curWsId, curDsId, true);
+                        const firstDs = connData?.datasources && connData.datasources[0];
+                        // 4. 强制穿透：数据集直接授权与数据源连接特许凭据
+                        await this.fetchRealAssetPermissions(
+                            curWsId,
+                            curDsId,
+                            firstDs?.gatewayId || null,
+                            firstDs?.datasourceId || null
+                        );
+                    })());
+
+                    // 5. 强制穿透：微软内部 WABI 微服务 GAC 严格模式与模型所有者
                     const gacCacheKey = `${curWsId || 'global'}_${curDsId}`;
                     if (window._modelLiveGacCache) {
                         delete window._modelLiveGacCache[gacCacheKey];
@@ -6119,8 +6264,19 @@
                     try {
                         sessionStorage.removeItem('pbi_model_live_gac_cache');
                     } catch(e) {}
-                    await this.fetchLiveModelGacStatus(curWsId, curDsId, true);
+                    probeTasks.push(this.fetchLiveModelGacStatus(curWsId, curDsId, true));
+
+                    // 6. 强制穿透：语义模型最近一次数据刷新执行健康心跳
+                    probeTasks.push(this.fetchModelRefreshHistory(curWsId, curDsId, true));
                 }
+
+                if (curWsId && curReportId) {
+                    // 7. 强制穿透：报表独立直接授权与分享人员名单
+                    probeTasks.push(this.fetchReportPermissions(curWsId, curReportId, true));
+                }
+
+                // 全并发异步执行，绝不串行拖延
+                await Promise.allSettled(probeTasks);
 
                 // 强制重新渲染矩阵
                 this.renderUserAssetsMatrix();
@@ -6129,11 +6285,13 @@
                 const topBadge = document.getElementById('pb-top-simulated-badge');
                 if (topBadge) {
                     const originalText = topBadge.textContent;
-                    topBadge.textContent = '⚡ 已完成全景权限链路、数据网关与 WABI GAC 实时探针穿透刷新！';
+                    topBadge.textContent = '⚡ 已完成全景权限链路、数据网关、工作区全员及 WABI GAC 实时探针全并发穿透！';
                     setTimeout(() => { if (topBadge.textContent.startsWith('⚡')) topBadge.textContent = originalText; }, 2500);
                 }
 
-                const toastMsg = curDsId ? '✅ 用户全景权限链路、数据网关与 WABI GAC 状态已穿透更新！' : '✅ 用户全景权限链路已刷新 (请在顶栏选择具体模型以检测官方连接与 GAC)';
+                const toastMsg = curDsId
+                    ? '✅ 用户全景权限链路、工作区角色、数据网关、部署管道与 WABI GAC 状态已全并发穿透更新！'
+                    : '✅ 用户全景权限链路与工作区全员角色已穿透刷新！';
                 if (typeof window.showNotification === 'function') {
                     window.showNotification(toastMsg, 'success', 2500);
                 } else if (typeof window.showToast === 'function') {
@@ -6151,6 +6309,270 @@
                     if (btnEl) btnEl.disabled = false;
                 }, 400);
             }
+        }
+
+        // ⚡ 启动全景深度穿透治理扫描 (Deep Full-Spectrum Governance Scan)
+        async startDeepGovernanceScan(btnEl) {
+            this.syncFromGtb();
+            const selectedWsIds = Array.from(window.selectedGtbWorkspaceIds || []);
+            const curWsId = selectedWsIds[0] || this.currentWorkspaceId;
+
+            const icon = btnEl?.querySelector('.pb-deep-scan-icon');
+            const label = btnEl?.querySelector('.pb-deep-scan-label');
+            if (icon) icon.style.animation = 'pb-spin 0.8s linear infinite';
+            if (label) label.textContent = '深度扫描中...';
+            if (btnEl) btnEl.disabled = true;
+
+            if (typeof window.showNotification === 'function') {
+                window.showNotification('🚀 正在启动全景深度治理扫描 (递归解包安全组与提权偏离)...', 'info', 3000);
+            }
+
+            try {
+                const payload = {
+                    scope: curWsId ? 'workspaces' : 'tenant',
+                    workspace_id: curWsId || null,
+                    workspace_ids: curWsId ? [curWsId] : null,
+                    deep_scan: true
+                };
+
+                const res = await fetch('/api/workflow/deep-permissions-scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: 深度扫描服务响应异常`);
+                }
+
+                const data = await res.json();
+                if (!data || data.success === false) {
+                    throw new Error(data?.message || '深度穿透扫描未返回有效数据');
+                }
+
+                const records = data.records || [];
+                const kpis = data.kpis || {};
+                const elevatedCount = kpis.elevated_count || records.filter(r => r.isElevated).length;
+                const totalModels = kpis.total_models || 0;
+
+                // 弹出全景深度审计结果模态弹窗
+                this.showDeepScanResultModal({
+                    records,
+                    kpis,
+                    elevatedCount,
+                    totalModels,
+                    workspaceId: curWsId
+                });
+
+                // 联动刷新全景矩阵
+                this.renderUserAssetsMatrix();
+
+            } catch (err) {
+                console.error('[Deep Scan] 深度扫描失败:', err);
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification(`❌ 深度扫描异常: ${err.message}`, 'error', 4000);
+                } else {
+                    alert(`深度扫描异常: ${err.message}`);
+                }
+            } finally {
+                setTimeout(() => {
+                    if (icon) icon.style.animation = '';
+                    if (label) label.textContent = '⚡ 深度全景扫描';
+                    if (btnEl) btnEl.disabled = false;
+                }, 400);
+            }
+        }
+
+        // 🎨 渲染全景深度穿透治理审计弹窗
+        showDeepScanResultModal(scanData) {
+            let modal = document.getElementById('pb-deep-scan-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'pb-deep-scan-modal';
+                modal.className = 'modal-overlay';
+                modal.style.cssText = 'display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.65); backdrop-filter: blur(8px); z-index: 10006; align-items: center; justify-content: center;';
+                modal.innerHTML = `
+                    <div class="modal-content glass-panel pb-deep-scan-content" style="width: 880px; max-width: 95vw; max-height: 85vh; display: flex; flex-direction: column; border-radius: 12px; border: 1px solid var(--overlay-10); background: #0f172a; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); overflow: hidden; position: relative; transition: transform 0.2s ease-out, opacity 0.2s ease-out;">
+                        <div class="modal-header" style="padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: move; user-select: none; background: rgba(255,255,255,0.02);">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 1.1rem;">⚡</span>
+                                <h3 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: #f8fafc; letter-spacing: 0.5px;">Microsoft Fabric & Power BI 全景深度穿透治理体检报告</h3>
+                            </div>
+                            <button type="button" class="icon-btn" onclick="window.PermissionBlueprint.closeDeepScanModal()" title="关闭" style="background: transparent; border: none; color: #94a3b8; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; transition: all 0.2s;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                        </div>
+                        <div class="modal-body" id="pb-deep-scan-body" style="padding: 20px; overflow-y: auto; flex: 1;">
+                            <!-- 动态注入内容 -->
+                        </div>
+                        <div class="modal-footer" style="padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.01);">
+                            <div style="font-size: 0.72rem; color: #94a3b8;">
+                                🛡️ 数据源自微软官方 Admin API 与权限穿透引擎 · 零盲区实时快照
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" id="pb-btn-sync-scan-users" class="btn-wf-sm" style="height: 30px; padding: 0 12px; font-size: 0.75rem; border-radius: 6px; border: 1px solid rgba(99, 102, 241, 0.4); background: rgba(99, 102, 241, 0.2); color: #818cf8; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                                    <span>同步扫描主体至左侧演练列表</span>
+                                </button>
+                                <button type="button" class="btn-wf-sm" onclick="window.PermissionBlueprint.closeDeepScanModal()" style="height: 30px; padding: 0 14px; font-size: 0.75rem; border-radius: 6px; border: 1px solid var(--overlay-10); background: var(--input-bg); color: #e2e8f0; cursor: pointer; transition: all 0.2s;">
+                                    关闭
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+
+            const { records, kpis, elevatedCount, totalModels, workspaceId } = scanData;
+            const bodyEl = modal.querySelector('#pb-deep-scan-body');
+            if (bodyEl) {
+                const totalPrincipals = records.length;
+                const elevatedBadgeColor = elevatedCount > 0 ? '#ef4444' : '#10b981';
+                const elevatedBg = elevatedCount > 0 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)';
+                const elevatedBorder = elevatedCount > 0 ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)';
+
+                let rowsHtml = '';
+                records.slice(0, 50).forEach(r => {
+                    const isElev = Boolean(r.isElevated);
+                    const directBadge = `<span style="display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; background: rgba(255,255,255,0.06); color: #cbd5e1;">${r.directRole || 'None'}</span>`;
+                    const effBadge = `<span style="display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; background: ${isElev ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.2)'}; color: ${isElev ? '#f87171' : '#818cf8'}; font-weight: 700;">${r.effectiveRole || r.directRole}</span>`;
+                    const statusCell = isElev 
+                        ? `<span style="color: #ef4444; font-size: 0.7rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">⚠️ 隐式提权偏离 (${r.elevationReason || '组继承'})</span>`
+                        : `<span style="color: #10b981; font-size: 0.7rem;">✅ 严格吻合</span>`;
+
+                    rowsHtml += `
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.74rem;">
+                            <td style="padding: 10px 12px; color: #f1f5f9; font-weight: 600;">
+                                <div>${r.displayName || r.identifier?.split('@')[0] || 'Unknown'}</div>
+                                <div style="font-size: 0.65rem; color: #64748b; font-weight: 400;">${r.identifier || ''}</div>
+                            </td>
+                            <td style="padding: 10px 12px; color: #94a3b8;">${r.workspaceName || workspaceId || '当前工作区'}</td>
+                            <td style="padding: 10px 12px;">${directBadge}</td>
+                            <td style="padding: 10px 12px;">${effBadge}</td>
+                            <td style="padding: 10px 12px;">${statusCell}</td>
+                        </tr>
+                    `;
+                });
+
+                bodyEl.innerHTML = `
+                    <!-- 核心 KPI 看板 -->
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;">
+                        <div style="padding: 12px 14px; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);">
+                            <div style="font-size: 0.68rem; color: #94a3b8; margin-bottom: 4px;">穿透解析主体总数</div>
+                            <div style="font-size: 1.3rem; font-weight: 800; color: #38bdf8;">${totalPrincipals} <span style="font-size: 0.75rem; font-weight: 400; color: #64748b;">人/组</span></div>
+                        </div>
+                        <div style="padding: 12px 14px; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);">
+                            <div style="font-size: 0.68rem; color: #94a3b8; margin-bottom: 4px;">覆盖语义模型底表</div>
+                            <div style="font-size: 1.3rem; font-weight: 800; color: #a78bfa;">${totalModels} <span style="font-size: 0.75rem; font-weight: 400; color: #64748b;">个模型</span></div>
+                        </div>
+                        <div style="padding: 12px 14px; border-radius: 8px; background: ${elevatedBg}; border: 1px solid ${elevatedBorder};">
+                            <div style="font-size: 0.68rem; color: ${elevatedBadgeColor}; margin-bottom: 4px; font-weight: 700;">🚨 异常提权偏离告警</div>
+                            <div style="font-size: 1.3rem; font-weight: 800; color: ${elevatedBadgeColor};">${elevatedCount} <span style="font-size: 0.75rem; font-weight: 400;">处偏离</span></div>
+                        </div>
+                        <div style="padding: 12px 14px; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);">
+                            <div style="font-size: 0.68rem; color: #94a3b8; margin-bottom: 4px;">审计合规状态</div>
+                            <div style="font-size: 1.1rem; font-weight: 800; color: ${elevatedCount === 0 ? '#10b981' : '#f59e0b'}; line-height: 1.6;">${elevatedCount === 0 ? '🟢 状态严密' : '⚠️ 存在风险'}</div>
+                        </div>
+                    </div>
+
+                    <!-- 审计清单明细 -->
+                    <div style="border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); overflow: hidden; background: rgba(255,255,255,0.01);">
+                        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                            <thead>
+                                <tr style="background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 0.7rem; color: #94a3b8; text-transform: uppercase;">
+                                    <th style="padding: 10px 12px;">主体名称 (UPN)</th>
+                                    <th style="padding: 10px 12px;">所属工作区</th>
+                                    <th style="padding: 10px 12px;">工作区直属角色</th>
+                                    <th style="padding: 10px 12px;">最终生效权限 (Effective)</th>
+                                    <th style="padding: 10px 12px;">安全合规偏离状态</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rowsHtml || '<tr><td colspan="5" style="text-align: center; padding: 24px; color: #64748b;">未扫描到授权主体</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+
+                // 绑定同步按钮事件
+                const syncBtn = modal.querySelector('#pb-btn-sync-scan-users');
+                if (syncBtn) {
+                    syncBtn.onclick = () => {
+                        this.applyDeepScanUserToPresets(records);
+                        this.closeDeepScanModal();
+                        if (typeof window.showNotification === 'function') {
+                            window.showNotification(`✅ 成功将 ${records.length} 位穿透主体同步至左侧演练选择器！`, 'success', 2500);
+                        }
+                    };
+                }
+            }
+
+            // 弹窗拖拽与重置居中
+            const content = modal.querySelector('.pb-deep-scan-content');
+            const header = modal.querySelector('.modal-header');
+            if (content && typeof window.centerModal === 'function') {
+                window.centerModal(content);
+            }
+            const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+            if (!isMobile && typeof window.makeDraggable === 'function' && content && header && !content._dragBound) {
+                window.makeDraggable(content, header);
+                content._dragBound = true;
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        // ⚡ 关闭深度全景扫描弹窗
+        closeDeepScanModal() {
+            const modal = document.getElementById('pb-deep-scan-modal');
+            if (!modal || modal.style.display === 'none') return;
+            modal.classList.add('closing');
+            setTimeout(() => {
+                modal.style.display = 'none';
+                modal.classList.remove('closing');
+                const content = modal.querySelector('.modal-content');
+                if (content && typeof window.centerModal === 'function') {
+                    window.centerModal(content);
+                }
+            }, 200);
+        }
+
+        // 🔄 将深度扫描发现的全部有效主体无缝注入左侧预设选择器
+        applyDeepScanUserToPresets(records) {
+            if (!Array.isArray(records) || records.length === 0) return;
+            records.forEach(r => {
+                const email = r.identifier || r.upn || '';
+                if (!email) return;
+                const cleanKey = `scan_${email.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}`;
+                const role = r.effectiveRole || r.directRole || 'Viewer';
+                USER_PRESETS[cleanKey] = {
+                    id: cleanKey,
+                    name: r.displayName || email.split('@')[0],
+                    upn: email,
+                    roleTag: `${role} (深度穿透)`,
+                    roleColor: role === 'Admin' ? '#60a5fa' : (role === 'Contributor' ? '#34d399' : (role === 'Member' ? '#818cf8' : '#fbbf24')),
+                    description: `深度全景扫描发现主体 · 生效角色: ${role} · ${r.isElevated ? '⚠️ 存在提权' : '吻合'}`,
+                    state: {
+                        isGuestUser: email.includes('#ext#') || email.toLowerCase().includes('external'),
+                        tenantAllowExport: true,
+                        tenantAllowWebModeling: ['Admin', 'Member', 'Contributor'].includes(role),
+                        capacityType: 'fabric_f64',
+                        workspaceRole: role,
+                        isModelOwner: role === 'Admin',
+                        isInStrictMode: true,
+                        hasAccessToAllDataConnections: true,
+                        gatewayOnline: true,
+                        sharePermission: 'ReadBuild',
+                        hasAppAccess: true,
+                        rlsEnabled: role === 'Viewer',
+                        rlsRoleAssigned: 'Region_Assigned',
+                        olsEnabled: false,
+                        maskedFields: 'Salary, Margin'
+                    }
+                };
+            });
+            this.populatePresetSelect();
         }
 
         // 重置所有卡片内部权限小条目的上下排列顺序为默认
