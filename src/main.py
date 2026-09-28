@@ -1968,23 +1968,30 @@ class NotePayload(BaseModel):
     content: str
 
 
-def _sync_upload_to_github_rest(final_filename: str, content_bytes: bytes) -> tuple[bool, str]:
-    import base64
-    import os
-
-    import requests
-
-    from src.config import load_settings
+def _get_github_token() -> str:
+    """获取用于 GitHub 同步的有效 Token"""
     token = os.getenv("GITHUB_PAT") or os.getenv("GITHUB_TOKEN") or load_settings().get("GITHUB_PAT", "")
     if not token:
         token = "".join(["ghp_", "x0dmaY0quTOZwNl", "G2M55vfrRTKSG9F1JCswl"])
-    repo = os.getenv("GITHUB_REPO", "ZCM0808/Proj-PBI-API")
+    return token
+
+def _get_github_repo() -> str:
+    """获取目标 GitHub 仓库名称"""
+    return os.getenv("GITHUB_REPO", "ZCM0808/Proj-PBI-API")
+
+def _sync_upload_to_github_rest(final_filename: str, content_bytes: bytes) -> tuple[bool, str]:
+    import base64
+    import urllib.parse
+    import requests
+
+    token = _get_github_token()
+    repo = _get_github_repo()
     headers = {
         "Authorization": f"token {token}",
         "Accept": "application/vnd.github.v3+json"
     }
-    path = f"static/uploads/notes/{final_filename}"
-    url = f"https://api.github.com/repos/{repo}/contents/{path}"
+    safe_path = urllib.parse.quote(f"static/uploads/notes/{final_filename}", safe="/")
+    url = f"https://api.github.com/repos/{repo}/contents/{safe_path}"
 
     sha = None
     try:
@@ -1996,7 +2003,7 @@ def _sync_upload_to_github_rest(final_filename: str, content_bytes: bytes) -> tu
 
     try:
         b64_content = base64.b64encode(content_bytes).decode("utf-8")
-        payload = {
+        payload: Dict[str, Any] = {
             "message": f"docs(uploads): sync attachment {final_filename} via API",
             "content": b64_content,
             "branch": "main"
@@ -2007,25 +2014,35 @@ def _sync_upload_to_github_rest(final_filename: str, content_bytes: bytes) -> tu
         r_put = requests.put(url, headers=headers, json=payload, timeout=15)
         if r_put.status_code in (200, 201):
             return True, "Successfully synced via REST API"
-        else:
-            return False, f"GitHub API Error ({r_put.status_code})"
+        elif r_put.status_code == 409:
+            # 409 Conflict Retry: 重新拉取最新 SHA 再次重试 PUT
+            r_get_retry = requests.get(url, headers=headers, timeout=8)
+            if r_get_retry.status_code == 200:
+                latest_sha = r_get_retry.json().get("sha")
+                if latest_sha:
+                    payload["sha"] = latest_sha
+                    r_put = requests.put(url, headers=headers, json=payload, timeout=15)
+                    if r_put.status_code in (200, 201):
+                        return True, "Successfully synced via REST API after SHA refresh"
+        return False, f"GitHub API Error ({r_put.status_code})"
     except Exception as e:
         return False, f"GitHub API Exception: {str(e)}"
 
 
 def _sync_note_to_github_rest(filename: str, content: str) -> tuple[bool, str]:
     """通过 GitHub REST API 自动同步 Note (在无 Git CLI 凭据的 Render 云端环境中保证 100% 成功推送)"""
-    token = os.getenv("GITHUB_PAT") or os.getenv("GITHUB_TOKEN") or load_settings().get("GITHUB_PAT", "")
-    if not token:
-        # Fallback to configured PAT
-        token = "".join(["ghp_", "x0dmaY0quTOZwNl", "G2M55vfrRTKSG9F1JCswl"])
-    repo = os.getenv("GITHUB_REPO", "ZCM0808/Proj-PBI-API")
+    import base64
+    import urllib.parse
+    import requests
+
+    token = _get_github_token()
+    repo = _get_github_repo()
     headers = {
         "Authorization": f"token {token}",
         "Accept": "application/vnd.github.v3+json"
     }
-    path = f"notes/{filename}"
-    url = f"https://api.github.com/repos/{repo}/contents/{path}"
+    safe_path = urllib.parse.quote(f"notes/{filename}", safe="/")
+    url = f"https://api.github.com/repos/{repo}/contents/{safe_path}"
 
     # 1. 检查远端是否已存在该文件 (获取其 SHA)
     sha = None
@@ -2038,7 +2055,6 @@ def _sync_note_to_github_rest(filename: str, content: str) -> tuple[bool, str]:
 
     # 2. 上传/更新文件内容
     try:
-        import base64
         b64_content = base64.b64encode(content.encode("utf-8")).decode("utf-8")
         payload: Dict[str, Any] = {
             "message": f"docs(notes): sync {filename} via API",
@@ -2051,23 +2067,33 @@ def _sync_note_to_github_rest(filename: str, content: str) -> tuple[bool, str]:
         r_put = requests.put(url, headers=headers, json=payload, timeout=12)
         if r_put.status_code in (200, 201):
             return True, "Successfully synced to GitHub via REST API"
-        else:
-            return False, f"GitHub API Error ({r_put.status_code}): {r_put.text}"
+        elif r_put.status_code == 409:
+            # 409 Conflict Retry: 重新拉取最新 SHA 再次重试 PUT
+            r_get_retry = requests.get(url, headers=headers, timeout=8)
+            if r_get_retry.status_code == 200:
+                latest_sha = r_get_retry.json().get("sha")
+                if latest_sha:
+                    payload["sha"] = latest_sha
+                    r_put = requests.put(url, headers=headers, json=payload, timeout=12)
+                    if r_put.status_code in (200, 201):
+                        return True, "Successfully synced to GitHub via REST API after SHA refresh"
+        return False, f"GitHub API Error ({r_put.status_code}): {r_put.text}"
     except Exception as e:
         return False, f"GitHub API Exception: {str(e)}"
 
 def _delete_note_from_github_rest(filename: str) -> tuple[bool, str]:
     """通过 GitHub REST API 自动删除远端 Note"""
-    token = os.getenv("GITHUB_PAT") or os.getenv("GITHUB_TOKEN") or load_settings().get("GITHUB_PAT", "")
-    if not token:
-        token = "".join(["ghp_", "x0dmaY0quTOZwNl", "G2M55vfrRTKSG9F1JCswl"])
-    repo = os.getenv("GITHUB_REPO", "ZCM0808/Proj-PBI-API")
+    import urllib.parse
+    import requests
+
+    token = _get_github_token()
+    repo = _get_github_repo()
     headers = {
         "Authorization": f"token {token}",
         "Accept": "application/vnd.github.v3+json"
     }
-    path = f"notes/{filename}"
-    url = f"https://api.github.com/repos/{repo}/contents/{path}"
+    safe_path = urllib.parse.quote(f"notes/{filename}", safe="/")
+    url = f"https://api.github.com/repos/{repo}/contents/{safe_path}"
 
     try:
         r_get = requests.get(url, headers=headers, timeout=8)
@@ -2103,19 +2129,34 @@ async def save_note(payload: NotePayload):
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(payload.content)
 
-        # 优先尝试本地 Git CLI 推送
-        git_pushed = False
-        try:
-            r1 = subprocess.run(["git", "add", f"notes/{filename}", "static/uploads/notes/"], cwd=root_dir, capture_output=True, text=True)
-            if r1.returncode == 0:
-                subprocess.run(["git", "commit", "-m", f"docs(notes): add {filename} and attachments"], cwd=root_dir, capture_output=True, text=True)
-                r3 = subprocess.run(["git", "push", "origin", "main"], cwd=root_dir, capture_output=True, text=True)
-                if r3.returncode == 0:
-                    git_pushed = True
-        except Exception:
-            git_pushed = False
+        # 优先尝试本地 Git CLI 推送 (通过注入 PAT 支持 Render 无头容器环境)
+        def _try_git_cli_push() -> bool:
+            try:
+                subprocess.run(["git", "config", "user.email", "bot@render.com"], cwd=root_dir, check=False)
+                subprocess.run(["git", "config", "user.name", "Render Bot"], cwd=root_dir, check=False)
 
-        # 若本地 Git CLI 凭据不具备或运行在 Render 云端环境，自动切换为 GitHub REST API 直连推送
+                r1 = subprocess.run(["git", "add", f"notes/{filename}", "static/uploads/notes/"], cwd=root_dir, capture_output=True, text=True, timeout=8)
+                if r1.returncode != 0:
+                    return False
+
+                subprocess.run(["git", "commit", "-m", f"docs(notes): add {filename} and attachments"], cwd=root_dir, capture_output=True, text=True, timeout=8)
+
+                token = _get_github_token()
+                env = os.environ.copy()
+                env["GIT_TERMINAL_PROMPT"] = "0"
+                pat_url = f"https://ZCM0808:{token}@github.com/ZCM0808/Proj-PBI-API.git"
+                r3 = subprocess.run(["git", "push", pat_url, "HEAD:main"], cwd=root_dir, capture_output=True, text=True, timeout=12, env=env)
+                if r3.returncode == 0:
+                    return True
+
+                r4 = subprocess.run(["git", "push", "origin", "main"], cwd=root_dir, capture_output=True, text=True, timeout=8, env=env)
+                return r4.returncode == 0
+            except Exception:
+                return False
+
+        git_pushed = await asyncio.to_thread(_try_git_cli_push)
+
+        # 若本地 Git CLI 凭据不具备或网络受阻，自动无缝切换为 GitHub REST API 直连推送
         if not git_pushed:
             ok, msg = await asyncio.to_thread(_sync_note_to_github_rest, filename, payload.content)
             if not ok:
@@ -2139,17 +2180,25 @@ async def delete_note(payload: DeleteNotePayload):
         if os.path.exists(file_path):
             os.remove(file_path)
 
-            def _git_push_note_delete():
+            def _git_push_note_delete() -> None:
+                git_pushed = False
                 try:
-                    r = subprocess.run(["git", "rm", f"notes/{filename}"], cwd=root_dir, capture_output=True, text=True)
+                    subprocess.run(["git", "config", "user.email", "bot@render.com"], cwd=root_dir, check=False)
+                    subprocess.run(["git", "config", "user.name", "Render Bot"], cwd=root_dir, check=False)
+                    r = subprocess.run(["git", "rm", f"notes/{filename}"], cwd=root_dir, capture_output=True, text=True, timeout=8)
                     if r.returncode == 0:
-                        subprocess.run(["git", "commit", "-m", f"docs(notes): delete {filename}"], cwd=root_dir, capture_output=True, text=True)
-                        r3 = subprocess.run(["git", "push", "origin", "main"], cwd=root_dir, capture_output=True, text=True)
+                        subprocess.run(["git", "commit", "-m", f"docs(notes): delete {filename}"], cwd=root_dir, capture_output=True, text=True, timeout=8)
+                        token = _get_github_token()
+                        env = os.environ.copy()
+                        env["GIT_TERMINAL_PROMPT"] = "0"
+                        pat_url = f"https://ZCM0808:{token}@github.com/ZCM0808/Proj-PBI-API.git"
+                        r3 = subprocess.run(["git", "push", pat_url, "HEAD:main"], cwd=root_dir, capture_output=True, text=True, timeout=12, env=env)
                         if r3.returncode == 0:
-                            return
+                            git_pushed = True
                 except Exception:
                     pass
-                _delete_note_from_github_rest(filename)
+                if not git_pushed:
+                    _delete_note_from_github_rest(filename)
 
             asyncio.create_task(asyncio.to_thread(_git_push_note_delete))
             return {"success": True, "message": f"Deleted {filename} and synced deletion to GitHub."}
@@ -2223,9 +2272,16 @@ async def upload_note_file(file: UploadFile = File(...)):
         def _git_push_upload():
             git_pushed = False
             try:
-                subprocess.run(["git", "add", f"static/uploads/notes/{final_filename}"], cwd=root_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                subprocess.run(["git", "commit", "-m", f"docs(uploads): add note attachment {final_filename}"], cwd=root_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                r = subprocess.run(["git", "push", "origin", "main"], cwd=root_dir, capture_output=True, text=True)
+                subprocess.run(["git", "config", "user.email", "bot@render.com"], cwd=root_dir, check=False)
+                subprocess.run(["git", "config", "user.name", "Render Bot"], cwd=root_dir, check=False)
+                subprocess.run(["git", "add", f"static/uploads/notes/{final_filename}"], cwd=root_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=8)
+                subprocess.run(["git", "commit", "-m", f"docs(uploads): add note attachment {final_filename}"], cwd=root_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=8)
+
+                token = _get_github_token()
+                env = os.environ.copy()
+                env["GIT_TERMINAL_PROMPT"] = "0"
+                pat_url = f"https://ZCM0808:{token}@github.com/ZCM0808/Proj-PBI-API.git"
+                r = subprocess.run(["git", "push", pat_url, "HEAD:main"], cwd=root_dir, capture_output=True, text=True, timeout=12, env=env)
                 if r.returncode == 0:
                     git_pushed = True
             except Exception:
