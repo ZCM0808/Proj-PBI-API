@@ -30,7 +30,7 @@
     "locked_until": 0,
     "daily_usage": {
       "date": "2026-09-28",
-      "used_seconds": 1140
+      "used_seconds": 1200
     }
   },
   "a3be8285-5ea8-4a31-bece-ec74dbdd3a32": {
@@ -38,6 +38,10 @@
     "locked_until": 0
   },
   "9a655e4d-bc4e-4aff-be3b-d97b1cb2952d": {
+    "attempts": 0,
+    "locked_until": 0
+  },
+  "1d4eafe9-19ae-4a5a-9bac-086ff459556a": {
     "attempts": 0,
     "locked_until": 0
   }
