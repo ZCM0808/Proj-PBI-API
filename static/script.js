@@ -20527,10 +20527,6 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
         return;
     }
 
-    const authBanner = document.getElementById('wf-gum-auth-banner');
-    if (authBanner) authBanner.style.display = 'none';
-    window._gumAuthErrorActive = false;
-
     if (scanBtn) {
         scanBtn.disabled = true;
         scanBtn.innerHTML = `
@@ -20602,8 +20598,6 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
             window.showNotification(`⚡ 已呈现最新人员快照 (${candidates.length} 人)`, 'info');
         }
 
-        if (authBanner) authBanner.style.display = 'none';
-        window._gumAuthErrorActive = false;
         window.renderGumDropdownUsers();
         if (window.openGumUserDropdown) window.openGumUserDropdown(true);
     } catch(e) {
@@ -20612,69 +20606,18 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
         const isAbort = (e.name === 'AbortError');
         const errMsg = isAbort ? '云端响应超时 (30s)，请稍候重试' : (e.message || '拉取人员名单失败');
 
-        const isAuthError = /MFA|Device Code|交互式验证|多因素认证|interaction_required|invalid_grant|401|未授权/i.test(errMsg);
-        if (isAuthError) {
-            window._gumAuthErrorActive = true;
-            if (authBanner) {
-                authBanner.style.display = 'block';
-            }
-            if (dropdownCount) {
-                dropdownCount.innerHTML = '<span style="color:#38bdf8; font-size:0.72rem; font-weight:600;">🔐 需微软设备流安全授权</span>';
-            }
-            if (dropdownList) {
-                dropdownList.innerHTML = `
-                    <div style="padding: 14px 10px; text-align: center; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 10px; margin: 8px 4px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);">
-                        <div style="font-size: 0.82rem; font-weight: 600; color: #38bdf8; margin-bottom: 5px;">
-                            🔐 微软云端账号需要设备流安全授权
-                        </div>
-                        <div style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 11px; line-height: 1.45;">
-                            云端容器运行环境下，微软账号开启了多因素认证(MFA)。<br>
-                            请点击下方按钮一键获取验证码并在微软官网授权，授权成功后将<b>自动继续扫描</b>：
-                        </div>
-                        <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
-                            <button type="button" class="btn-wf-sm btn-wf-primary" onclick="window.triggerGumDeviceCodeAuth()" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; font-size: 0.78rem; font-weight: 600; border-radius: 7px; cursor: pointer; background: linear-gradient(135deg, #0284c7, #0369a1); box-shadow: 0 3px 10px rgba(2, 132, 199, 0.35);">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
-                                <span>一键启动微软设备流登录</span>
-                            </button>
-                            <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="window.promptAndApplyBearerToken()" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; font-size: 0.76rem; font-weight: 500; border-radius: 7px; cursor: pointer;">
-                                <span>📋 粘贴 Token</span>
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }
-            if (window.showNotification) {
-                window.showNotification('🔐 微软云端账号需要安全授权，已为您自动唤起设备流验证...', 'warning', 8000);
-            }
-            // 关键：传 false，绝不冲刷覆盖刚刚设置的卡片！
-            if (window.openGumUserDropdown) window.openGumUserDropdown(false);
-
-            // 核心闭环：0.3 秒直接自动弹出设备流模态框，免去用户寻找点击按钮的困扰
-            setTimeout(() => {
-                if (window.triggerGumDeviceCodeAuth) {
-                    window.triggerGumDeviceCodeAuth();
-                }
-            }, 300);
-        } else {
-            if (dropdownCount) {
-                dropdownCount.innerHTML = `<span style="color:var(--warning); font-size:0.72rem;">⚠️ ${errMsg}</span>`;
-            }
-            if (dropdownList) {
-                dropdownList.innerHTML = `<div style="font-size:0.75rem; color:var(--warning); padding:8px 4px; text-align: center;">拉取未完成 (${errMsg})，您可在搜索栏直接输入目标邮箱。</div>`;
-            }
-            if (window.showNotification) {
-                window.showNotification(`❌ ${errMsg}`, 'error');
-            }
+        if (dropdownCount) {
+            dropdownCount.innerHTML = `<span style="color:var(--warning); font-size:0.72rem;">⚠️ ${errMsg}</span>`;
         }
+        if (dropdownList) {
+            dropdownList.innerHTML = `<div style="font-size:0.75rem; color:var(--warning); padding:8px 4px; text-align: center;">拉取未完成 (${errMsg})，您可在搜索栏直接输入目标邮箱。</div>`;
+        }
+        if (window.showNotification) {
+            window.showNotification(`❌ ${errMsg}`, 'error');
+        }
+        if (window.openGumUserDropdown) window.openGumUserDropdown(false);
     } finally {
         resetScanBtn();
-    }
-};
-
-window.triggerGumDeviceCodeAuth = async function() {
-    window._gumPendingAutoScanAfterAuth = true;
-    if (window.startDeviceCodeLoginFlow) {
-        await window.startDeviceCodeLoginFlow();
     }
 };
 
@@ -20699,11 +20642,6 @@ window.renderGumDropdownUsers = function(searchTerm = '') {
     const dropdownCount = document.getElementById('wf-gum-dropdown-count');
     const searchHint = document.getElementById('gum-search-hint');
     if (!dropdownList) return;
-
-    // 若当前正在展示设备流安全授权卡片且尚未拉取到候选人，绝对禁止覆盖卡片
-    if (window._gumAuthErrorActive && (!window.gumCandidateUsers || window.gumCandidateUsers.length === 0)) {
-        return;
-    }
 
     // 核心防御：仅使用显式传入的过滤词或全局打字词 _gumSearchFilterTerm，严禁去读 wf-gum-search.value（因为那里显示的是已选用户标签）
     const term = (typeof searchTerm === 'string' ? searchTerm : (window._gumSearchFilterTerm || '')).toLowerCase().trim();
