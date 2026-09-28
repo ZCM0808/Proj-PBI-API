@@ -4456,6 +4456,21 @@ body.zen-mode #dragMe {
     color: var(--text-primary) !important;
 }
 
+body.zen-mode #gtb-zen-btn,
+body.zen-mode .zen-mode-btn {
+    color: var(--accent) !important;
+    border-color: var(--accent-glow) !important;
+    background: rgba(242, 200, 17, 0.12) !important;
+}
+
+body.zen-mode .zen-icon-expand {
+    display: none !important;
+}
+
+body.zen-mode .zen-icon-collapse {
+    display: block !important;
+}
+
 /* --- Rail Collapsed State (独立折叠最左侧一级导航轨) --- */
 body.rail-collapsed #app-rail {
     width: 0 !important;
@@ -10589,10 +10604,14 @@ body.light-theme .laya-toggle-slider:before,
 #btn-cancel-save-note {
     border-radius: 6px;
     background: transparent;
-    display: none;
+    display: none !important;
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
+}
+
+#btn-cancel-save-note.is-active {
+    display: inline-flex !important;
 }
 
 #btn-cancel-save-note:hover {

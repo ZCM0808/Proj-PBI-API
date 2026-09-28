@@ -2772,3 +2772,50 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
    - **舞台节点原地复用**：`renderMatrix()` 优化为检查并复用既有的 `#pb-matrix-stage` 容器（仅通过 `stageEl.innerHTML = colsContent` 替换 8 列子内容），其父级 `transform: scale(...)` 矩阵在切换时恒定保持不变，从物理上消灭样式重置；
    - **过渡动画作用域收敛**：移除了 `.pb-matrix-stage` 上硬编码的全局 `transition`，改为仅在用户手动点击顶部【一屏全览 / 原始比例】按钮时通过添加 `.animating` 类驱动 0.25s 丝滑缩放，卡片切换期间过渡恒为 `none`；
    - **双端静态缓存同步递增**：[`static/index.html`](file:///D:/zcm/Proj-PBI-API/static/index.html) 中 `style.css` 与 `permission_blueprint.js` 版本号同步升级为 `?v=20260924_v2155`。
+
+---
+
+## 72. 便签记事本 (Quick Note) 最高优先级同步体系、云端 SQLite 数据隔离、密码登录 1 小时强行断开与全局顶栏沉浸模式重构 (Quick Note Top Priority Sync, SQLite Cloud Isolation, 1-Hour Session Auto-Disconnect & Global Zen Mode Relocation)
+
+### 72.1 最高优先级法则：便签记事本 (Quick Note) 保存同步与 GitHub 健壮性防御 (Top Priority Directive)
+> **🚨 架构最高优先级红线**：
+> 便签记事本（Quick Note）的保存并同步至 GitHub 功能是全平台数据沉淀的最核心底座，确立为**最高优先级事项**！
+> 任何后续对前端交互、认证逻辑、Git 脚本或后端路由的修改，**必须强制经过无头浏览器 (Playwright) 或集成自测闭环，100% 保证便签能正常保存、取消后能再次触发进度、且 GitHub REST API(应用程序编程接口) 同步永不中断**。
+
+1. **取消按钮生命周期防线 (Cancel Button Lifecycle)**：
+   - 彻底修复了取消按钮由于样式表中 `.btn-icon-sq` 的 `display: inline-flex !important;` 样式污染导致在常态下常驻显示的缺陷。
+   - 引入专用高优先级防御选择器 `#btn-cancel-save-note { display: none !important; }`，仅在进入保存流程时动态添加 `.is-active { display: inline-flex !important; }`。保存成功或用户手动取消后立即剥离类名，彻底实现“只在保存同步期间显现，完成后自动隐藏”的无感视觉体验。
+2. **取消后再次保存丢失进度条根因与异步定时器清空机制**：
+   - **根因剖析**：用户在点击【保存】后若点击【取消】，系统原先派发了延迟 1.5 秒隐藏状态栏的异步 `setTimeout`。但该定时器句柄此前未在全局进行持久化管理；当用户迅速再次点击【保存】时，旧的异步定时器在 1.5 秒后依然静默触发并强行隐藏了新发起的进度条容器，导致用户视觉上以为“再点击不显示进度”。
+   - **根治措施**：引入全局定时器防线 `window._noteCancelTimeout` 与 `window._noteSaveSuccessTimeout`。在每次调用 `saveMarkdownNote`、`abortSaveNote` 或打开弹窗时，第一时间显式执行 `clearTimeout` 彻底销毁残留的隐藏任务；并在重新保存时重置状态图标与进度条的 `.loader` 动态加载动效，保证无论用户如何连续点击、取消、再保存，进度条与分步文案均 100% 稳定呈现。
+
+### 72.2 本地 SQLite 数据污染隔绝与云端刷新 Dark 模式/使用时长被覆盖根治
+1. **现象与深层跨环境数据污染剖析 (Cross-Environment Contamination Root Cause)**：
+   - 用户在 Render 云端环境刷新页面后，发现页面自动切回了 Dark 模式；且密码登录刚满 1 小时，本地 Git 提交推送后云端累积使用时长突然跳增到 2 个多小时。
+   - **根因定位**：本地开发与调试时，本地的 `data/pbi_app.db` 未在 `.gitignore` 中彻底生效（已被 Git 索引跟踪）；本地数据库中写入了调试时的 `pbi-theme: dark` 和 `pbi-daily-time: 9300`（2.58 小时）。当本地执行 `git push` 时，该本地旧数据库被整体推送到 GitHub 并被 Render 重新打包部署；前端刷新时触发 `/api/db/kv` 全量同步，直接用本地推送上去的数据洗掉了用户在浏览器上的明暗主题与真实计时！
+2. **物理隔离与同步排除防线 (Physical Git Shield & KV Filter)**：
+   - **Git 物理剔除**：将 `data/*.db` 正式纳入 `.gitignore`，并执行 `git rm --cached data/pbi_app.db` 将 SQLite 数据文件彻底移出版本控制追踪，杜绝任何本地数据污染云端容器；
+   - **KV 表历史污染清洗**：执行底层清理脚本，从 SQLite 的 `kv_store` 表中彻底抹除了 `'pbi-theme'` 与 `'pbi-daily-time'` 历史键；
+   - **前端双向同步防御网**：在 [`static/script.js`](file:///D:/zcm/Proj-PBI-API/static/script.js) 的 `syncStateFromBackend()` 中将 `'pbi-theme'` 与 `'pbi-daily-time'` 永久列入 `excludedKvKeys` 黑名单；仅在客户端 `localStorage.getItem('pbi-theme') === null`（首次打开应用）时才采用服务端缺省值，绝不覆盖用户已自主设定的主题模式。
+
+### 72.3 密码登录 (mode=pwd1) 1 小时强行断开并物理注销体系 (1-Hour Hard Enforcement)
+1. **服务端物理断开熔断器**：
+   - 在 [`src/main.py`](file:///D:/zcm/Proj-PBI-API/src/main.py) 的全局认证中间件 `auth_middleware` 中，凡是识别到通过密码模式登录的请求 (`mode == "pwd1"`) 且今日已用秒数达到或超过 3600 秒（1 小时），服务端立即调用 `resp.delete_cookie(key="pbi_auth_token", path="/")` 物理抹除认证 Cookie(小型文本文件)；
+   - 对任何非静态页面的 API 接口直接抛出 `HTTP 401 Unauthorized` 并在 JSON(JavaScript 对象表示法) 体中携带 `{"error": "Daily usage limit reached", "limit_reached": True}`；对 HTML 页面请求直接 307 重定向至 `/login?expired=1`。
+2. **客户端多维拦截与心跳瞬断自毁**：
+   - 在全局 Fetch 拦截器中，捕获 401/403 且包含 `limit_reached` 的返回时，立即执行 `window.location.replace('/login?expired=1')`；
+   - 在顶部功能栏心跳上报中，一旦后端反馈 401/403，前端瞬间拉起警告提示框并于 1.2 秒内强行注销并跳转回登录页，彻底杜绝超时继续操作。
+
+### 72.4 全局顶栏沉浸模式 (Zen Mode) 常驻与冗余子视图操作清理
+1. **全局沉浸模式 (Zen Mode) 统一转移至顶栏最左侧**：
+   - 彻底将沉浸模式按钮从【工作流面板】、API 资源树【Request Configuration 头部】以及【权限流转蓝图工具栏】三个子视图中剥离清理；
+   - 在全局顶栏 [`#global-topbar`](file:///D:/zcm/Proj-PBI-API/static/index.html#L230) 的 `.gtb-group` 首位常驻挂载统一的全局沉浸模式按钮 `#gtb-zen-btn`；
+   - 在 [`static/style.css`](file:///D:/zcm/Proj-PBI-API/static/style.css) 中声明状态高亮与 `.zen-icon-expand` / `.zen-icon-collapse` 的无缝切换过渡动效，使全屏/专注模式在任何模块下均能一键极速触达。
+2. **权限流转蓝图与各面板冗余入口彻底剔除**：
+   - 从权限流转蓝图顶部卡片中彻底移除了“全权掌管 (Admin)”标签和“全景链路 ↗”按钮，并彻底移除了“.pb-real-sync-card (🏢 真实顶栏租户环境)”整块卡片区域；
+   - 从工作流面板与 API 资源树头部中彻底移除了“.btn-quick-switch-bp (🕸️ 全景权限链路卡片)”跳转按钮；
+   - 在 [`static/permission_blueprint.js`](file:///D:/zcm/Proj-PBI-API/static/permission_blueprint.js) 中完成空值引用防御，杜绝任何潜在的 Null Pointer 异常。
+
+### 72.5 全站 Tooltip(鼠标悬浮气泡提示) 规范凝练重构
+- 全面扫描并消除了项目中 77 处包含双语括号冗长堆砌、长句补充说明或冒号从句的啰嗦提示，重构为高度凝练、直观统一的标准中文交互词（如 `选择工作区`、`选择数据模型`、`生成全景血缘拓扑图`、`保存并同步 (Ctrl+S)` 等），大幅提升整体 UI 界面品质感。
+

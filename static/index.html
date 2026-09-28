@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260928_v1755">
+    <link rel="stylesheet" href="/static/style.css?v=20260928_v1820">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -228,8 +228,14 @@
         <!-- ⚡ 全局顶部上下文控制台功能栏 (Global Top Context Control Bar - Borderless & Collapsible) -->
         <header id="global-topbar">
             <div class="gtb-group">
-                <!-- 0. 认证模式切换 (Auth Mode - 优雅卡片式自定义下拉) -->
-                <div class="gtb-item gtb-workspace-box gtb-auth-box" id="gtb-auth-box" onclick="if(!event.target.closest('#gtb-auth-dropdown') && !event.target.closest('.gtb-copy-btn')) window.toggleGtbAuthDropdown(event);" title="切换全局认证主体模式 (Service Principal / Personal Delegated，悬浮右侧可一键复制)">
+                <!-- 0. 全局沉浸模式按钮 (Zen Mode - 常驻顶栏最左侧) -->
+                <button type="button" id="gtb-zen-btn" class="gtb-icon-btn zen-mode-btn" onclick="window.toggleZenMode()" title="沉浸模式" style="height: 30px; width: 30px; min-width: 30px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-expand"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-collapse" style="display: none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
+                </button>
+
+                <!-- 1. 认证模式切换 (Auth Mode) -->
+                <div class="gtb-item gtb-workspace-box gtb-auth-box" id="gtb-auth-box" onclick="if(!event.target.closest('#gtb-auth-dropdown') && !event.target.closest('.gtb-copy-btn')) window.toggleGtbAuthDropdown(event);" title="切换认证主体">
                     <div class="gtb-label">
                         <span id="gtb-auth-icon" style="display: flex; align-items: center; color: var(--accent); flex-shrink: 0;">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
@@ -295,7 +301,7 @@
                 </div>
 
                 <!-- 1. 组织租户 (Tenant - 最左侧全局租户标识与下拉信息卡片) -->
-                <div id="gtb-tenant-box" class="gtb-item gtb-workspace-box gtb-tenant-box" onclick="if(!event.target.closest('#gtb-tenant-dropdown') && !event.target.closest('.gtb-copy-btn')) window.toggleGtbTenantDropdown(event);" title="全局组织租户 (点击展开租户信息)">
+                <div id="gtb-tenant-box" class="gtb-item gtb-workspace-box gtb-tenant-box" onclick="if(!event.target.closest('#gtb-tenant-dropdown') && !event.target.closest('.gtb-copy-btn')) window.toggleGtbTenantDropdown(event);" title="选择活动租户">
                     <div class="gtb-label">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #a78bfa; flex-shrink: 0;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                         <span>租户</span>
@@ -335,7 +341,7 @@
                 <input type="hidden" id="gtb-select-xmla-history" value="">
 
                 <!-- 2. 工作区选择 (Workspace - 支持单选/多选/全选，并可一键复制名称或 XMLA 连接串) -->
-                <div class="gtb-item gtb-workspace-box" id="gtb-workspace-box" onclick="if(!event.target.closest('#gtb-ws-dropdown') && !event.target.closest('.gtb-copy-btn')) window.toggleGtbWsDropdown(event);" title="全局活动工作区 (点击展开多选/全选/单选)">
+                <div class="gtb-item gtb-workspace-box" id="gtb-workspace-box" onclick="if(!event.target.closest('#gtb-ws-dropdown') && !event.target.closest('.gtb-copy-btn')) window.toggleGtbWsDropdown(event);" title="选择工作区">
                     <div class="gtb-label">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #60a5fa; flex-shrink: 0;"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="22" x2="9" y2="22.01"></line><line x1="15" y1="22" x2="15" y2="22.01"></line><line x1="9" y1="6" x2="9" y2="6.01"></line><line x1="15" y1="6" x2="15" y2="6.01"></line><line x1="9" y1="10" x2="9" y2="10.01"></line><line x1="15" y1="10" x2="15" y2="10.01"></line><line x1="9" y1="14" x2="9" y2="14.01"></line><line x1="15" y1="14" x2="15" y2="14.01"></line><line x1="9" y1="18" x2="9" y2="18.01"></line><line x1="15" y1="18" x2="15" y2="18.01"></line></svg>
                         <span>工作区</span>
@@ -358,7 +364,7 @@
                                 <input type="text" id="gtb-ws-search-input" placeholder="筛选工作区名称或 ID..." oninput="window.filterGtbWsOptions(this.value)" autocomplete="off">
                             </div>
                             <div class="gtb-ws-actions">
-                                <button type="button" class="gtb-ws-btn-sm" onclick="window.copyGlobalXmlaEndpoint(this)" title="复制当前工作区对应的标准 XMLA 终结点连接串">复制 XMLA</button>
+                                <button type="button" class="gtb-ws-btn-sm" onclick="window.copyGlobalXmlaEndpoint(this)" title="复制 XMLA 终结点">复制 XMLA</button>
                                 <button type="button" class="gtb-ws-btn-sm" onclick="window.selectAllGtbWorkspaces(true)">全选</button>
                                 <button type="button" class="gtb-ws-btn-sm" onclick="window.selectAllGtbWorkspaces(false)">清空</button>
                             </div>
@@ -373,7 +379,7 @@
                 </div>
 
                 <!-- 4. 数据模型选择 (Dataset / Model - 支持单选/多选/全选与工作区分组矩阵) -->
-                <div class="gtb-item gtb-workspace-box gtb-dataset-box" id="gtb-dataset-box" onclick="if(!event.target.closest('#gtb-ds-dropdown') && !event.target.closest('.gtb-copy-btn')) window.toggleGtbDsDropdown(event);" title="全局活动数据模型 (点击展开多选/全选/单选与工作区分组矩阵)">
+                <div class="gtb-item gtb-workspace-box gtb-dataset-box" id="gtb-dataset-box" onclick="if(!event.target.closest('#gtb-ds-dropdown') && !event.target.closest('.gtb-copy-btn')) window.toggleGtbDsDropdown(event);" title="选择数据模型">
                     <div class="gtb-label">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #34d399; flex-shrink: 0;"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
                         <span>模型</span>
@@ -410,7 +416,7 @@
                 </div>
 
                 <!-- 5. 报表选择 (Report - 支持单选/多选/全选与工作区分组) -->
-                <div class="gtb-item gtb-workspace-box gtb-report-box" id="gtb-report-box" onclick="if(!event.target.closest('#gtb-rp-dropdown') && !event.target.closest('.gtb-copy-btn')) window.toggleGtbRpDropdown(event);" title="全局活动报表 (点击展开单选/多选/全选与工作区分组)">
+                <div class="gtb-item gtb-workspace-box gtb-report-box" id="gtb-report-box" onclick="if(!event.target.closest('#gtb-rp-dropdown') && !event.target.closest('.gtb-copy-btn')) window.toggleGtbRpDropdown(event);" title="选择报表">
                     <div class="gtb-label">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #fbbf24; flex-shrink: 0;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
                         <span>报表</span>
@@ -450,32 +456,32 @@
             <!-- 右侧全局快捷动作区 -->
             <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
                 <!-- ⏱️ 每日密码登录累积计时 -->
-                <div id="gtb-daily-limit" class="gtb-item" style="height: 30px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 5px; flex: none; border-color: var(--overlay-10); background: var(--input-bg);" title="Daily Accumulated Password Login Time">
+                <div id="gtb-daily-limit" class="gtb-item" style="height: 30px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 5px; flex: none; border-color: var(--overlay-10); background: var(--input-bg);" title="密码登录累计用时">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent); flex-shrink: 0;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                     <span class="gtb-label" style="font-size: 0.70rem; opacity: 0.85;">Total:</span>
                     <strong id="daily-time-val-main" style="color: var(--accent); font-weight: 700; line-height: 1; font-family: 'Fira Code', monospace; font-size: 0.74rem;">0m</strong>
                 </div>
 
                 <!-- 📝 便签记事本 (Quick Note) - 位于刷新按钮左侧 -->
-                <button type="button" id="btn-note" class="gtb-icon-btn" onclick="openNoteModal()" title="便签记事本 (Quick Markdown Note)" style="height: 30px; width: 30px; min-width: 30px;">
+                <button type="button" id="btn-note" class="gtb-icon-btn" onclick="openNoteModal()" title="便签记事本" style="height: 30px; width: 30px; min-width: 30px;">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                 </button>
 
                 <!-- 🔄 一键刷新租户/工作区元数据 -->
-                <button type="button" id="gtb-btn-refresh" class="gtb-icon-btn" onclick="window.refreshGlobalContext(this)" title="刷新全局工作区与资产列表 (Sync Context)" style="height: 30px; width: 30px; min-width: 30px;">
+                <button type="button" id="gtb-btn-refresh" class="gtb-icon-btn" onclick="window.refreshGlobalContext(this)" title="刷新租户与工作区" style="height: 30px; width: 30px; min-width: 30px;">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
                 </button>
             </div>
         </header>
 
         <!-- 🔽 顶栏折叠后悬浮在顶部的展开把手 (Expand Handle Bar) -->
-        <div id="gtb-expand-handle" onclick="window.toggleGlobalTopbarCollapse()" title="折叠全局功能栏 (Collapse Global Topbar)">
+        <div id="gtb-expand-handle" onclick="window.toggleGlobalTopbarCollapse()" title="折叠顶栏">
             <svg class="gtb-handle-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
 
 
         <!-- ◀ 一级导航轨折叠后悬浮在页面左侧的展开把手 (Expand Handle for Rail) -->
-        <div id="rail-expand-handle" onclick="window.toggleAppRail('expand')" title="展开一级导航栏 (Expand Primary Rail)">
+        <div id="rail-expand-handle" onclick="window.toggleAppRail('expand')" title="展开导航栏">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </div>
 
@@ -484,31 +490,31 @@
             <!-- 1. Leftmost Navigation Rail (Expandable/Collapsible) -->
             <aside id="app-rail" class="app-rail glass-panel">
                 <div class="rail-top">
-                    <div class="rail-logo-wrap" id="rail-logo-toggle" onclick="window.toggleAppRail()" title="点击展开/折叠一级导航菜单 (Toggle 60px/175px)">
+                    <div class="rail-logo-wrap" id="rail-logo-toggle" onclick="window.toggleAppRail()" title="折叠/展开导航栏">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0;">
                             <rect x="3" y="12" width="5" height="9" fill="#F2C811"/>
                             <rect x="9" y="7" width="5" height="14" fill="#F2C811"/>
                             <rect x="15" y="2" width="5" height="19" fill="#F2C811"/>
                         </svg>
                         <span class="rail-logo-title">PBI Studio</span>
-                        <button type="button" id="rail-collapse-btn" class="rail-toggle-btn" onclick="event.stopPropagation(); window.toggleAppRail();" title="折回图标模式 (Collapse to Icon Mode)">
+                        <button type="button" id="rail-collapse-btn" class="rail-toggle-btn" onclick="event.stopPropagation(); window.toggleAppRail();" title="折叠为图标模式">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11 17 6 12 11 7"></polyline><polyline points="18 17 13 12 18 7"></polyline></svg>
                         </button>
                     </div>
                 <ul class="rail-menu-list">
-                    <li class="rail-item" id="rail-nav-workflows" data-module="workflows" title="⚡ 自动化工作流 (Workflows)">
+                    <li class="rail-item" id="rail-nav-workflows" data-module="workflows" title="自动化工作流">
                         <div class="rail-item-icon">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
                         </div>
                         <span class="rail-item-text">Workflows</span>
                     </li>
-                    <li class="rail-item" id="rail-nav-api_tree" data-module="api_tree" title="🌲 API 资源树 (API Explorer)">
+                    <li class="rail-item" id="rail-nav-api_tree" data-module="api_tree" title="API 资源树">
                         <div class="rail-item-icon">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
                         </div>
                         <span class="rail-item-text">API Explorer</span>
                     </li>
-                    <li class="rail-item" id="rail-nav-permission_blueprint" data-module="permission_blueprint" title="🕸️ 权限流转蓝图 (Permission Blueprint)">
+                    <li class="rail-item" id="rail-nav-permission_blueprint" data-module="permission_blueprint" title="权限流转蓝图">
                         <div class="rail-item-icon">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="3" y="3" width="6" height="6" rx="1.5"></rect>
@@ -522,25 +528,25 @@
                 </ul>
             </div>
             <div class="rail-bottom">
-                <button id="btn-keep-awake" class="rail-item" style="border:none;" title="保持连接防休眠 (Keep Awake)">
+                <button id="btn-keep-awake" class="rail-item" style="border:none;" title="防休眠保活">
                     <div class="rail-item-icon">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
                     </div>
                     <span class="rail-item-text">Keep Awake</span>
                 </button>
-                <button id="btn-settings" class="rail-item" style="border:none;" title="全局环境配置 (Global Settings)">
+                <button id="btn-settings" class="rail-item" style="border:none;" title="全局环境配置">
                     <div class="rail-item-icon">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                     </div>
                     <span class="rail-item-text">Settings</span>
                 </button>
-                <button id="btn-test-harness" class="rail-item" style="border:none;" title="自动化测试工作台 (Test Harness)">
+                <button id="btn-test-harness" class="rail-item" style="border:none;" title="自动化测试台">
                     <div class="rail-item-icon">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.31L4.62 18.5A2 2 0 0 0 6.35 21.5h11.3a2 2 0 0 0 1.73-3L14 9.31V2"></path><line x1="8.5" y1="2" x2="15.5" y2="2"></line><line x1="14" y1="9.3" x2="10" y2="9.3"></line></svg>
                     </div>
                     <span class="rail-item-text">QA Harness</span>
                 </button>
-                <button id="btn-version-info" class="rail-item" style="border:none;" title="版本与更新记录 (Version & Releases)" onclick="window.toggleVersionPopover(event)">
+                <button id="btn-version-info" class="rail-item" style="border:none;" title="版本与更新记录" onclick="window.toggleVersionPopover(event)">
                     <div class="rail-item-icon">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="10"></circle>
@@ -550,14 +556,14 @@
                     </div>
                     <span class="rail-item-text">Version</span>
                 </button>
-                <button id="theme-toggle-btn" class="rail-item" style="border:none;" title="切换主题 (Toggle Theme)">
+                <button id="theme-toggle-btn" class="rail-item" style="border:none;" title="切换主题">
                     <div class="rail-item-icon">
                         <svg id="theme-icon-sun" style="display: none;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
                         <svg id="theme-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                     </div>
                     <span class="rail-item-text">Theme</span>
                 </button>
-                <button id="btn-logout" class="rail-item" style="border:none; color: #f87171;" title="退出登录 (Logout)">
+                <button id="btn-logout" class="rail-item" style="border:none; color: #f87171;" title="退出登录">
                     <div class="rail-item-icon">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -616,17 +622,17 @@
                 <div class="nav-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                     <p class="nav-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
                         <span>🌲 API 资源树</span>
-                        <span style="font-size: 0.62rem; font-weight: 800; background: rgba(99, 102, 241, 0.18); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.35); padding: 1px 5px; border-radius: 4px; letter-spacing: 0.5px;" title="已启用 Laya 本地决策引擎 (口语搜索秒级直达)">LAYA POWERED</span>
+                        <span style="font-size: 0.62rem; font-weight: 800; background: rgba(99, 102, 241, 0.18); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.35); padding: 1px 5px; border-radius: 4px; letter-spacing: 0.5px;" title="Laya 智能搜索已就绪">LAYA POWERED</span>
                     </p>
                     <span class="api-count-badge" title="Total APIs">共 <span id="total-api-count">0</span> 个</span>
                 </div>
                 <div style="display: flex; gap: 6px; margin-bottom: 0.5rem; align-items: center;">
                     <input type="search" id="api-search-input" placeholder="搜索 API 或输入口语需求 (Laya 智能识别)..." class="modern-input" style="flex: 1; border-radius: 6px; min-width: 0;">
-                    <button id="btn-laya-intent-search" class="btn-laya-intent" title="Laya 智能意图直达 (输入口语即可自动定位并高亮 API 目录)" type="button">
+                    <button id="btn-laya-intent-search" class="btn-laya-intent" title="Laya 意图直达" type="button">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v4m0 12v4M2 12h4m12 0h4"></path></svg>
                         <span>Laya</span>
                     </button>
-                    <button id="toggle-all-categories-btn" class="icon-btn" title="全部折叠 / 展开 (Expand / Collapse All)" type="button" style="padding: 0 8px; height: 34px;">
+                    <button id="toggle-all-categories-btn" class="icon-btn" title="全部折叠/展开" type="button" style="padding: 0 8px; height: 34px;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg>
                     </button>
                 </div>
@@ -670,7 +676,7 @@
                 </div>
                 <!-- Selected API Card in API Explorer -->
                 <div id="selected-api-info" class="selected-api-info glass-panel" style="display: none; padding: 0.9rem; margin-top: 0.5rem; flex-shrink: 0; background: var(--input-bg); border-radius: 8px; word-break: break-word; overflow-wrap: anywhere;">
-                    <div id="info-header-row" class="info-header-row" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.25rem; cursor: pointer; user-select: none;" title="点击最小化/最大化 (Click to toggle)">
+                    <div id="info-header-row" class="info-header-row" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.25rem; cursor: pointer; user-select: none;" title="最小化/最大化">
                         <div style="font-size: 0.75rem; color: var(--accent);">CURRENT SELECTION</div>
                         <button id="toggle-info-btn" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 0 4px; font-size: 1.2rem; line-height: 1;">&minus;</button>
                     </div>
@@ -705,22 +711,6 @@
                 <span id="pb-tab-user" class="active" style="display: none;"></span>
                 <span id="pb-tab-model" style="display: none;"></span>
 
-                <!-- 顶栏真实数据联动状态条 (跨透视常驻) -->
-                <div class="pb-real-sync-card glass-panel" style="padding: 8px 10px; border-radius: 8px; margin-bottom: 0.75rem; background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25); display: flex; flex-direction: column; gap: 6px; box-sizing: border-box; flex-shrink: 0;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 0.72rem; font-weight: 600; color: #a5b4fc; display: flex; align-items: center; gap: 4px;">
-                            <span>🏢 真实顶栏租户环境</span>
-                        </span>
-                        <button type="button" id="pb-btn-sync-real" class="btn-action-primary" onclick="window.PermissionBlueprint.syncGlobalModel(true)" title="从顶栏同步当前真实工作区与模型数据" style="padding: 3px 8px; font-size: 0.70rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px;">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-                            <span>同步</span>
-                        </button>
-                    </div>
-                    <div style="font-size: 0.68rem; color: var(--text-secondary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                        当前工作区：<span id="pb-sync-ws-name" style="color: var(--text-primary); font-weight: 500;">未同步 (点击右上方按钮同步)</span>
-                    </div>
-                </div>
-
                 <!-- 滚动配置区 -->
                 <!-- 滚动配置区 -->
                 <div class="pb-sidebar-scroll" style="flex: 1; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 10px; padding: 0; width: 100%; box-sizing: border-box;">
@@ -747,7 +737,7 @@
                                         <input type="text" id="pb-user-search-input" placeholder="搜索用户姓名/UPN/角色..." oninput="window.PermissionBlueprint.filterUsers(this.value)" autocomplete="off">
                                     </div>
                                     <div class="gtb-ws-actions">
-                                        <button type="button" class="gtb-ws-btn-sm" onclick="window.PermissionBlueprint.clearSimulatedUser()" title="清空当前选中的模拟用户主体，恢复中立基准拓扑">清空</button>
+                                        <button type="button" class="gtb-ws-btn-sm" onclick="window.PermissionBlueprint.clearSimulatedUser()" title="清空模拟用户">清空</button>
                                     </div>
                                 </div>
                                 <div class="gtb-ws-list" id="pb-user-list">
@@ -777,10 +767,6 @@
                                 <span>🛡️</span>
                                 <span>当前层级具体有效权限</span>
                             </label>
-                            <div style="display: flex; align-items: center; gap: 6px;">
-                                <span id="pb-perm-summary-badge" class="gtb-auth-badge" style="font-size: 0.65rem; padding: 2px 6px;">实时穿透</span>
-                                <button type="button" id="pb-btn-switch-user-assets" class="gtb-ws-btn-sm" onclick="window.PermissionBlueprint.switchMainTab('user_assets')" title="在主工作区切换为 6 模块全景流转矩阵" style="padding: 1px 6px; font-size: 0.65rem; border-radius: 4px; border: 1px solid rgba(99, 102, 241, 0.4); color: #818cf8; background: rgba(99, 102, 241, 0.1); cursor: pointer;">全景链路 ↗</button>
-                            </div>
                         </div>
                         <!-- 功能预设筛选胶囊 (导出、GAC、RLS、OLS、建模构建) -->
                         <div id="pb-feature-capsules" class="pb-feature-capsules" style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px dashed var(--overlay-10);">
@@ -844,16 +830,8 @@
                             <h3 id="wf-board-title" style="font-size: 0.95rem; margin: 0; white-space: nowrap; color: var(--text-primary); font-weight: 700;">⚡ Report &amp; Dataset Datasource Inspector</h3>
                         </div>
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <button type="button" class="btn-quick-switch-bp" onclick="window.switchAppModule('permission_blueprint');" style="background: rgba(99, 102, 241, 0.14); border: 1px solid rgba(99, 102, 241, 0.35); color: #818cf8; padding: 4px 10px; border-radius: 6px; font-size: 0.74rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s;" title="快速切换到权限流转蓝图与用户全景权限链路">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1.5"></rect><rect x="15" y="3" width="6" height="6" rx="1.5"></rect><rect x="9" y="15" width="6" height="6" rx="1.5"></rect></svg>
-                                <span>🕸️ 全景权限链路卡片</span>
-                            </button>
-                            <button type="button" class="icon-btn zen-mode-btn" onclick="window.toggleZenMode()" title="开启沉浸模式 (Focus Mode)" style="width: 28px; height: 28px; padding: 0; border-radius: 6px; border: 1px solid var(--overlay-10); background: transparent; transition: all 0.2s; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-expand"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-collapse" style="display: none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
-                            </button>
                             <!-- Run Workflow Primary Action Button -->
-                            <button id="wf-btn-runall" class="btn-wf-lg" type="button" onclick="window.triggerWorkflowRun()" title="Run Selected Workflow" style="height: 28px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; font-weight: 600; font-size: 0.78rem;">
+                            <button id="wf-btn-runall" class="btn-wf-lg" type="button" onclick="window.triggerWorkflowRun()" title="执行工作流" style="height: 28px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; font-weight: 600; font-size: 0.78rem;">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>
                                 <span>Run Workflow</span>
                             </button>
@@ -918,7 +896,7 @@
 
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">Workspace ID
 
-                                <button type="button" id="wf-inspect-refresh-ws-btn" onclick="window.wfInspectRefreshWorkspace(this)" title="刷新工作区列表 (Refresh Workspace List)" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+                                <button type="button" id="wf-inspect-refresh-ws-btn" onclick="window.wfInspectRefreshWorkspace(this)" title="刷新工作区" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
 
                             </label>
 
@@ -936,7 +914,7 @@
 
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">Report ID (Optional)
 
-                                <button type="button" id="wf-inspect-refresh-rep-btn" onclick="window.wfInspectRefreshReport(this)" title="刷新报表列表 (Refresh Report List)" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+                                <button type="button" id="wf-inspect-refresh-rep-btn" onclick="window.wfInspectRefreshReport(this)" title="刷新报表" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
 
                             </label>
 
@@ -958,7 +936,7 @@
 
                             <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">Dataset (Semantic Model)
 
-                                <button type="button" id="wf-inspect-refresh-ds-btn" onclick="window.wfInspectRefreshDataset(this)" title="刷新语义模型列表 (Refresh Dataset List)" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+                                <button type="button" id="wf-inspect-refresh-ds-btn" onclick="window.wfInspectRefreshDataset(this)" title="刷新语义模型" class="wf-inline-refresh-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
 
                             </label>
 
@@ -1012,11 +990,11 @@
 
                                     <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 6px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                                         <div style="display: flex; align-items: center; gap: 10px;">
-                                            <button type="button" onclick="window.openInspectResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="Click to view full datasource &amp; M queries modal">
+                                            <button type="button" onclick="window.openInspectResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="查看完整数据源与 M 查询">
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
                                                 View Datasource Inspector Table
                                             </button>
-                                            <button type="button" onclick="window.LineageExplorer.openModal()" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2)); border: 1px solid var(--accent); border-radius: 6px; padding: 4px 10px; color: var(--accent); font-size: 0.76rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all 0.2s ease;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='none'" title="基于每个表的 M 表达式与模型关系，生成报表全景血缘 DAG 图并高亮追溯上下游关系">
+                                            <button type="button" onclick="window.LineageExplorer.openModal()" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2)); border: 1px solid var(--accent); border-radius: 6px; padding: 4px 10px; color: var(--accent); font-size: 0.76rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all 0.2s ease;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='none'" title="生成全景血缘拓扑图">
                                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
                                                 🕸️ 查看全景血缘 DAG 图 (Lineage DAG)
                                             </button>
@@ -1350,7 +1328,7 @@
 
                                         <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
 
-                                            <button type="button" onclick="window.openRvcResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="Click to expand results in a large resizable panel">
+                                            <button type="button" onclick="window.openRvcResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="放大查看结果">
 
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
 
@@ -1412,7 +1390,7 @@
 
                                         <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
 
-                                            <button type="button" onclick="window.openPermsResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="Click to expand results in a large resizable panel">
+                                            <button type="button" onclick="window.openPermsResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="放大查看结果">
 
                                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
 
@@ -1456,7 +1434,7 @@
                                         </label>
                                         <div class="wf-gum-scope-container" id="wf-gum-scope-container">
                                             <!-- 选项1：当前租户级别 (Tenant Level - 租户单选) -->
-                                            <div class="wf-gum-scope-pill active" id="wf-gum-scope-tenant" onclick="window.handleGumScopeChange('tenant')" title="当前租户级别：穿透全租户所有工作区与模型进行全局穿透审计 (继承全局顶栏租户)">
+                                            <div class="wf-gum-scope-pill active" id="wf-gum-scope-tenant" onclick="window.handleGumScopeChange('tenant')" title="租户级全量审计">
                                                 <div class="wf-gum-scope-radio">
                                                     <div class="wf-gum-radio-dot"></div>
                                                 </div>
@@ -1472,7 +1450,7 @@
                                             </div>
 
                                             <!-- 选项2：当前工作区级别 (Workspace Level - 工作区多选) -->
-                                            <div class="wf-gum-scope-pill" id="wf-gum-scope-workspaces" onclick="window.handleGumScopeChange('workspaces')" title="当前工作区级别：仅对全局功能区选定的工作区进行细粒度穿透审计 (支持多选/全选)">
+                                            <div class="wf-gum-scope-pill" id="wf-gum-scope-workspaces" onclick="window.handleGumScopeChange('workspaces')" title="工作区级穿透审计">
                                                 <div class="wf-gum-scope-radio">
                                                     <div class="wf-gum-radio-dot"></div>
                                                 </div>
@@ -1767,7 +1745,7 @@
 
                                     <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
 
-                                        <button type="button" onclick="window.openDpmResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="Click to expand partitions in a large resizable table modal">
+                                        <button type="button" onclick="window.openDpmResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="放大查看分区表">
 
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
 
@@ -1951,7 +1929,7 @@
 
                             </button>
 
-                            <button type="button" id="pbi-embed-max-btn" class="pbi-action-btn" onclick="window.togglePbiEmbedFullscreen()" title="Maximize / Fullscreen Preview">
+                            <button type="button" id="pbi-embed-max-btn" class="pbi-action-btn" onclick="window.togglePbiEmbedFullscreen()" title="全屏放大预览">
 
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
 
@@ -1987,7 +1965,7 @@
 
                                     <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
 
-                                        <button type="button" onclick="window.openDependencyResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="Click to expand results in a large resizable panel">
+                                        <button type="button" onclick="window.openDependencyResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="放大查看结果">
 
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
 
@@ -2129,7 +2107,7 @@
 
                                     <!-- 🔄 刷新按钮 (最右侧 6px，悬浮浮现，带动态旋转反馈) -->
 
-                                    <button type="button" id="wf-local-instance-refresh-btn" class="wf-copy-btn" title="Refresh Local &amp; Cloud Models" onclick="window.fetchLocalModelInstances()" style="right: 6px; color: var(--accent);">
+                                    <button type="button" id="wf-local-instance-refresh-btn" class="wf-copy-btn" title="刷新本地与云端模型" onclick="window.fetchLocalModelInstances()" style="right: 6px; color: var(--accent);">
 
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
 
@@ -2213,7 +2191,7 @@
 
                             <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
 
-                                <button type="button" onclick="window.openDaxResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="Click to expand results in a large resizable panel">
+                                <button type="button" onclick="window.openDaxResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="放大查看结果">
 
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
 
@@ -2249,19 +2227,11 @@
                         </h2>
 
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <button type="button" class="btn-quick-switch-bp" onclick="window.switchAppModule('permission_blueprint');" style="background: rgba(99, 102, 241, 0.14); border: 1px solid rgba(99, 102, 241, 0.35); color: #818cf8; padding: 4px 10px; border-radius: 6px; font-size: 0.74rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s;" title="快速切换到权限流转蓝图与用户全景权限链路">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1.5"></rect><rect x="15" y="3" width="6" height="6" rx="1.5"></rect><rect x="9" y="15" width="6" height="6" rx="1.5"></rect></svg>
-                                <span>🕸️ 全景权限链路卡片</span>
-                            </button>
-                            <button type="button" class="icon-btn zen-mode-btn" onclick="window.toggleZenMode()" title="开启沉浸模式 (Focus Mode)" style="width: 26px; height: 26px; padding: 0; border-radius: 6px; border: 1px solid var(--overlay-10); background: transparent; transition: all 0.2s; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-expand"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-collapse" style="display: none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
-                            </button>
                             <!-- Bookmark Section (Right Panel) -->
 
                             <div id="right-panel-bm-section" style="display: none; align-items: center; gap: 8px;">
 
-                                <button id="right-panel-bm-star" class="bookmark-btn" style="margin: 0; display: flex; align-items: center; justify-content: center; height: 26px; width: 26px; padding: 0;" title="切换收藏 (Toggle Bookmark)">
+                                <button id="right-panel-bm-star" class="bookmark-btn" style="margin: 0; display: flex; align-items: center; justify-content: center; height: 26px; width: 26px; padding: 0;" title="切换收藏">
 
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
 
@@ -2412,7 +2382,7 @@
 
                             <div style="display: flex; gap: 8px; flex: 1; position: relative; min-width: 0;">
 
-                                <button id="history-request-btn" class="icon-btn" title="最近的自由请求历史 (History)" type="button" style="flex: 1; height: 40px; padding: 0 4px; justify-content: center; box-sizing: border-box; overflow: hidden; min-width: 0;">
+                                <button id="history-request-btn" class="icon-btn" title="请求历史" type="button" style="flex: 1; height: 40px; padding: 0 4px; justify-content: center; box-sizing: border-box; overflow: hidden; min-width: 0;">
 
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
 
@@ -2434,7 +2404,7 @@
 
                                 </div>
 
-                                <button id="new-request-btn" class="icon-btn" title="新建空白请求 (New Blank Request)" type="button" style="color: var(--info); border-color: var(--info-border); flex: 1; height: 40px; padding: 0 4px; justify-content: center; box-sizing: border-box; overflow: hidden; min-width: 0;">
+                                <button id="new-request-btn" class="icon-btn" title="新建空白请求" type="button" style="color: var(--info); border-color: var(--info-border); flex: 1; height: 40px; padding: 0 4px; justify-content: center; box-sizing: border-box; overflow: hidden; min-width: 0;">
 
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
 
@@ -2448,7 +2418,7 @@
 
                             <div style="display: flex; gap: 8px; flex: 1; min-width: 0;">
 
-                                <button id="toggle-method-btn" class="icon-btn" title="Unlock/Lock Method Dropdown" type="button" style="flex: 1; height: 40px; padding: 0 4px; justify-content: center; box-sizing: border-box; overflow: hidden; min-width: 0;">
+                                <button id="toggle-method-btn" class="icon-btn" title="锁定/解锁请求方式" type="button" style="flex: 1; height: 40px; padding: 0 4px; justify-content: center; box-sizing: border-box; overflow: hidden; min-width: 0;">
 
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
 
@@ -2456,7 +2426,7 @@
 
                                 </button>
 
-                                <button id="reset-request-btn" class="icon-btn" title="Undo / Reset to Original Selected API" type="button" style="flex: 1; height: 40px; padding: 0 4px; justify-content: center; box-sizing: border-box; overflow: hidden; min-width: 0;">
+                                <button id="reset-request-btn" class="icon-btn" title="重置为初始 API" type="button" style="flex: 1; height: 40px; padding: 0 4px; justify-content: center; box-sizing: border-box; overflow: hidden; min-width: 0;">
 
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
 
@@ -2520,7 +2490,7 @@
 
                 <div class="body-editor-container is-collapsed" id="req-body-container" style="position: relative;">
 
-                    <div class="editor-header" id="req-body-header" style="cursor: pointer; user-select: none;" onclick="window.toggleRequestBodyCollapse()" title="点击展开/折叠 Request Body (Click to toggle)">
+                    <div class="editor-header" id="req-body-header" style="cursor: pointer; user-select: none;" onclick="window.toggleRequestBodyCollapse()" title="折叠/展开请求体">
 
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <svg id="req-body-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -2538,7 +2508,7 @@
 
                             </button>
 
-                            <button id="toggle-req-body-btn" class="icon-btn" title="展开 / 折叠 (Toggle Request Body)" type="button" onclick="window.toggleRequestBodyCollapse()" style="padding: 2px 8px; font-size: 0.72rem; color: var(--text-secondary); border: 1px solid var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer;">
+                            <button id="toggle-req-body-btn" class="icon-btn" title="折叠/展开请求体" type="button" onclick="window.toggleRequestBodyCollapse()" style="padding: 2px 8px; font-size: 0.72rem; color: var(--text-secondary); border: 1px solid var(--overlay-10); border-radius: 4px; background: transparent; cursor: pointer;">
                                 <span>展开</span>
                             </button>
 
@@ -2574,7 +2544,7 @@
 
                         <div id="tree-expand-toggles" style="display: none; align-items: center; margin-right: 8px; flex-shrink: 0;">
 
-                            <button id="tree-toggle-all-btn" class="icon-btn" title="展开 / 折叠 (Expand / Collapse All)" style="padding: 2px 4px; color: var(--text-secondary); background: transparent; border: 1px solid var(--panel-border); border-radius: 4px; cursor: pointer; display: flex; align-items: center;">
+                            <button id="tree-toggle-all-btn" class="icon-btn" title="全部折叠/展开" style="padding: 2px 4px; color: var(--text-secondary); background: transparent; border: 1px solid var(--panel-border); border-radius: 4px; cursor: pointer; display: flex; align-items: center;">
 
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
 
@@ -2658,11 +2628,11 @@
                                     <span>⚡ 脉冲</span>
                                 </button>
                                 <div style="display: flex; align-items: center; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; overflow: hidden; height: 28px;">
-                                    <button type="button" class="btn-tool-icon" onclick="window.PermissionBlueprint.zoomCanvas(-0.15)" title="缩小画布 (Zoom Out)" style="width: 28px; height: 100%; border: none; background: transparent; cursor: pointer; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                                    <button type="button" class="btn-tool-icon" onclick="window.PermissionBlueprint.zoomCanvas(-0.15)" title="缩小画布" style="width: 28px; height: 100%; border: none; background: transparent; cursor: pointer; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
                                     <span id="pb-zoom-label" style="font-size: 0.70rem; padding: 0 6px; min-width: 42px; text-align: center; color: var(--text-primary); font-weight: 600; font-family: monospace;">100%</span>
-                                    <button type="button" class="btn-tool-icon" onclick="window.PermissionBlueprint.zoomCanvas(0.15)" title="放大画布 (Zoom In)" style="width: 28px; height: 100%; border: none; background: transparent; cursor: pointer; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                                    <button type="button" class="btn-tool-icon" onclick="window.PermissionBlueprint.zoomCanvas(0.15)" title="放大画布" style="width: 28px; height: 100%; border: none; background: transparent; cursor: pointer; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
                                 </div>
-                                <button type="button" id="pb-btn-locate-all" class="btn-wf-sm" onclick="window.PermissionBlueprint.locateAndFitAllNodes()" title="聚焦全景：一键居中适配所有卡片" style="height: 28px; padding: 0 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer;">
+                                <button type="button" id="pb-btn-locate-all" class="btn-wf-sm" onclick="window.PermissionBlueprint.locateAndFitAllNodes()" title="适配居中全景" style="height: 28px; padding: 0 8px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer;">
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
                                     <span>适应全屏</span>
                                 </button>
@@ -2674,7 +2644,7 @@
 
                             <!-- B. 矩阵模式专属工具栏 (切换到矩阵时显示) -->
                             <div id="pb-matrix-toolbar" style="display: none; align-items: center; gap: 8px;">
-                                <button type="button" id="pb-btn-matrix-fit" class="btn-wf-sm" onclick="window.PermissionBlueprint.toggleMatrixFitToScreen(this)" title="切换一屏全览 (Fit to Screen)：自适应等比缩放矩阵以在非全屏下一屏完整呈现 8 列" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0;">
+                                <button type="button" id="pb-btn-matrix-fit" class="btn-wf-sm" onclick="window.PermissionBlueprint.toggleMatrixFitToScreen(this)" title="自适应一屏全览" style="height: 28px; padding: 0 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--text-primary); cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0;">
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
                                     <span id="pb-matrix-fit-label">🔍 一屏全览</span>
                                 </button>
@@ -2700,13 +2670,7 @@
                                     <span id="pb-btn-laya-badge" style="font-size: 0.6rem; color: #818cf8; font-weight: 800; background: rgba(99, 102, 241, 0.18); border: 1px solid rgba(99, 102, 241, 0.35); padding: 0 4px; border-radius: 3px; letter-spacing: 0.5px; white-space: nowrap;">LAYA</span>
                                 </button>
                             </div>
-                        </div>
-
-                    <!-- 🌐 顶层绝对常驻全屏模式切换按钮：脱离内部水平滚动容器，100% 永远固定在顶栏最右侧，绝不被任何内部长按钮顶出视口！ -->
-                    <button type="button" id="pb-global-zen-btn" class="icon-btn zen-mode-btn" onclick="window.toggleZenMode()" title="沉浸全屏模式 (Zen Mode)" style="width: 28px; height: 28px; padding: 0; border-radius: 6px; border: 1px solid var(--overlay-10); background: transparent; transition: all 0.2s; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-left: 8px; z-index: 25;">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-expand"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-collapse" style="display: none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
-                    </button>
+                    </div>
                 </div>
 
                 <!-- 1. 蓝图主画布视口 (Canvas Viewport - 完整保留交互与连线) -->
@@ -2839,10 +2803,10 @@
                                     <!-- Dropdown items dynamically populated here -->
                                 </div>
                             </div>
-                            <button type="button" id="btn-update-snapshot" class="icon-btn" title="更新覆盖当前快照 (Update Current Profile)" style="height: 29px; width: 30px; padding: 0; border-radius: 6px; border: 1px solid var(--overlay-10); color: #10b981; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; opacity: 0.38; cursor: not-allowed;" disabled>
+                            <button type="button" id="btn-update-snapshot" class="icon-btn" title="更新当前快照" style="height: 29px; width: 30px; padding: 0; border-radius: 6px; border: 1px solid var(--overlay-10); color: #10b981; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; opacity: 0.38; cursor: not-allowed;" disabled>
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                             </button>
-                            <button type="button" id="btn-create-snapshot" class="icon-btn" title="另存为新快照 (Save As New Profile)" style="height: 29px; width: 30px; padding: 0; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s;">
+                            <button type="button" id="btn-create-snapshot" class="icon-btn" title="另存为新快照" style="height: 29px; width: 30px; padding: 0; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s;">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                             </button>
                         </div>
@@ -2865,7 +2829,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <label class="laya-toggle-switch" title="一键开启或关闭 Laya 智能决策引擎">
+                            <label class="laya-toggle-switch" title="切换 Laya 决策引擎">
                                 <input type="checkbox" id="laya-global-switch" checked onchange="window.toggleLayaEngine(this.checked)">
                                 <span class="laya-toggle-slider"></span>
                             </label>
@@ -2921,15 +2885,15 @@
                             <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 6px; border-top: 1px dashed var(--panel-border); flex-wrap: wrap;">
                                 <span style="font-size: 0.66rem; color: var(--text-secondary);">若需新环境或更换账号，点击登录通道：</span>
                                 <div style="display: flex; align-items: center; gap: 5px; flex-shrink: 0;">
-                                    <button type="button" id="btn-browser-interactive-login" onclick="window.startInteractiveBrowserLogin()" class="btn-action-primary" title="推荐：使用浏览器调起微软标准登录，支持手机扫码与通行密钥，长效 90 天自动刷新" style="padding: 3px 8px; font-size: 0.7rem; border-radius: 5px; display: inline-flex; align-items: center; gap: 4px; background: linear-gradient(135deg, #0284c7, #0ea5e9); color: #fff; border: none; cursor: pointer; box-shadow: 0 1px 6px rgba(14, 165, 233, 0.25); transition: all 0.2s;">
+                                    <button type="button" id="btn-browser-interactive-login" onclick="window.startInteractiveBrowserLogin()" class="btn-action-primary" title="标准交互登录 (推荐)" style="padding: 3px 8px; font-size: 0.7rem; border-radius: 5px; display: inline-flex; align-items: center; gap: 4px; background: linear-gradient(135deg, #0284c7, #0ea5e9); color: #fff; border: none; cursor: pointer; box-shadow: 0 1px 6px rgba(14, 165, 233, 0.25); transition: all 0.2s;">
                                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
                                         <span>浏览器登录</span>
                                     </button>
-                                    <button type="button" id="btn-paste-token-login" onclick="window.promptAndApplyBearerToken()" class="btn-action-secondary" title="企业条件访问(CA)受限时，直接粘贴从已登录浏览器复制的 Token 快速绕过" style="padding: 3px 7px; font-size: 0.7rem; border-radius: 5px; display: inline-flex; align-items: center; gap: 4px; background: rgba(56, 189, 248, 0.1); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); cursor: pointer; transition: all 0.2s;">
+                                    <button type="button" id="btn-paste-token-login" onclick="window.promptAndApplyBearerToken()" class="btn-action-secondary" title="手动粘贴访问令牌" style="padding: 3px 7px; font-size: 0.7rem; border-radius: 5px; display: inline-flex; align-items: center; gap: 4px; background: rgba(56, 189, 248, 0.1); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); cursor: pointer; transition: all 0.2s;">
                                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
                                         <span>粘贴 Token</span>
                                     </button>
-                                    <button type="button" id="btn-device-code-login" onclick="window.startDeviceCodeLoginFlow()" class="btn-action-secondary" title="备用方式：设备代码流 (若企业未拦截)" style="padding: 3px 7px; font-size: 0.7rem; border-radius: 5px; display: inline-flex; align-items: center; gap: 4px; background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); border: 1px solid var(--panel-border); cursor: pointer; transition: all 0.2s;">
+                                    <button type="button" id="btn-device-code-login" onclick="window.startDeviceCodeLoginFlow()" class="btn-action-secondary" title="设备代码登录 (备用)" style="padding: 3px 7px; font-size: 0.7rem; border-radius: 5px; display: inline-flex; align-items: center; gap: 4px; background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); border: 1px solid var(--panel-border); cursor: pointer; transition: all 0.2s;">
                                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
                                         <span>设备码</span>
                                     </button>
@@ -3030,7 +2994,7 @@
                     <div style="background: var(--input-bg-light); padding: 8px; border-radius: 6px; border: 1px solid var(--panel-border); margin-bottom: 12px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                             <h4 style="margin: 0; font-size: 0.75rem; color: var(--badge-custom-text);">SQL Database</h4>
-                            <button type="button" id="verify-sql-btn" title="验证 SQL 数据库连接 (Verify SQL)" class="btn-verify" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
+                            <button type="button" id="verify-sql-btn" title="验证 SQL 连接" class="btn-verify" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
                             </button>
                         </div>
@@ -3043,9 +3007,9 @@
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="toggleSettingsSection('workspace-list', this)" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▶</span> PBI_WORKSPACES (工作区字典 / groupId) <span id="workspace-count" style="margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 0.7rem; background: var(--overlay-10); color: var(--accent); font-weight: 600;">(0 rows)</span></label>
                             <div style="display: flex; gap: 6px;">
-                                <button type="button" onclick="verifySelectedGuid('groups', 'workspace-list', this)" class="btn-verify" title="验证选中工作区 (Verify Selected)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></button>
-                                <button type="button" onclick="scanItems('workspaces', this)" class="btn-scan" title="从云端扫描同步工作区 (Scan Workspaces)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>
-                                <button type="button" onclick="addListRow('workspace-list')" class="btn-add-row" title="新增工作区配置 (Add Workspace)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                                <button type="button" onclick="verifySelectedGuid('groups', 'workspace-list', this)" class="btn-verify" title="验证选中项" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></button>
+                                <button type="button" onclick="scanItems('workspaces', this)" class="btn-scan" title="云端扫描工作区" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>
+                                <button type="button" onclick="addListRow('workspace-list')" class="btn-add-row" title="新增工作区" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
                             </div>
                         </div>
                         <!-- Grid Column Headers with Sort & Resizable Handles -->
@@ -3053,9 +3017,9 @@
                             <div style="min-width: fit-content;">
                                 <div class="grid-header-bar" data-list-id="workspace-list" style="display: none; gap: 8px; align-items: center; padding: 4px 0; margin-top: 6px; border-bottom: 1px solid var(--panel-border); font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); user-select: none;">
                                     <span style="width: 18px; flex-shrink: 0;"></span>
-                                    <div class="grid-col-header" data-col="alias" onclick="sortSettingsList('workspace-list', 'alias', event)" style="width: 180px; min-width: 120px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Workspace (工作区)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'workspace-list', 'alias')"></span></span></div>
-                                    <div class="grid-col-header" data-col="id" onclick="sortSettingsList('workspace-list', 'id', event)" style="width: 320px; min-width: 200px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>GUID (标识符)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'workspace-list', 'id')"></span></span></div>
-                                    <div class="grid-col-header" data-col="type" onclick="sortSettingsList('workspace-list', 'type', event)" style="width: 210px; min-width: 160px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Type & State (属性与状态)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'workspace-list', 'type')"></span></span></div>
+                                    <div class="grid-col-header" data-col="alias" onclick="sortSettingsList('workspace-list', 'alias', event)" style="width: 180px; min-width: 120px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="排序与调整列宽"><span>Workspace (工作区)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'workspace-list', 'alias')"></span></span></div>
+                                    <div class="grid-col-header" data-col="id" onclick="sortSettingsList('workspace-list', 'id', event)" style="width: 320px; min-width: 200px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="排序与调整列宽"><span>GUID (标识符)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'workspace-list', 'id')"></span></span></div>
+                                    <div class="grid-col-header" data-col="type" onclick="sortSettingsList('workspace-list', 'type', event)" style="width: 210px; min-width: 160px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="排序与调整列宽"><span>Type & State (属性与状态)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'workspace-list', 'type')"></span></span></div>
                                     <span style="width: 20px; flex-shrink: 0;"></span>
                                 </div>
                                 <div id="workspace-list" style="display: none; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
@@ -3066,9 +3030,9 @@
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="toggleSettingsSection('dataset-list', this)" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▶</span> PBI_DATASETS (数据集字典 / datasetId) <span id="dataset-count" style="margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 0.7rem; background: var(--overlay-10); color: var(--accent); font-weight: 600;">(0 rows)</span></label>
                             <div style="display: flex; gap: 6px;">
-                                <button type="button" onclick="verifySelectedGuid('datasets', 'dataset-list', this)" class="btn-verify" title="验证选中语义模型 (Verify Selected)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></button>
-                                <button type="button" onclick="scanItems('datasets', this)" class="btn-scan" title="从云端扫描同步语义模型 (Scan Datasets)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>
-                                <button type="button" onclick="addListRow('dataset-list')" class="btn-add-row" title="新增语义模型配置 (Add Dataset)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                                <button type="button" onclick="verifySelectedGuid('datasets', 'dataset-list', this)" class="btn-verify" title="验证选中项" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></button>
+                                <button type="button" onclick="scanItems('datasets', this)" class="btn-scan" title="云端扫描模型" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>
+                                <button type="button" onclick="addListRow('dataset-list')" class="btn-add-row" title="新增语义模型" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
                             </div>
                         </div>
                         <!-- Grid Column Headers with Sort & Resizable Handles -->
@@ -3076,9 +3040,9 @@
                             <div style="min-width: fit-content;">
                                 <div class="grid-header-bar" data-list-id="dataset-list" style="display: none; gap: 8px; align-items: center; padding: 4px 0; margin-top: 6px; border-bottom: 1px solid var(--panel-border); font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); user-select: none;">
                                     <span style="width: 18px; flex-shrink: 0;"></span>
-                                    <div class="grid-col-header" data-col="alias" onclick="sortSettingsList('dataset-list', 'alias', event)" style="width: 180px; min-width: 120px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Dataset (语义模型)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'dataset-list', 'alias')"></span></span></div>
-                                    <div class="grid-col-header" data-col="id" onclick="sortSettingsList('dataset-list', 'id', event)" style="width: 320px; min-width: 200px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>GUID (标识符)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'dataset-list', 'id')"></span></span></div>
-                                    <div class="grid-col-header" data-col="type" onclick="sortSettingsList('dataset-list', 'type', event)" style="width: 160px; min-width: 140px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Type & State (属性与状态)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'dataset-list', 'type')"></span></span></div>
+                                    <div class="grid-col-header" data-col="alias" onclick="sortSettingsList('dataset-list', 'alias', event)" style="width: 180px; min-width: 120px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="排序与调整列宽"><span>Dataset (语义模型)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'dataset-list', 'alias')"></span></span></div>
+                                    <div class="grid-col-header" data-col="id" onclick="sortSettingsList('dataset-list', 'id', event)" style="width: 320px; min-width: 200px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="排序与调整列宽"><span>GUID (标识符)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'dataset-list', 'id')"></span></span></div>
+                                    <div class="grid-col-header" data-col="type" onclick="sortSettingsList('dataset-list', 'type', event)" style="width: 160px; min-width: 140px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="排序与调整列宽"><span>Type & State (属性与状态)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'dataset-list', 'type')"></span></span></div>
                                     <span style="width: 20px; flex-shrink: 0;"></span>
                                 </div>
                                 <div id="dataset-list" style="display: none; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
@@ -3089,9 +3053,9 @@
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="toggleSettingsSection('report-list', this)" title="Click to toggle collapse/expand"><span class="collapse-icon" style="font-size: 0.7rem; color: var(--text-secondary);">▶</span> PBI_REPORTS (报表字典 / reportId) <span id="report-count" style="margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 0.7rem; background: var(--overlay-10); color: var(--accent); font-weight: 600;">(0 rows)</span></label>
                             <div style="display: flex; gap: 6px;">
-                                <button type="button" onclick="verifySelectedGuid('reports', 'report-list', this)" class="btn-verify" title="验证选中报表 (Verify Selected)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></button>
-                                <button type="button" onclick="scanItems('reports', this)" class="btn-scan" title="从云端扫描同步报表 (Scan Reports)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>
-                                <button type="button" onclick="addListRow('report-list')" class="btn-add-row" title="新增报表配置 (Add Report)" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                                <button type="button" onclick="verifySelectedGuid('reports', 'report-list', this)" class="btn-verify" title="验证选中项" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></button>
+                                <button type="button" onclick="scanItems('reports', this)" class="btn-scan" title="云端扫描报表" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>
+                                <button type="button" onclick="addListRow('report-list')" class="btn-add-row" title="新增报表" style="height: 22px; width: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
                             </div>
                         </div>
                         <!-- Grid Column Headers with Sort & Resizable Handles -->
@@ -3099,9 +3063,9 @@
                             <div style="min-width: fit-content;">
                                 <div class="grid-header-bar" data-list-id="report-list" style="display: none; gap: 8px; align-items: center; padding: 4px 0; margin-top: 6px; border-bottom: 1px solid var(--panel-border); font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); user-select: none;">
                                     <span style="width: 18px; flex-shrink: 0;"></span>
-                                    <div class="grid-col-header" data-col="alias" onclick="sortSettingsList('report-list', 'alias', event)" style="width: 180px; min-width: 120px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Report (报表)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'report-list', 'alias')"></span></span></div>
-                                    <div class="grid-col-header" data-col="id" onclick="sortSettingsList('report-list', 'id', event)" style="width: 320px; min-width: 200px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>GUID (标识符)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'report-list', 'id')"></span></span></div>
-                                    <div class="grid-col-header" data-col="type" onclick="sortSettingsList('report-list', 'type', event)" style="width: 160px; min-width: 140px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="Click to sort, Shift+Click multi-sort, Drag handle to resize"><span>Type & State (属性与状态)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'report-list', 'type')"></span></span></div>
+                                    <div class="grid-col-header" data-col="alias" onclick="sortSettingsList('report-list', 'alias', event)" style="width: 180px; min-width: 120px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="排序与调整列宽"><span>Report (报表)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'report-list', 'alias')"></span></span></div>
+                                    <div class="grid-col-header" data-col="id" onclick="sortSettingsList('report-list', 'id', event)" style="width: 320px; min-width: 200px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="排序与调整列宽"><span>GUID (标识符)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'report-list', 'id')"></span></span></div>
+                                    <div class="grid-col-header" data-col="type" onclick="sortSettingsList('report-list', 'type', event)" style="width: 160px; min-width: 140px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding-right: 8px;" title="排序与调整列宽"><span>Type & State (属性与状态)</span><span style="display:flex;align-items:center;"><span class="sort-icon"></span><span class="col-resizer" onclick="event.stopPropagation();" onmousedown="initColumnResize(event, 'report-list', 'type')"></span></span></div>
                                     <span style="width: 20px; flex-shrink: 0;"></span>
                                 </div>
                                 <div id="report-list" style="display: none; flex-direction: column; gap: 4px; margin-top: 4px;"></div>
@@ -3110,14 +3074,14 @@
                     </div>
                 </div>
                 <div class="modal-footer" style="display: flex; justify-content: flex-end; align-items: center; gap: 8px;">
-                    <button type="button" id="export-local-btn" class="icon-btn btn-modal-footer-action" title="导出设置与历史 (Export Settings & History)" style="border: 1px solid var(--panel-border); color: var(--text-secondary);">
+                    <button type="button" id="export-local-btn" class="icon-btn btn-modal-footer-action" title="导出配置与历史" style="border: 1px solid var(--panel-border); color: var(--text-secondary);">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     </button>
-                    <button type="button" id="import-local-btn" class="icon-btn btn-modal-footer-action" title="导入设置与历史 (Import Settings & History)" style="border: 1px solid var(--panel-border); color: var(--text-secondary);">
+                    <button type="button" id="import-local-btn" class="icon-btn btn-modal-footer-action" title="导入配置与历史" style="border: 1px solid var(--panel-border); color: var(--text-secondary);">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                     </button>
                     <input type="file" id="import-local-file" style="display: none;" accept=".json">
-                    <button type="submit" id="save-settings-btn" class="btn-action-primary btn-modal-footer-action" title="保存并应用配置 (Save & Apply Settings)">
+                    <button type="submit" id="save-settings-btn" class="btn-action-primary btn-modal-footer-action" title="保存并应用配置">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                     </button>
                 </div>
@@ -3219,7 +3183,7 @@
                                   </button>
                               </div>
                               <div style="position: relative; flex-shrink: 0;">
-                                  <button type="button" id="note-sort-btn" class="btn-action-secondary btn-icon-sq" onclick="window.toggleNoteSortMenu(event)" title="选择笔记排序规则 (时间/名称/大小)" style="height: 34px; width: 34px; border-radius: 6px;">
+                                  <button type="button" id="note-sort-btn" class="btn-action-secondary btn-icon-sq" onclick="window.toggleNoteSortMenu(event)" title="笔记排序规则" style="height: 34px; width: 34px; border-radius: 6px;">
                                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M6 12h12M10 18h4"></path></svg>
                                   </button>
                                   <div id="note-sort-menu" class="note-sort-dropdown">
@@ -3240,10 +3204,10 @@
                         </div>
                         <div style="display: flex; gap: 6px; align-items: center;">
                             <input type="file" id="note-file-upload-input" style="display: none;" onchange="window.handleNoteFileUpload(event)" multiple>
-                            <button type="button" id="btn-upload-file" class="btn-insert-api btn-icon-sq" onclick="document.getElementById('note-file-upload-input').click()" title="上传图片或附件到笔记中 (支持拖拽/粘贴)" style="height: 34px; width: 34px;">
+                            <button type="button" id="btn-upload-file" class="btn-insert-api btn-icon-sq" onclick="document.getElementById('note-file-upload-input').click()" title="插入图片/附件" style="height: 34px; width: 34px;">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
                             </button>
-                            <button type="button" id="btn-insert-api" class="btn-insert-api btn-icon-sq" onclick="insertLinkedApiIntoNote()" title="插入当前主工作区选中的 API 链接 (Insert API Link)" style="height: 34px; width: 34px;">
+                            <button type="button" id="btn-insert-api" class="btn-insert-api btn-icon-sq" onclick="insertLinkedApiIntoNote()" title="插入当前 API 链接" style="height: 34px; width: 34px;">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 007.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"></path></svg>
                             </button>
                         </div>
@@ -3253,7 +3217,7 @@
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
                         <div id="note-error-wrapper" style="display: none; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--error);">
-                            <button type="button" id="btn-note-err-icon" class="input-with-copy" onclick="window.showNoteErrorDetail()" style="background: rgba(239,68,68,0.15); border: 1px solid var(--error); color: var(--error); border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer;" title="Click to view full error traceback & copy">
+                            <button type="button" id="btn-note-err-icon" class="input-with-copy" onclick="window.showNoteErrorDetail()" style="background: rgba(239,68,68,0.15); border: 1px solid var(--error); color: var(--error); border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer;" title="查看完整错误回溯">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
                             </button>
                             <span id="note-error-msg" style="font-weight: 500;">Failed to save/push</span>
@@ -3263,13 +3227,13 @@
                             <span id="note-save-status-text" style="font-weight: 500;">正在准备保存...</span>
                         </div>
                         <div style="display: flex; gap: 8px; margin-left: auto; align-items: center;">
-                            <button type="button" class="btn-action-secondary btn-icon-sq" onclick="window.abortSaveNote()" id="btn-cancel-save-note" title="取消当前保存与同步 (Cancel Save)" style="display: none; height: 32px; width: 32px; color: var(--error); border-color: rgba(239,68,68,0.3); transition: all 0.2s ease;">
+                            <button type="button" class="btn-action-secondary btn-icon-sq" onclick="window.abortSaveNote()" id="btn-cancel-save-note" title="取消保存同步" style="display: none; height: 32px; width: 32px; color: var(--error); border-color: rgba(239,68,68,0.3); transition: all 0.2s ease;">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                             </button>
-                            <button type="button" class="btn-action-secondary btn-icon-sq" onclick="createNewNote()" id="btn-new-note" title="新建空白笔记 (Ctrl+N / New Note)" style="height: 32px; width: 32px;">
+                            <button type="button" class="btn-action-secondary btn-icon-sq" onclick="createNewNote()" id="btn-new-note" title="新建笔记 (Ctrl+N)" style="height: 32px; width: 32px;">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
                             </button>
-                            <button type="button" class="btn-action-primary btn-icon-sq" onclick="saveMarkdownNote()" id="btn-save-note" title="保存并同步至 GitHub (Ctrl+S / Save & Push)" style="height: 32px; width: 32px;">
+                            <button type="button" class="btn-action-primary btn-icon-sq" onclick="saveMarkdownNote()" id="btn-save-note" title="保存并同步 (Ctrl+S)" style="height: 32px; width: 32px;">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                             </button>
                         </div>
@@ -3365,8 +3329,8 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260924_v2145"></script>
-    <script src="/static/script.js?v=20260928_v1755"></script>
-    <script src="/static/permission_blueprint.js?v=20260928_v1755"></script>
+    <script src="/static/script.js?v=20260928_v1820"></script>
+    <script src="/static/permission_blueprint.js?v=20260928_v1820"></script>
 
 
 
@@ -3447,7 +3411,7 @@
                 </div>
             </div>
             <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
-                <button type="button" id="ai-auto-approve-btn" title="Approval Mode (Click to auto-approve)" style="background: transparent; border: 1px solid var(--panel-border); border-radius: 6px; padding: 4px 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 0.75rem; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'" onclick="toggleAutoApprove()">
+                <button type="button" id="ai-auto-approve-btn" title="审批模式 (点击自动审批)" style="background: transparent; border: 1px solid var(--panel-border); border-radius: 6px; padding: 4px 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 0.75rem; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);" onmouseover="this.style.background='var(--overlay-10)'" onmouseout="this.style.background='transparent'" onclick="toggleAutoApprove()">
                     <span id="auto-approve-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span>
                     <span id="auto-approve-text">Approval Mode</span>
                 </button>
@@ -3599,11 +3563,18 @@
                     } catch(e) {}
                     // Ping backend to enforce global limit
                     fetch('/api/ping-usage', {method: 'POST'})
-                        .then(r => r.json())
+                        .then(r => {
+                            if (r.status === 401 || r.status === 403) {
+                                alert('今日密码登录 1 小时额度已用完，系统已强行断开并注销，请使用 MFA 登录。');
+                                window.location.href = '/login?expired=1';
+                                return null;
+                            }
+                            return r.json();
+                        })
                         .then(res => {
-                            if (res.limit_reached) {
-                                alert('今日密码登录 1 小时额度已用完，请使用 MFA 登录。');
-                                window.location.href = '/login';
+                            if (res && res.limit_reached) {
+                                alert('今日密码登录 1 小时额度已用完，系统已强行断开并注销，请使用 MFA 登录。');
+                                window.location.href = '/login?expired=1';
                             }
                         }).catch(e => {});
                 }

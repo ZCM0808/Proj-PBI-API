@@ -139,9 +139,16 @@ async def auth_middleware(request: Request, call_next):
                     usage = device_record.get("daily_usage", {})
                     if not is_dev_mode() and usage.get("date") == today and usage.get("used_seconds", 0) >= 3600:
                         if request.url.path.startswith("/api/"):
-                            return JSONResponse(status_code=403, content={"success": False, "message": "Daily 1-hour limit for password login reached. Please use MFA."})
+                            api_resp = JSONResponse(
+                                status_code=401,
+                                content={"success": False, "message": "Daily 1-hour limit for password login reached. Session terminated.", "limit_reached": True}
+                            )
+                            api_resp.delete_cookie(key="pbi_auth_token", path="/")
+                            return api_resp
                         else:
-                            return RedirectResponse(url="/login", status_code=302)
+                            redirect_resp = RedirectResponse(url="/login?expired=1", status_code=302)
+                            redirect_resp.delete_cookie(key="pbi_auth_token", path="/")
+                            return redirect_resp
     return await call_next(request)
 
 # 挂载静态文件
@@ -324,11 +331,15 @@ async def ping_usage(request: Request):
     lockouts[device_id] = device_record
     save_lockouts(lockouts)
 
-    return JSONResponse(content={
+    limit_reached = usage["used_seconds"] >= 3600
+    resp = JSONResponse(content={
         "success": True,
         "used_seconds": usage["used_seconds"],
-        "limit_reached": usage["used_seconds"] >= 3600
+        "limit_reached": limit_reached
     })
+    if limit_reached:
+        resp.delete_cookie(key="pbi_auth_token", path="/")
+    return resp
 
 @app.post("/api/logout")
 async def logout(response: Response):

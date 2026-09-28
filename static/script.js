@@ -5,7 +5,7 @@ const originalFetch = window.fetch;
 window.fetch = async function(...args) {
     const response = await originalFetch.apply(window, args);
 
-    if (response.status === 401 && !window.location.pathname.includes('/login')) {
+    if ((response.status === 401 || response.status === 403) && !window.location.pathname.includes('/login')) {
         const reqUrl = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url ? args[0].url : '');
         // 排除外部绝对 URL（如微软登录、Graph、CDN）以及业务代理/数据测试接口（如 /api/proxy, /api/local-model）
         const isExternal = /^https?:\/\//i.test(reqUrl) && !reqUrl.startsWith(window.location.origin);
@@ -13,14 +13,14 @@ window.fetch = async function(...args) {
         
         if (!isExternal && !isProxyOrData) {
             // 仅当是系统会话检查接口自身，或平台返回明确的 Session expired 提示时才重定向
-            if (reqUrl.includes('/api/session-status')) {
-                window.location.href = '/login';
+            if (reqUrl.includes('/api/session-status') || reqUrl.includes('/api/ping-usage')) {
+                window.location.href = '/login?expired=1';
             } else {
                 try {
                     const clone = response.clone();
                     clone.json().then(data => {
-                        if (data && data.message && (data.message.includes('Session expired') || data.message.includes('unauthorized'))) {
-                            window.location.href = '/login';
+                        if (data && (data.limit_reached || (data.message && (data.message.includes('Session expired') || data.message.includes('unauthorized') || data.message.includes('1-hour limit') || data.message.includes('limit reached'))))) {
+                            window.location.href = '/login?expired=1';
                         }
                     }).catch(() => {});
                 } catch(e) {}
@@ -7254,7 +7254,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             .then(data => {
 
-                    // 严格排除本地 UI 布局键以及 Power BI 动态云端资产/工作区上下文键
+                    // 严格排除本地 UI 布局键、主题/计时器以及 Power BI 动态云端资产/工作区上下文键
                     // 防止 SQLite kv_store 中持久化的历史跨域数据在刷新页面时死灰复燃覆盖真实数据
                     const excludedKvKeys = [
                         'pbi-sidebar-width', 'pbi-sidebar-collapsed', 'pbi-rail-expanded', 'pbi-topbar-collapsed',
@@ -7264,7 +7264,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         'pbi-selected-datasets', 'pbi-selected-reports', 'pbi-active-workspace',
                         'pbi-active-dataset', 'pbi-active-report', 'pbi_cached_tenant_users',
                         'pb-active-preset', 'pb-cached-user-presets', 'pb-active-main-tab',
-                        'pbi-active-module',
+                        'pbi-active-module', 'pbi-theme', 'pbi-daily-time',
                         'pbi-settings-collapse-workspace-list', 'pbi-settings-collapse-dataset-list',
                         'pbi-settings-collapse-report-list', 'pbi-settings-active-tab', 'pbi-settings-scroll-top'
                     ];
@@ -7322,37 +7322,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
 
-        // Sync Theme
-
-        fetch('/api/db/kv/pbi-theme')
-
-            .then(res => res.json())
-
-            .then(data => {
-
-                if (data.success && data.data !== null) {
-
-                    Storage.prototype.setItem.call(localStorage, 'pbi-theme', data.data);
-
-                    if (data.data === 'light') {
-
-                        document.documentElement.setAttribute('data-theme', 'light');
-
-                    } else {
-
-                        document.documentElement.removeAttribute('data-theme');
-
+        // Sync Theme (仅当本地完全无主题偏好缓存时，才从后端加载默认兜底，绝不覆盖用户自主选择的明暗模式)
+        if (localStorage.getItem('pbi-theme') === null) {
+            fetch('/api/db/kv/pbi-theme')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data !== null && localStorage.getItem('pbi-theme') === null) {
+                        Storage.prototype.setItem.call(localStorage, 'pbi-theme', data.data);
+                        if (data.data === 'light') {
+                            document.documentElement.setAttribute('data-theme', 'light');
+                        } else {
+                            document.documentElement.removeAttribute('data-theme');
+                        }
+                        if (typeof updateThemeIcons === 'function') {
+                            updateThemeIcons();
+                        }
                     }
-
-                    if (typeof updateThemeIcons === 'function') {
-
-                        updateThemeIcons();
-
-                    }
-
-                }
-
-            }).catch(e => console.error('Backend theme sync failed', e));
+                }).catch(e => console.error('Backend theme sync failed', e));
+        }
 
     }
 
@@ -13795,6 +13782,17 @@ window.openNoteModal = function() {
 
     noteModal.style.display = 'flex';
 
+    // 确保打开笔记弹窗时取消按钮与历史进度条处于隐藏复位状态
+    const cancelBtn = document.getElementById('btn-cancel-save-note');
+    if (cancelBtn) {
+        cancelBtn.classList.remove('is-active');
+        cancelBtn.style.display = 'none';
+    }
+    const statusWrapper = document.getElementById('note-save-status-wrapper');
+    if (statusWrapper && !window._noteSaveAbortController) {
+        statusWrapper.style.display = 'none';
+    }
+
 
 
     // Explicitly prevent internal clicks/dblclicks from bubble closing
@@ -14842,7 +14840,15 @@ window.abortSaveNote = function() {
         _noteSaveStatusTimer = null;
     }
     const cancelBtn = document.getElementById('btn-cancel-save-note');
-    if (cancelBtn) cancelBtn.style.display = 'none';
+    if (cancelBtn) {
+        cancelBtn.classList.remove('is-active');
+        cancelBtn.style.display = 'none';
+    }
+
+    if (window._noteCancelTimeout) {
+        clearTimeout(window._noteCancelTimeout);
+        window._noteCancelTimeout = null;
+    }
 
     const statusWrapper = document.getElementById('note-save-status-wrapper');
     const statusText = document.getElementById('note-save-status-text');
@@ -14851,11 +14857,15 @@ window.abortSaveNote = function() {
         statusWrapper.style.color = 'var(--text-secondary)';
         if (statusIcon) statusIcon.style.display = 'none';
         statusText.textContent = '已取消保存';
-        setTimeout(() => {
+        window._noteCancelTimeout = setTimeout(() => {
             if (statusWrapper) {
                 statusWrapper.style.display = 'none';
-                if (statusIcon) statusIcon.style.display = 'inline-block';
+                if (statusIcon) {
+                    statusIcon.style.display = 'inline-block';
+                    statusIcon.className = 'loader';
+                }
             }
+            window._noteCancelTimeout = null;
         }, 1500);
     }
 
@@ -14899,6 +14909,16 @@ window.saveMarkdownNote = async function() {
     if (errWrapper) errWrapper.style.display = 'none';
     window._lastNoteErrorDetail = '';
 
+    // 关键：立即清除任何正在等待的取消或成功定时器，防止其异步隐藏状态栏
+    if (window._noteCancelTimeout) {
+        clearTimeout(window._noteCancelTimeout);
+        window._noteCancelTimeout = null;
+    }
+    if (window._noteSaveSuccessTimeout) {
+        clearTimeout(window._noteSaveSuccessTimeout);
+        window._noteSaveSuccessTimeout = null;
+    }
+
     // 初始化 AbortController 与 UI 分步反馈
     window._noteSaveAbortController = new AbortController();
     const signal = window._noteSaveAbortController.signal;
@@ -14909,12 +14929,16 @@ window.saveMarkdownNote = async function() {
         btn.title = '正在保存并同步至 GitHub (可随时点击左侧按钮取消)...';
     }
     if (cancelBtn) {
+        cancelBtn.classList.add('is-active');
         cancelBtn.style.display = 'inline-flex';
     }
     if (statusWrapper && statusText) {
         statusWrapper.style.display = 'inline-flex';
         statusWrapper.style.color = 'var(--text-secondary)';
-        if (statusIcon) statusIcon.style.display = 'inline-block';
+        if (statusIcon) {
+            statusIcon.style.display = 'inline-block';
+            statusIcon.className = 'loader';
+        }
         statusText.textContent = '正在写入本地... (1/2)';
     }
 
@@ -14963,11 +14987,15 @@ window.saveMarkdownNote = async function() {
                 statusWrapper.style.color = 'var(--success)';
                 if (statusIcon) statusIcon.style.display = 'none';
                 statusText.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><polyline points="20 6 9 17 4 12"></polyline></svg>已保存并同步至 GitHub';
-                setTimeout(() => {
+                window._noteSaveSuccessTimeout = setTimeout(() => {
                     if (statusWrapper) {
                         statusWrapper.style.display = 'none';
-                        if (statusIcon) statusIcon.style.display = 'inline-block';
+                        if (statusIcon) {
+                            statusIcon.style.display = 'inline-block';
+                            statusIcon.className = 'loader';
+                        }
                     }
+                    window._noteSaveSuccessTimeout = null;
                 }, 2200);
             }
             if (window.showNotification) {
@@ -15009,7 +15037,10 @@ window.saveMarkdownNote = async function() {
         }
     } finally {
         window._noteSaveAbortController = null;
-        if (cancelBtn) cancelBtn.style.display = 'none';
+        if (cancelBtn) {
+            cancelBtn.classList.remove('is-active');
+            cancelBtn.style.display = 'none';
+        }
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>`;
