@@ -444,6 +444,29 @@
                     }
                     const el = document.getElementById('daily-time-val-login');
                     if(el) el.textContent = formatTimeDuration(data.seconds);
+
+                    if (data.seconds >= 3600) {
+                        const btn = document.getElementById('btn-pwd-login');
+                        const pwdInput = document.getElementById('password');
+                        const errEl = document.getElementById('error-pwd');
+                        if (btn) {
+                            btn.disabled = true;
+                            btn.style.opacity = '0.5';
+                            btn.style.cursor = 'not-allowed';
+                        }
+                        if (pwdInput) {
+                            pwdInput.disabled = true;
+                            pwdInput.placeholder = '今日密码登录 1 小时额度已用完';
+                        }
+                        if (errEl) {
+                            errEl.textContent = '⏱️ 今日密码登录累计 1 小时额度已用完，密码登录已锁定。请切换至 MFA 动态口令登录。';
+                            errEl.classList.add('visible');
+                        }
+                        const tabBtnMfa = document.getElementById('tab-mfa');
+                        if (tabBtnMfa && !tabBtnMfa.classList.contains('active')) {
+                            tabBtnMfa.click();
+                        }
+                    }
                 } catch(e) {}
             }
             updateLoginTracker();
@@ -509,10 +532,25 @@
             const password = document.getElementById('password').value.trim();
             if (!password) return;
 
+            const today = new Date().toISOString().split('T')[0];
+            let localData = {};
+            try { localData = JSON.parse(localStorage.getItem('pbi-daily-time') || '{}'); } catch(e) {}
+            const client_seconds = (localData.date === today) ? (localData.seconds || 0) : 0;
+            const errorMsg = document.getElementById('error-pwd');
+
+            if (client_seconds >= 3600) {
+                errorMsg.textContent = '⏱️ 今日密码登录累计 1 小时额度已用完，密码登录已锁定。请切换至 MFA 动态口令登录。';
+                errorMsg.classList.add('visible');
+                const btn = document.getElementById('btn-pwd-login');
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
+                return;
+            }
+
             const btn = document.getElementById('btn-pwd-login');
             const btnText = btn.querySelector('.btn-text');
             const spinner = btn.querySelector('.spinner');
-            const errorMsg = document.getElementById('error-pwd');
             errorMsg.classList.remove('visible');
             btn.disabled = true;
             btnText.style.display = 'none';
@@ -522,7 +560,7 @@
                 const res = await fetch('/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password })
+                    body: JSON.stringify({ password, client_seconds })
                 });
                 const data = await res.json();
 

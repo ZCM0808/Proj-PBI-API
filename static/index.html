@@ -3329,7 +3329,7 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260924_v2145"></script>
-    <script src="/static/script.js?v=20260928_v2205"></script>
+    <script src="/static/script.js?v=20260928_v2300"></script>
     <script src="/static/permission_blueprint.js?v=20260928_v1820"></script>
 
 
@@ -3536,6 +3536,21 @@
                 return `${mins}m`;
             };
 
+            let isTerminated = false;
+            function enforcePasswordLimit() {
+                if (isTerminated) return;
+                isTerminated = true;
+                alert('今日密码登录累计 1 小时额度已用完，系统已强行断开并注销，请使用 MFA 动态口令登录。');
+                fetch('/api/logout', {method: 'POST'}).finally(() => {
+                    window.location.href = '/login?expired=1';
+                });
+            }
+
+            function isPasswordSession() {
+                const c = document.cookie || '';
+                return c.includes('.pwd1.');
+            }
+
             function updateMainTracker() {
                 const today = new Date().toISOString().split('T')[0];
                 try {
@@ -3545,6 +3560,11 @@
                     }
                     const el = document.getElementById('daily-time-val-main');
                     if (el) el.textContent = window.formatTimeDuration(data.seconds);
+
+                    // 核心防御：打开页面初次检测，若密码登录已达到 3600 秒直接强退！
+                    if (isPasswordSession() && data.seconds >= 3600) {
+                        enforcePasswordLimit();
+                    }
                 } catch(e) {}
             }
             updateMainTracker();
@@ -3552,29 +3572,40 @@
                 if (document.visibilityState === 'visible') {
                     // Accumulate locally
                     const today = new Date().toISOString().split('T')[0];
+                    let currentSec = 0;
                     try {
                         let data = JSON.parse(localStorage.getItem('pbi-daily-time') || '{}');
                         if (data.date !== today) {
                             data = { date: today, seconds: 0 };
                         }
                         data.seconds += 60;
+                        currentSec = data.seconds;
                         localStorage.setItem('pbi-daily-time', JSON.stringify(data));
                         updateMainTracker();
                     } catch(e) {}
-                    // Ping backend to enforce global limit
-                    fetch('/api/ping-usage', {method: 'POST'})
+
+                    // 检查本地硬阈值：若密码登录且达到 3600 秒，无需等待后端立即断开
+                    if (isPasswordSession() && currentSec >= 3600) {
+                        enforcePasswordLimit();
+                        return;
+                    }
+
+                    // Ping backend to enforce global limit，同步上报本地真实用时
+                    fetch('/api/ping-usage', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ client_seconds: currentSec })
+                    })
                         .then(r => {
                             if (r.status === 401 || r.status === 403) {
-                                alert('今日密码登录 1 小时额度已用完，系统已强行断开并注销，请使用 MFA 登录。');
-                                window.location.href = '/login?expired=1';
+                                enforcePasswordLimit();
                                 return null;
                             }
                             return r.json();
                         })
                         .then(res => {
                             if (res && res.limit_reached) {
-                                alert('今日密码登录 1 小时额度已用完，系统已强行断开并注销，请使用 MFA 登录。');
-                                window.location.href = '/login?expired=1';
+                                enforcePasswordLimit();
                             }
                         }).catch(e => {});
                 }

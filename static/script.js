@@ -13716,7 +13716,20 @@ if (btnLogout) {
 
             const mode = data.mode;
 
-
+            // 核心防御：若当前为密码登录 (pwd1)，检查本地累计用时，若达 1 小时 (3600s) 或剩余时间为 0，立即强退
+            if (mode === 'pwd1') {
+                const today = new Date().toISOString().split('T')[0];
+                let localData = {};
+                try { localData = JSON.parse(localStorage.getItem('pbi-daily-time') || '{}'); } catch(e) {}
+                const localSec = (localData.date === today) ? (localData.seconds || 0) : 0;
+                if (localSec >= 3600 || remaining <= 0) {
+                    alert('今日密码登录累计 1 小时额度已用完，系统已强行断开并注销，请使用 MFA 动态口令登录。');
+                    fetch('/api/logout', {method: 'POST'}).finally(() => {
+                        window.location.href = '/login?expired=1';
+                    });
+                    return;
+                }
+            }
 
             // 倒计时 10 分钟 (600秒) 内，触发弹窗提醒
 
