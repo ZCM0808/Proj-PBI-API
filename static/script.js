@@ -20604,17 +20604,58 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
         console.error('Failed to scan candidate users:', e);
         const isAbort = (e.name === 'AbortError');
         const errMsg = isAbort ? '云端响应超时 (30s)，请稍候重试' : (e.message || '拉取人员名单失败');
-        if (dropdownCount) {
-            dropdownCount.innerHTML = `<span style="color:var(--warning); font-size:0.72rem;">⚠️ ${errMsg}</span>`;
-        }
-        if (dropdownList) {
-            dropdownList.innerHTML = `<div style="font-size:0.75rem; color:var(--warning); padding:8px 4px; text-align: center;">拉取未完成 (${errMsg})，您可在搜索栏直接输入目标邮箱。</div>`;
-        }
-        if (window.showNotification) {
-            window.showNotification(`❌ ${errMsg}`, 'error');
+
+        const isAuthError = /MFA|Device Code|交互式验证|多因素认证|interaction_required|invalid_grant|401|未授权/i.test(errMsg);
+        if (isAuthError) {
+            if (dropdownCount) {
+                dropdownCount.innerHTML = '<span style="color:#38bdf8; font-size:0.72rem; font-weight:600;">🔐 需微软设备流安全授权</span>';
+            }
+            if (dropdownList) {
+                dropdownList.innerHTML = `
+                    <div style="padding: 14px 10px; text-align: center; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 10px; margin: 8px 4px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);">
+                        <div style="font-size: 0.82rem; font-weight: 600; color: #38bdf8; margin-bottom: 5px;">
+                            🔐 微软云端账号需要设备流安全授权
+                        </div>
+                        <div style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 11px; line-height: 1.45;">
+                            云端容器运行环境下，微软账号开启了多因素认证(MFA)。<br>
+                            请点击下方按钮一键获取验证码并在微软官网授权，授权成功后将<b>自动继续扫描</b>：
+                        </div>
+                        <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+                            <button type="button" class="btn-wf-sm btn-wf-primary" onclick="window.triggerGumDeviceCodeAuth()" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; font-size: 0.78rem; font-weight: 600; border-radius: 7px; cursor: pointer; background: linear-gradient(135deg, #0284c7, #0369a1); box-shadow: 0 3px 10px rgba(2, 132, 199, 0.35);">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                                <span>一键启动微软设备流登录</span>
+                            </button>
+                            <button type="button" class="btn-wf-sm btn-wf-secondary" onclick="window.promptAndApplyBearerToken()" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; font-size: 0.76rem; font-weight: 500; border-radius: 7px; cursor: pointer;">
+                                <span>📋 粘贴 Token</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+            if (window.showNotification) {
+                window.showNotification('🔐 微软云端账号需要安全授权，请在下拉面板中点击完成授权', 'warning', 8000);
+            }
+            if (window.openGumUserDropdown) window.openGumUserDropdown();
+        } else {
+            if (dropdownCount) {
+                dropdownCount.innerHTML = `<span style="color:var(--warning); font-size:0.72rem;">⚠️ ${errMsg}</span>`;
+            }
+            if (dropdownList) {
+                dropdownList.innerHTML = `<div style="font-size:0.75rem; color:var(--warning); padding:8px 4px; text-align: center;">拉取未完成 (${errMsg})，您可在搜索栏直接输入目标邮箱。</div>`;
+            }
+            if (window.showNotification) {
+                window.showNotification(`❌ ${errMsg}`, 'error');
+            }
         }
     } finally {
         resetScanBtn();
+    }
+};
+
+window.triggerGumDeviceCodeAuth = async function() {
+    window._gumPendingAutoScanAfterAuth = true;
+    if (window.startDeviceCodeLoginFlow) {
+        await window.startDeviceCodeLoginFlow();
     }
 };
 
@@ -23791,6 +23832,16 @@ window.startDeviceCodeLoginFlow = async function() {
                 window.showNotification(`🎉 登录成功！已自动识别并绑定租户 [${finalTenantId}]，正在一键扫描工作区...`, "success", 5000);
             }
 
+            // 自动触发 GUM 恢复扫描
+            if (window._gumPendingAutoScanAfterAuth) {
+                window._gumPendingAutoScanAfterAuth = false;
+                setTimeout(() => {
+                    if (window.fetchGumWorkspaceUsers) {
+                        window.fetchGumWorkspaceUsers(true);
+                    }
+                }, 800);
+            }
+
             // 自动触发工作区扫描
             setTimeout(() => {
                 const scanWsBtn = document.querySelector('button[onclick*="scanItems(\'workspaces\'"]');
@@ -23868,6 +23919,16 @@ window.promptAndApplyBearerToken = async function(prefilledToken = '') {
 
             if (window.showNotification) {
                 window.showNotification(`🎉 凭据激活成功！已绑定租户 [${finalTenantId}]，正在一键扫描工作区...`, "success", 5000);
+            }
+
+            // 自动触发 GUM 恢复扫描
+            if (window._gumPendingAutoScanAfterAuth) {
+                window._gumPendingAutoScanAfterAuth = false;
+                setTimeout(() => {
+                    if (window.fetchGumWorkspaceUsers) {
+                        window.fetchGumWorkspaceUsers(true);
+                    }
+                }, 800);
             }
 
             setTimeout(() => {

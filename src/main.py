@@ -2743,8 +2743,9 @@ async def init_device_code_flow(req: Optional[DeviceCodeInitRequest] = None):
         client_id = (req.client_id if req and req.client_id else None) or "04b07795-8ddb-461a-bbee-02f9e1bf7b46"
         tenant_id = (req.tenant_id if req and req.tenant_id else None) or "organizations"
 
+        cli = PBIClient()
         authority = f"https://login.microsoftonline.com/{tenant_id}"
-        app = PublicClientApplication(client_id=client_id, authority=authority)
+        app = PublicClientApplication(client_id=client_id, authority=authority, token_cache=cli.cache)
 
         scopes = ["https://analysis.windows.net/powerbi/api/.default"]
         flow = await asyncio.to_thread(app.initiate_device_flow, scopes=scopes)
@@ -2769,6 +2770,10 @@ async def init_device_code_flow(req: Optional[DeviceCodeInitRequest] = None):
                 if res and "access_token" in res:
                     flow_record["status"] = "completed"
                     flow_record["token"] = res["access_token"]
+                    try:
+                        cli._save_cache()
+                    except Exception:
+                        pass
                 else:
                     flow_record["status"] = "error"
                     flow_record["error"] = res.get("error_description", "获取 Token 失败")

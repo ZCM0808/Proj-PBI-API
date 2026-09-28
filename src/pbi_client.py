@@ -69,14 +69,29 @@ class PBIClient:
         self.config = config or Config()
         self.cache = SerializableTokenCache()
         self.cache_file = ".msal_token_cache.json"
-        if os.path.exists(self.cache_file):
-            with open(self.cache_file, "r") as f:
-                self.cache.deserialize(f.read())
 
+        # 优先从环境变量加载 Base64 编码的 MSAL 缓存 (适用于 Render/Docker 云端无头容器永久免登录)
+        b64_cache = os.getenv("MSAL_TOKEN_CACHE_B64", "").strip()
+        if b64_cache:
+            try:
+                import base64
+                cache_str = base64.b64decode(b64_cache).decode("utf-8")
+                self.cache.deserialize(cache_str)
+                with open(self.cache_file, "w", encoding="utf-8") as f:
+                    f.write(cache_str)
+            except Exception:
+                pass
+
+        if os.path.exists(self.cache_file) and not b64_cache:
+            try:
+                with open(self.cache_file, "r", encoding="utf-8") as f:
+                    self.cache.deserialize(f.read())
+            except Exception:
+                pass
 
     def _save_cache(self):
         if self.cache.has_state_changed:
-            with open(self.cache_file, "w") as f:
+            with open(self.cache_file, "w", encoding="utf-8") as f:
                 f.write(self.cache.serialize())
 
     def _get_token(self, api_type: str = "powerbi") -> str:
