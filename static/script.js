@@ -14794,6 +14794,47 @@ window.showNoteErrorDetail = function() {
 
 
 
+window._noteSaveAbortController = null;
+let _noteSaveStatusTimer = null;
+
+window.abortSaveNote = function() {
+    if (window._noteSaveAbortController) {
+        window._noteSaveAbortController.abort();
+        window._noteSaveAbortController = null;
+    }
+    if (_noteSaveStatusTimer) {
+        clearInterval(_noteSaveStatusTimer);
+        _noteSaveStatusTimer = null;
+    }
+    const cancelBtn = document.getElementById('btn-cancel-save-note');
+    if (cancelBtn) cancelBtn.style.display = 'none';
+
+    const statusWrapper = document.getElementById('note-save-status-wrapper');
+    const statusText = document.getElementById('note-save-status-text');
+    const statusIcon = document.getElementById('note-save-status-icon');
+    if (statusWrapper && statusText) {
+        statusWrapper.style.color = 'var(--text-secondary)';
+        if (statusIcon) statusIcon.style.display = 'none';
+        statusText.textContent = '已取消保存';
+        setTimeout(() => {
+            if (statusWrapper) {
+                statusWrapper.style.display = 'none';
+                if (statusIcon) statusIcon.style.display = 'inline-block';
+            }
+        }, 1500);
+    }
+
+    const btn = document.getElementById('btn-save-note');
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>`;
+        btn.title = '保存并同步至 GitHub';
+    }
+    if (window.showNotification) {
+        window.showNotification("已取消当前保存操作", "info");
+    }
+};
+
 window.saveMarkdownNote = async function() {
 
     if (!easyMDE) return;
@@ -14813,35 +14854,86 @@ window.saveMarkdownNote = async function() {
     
 
     const btn = document.getElementById('btn-save-note');
-
+    const cancelBtn = document.getElementById('btn-cancel-save-note');
     const errWrapper = document.getElementById('note-error-wrapper');
-
     const errMsg = document.getElementById('note-error-msg');
-
-    
+    const statusWrapper = document.getElementById('note-save-status-wrapper');
+    const statusText = document.getElementById('note-save-status-text');
+    const statusIcon = document.getElementById('note-save-status-icon');
 
     if (errWrapper) errWrapper.style.display = 'none';
-
     window._lastNoteErrorDetail = '';
 
+    // 初始化 AbortController 与 UI 分步反馈
+    window._noteSaveAbortController = new AbortController();
+    const signal = window._noteSaveAbortController.signal;
 
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loader" style="width:13px;height:13px;border-width:2px;"></span>';
+        btn.title = '正在保存并同步至 GitHub (可随时点击左侧按钮取消)...';
+    }
+    if (cancelBtn) {
+        cancelBtn.style.display = 'inline-flex';
+    }
+    if (statusWrapper && statusText) {
+        statusWrapper.style.display = 'inline-flex';
+        statusWrapper.style.color = 'var(--text-secondary)';
+        if (statusIcon) statusIcon.style.display = 'inline-block';
+        statusText.textContent = '正在写入本地... (1/2)';
+    }
 
-    btn.disabled = true;
-    btn.innerHTML = '<span class="loader" style="width:13px;height:13px;border-width:2px;"></span>';
-    btn.title = '正在保存并同步至 GitHub...';
-    
+    // 分步状态反馈定时器
+    let stage = 1;
+    if (_noteSaveStatusTimer) clearInterval(_noteSaveStatusTimer);
+    _noteSaveStatusTimer = setInterval(() => {
+        if (stage === 1) {
+            stage = 2;
+            if (statusText) statusText.textContent = '正在同步至 GitHub 远端... (2/2)';
+            if (btn) btn.title = '正在同步至 GitHub 远端...';
+        } else if (stage === 2) {
+            stage = 3;
+            if (statusText) statusText.textContent = '远端正在处理，请稍候...';
+        }
+    }, 700);
+
+    // 15 秒前端防卡死超时保护
+    const timeoutId = setTimeout(() => {
+        if (window._noteSaveAbortController && !signal.aborted) {
+            if (statusText) statusText.textContent = '远端网络耗时较长，可点击取消';
+        }
+    }, 12000);
+
     try {
         const response = await fetch('/api/save-note', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filename, content })
+            body: JSON.stringify({ filename, content }),
+            signal: signal
         });
+        clearTimeout(timeoutId);
+        if (_noteSaveStatusTimer) {
+            clearInterval(_noteSaveStatusTimer);
+            _noteSaveStatusTimer = null;
+        }
+
         const data = await response.json();
-        
+
         if (data.success) {
             const savedName = data.filename || filename;
             if (savedName) {
                 window.setActiveNote(savedName, null, false);
+            }
+            if (statusWrapper && statusText) {
+                statusWrapper.style.color = 'var(--success)';
+                if (statusIcon) statusIcon.style.display = 'none';
+                statusText.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><polyline points="20 6 9 17 4 12"></polyline></svg>已保存并同步至 GitHub';
+                setTimeout(() => {
+                    if (statusWrapper) {
+                        statusWrapper.style.display = 'none';
+                        if (statusIcon) statusIcon.style.display = 'inline-block';
+                    }
+                }, 2200);
             }
             if (window.showNotification) {
                 window.showNotification(data.message || "Note saved & pushed successfully!", "success");
@@ -14849,6 +14941,7 @@ window.saveMarkdownNote = async function() {
             // Refresh note history
             window.searchNotes();
         } else {
+            if (statusWrapper) statusWrapper.style.display = 'none';
             window._lastNoteErrorDetail = data.error || 'Unknown error occurred while saving note.';
             if (errWrapper && errMsg) {
                 errMsg.textContent = data.local_saved ? 'Git Push Failed (Saved locally)' : 'Save Note Failed';
@@ -14859,6 +14952,18 @@ window.saveMarkdownNote = async function() {
             }
         }
     } catch (e) {
+        clearTimeout(timeoutId);
+        if (_noteSaveStatusTimer) {
+            clearInterval(_noteSaveStatusTimer);
+            _noteSaveStatusTimer = null;
+        }
+
+        if (e.name === 'AbortError' || (signal && signal.aborted)) {
+            // 用户主动中止，已由 abortSaveNote 清理处理
+            return;
+        }
+
+        if (statusWrapper) statusWrapper.style.display = 'none';
         window._lastNoteErrorDetail = e.message || String(e);
         if (errWrapper && errMsg) {
             errMsg.textContent = 'Network/Server Error';
@@ -14868,9 +14973,13 @@ window.saveMarkdownNote = async function() {
             window.showNotification("Network Error! Click '❗' for details.", "error");
         }
     } finally {
-        btn.disabled = false;
-        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>`;
-        btn.title = '保存并同步至 GitHub';
+        window._noteSaveAbortController = null;
+        if (cancelBtn) cancelBtn.style.display = 'none';
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>`;
+            btn.title = '保存并同步至 GitHub';
+        }
     }
 };
 

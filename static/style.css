@@ -10576,4 +10576,46 @@ body.light-theme .laya-toggle-slider:before,
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
+/* Quick Note 保存分步状态与取消按钮微动效 */
+#note-save-status-wrapper {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    animation: fadeIn 0.2s ease-out;
+}
+
+#btn-cancel-save-note {
+    border-radius: 6px;
+    background: transparent;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+#btn-cancel-save-note:hover {
+    background: rgba(239, 68, 68, 0.15) !important;
+    color: var(--error) !important;
+    border-color: var(--error) !important;
+    transform: translateY(-1px);
+}
+
+#btn-cancel-save-note:active {
+    transform: scale(0.92);
+}
+
+/* 全局弹窗层级提权防御 - 确保在 Quick Note (z-index: 35000) 下弹出的对话框永远置顶 */
+#custom-dialog-modal.modal-overlay,
+#confirm-modal.confirm-modal-overlay {
+    z-index: 50000 !important;
+}
+
+#custom-dialog-modal .modal-content,
+#confirm-modal .confirm-modal-content {
+    z-index: 50001 !important;
+}
+
+
 
