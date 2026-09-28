@@ -3489,9 +3489,53 @@ window.handleGlobalAuthModeChange = function(mode) {
     window.selectGtbAuthMode(mode);
 };
 
-// 获取当前在全局功能区选中的所有工作区 ID 数组
+// 获取当前在全局功能区选中的所有工作区 ID 数组 (具备多级兜底智能解析能力)
 window.getSelectedWorkspaces = function() {
-    return Array.from(window.selectedGtbWorkspaceIds || []);
+    let list = Array.from(window.selectedGtbWorkspaceIds || []);
+    if (list.length === 0) {
+        // 多级智能兜底：尝试从顶栏单选、工作流自身工作区、全局活跃变量或 localStorage 恢复
+        const fallbackCandidates = [
+            document.getElementById('gtb-select-workspace')?.value,
+            document.getElementById('workspace-select')?.value,
+            document.getElementById('wf-gum-workspace-select')?.value,
+            window.activeWorkspaceId,
+            window.currentWorkspaceId,
+            window.selectedWorkspaceId,
+            localStorage.getItem('pbi-active-workspace')
+        ];
+        try {
+            const savedWs = JSON.parse(localStorage.getItem('pbi-selected-workspaces') || '[]');
+            if (Array.isArray(savedWs) && savedWs.length > 0) {
+                fallbackCandidates.push(...savedWs);
+            }
+        } catch(e) {}
+
+        for (const cand of fallbackCandidates) {
+            if (!cand) continue;
+            const candStr = String(cand).trim();
+            if (!candStr) continue;
+            const lower = candStr.toLowerCase();
+            if (lower === 'my' || lower === 'workspace_dev' || lower === '2c51e061-0f9f-4d02-bed0-c169019e5d83') continue;
+
+            if (candStr.includes(',')) {
+                candStr.split(',').map(s => s.trim()).filter(Boolean).forEach(id => {
+                    const idLower = id.toLowerCase();
+                    if (idLower !== 'my' && idLower !== 'workspace_dev' && idLower !== '2c51e061-0f9f-4d02-bed0-c169019e5d83') {
+                        list.push(id);
+                    }
+                });
+            } else {
+                list.push(candStr);
+            }
+            if (list.length > 0) break;
+        }
+
+        // 自动同步反哺全局 Set，保证整个 UI 状态一致
+        if (list.length > 0 && window.selectedGtbWorkspaceIds) {
+            list.forEach(id => window.selectedGtbWorkspaceIds.add(id));
+        }
+    }
+    return Array.from(new Set(list));
 };
 
 // 展开/折叠顶栏工作区多选浮层
@@ -20299,6 +20343,11 @@ window.handleGumScopeChange = function(scope) {
     }
     if (hiddenScope) hiddenScope.value = scope;
 
+    // 当切换到工作区模式且当前无选定工作区时，自动触发多级兜底探测
+    if (scope === 'workspaces' && window.getSelectedWorkspaces) {
+        window.getSelectedWorkspaces();
+    }
+
     window.syncGumScopeDisplay();
 
     // 切换范围后清空旧范围的候选用户，由用户手动点击扫描按钮启动拉取
@@ -20452,6 +20501,10 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
                 </div>
             `;
         }
+        if (window.showNotification) {
+            window.showNotification('⚠️ 请先在顶栏或配置中选择至少一个目标工作区', 'warning');
+        }
+        if (window.openGumUserDropdown) window.openGumUserDropdown();
         return;
     }
 
@@ -20507,7 +20560,7 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 9000);
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     try {
         const payload = {
@@ -20533,7 +20586,11 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
         window.gumWorkspaceUsersCache.set(cacheKey, candidates);
         window._lastGumScanSuccessTime = Date.now();
 
-        if (data.warning && window.showNotification) {
+        if (candidates.length === 0) {
+            if (window.showNotification) {
+                window.showNotification(data.warning || '⚠️ 该工作区在微软云端未返回任何成员用户（可能为空工作区或无权限）', 'warning');
+            }
+        } else if (data.warning && window.showNotification) {
             window.showNotification(data.warning, 'warning');
         } else if (!data.cached && window.showNotification) {
             window.showNotification(`✅ 已成功从微软云端穿透同步 ${candidates.length} 位候选用户`, 'success');
@@ -20546,12 +20603,15 @@ window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
         clearTimeout(timeoutId);
         console.error('Failed to scan candidate users:', e);
         const isAbort = (e.name === 'AbortError');
-        const errMsg = isAbort ? '云端响应超时 (9s)，已启动保护' : e.message;
+        const errMsg = isAbort ? '云端响应超时 (30s)，请稍候重试' : (e.message || '拉取人员名单失败');
         if (dropdownCount) {
             dropdownCount.innerHTML = `<span style="color:var(--warning); font-size:0.72rem;">⚠️ ${errMsg}</span>`;
         }
         if (dropdownList) {
             dropdownList.innerHTML = `<div style="font-size:0.75rem; color:var(--warning); padding:8px 4px; text-align: center;">拉取未完成 (${errMsg})，您可在搜索栏直接输入目标邮箱。</div>`;
+        }
+        if (window.showNotification) {
+            window.showNotification(`❌ ${errMsg}`, 'error');
         }
     } finally {
         resetScanBtn();

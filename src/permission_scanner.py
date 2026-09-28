@@ -670,6 +670,74 @@ async def scan_candidate_users(
     # 规范化目标工作区集合
     target_ws_set = {str(w).strip().lower() for w in (workspace_ids or []) if str(w).strip()}
 
+    # ─── 核心优化：工作区级精准直连通道 (Direct Workspace Fast-Path) ───
+    # 若明确指定了工作区范围，无需请求全租户 Admin API，直接并发直连各目标工作区成员接口 (/groups/{wid}/users)
+    # 该接口仅需工作区级访问权限，0.2 秒瞬间返回，且免受全租户 401 权限与 429 频次限流阻断
+    if scope == "workspaces" and target_ws_set:
+        sem = asyncio.Semaphore(10)
+        async def _fetch_direct_ws_users(wid: str) -> Dict[str, Any]:
+            async with sem:
+                try:
+                    u_res = await asyncio.to_thread(cli.request, "GET", f"/groups/{wid}/users")
+                    users_list = u_res.get("value", []) if isinstance(u_res, dict) else []
+                    return {"id": wid, "name": wid, "users": users_list}
+                except Exception as ex:
+                    return {"id": wid, "name": wid, "users": [], "error": str(ex)}
+
+        direct_results = await asyncio.gather(*[_fetch_direct_ws_users(wid) for wid in target_ws_set])
+        direct_workspaces = [w for w in direct_results if w and w.get("users")]
+
+        if direct_workspaces:
+            merged_direct: Dict[str, Dict[str, Any]] = {}
+            for ws in direct_workspaces:
+                wid = ws.get("id") or ""
+                wname = ws.get("name") or wid
+                for u in ws.get("users", []):
+                    email = (u.get("emailAddress") or u.get("userPrincipalName") or "").strip()
+                    ident = (u.get("identifier") or "").strip()
+                    gid = (u.get("graphId") or "").strip()
+                    ptype = u.get("principalType") or "User"
+                    role = u.get("groupUserAccessRight") or "Viewer"
+                    disp = (u.get("displayName") or email or ident).strip()
+
+                    key = (email or ident or gid).lower()
+                    if not key:
+                        continue
+                    if key not in merged_direct:
+                        merged_direct[key] = {
+                            "identifier": email or ident or gid,
+                            "displayName": disp,
+                            "graphId": gid,
+                            "principalType": ptype,
+                            "role": role,
+                            "workspaceId": wid,
+                            "workspaceName": wname
+                        }
+            candidates = list(merged_direct.values())
+            return {
+                "success": True,
+                "users": candidates,
+                "count": len(candidates),
+                "cached": False,
+                "warning": f"💡 已直连同步 {len(direct_workspaces)} 个工作区的 {len(candidates)} 位授权成员"
+            }
+        else:
+            errors = [w.get("error") for w in direct_results if w and w.get("error")]
+            if errors:
+                err_summary = "; ".join(str(e) for e in errors[:2])
+                return {
+                    "success": False,
+                    "message": f"直连拉取工作区用户失败: {err_summary}",
+                    "users": []
+                }
+            return {
+                "success": True,
+                "users": [],
+                "count": 0,
+                "cached": False,
+                "warning": "⚠️ 目标工作区未返回任何成员用户（可能为空工作区或无权限）"
+            }
+
     # 若缓存极其新鲜 (例如最近 15 秒内刚刚更新)，直接复用内存快照，保护租户请求频次
     if cached_workspaces and cache_age < 15:
         workspaces = cached_workspaces

@@ -55,6 +55,11 @@ def set_manual_token(token: str, auth_mode: str = "personal", identity: str = ""
             "token": token,
             "expires_at": now + expires_in
         }
+        generic_key = f"{auth_mode}_{api_type}_"
+        _GLOBAL_TOKEN_CACHE[generic_key] = {
+            "token": token,
+            "expires_at": now + expires_in
+        }
 
 
 class PBIClient:
@@ -86,6 +91,15 @@ class PBIClient:
         if cached_entry and cached_entry.get("expires_at", 0) > now + 180:
             return str(cached_entry["token"])
 
+        # 兜底：通用 key 与同模式可用 Token 借用探测
+        generic_key = f"{self.config.AUTH_MODE}_{api_type_clean}_"
+        gen_entry = _GLOBAL_TOKEN_CACHE.get(generic_key)
+        if gen_entry and gen_entry.get("expires_at", 0) > now + 180:
+            return str(gen_entry["token"])
+        for k, v in _GLOBAL_TOKEN_CACHE.items():
+            if k.startswith(f"{self.config.AUTH_MODE}_{api_type_clean}") and v.get("expires_at", 0) > now + 180:
+                return str(v["token"])
+
         result = None
         if self.config.AUTH_MODE == "personal":
             app = PublicClientApplication(
@@ -111,6 +125,16 @@ class PBIClient:
                 error_codes = result.get("error_codes", [])
                 error_msg = result.get("error", "").lower()
                 if 50076 in error_codes or 50158 in error_codes or 65001 in error_codes or "interaction_required" in error_msg or "invalid_grant" in error_msg:
+                    # 关键防御：在 Linux 无头容器（如 Render/Docker 无 DISPLAY 环境）下严禁拉起交互式浏览器，避免永久死锁
+                    is_headless = (os.name != "nt") and not os.getenv("DISPLAY")
+                    if is_headless:
+                        for k, v in _GLOBAL_TOKEN_CACHE.items():
+                            if k.startswith("personal_") and v.get("expires_at", 0) > now + 60:
+                                return str(v["token"])
+                        raise Exception(
+                            "当前运行于云端无头容器环境，且微软账号需要交互式验证或多因素认证(MFA)。"
+                            "请在系统中使用设备流(Device Code)完成授权登录。"
+                        )
                     result = app.acquire_token_interactive(
                         scopes=scope,
                         login_hint=self.config.USERNAME
