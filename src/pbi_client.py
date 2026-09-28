@@ -249,12 +249,11 @@ class PBIClient:
         """
         调用微软内部 WABI 建模微服务 (modeling/getModel)，实时探测语义模型的真实 GAC 状态与连接安全上下文。
         """
-        cluster = (cluster_url or os.getenv("PBI_WABI_CLUSTER") or "wabi-south-east-asia-b-primary-redirect.analysis.windows.net").strip()
+        # 优先使用显式指定的 cluster，否则读取环境变量，默认回退至 VFC 租户的真实宿主集群 (美东二区)
+        cluster = (cluster_url or os.getenv("PBI_WABI_CLUSTER") or "wabi-us-east2-c-primary-redirect.analysis.windows.net").strip()
         if cluster.startswith("http://") or cluster.startswith("https://"):
             from urllib.parse import urlparse
             cluster = urlparse(cluster).netloc
-
-        target_url = f"https://{cluster}/metadata/modeling/getModel/{model_id}?languageLocale=en-US&requestQueryEditingInfo=true"
 
         token = custom_token or self._get_token("powerbi")
         headers = {
@@ -264,56 +263,65 @@ class PBIClient:
             "X-PowerBI-User-Locale": "en-US",
         }
 
+        # 候选集群列表 (优先当前集群，失败时具备跨地理大区自愈穿透能力)
+        candidate_clusters = [cluster]
+        for fallback in ["wabi-us-east2-c-primary-redirect.analysis.windows.net", "wabi-south-east-asia-b-primary-redirect.analysis.windows.net"]:
+            if fallback not in candidate_clusters:
+                candidate_clusters.append(fallback)
+
         session = get_shared_session()
-        try:
-            resp = session.get(target_url, headers=headers, timeout=10)
-            if resp.status_code == 200:
-                data = resp.json()
-                sec_info = data.get("securityInfo", {})
-                return {
-                    "success": True,
-                    "is_live": True,
-                    "cluster": cluster,
-                    "model_id": model_id,
-                    "security_info": {
-                        "isInStrictMode": sec_info.get("isInStrictMode", False),
-                        "hasAccessToAllDataConnections": sec_info.get("hasAccessToAllDataConnections", False),
-                        "isModelOwner": sec_info.get("isModelOwner", False),
-                    },
-                    "raw_security_info": sec_info,
-                }
-            elif resp.status_code == 429:
-                return {
+        last_error_resp: Optional[Dict[str, Any]] = None
+
+        for cur_cluster in candidate_clusters:
+            # 微软内部 modeling 接口权威规范路由 (无 /metadata 前缀)
+            target_url = f"https://{cur_cluster}/modeling/getModel/{model_id}?languageLocale=en-US&requestQueryEditingInfo=true"
+            try:
+                resp = session.get(target_url, headers=headers, timeout=20)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    sec_info = data.get("securityInfo", {})
+                    return {
+                        "success": True,
+                        "is_live": True,
+                        "cluster": cur_cluster,
+                        "model_id": model_id,
+                        "security_info": {
+                            "isInStrictMode": sec_info.get("isInStrictMode", False),
+                            "hasAccessToAllDataConnections": sec_info.get("hasAccessToAllDataConnections", False),
+                            "isModelOwner": sec_info.get("isModelOwner", False),
+                        },
+                        "raw_security_info": sec_info,
+                    }
+                elif resp.status_code in (403, 404):
+                    # 403 Tenant not authorized 或 404 EntityNotFound 说明集群不匹配，尝试下一个候选集群
+                    last_error_resp = {
+                        "success": False,
+                        "status_code": resp.status_code,
+                        "error": f"模型未在集群 [{cur_cluster}] 命中 (HTTP {resp.status_code})",
+                        "cluster": cur_cluster,
+                    }
+                    continue
+                elif resp.status_code == 429:
+                    return {
+                        "success": False,
+                        "status_code": 429,
+                        "error": "微软云端 WABI 微服务限流节流 (HTTP 429 Too Many Requests)，请稍后重试",
+                        "cluster": cur_cluster,
+                    }
+                else:
+                    last_error_resp = {
+                        "success": False,
+                        "status_code": resp.status_code,
+                        "error": f"WABI 接口返回异常状态码: HTTP {resp.status_code}",
+                        "cluster": cur_cluster,
+                    }
+            except Exception as e:
+                last_error_resp = {
                     "success": False,
-                    "status_code": 429,
-                    "error": "微软云端 WABI 微服务限流节流 (HTTP 429 Too Many Requests)，请稍后重试",
-                    "cluster": cluster,
+                    "error": f"连接 WABI 集群 [{cur_cluster}] 超时或网络异常: {str(e)}",
+                    "cluster": cur_cluster,
                 }
-            elif resp.status_code == 404:
-                return {
-                    "success": False,
-                    "status_code": 404,
-                    "error": f"模型未在当前 WABI 集群 [{cluster}] 找到 (PowerBIEntityNotFound)，可能该模型归属于其他地理区域集群",
-                    "cluster": cluster,
-                }
-            elif resp.status_code in (401, 403):
-                return {
-                    "success": False,
-                    "status_code": resp.status_code,
-                    "error": f"访问微软 WABI 内部接口被拒绝 (HTTP {resp.status_code})，请检查 Access Token 是否具有有效权限",
-                    "cluster": cluster,
-                }
-            else:
-                return {
-                    "success": False,
-                    "status_code": resp.status_code,
-                    "error": f"WABI 接口返回异常状态码: HTTP {resp.status_code}",
-                    "cluster": cluster,
-                }
-        except Exception as e:
-            return {
-                "success": False,
-                "error": str(e),
-                "cluster": cluster,
-            }
+                continue
+
+        return last_error_resp or {"success": False, "error": "所有候选 WABI 集群均未返回成功响应"}
 

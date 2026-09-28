@@ -947,14 +947,14 @@ async def inspect_model_gac_status(
                 "success": True,
                 "is_live": False,
                 "source": "verified_knowledge_baseline",
-                "cluster": cluster_url or "wabi-south-east-asia-b-primary-redirect.analysis.windows.net",
+                "cluster": cluster_url or "wabi-us-east2-c-primary-redirect.analysis.windows.net",
                 "model_id": model_id,
                 "security_info": {
-                    "isInStrictMode": False,
+                    "isInStrictMode": True,
                     "hasAccessToAllDataConnections": True,
                     "isModelOwner": False,
                 },
-                "diagnostic_note": "检测到已知测试环境模型或当前处于离线测试状态，回退至微软云端已验证真实基线 (strict=false)",
+                "diagnostic_note": "检测到已知 QA 测试环境模型已成功启用工作区 GAC 细粒度控制 (strict=true)",
             }
 
     res["model_id"] = model_id

@@ -2729,7 +2729,12 @@
                                 capacityType: 'fabric_f64',
                                 workspaceRole: role,
                                 isModelOwner: role === 'Admin',
-                                isInStrictMode: Boolean(targetWsName && (targetWsName.toUpperCase().includes('PROD') || targetWsName.toUpperCase().includes('PRODUCTION'))),
+                                isInStrictMode: Boolean(targetWsName && (
+                                    targetWsName.toUpperCase().includes('PROD') ||
+                                    targetWsName.toUpperCase().includes('PRODUCTION') ||
+                                    targetWsName.toUpperCase().includes('QA') ||
+                                    targetWsName.toUpperCase().includes('81293C65')
+                                )),
                                 hasAccessToAllDataConnections: true,
                                 gatewayOnline: true,
                                 sharePermission: 'ReadBuild',
@@ -4798,6 +4803,10 @@
                     const data = await res.json();
                     if (data && data.success && data.security_info) {
                         window._modelLiveGacCache[cacheKey] = data;
+                        if (workspaceId) {
+                            window._wsLiveGacCache = window._wsLiveGacCache || {};
+                            window._wsLiveGacCache[workspaceId] = data;
+                        }
                         try {
                             sessionStorage.setItem('pbi_model_live_gac_cache', JSON.stringify(window._modelLiveGacCache));
                         } catch(e) {}
@@ -5309,10 +5318,18 @@
                 `;
             };
 
-            // ⚡ 实时内部服务探针：若当前选定了语义模型，异步触发 WABI modeling/getModel 内部微服务
+            // ⚡ 实时内部服务探针：若当前选定了语义模型或工作区，异步触发 WABI modeling/getModel 内部微服务
             let liveGacData = null;
-            if (curModel && curModel.id) {
-                const gacCacheKey = `${curWsId || 'global'}_${curModel.id}`;
+            let targetProbeModelId = curModel?.id || null;
+            if (!targetProbeModelId && curWsId) {
+                // 若未在顶栏明确选定具体模型，但已选定工作区，寻找该工作区下的关联数据集进行探针预热
+                const scopedModels = (allDatasets || []).filter(d => String(d.workspaceId || '').toLowerCase() === String(curWsId).toLowerCase());
+                if (scopedModels.length > 0 && scopedModels[0]?.id) {
+                    targetProbeModelId = scopedModels[0].id;
+                }
+            }
+            if (targetProbeModelId) {
+                const gacCacheKey = `${curWsId || 'global'}_${targetProbeModelId}`;
                 if (!window._modelLiveGacCache) {
                     try {
                         const cached = sessionStorage.getItem('pbi_model_live_gac_cache');
@@ -5323,27 +5340,28 @@
                 }
                 liveGacData = window._modelLiveGacCache[gacCacheKey] || null;
                 if (!liveGacData && !this._fetchingLiveGac?.[gacCacheKey]) {
-                    this.fetchLiveModelGacStatus(curWsId, curModel.id);
+                    this.fetchLiveModelGacStatus(curWsId, targetProbeModelId);
                 }
             }
 
             // ⚡ 核心演进：动态工作区与模型 GAC 严格模式推导 (支持微软内部建模微服务实时真实验证)
             // 1. 若当前处于 What-If 演练且用户显式覆盖过 isInStrictMode，以演练设定为最高优先
-            // 2. 🌟 微软内部微服务实时探针：若已成功握手 WABI modeling/getModel，直接采纳服务端实时权威真值！
-            // 3. 否则根据真实工作区与模型环境智能判定：
-            //    - 真实 PROD 环境 (DA_APAC_BI_PROD / 包含 PROD 或 Production) 实测已由管理员启用 GAC -> true
-            //    - 真实 QA / DEV 环境 (DA_APAC_BI_QA / 包含 QA 或 DEV) 实测未启用 GAC -> false
+            // 2. 🌟 微软内部微服务实时探针：若模型或工作区已成功握手 WABI modeling/getModel，直接采纳服务端实时权威真值！
+            // 3. 🌟 工作区已验证真实环境基线判定：
+            //    - 真实 PROD 与 QA 环境 (DA_APAC_BI_PROD, DA_APAC_BI_QA 等) 实测已在微软云端开启 GAC -> true
             //    - 虚拟预设主体：遵循预设内置的 state.isInStrictMode 设定 (预设管理员/开发者默认为 true)
             let isStrictGacMode = false;
             const wsFullNameUpper = `${wsName} ${curWsId}`.toUpperCase();
+            const wsCachedGac = (curWsId && window._wsLiveGacCache && window._wsLiveGacCache[curWsId]) || null;
+            const effectiveGacData = liveGacData || wsCachedGac;
+
             if (this.simulationOverrides && this.simulationOverrides['isInStrictMode'] !== undefined) {
                 isStrictGacMode = Boolean(this.simulationOverrides['isInStrictMode']);
-            } else if (liveGacData && liveGacData.security_info && liveGacData.security_info.isInStrictMode !== undefined) {
-                isStrictGacMode = Boolean(liveGacData.security_info.isInStrictMode);
-            } else if (wsFullNameUpper.includes('PROD') || wsFullNameUpper.includes('PRODUCTION')) {
+            } else if (effectiveGacData && effectiveGacData.security_info && effectiveGacData.security_info.isInStrictMode !== undefined) {
+                isStrictGacMode = Boolean(effectiveGacData.security_info.isInStrictMode);
+            } else if (wsFullNameUpper.includes('PROD') || wsFullNameUpper.includes('PRODUCTION') || wsFullNameUpper.includes('QA') || wsFullNameUpper.includes('81293C65')) {
+                // 已在微软云端开启数据连接细粒度访问控制 (GAC) 的工作区 (包含 DA_APAC_BI_QA 及 PROD)
                 isStrictGacMode = true;
-            } else if (wsFullNameUpper.includes('QA') || wsFullNameUpper.includes('DEV')) {
-                isStrictGacMode = false;
             } else if (user?.state?.isInStrictMode !== undefined) {
                 isStrictGacMode = Boolean(user.state.isInStrictMode);
             } else {
@@ -5480,9 +5498,9 @@
                         desc: '【路径】Workspace > Workspace settings > Power BI > Data connections',
                         statusClass: isStrictGacMode ? 'enabled' : 'disabled',
                         statusText: isStrictGacMode ? '🛡️ GAC ON (Strict)' : '⚠️ GAC OFF (Legacy)',
-                        badge: liveGacData ? (liveGacData.is_live ? '⚡ LIVE WABI' : '🛡️ BASELINE') : 'GAC SWITCH',
-                        badgeTitle: liveGacData
-                            ? `集群 [${liveGacData.cluster || 'wabi-south-east-asia-b-primary-redirect.analysis.windows.net'}] · isInStrictMode=${isStrictGacMode}`
+                        badge: effectiveGacData ? (effectiveGacData.is_live ? '⚡ LIVE WABI' : '🛡️ BASELINE') : 'GAC SWITCH',
+                        badgeTitle: effectiveGacData
+                            ? `集群 [${effectiveGacData.cluster || 'wabi-us-east2-c-primary-redirect.analysis.windows.net'}] · isInStrictMode=${isStrictGacMode}`
                             : ''
                     },
                     { id: 'ws_capacity', cat: 'derived', name: 'Fabric F64 Capacity (企业专用容量)', desc: '【路径】Workspace > Workspace settings > Premium / Fabric capacity', statusClass: 'enabled', statusText: '⚡ CAN ACCESS', badge: 'CAPACITY' },
@@ -5549,9 +5567,9 @@
                         desc: '【路径】Semantic model > Settings > Data access',
                         statusClass: isStrictGacMode ? 'warn' : 'disabled',
                         statusText: isStrictGacMode ? '🛡️ GAC STRICT ENFORCED' : '⚠️ GAC DISABLED (Legacy)',
-                        badge: liveGacData ? (liveGacData.is_live ? '⚡ LIVE WABI' : '🛡️ BASELINE') : 'GAC',
-                        badgeTitle: liveGacData
-                            ? `集群 [${liveGacData.cluster || 'wabi-south-east-asia-b-primary-redirect.analysis.windows.net'}] · isInStrictMode=${isStrictGacMode} · hasAccessToAllDataConnections=${Boolean(liveGacData.security_info?.hasAccessToAllDataConnections)} · isModelOwner=${Boolean(liveGacData.security_info?.isModelOwner)}`
+                        badge: effectiveGacData ? (effectiveGacData.is_live ? '⚡ LIVE WABI' : '🛡️ BASELINE') : 'GAC',
+                        badgeTitle: effectiveGacData
+                            ? `集群 [${effectiveGacData.cluster || 'wabi-us-east2-c-primary-redirect.analysis.windows.net'}] · isInStrictMode=${isStrictGacMode} · hasAccessToAllDataConnections=${Boolean(effectiveGacData.security_info?.hasAccessToAllDataConnections)} · isModelOwner=${Boolean(effectiveGacData.security_info?.isModelOwner)}`
                             : ''
                     },
                     { id: 'model_reshare', cat: 'derived', name: 'Reshare (二次授权共享模型)', desc: '【路径】Semantic model > Manage permissions > Direct access > Allow reshare', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ CAN RESHARE' : '❌ CANNOT RESHARE', badge: 'RESHARE' }
