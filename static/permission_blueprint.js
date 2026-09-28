@@ -763,22 +763,38 @@
                 const triggerBtn = legend.querySelector('.pb-legend-trigger');
                 const pinBtn = legend.querySelector('.pb-legend-pin-hint');
 
-                // 点击触发小圆圈：长久固定展开 / 再次点击收起
+                // 点击触发小圆圈：长久固定展开 / 再次点击立即关闭消失
                 if (triggerBtn) {
                     triggerBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         const isPinned = legend.classList.toggle('is-pinned');
+                        if (!isPinned) {
+                            // 再次点击立刻消失：添加 is-closed-by-click 切断 hover 状态
+                            legend.classList.add('is-closed-by-click');
+                        } else {
+                            legend.classList.remove('is-closed-by-click');
+                        }
                         if (legend.id === 'pb-user-assets-legend') {
                             this._isUserAssetsLegendPinned = isPinned;
                         }
                     });
                 }
 
+                // 鼠标离开图例区域时，解除关闭标记，恢复正常的悬浮展示逻辑
+                legend.addEventListener('mouseleave', () => {
+                    legend.classList.remove('is-closed-by-click');
+                });
+
                 // 点击卡片头部的图钉图标：切换锁定展开 / 收缩
                 if (pinBtn) {
                     pinBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         const isPinned = legend.classList.toggle('is-pinned');
+                        if (!isPinned) {
+                            legend.classList.add('is-closed-by-click');
+                        } else {
+                            legend.classList.remove('is-closed-by-click');
+                        }
                         if (legend.id === 'pb-user-assets-legend') {
                             this._isUserAssetsLegendPinned = isPinned;
                         }
@@ -5483,18 +5499,19 @@
                                     </span>
                                 </div>
                                 ${(() => {
-                                    const SVG_CHECK = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px; display: inline-block;"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
-                                    const SVG_CROSS = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px; display: inline-block;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
-                                    const SVG_WARN = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px; display: inline-block;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
-                                    const SVG_BOLT = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px; display: inline-block;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`;
+                                    const SVG_CHECK = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                                    const SVG_CROSS = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+                                    const SVG_WARN = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
+                                    const SVG_BOLT = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`;
 
-                                    let pillText = (item.statusText || '')
-                                        .replace(/\bCANNOT\b/gi, '')
-                                        .replace(/\bCAN\b/gi, '')
+                                    let rawTooltip = (item.statusText || '')
                                         .replace(/^[✅❌⚠️⚡👁️🔒🚫✏️\s]+/, '')
                                         .trim();
+                                    if (!rawTooltip) {
+                                        rawTooltip = item.statusClass === 'enabled' ? '已授权 / 正常' : (item.statusClass === 'disabled' ? '未授权 / 禁用' : '注意 / 告警');
+                                    }
 
-                                    let iconSvg = '';
+                                    let iconSvg = SVG_CHECK;
                                     if (item.statusClass === 'bypassed') {
                                         iconSvg = SVG_BOLT;
                                     } else if (item.statusClass === 'enabled') {
@@ -5504,7 +5521,7 @@
                                     } else if (item.statusClass === 'warn') {
                                         iconSvg = SVG_WARN;
                                     }
-                                    return `<span class="pb-asset-status-pill status-${item.statusClass}">${iconSvg}${pillText}</span>`;
+                                    return `<span class="pb-asset-status-pill status-${item.statusClass} icon-only" title="${rawTooltip}">${iconSvg}</span>`;
                                 })()}
                             </div>
                             <div class="pb-asset-row-bottom">
@@ -5591,7 +5608,7 @@
             const tenantHeroStatusText = user ? (isTenantAdmin ? '⚡ ADMIN' : (isGuest ? '⚠️ B2B GUEST' : '✅ MEMBER')) : '❌ NO USER';
             const tenantItems = [
                 { id: 'tenant_principal_role', isHero: true, cat: 'assigned', name: tenantRoleName, desc: user ? `【路径】Microsoft Entra admin center > Identity > Users > [${user.name || user.upn}]` : '【路径】Microsoft Entra admin center > Identity > Users', statusClass: tenantHeroStatusClass, statusText: tenantHeroStatusText, badge: 'ROLE' },
-                { id: 'tenant_gac_policy', cat: 'derived', name: `GAC Policy (${isStrictGacMode ? '严格审查模式' : '跨源放行模式'})`, desc: '【路径】Admin portal > Tenant settings > Integration settings > Data access', statusClass: isStrictGacMode ? 'warn' : 'enabled', statusText: isStrictGacMode ? '🔒 STRICT' : '✅ CAN ACCESS', badge: 'GAC' },
+                { id: 'tenant_gac_policy', cat: 'derived', name: 'GAC Policy (跨源放行模式)', desc: '【路径】Admin portal > Tenant settings > Integration settings > Data access (租户级别未强制开启严格模式，保持跨源放行)', statusClass: 'enabled', statusText: '✅ CAN ACCESS', badge: 'GAC' },
                 { id: 'tenant_export', cat: 'derived', name: 'Export Data (导出数据至 Excel/CSV)', desc: '【路径】Admin portal > Tenant settings > Export and sharing settings > Export to Excel', statusClass: user ? 'enabled' : 'disabled', statusText: user ? '✅ CAN EXPORT' : '❌ CANNOT EXPORT', badge: 'EXPORT' },
                 { id: 'tenant_web_modeling', cat: 'derived', name: 'Web Modeling (网页在线端建模)', desc: '【路径】Admin portal > Tenant settings > Data model settings > Web modeling', statusClass: user?.state?.tenantAllowWebModeling ? 'enabled' : 'disabled', statusText: user?.state?.tenantAllowWebModeling ? '✅ CAN MODEL' : '❌ CANNOT MODEL', badge: 'WEB MODEL' },
                 { id: 'tenant_xmla', cat: 'derived', name: 'XMLA Endpoint (XMLA 端点读写)', desc: '【路径】Admin portal > Capacity settings > Workloads > XMLA Endpoint', statusClass: 'enabled', statusText: '✅ CAN CONNECT', badge: 'XMLA' },
@@ -5736,17 +5753,17 @@
                 `;
             } else if (!hasSelectedModel) {
                 modelTitleText = '🗄️ 3. MODEL';
-                modelStatusBadge = isStrictGacMode ? '🛡️ GAC 严格门禁生效' : '⚠️ 尚未选择';
-                modelStatusClass = isStrictGacMode ? 'enabled' : 'warn';
-                modelSubText = isStrictGacMode ? '工作区 GAC 细粒度控制生效中' : '未选择';
+                modelStatusBadge = '⚠️ 尚未选择';
+                modelStatusClass = 'warn';
+                modelSubText = '未选择';
                 colModelBody = `
                     <div style="padding: 16px 10px; text-align: center; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.08);">
                         <div style="font-size: 1.3rem; margin-bottom: 6px;">🗄️</div>
-                        <div style="font-weight: 700; font-size: 0.76rem; color: ${isStrictGacMode ? '#34d399' : '#f59e0b'}; margin-bottom: 3px;">
-                            ${isStrictGacMode ? '🛡️ 工作区 GAC 严格门禁已就绪' : '顶栏尚未选择具体模型'}
+                        <div style="font-weight: 700; font-size: 0.76rem; color: #f59e0b; margin-bottom: 3px;">
+                            顶栏尚未选择具体模型
                         </div>
                         <div style="font-size: 0.65rem; color: var(--text-secondary); line-height: 1.4;">
-                            ${isStrictGacMode ? `当前工作区 <strong style="color: #60a5fa;">${wsName}</strong> 已启用细粒度数据连接控制 (isInStrictMode=true)。<br/>请在顶栏「模型」下拉框挑选具体模型，以呈现其专属模型级直连与 Mashup 门禁流转。` : `请在顶栏「模型」选择器中选择 <strong style="color: #60a5fa;">${wsName}</strong> 下的模型。`}
+                            请在顶栏「模型」选择器中选择 <strong style="color: #60a5fa;">${wsName}</strong> 下的语义模型，以呈现模型资产权限与数据源凭据。
                         </div>
                     </div>
                 `;
@@ -6132,26 +6149,26 @@
                             <!-- 1. 权限卡片分类 -->
                             <div class="pb-legend-row">
                                 <span class="pb-legend-dot dot-assigned"></span>
-                                <span class="pb-legend-label"><strong style="color: #fbbf24;">官方分配身份 (ASSIGNED)</strong>：权威原始身份与核心治理角色</span>
+                                <span class="pb-legend-label"><strong style="color: #fbbf24;">分配身份 (ASSIGNED)</strong>：权威原始身份与治理角色</span>
                             </div>
                             <div class="pb-legend-row">
                                 <span class="pb-legend-dot dot-derived"></span>
-                                <span class="pb-legend-label"><strong style="color: #38bdf8;">衍生能力权限 (CAPABILITY)</strong>：基于上游身份推导派生的具体操作能力</span>
+                                <span class="pb-legend-label"><strong style="color: #38bdf8;">派生能力 (CAPABILITY)</strong>：推导的操作能力</span>
                             </div>
                             <div class="pb-legend-row">
                                 <span class="pb-legend-dot dot-env"></span>
-                                <span class="pb-legend-label"><strong style="color: #94a3b8;">承载环境资产 (ENV)</strong>：依赖的环境容器、网关通道与租户载体</span>
+                                <span class="pb-legend-label"><strong style="color: #94a3b8;">环境载体 (ENV)</strong>：容器、网关及租户载体</span>
                             </div>
 
                             <!-- 2. 因果连接线图例说明 -->
-                            <div class="pb-legend-section-title">因果连接线图例说明</div>
+                            <div class="pb-legend-section-title">因果连接线</div>
                             <div class="pb-legend-row">
                                 <span class="pb-legend-wire-symbol">
                                     <span class="pb-legend-wire-dot dot-from-trunk"></span>
                                     <span class="pb-legend-wire-line line-trunk"></span>
                                     <span class="pb-legend-wire-dot dot-to-trunk"></span>
                                 </span>
-                                <span class="pb-legend-label"><strong style="color: #34d399;">绿色脉冲实线</strong>：当前已生效身份的直接因果赋权通道</span>
+                                <span class="pb-legend-label"><strong style="color: #34d399;">绿色实线</strong>：当前生效赋权通路</span>
                             </div>
                             <div class="pb-legend-row">
                                 <span class="pb-legend-wire-symbol">
@@ -6159,17 +6176,13 @@
                                     <span class="pb-legend-wire-line line-ghost"></span>
                                     <span class="pb-legend-wire-dot dot-ghost"></span>
                                 </span>
-                                <span class="pb-legend-label"><strong style="color: #c084fc;">紫色点阵虚线</strong>：其他备选合法角色的潜在赋能路径</span>
+                                <span class="pb-legend-label"><strong style="color: #c084fc;">紫色虚线</strong>：备选角色潜在通路</span>
                             </div>
                             <div class="pb-legend-row">
                                 <span class="pb-legend-wire-symbol" style="display: inline-flex; align-items: center; justify-content: center; width: 34px; font-size: 0.72rem; color: #38bdf8; font-weight: 700;">
                                     ▲ N
                                 </span>
-                                <span class="pb-legend-label"><strong style="color: #38bdf8;">离屏雷达探针</strong>：端点滚出视口吸附边缘并显示超出数量，点击平滑回滚至目标卡片</span>
-                            </div>
-                            <div class="pb-legend-row" style="margin-top: 1px;">
-                                <span style="font-size: 0.72rem; line-height: 1;">💡</span>
-                                <span class="pb-legend-label" style="color: var(--text-tertiary); font-size: 0.62rem;">点击任意连线可独占高亮聚焦该通路与两侧卡片</span>
+                                <span class="pb-legend-label"><strong style="color: #38bdf8;">离屏探针</strong>：端点越界吸附，点击定位</span>
                             </div>
                         </div>
                     </div>

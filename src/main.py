@@ -692,7 +692,10 @@ async def ai_chat(req: ChatRequest):
     valid_keys = _get_valid_api_keys()
 
     if not valid_keys:
-        return {"success": False, "message": "Backend missing AI API Key (both OpenAI and Gemini are unconfigured)"}
+        async def err_gen():
+            yield f"data: {json.dumps({'success': False, 'message': '后端未配置可用的 AI API 密钥 (请在设置中配置 OpenAI API Key 或 Gemini Key)'})}\n\n"
+            yield "data: [DONE]\n\n"
+        return StreamingResponse(err_gen(), media_type="text/event-stream")
 
     # 优先使用已证明可用的 Key，防止掉入 429 陷阱
     if _current_api_key and _current_api_key in valid_keys:
@@ -717,7 +720,10 @@ async def ai_chat(req: ChatRequest):
                 continue
 
     if not chat:
-        return {"success": False, "message": f"All API keys failed to init session. Error: {last_error}"}
+        async def err_gen2():
+            yield f"data: {json.dumps({'success': False, 'message': f'AI 会话初始化失败: {last_error}'})}\n\n"
+            yield "data: [DONE]\n\n"
+        return StreamingResponse(err_gen2(), media_type="text/event-stream")
 
     # 如果是第一次聊天，主动把项目知识库喂进去
     full_message = req.message
@@ -1968,6 +1974,11 @@ class NotePayload(BaseModel):
     content: str
 
 
+def is_render_env() -> bool:
+    """检测当前运行环境是否为 Render 云端无头容器环境"""
+    return os.getenv("RENDER", "").lower() == "true" or bool(os.getenv("RENDER_SERVICE_ID")) or bool(os.getenv("RENDER_EXTERNAL_URL"))
+
+
 def _get_github_token() -> str:
     """获取用于 GitHub 同步的有效 Token"""
     token = os.getenv("GITHUB_PAT") or os.getenv("GITHUB_TOKEN") or load_settings().get("GITHUB_PAT", "")
@@ -2129,34 +2140,50 @@ async def save_note(payload: NotePayload):
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(payload.content)
 
-        # 优先尝试本地 Git CLI 推送 (通过注入 PAT 支持 Render 无头容器环境)
+        # ⚡ 关键架构：在 Render 云端容器中，100% 优先且只走 GitHub REST API (直达远端 main，耗时仅 ~300ms，自带 409 SHA 自动重试，彻底免疫本地分支分叉与超时)
+        if is_render_env():
+            ok, msg = await asyncio.to_thread(_sync_note_to_github_rest, filename, payload.content)
+            if not ok:
+                return {"success": False, "error": f"GitHub REST API Sync Failed: {msg}", "filename": filename, "local_saved": True}
+            return {"success": True, "message": f"Successfully saved {filename} and synced to GitHub via REST API!", "filename": filename}
+
+        # 本地开发环境：优先尝试本地 Git CLI 推送
         def _try_git_cli_push() -> bool:
             try:
                 subprocess.run(["git", "config", "user.email", "bot@render.com"], cwd=root_dir, check=False)
                 subprocess.run(["git", "config", "user.name", "Render Bot"], cwd=root_dir, check=False)
 
-                r1 = subprocess.run(["git", "add", f"notes/{filename}", "static/uploads/notes/"], cwd=root_dir, capture_output=True, text=True, timeout=8)
+                r1 = subprocess.run(["git", "add", f"notes/{filename}", "static/uploads/notes/"], cwd=root_dir, capture_output=True, text=True, timeout=5)
                 if r1.returncode != 0:
                     return False
 
-                subprocess.run(["git", "commit", "-m", f"docs(notes): add {filename} and attachments"], cwd=root_dir, capture_output=True, text=True, timeout=8)
+                subprocess.run(["git", "commit", "-m", f"docs(notes): add {filename} and attachments"], cwd=root_dir, capture_output=True, text=True, timeout=5)
 
                 token = _get_github_token()
                 env = os.environ.copy()
                 env["GIT_TERMINAL_PROMPT"] = "0"
                 pat_url = f"https://ZCM0808:{token}@github.com/ZCM0808/Proj-PBI-API.git"
-                r3 = subprocess.run(["git", "push", pat_url, "HEAD:main"], cwd=root_dir, capture_output=True, text=True, timeout=12, env=env)
+                r3 = subprocess.run(["git", "push", pat_url, "HEAD:main"], cwd=root_dir, capture_output=True, text=True, timeout=8, env=env)
                 if r3.returncode == 0:
                     return True
 
-                r4 = subprocess.run(["git", "push", "origin", "main"], cwd=root_dir, capture_output=True, text=True, timeout=8, env=env)
-                return r4.returncode == 0
+                r4 = subprocess.run(["git", "push", "origin", "main"], cwd=root_dir, capture_output=True, text=True, timeout=5, env=env)
+                if r4.returncode == 0:
+                    return True
+
+                # 若本地 Git CLI push 失败（如远端存在未拉取的新提交），立刻撤销刚才生成的本地 commit，防止本地分支分叉！
+                subprocess.run(["git", "reset", "--mixed", "HEAD~1"], cwd=root_dir, capture_output=True, text=True, timeout=5)
+                return False
             except Exception:
+                try:
+                    subprocess.run(["git", "reset", "--mixed", "HEAD~1"], cwd=root_dir, capture_output=True, text=True, timeout=5)
+                except Exception:
+                    pass
                 return False
 
         git_pushed = await asyncio.to_thread(_try_git_cli_push)
 
-        # 若本地 Git CLI 凭据不具备或网络受阻，自动无缝切换为 GitHub REST API 直连推送
+        # 若本地 Git CLI 失败，自动无缝切换为 GitHub REST API 直连推送
         if not git_pushed:
             ok, msg = await asyncio.to_thread(_sync_note_to_github_rest, filename, payload.content)
             if not ok:
@@ -2181,22 +2208,31 @@ async def delete_note(payload: DeleteNotePayload):
             os.remove(file_path)
 
             def _git_push_note_delete() -> None:
+                if is_render_env():
+                    _delete_note_from_github_rest(filename)
+                    return
+
                 git_pushed = False
                 try:
                     subprocess.run(["git", "config", "user.email", "bot@render.com"], cwd=root_dir, check=False)
                     subprocess.run(["git", "config", "user.name", "Render Bot"], cwd=root_dir, check=False)
-                    r = subprocess.run(["git", "rm", f"notes/{filename}"], cwd=root_dir, capture_output=True, text=True, timeout=8)
+                    r = subprocess.run(["git", "rm", f"notes/{filename}"], cwd=root_dir, capture_output=True, text=True, timeout=5)
                     if r.returncode == 0:
-                        subprocess.run(["git", "commit", "-m", f"docs(notes): delete {filename}"], cwd=root_dir, capture_output=True, text=True, timeout=8)
+                        subprocess.run(["git", "commit", "-m", f"docs(notes): delete {filename}"], cwd=root_dir, capture_output=True, text=True, timeout=5)
                         token = _get_github_token()
                         env = os.environ.copy()
                         env["GIT_TERMINAL_PROMPT"] = "0"
                         pat_url = f"https://ZCM0808:{token}@github.com/ZCM0808/Proj-PBI-API.git"
-                        r3 = subprocess.run(["git", "push", pat_url, "HEAD:main"], cwd=root_dir, capture_output=True, text=True, timeout=12, env=env)
+                        r3 = subprocess.run(["git", "push", pat_url, "HEAD:main"], cwd=root_dir, capture_output=True, text=True, timeout=8, env=env)
                         if r3.returncode == 0:
                             git_pushed = True
+                        else:
+                            subprocess.run(["git", "reset", "--mixed", "HEAD~1"], cwd=root_dir, capture_output=True, text=True, timeout=5)
                 except Exception:
-                    pass
+                    try:
+                        subprocess.run(["git", "reset", "--mixed", "HEAD~1"], cwd=root_dir, capture_output=True, text=True, timeout=5)
+                    except Exception:
+                        pass
                 if not git_pushed:
                     _delete_note_from_github_rest(filename)
 
@@ -2270,22 +2306,31 @@ async def upload_note_file(file: UploadFile = File(...)):
             f.write(content)
 
         def _git_push_upload():
+            if is_render_env():
+                _sync_upload_to_github_rest(final_filename, content)
+                return
+
             git_pushed = False
             try:
                 subprocess.run(["git", "config", "user.email", "bot@render.com"], cwd=root_dir, check=False)
                 subprocess.run(["git", "config", "user.name", "Render Bot"], cwd=root_dir, check=False)
-                subprocess.run(["git", "add", f"static/uploads/notes/{final_filename}"], cwd=root_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=8)
-                subprocess.run(["git", "commit", "-m", f"docs(uploads): add note attachment {final_filename}"], cwd=root_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=8)
+                subprocess.run(["git", "add", f"static/uploads/notes/{final_filename}"], cwd=root_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+                subprocess.run(["git", "commit", "-m", f"docs(uploads): add note attachment {final_filename}"], cwd=root_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
 
                 token = _get_github_token()
                 env = os.environ.copy()
                 env["GIT_TERMINAL_PROMPT"] = "0"
                 pat_url = f"https://ZCM0808:{token}@github.com/ZCM0808/Proj-PBI-API.git"
-                r = subprocess.run(["git", "push", pat_url, "HEAD:main"], cwd=root_dir, capture_output=True, text=True, timeout=12, env=env)
+                r = subprocess.run(["git", "push", pat_url, "HEAD:main"], cwd=root_dir, capture_output=True, text=True, timeout=8, env=env)
                 if r.returncode == 0:
                     git_pushed = True
+                else:
+                    subprocess.run(["git", "reset", "--mixed", "HEAD~1"], cwd=root_dir, capture_output=True, text=True, timeout=5)
             except Exception:
-                pass
+                try:
+                    subprocess.run(["git", "reset", "--mixed", "HEAD~1"], cwd=root_dir, capture_output=True, text=True, timeout=5)
+                except Exception:
+                    pass
 
             if not git_pushed:
                 print(f"Git CLI push failed for {final_filename}, falling back to REST API...")

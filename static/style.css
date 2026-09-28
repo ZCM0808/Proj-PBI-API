@@ -168,12 +168,12 @@ body {
 #app-rail,
 .app-rail {
     position: relative;
-    width: 60px;
+    width: 48px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     align-items: stretch;
-    padding: 10px 6px;
+    padding: 8px 4px;
     margin-right: 6px;
     flex-shrink: 0;
     z-index: 25;
@@ -207,16 +207,16 @@ body {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: 10px;
-    padding: 6px 10px 10px 10px;
+    gap: 8px;
+    padding: 4px 6px 6px 6px;
     border-bottom: 1px solid var(--overlay-10);
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     cursor: pointer;
     user-select: none;
     overflow: hidden;
     white-space: nowrap;
     box-sizing: border-box;
-    border-radius: 8px;
+    border-radius: 7px;
     transition: background 0.2s ease, padding 0.38s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -313,9 +313,9 @@ body {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: 12px;
-    padding: 9px 11px;
-    border-radius: 10px;
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: 7px;
     color: var(--text-secondary);
     background: transparent;
     border: 1px solid transparent;
@@ -330,7 +330,7 @@ body {
 }
 
 .app-rail.expanded .rail-item {
-    padding: 9px 11px;
+    padding: 7px 10px;
 }
 
 .rail-item:hover {
@@ -8640,9 +8640,9 @@ body.light-theme .pb-flow-pill-text,
     display: flex;
     flex-direction: row;
     align-items: stretch;
-    gap: 8px;
+    gap: 6px;
     height: calc(100% - 44px);
-    padding: 8px 10px 12px 10px;
+    padding: 4px 6px 6px 6px;
     overflow-x: hidden; /* 严禁横向超出屏幕，无水平滚动条 */
     overflow-y: hidden;
     box-sizing: border-box;
@@ -8660,7 +8660,7 @@ body.light-theme .pb-flow-pill-text,
     background: rgba(15, 23, 42, 0.72);
     backdrop-filter: blur(14px);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 10px;
+    border-radius: 8px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
     transition: border-color 0.25s ease, box-shadow 0.25s ease;
     box-sizing: border-box;
@@ -8688,7 +8688,7 @@ body.light-theme .pb-asset-tier-card:hover,
 
 /* 卡片固定头部 - 支持文本选中复制 */
 .pb-asset-tier-card .pb-card-header {
-    padding: 8px 10px;
+    padding: 6px 8px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(255, 255, 255, 0.02);
     display: flex;
@@ -8819,10 +8819,10 @@ body.light-theme .pb-card-header-status.status-bypassed .pb-status-indicator-tex
 
 /* 卡片内部纵向滚动列表容器 */
 .pb-asset-tier-card .pb-card-body {
-    padding: 8px;
+    padding: 6px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 5px;
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
@@ -8844,11 +8844,11 @@ body.light-theme .pb-card-header-status.status-bypassed .pb-status-indicator-tex
 .pb-asset-card-row {
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    padding: 8px 10px;
+    gap: 4px;
+    padding: 6px 8px;
     background: rgba(255, 255, 255, 0.025);
     border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 8px;
+    border-radius: 6px;
     transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease, opacity 0.25s ease, filter 0.25s ease;
     cursor: pointer;
     position: relative;
@@ -9028,7 +9028,7 @@ body.light-theme .pb-cat-tag-pill.cat-env,
 }
 
 /* 悬停展开与固定展开态 */
-.pb-collapsible-legend:hover .pb-legend-card,
+.pb-collapsible-legend:not(.is-closed-by-click):hover .pb-legend-card,
 .pb-collapsible-legend.is-pinned .pb-legend-card {
     opacity: 1;
     visibility: visible;
@@ -10609,12 +10609,12 @@ body.light-theme .laya-toggle-slider:before,
 /* 全局弹窗层级提权防御 - 确保在 Quick Note (z-index: 35000) 下弹出的对话框永远置顶 */
 #custom-dialog-modal.modal-overlay,
 #confirm-modal.confirm-modal-overlay {
-    z-index: 50000 !important;
+    z-index: 60000 !important;
 }
 
 #custom-dialog-modal .modal-content,
 #confirm-modal .confirm-modal-content {
-    z-index: 50001 !important;
+    z-index: 60001 !important;
 }
 
 

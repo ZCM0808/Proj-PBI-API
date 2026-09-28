@@ -2965,15 +2965,26 @@ window.renderGlobalTopbar = async function() {
 
         const isInteractive = Boolean(authInfo && authInfo.is_interactive);
         const activeType = isInteractive ? 'interactive' : (authMode === 'personal' ? 'personal' : 'service_principal');
-        const spLabel = appName ? `Service Principal (${appName})` : (clientId ? `Service Principal (${clientId.slice(0, 8)}...)` : 'Service Principal');
-        const personalLabel = username ? `Personal (${username})` : 'Personal (Delegated User)';
-        const interactiveLabel = username ? `现代交互 (${username})` : '微软现代交互 (90天长效)';
+        const spLabel = appName ? `SP · ${appName}` : (clientId ? `SP · ${clientId.slice(0, 8)}...` : 'Service Principal');
+        const personalLabel = username ? `个人 · ${username}` : 'Personal (Delegated User)';
+        const interactiveLabel = username ? `交互 · ${username}` : '微软现代交互 (90天长效)';
+
+        const authBox = document.getElementById('gtb-auth-box');
+        if (authBox) {
+            const currentSubject = username || appName || clientId || '已认证主体';
+            authBox.title = `全局认证主体: ${activeType} | 当前: ${currentSubject} (点击切换模式，悬浮右侧可一键复制)`;
+        }
 
         if (authHidden) {
             authHidden.value = activeType;
         }
         if (authDisplayText) {
             authDisplayText.textContent = isInteractive ? interactiveLabel : (authMode === 'personal' ? personalLabel : spLabel);
+            authDisplayText.title = isInteractive
+                ? `微软现代交互认证: ${username || '扫码/通行密钥'} · 90天自动续期`
+                : (authMode === 'personal' 
+                    ? `传统个人账密认证: ${username || 'Delegated User'}`
+                    : `Azure 服务主体认证: ${appName || clientId || 'Client ID + Secret'}`);
         }
         if (authIcon) {
             authIcon.innerHTML = isInteractive
@@ -2982,6 +2993,9 @@ window.renderGlobalTopbar = async function() {
                     ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`
                     : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`);
         }
+
+        const SVG_AUTH_ACTIVE = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+        const SVG_AUTH_SWITCH = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4M7 4L3 8M7 4L11 8M17 8V20M17 20L21 16M17 20L13 16"></path></svg>`;
 
         if (authList) {
             authList.innerHTML = `
@@ -2993,7 +3007,7 @@ window.renderGlobalTopbar = async function() {
                             <span style="font-size: 0.65rem; color: #38bdf8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${username || '扫码/通行密钥'} · 90天自动续期</span>
                         </div>
                     </div>
-                    <span class="gtb-auth-badge" style="background: ${isInteractive ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.05)'}; color: ${isInteractive ? '#38bdf8' : 'var(--text-secondary)'};">${isInteractive ? '✓ 激活中' : '切换'}</span>
+                    <span class="gtb-auth-badge" style="background: ${isInteractive ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.05)'}; color: ${isInteractive ? '#38bdf8' : 'var(--text-secondary)'}; padding: 3px 6px; display: inline-flex; align-items: center;" title="${isInteractive ? '当前激活模式' : '切换至此认证主体'}">${isInteractive ? SVG_AUTH_ACTIVE : SVG_AUTH_SWITCH}</span>
                 </div>
                 <div class="gtb-auth-card ${(!isInteractive && authMode === 'service_principal') ? 'selected' : ''}" onclick="window.selectGtbAuthMode('service_principal')">
                     <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
@@ -3003,7 +3017,7 @@ window.renderGlobalTopbar = async function() {
                             <span style="font-size: 0.65rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${appName || clientId || 'Client ID + Secret 无人值守'}</span>
                         </div>
                     </div>
-                    <span class="gtb-auth-badge" style="background: ${(!isInteractive && authMode === 'service_principal') ? 'rgba(96, 165, 250, 0.15)' : 'rgba(255, 255, 255, 0.05)'}; color: ${(!isInteractive && authMode === 'service_principal') ? '#60a5fa' : 'var(--text-secondary)'};">${(!isInteractive && authMode === 'service_principal') ? '✓ 激活中' : '切换'}</span>
+                    <span class="gtb-auth-badge" style="background: ${(!isInteractive && authMode === 'service_principal') ? 'rgba(96, 165, 250, 0.15)' : 'rgba(255, 255, 255, 0.05)'}; color: ${(!isInteractive && authMode === 'service_principal') ? '#60a5fa' : 'var(--text-secondary)'}; padding: 3px 6px; display: inline-flex; align-items: center;" title="${(!isInteractive && authMode === 'service_principal') ? '当前激活模式' : '切换至此认证主体'}">${(!isInteractive && authMode === 'service_principal') ? SVG_AUTH_ACTIVE : SVG_AUTH_SWITCH}</span>
                 </div>
                 <div class="gtb-auth-card ${(!isInteractive && authMode === 'personal') ? 'selected' : ''}" onclick="window.selectGtbAuthMode('personal')">
                     <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
@@ -3013,7 +3027,7 @@ window.renderGlobalTopbar = async function() {
                             <span style="font-size: 0.65rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">账号+明文密码 · 仅限无 MFA 环境</span>
                         </div>
                     </div>
-                    <span class="gtb-auth-badge" style="background: ${(!isInteractive && authMode === 'personal') ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.05)'}; color: ${(!isInteractive && authMode === 'personal') ? '#34d399' : 'var(--text-secondary)'};">${(!isInteractive && authMode === 'personal') ? '✓ 激活中' : '切换'}</span>
+                    <span class="gtb-auth-badge" style="background: ${(!isInteractive && authMode === 'personal') ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.05)'}; color: ${(!isInteractive && authMode === 'personal') ? '#34d399' : 'var(--text-secondary)'}; padding: 3px 6px; display: inline-flex; align-items: center;" title="${(!isInteractive && authMode === 'personal') ? '当前激活模式' : '切换至此认证主体'}">${(!isInteractive && authMode === 'personal') ? SVG_AUTH_ACTIVE : SVG_AUTH_SWITCH}</span>
                 </div>
             `;
         }
@@ -4817,6 +4831,23 @@ window.copyGtbItem = function(btn, type) {
         if (tenantId) {
             lines.push((tenantName && tenantName !== '加载中...' && tenantName !== tenantId) ? `${tenantName} (${tenantId})` : tenantId);
         }
+    } else if (type === 'auth') {
+        label = '认证主体配置';
+        const mode = document.getElementById('gtb-select-auth-mode')?.value || '';
+        const displayText = document.getElementById('gtb-auth-display-text')?.textContent?.trim() || '';
+        const tenantId = document.getElementById('gtb-input-tenant-id')?.value || '';
+        let detail = `认证模式: ${displayText} (${mode})`;
+        if (mode === 'service_principal') {
+            const clientId = localStorage.getItem('pbi_client_id') || '';
+            const appName = localStorage.getItem('pbi_app_name') || '';
+            if (appName) detail += `\n应用名称: ${appName}`;
+            if (clientId) detail += `\nClient ID: ${clientId}`;
+        } else if (mode === 'interactive' || mode === 'personal') {
+            const username = localStorage.getItem('pbi_username') || '';
+            if (username) detail += `\n登录主体: ${username}`;
+        }
+        if (tenantId) detail += `\nTenant ID: ${tenantId}`;
+        lines.push(detail);
     }
 
     if (lines.length === 0) {
@@ -14336,7 +14367,11 @@ window.insertLinkedApiIntoNote = function() {
 
     if (!endpointInput || !endpointInput.value.trim()) {
 
-        alert("No API is currently selected in the main workspace!");
+        if (window.showCustomAlert) {
+            window.showCustomAlert("主工作区当前尚未选择或调用任何 API 接口，请先在左侧接口树或中间面板选定一个 API 接口！", "⚠️ 未选择 API");
+        } else {
+            alert("No API is currently selected in the main workspace!");
+        }
 
         return;
 
@@ -15068,7 +15103,7 @@ window.updateHarnessStats = function() {
             modal.querySelector('.close-btn').onclick = close;
 
             
-
+            modal.style.zIndex = '60000';
             modal.style.display = 'flex';
 
         });
@@ -15158,7 +15193,7 @@ window.updateHarnessStats = function() {
             
 
             // Animation logic
-
+            modal.style.zIndex = '60000';
             modal.style.display = 'flex';
 
         });
@@ -15647,170 +15682,102 @@ window.updateHarnessStats = function() {
                 return;
             }
 
-            let hasReceivedFirstToken = false;
-            let hasToolCard = false;
-            let fullText = '';
-
-
-
-            const reader = res.body.getReader();
-
-            const decoder = new TextDecoder("utf-8");
-
-            let buffer = '';
-
-
-
-            while (true) {
-
-                const { value, done } = await reader.read();
-
-                if (done) {
-
-                    if (buffer.trim()) processStreamLine(buffer);
-
-                    break;
-
-                }
-
-                
-
-                buffer += decoder.decode(value, { stream: true });
-
-                const lines = buffer.split('\n');
-
-                buffer = lines.pop();
-
-                
-
-                for (const line of lines) {
-
-                    processStreamLine(line);
-
-                }
-
+            const contentType = res.headers.get('content-type') || '';
+            if (!contentType.includes('text/event-stream')) {
+                try {
+                    const jsonData = await res.json();
+                    if (!jsonData.success) {
+                        loadingDiv.textContent = "AI 服务提示: " + (jsonData.message || "未知错误");
+                        loadingDiv.style.color = "var(--error)";
+                        return;
+                    }
+                } catch (_) {}
             }
 
+            let hasReceivedFirstToken = false;
+            let hasToolCard = false;
+            let hasError = false;
+            let fullText = '';
 
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let buffer = '';
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) {
+                    if (buffer.trim()) processStreamLine(buffer);
+                    break;
+                }
+                
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop();
+                
+                for (const line of lines) {
+                    processStreamLine(line);
+                }
+            }
 
             function processStreamLine(line) {
-
                 if (line.trim().startsWith('data: ')) {
-
                     const dataStr = line.replace('data: ', '').trim();
-
                     if (dataStr === '[DONE]') return;
-
                     if (!dataStr) return;
-
                     
-
                     try {
-
                         const data = JSON.parse(dataStr);
-
                         if (data.success) {
-
                             if (data.type === 'session_info') {
-
                                 window.aiSessionId = data.session_id;
-
                             } else if (data.type === 'tool_request') {
                                 hasToolCard = true;
                                 loadingDiv.style.display = 'none';
-
                                 
-
                                 const toolCard = document.createElement('div');
-
                                 toolCard.style.cssText = 'align-self: flex-start; background: var(--overlay-10); border: 1px solid var(--warning); padding: 12px; border-radius: 12px; max-width: 85%; color: var(--text-primary); margin-top: 8px; opacity: 0; transform: scale(0.95); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);';
-
                                 toolCard.innerHTML = `
-
                                     <div style="font-weight: bold; margin-bottom: 8px; color: var(--warning); display: flex; align-items: center; gap: 6px;">
-
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-
                                         AI Requests High-Risk Tool Execution
-
                                     </div>
-
                                     <div style="font-size: 0.85rem; margin-bottom: 4px;">Tool Name: <code style="background: var(--shadow-light); padding: 2px 6px; border-radius: 4px;">${data.name}</code></div>
-
                                     <pre style="background: var(--input-bg); padding: 8px; border-radius: 6px; font-size: 0.8rem; overflow-x: auto; margin-bottom: 12px; white-space: pre-wrap; color: var(--info-light, #a5d6ff);">${JSON.stringify(data.args, null, 2)}</pre>
-
                                     <div style="display: flex; gap: 8px;">
-
                                         <button class="approve-btn" style="flex: 1; background: var(--success); color: white; border: none; padding: 6px 0; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px var(--status-success-bg)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'">✅ Approve</button>
-
                                         <button class="reject-btn" style="flex: 1; background: var(--error); color: white; border: none; padding: 6px 0; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px var(--status-error-bg)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'">❌ Reject</button>
-
                                     </div>
-
                                 `;
-
                                 msgs.appendChild(toolCard);
-
                                 
-
                                 void toolCard.offsetWidth;
-
                                 toolCard.style.opacity = '1';
-
                                 toolCard.style.transform = 'scale(1)';
-
                                 msgs.scrollTop = Math.max(0, msgs.scrollHeight - msgs.clientHeight * 0.66);
 
-
-
                                 const btnApprove = toolCard.querySelector('.approve-btn');
-
                                 const btnReject = toolCard.querySelector('.reject-btn');
-
                                 
-
                                 const handleAction = (approved) => {
-
                                     btnApprove.disabled = true;
-
                                     btnReject.disabled = true;
-
                                     btnApprove.style.opacity = '0.4';
-
                                     btnReject.style.opacity = '0.4';
-
                                     btnApprove.style.cursor = 'not-allowed';
-
                                     btnReject.style.cursor = 'not-allowed';
-
                                     btnApprove.innerHTML = approved ? 'Executing...' : 'Rejected';
-
                                     
-
                                     const actionPayload = {
-
                                         session_id: window.aiSessionId,
-
                                         tool_name: data.name,
-
                                         tool_args: data.args,
-
                                         approved: approved
-
                                     };
-
-                                    // Make the call to approve endpoint and resume chat
-
                                     window.handleAiStream('/api/tool/approve', actionPayload);
-
                                 };
 
-
-
                                 btnApprove.onclick = () => handleAction(true);
-
                                 btnReject.onclick = () => handleAction(false);
-
                             } else if (data.type === 'text') {
                                 if (!hasReceivedFirstToken) {
                                     hasReceivedFirstToken = true;
@@ -15826,7 +15793,8 @@ window.updateHarnessStats = function() {
                                 msgs.scrollTop = Math.max(0, msgs.scrollHeight - msgs.clientHeight * 0.66);
                             }
                         } else {
-                            loadingDiv.textContent = "Sorry, an error occurred: " + (data.message || "未知错误");
+                            hasError = true;
+                            loadingDiv.textContent = "AI 响应提示: " + (data.message || "未知错误");
                             loadingDiv.style.color = "var(--error)";
                         }
                     } catch (e) {
@@ -15878,7 +15846,7 @@ window.updateHarnessStats = function() {
                 loadingDiv.appendChild(copyBtn);
             }
 
-            if (!hasReceivedFirstToken && !hasToolCard) {
+            if (!hasReceivedFirstToken && !hasToolCard && !hasError) {
                 loadingDiv.innerHTML = '<span style="color: var(--text-secondary); font-style: italic;">(模型未返回任何文本内容)</span>';
             }
 
