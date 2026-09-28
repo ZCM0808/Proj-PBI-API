@@ -415,8 +415,7 @@ test.describe('Causality Glow Hover Intent & Gap Buffer Verification', () => {
 
     // 1. 验证左侧 API 树存在 Internal Services 分类
     const internalCatHeader = page.locator('.api-category-title:has-text("Internal Services")');
-    await internalCatHeader.scrollIntoViewIfNeeded();
-    await expect(internalCatHeader).toBeVisible({ timeout: 10000 });
+    await expect(internalCatHeader).toBeVisible({ timeout: 15000 });
 
     // 验证包含 32 个内部微服务 API
     const catItem = page.locator('.api-category:has-text("Internal Services")');

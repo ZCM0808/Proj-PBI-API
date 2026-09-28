@@ -5215,7 +5215,8 @@
                         .replace(/^【承载通道】/, '<strong class="pb-desc-tag tag-gw">【承载通道】</strong>')
                         .replace(/^【承载环境】/, '<strong class="pb-desc-tag tag-ok">【承载环境】</strong>')
                         .replace(/^【环境就绪】/, '<strong class="pb-desc-tag tag-ok">【环境就绪】</strong>')
-                        .replace(/^【载体就绪】/, '<strong class="pb-desc-tag tag-ok">【载体就绪】</strong>')
+                        .replace(/^【开关位置】/, '<strong class="pb-desc-tag tag-conn">【开关位置】</strong>')
+                        .replace(/^【策略位置】/, '<strong class="pb-desc-tag tag-role">【策略位置】</strong>')
                         .replace(/^【认证机制】/, '<strong class="pb-desc-tag tag-gw">【认证机制】</strong>');
 
                     const cleanName = item.name || '';
@@ -5280,9 +5281,9 @@
                                 })()}
                             </div>
                             <div class="pb-asset-row-bottom">
-                                <span class="pb-asset-prop-desc">${formattedDesc}</span>
+                                <span class="pb-asset-prop-desc" title="${(item.desc || '').replace(/<[^>]+>/g, '')}">${formattedDesc}</span>
                                 <div class="pb-asset-row-badges">
-                                    ${item.badge ? `<span class="pb-asset-tag-pill">${item.badge}</span>` : ''}
+                                    ${item.badge ? `<span class="pb-asset-tag-pill" ${item.badgeTitle ? `title="${item.badgeTitle}"` : ''}>${item.badge}</span>` : ''}
                                 </div>
                             </div>
                         </div>
@@ -5366,7 +5367,7 @@
             const tenantHeroStatusText = user ? (isTenantAdmin ? '⚡ ADMIN' : (isGuest ? '⚠️ B2B GUEST' : '✅ MEMBER')) : '❌ NO USER';
             const tenantItems = [
                 { id: 'tenant_principal_role', isHero: true, cat: 'assigned', name: tenantRoleName, desc: user ? `【分配身份】登录主体 [${user.name}] (${user.upn}) · ${isTenantAdmin ? '拥有租户全局 Fabric / Power BI 管理员治理特权' : (isGuest ? 'Entra B2B 外部租户访客身份' : '企业目录标准组织成员身份')}` : '【等待配置】请在左侧或顶栏指定具体企业成员', statusClass: tenantHeroStatusClass, statusText: tenantHeroStatusText, badge: 'ROLE' },
-                { id: 'tenant_gac_policy', cat: 'derived', name: `GAC Policy (${isStrictGacMode ? '严格审查模式' : '跨源放行模式'})`, desc: isStrictGacMode ? '【租户策略控制】租户开启细粒度访问控制 (GAC) 严格审查模式，非特权成员必须具备显式数据连接授权才能直连数据源' : '【租户策略控制】租户 GAC 跨源策略处于放行模式，未对非特权成员实施全局数据源物理隔离', statusClass: isStrictGacMode ? 'warn' : 'enabled', statusText: isStrictGacMode ? '🔒 STRICT' : '✅ CAN ACCESS', badge: 'GAC' },
+                { id: 'tenant_gac_policy', cat: 'derived', name: `GAC Policy (${isStrictGacMode ? '严格审查模式' : '跨源放行模式'})`, desc: '【策略位置】Admin portal > Tenant settings > Integration settings', statusClass: isStrictGacMode ? 'warn' : 'enabled', statusText: isStrictGacMode ? '🔒 STRICT' : '✅ CAN ACCESS', badge: 'GAC' },
                 { id: 'tenant_export', cat: 'derived', name: 'Export Data (导出数据至 Excel/CSV)', desc: user ? '【租户策略控制】租户管理门户全局策略放行，允许组织成员导出报表底层与汇总数据至本地 Excel/CSV' : '【租户策略控制】需选定具体登录主体后生效策略', statusClass: user ? 'enabled' : 'disabled', statusText: user ? '✅ CAN EXPORT' : '❌ CANNOT EXPORT', badge: 'EXPORT' },
                 { id: 'tenant_web_modeling', cat: 'derived', name: 'Web Modeling (网页在线端建模)', desc: user?.state?.tenantAllowWebModeling ? '【租户策略控制】租户策略放行，允许在浏览器端直接设计、编辑语义模型架构与度量值' : '【租户策略控制】租户策略禁用网页端在线建模，仅允许通过 Power BI Desktop 客户端操作', statusClass: user?.state?.tenantAllowWebModeling ? 'enabled' : 'disabled', statusText: user?.state?.tenantAllowWebModeling ? '✅ CAN MODEL' : '❌ CANNOT MODEL', badge: 'WEB MODEL' },
                 { id: 'tenant_xmla', cat: 'derived', name: 'XMLA Endpoint (XMLA 端点读写)', desc: '【租户策略控制】终结点已开启读写，允许 SSMS、DAX Studio 与 Tabular Editor 跨客户端直连管理模型架构', statusClass: 'enabled', statusText: '✅ CAN CONNECT', badge: 'XMLA' },
@@ -5484,14 +5485,13 @@
                         id: 'ws_gac_setting',
                         cat: 'derived',
                         name: `Workspace GAC Setting (${isStrictGacMode ? '细粒度访问控制已启用' : '细粒度控制未开启'})`,
-                        desc: liveGacData
-                            ? `【${liveGacData.is_live ? '微软内部微服务实时验证' : '已验证基线响应'}】来自集群 [${liveGacData.cluster || 'wabi-paas-1'}]：工作区数据连接 GAC 细粒度控制已${isStrictGacMode ? '开启' : '关闭'} (isInStrictMode=${isStrictGacMode})，工作区内所有语义模型统一继承此细粒度安全管辖策略。`
-                            : (isStrictGacMode
-                                ? `【工作区连接配置】已在 Workspace > Settings > Data connections 启用 "Enable granular access control for all data connections"，全区模型继承 isInStrictMode=true 细粒度管控模式`
-                                : `【工作区连接配置】当前工作区未启用 GAC 细粒度开关 (isInStrictMode=false)，处于传统 Owner 独占模式，非 Owner 用户受前端限制`),
+                        desc: '【开关位置】Workspace > Settings > Power BI > Data connections',
                         statusClass: isStrictGacMode ? 'enabled' : 'disabled',
                         statusText: isStrictGacMode ? '🛡️ GAC ON (Strict)' : '⚠️ GAC OFF (Legacy)',
-                        badge: liveGacData ? (liveGacData.is_live ? '⚡ LIVE WABI' : '🛡️ BASELINE') : 'GAC SWITCH'
+                        badge: liveGacData ? (liveGacData.is_live ? '⚡ LIVE WABI' : '🛡️ BASELINE') : 'GAC SWITCH',
+                        badgeTitle: liveGacData
+                            ? `集群 [${liveGacData.cluster || 'wabi-south-east-asia-b-primary-redirect.analysis.windows.net'}] · isInStrictMode=${isStrictGacMode}`
+                            : ''
                     },
                     { id: 'ws_capacity', cat: 'derived', name: 'Fabric F64 Capacity (企业专用容量)', desc: '【承载环境】挂载企业专用容量 (Fabric F64)，享有独立计算算力与 Direct Lake 加速通道', statusClass: 'enabled', statusText: '⚡ CAN ACCESS', badge: 'CAPACITY' },
                     { id: 'ws_target', cat: 'env', name: `Workspace Container (目标工作区容器)`, desc: `【承载环境】工作区名称: ${wsName} · 容器 ID: ${curWs.id}`, statusClass: 'enabled', statusText: '✅ READY', badge: 'WORKSPACE' }
@@ -5554,14 +5554,13 @@
                         id: 'model_gac',
                         cat: 'derived',
                         name: 'Model GAC (模型细粒度访问控制)',
-                        desc: liveGacData
-                            ? `【受租户门禁与工作区 GAC 双重管辖 · ${liveGacData.is_live ? 'WABI 实时探针' : '已验证基线'}】${liveGacData.cluster ? `集群 [${liveGacData.cluster}] · ` : ''}isInStrictMode=${isStrictGacMode} · hasAccessToAllDataConnections=${Boolean(liveGacData.security_info?.hasAccessToAllDataConnections)} · isModelOwner=${Boolean(liveGacData.security_info?.isModelOwner)}。${isStrictGacMode ? '语义模型已进入严格审查模式，微观对象与跨源 Mashup 均需严格校验连接凭据。' : '模型处于传统 Owner 独占模式，非模型 Owner 无法进入 Power Query 编辑。'}`
-                            : (isStrictGacMode
-                                ? '【受租户门禁与工作区 GAC 开关双重管辖】工作区已勾选启用数据连接细粒度控制 (isInStrictMode=true)，语义模型进入严格审查模式，微观对象与跨源 Mashup 均需校验连接凭据'
-                                : '【受租户门禁与工作区 GAC 开关双重管辖】工作区未开启 GAC 开关 (isInStrictMode=false)，处于传统 Owner 独占模式，非模型 Owner 无法进入 Power Query 编辑'),
+                        desc: '【开关位置】Semantic model > Settings > Data access',
                         statusClass: isStrictGacMode ? 'warn' : 'disabled',
                         statusText: isStrictGacMode ? '🛡️ GAC STRICT ENFORCED' : '⚠️ GAC DISABLED (Legacy)',
-                        badge: liveGacData ? (liveGacData.is_live ? '⚡ LIVE WABI' : '🛡️ BASELINE') : 'GAC'
+                        badge: liveGacData ? (liveGacData.is_live ? '⚡ LIVE WABI' : '🛡️ BASELINE') : 'GAC',
+                        badgeTitle: liveGacData
+                            ? `集群 [${liveGacData.cluster || 'wabi-south-east-asia-b-primary-redirect.analysis.windows.net'}] · isInStrictMode=${isStrictGacMode} · hasAccessToAllDataConnections=${Boolean(liveGacData.security_info?.hasAccessToAllDataConnections)} · isModelOwner=${Boolean(liveGacData.security_info?.isModelOwner)}`
+                            : ''
                     },
                     { id: 'model_reshare', cat: 'derived', name: 'Reshare (二次授权共享模型)', desc: (isAdmin || isMember) ? `【由工作区角色派生】由 [${wsRoleCaps}] 角色派生，允许将该具体语义模型的访问权限二次授权给其他组织成员` : '【由工作区角色派生】无 RESHARE 权限，禁止向第三方组织成员分发或再授权该模型', statusClass: (isAdmin || isMember) ? 'enabled' : 'disabled', statusText: (isAdmin || isMember) ? '✅ CAN RESHARE' : '❌ CANNOT RESHARE', badge: 'RESHARE' }
                 ];
