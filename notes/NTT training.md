@@ -1,0 +1,1 @@
+![image.png](/static/uploads/notes/20260928_115649_image.png)
