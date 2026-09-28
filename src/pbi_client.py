@@ -17,6 +17,33 @@ from src.config import Config
 # 模块级全局连接池与 Token 内存缓存 (彻底消除频繁 TCP/TLS 跨洋握手与磁盘反序列化耗时)
 _GLOBAL_HTTP_SESSION: Optional[requests.Session] = None
 _GLOBAL_TOKEN_CACHE: Dict[str, Dict[str, Any]] = {}
+_GLOBAL_MSAL_CACHE: Optional[SerializableTokenCache] = None
+
+
+def get_shared_msal_cache(cache_file: str = ".msal_token_cache.json") -> SerializableTokenCache:
+    """获取全局共享的 MSAL Token Cache (保证长效 RefreshToken 跨请求全局共享与持久化)"""
+    global _GLOBAL_MSAL_CACHE
+    if _GLOBAL_MSAL_CACHE is None:
+        cache = SerializableTokenCache()
+        b64_cache = os.getenv("MSAL_TOKEN_CACHE_B64", "").strip()
+        if b64_cache:
+            try:
+                import base64
+                cache_str = base64.b64decode(b64_cache).decode("utf-8")
+                cache.deserialize(cache_str)
+                with open(cache_file, "w", encoding="utf-8") as f:
+                    f.write(cache_str)
+            except Exception:
+                pass
+
+        if os.path.exists(cache_file) and not b64_cache:
+            try:
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    cache.deserialize(f.read())
+            except Exception:
+                pass
+        _GLOBAL_MSAL_CACHE = cache
+    return _GLOBAL_MSAL_CACHE
 
 
 def get_shared_session() -> requests.Session:
@@ -47,7 +74,7 @@ def reset_shared_session() -> None:
 
 
 def set_manual_token(token: str, auth_mode: str = "personal", identity: str = "", expires_in: int = 3600) -> None:
-    """手动注入外部（如设备流）获取的有效 Access Token 到内存缓存中"""
+    """手动注入外部获取的有效 Access Token 到内存缓存中"""
     now = time.time()
     for api_type in ["powerbi", "fabric"]:
         cache_key = f"{auth_mode}_{api_type}_{identity}"
@@ -67,27 +94,8 @@ class PBIClient:
 
     def __init__(self, config: Config | None = None):
         self.config = config or Config()
-        self.cache = SerializableTokenCache()
         self.cache_file = ".msal_token_cache.json"
-
-        # 优先从环境变量加载 Base64 编码的 MSAL 缓存 (适用于 Render/Docker 云端无头容器永久免登录)
-        b64_cache = os.getenv("MSAL_TOKEN_CACHE_B64", "").strip()
-        if b64_cache:
-            try:
-                import base64
-                cache_str = base64.b64decode(b64_cache).decode("utf-8")
-                self.cache.deserialize(cache_str)
-                with open(self.cache_file, "w", encoding="utf-8") as f:
-                    f.write(cache_str)
-            except Exception:
-                pass
-
-        if os.path.exists(self.cache_file) and not b64_cache:
-            try:
-                with open(self.cache_file, "r", encoding="utf-8") as f:
-                    self.cache.deserialize(f.read())
-            except Exception:
-                pass
+        self.cache = get_shared_msal_cache(self.cache_file)
 
     def _save_cache(self):
         if self.cache.has_state_changed:
@@ -117,42 +125,90 @@ class PBIClient:
 
         result = None
         if self.config.AUTH_MODE == "personal":
-            app = PublicClientApplication(
-                client_id=self.config.CLIENT_ID,
-                authority=self.config.authority_url,
-                token_cache=self.cache
-            )
+            # 1. 优先执行全自动跨租户静默穿透提取 (Silent Cache Fast-Path)
+            # 无论目标工作区是哪个租户，公共客户端与组织端点都能自动完成跨租户静默刷新
+            cids = [
+                self.config.CLIENT_ID,
+                "04b07795-8ddb-461a-bbee-02f9e1bf7b46",
+                "1846a56a-668f-405d-9ffd-574db4da5ce4",
+            ]
+            authorities = [
+                "https://login.microsoftonline.com/organizations",
+                self.config.authority_url,
+                "https://login.microsoftonline.com/common",
+            ]
+            unique_cids = [c for i, c in enumerate(cids) if c and c not in cids[:i]]
+            unique_auths = [a for i, a in enumerate(authorities) if a and a not in authorities[:i]]
 
-            # First try silent cache
-            accounts = app.get_accounts(username=self.config.USERNAME)
-            if accounts:
-                result = app.acquire_token_silent(scope, account=accounts[0])
-
-            if not result:
-                result = app.acquire_token_by_username_password(
-                    username=self.config.USERNAME,
-                    password=self.config.PASSWORD,
-                    scopes=scope
-                )
-
-            # Fallback to interactive if MFA is required or interaction needed
-            if result and "error" in result:
-                error_codes = result.get("error_codes", [])
-                error_msg = result.get("error", "").lower()
-                if 50076 in error_codes or 50158 in error_codes or 65001 in error_codes or "interaction_required" in error_msg or "invalid_grant" in error_msg:
-                    # 关键防御：在 Linux 无头容器（如 Render/Docker 无 DISPLAY 环境）下严禁拉起交互式浏览器，避免永久死锁
-                    is_headless = (os.name != "nt") and not os.getenv("DISPLAY")
-                    if is_headless:
-                        for k, v in _GLOBAL_TOKEN_CACHE.items():
-                            if k.startswith("personal_") and v.get("expires_at", 0) > now + 60:
-                                return str(v["token"])
-                        raise Exception(
-                            "当前运行于云端无头容器环境，且微软账号需要交互式验证或多因素认证(MFA)。"
-                            "请在系统中使用设备流(Device Code)完成授权登录。"
+            silent_result = None
+            for cid in unique_cids:
+                for auth in unique_auths:
+                    try:
+                        app_try = PublicClientApplication(
+                            client_id=cid,
+                            authority=auth,
+                            token_cache=self.cache
                         )
-                    result = app.acquire_token_interactive(
-                        scopes=scope,
-                        login_hint=self.config.USERNAME
+                        # 优先查找当前配置的用户名，若无则遍历所有可用账号
+                        accs = app_try.get_accounts(username=self.config.USERNAME) if self.config.USERNAME else []
+                        if not accs:
+                            accs = app_try.get_accounts()
+                        for acc in accs:
+                            try:
+                                s_res = app_try.acquire_token_silent(scope, account=acc)
+                                if s_res and "access_token" in s_res:
+                                    silent_result = s_res
+                                    break
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+                    if silent_result:
+                        break
+                if silent_result:
+                    break
+
+            if silent_result:
+                result = silent_result
+            else:
+                # 2. 静默缓存未命中时，尝试账密登录
+                if self.config.PASSWORD and self.config.USERNAME:
+                    app = PublicClientApplication(
+                        client_id=self.config.CLIENT_ID or "04b07795-8ddb-461a-bbee-02f9e1bf7b46",
+                        authority=self.config.authority_url,
+                        token_cache=self.cache
+                    )
+                    result = app.acquire_token_by_username_password(
+                        username=self.config.USERNAME,
+                        password=self.config.PASSWORD,
+                        scopes=scope
+                    )
+
+                # 3. 错误与环境防御处理
+                if result and "error" in result:
+                    error_codes = result.get("error_codes", [])
+                    error_msg = result.get("error", "").lower()
+                    if 50076 in error_codes or 50158 in error_codes or 65001 in error_codes or "interaction_required" in error_msg or "invalid_grant" in error_msg:
+                        is_headless = (os.name != "nt") and not os.getenv("DISPLAY")
+                        if is_headless:
+                            for k, v in _GLOBAL_TOKEN_CACHE.items():
+                                if k.startswith("personal_") and v.get("expires_at", 0) > now + 60:
+                                    return str(v["token"])
+                            raise Exception(
+                                "云端 MSAL 缓存中未找到当前账号的有效授权凭据，且当前为云端无头容器无法进行交互式验证。"
+                                "请确保已在 Render 环境变量中配置正确的 MSAL_TOKEN_CACHE_B64。"
+                            )
+                        result = app.acquire_token_interactive(
+                            scopes=scope,
+                            login_hint=self.config.USERNAME
+                        )
+                elif not result:
+                    for k, v in _GLOBAL_TOKEN_CACHE.items():
+                        if k.startswith("personal_") and v.get("expires_at", 0) > now + 60:
+                            return str(v["token"])
+                    raise Exception(
+                        "云端 MSAL 缓存中未找到当前账号的有效授权凭据。"
+                        "请检查 Render 环境变量 MSAL_TOKEN_CACHE_B64 是否配置完整。"
                     )
         else:
             app = ConfidentialClientApplication(
