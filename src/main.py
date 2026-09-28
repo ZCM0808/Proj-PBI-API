@@ -78,6 +78,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Power BI API Explorer", lifespan=lifespan)
 
+def get_today_str() -> str:
+    """获取中国标准时间 (Asia/Shanghai, UTC+8) 当前日期字符串 (YYYY-MM-DD)，彻底免疫海外容器 UTC 时区导致的跨日误锁"""
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo("Asia/Shanghai")).strftime("%Y-%m-%d")
+    except Exception:
+        from datetime import timezone, timedelta
+        return datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d")
+
+
 def make_auth_token(timestamp: int, mode: str = "mfa") -> str:
     raw_val = f"{timestamp}:{mode}:{Config.APP_ACCESS_PASSWORD}"
     sig = hashlib.sha256(raw_val.encode()).hexdigest()
@@ -133,7 +143,7 @@ async def auth_middleware(request: Request, call_next):
             mode = parts[1] if len(parts) == 3 else "mfa"
             if mode == "pwd1":
                 device_id = request.cookies.get("pbi_device_id")
-                today = datetime.now().strftime("%Y-%m-%d")
+                today = get_today_str()
                 device_record = lockouts.get(device_id, {}) if device_id else {}
                 usage = device_record.get("daily_usage", {})
                 token_ts = int(parts[0]) if parts[0].isdigit() else 0
@@ -252,7 +262,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
 
     # ===== 平行分支 2: 使用密码一 (主密码) 登录 (不限登录次数，单次/累计上限1小时) =====
     if req.password:
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = get_today_str()
         usage = device_record.get("daily_usage", {"date": today, "used_seconds": 0})
         if usage.get("date") != today:
             usage = {"date": today, "used_seconds": 0}
@@ -336,7 +346,7 @@ async def ping_usage(request: Request):
     except Exception:
         pass
 
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = get_today_str()
     device_record = lockouts.get(device_id, {"attempts": 0, "locked_until": 0})
 
     usage = device_record.get("daily_usage", {"date": today, "used_seconds": 0})
