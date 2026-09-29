@@ -57,7 +57,7 @@ async def scan_permissions_deep(
     target_ws_list: List[str] = []
     if workspace_ids and isinstance(workspace_ids, list):
         target_ws_list = [str(w).strip() for w in workspace_ids if str(w).strip()]
-    elif workspace_id and str(workspace_id).strip() and str(workspace_id).lower() not in ("all", "null", "undefined", ""):
+    elif workspace_id and str(workspace_id).strip() and str(workspace_id).lower() not in ("all", "null", "undefined", "", "none"):
         target_ws_list = [str(w).strip() for w in str(workspace_id).split(",") if str(w).strip()]
 
     is_tenant_level = (scope == "tenant") or (not target_ws_list)
@@ -95,7 +95,7 @@ async def scan_permissions_deep(
                                 cached_workspaces.append(workspaces[0])
                 except Exception as ex:
                     ex_msg = str(ex)
-                    if "401" in ex_msg or "unauthorized" in ex_msg.lower():
+                    if "401" in ex_msg or "unauthorized" in ex_msg.lower() or "403" in ex_msg or "forbidden" in ex_msg.lower():
                         has_admin_rights = False
                     if "429" in ex_msg or "exceeded the amount of requests" in ex_msg.lower():
                         if cached_single:
@@ -108,7 +108,10 @@ async def scan_permissions_deep(
                             if isinstance(ws_single, dict) and "id" in ws_single:
                                 workspaces = [ws_single]
                         except Exception as sub_ex:
-                            return {"success": False, "message": f"拉取工作区失败 (Admin 与常规接口均未命中): {str(sub_ex)}"}
+                            sub_msg = str(sub_ex)
+                            if "401" in sub_msg or "unauthorized" in sub_msg.lower() or "403" in sub_msg or "forbidden" in sub_msg.lower():
+                                return {"success": False, "message": f"当前账号无权访问工作区 [{single_id}] (HTTP 401/403): {sub_msg}"}
+                            return {"success": False, "message": f"拉取工作区失败 (Admin 与常规接口均未命中): {sub_msg}"}
         elif not is_tenant_level and len(target_ws_list) > 1:
             # 多工作区定向集合模式：优先从全租户缓存匹配，未命中则请求 Admin API 并精准过滤
             if cached_workspaces and cache_age < 180:
@@ -126,7 +129,7 @@ async def scan_permissions_deep(
                         workspaces = [w for w in all_fetched if str(w.get("id", "")).lower() in target_ws_set]
                 except Exception as ex:
                     ex_msg = str(ex)
-                    if "401" in ex_msg or "unauthorized" in ex_msg.lower():
+                    if "401" in ex_msg or "unauthorized" in ex_msg.lower() or "403" in ex_msg or "forbidden" in ex_msg.lower():
                         has_admin_rights = False
                     if not workspaces:
                         # 降级：并发逐个请求
@@ -152,7 +155,7 @@ async def scan_permissions_deep(
                         _TENANT_WORKSPACES_CACHE["workspaces"] = workspaces
                 except Exception as ex:
                     ex_msg = str(ex)
-                    if "401" in ex_msg or "unauthorized" in ex_msg.lower():
+                    if "401" in ex_msg or "unauthorized" in ex_msg.lower() or "403" in ex_msg or "forbidden" in ex_msg.lower():
                         has_admin_rights = False
                     if "429" in ex_msg or "exceeded the amount of requests" in ex_msg.lower():
                         if cached_workspaces:
@@ -167,6 +170,13 @@ async def scan_permissions_deep(
                             return {"success": False, "message": f"拉取工作区失败: {str(sub_ex)}"}
     except Exception as e:
         return {"success": False, "message": f"拉取工作区失败: {str(e)}"}
+
+    if not workspaces:
+        return {
+            "success": False,
+            "message": "未扫描到有效工作区。请确认您已成功登录 Power BI 账号且具有相应工作区访问权限。",
+            "records": []
+        }
 
     all_records: List[Dict[str, Any]] = []
     workspace_datasets: Dict[str, List[Dict[str, Any]]] = {}
@@ -377,7 +387,7 @@ async def scan_permissions_deep(
                         except Exception as ex:
                             attempt += 1
                             ex_str = str(ex).lower()
-                            if "401" in ex_str or "unauthorized" in ex_str:
+                            if "401" in ex_str or "unauthorized" in ex_str or "403" in ex_str or "forbidden" in ex_str:
                                 has_admin_rights = False
                                 url = None
                                 break

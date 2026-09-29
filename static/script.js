@@ -49,22 +49,90 @@ window.showNotification = function(message, type = 'info', duration = 3200) {
     };
     const icon = typeIcons[type] || 'ℹ️';
 
+    // 针对错误提示自动放宽展示时长至至少 8 秒，便于查阅与复制
+    const effectiveDuration = type === 'error' ? Math.max(duration, 8000) : duration;
+
     const toast = document.createElement('div');
     toast.className = `pbi-toast-item toast-${type}`;
+    toast.style.userSelect = 'text';
     toast.innerHTML = `
         <span class="pbi-toast-icon">${icon}</span>
-        <span class="pbi-toast-msg">${message}</span>
+        <span class="pbi-toast-msg" style="user-select: text !important;">${message}</span>
+        <button type="button" class="pbi-toast-copy-btn" title="点击复制内容" style="background: transparent; border: 1px solid var(--overlay-10); border-radius: 4px; padding: 2px 6px; cursor: pointer; color: var(--text-secondary); display: inline-flex; align-items: center; justify-content: center; font-size: 0.68rem; gap: 3px; transition: all 0.2s; flex-shrink: 0; white-space: nowrap; user-select: none;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            <span class="copy-text">复制</span>
+        </button>
         <span class="pbi-toast-close" title="关闭">✕</span>
     `;
 
     const closeBtn = toast.querySelector('.pbi-toast-close');
+    const copyBtn = toast.querySelector('.pbi-toast-copy-btn');
+    const copyText = copyBtn?.querySelector('.copy-text');
+
+    if (copyBtn) {
+        copyBtn.onclick = (e) => {
+            e.stopPropagation();
+            const textToCopy = typeof message === 'string' ? message.replace(/<[^>]*>/g, '') : String(message);
+            const markCopied = () => {
+                if (copyText) copyText.textContent = '已复制';
+                copyBtn.style.color = 'var(--success)';
+                copyBtn.style.borderColor = 'var(--success)';
+                setTimeout(() => {
+                    if (copyText) copyText.textContent = '复制';
+                    copyBtn.style.color = 'var(--text-secondary)';
+                    copyBtn.style.borderColor = 'var(--overlay-10)';
+                }, 2000);
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(textToCopy).then(markCopied).catch(() => {
+                    const ta = document.createElement('textarea');
+                    ta.value = textToCopy;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    markCopied();
+                });
+            } else {
+                const ta = document.createElement('textarea');
+                ta.value = textToCopy;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                markCopied();
+            }
+        };
+    }
+
+    let dismissTimer = null;
     const dismiss = () => {
+        if (dismissTimer) clearTimeout(dismissTimer);
         toast.classList.remove('show');
         toast.classList.add('hide');
         setTimeout(() => {
             if (toast.parentElement) toast.remove();
         }, 280);
     };
+
+    const startTimer = (ms) => {
+        if (ms > 0) {
+            dismissTimer = setTimeout(dismiss, ms);
+        }
+    };
+
+    // 鼠标悬停时暂停自动消失倒计时，方便阅读与划选复制；移开后延后 3 秒消失
+    toast.addEventListener('mouseenter', () => {
+        if (dismissTimer) clearTimeout(dismissTimer);
+    });
+    toast.addEventListener('mouseleave', () => {
+        startTimer(3000);
+    });
 
     if (closeBtn) closeBtn.onclick = dismiss;
 
@@ -73,9 +141,7 @@ window.showNotification = function(message, type = 'info', duration = 3200) {
         toast.classList.add('show');
     });
 
-    if (duration > 0) {
-        setTimeout(dismiss, duration);
-    }
+    startTimer(effectiveDuration);
 };
 
 // ─── Global Top-Level Modal Helpers (centerModal & makeDraggable) ───

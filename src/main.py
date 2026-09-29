@@ -3896,11 +3896,17 @@ class DeepPermissionScanRequest(BaseModel):
     target_users: Optional[List[str]] = None
 
 @app.post("/api/workflow/deep-permissions-scan")
-async def api_deep_permissions_scan(req: DeepPermissionScanRequest):
+async def api_deep_permissions_scan(req: DeepPermissionScanRequest, request: Request):
     """全景权限与穿透生效治理扫描接口 (直属角色 + 安全组生效穿透 + 语义模型读写判定 + 提权偏离检测 + 定向用户过滤)"""
     from src.permission_scanner import scan_permissions_deep
     try:
         cfg = Config()
+        auth_hdr = request.headers.get("Authorization", "")
+        token_candidate = req.access_token or (auth_hdr.split("Bearer ")[1].strip() if "Bearer " in auth_hdr else None)
+        eff_token = _get_effective_xmla_token(token_candidate)
+        if eff_token:
+            from src.pbi_client import set_manual_token
+            set_manual_token(eff_token, auth_mode=cfg.AUTH_MODE)
         cli = PBIClient(cfg)
         res = await scan_permissions_deep(
             workspace_id=req.workspace_id,

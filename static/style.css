@@ -6979,9 +6979,9 @@ body.light-theme .gtb-auth-card.selected,
     transform: translateX(35px) scale(0.95);
     opacity: 0;
     transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1);
-    max-width: 420px;
+    max-width: 460px;
     word-break: break-word;
-    user-select: none;
+    user-select: text !important;
 }
 
 .pbi-toast-item.show {
@@ -7014,11 +7014,23 @@ body.light-theme .gtb-auth-card.selected,
     font-size: 0.95rem;
     flex-shrink: 0;
     line-height: 1;
+    user-select: none;
 }
 
 .pbi-toast-msg {
     flex: 1;
     line-height: 1.4;
+    user-select: text !important;
+}
+
+.pbi-toast-copy-btn {
+    cursor: pointer;
+    user-select: none;
+}
+.pbi-toast-copy-btn:hover {
+    background: var(--overlay-10) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--accent) !important;
 }
 
 .pbi-toast-close {
@@ -7027,6 +7039,7 @@ body.light-theme .gtb-auth-card.selected,
     transition: opacity 0.2s;
     font-size: 0.85rem;
     padding: 0 2px;
+    user-select: none;
 }
 
 .pbi-toast-close:hover {
@@ -10642,11 +10655,40 @@ body.light-theme .laya-security-guardrail-bar.is-warning .pb-laya-guardrail-acti
     flex-shrink: 0 !important;
 }
 
+#pb-btn-deep-scan {
+    height: 28px !important;
+    padding: 0 8px !important;
+    font-size: 0.72rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    border-radius: 6px !important;
+    border: 1px solid var(--panel-border) !important;
+    background: var(--input-bg) !important;
+    color: var(--text-primary) !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+}
+
 #pb-btn-deep-scan:hover,
 #pb-user-assets-toolbar .btn-wf-sm:hover {
     border-color: var(--accent) !important;
     color: var(--accent) !important;
     background: var(--overlay-10) !important;
+}
+
+#pb-btn-deep-scan.is-scanning {
+    border-color: rgba(239, 68, 68, 0.6) !important;
+    background: rgba(239, 68, 68, 0.15) !important;
+    color: #ef4444 !important;
+}
+
+#pb-btn-deep-scan.is-scanning:hover {
+    border-color: #ef4444 !important;
+    background: rgba(239, 68, 68, 0.25) !important;
+    color: #ef4444 !important;
 }
 
 /* 深度穿透治理审计弹窗置顶保障 (高于 Quick Note 弹窗 z-index: 35000) */

@@ -6408,6 +6408,25 @@
 
         // ⚡ 启动全景深度穿透治理扫描 (Deep Full-Spectrum Governance Scan - 二次确认 + 可随时取消)
         async startDeepGovernanceScan(btnEl) {
+            const targetBtn = btnEl || document.getElementById('pb-btn-deep-scan');
+            const getIcon = () => targetBtn?.querySelector('.pb-deep-scan-icon') || document.querySelector('#pb-btn-deep-scan .pb-deep-scan-icon');
+            const getLabel = () => targetBtn?.querySelector('.pb-deep-scan-label') || document.querySelector('#pb-btn-deep-scan .pb-deep-scan-label');
+
+            const restoreButtonState = () => {
+                const btn = targetBtn || document.getElementById('pb-btn-deep-scan');
+                const ic = getIcon();
+                const lb = getLabel();
+                if (btn) {
+                    btn.classList.remove('is-scanning');
+                    btn.disabled = false;
+                    btn.style.borderColor = 'var(--panel-border)';
+                    btn.style.background = 'var(--input-bg)';
+                    btn.style.color = 'var(--text-primary)';
+                }
+                if (ic) ic.style.animation = '';
+                if (lb) lb.textContent = '深度全景扫描';
+            };
+
             // 1. 如果正在执行深度扫描，点击直接取消操作
             if (this._isDeepScanning) {
                 if (this._deepScanAbortController) {
@@ -6415,15 +6434,7 @@
                     this._deepScanAbortController = null;
                 }
                 this._isDeepScanning = false;
-                const icon = btnEl?.querySelector('.pb-deep-scan-icon');
-                const label = btnEl?.querySelector('.pb-deep-scan-label');
-                if (icon) icon.style.animation = '';
-                if (label) label.textContent = '深度全景扫描';
-                if (btnEl) {
-                    btnEl.disabled = false;
-                    btnEl.style.borderColor = '';
-                    btnEl.style.background = '';
-                }
+                restoreButtonState();
                 if (typeof window.showNotification === 'function') {
                     window.showNotification('已取消全景深度治理扫描', 'info', 3000);
                 }
@@ -6440,41 +6451,62 @@
             this.syncFromGtb();
             const selectedWsIds = Array.from(window.selectedGtbWorkspaceIds || []);
             const curWsId = selectedWsIds[0] || this.currentWorkspaceId;
+            const cleanWsId = (curWsId && !['all', 'none', 'null', 'undefined', ''].includes(String(curWsId).toLowerCase().trim()))
+                ? String(curWsId).trim()
+                : null;
 
             this._isDeepScanning = true;
             this._deepScanAbortController = new AbortController();
 
-            const icon = btnEl?.querySelector('.pb-deep-scan-icon');
-            const label = btnEl?.querySelector('.pb-deep-scan-label');
+            const icon = getIcon();
+            const label = getLabel();
             if (icon) icon.style.animation = 'pb-spin 0.8s linear infinite';
             if (label) label.textContent = '取消扫描 (执行中...)';
-            if (btnEl) {
-                btnEl.disabled = false; // 保持可点击，以便随时取消
-                btnEl.style.borderColor = 'rgba(239, 68, 68, 0.6)';
-                btnEl.style.background = 'rgba(239, 68, 68, 0.1)';
+            if (targetBtn) {
+                targetBtn.classList.add('is-scanning');
+                targetBtn.disabled = false; // 保持可点击，以便随时取消
+                targetBtn.style.borderColor = 'rgba(239, 68, 68, 0.6)';
+                targetBtn.style.background = 'rgba(239, 68, 68, 0.15)';
+                targetBtn.style.color = '#ef4444';
             }
 
             if (typeof window.showNotification === 'function') {
-                window.showNotification('🚀 正在启动全景深度治理扫描 (可随时再次点击按钮取消)...', 'info', 3000);
+                window.showNotification('🚀 正在启动全景深度治理扫描 (可随时再次点击按钮取消)...', 'info', 3500);
             }
+
+            let currentToken = '';
+            try {
+                currentToken = window.currentPbiToken || (window.getEffectiveAccessToken ? window.getEffectiveAccessToken() : '') || localStorage.getItem('pbi_token') || sessionStorage.getItem('pbi_token') || '';
+            } catch(e) {}
 
             try {
                 const payload = {
-                    scope: curWsId ? 'workspaces' : 'tenant',
-                    workspace_id: curWsId || null,
-                    workspace_ids: curWsId ? [curWsId] : null,
-                    deep_scan: true
+                    scope: cleanWsId ? 'workspaces' : 'tenant',
+                    workspace_id: cleanWsId,
+                    workspace_ids: cleanWsId ? [cleanWsId] : null,
+                    deep_scan: true,
+                    access_token: currentToken || null
                 };
+
+                const headers = { 'Content-Type': 'application/json' };
+                if (currentToken) {
+                    headers['Authorization'] = `Bearer ${currentToken}`;
+                }
 
                 const res = await fetch('/api/workflow/deep-permissions-scan', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: headers,
                     body: JSON.stringify(payload),
                     signal: this._deepScanAbortController.signal
                 });
 
                 if (!res.ok) {
-                    throw new Error(`HTTP ${res.status}: 深度扫描服务响应异常`);
+                    let errMsg = `HTTP ${res.status}: 深度扫描服务响应异常`;
+                    try {
+                        const errData = await res.json();
+                        if (errData && errData.message) errMsg = `HTTP ${res.status}: ${errData.message}`;
+                    } catch(e) {}
+                    throw new Error(errMsg);
                 }
 
                 const data = await res.json();
@@ -6493,7 +6525,7 @@
                     kpis,
                     elevatedCount,
                     totalModels,
-                    workspaceId: curWsId
+                    workspaceId: cleanWsId
                 });
 
                 // 联动刷新全景矩阵
@@ -6506,22 +6538,14 @@
                 }
                 console.error('[Deep Scan] 深度扫描失败:', err);
                 if (typeof window.showNotification === 'function') {
-                    window.showNotification(`❌ 深度扫描异常: ${err.message}`, 'error', 4000);
+                    window.showNotification(`❌ 深度扫描异常: ${err.message}`, 'error', 8000);
                 } else {
                     alert(`深度扫描异常: ${err.message}`);
                 }
             } finally {
                 this._isDeepScanning = false;
                 this._deepScanAbortController = null;
-                setTimeout(() => {
-                    if (icon) icon.style.animation = '';
-                    if (label) label.textContent = '深度全景扫描';
-                    if (btnEl) {
-                        btnEl.disabled = false;
-                        btnEl.style.borderColor = '';
-                        btnEl.style.background = '';
-                    }
-                }, 300);
+                setTimeout(restoreButtonState, 150);
             }
         }
 
