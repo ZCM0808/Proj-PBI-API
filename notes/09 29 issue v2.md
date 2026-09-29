@@ -3,4 +3,4 @@
 3.深度全景扫描结果弹窗没有置于最前方，会被quick note弹窗遮挡，正常吗？
 4.左侧第一个竖直菜单栏中的各个按钮的svg没有在各自的背景框中居中
 5.AI assistent弹窗中右上角的关闭按钮怎么没有移除？
-6.AI assistent弹窗中
+6.AI assistent弹窗中右上角的auto approve
