@@ -37,6 +37,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from src.config import Config, load_settings
+from src.gist_store import async_push_to_gist, fetch_from_gist
 from src.laya_engine import LayaDecisionEngine
 from src.local_pbi import run_dax_query, scan_local_instances
 from src.pbi_client import PBIClient
@@ -73,7 +74,18 @@ async def lifespan(app: FastAPI):
 
         print("AI helper initialized in on-demand mode.")
 
+    async def _sync_cloud_store():
+        try:
+            cloud_data = await asyncio.to_thread(fetch_from_gist, LOCKOUT_FILE)
+            if cloud_data:
+                global lockouts
+                lockouts.update(cloud_data)
+                print(f"[GistStore] Synced {len(cloud_data)} device records from GitHub Secret Gist.")
+        except Exception as e:
+            print(f"[GistStore] Warning: Initial Gist sync skipped: {e}")
+
     asyncio.create_task(_warmup())
+    asyncio.create_task(_sync_cloud_store())
     yield
 
 app = FastAPI(title="Power BI API Explorer", lifespan=lifespan)
@@ -172,41 +184,38 @@ client = PBIClient(Config())
 
 LOCKOUT_FILE = "data/lockouts.json"
 
-def load_lockouts():
+def load_lockouts() -> Dict[str, Any]:
     try:
-        with open(LOCKOUT_FILE, "r") as f:
-            return json.load(f)
+        return fetch_from_gist(LOCKOUT_FILE)
     except Exception:
+        if os.path.exists(LOCKOUT_FILE):
+            try:
+                with open(LOCKOUT_FILE, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
         return {}
 
-def save_lockouts(data):
+def save_lockouts(data: Dict[str, Any], force_sync: bool = False) -> None:
     os.makedirs("data", exist_ok=True)
-    with open(LOCKOUT_FILE, "w") as f:
-        json.dump(data, f, indent=2)
+    try:
+        with open(LOCKOUT_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+    except Exception:
+        pass
+    try:
+        asyncio.create_task(async_push_to_gist(data, force=force_sync))
+    except Exception:
+        pass
 
 lockouts = load_lockouts()
 
-async def async_git_push():
-    def _push():
-        try:
-            # Configure git user for Render environment
-            subprocess.run(["git", "config", "user.email", "bot@render.com"], check=False)
-            subprocess.run(["git", "config", "user.name", "Render Bot"], check=False)
-
-            subprocess.run(["git", "add", LOCKOUT_FILE], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            subprocess.run(["git", "commit", "-m", "security: update device lockouts"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-            # Push using GitHub PAT from environment variable
-            github_pat = os.environ.get("GITHUB_PAT")
-            if github_pat:
-                pat_url = f"https://ZCM0808:{github_pat}@github.com/ZCM0808/Proj-PBI-API.git"
-                subprocess.run(["git", "push", pat_url, "HEAD:main"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            else:
-                # Fallback to default push (will fail on Render without PAT)
-                subprocess.run(["git", "push"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except Exception:
-            pass
-    await asyncio.to_thread(_push)
+async def async_git_push() -> None:
+    """兼容旧调用，直接委派至 GitHub Secret Gist 高速持久化通道"""
+    try:
+        await async_push_to_gist(lockouts, force=True)
+    except Exception:
+        pass
 
 class LoginRequest(BaseModel):
     password: Optional[str] = None
@@ -245,16 +254,14 @@ async def login(req: LoginRequest, request: Request, response: Response):
             else:
                 msg = f"Invalid MFA code. Attempt {device_record['attempts']}/3."
             lockouts[device_id] = device_record
-            save_lockouts(lockouts)
-            asyncio.create_task(async_git_push())
+            save_lockouts(lockouts, force_sync=True)
             return JSONResponse(status_code=401, content={"success": False, "message": msg})
 
         # MFA 验证成功：不限每日次数，颁发 3 小时有效 Token (mode="mfa")
         device_record["attempts"] = 0
         device_record["locked_until"] = 0
         lockouts[device_id] = device_record
-        save_lockouts(lockouts)
-        asyncio.create_task(async_git_push())
+        save_lockouts(lockouts, force_sync=True)
 
         token = make_auth_token(int(now), mode="mfa")
         response.set_cookie(key="pbi_auth_token", value=token, httponly=True, max_age=10800, path="/", samesite="lax")
@@ -270,7 +277,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
         usage["used_seconds"] = total_used
         device_record["daily_usage"] = usage
         if not is_dev_mode() and total_used >= 3600:
-            save_lockouts(lockouts)
+            save_lockouts(lockouts, force_sync=True)
             return JSONResponse(status_code=403, content={"success": False, "message": "今日密码登录累计 1 小时额度已用完，密码登录已锁定，请使用 MFA 动态口令登录。"})
 
         if req.password != Config.APP_ACCESS_PASSWORD:
@@ -281,16 +288,14 @@ async def login(req: LoginRequest, request: Request, response: Response):
             else:
                 msg = f"Invalid password. Attempt {device_record['attempts']}/3."
             lockouts[device_id] = device_record
-            save_lockouts(lockouts)
-            asyncio.create_task(async_git_push())
+            save_lockouts(lockouts, force_sync=True)
             return JSONResponse(status_code=401, content={"success": False, "message": msg})
 
         # 密码一验证成功：颁发 1 小时有效 Token (mode="pwd1")
         device_record["attempts"] = 0
         device_record["locked_until"] = 0
         lockouts[device_id] = device_record
-        save_lockouts(lockouts)
-        asyncio.create_task(async_git_push())
+        save_lockouts(lockouts, force_sync=True)
 
         token = make_auth_token(int(now), mode="pwd1")
         response.set_cookie(key="pbi_auth_token", value=token, httponly=True, max_age=3600, path="/", samesite="lax")
@@ -357,9 +362,9 @@ async def ping_usage(request: Request):
     usage["used_seconds"] = effective_seconds
     device_record["daily_usage"] = usage
     lockouts[device_id] = device_record
-    save_lockouts(lockouts)
-
     limit_reached = effective_seconds >= 3600
+    save_lockouts(lockouts, force_sync=limit_reached)
+
     resp = JSONResponse(content={
         "success": True,
         "used_seconds": effective_seconds,

@@ -2819,3 +2819,34 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
 ### 72.5 全站 Tooltip(鼠标悬浮气泡提示) 规范凝练重构
 - 全面扫描并消除了项目中 77 处包含双语括号冗长堆砌、长句补充说明或冒号从句的啰嗦提示，重构为高度凝练、直观统一的标准中文交互词（如 `选择工作区`、`选择数据模型`、`生成全景血缘拓扑图`、`保存并同步 (Ctrl+S)` 等），大幅提升整体 UI 界面品质感。
 
+---
+
+## 73. GitHub Secret Gist 云端持久化存储与跨日时区防误锁体系 (Gist Cloud Store & Timezone Defense)
+
+### 73.1 跨日 UTC 时区偏差与早晨误锁根因剖析
+1. **现象**：用户早晨 07:51 (UTC+8) 登录系统时，遭遇“今日密码登录累计 1 小时额度已用完，密码登录已锁定”的拦截提示。
+2. **根因定位**：
+   - 前端此前使用 `new Date().toISOString().split('T')[0]` 提取日期。在早上 08:00 之前，UTC 日期仍为昨天（例如北京时间 `2026-09-29 07:51:00` 对应的 UTC 是 `2026-09-28 23:51:00`）。
+   - 前端取出的日期为 `2026-09-28`，导致昨天的 1 小时使用记录被当作“今日”，引发误锁拦截。
+3. **彻底根治方案**：
+   - **前端物理本机时区对齐**：统一采用 `getLocalDateStr()`，提取客户端系统本地当前 `YYYY-MM-DD`（中国标准时间 UTC+8）；
+   - **跨日自动清空与解锁**：页面初始化与心跳上报时，比对 `pbi-last-active-date`，若发生跨日立即将 `pbi-daily-time` 归零，并主动移除密码输入框上的 `disabled` 锁定状态；
+   - **后端服务端强制 UTC+8 绑定**：在 [`src/main.py`](file:///D:/zcm/Proj-PBI-API/src/main.py) 中定义 `get_today_str()`，强制绑定 `ZoneInfo("Asia/Shanghai")`，确保海内外任意容器与本地环境的日期逻辑 100% 绝对一致。
+
+### 73.2 GitHub Secret Gist 远程持久化与双向无缝合并架构
+1. **选型背景与防作弊诉求**：
+   - Render 免费容器采用临时文件系统，每次休眠唤醒或代码重新部署后，容器内的临时文件重置；
+   - 若客户端清空 `localStorage` 且云端容器刚发生重建，本地与云端双端数据清空，存在防作弊逻辑失效的风险；
+   - 相比于 Render Postgres(90天过期删除) 或 Supabase(7天无请求自动休眠)，GitHub Secret Gist 具备**永久免费、无休眠暂停、高并发 HTTP REST API 支持、海外毫秒级响应**的极佳特性。
+2. **架构实现与安全通道 ([src/gist_store.py](file:///D:/zcm/Proj-PBI-API/src/gist_store.py))**：
+   - **专属 Secret Gist**：ID 为 `37c50831834ef4c2fb96d2774c5ca113`，内部存储文件 `pbi_device_lockouts.json`；
+   - **双向单调递增合并 (`_merge_lockout_records`)**：
+     - 设备尝试次数与锁定时间：取 `max(local_attempts, remote_attempts)`、`max(local_locked_until, remote_locked_until)`；
+     - 每日用时：不同日期以最新日期为主；同一日期严格取 `max(local_seconds, remote_seconds)`，彻底杜绝篡改时钟或数据倒流作弊；
+   - **启动异步预热 (`lifespan`)**：
+     - 服务端启动时，在后台异步调用 `fetch_from_gist()`，0.2 秒内静默拉取云端全量设备锁定与用时记录并合并至内存全局变量 `lockouts`；
+   - **分级双通道推送机制 (`save_lockouts`)**：
+     - **关键安全事件即时强同步 (`force_sync=True`)**：密码/MFA 连续输错锁定、登录成功、累计用时达到 3600 秒上限触发锁定等关键节点，毫秒级直接 PATCH 提交至 Gist；
+     - **例行心跳节流防限频 (`force_sync=False`)**：每分钟的心跳 ping 上报只写入本地，并受到 120 秒节流阀保护，避免频繁调用 GitHub API 触发限频。
+
+
