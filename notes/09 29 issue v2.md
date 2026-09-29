@@ -1,2 +1,3 @@
 1.检查power bi service中关于编辑模型中power query的工作区级的权限是否在tenent setting中。
 2.quick note上，为什么render上所有note的创建时间/修改时间都差不多
+3.
