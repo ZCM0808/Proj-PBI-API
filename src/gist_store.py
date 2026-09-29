@@ -11,7 +11,7 @@ import os
 import time
 from typing import Any, Dict, Optional
 
-import requests
+import requests  # type: ignore[import-untyped]
 
 from src.config import load_settings
 

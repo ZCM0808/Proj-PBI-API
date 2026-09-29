@@ -2859,7 +2859,9 @@ async def run_harness_tests(request: Request):
 def _get_effective_xmla_token(passed_token: Optional[str]) -> str:
     """自动解析有效的 XMLA AccessToken (若请求未携带或过期，自动从本地 MSAL 缓存提取)"""
     if passed_token and passed_token.strip():
-        return passed_token.strip()
+        from src.pbi_client import verify_jwt_token
+        if verify_jwt_token(passed_token.strip(), buffer_seconds=30):
+            return passed_token.strip()
     cache_file = r"C:\Users\ZCM\Desktop\XMLA_Refresh_Tool_Project\msal_token_cache.bin"
     if os.path.exists(cache_file):
         try:
@@ -3899,14 +3901,14 @@ class DeepPermissionScanRequest(BaseModel):
 async def api_deep_permissions_scan(req: DeepPermissionScanRequest, request: Request):
     """全景权限与穿透生效治理扫描接口 (直属角色 + 安全组生效穿透 + 语义模型读写判定 + 提权偏离检测 + 定向用户过滤)"""
     from src.permission_scanner import scan_permissions_deep
+    from src.pbi_client import reset_failed_accounts, verify_jwt_token, set_manual_token
     try:
+        reset_failed_accounts()
         cfg = Config()
         auth_hdr = request.headers.get("Authorization", "")
         token_candidate = req.access_token or (auth_hdr.split("Bearer ")[1].strip() if "Bearer " in auth_hdr else None)
-        eff_token = _get_effective_xmla_token(token_candidate)
-        if eff_token:
-            from src.pbi_client import set_manual_token
-            set_manual_token(eff_token, auth_mode=cfg.AUTH_MODE)
+        if token_candidate and verify_jwt_token(token_candidate, buffer_seconds=30):
+            set_manual_token(token_candidate, auth_mode=cfg.AUTH_MODE)
         cli = PBIClient(cfg)
         res = await scan_permissions_deep(
             workspace_id=req.workspace_id,

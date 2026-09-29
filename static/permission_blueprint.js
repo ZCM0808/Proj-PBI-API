@@ -283,6 +283,29 @@
         'port_out_pipeline_prod': { nodeId: 'node_pipeline', relX: 320, relY: 58 }
     };
 
+    // 安全解析有效未过期的 JWT Token (杜绝已过期死 Token 毒化后端鉴权)
+    function getEffectiveSafeToken() {
+        let candidate = '';
+        try {
+            candidate = window.currentPbiToken || (window.getEffectiveAccessToken ? window.getEffectiveAccessToken() : '') || localStorage.getItem('pbi_token') || sessionStorage.getItem('pbi_token') || '';
+        } catch(e) {}
+        if (!candidate || typeof candidate !== 'string') return '';
+        const parts = candidate.trim().split('.');
+        if (parts.length !== 3) return '';
+        try {
+            const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+            const pad = b64.length % 4;
+            const padded = pad ? b64 + '='.repeat(4 - pad) : b64;
+            const payload = JSON.parse(decodeURIComponent(escape(atob(padded))));
+            if (payload.exp && (payload.exp * 1000 <= Date.now() + 30000)) {
+                return '';
+            }
+            return candidate.trim();
+        } catch(e) {
+            return '';
+        }
+    }
+
     // 蓝图运行时单例
     class PermissionBlueprintEngine {
         constructor() {
@@ -4752,10 +4775,7 @@
             }
             this._fetchingConnections[cacheKey] = true;
 
-            let token = '';
-            try {
-                token = window.currentPbiToken || (window.getEffectiveAccessToken ? window.getEffectiveAccessToken() : '') || localStorage.getItem('pbi_token') || sessionStorage.getItem('pbi_token') || '';
-            } catch(e) {}
+            const token = getEffectiveSafeToken();
 
             try {
                 const res = await fetch('/api/datasource/inspect', {
@@ -4887,10 +4907,7 @@
             }
             this._fetchingLiveGac[cacheKey] = true;
 
-            let token = '';
-            try {
-                token = window.currentPbiToken || (window.getEffectiveAccessToken ? window.getEffectiveAccessToken() : '') || localStorage.getItem('pbi_token') || sessionStorage.getItem('pbi_token') || '';
-            } catch(e) {}
+            const token = getEffectiveSafeToken();
 
             try {
                 const url = `/api/fabric/inspect-gac-status?model_id=${encodeURIComponent(datasetId)}&workspace_id=${encodeURIComponent(workspaceId || '')}`;
@@ -6474,10 +6491,7 @@
                 window.showNotification('🚀 正在启动全景深度治理扫描 (可随时再次点击按钮取消)...', 'info', 3500);
             }
 
-            let currentToken = '';
-            try {
-                currentToken = window.currentPbiToken || (window.getEffectiveAccessToken ? window.getEffectiveAccessToken() : '') || localStorage.getItem('pbi_token') || sessionStorage.getItem('pbi_token') || '';
-            } catch(e) {}
+            const currentToken = getEffectiveSafeToken();
 
             try {
                 const payload = {

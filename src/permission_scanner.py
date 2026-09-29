@@ -102,16 +102,18 @@ async def scan_permissions_deep(
                             workspaces = [cached_single]
                         else:
                             return {"success": False, "message": f"⚠️ 微软 Power BI Admin API 租户级频次限流 (429 Rate Limit)，请稍候重试。详情: {ex_msg}"}
-                    else:
-                        try:
-                            ws_single = await asyncio.to_thread(cli.request, "GET", f"/groups/{single_id}")
-                            if isinstance(ws_single, dict) and "id" in ws_single:
-                                workspaces = [ws_single]
-                        except Exception as sub_ex:
-                            sub_msg = str(sub_ex)
-                            if "401" in sub_msg or "unauthorized" in sub_msg.lower() or "403" in sub_msg or "forbidden" in sub_msg.lower():
-                                return {"success": False, "message": f"当前账号无权访问工作区 [{single_id}] (HTTP 401/403): {sub_msg}"}
-                            return {"success": False, "message": f"拉取工作区失败 (Admin 与常规接口均未命中): {sub_msg}"}
+
+                # 若 Admin API 未命中或无管理员权限，无缝安全降级至常规工作区 API
+                if not workspaces:
+                    try:
+                        ws_single = await asyncio.to_thread(cli.request, "GET", f"/groups/{single_id}")
+                        if isinstance(ws_single, dict) and "id" in ws_single:
+                            workspaces = [ws_single]
+                    except Exception as sub_ex:
+                        sub_msg = str(sub_ex)
+                        if "401" in sub_msg or "unauthorized" in sub_msg.lower() or "403" in sub_msg or "forbidden" in sub_msg.lower():
+                            return {"success": False, "message": f"当前账号无权访问工作区 [{single_id}] (HTTP 401/403): {sub_msg}"}
+                        return {"success": False, "message": f"拉取工作区失败 (Admin 与常规接口均未命中): {sub_msg}"}
         elif not is_tenant_level and len(target_ws_list) > 1:
             # 多工作区定向集合模式：优先从全租户缓存匹配，未命中则请求 Admin API 并精准过滤
             if cached_workspaces and cache_age < 180:
@@ -131,15 +133,16 @@ async def scan_permissions_deep(
                     ex_msg = str(ex)
                     if "401" in ex_msg or "unauthorized" in ex_msg.lower() or "403" in ex_msg or "forbidden" in ex_msg.lower():
                         has_admin_rights = False
-                    if not workspaces:
-                        # 降级：并发逐个请求
-                        async def _fetch_one(wid: str) -> Optional[Dict[str, Any]]:
-                            try:
-                                return await asyncio.to_thread(cli.request, "GET", f"/groups/{wid}")
-                            except Exception:
-                                return None
-                        results = await asyncio.gather(*[_fetch_one(wid) for wid in target_ws_list])
-                        workspaces = [r for r in results if r and isinstance(r, dict) and "id" in r]
+
+                if not workspaces:
+                    # 降级：并发逐个请求
+                    async def _fetch_one(wid: str) -> Optional[Dict[str, Any]]:
+                        try:
+                            return await asyncio.to_thread(cli.request, "GET", f"/groups/{wid}")
+                        except Exception:
+                            return None
+                    results = await asyncio.gather(*[_fetch_one(wid) for wid in target_ws_list])
+                    workspaces = [r for r in results if r and isinstance(r, dict) and "id" in r]
         else:
             # 全租户模式
             if cached_workspaces and cache_age < 120 and len(cached_workspaces) > 1:
@@ -162,12 +165,13 @@ async def scan_permissions_deep(
                             workspaces = cached_workspaces
                         else:
                             return {"success": False, "message": f"⚠️ 微软 Power BI Admin API 租户级频次限流 (429 Rate Limit)，请稍候重试。详情: {ex_msg}"}
-                    else:
-                        try:
-                            ws_res = await asyncio.to_thread(cli.request, "GET", "/groups?$top=100")
-                            workspaces = ws_res.get("value", [])
-                        except Exception as sub_ex:
-                            return {"success": False, "message": f"拉取工作区失败: {str(sub_ex)}"}
+
+                if not workspaces:
+                    try:
+                        ws_res = await asyncio.to_thread(cli.request, "GET", "/groups?$top=100")
+                        workspaces = ws_res.get("value", [])
+                    except Exception as sub_ex:
+                        return {"success": False, "message": f"拉取工作区失败: {str(sub_ex)}"}
     except Exception as e:
         return {"success": False, "message": f"拉取工作区失败: {str(e)}"}
 

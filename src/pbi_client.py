@@ -1,5 +1,5 @@
-"""Power BI REST API 客户端"""
-
+import base64
+import json
 import os
 import time
 from typing import Any, Dict, Optional
@@ -21,6 +21,63 @@ _GLOBAL_MSAL_CACHE: Optional[SerializableTokenCache] = None
 _CURRENT_ACTIVE_ACCOUNT: Optional[str] = None
 _LAST_SUCCESSFUL_ACCOUNT: Optional[str] = None
 _FAILED_401_ACCOUNTS: set[str] = set()
+
+
+def verify_jwt_token(token: Optional[str], buffer_seconds: int = 60) -> bool:
+    """校验 JWT Token 是否合法且未过期 (默认预留 60 秒缓冲防边界失效)"""
+    if not token or not isinstance(token, str):
+        return False
+    parts = token.strip().split(".")
+    if len(parts) != 3:
+        return False
+    try:
+        payload_b64 = parts[1]
+        rem = len(payload_b64) % 4
+        if rem > 0:
+            payload_b64 += "=" * (4 - rem)
+        payload_json = base64.urlsafe_b64decode(payload_b64).decode("utf-8")
+        payload = json.loads(payload_json)
+        exp = payload.get("exp")
+        if not exp or not isinstance(exp, (int, float)):
+            return False
+        return float(exp) > (time.time() + buffer_seconds)
+    except Exception:
+        return False
+
+
+def get_jwt_expiration(token: Optional[str]) -> float:
+    """提取 JWT Token 内部的绝对过期时间戳 (秒)"""
+    if not token or not isinstance(token, str):
+        return 0.0
+    parts = token.strip().split(".")
+    if len(parts) != 3:
+        return 0.0
+    try:
+        payload_b64 = parts[1]
+        rem = len(payload_b64) % 4
+        if rem > 0:
+            payload_b64 += "=" * (4 - rem)
+        payload_json = base64.urlsafe_b64decode(payload_b64).decode("utf-8")
+        payload = json.loads(payload_json)
+        exp = payload.get("exp")
+        if exp and isinstance(exp, (int, float)):
+            return float(exp)
+    except Exception:
+        pass
+    return 0.0
+
+
+def reset_failed_accounts() -> None:
+    """重置 401 失败账号隔离名单"""
+    global _FAILED_401_ACCOUNTS
+    _FAILED_401_ACCOUNTS.clear()
+
+
+def reset_token_cache() -> None:
+    """清理全局内存 Token 缓存与失败记录"""
+    global _GLOBAL_TOKEN_CACHE, _FAILED_401_ACCOUNTS
+    _GLOBAL_TOKEN_CACHE.clear()
+    _FAILED_401_ACCOUNTS.clear()
 
 
 
@@ -77,20 +134,33 @@ def reset_shared_session() -> None:
         _GLOBAL_HTTP_SESSION = None
 
 
-def set_manual_token(token: str, auth_mode: str = "personal", identity: str = "", expires_in: int = 3600) -> None:
-    """手动注入外部获取的有效 Access Token 到内存缓存中"""
+def set_manual_token(token: str, auth_mode: str = "personal", identity: str = "", expires_in: int = 3600) -> bool:
+    """手动注入外部获取的有效 Access Token 到内存缓存中 (注入前强制执行 JWT 过期校验)"""
+    if not token or not isinstance(token, str):
+        return False
+    token_clean = token.strip()
+    real_exp = get_jwt_expiration(token_clean)
     now = time.time()
+    if real_exp > 0:
+        if real_exp <= now + 30:
+            # Token 已经过期或即将在 30 秒内过期，坚决拒绝注入
+            return False
+        eff_expires_at = real_exp
+    else:
+        eff_expires_at = now + expires_in
+
     for api_type in ["powerbi", "fabric"]:
         cache_key = f"{auth_mode}_{api_type}_{identity}"
         _GLOBAL_TOKEN_CACHE[cache_key] = {
-            "token": token,
-            "expires_at": now + expires_in
+            "token": token_clean,
+            "expires_at": eff_expires_at
         }
         generic_key = f"{auth_mode}_{api_type}_"
         _GLOBAL_TOKEN_CACHE[generic_key] = {
-            "token": token,
-            "expires_at": now + expires_in
+            "token": token_clean,
+            "expires_at": eff_expires_at
         }
+    return True
 
 
 class PBIClient:
@@ -123,12 +193,15 @@ class PBIClient:
                 if not (cached_acc and cached_acc in _FAILED_401_ACCOUNTS):
                     return str(cached_entry["token"])
 
-            # 兜底：通用 key 与同模式可用 Token 借用探测
+            # 兜底：通用 key 与同模式可用 Token 借用探测 (严格校验账号一致性，坚决防止多账号串号)
             generic_key = f"{self.config.AUTH_MODE}_{api_type_clean}_"
             gen_entry = _GLOBAL_TOKEN_CACHE.get(generic_key)
             if gen_entry and gen_entry.get("expires_at", 0) > now + 180:
                 gen_acc = str(gen_entry.get("account") or "").strip().lower()
-                if not (gen_acc and gen_acc in _FAILED_401_ACCOUNTS):
+                if active_user and gen_acc and active_user != gen_acc:
+                    # 账号不匹配，坚决拒绝借用，防止串号污染
+                    pass
+                elif not (gen_acc and gen_acc in _FAILED_401_ACCOUNTS):
                     return str(gen_entry["token"])
 
 
@@ -156,7 +229,9 @@ class PBIClient:
                 u_name = str(acc_item.get("username") or "").strip().lower()
                 r_name = str(acc_item.get("realm") or "").strip().lower()
                 score = 0
-                if _LAST_SUCCESSFUL_ACCOUNT and u_name == _LAST_SUCCESSFUL_ACCOUNT.strip().lower():
+                if _CURRENT_ACTIVE_ACCOUNT and u_name == _CURRENT_ACTIVE_ACCOUNT.strip().lower():
+                    score += 300
+                elif _LAST_SUCCESSFUL_ACCOUNT and u_name == _LAST_SUCCESSFUL_ACCOUNT.strip().lower():
                     score += 200
                 tgt_tenant = (self.config.TENANT_ID or "").strip().lower()
                 if tgt_tenant and r_name == tgt_tenant:
@@ -283,6 +358,13 @@ class PBIClient:
             kwargs: 传递给 requests.request 的其他参数 (如 params, json, data)
         """
         global _CURRENT_ACTIVE_ACCOUNT, _LAST_SUCCESSFUL_ACCOUNT, _FAILED_401_ACCOUNTS, _GLOBAL_TOKEN_CACHE
+        _refreshed = kwargs.pop("_refreshed", False)
+        _tried_users = kwargs.pop("_tried_users", None)
+        is_top_level = (_tried_users is None and not _refreshed)
+        if _tried_users is None:
+            _tried_users = set()
+
+        orig_active_user = _CURRENT_ACTIVE_ACCOUNT
         api_type_clean = api_type.strip().lower()
         base_url = "https://api.fabric.microsoft.com/v1" if api_type_clean == "fabric" else self.config.BASE_URL
 
@@ -334,13 +416,42 @@ class PBIClient:
                 _LAST_SUCCESSFUL_ACCOUNT = _CURRENT_ACTIVE_ACCOUNT
                 _FAILED_401_ACCOUNTS.discard(_CURRENT_ACTIVE_ACCOUNT.strip().lower())
         except requests.exceptions.HTTPError as e:
-            # 1. 核心自愈：若遇到 401 Unauthorized 且当前为 personal 委托认证模式，尝试自动账号轮换自愈
+            # 1. 核心自愈：若遇到 401 Unauthorized 且当前为 personal 委托认证模式，执行智能自愈与轮换
             if e.response is not None and e.response.status_code == 401 and self.config.AUTH_MODE == "personal":
+                is_admin_call = endpoint.strip().lower().startswith("/admin")
                 cur_user = (_CURRENT_ACTIVE_ACCOUNT or self.config.USERNAME or "").strip().lower()
                 if cur_user:
-                    _FAILED_401_ACCOUNTS.add(cur_user)
-                _GLOBAL_TOKEN_CACHE.clear()
+                    _tried_users.add(cur_user)
 
+                # 阶段 A：若非 Admin 接口拒绝且本请求尚未强制刷新过 Token，尝试静默强制刷新当前账号凭据
+                if not _refreshed and cur_user and not is_admin_call:
+                    for k in list(_GLOBAL_TOKEN_CACHE.keys()):
+                        if cur_user in k:
+                            _GLOBAL_TOKEN_CACHE.pop(k, None)
+
+                    app_refresh = PublicClientApplication(
+                        client_id="04b07795-8ddb-461a-bbee-02f9e1bf7b46",
+                        authority="https://login.microsoftonline.com/organizations",
+                        token_cache=self.cache
+                    )
+                    acc_match = next((a for a in app_refresh.get_accounts() if str(a.get("username") or "").strip().lower() == cur_user), None)
+                    if acc_match:
+                        try:
+                            scope_ref = ["https://api.fabric.microsoft.com/.default"] if api_type.strip().lower() == "fabric" else self.config.SCOPE
+                            ref_res = app_refresh.acquire_token_silent(scope_ref, account=acc_match, force_refresh=True)
+                            if ref_res and "access_token" in ref_res:
+                                new_tok = ref_res["access_token"]
+                                cache_key = f"{self.config.AUTH_MODE}_{api_type.strip().lower()}_{cur_user}"
+                                _GLOBAL_TOKEN_CACHE[cache_key] = {
+                                    "token": new_tok,
+                                    "expires_at": time.time() + ref_res.get("expires_in", 3600),
+                                    "account": cur_user
+                                }
+                                return self.request(method, endpoint, api_type, raw_response, _refreshed=True, _tried_users=_tried_users, **kwargs)
+                        except Exception:
+                            pass
+
+                # 阶段 B：当前账号无权或刷新后仍 401，尝试在多账号池中轮换其他账号重试
                 app_check = PublicClientApplication(
                     client_id="04b07795-8ddb-461a-bbee-02f9e1bf7b46",
                     authority="https://login.microsoftonline.com/organizations",
@@ -348,10 +459,10 @@ class PBIClient:
                 )
                 try:
                     all_avail = [str(a.get("username") or "").strip().lower() for a in app_check.get_accounts()]
-                    remaining = [u for u in all_avail if u and u not in _FAILED_401_ACCOUNTS]
+                    remaining = [u for u in all_avail if u and u not in _tried_users]
                     if remaining:
-                        # 仍有未尝试账号，自动切换并重新发起本次请求
-                        return self.request(method, endpoint, api_type, raw_response, **kwargs)
+                        _CURRENT_ACTIVE_ACCOUNT = remaining[0]
+                        return self.request(method, endpoint, api_type, raw_response, _refreshed=False, _tried_users=_tried_users, **kwargs)
                 except Exception:
                     pass
 
@@ -385,6 +496,8 @@ class PBIClient:
                     error_msg = f"{error_msg}\n{error_detail}"
                 except ValueError:
                     error_msg = f"{error_msg}\n{e.response.text}"
+            if is_top_level and orig_active_user is not None:
+                _CURRENT_ACTIVE_ACCOUNT = orig_active_user
             raise Exception(error_msg)
 
         if raw_response:
