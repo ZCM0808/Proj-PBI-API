@@ -4,4 +4,4 @@
 4.左侧第一个竖直菜单栏中的各个按钮的svg没有在各自的背景框中居中
 5.AI assistent弹窗中右上角的关闭按钮怎么没有移除？
 6.AI assistent弹窗中右上角的auto approve按钮怎么还有label文字保留？要移除
-7.
+7.quick note编辑器中，选择文本时，
