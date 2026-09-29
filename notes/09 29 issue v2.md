@@ -1,0 +1,1 @@
+1.右下角的AI assistent的弹窗中，移除右上角的关闭按钮；精简auto-approve按钮，只保留svg图标
