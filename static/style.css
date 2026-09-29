@@ -330,7 +330,7 @@ body {
     width: 100%;
 }
 
-/* 折叠状态下精简导航按钮背景方块至 32px */
+/* 折叠状态下精简导航按钮背景方块至 32px 且图标绝对居中 */
 #app-rail:not(.expanded) .rail-item,
 .app-rail:not(.expanded) .rail-item {
     width: 32px;
@@ -339,10 +339,30 @@ body {
     min-height: 32px;
     padding: 0;
     margin: 0 auto;
+    display: flex;
+    align-items: center;
     justify-content: center;
+    gap: 0 !important;
     border-radius: 6px;
 }
 
+#app-rail:not(.expanded) .rail-item-text,
+.app-rail:not(.expanded) .rail-item-text {
+    display: none !important;
+}
+
+#app-rail:not(.expanded) .rail-item-icon,
+.app-rail:not(.expanded) .rail-item-icon {
+    width: 22px;
+    height: 22px;
+    margin: 0 auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+}
+
+#app-rail.expanded .rail-item,
 .app-rail.expanded .rail-item {
     width: 100%;
     height: auto;
@@ -350,6 +370,7 @@ body {
     min-height: 0;
     padding: 7px 10px;
     justify-content: flex-start;
+    gap: 10px;
     border-radius: 7px;
 }
 
@@ -390,7 +411,9 @@ body {
     will-change: opacity, transform, max-width;
 }
 
+#app-rail.expanded .rail-item-text,
 .app-rail.expanded .rail-item-text {
+    display: inline-block !important;
     max-width: 110px;
     opacity: 1;
     transform: translateX(0);
@@ -3100,6 +3123,44 @@ body.light-theme .note-history-item.active .note-item-filename,
 
 .CodeMirror textarea {
     caret-color: var(--text-primary) !important;
+}
+
+/* Quick Note CodeMirror 选中文本高亮优化 (深色模式护眼且高对比度) */
+.CodeMirror-selected,
+.CodeMirror-focused .CodeMirror-selected,
+div.CodeMirror-selected,
+.note-editor-wrapper .CodeMirror-selected,
+.note-editor-wrapper .CodeMirror-focused .CodeMirror-selected,
+.note-editor-wrapper div.CodeMirror-selected,
+#modal-note .CodeMirror-selected,
+#modal-note .CodeMirror-focused .CodeMirror-selected,
+#modal-note div.CodeMirror-selected {
+    background: rgba(242, 200, 17, 0.35) !important;
+}
+
+.CodeMirror ::selection,
+.note-editor-wrapper ::selection,
+#modal-note ::selection,
+.CodeMirror-line::selection,
+.CodeMirror-line > span::selection,
+.CodeMirror-line > span > span::selection {
+    background: rgba(242, 200, 17, 0.35) !important;
+    color: inherit !important;
+}
+
+[data-theme="light"] .CodeMirror-selected,
+[data-theme="light"] .CodeMirror-focused .CodeMirror-selected,
+[data-theme="light"] div.CodeMirror-selected,
+[data-theme="light"] .note-editor-wrapper .CodeMirror-selected,
+[data-theme="light"] #modal-note .CodeMirror-selected {
+    background: rgba(242, 200, 17, 0.28) !important;
+}
+
+[data-theme="light"] .CodeMirror ::selection,
+[data-theme="light"] .note-editor-wrapper ::selection,
+[data-theme="light"] #modal-note ::selection {
+    background: rgba(242, 200, 17, 0.28) !important;
+    color: inherit !important;
 }
 
 .editor-preview {
@@ -10579,6 +10640,18 @@ body.light-theme .laya-security-guardrail-bar.is-warning .pb-laya-guardrail-acti
 .pb-view-tab-btn {
     white-space: nowrap !important;
     flex-shrink: 0 !important;
+}
+
+#pb-btn-deep-scan:hover,
+#pb-user-assets-toolbar .btn-wf-sm:hover {
+    border-color: var(--accent) !important;
+    color: var(--accent) !important;
+    background: var(--overlay-10) !important;
+}
+
+/* 深度穿透治理审计弹窗置顶保障 (高于 Quick Note 弹窗 z-index: 35000) */
+#pb-deep-scan-modal {
+    z-index: 50000 !important;
 }
 
 /* =========================================================================

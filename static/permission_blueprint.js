@@ -6418,7 +6418,7 @@
                 const icon = btnEl?.querySelector('.pb-deep-scan-icon');
                 const label = btnEl?.querySelector('.pb-deep-scan-label');
                 if (icon) icon.style.animation = '';
-                if (label) label.textContent = '⚡ 深度全景扫描';
+                if (label) label.textContent = '深度全景扫描';
                 if (btnEl) {
                     btnEl.disabled = false;
                     btnEl.style.borderColor = '';
@@ -6515,7 +6515,7 @@
                 this._deepScanAbortController = null;
                 setTimeout(() => {
                     if (icon) icon.style.animation = '';
-                    if (label) label.textContent = '⚡ 深度全景扫描';
+                    if (label) label.textContent = '深度全景扫描';
                     if (btnEl) {
                         btnEl.disabled = false;
                         btnEl.style.borderColor = '';
@@ -6532,7 +6532,7 @@
                 modal = document.createElement('div');
                 modal.id = 'pb-deep-scan-modal';
                 modal.className = 'modal-overlay';
-                modal.style.cssText = 'display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.65); backdrop-filter: blur(8px); z-index: 10006; align-items: center; justify-content: center;';
+                modal.style.cssText = 'display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.65); backdrop-filter: blur(8px); z-index: 50000; align-items: center; justify-content: center;';
                 modal.innerHTML = `
                     <div class="modal-content glass-panel pb-deep-scan-content" style="width: 880px; max-width: 95vw; max-height: 85vh; display: flex; flex-direction: column; border-radius: 12px; border: 1px solid var(--overlay-10); background: #0f172a; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); overflow: hidden; position: relative; transition: transform 0.2s ease-out, opacity 0.2s ease-out;">
                         <div class="modal-header" style="padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: move; user-select: none; background: rgba(255,255,255,0.02);">

@@ -15289,7 +15289,7 @@ window.updateHarnessStats = function() {
 
 
 
-    window.showCustomConfirm = function(message, title = "❓ Confirm Action") {
+    window.showCustomConfirm = function(message, title = "❓ Confirm Action", isHtml = false) {
 
         return new Promise((resolve) => {
 
@@ -15307,7 +15307,15 @@ window.updateHarnessStats = function() {
 
             titleEl.innerHTML = title;
 
-            msgEl.textContent = message;
+            if (isHtml || (typeof message === 'string' && /<[a-z][\s\S]*>/i.test(message))) {
+
+                msgEl.innerHTML = message;
+
+            } else {
+
+                msgEl.textContent = message;
+
+            }
 
             
 
@@ -15674,9 +15682,9 @@ window.updateHarnessStats = function() {
 
             btn.title = 'Auto-Approve ON (Click to disable)';
 
-            icon.textContent = '🔓';
+            if (icon) icon.textContent = '🔓';
 
-            text.textContent = 'Auto-Approve';
+            if (text) text.textContent = 'Auto-Approve';
 
             btn.style.transform = 'scale(1.05)';
 
@@ -15690,9 +15698,9 @@ window.updateHarnessStats = function() {
 
             btn.title = 'Approval Mode (Click to auto-approve)';
 
-            icon.textContent = '🔒';
+            if (icon) icon.textContent = '🔒';
 
-            text.textContent = 'Approval Mode';
+            if (text) text.textContent = 'Approval Mode';
 
             btn.style.transform = 'scale(0.95)';
 
