@@ -2849,4 +2849,16 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
      - **关键安全事件即时强同步 (`force_sync=True`)**：密码/MFA 连续输错锁定、登录成功、累计用时达到 3600 秒上限触发锁定等关键节点，毫秒级直接 PATCH 提交至 Gist；
      - **例行心跳节流防限频 (`force_sync=False`)**：每分钟的心跳 ping 上报只写入本地，并受到 120 秒节流阀保护，避免频繁调用 GitHub API 触发限频。
 
+### 73.3 高并发与时序边界防御 (Concurrency & Robustness Hardening)
+1. **多线程字典迭代防崩 (`RuntimeError` 根治)**：
+   - 在 `save_lockouts()` 与 `async_push_to_gist()` 中全面引入 `copy.deepcopy(data)` 内存深拷贝隔离，后台线程执行 `json.dumps()` 序列化与 PATCH 时与主线程全局字典彻底解耦，100% 杜绝 `dictionary changed size during iteration`；
+2. **关键安全事件绝不丢弃 (`_PENDING_FORCE_DATA` 排队机制)**：
+   - 解决例行心跳执行中 `_IS_SYNCING = True` 导致设备封禁或用时满额事件被 `return` 静默丢弃的隐患。若同步在途，新到达的强同步任务自动写入挂起槽位，当前网络请求完成后第一时间自动连环补发；
+3. **读-合并-写防覆盖闭环 (Pre-Push Merge Defense)**：
+   - `push_to_gist_sync()` 在发送 PATCH 前先发起轻量 GET 拉取云端最新数据，执行 `_merge_lockout_records` 智能合并后再回写，彻底杜绝多端/多实例并发场景下的丢失更新 (Lost Update)；
+4. **时间戳仲裁 (`updated_at`) 根除重置复活 Bug**：
+   - 为每次登录成功、密码尝试与用时记录注入高精度 `updated_at` 时间戳。合并时优先遵循最新时间戳，彻底解决“成功登录重置错误次数后被旧数据的 `max(attempts)` 误复活”的问题；
+5. **服务端心跳防抖 (45 秒阈值免疫多标签页双倍扣时)**：
+   - 在 `/api/ping-usage` 中校验 `now_ts - last_ping_at < 45.0`。若用户同浏览器多标签页并发心跳，仅同步状态而不重复累加 60 秒，彻底防御额度被多标签页成倍加速消耗。
+
 

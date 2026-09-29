@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 import asyncio
 import base64
+import copy
 import hashlib
 import io
 import json
@@ -198,13 +199,14 @@ def load_lockouts() -> Dict[str, Any]:
 
 def save_lockouts(data: Dict[str, Any], force_sync: bool = False) -> None:
     os.makedirs("data", exist_ok=True)
+    snapshot = copy.deepcopy(data)
     try:
         with open(LOCKOUT_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
+            json.dump(snapshot, f, indent=2)
     except Exception:
         pass
     try:
-        asyncio.create_task(async_push_to_gist(data, force=force_sync))
+        asyncio.create_task(async_push_to_gist(snapshot, force=force_sync))
     except Exception:
         pass
 
@@ -248,6 +250,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
         totp = pyotp.TOTP(Config.MFA_SECRET)
         if not totp.verify(req.mfa_code, valid_window=1):
             device_record["attempts"] += 1
+            device_record["updated_at"] = now
             if device_record["attempts"] >= 3:
                 device_record["locked_until"] = now + 1800
                 msg = "Device locked for 30 minutes due to 3 failed attempts."
@@ -260,6 +263,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
         # MFA 验证成功：不限每日次数，颁发 3 小时有效 Token (mode="mfa")
         device_record["attempts"] = 0
         device_record["locked_until"] = 0
+        device_record["updated_at"] = now
         lockouts[device_id] = device_record
         save_lockouts(lockouts, force_sync=True)
 
@@ -277,11 +281,13 @@ async def login(req: LoginRequest, request: Request, response: Response):
         usage["used_seconds"] = total_used
         device_record["daily_usage"] = usage
         if not is_dev_mode() and total_used >= 3600:
+            device_record["updated_at"] = now
             save_lockouts(lockouts, force_sync=True)
             return JSONResponse(status_code=403, content={"success": False, "message": "今日密码登录累计 1 小时额度已用完，密码登录已锁定，请使用 MFA 动态口令登录。"})
 
         if req.password != Config.APP_ACCESS_PASSWORD:
             device_record["attempts"] += 1
+            device_record["updated_at"] = now
             if device_record["attempts"] >= 3:
                 device_record["locked_until"] = now + 1800
                 msg = "Device locked for 30 minutes due to 3 failed attempts."
@@ -294,6 +300,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
         # 密码一验证成功：颁发 1 小时有效 Token (mode="pwd1")
         device_record["attempts"] = 0
         device_record["locked_until"] = 0
+        device_record["updated_at"] = now
         lockouts[device_id] = device_record
         save_lockouts(lockouts, force_sync=True)
 
@@ -358,9 +365,18 @@ async def ping_usage(request: Request):
     if usage.get("date") != today:
         usage = {"date": today, "used_seconds": 0}
 
-    effective_seconds = max(usage.get("used_seconds", 0) + 60, client_seconds)
+    now_ts = time.time()
+    last_ping = float(device_record.get("last_ping_at", 0.0))
+    # 防抖：若距离上次心跳不足 45 秒（多标签页并发上报），只同步状态，不重复累加 60 秒
+    if (now_ts - last_ping) < 45.0:
+        effective_seconds = max(int(usage.get("used_seconds", 0)), client_seconds)
+    else:
+        effective_seconds = max(int(usage.get("used_seconds", 0)) + 60, client_seconds)
+        device_record["last_ping_at"] = now_ts
+
     usage["used_seconds"] = effective_seconds
     device_record["daily_usage"] = usage
+    device_record["updated_at"] = now_ts
     lockouts[device_id] = device_record
     limit_reached = effective_seconds >= 3600
     save_lockouts(lockouts, force_sync=limit_reached)
