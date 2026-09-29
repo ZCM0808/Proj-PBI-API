@@ -5608,7 +5608,7 @@
             const tenantHeroStatusText = user ? (isTenantAdmin ? '⚡ ADMIN' : (isGuest ? '⚠️ B2B GUEST' : '✅ MEMBER')) : '❌ NO USER';
             const tenantItems = [
                 { id: 'tenant_principal_role', isHero: true, cat: 'assigned', name: tenantRoleName, desc: user ? `【路径】Microsoft Entra admin center > Identity > Users > [${user.name || user.upn}]` : '【路径】Microsoft Entra admin center > Identity > Users', statusClass: tenantHeroStatusClass, statusText: tenantHeroStatusText, badge: 'ROLE' },
-                { id: 'tenant_gac_policy', cat: 'derived', name: 'GAC Policy (跨源放行模式)', desc: '【路径】Admin portal > Tenant settings > Integration settings > Data access (租户级别未强制开启严格模式，保持跨源放行)', statusClass: 'enabled', statusText: '✅ CAN ACCESS', badge: 'GAC' },
+                { id: 'tenant_gac_policy', cat: 'derived', name: 'GAC Policy (未开启细粒度控制)', desc: '【路径】Admin portal > Tenant settings > Integration settings > Data access (租户未启用细粒度数据连接限制，默认未开启/跨源放行)', statusClass: 'disabled', statusText: '❌ GAC OFF (未开启)', badge: 'GAC OFF' },
                 { id: 'tenant_export', cat: 'derived', name: 'Export Data (导出数据至 Excel/CSV)', desc: '【路径】Admin portal > Tenant settings > Export and sharing settings > Export to Excel', statusClass: user ? 'enabled' : 'disabled', statusText: user ? '✅ CAN EXPORT' : '❌ CANNOT EXPORT', badge: 'EXPORT' },
                 { id: 'tenant_web_modeling', cat: 'derived', name: 'Web Modeling (网页在线端建模)', desc: '【路径】Admin portal > Tenant settings > Data model settings > Web modeling', statusClass: user?.state?.tenantAllowWebModeling ? 'enabled' : 'disabled', statusText: user?.state?.tenantAllowWebModeling ? '✅ CAN MODEL' : '❌ CANNOT MODEL', badge: 'WEB MODEL' },
                 { id: 'tenant_xmla', cat: 'derived', name: 'XMLA Endpoint (XMLA 端点读写)', desc: '【路径】Admin portal > Capacity settings > Workloads > XMLA Endpoint', statusClass: 'enabled', statusText: '✅ CAN CONNECT', badge: 'XMLA' },
@@ -6406,20 +6406,56 @@
             }
         }
 
-        // ⚡ 启动全景深度穿透治理扫描 (Deep Full-Spectrum Governance Scan)
+        // ⚡ 启动全景深度穿透治理扫描 (Deep Full-Spectrum Governance Scan - 二次确认 + 可随时取消)
         async startDeepGovernanceScan(btnEl) {
+            // 1. 如果正在执行深度扫描，点击直接取消操作
+            if (this._isDeepScanning) {
+                if (this._deepScanAbortController) {
+                    this._deepScanAbortController.abort();
+                    this._deepScanAbortController = null;
+                }
+                this._isDeepScanning = false;
+                const icon = btnEl?.querySelector('.pb-deep-scan-icon');
+                const label = btnEl?.querySelector('.pb-deep-scan-label');
+                if (icon) icon.style.animation = '';
+                if (label) label.textContent = '⚡ 深度全景扫描';
+                if (btnEl) {
+                    btnEl.disabled = false;
+                    btnEl.style.borderColor = '';
+                    btnEl.style.background = '';
+                }
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification('已取消全景深度治理扫描', 'info', 3000);
+                }
+                return;
+            }
+
+            // 2. 二次确认弹窗保护
+            const confirmMsg = '确定要启动全景深度穿透治理扫描吗？<br><span style="font-size:0.8rem;color:var(--text-secondary);margin-top:4px;display:block;">该操作将递归解包安全组与全量模型提权偏离审计，扫描期间可再次点击按钮随时中止。</span>';
+            const confirmed = typeof window.showCustomConfirm === 'function' 
+                ? await window.showCustomConfirm(confirmMsg) 
+                : confirm('确定要启动全景深度穿透治理扫描吗？');
+            if (!confirmed) return;
+
             this.syncFromGtb();
             const selectedWsIds = Array.from(window.selectedGtbWorkspaceIds || []);
             const curWsId = selectedWsIds[0] || this.currentWorkspaceId;
 
+            this._isDeepScanning = true;
+            this._deepScanAbortController = new AbortController();
+
             const icon = btnEl?.querySelector('.pb-deep-scan-icon');
             const label = btnEl?.querySelector('.pb-deep-scan-label');
             if (icon) icon.style.animation = 'pb-spin 0.8s linear infinite';
-            if (label) label.textContent = '深度扫描中...';
-            if (btnEl) btnEl.disabled = true;
+            if (label) label.textContent = '取消扫描 (执行中...)';
+            if (btnEl) {
+                btnEl.disabled = false; // 保持可点击，以便随时取消
+                btnEl.style.borderColor = 'rgba(239, 68, 68, 0.6)';
+                btnEl.style.background = 'rgba(239, 68, 68, 0.1)';
+            }
 
             if (typeof window.showNotification === 'function') {
-                window.showNotification('🚀 正在启动全景深度治理扫描 (递归解包安全组与提权偏离)...', 'info', 3000);
+                window.showNotification('🚀 正在启动全景深度治理扫描 (可随时再次点击按钮取消)...', 'info', 3000);
             }
 
             try {
@@ -6433,7 +6469,8 @@
                 const res = await fetch('/api/workflow/deep-permissions-scan', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(payload),
+                    signal: this._deepScanAbortController.signal
                 });
 
                 if (!res.ok) {
@@ -6463,6 +6500,10 @@
                 this.renderUserAssetsMatrix();
 
             } catch (err) {
+                if (err.name === 'AbortError' || this._deepScanAbortController?.signal?.aborted) {
+                    console.log('[Deep Scan] 用户已中止扫描');
+                    return;
+                }
                 console.error('[Deep Scan] 深度扫描失败:', err);
                 if (typeof window.showNotification === 'function') {
                     window.showNotification(`❌ 深度扫描异常: ${err.message}`, 'error', 4000);
@@ -6470,11 +6511,17 @@
                     alert(`深度扫描异常: ${err.message}`);
                 }
             } finally {
+                this._isDeepScanning = false;
+                this._deepScanAbortController = null;
                 setTimeout(() => {
                     if (icon) icon.style.animation = '';
                     if (label) label.textContent = '⚡ 深度全景扫描';
-                    if (btnEl) btnEl.disabled = false;
-                }, 400);
+                    if (btnEl) {
+                        btnEl.disabled = false;
+                        btnEl.style.borderColor = '';
+                        btnEl.style.background = '';
+                    }
+                }, 300);
             }
         }
 

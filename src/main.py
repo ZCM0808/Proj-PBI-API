@@ -551,6 +551,7 @@ class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
     model: Optional[str] = None
+    attachments: Optional[List[Dict[str, Any]]] = None
 
 class ToolApproveRequest(BaseModel):
     session_id: str
@@ -663,6 +664,16 @@ async def ai_chat(req: ChatRequest):
     openai_key = (os.getenv("OPENAI_API_KEY") or DEFAULT_OPENAI_KEY).strip()
     target_model = (req.model or os.getenv("DEFAULT_AI_MODEL") or "deepseek-v4-flash").strip()
 
+    user_prompt = req.message
+    if req.attachments:
+        att_lines = []
+        for att in req.attachments:
+            name = att.get("filename") or att.get("saved_name") or "attachment"
+            mtype = att.get("media_type") or "file"
+            url = att.get("url") or ""
+            att_lines.append(f"- [{mtype.upper()}] {name}: {url}")
+        user_prompt = f"{req.message}\n\n[用户随附了以下多模态文件/附件]:\n" + "\n".join(att_lines)
+
     # 1. 如果配置了 OpenAI 兼容平台且目标不是纯 gemini 模型，优先走通用 OpenAI 协议
     if openai_base and openai_key and httpx is not None and not target_model.startswith("gemini-"):
         if session_id not in _openai_chat_sessions:
@@ -679,7 +690,7 @@ async def ai_chat(req: ChatRequest):
         else:
             messages_to_send.extend(history)
 
-        messages_to_send.append({"role": "user", "content": req.message})
+        messages_to_send.append({"role": "user", "content": user_prompt})
 
         async def openai_event_generator():
             accumulated_text = ""
@@ -786,10 +797,10 @@ async def ai_chat(req: ChatRequest):
         return StreamingResponse(err_gen2(), media_type="text/event-stream")
 
     # 如果是第一次聊天，主动把项目知识库喂进去
-    full_message = req.message
+    full_message = user_prompt
     if len(chat.history) == 0:
         project_kb = get_project_memory()
-        full_message = f"=== 专属项目知识库 ===\n{project_kb}\n\n=== 用户请求 ===\n{req.message}"
+        full_message = f"=== 专属项目知识库 ===\n{project_kb}\n\n=== 用户请求 ===\n{user_prompt}"
 
     try:
         response = await chat.send_message_async(full_message, stream=True)
@@ -2182,6 +2193,111 @@ def _delete_note_from_github_rest(filename: str) -> tuple[bool, str]:
     except Exception as e:
         return False, f"GitHub Delete API Exception: {str(e)}"
 
+def _load_notes_metadata(notes_dir: str, root_dir: str) -> Dict[str, Dict[str, Any]]:
+    meta_file = os.path.join(notes_dir, ".notes_meta.json")
+    meta: Dict[str, Dict[str, Any]] = {}
+    if os.path.exists(meta_file):
+        try:
+            with open(meta_file, "r", encoding="utf-8") as f:
+                meta = json.load(f)
+        except Exception:
+            meta = {}
+
+    changed = False
+    if os.path.exists(notes_dir):
+        for fn in os.listdir(notes_dir):
+            if not fn.endswith(".md"):
+                continue
+            file_path = os.path.join(notes_dir, fn)
+            if fn not in meta:
+                c_git = None
+                m_git = None
+                rel_path = f"notes/{fn}"
+                try:
+                    r_add = subprocess.run(['git', 'log', '--diff-filter=A', '--follow', '--format=%ct', '-1', '--', rel_path], cwd=root_dir, capture_output=True, text=True, timeout=3)
+                    if r_add.returncode == 0 and r_add.stdout.strip().isdigit():
+                        c_git = float(r_add.stdout.strip())
+                except Exception:
+                    pass
+
+                try:
+                    r_mod = subprocess.run(['git', 'log', '-1', '--format=%ct', '--', rel_path], cwd=root_dir, capture_output=True, text=True, timeout=3)
+                    if r_mod.returncode == 0 and r_mod.stdout.strip().isdigit():
+                        m_git = float(r_mod.stdout.strip())
+                except Exception:
+                    pass
+
+                dt_from_name = None
+                m1 = re.search(r'(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})', fn)
+                if m1:
+                    try:
+                        dt = datetime(int(m1.group(1)), int(m1.group(2)), int(m1.group(3)), int(m1.group(4)), int(m1.group(5)), int(m1.group(6)))
+                        dt_from_name = dt.timestamp()
+                    except Exception:
+                        pass
+                else:
+                    m2 = re.search(r'(\d{4})\s*(\d{2})\s*(\d{2})', fn)
+                    if m2:
+                        try:
+                            dt = datetime(int(m2.group(1)), int(m2.group(2)), int(m2.group(3)), 12, 0, 0)
+                            dt_from_name = dt.timestamp()
+                        except Exception:
+                            pass
+                    else:
+                        m3 = re.search(r'(0[1-9]|1[0-2])\s*([0-3]\d)', fn)
+                        if m3:
+                            try:
+                                dt = datetime(2026, int(m3.group(1)), int(m3.group(2)), 12, 0, 0)
+                                dt_from_name = dt.timestamp()
+                            except Exception:
+                                pass
+
+                created_at = c_git or dt_from_name or os.path.getctime(file_path)
+                updated_at = m_git or dt_from_name or os.path.getmtime(file_path)
+                if created_at and updated_at and updated_at < created_at:
+                    updated_at = created_at
+
+                meta[fn] = {
+                    "created_at": created_at,
+                    "updated_at": updated_at
+                }
+                changed = True
+
+    if changed:
+        try:
+            with open(meta_file, "w", encoding="utf-8") as f:
+                json.dump(meta, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+
+    return meta
+
+def _save_note_meta(notes_dir: str, filename: str, is_new: bool = False) -> None:
+    meta_file = os.path.join(notes_dir, ".notes_meta.json")
+    meta: Dict[str, Dict[str, Any]] = {}
+    if os.path.exists(meta_file):
+        try:
+            with open(meta_file, "r", encoding="utf-8") as f:
+                meta = json.load(f)
+        except Exception:
+            meta = {}
+    now_ts = datetime.now().timestamp()
+    if filename not in meta:
+        meta[filename] = {
+            "created_at": now_ts,
+            "updated_at": now_ts
+        }
+    else:
+        if is_new or not meta[filename].get("created_at"):
+            meta[filename]["created_at"] = now_ts
+        meta[filename]["updated_at"] = now_ts
+
+    try:
+        with open(meta_file, "w", encoding="utf-8") as f:
+            json.dump(meta, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
 @app.post("/api/save-note")
 async def save_note(payload: NotePayload):
     try:
@@ -2196,13 +2312,23 @@ async def save_note(payload: NotePayload):
             filename += ".md"
 
         file_path = os.path.join(notes_dir, filename)
+        is_new_file = not os.path.exists(file_path)
 
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(payload.content)
 
+        _save_note_meta(notes_dir, filename, is_new=is_new_file)
+
         # ⚡ 关键架构：在 Render 云端容器中，100% 优先且只走 GitHub REST API (直达远端 main，耗时仅 ~300ms，自带 409 SHA 自动重试，彻底免疫本地分支分叉与超时)
         if is_render_env():
             ok, msg = await asyncio.to_thread(_sync_note_to_github_rest, filename, payload.content)
+            meta_file = os.path.join(notes_dir, ".notes_meta.json")
+            if os.path.exists(meta_file):
+                try:
+                    with open(meta_file, "r", encoding="utf-8") as mf:
+                        await asyncio.to_thread(_sync_note_to_github_rest, ".notes_meta.json", mf.read())
+                except Exception:
+                    pass
             if not ok:
                 return {"success": False, "error": f"GitHub REST API Sync Failed: {msg}", "filename": filename, "local_saved": True}
             return {"success": True, "message": f"Successfully saved {filename} and synced to GitHub via REST API!", "filename": filename}
@@ -2213,7 +2339,7 @@ async def save_note(payload: NotePayload):
                 subprocess.run(["git", "config", "user.email", "bot@render.com"], cwd=root_dir, check=False)
                 subprocess.run(["git", "config", "user.name", "Render Bot"], cwd=root_dir, check=False)
 
-                r1 = subprocess.run(["git", "add", f"notes/{filename}", "static/uploads/notes/"], cwd=root_dir, capture_output=True, text=True, timeout=5)
+                r1 = subprocess.run(["git", "add", f"notes/{filename}", "notes/.notes_meta.json", "static/uploads/notes/"], cwd=root_dir, capture_output=True, text=True, timeout=5)
                 if r1.returncode != 0:
                     return False
 
@@ -2246,6 +2372,13 @@ async def save_note(payload: NotePayload):
         # 若本地 Git CLI 失败，自动无缝切换为 GitHub REST API 直连推送
         if not git_pushed:
             ok, msg = await asyncio.to_thread(_sync_note_to_github_rest, filename, payload.content)
+            meta_file = os.path.join(notes_dir, ".notes_meta.json")
+            if os.path.exists(meta_file):
+                try:
+                    with open(meta_file, "r", encoding="utf-8") as mf:
+                        await asyncio.to_thread(_sync_note_to_github_rest, ".notes_meta.json", mf.read())
+                except Exception:
+                    pass
             if not ok:
                 return {"success": False, "error": f"Git/API Sync Failed: {msg}", "filename": filename, "local_saved": True}
 
@@ -2266,6 +2399,17 @@ async def delete_note(payload: DeleteNotePayload):
         file_path = os.path.join(notes_dir, filename)
         if os.path.exists(file_path):
             os.remove(file_path)
+            meta_file = os.path.join(notes_dir, ".notes_meta.json")
+            if os.path.exists(meta_file):
+                try:
+                    with open(meta_file, "r", encoding="utf-8") as f:
+                        meta = json.load(f)
+                    if filename in meta:
+                        del meta[filename]
+                        with open(meta_file, "w", encoding="utf-8") as f:
+                            json.dump(meta, f, ensure_ascii=False, indent=2)
+                except Exception:
+                    pass
 
             def _git_push_note_delete() -> None:
                 if is_render_env():
@@ -2311,12 +2455,19 @@ async def search_notes(q: str = ""):
         if not os.path.exists(notes_dir):
             return {"success": True, "results": []}
 
+        meta = _load_notes_metadata(notes_dir, root_dir)
         results: List[Dict[str, Any]] = []
         for filename in os.listdir(notes_dir):
             if filename.endswith(".md"):
                 file_path = os.path.join(notes_dir, filename)
                 with open(file_path, "r", encoding="utf-8") as f:
                     content = f.read()
+
+                file_meta = meta.get(filename, {})
+                c_time = float(file_meta.get("created_at") or os.path.getctime(file_path))
+                u_time = float(file_meta.get("updated_at") or os.path.getmtime(file_path))
+                if u_time < c_time:
+                    u_time = c_time
 
                 if not q or q.lower() in filename.lower() or q.lower() in content.lower():
                     # extract a snippet if q is present in content
@@ -2336,13 +2487,16 @@ async def search_notes(q: str = ""):
                     results.append({
                         "filename": filename,
                         "snippet": snippet,
-                        "mtime": os.path.getmtime(file_path),
+                        "mtime": u_time,
+                        "updated_at": u_time,
+                        "ctime": c_time,
+                        "created_at": c_time,
                         "size": os.path.getsize(file_path),
                         "content": content
                     })
 
-        # Sort by mtime descending
-        results.sort(key=lambda x: x["mtime"], reverse=True)
+        # Sort by updated_at descending
+        results.sort(key=lambda x: x["updated_at"], reverse=True)
         return {"success": True, "results": results}
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -2414,6 +2568,47 @@ async def upload_note_file(file: UploadFile = File(...)):
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+@app.post("/api/ai/upload")
+async def upload_ai_file(file: UploadFile = File(...)):
+    try:
+        root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        uploads_dir = os.path.join(root_dir, "static", "uploads", "ai")
+        os.makedirs(uploads_dir, exist_ok=True)
+
+        raw_name = file.filename or "uploaded_file"
+        safe_name = os.path.basename(raw_name).replace(" ", "_")
+        time_prefix = datetime.now().strftime("%Y%m%d_%H%M%S")
+        final_filename = f"{time_prefix}_{safe_name}"
+
+        file_path = os.path.join(uploads_dir, final_filename)
+        content = await file.read()
+        with open(file_path, "wb") as f:
+            f.write(content)
+
+        file_url = f"/static/uploads/ai/{final_filename}"
+        lower_name = final_filename.lower()
+        if lower_name.endswith((".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp")):
+            media_type = "image"
+        elif lower_name.endswith((".mp4", ".webm", ".ogg", ".mov", ".mkv")):
+            media_type = "video"
+        elif lower_name.endswith((".mp3", ".wav", ".m4a", ".aac", ".flac")):
+            media_type = "audio"
+        else:
+            media_type = "file"
+
+        return {
+            "success": True,
+            "filename": raw_name,
+            "saved_name": final_filename,
+            "url": file_url,
+            "media_type": media_type,
+            "size": len(content)
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 
 
 

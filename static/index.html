@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20260928_v1820">
+    <link rel="stylesheet" href="/static/style.css?v=20260929_v2130">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -228,12 +228,6 @@
         <!-- ⚡ 全局顶部上下文控制台功能栏 (Global Top Context Control Bar - Borderless & Collapsible) -->
         <header id="global-topbar">
             <div class="gtb-group">
-                <!-- 0. 全局沉浸模式按钮 (Zen Mode - 常驻顶栏最左侧) -->
-                <button type="button" id="gtb-zen-btn" class="gtb-icon-btn zen-mode-btn" onclick="window.toggleZenMode()" title="沉浸模式" style="height: 30px; width: 30px; min-width: 30px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-expand"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-collapse" style="display: none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
-                </button>
-
                 <!-- 1. 认证模式切换 (Auth Mode) -->
                 <div class="gtb-item gtb-workspace-box gtb-auth-box" id="gtb-auth-box" onclick="if(!event.target.closest('#gtb-auth-dropdown') && !event.target.closest('.gtb-copy-btn')) window.toggleGtbAuthDropdown(event);" title="切换认证主体">
                     <div class="gtb-label">
@@ -470,6 +464,12 @@
                 <!-- 🔄 一键刷新租户/工作区元数据 -->
                 <button type="button" id="gtb-btn-refresh" class="gtb-icon-btn" onclick="window.refreshGlobalContext(this)" title="刷新租户与工作区" style="height: 30px; width: 30px; min-width: 30px;">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                </button>
+
+                <!-- 0. 全局沉浸模式按钮 (Zen Mode - 常驻顶栏最右侧) -->
+                <button type="button" id="gtb-zen-btn" class="gtb-icon-btn zen-mode-btn" onclick="window.toggleZenMode()" title="沉浸模式" style="height: 30px; width: 30px; min-width: 30px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-expand"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="zen-icon-collapse" style="display: none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
                 </button>
             </div>
         </header>
@@ -3200,7 +3200,7 @@
                 <div class="note-right-panel" style="flex: 1; display: flex; flex-direction: column; gap: 10px;">
                     <div class="note-filename-row" style="display: flex; justify-content: space-between; align-items: center;">
                         <div class="note-filename-container" style="flex: 1; margin-right: 12px;">
-                            <input type="text" id="note-filename" placeholder="笔记文件名 (可选，默认按时间戳命名，如 feature.md)" class="modern-input" style="width: 100%; height: 34px; box-sizing: border-box; padding: 4px 10px; font-size: 0.82rem; border-radius: 6px;" oninput="window.handleNoteFilenameInput(this)">
+                            <input type="text" id="note-filename" placeholder="便签名称 (可选，默认按时间戳命名，无需输入 .md)" class="modern-input" style="width: 100%; height: 34px; box-sizing: border-box; padding: 4px 10px; font-size: 0.82rem; border-radius: 6px;" oninput="window.handleNoteFilenameInput(this)">
                         </div>
                         <div style="display: flex; gap: 6px; align-items: center;">
                             <input type="file" id="note-file-upload-input" style="display: none;" onchange="window.handleNoteFileUpload(event)" multiple>
@@ -3329,8 +3329,8 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260924_v2145"></script>
-    <script src="/static/script.js?v=20260929_v0755"></script>
-    <script src="/static/permission_blueprint.js?v=20260928_v1820"></script>
+    <script src="/static/script.js?v=20260929_v2130"></script>
+    <script src="/static/permission_blueprint.js?v=20260929_v2130"></script>
 
 
 
@@ -3426,8 +3426,14 @@
                 </button>
             </div>
         </div>
-        <div style="padding: 12px; border-top: 1px solid var(--panel-border); display: flex; gap: 8px; background: transparent;">
-            <input type="text" id="ai-chat-input" placeholder="Type your prompt..." class="modern-input" style="flex: 1; padding: 8px 12px; border-radius: 20px; border: 1px solid var(--panel-border); font-size: 0.9rem; background: var(--input-bg); color: var(--text-primary); transition: box-shadow 0.2s;" onkeypress="if(event.key === 'Enter') sendAiMessage()" onfocus="this.style.boxShadow='0 0 0 2px var(--accent)'" onblur="this.style.boxShadow='none'">
+        <!-- 附件预览容器 (Attachments Preview Area) -->
+        <div id="ai-chat-attachments" style="display: none; padding: 6px 12px; gap: 6px; flex-wrap: wrap; background: var(--overlay-5); border-top: 1px solid var(--panel-border); max-height: 80px; overflow-y: auto;"></div>
+        <div style="padding: 10px 12px; border-top: 1px solid var(--panel-border); display: flex; gap: 8px; align-items: center; background: transparent;">
+            <input type="file" id="ai-chat-file-input" style="display: none;" multiple onchange="window.handleAiFileUpload(this.files)">
+            <button type="button" id="ai-attach-btn" onclick="document.getElementById('ai-chat-file-input').click()" title="上传文件/多媒体 (支持粘贴/拖拽)" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; transition: all 0.2s;" onmouseover="this.style.color='var(--accent)'; this.style.background='var(--overlay-10)'" onmouseout="this.style.color='var(--text-secondary)'; this.style.background='none'">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+            </button>
+            <input type="text" id="ai-chat-input" placeholder="输入问题或提示词 (支持粘贴/拖拽文件)..." class="modern-input" style="flex: 1; padding: 8px 12px; border-radius: 20px; border: 1px solid var(--panel-border); font-size: 0.9rem; background: var(--input-bg); color: var(--text-primary); transition: box-shadow 0.2s;" onkeypress="if(event.key === 'Enter') sendAiMessage()" onfocus="this.style.boxShadow='0 0 0 2px var(--accent)'" onblur="this.style.boxShadow='none'">
             <button id="ai-send-btn" onclick="sendAiMessage()" style="background: var(--accent); color: var(--accent-text); border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.2s;" onmouseover="this.style.transform='scale(1.1)'; this.style.filter='brightness(1.1)'" onmouseout="this.style.transform='scale(1)'; this.style.filter='brightness(1)'" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1.1)'">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
             </button>

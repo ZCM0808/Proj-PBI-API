@@ -13959,7 +13959,15 @@ window.openNoteModal = function() {
                 }, delay);
             };
 
-            cm.on('change', () => debouncedRenderWidgets(120));
+            cm.on('change', () => {
+                debouncedRenderWidgets(120);
+                if (window._noteAutoSaveTimer) clearTimeout(window._noteAutoSaveTimer);
+                window._noteAutoSaveTimer = setTimeout(() => {
+                    if (typeof window.autoSaveMarkdownNote === 'function') {
+                        window.autoSaveMarkdownNote();
+                    }
+                }, 1800);
+            });
             cm.on('cursorActivity', () => {
                 if (cm._justOpenedSource && Date.now() - cm._justOpenedSource < 400) {
                     return;
@@ -14525,8 +14533,10 @@ window.clearNoteSearch = function() {
 
 window._currentNotesList = [];
 window.noteSortModes = [
-    { key: 'mtime_desc', label: '时间 (新→旧)', field: 'mtime', desc: true },
-    { key: 'mtime_asc', label: '时间 (旧→新)', field: 'mtime', desc: false },
+    { key: 'updated_desc', label: '修改时间 (新→旧)', field: 'updated_at', desc: true },
+    { key: 'updated_asc', label: '修改时间 (旧→新)', field: 'updated_at', desc: false },
+    { key: 'created_desc', label: '创建时间 (新→旧)', field: 'created_at', desc: true },
+    { key: 'created_asc', label: '创建时间 (旧→新)', field: 'created_at', desc: false },
     { key: 'name_asc', label: '名称 (A→Z)', field: 'filename', desc: false },
     { key: 'name_desc', label: '名称 (Z→A)', field: 'filename', desc: true },
     { key: 'size_desc', label: '大小 (大→小)', field: 'size', desc: true },
@@ -14592,18 +14602,19 @@ document.addEventListener('click', (e) => {
 
 window._activeNoteFilename = localStorage.getItem('pbi_active_note_filename') || '';
 
-// 设置并激活指定的笔记 (同步文件名、编辑器内容、本地存储与高亮态)
+// 设置并激活指定的笔记 (同步文件名、编辑器内容、本地存储与高亮态，自动剥离 .md 后缀展示)
 window.setActiveNote = function(filename, content = null, syncEditor = true) {
-    const fn = (filename || '').trim();
-    window._activeNoteFilename = fn;
-    if (fn) {
-        localStorage.setItem('pbi_active_note_filename', fn);
+    const rawFn = (filename || '').trim();
+    const cleanFn = rawFn.replace(/\.md$/i, '');
+    window._activeNoteFilename = rawFn;
+    if (rawFn) {
+        localStorage.setItem('pbi_active_note_filename', rawFn);
     } else {
         localStorage.removeItem('pbi_active_note_filename');
     }
     const fnInput = document.getElementById('note-filename');
-    if (fnInput && fnInput.value !== fn) {
-        fnInput.value = fn;
+    if (fnInput && fnInput.value !== cleanFn) {
+        fnInput.value = cleanFn;
     }
     if (syncEditor && easyMDE && content !== null && content !== undefined) {
         easyMDE.value(content);
@@ -14617,11 +14628,14 @@ window.setActiveNote = function(filename, content = null, syncEditor = true) {
 // 高亮左侧列表中与当前 note-filename 匹配的项 (完全对齐工作流选中侧边栏设计)
 window.highlightActiveNoteItem = function() {
     const fnInputVal = (document.getElementById('note-filename')?.value || '').trim();
-    const currentFn = fnInputVal || window._activeNoteFilename || (localStorage.getItem('pbi_active_note_filename') || '').trim();
+    const cleanInput = fnInputVal.replace(/\.md$/i, '').toLowerCase();
+    const currentFn = window._activeNoteFilename || (localStorage.getItem('pbi_active_note_filename') || '').trim();
+    const cleanCurrent = currentFn.replace(/\.md$/i, '').toLowerCase();
+    const target = cleanInput || cleanCurrent;
     const items = document.querySelectorAll('#note-history-list .note-history-item');
     items.forEach(el => {
-        const fn = el.getAttribute('data-filename') || '';
-        if (currentFn && fn.toLowerCase() === currentFn.toLowerCase()) {
+        const fn = (el.getAttribute('data-filename') || '').replace(/\.md$/i, '').toLowerCase();
+        if (target && fn === target) {
             el.classList.add('active');
         } else {
             el.classList.remove('active');
@@ -14632,9 +14646,10 @@ window.highlightActiveNoteItem = function() {
 // 监听用户在文件名输入框的实时输入，同步高亮与本地记录
 window.handleNoteFilenameInput = function(inputEl) {
     const val = (inputEl ? inputEl.value : '').trim();
-    window._activeNoteFilename = val;
-    if (val) {
-        localStorage.setItem('pbi_active_note_filename', val);
+    const rawFn = val ? (val.endsWith('.md') ? val : val + '.md') : '';
+    window._activeNoteFilename = rawFn;
+    if (rawFn) {
+        localStorage.setItem('pbi_active_note_filename', rawFn);
     } else {
         localStorage.removeItem('pbi_active_note_filename');
     }
@@ -14653,8 +14668,16 @@ window.renderSortedNotesList = function() {
 
     const mode = window.noteSortModes[window.currentNoteSortIndex] || window.noteSortModes[0];
     const sorted = [...window._currentNotesList].sort((a, b) => {
-        let va = a[mode.field];
-        let vb = b[mode.field];
+        let fieldA = mode.field;
+        let va = a[fieldA];
+        let vb = b[fieldA];
+        if (fieldA === 'updated_at' || fieldA === 'mtime') {
+            va = Number(a.updated_at || a.mtime || 0);
+            vb = Number(b.updated_at || b.mtime || 0);
+        } else if (fieldA === 'created_at' || fieldA === 'ctime') {
+            va = Number(a.created_at || a.ctime || 0);
+            vb = Number(b.created_at || b.ctime || 0);
+        }
         if (mode.field === 'filename') {
             va = (va || '').toLowerCase();
             vb = (vb || '').toLowerCase();
@@ -14674,7 +14697,11 @@ window.renderSortedNotesList = function() {
         item.className = 'note-history-item';
         item.setAttribute('data-filename', note.filename);
 
-        const dateStr = new Date((note.mtime || 0) * 1000).toLocaleString();
+        const cleanName = (note.filename || '').replace(/\.md$/i, '');
+        const updatedTs = Number(note.updated_at || note.mtime || 0);
+        const createdTs = Number(note.created_at || note.ctime || updatedTs);
+        const mtimeStr = updatedTs ? new Date(updatedTs * 1000).toLocaleString() : '未知';
+        const ctimeStr = createdTs ? new Date(createdTs * 1000).toLocaleString() : '未知';
         const byteSize = note.size || 0;
         const sizeStr = byteSize > 1024 * 1024 
             ? (byteSize / (1024 * 1024)).toFixed(1) + ' MB' 
@@ -14691,12 +14718,17 @@ window.renderSortedNotesList = function() {
 
         item.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
-                <div class="note-item-filename" style="font-weight: 500; font-size: 0.88rem; margin-bottom: 4px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;" title="${note.filename}">📄 ${note.filename}</div>
+                <div class="note-item-filename" style="font-weight: 600; font-size: 0.88rem; margin-bottom: 3px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;" title="${note.filename}">📄 ${cleanName}</div>
                 <button class="btn-delete-note" style="background: none; border: none; padding: 2px 6px; cursor: pointer; color: var(--error); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; opacity: 0.6; transition: all 0.2s;" title="Delete Note">❌</button>
             </div>
-            <div style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
-                <span>🕒 ${dateStr}</span>
-                <span style="font-family: monospace; opacity: 0.85;">💾 ${sizeStr}</span>
+            <div style="font-size: 0.70rem; color: var(--text-secondary); margin-bottom: 5px; display: flex; flex-direction: column; gap: 2px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span title="最后修改时间: ${mtimeStr}">🕒 改: ${mtimeStr}</span>
+                    <span style="font-family: monospace; opacity: 0.85;">💾 ${sizeStr}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; opacity: 0.75; font-size: 0.67rem;">
+                    <span title="原始创建时间: ${ctimeStr}">🌱 创: ${ctimeStr}</span>
+                </div>
             </div>
             <div style="font-size: 0.8rem; color: var(--text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;">${snippetHtml}</div>
         `;
@@ -14730,7 +14762,7 @@ window.renderSortedNotesList = function() {
         }
     } else {
         // 存在记录的活跃文件名，在服务端返回的列表中查找最新版本
-        const matchedNote = sorted.find(n => n.filename.toLowerCase() === curFn.toLowerCase());
+        const matchedNote = sorted.find(n => n.filename.toLowerCase() === curFn.toLowerCase() || n.filename.toLowerCase() === (curFn + '.md').toLowerCase());
         if (matchedNote) {
             // 无论编辑区之前是何状态，强制同步权威最新内容，消除点击左侧才能刷新的问题
             window.setActiveNote(matchedNote.filename, matchedNote.content, true);
@@ -14942,21 +14974,73 @@ window.abortSaveNote = function() {
     }
 };
 
-window.saveMarkdownNote = async function() {
-
+window.autoSaveMarkdownNote = async function() {
     if (!easyMDE) return;
-
     const content = easyMDE.value().trim();
+    if (!content) return;
+    if (window._noteSaveAbortController || window._isAutoSavingNote) return;
 
-    if (!content) {
+    const rawInput = (document.getElementById('note-filename')?.value || '').trim();
+    let filename = rawInput ? (rawInput.endsWith('.md') ? rawInput : rawInput + '.md') : (window._activeNoteFilename || '');
+    if (!filename) return;
 
-        if (window.showNotification) window.showNotification("Note content cannot be empty!", "error");
+    const statusWrapper = document.getElementById('note-save-status-wrapper');
+    const statusText = document.getElementById('note-save-status-text');
+    const statusIcon = document.getElementById('note-save-status-icon');
 
-        return;
-
+    window._isAutoSavingNote = true;
+    if (statusWrapper && statusText) {
+        statusWrapper.style.display = 'inline-flex';
+        statusWrapper.style.color = 'var(--text-secondary)';
+        if (statusIcon) {
+            statusIcon.style.display = 'inline-block';
+            statusIcon.className = 'loader';
+        }
+        statusText.textContent = '后台自动保存中...';
     }
 
-    const filename = document.getElementById('note-filename').value.trim();
+    try {
+        const response = await fetch('/api/save-note', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename, content })
+        });
+        const data = await response.json();
+        if (data.success) {
+            const savedName = data.filename || filename;
+            if (savedName) {
+                window.setActiveNote(savedName, null, false);
+            }
+            if (statusWrapper && statusText) {
+                statusWrapper.style.color = 'var(--success)';
+                if (statusIcon) statusIcon.style.display = 'none';
+                const timeStr = new Date().toLocaleTimeString();
+                statusText.innerHTML = `<span style="font-size:0.75rem;">☁️ 已自动保存 (${timeStr})</span>`;
+                if (window._noteSaveSuccessTimeout) clearTimeout(window._noteSaveSuccessTimeout);
+                window._noteSaveSuccessTimeout = setTimeout(() => {
+                    if (statusWrapper && !window._noteSaveAbortController) {
+                        statusWrapper.style.display = 'none';
+                    }
+                }, 2200);
+            }
+        }
+    } catch (_) {
+        // 静默异常不阻断用户输入
+    } finally {
+        window._isAutoSavingNote = false;
+    }
+};
+
+window.saveMarkdownNote = async function() {
+    if (!easyMDE) return;
+    const content = easyMDE.value().trim();
+    if (!content) {
+        if (window.showNotification) window.showNotification("Note content cannot be empty!", "error");
+        return;
+    }
+
+    const rawFilename = (document.getElementById('note-filename')?.value || '').trim();
+    const filename = rawFilename ? (rawFilename.endsWith('.md') ? rawFilename : rawFilename + '.md') : (window._activeNoteFilename || '');
 
     
 
@@ -15529,6 +15613,7 @@ window.updateHarnessStats = function() {
 
             win.style.pointerEvents = 'auto';
             if (window.loadAiModelsList) window.loadAiModelsList();
+            if (window.setupAiChatInteractions) window.setupAiChatInteractions();
             setTimeout(() => document.getElementById('ai-chat-input').focus(), 250);
 
         } else {
@@ -15621,50 +15706,188 @@ window.updateHarnessStats = function() {
 
 
 
-    window.sendAiMessage = async function() {
+    window.pendingAiAttachments = [];
 
+    window.renderAiAttachmentsPreview = function() {
+        const container = document.getElementById('ai-chat-attachments');
+        if (!container) return;
+        if (!window.pendingAiAttachments || window.pendingAiAttachments.length === 0) {
+            container.style.display = 'none';
+            container.innerHTML = '';
+            return;
+        }
+
+        container.style.display = 'flex';
+        container.innerHTML = window.pendingAiAttachments.map((att, idx) => {
+            let iconHtml = '📄';
+            if (att.media_type === 'image') {
+                iconHtml = `<img src="${att.url}" alt="${att.filename}">`;
+            } else if (att.media_type === 'video') {
+                iconHtml = '🎬';
+            } else if (att.media_type === 'audio') {
+                iconHtml = '🎵';
+            }
+            return `
+                <div class="ai-attachment-chip" title="${att.filename}">
+                    ${iconHtml}
+                    <span class="chip-name">${att.filename}</span>
+                    <span class="chip-del" onclick="window.removeAiAttachment(${idx})" title="移除附件">✕</span>
+                </div>
+            `;
+        }).join('');
+    };
+
+    window.removeAiAttachment = function(idx) {
+        if (window.pendingAiAttachments && window.pendingAiAttachments[idx] !== undefined) {
+            window.pendingAiAttachments.splice(idx, 1);
+            window.renderAiAttachmentsPreview();
+        }
+    };
+
+    window.handleAiFileUpload = async function(files) {
+        if (!files || files.length === 0) return;
+        const sendBtn = document.getElementById('ai-send-btn');
+        if (sendBtn) sendBtn.disabled = true;
+
+        if (window.showNotification) {
+            window.showNotification(`正在上传 ${files.length} 个文件/附件...`, 'info', 2000);
+        }
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch('/api/ai/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (data.success) {
+                    window.pendingAiAttachments.push({
+                        filename: data.filename,
+                        saved_name: data.saved_name,
+                        url: data.url,
+                        media_type: data.media_type,
+                        size: data.size
+                    });
+                } else {
+                    if (window.showNotification) window.showNotification(`上传 ${file.name} 失败: ${data.error}`, 'error', 3000);
+                }
+            } catch (err) {
+                if (window.showNotification) window.showNotification(`上传 ${file.name} 异常: ${err.message}`, 'error', 3000);
+            }
+        }
+
+        if (sendBtn) sendBtn.disabled = false;
+        const fileInput = document.getElementById('ai-chat-file-input');
+        if (fileInput) fileInput.value = '';
+        window.renderAiAttachmentsPreview();
         const input = document.getElementById('ai-chat-input');
+        if (input) input.focus();
+    };
 
-        const text = input.value.trim();
+    window.setupAiChatInteractions = function() {
+        const win = document.getElementById('ai-chat-window');
+        const input = document.getElementById('ai-chat-input');
+        const msgs = document.getElementById('ai-chat-messages');
 
-        if (!text) return;
+        // Requirement 11: 阻尼平滑滚轮优化，彻底消除 Windows 滚轮跳跃
+        if (msgs && !msgs._wheelDampened) {
+            msgs._wheelDampened = true;
+            msgs.style.overscrollBehavior = 'contain';
+            msgs.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                // 阻尼缩减 65% 的滚轮跳动量，保证平滑丝滑
+                msgs.scrollTop += e.deltaY * 0.35;
+            }, { passive: false });
+        }
 
+        // Requirement 10: Ctrl+V 粘贴文件/多媒体
+        if (input && !input._pasteHandled) {
+            input._pasteHandled = true;
+            input.addEventListener('paste', (e) => {
+                if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
+                    e.preventDefault();
+                    window.handleAiFileUpload(e.clipboardData.files);
+                }
+            });
+        }
 
+        // Requirement 10: 拖拽文件进入聊天窗
+        if (win && !win._dropHandled) {
+            win._dropHandled = true;
+            win.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                win.style.boxShadow = '0 0 0 2px var(--accent), 0 10px 30px var(--shadow-dark)';
+            });
+            win.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                win.style.boxShadow = '';
+            });
+            win.addEventListener('drop', (e) => {
+                e.preventDefault();
+                win.style.boxShadow = '';
+                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    window.handleAiFileUpload(e.dataTransfer.files);
+                }
+            });
+        }
+    };
+
+    window.sendAiMessage = async function() {
+        const input = document.getElementById('ai-chat-input');
+        const text = (input ? input.value : '').trim();
+        const attachmentsToSend = [...(window.pendingAiAttachments || [])];
+
+        if (!text && attachmentsToSend.length === 0) return;
 
         const msgs = document.getElementById('ai-chat-messages');
 
-
-
         // Append User Message with smooth entry animation
-
         const userDiv = document.createElement('div');
+        userDiv.style.cssText = 'align-self: flex-end; background: var(--info-dark); color: white; padding: 10px 14px; border-radius: 12px; border-bottom-right-radius: 2px; max-width: 85%; opacity: 0; transform: translateY(10px); transition: all 0.3s ease-out; word-break: break-word;';
 
-        userDiv.style.cssText = 'align-self: flex-end; background: var(--info-dark); color: white; padding: 10px 14px; border-radius: 12px; border-bottom-right-radius: 2px; max-width: 85%; opacity: 0; transform: translateY(10px); transition: all 0.3s ease-out;';
+        let innerContent = '';
+        if (text) {
+            innerContent += `<div>${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
+        }
 
-        userDiv.textContent = text;
+        if (attachmentsToSend.length > 0) {
+            const attHtml = attachmentsToSend.map(att => {
+                if (att.media_type === 'image') {
+                    return `<div style="margin-top: 6px;"><a href="${att.url}" target="_blank"><img src="${att.url}" alt="${att.filename}" style="max-width: 100%; max-height: 180px; border-radius: 6px; display: block; object-fit: contain; cursor: pointer;"></a></div>`;
+                } else if (att.media_type === 'video') {
+                    return `<div style="margin-top: 6px;"><video src="${att.url}" controls style="max-width: 100%; max-height: 180px; border-radius: 6px; display: block;"></video></div>`;
+                } else if (att.media_type === 'audio') {
+                    return `<div style="margin-top: 6px;"><audio src="${att.url}" controls style="width: 100%; max-width: 240px; display: block;"></audio></div>`;
+                } else {
+                    return `<div style="margin-top: 4px;"><a href="${att.url}" target="_blank" download="${att.filename}" style="display: inline-flex; align-items: center; gap: 4px; color: #fff; background: rgba(255,255,255,0.15); padding: 3px 8px; border-radius: 4px; font-size: 0.78rem; text-decoration: none;">📎 ${att.filename}</a></div>`;
+                }
+            }).join('');
+            innerContent += `<div class="user-msg-attachments" style="margin-top: 4px;">${attHtml}</div>`;
+        }
 
+        userDiv.innerHTML = innerContent;
         msgs.appendChild(userDiv);
 
-        
-
         // Trigger reflow to ensure CSS transition works
-
         void userDiv.offsetWidth;
-
         userDiv.style.opacity = '1';
-
         userDiv.style.transform = 'translateY(0)';
 
-
-
-        input.value = '';
+        if (input) input.value = '';
+        window.pendingAiAttachments = [];
+        window.renderAiAttachmentsPreview();
         msgs.scrollTop = Math.max(0, msgs.scrollHeight - msgs.clientHeight * 0.66);
 
         const currentModel = window.getSelectedAiModel ? window.getSelectedAiModel() : 'deepseek-v4-flash';
         await window.handleAiStream('/api/chat', { 
-            message: text, 
+            message: text || '(附件提问)', 
             session_id: window.aiSessionId,
-            model: currentModel
+            model: currentModel,
+            attachments: attachmentsToSend
         });
     };
 
@@ -25567,13 +25790,16 @@ window.toggleZenMode = function() {
     }, 320);
 };
 
-// Restore Zen Mode on load
+// Restore Zen Mode & Init AI Chat Interactions on load
 document.addEventListener('DOMContentLoaded', () => {
     try {
         if (localStorage.getItem('pbi-zen-mode') === '1') {
             document.body.classList.add('zen-mode');
         }
     } catch(e) {}
+    if (window.setupAiChatInteractions) {
+        window.setupAiChatInteractions();
+    }
 });
 
 /* ==========================================================================
