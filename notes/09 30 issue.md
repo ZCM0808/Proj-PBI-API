@@ -12,4 +12,4 @@ PBI_模型关系与上游血缘分析指南.md
 
 but I don’t currently have access to the file contents themselves from the path shown (/static/uploads/...). I can’t reliably summarize it without the actual text.
 另外，为什么它的回复框的右上角的复制按钮在鼠标未悬浮式显示的是黑色字体和深灰色背景？很难辨识。
-9.
+9.为什么顶栏显示
