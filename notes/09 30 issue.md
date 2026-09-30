@@ -5,7 +5,7 @@
 5.页面右下角AI assistent弹窗，展开时，只能通过再次点击它来收起弹窗
 6.quick note中，为什么当前note的创建时间和修改时间是一样的？这不对，因为我创建好之后有持续的编辑了一段时间
 7.quick note中，左侧note列表的每一个项目的创建时间和修改时间前都有一个emoji图标，移除掉这个图标
-8.
+8.AI assistent中，上传文件后，
 I can see that an attachment was referenced:
 
 PBI_模型关系与上游血缘分析指南.md
