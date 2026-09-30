@@ -17,4 +17,4 @@ but I don’t currently have access to the file contents themselves from the pat
 Tenant ID: 7d97f400-69b4-4df4-a009-c9806ec70783”，但是权限链路中确实“carman_zhao@vfc.com”？而且在顶栏复制时，怎么复制出这么多互相不匹配的信息“认证模式: 交互 · seven@carman.ccwu.cc (interactive)
 登录主体: carman_zhao@vfc.com
 Tenant ID: 7d97f400-69b4-4df4-a009-c9806ec70783”？
-10.权限流转蓝图中，目标用户主体的输入框也需要
+10.权限流转蓝图中，目标用户主体的输入框也需要在右侧的向下箭头上添加悬浮显示的复制按钮
