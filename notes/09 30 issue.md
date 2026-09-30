@@ -14,4 +14,4 @@ but I don’t currently have access to the file contents themselves from the pat
 另外，为什么它的回复框的右上角的复制按钮在鼠标未悬浮式显示的是黑色字体和深灰色背景？很难辨识。
 9.为什么顶栏显示认证“认证模式: 交互 · seven@carman.ccwu.cc (interactive)
 登录主体: carman_zhao@vfc.com
-Tenant ID: 7d97f400-69b4-4df4-a009-c9806ec70783”
+Tenant ID: 7d97f400-69b4-4df4-a009-c9806ec70783”，但是
