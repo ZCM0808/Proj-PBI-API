@@ -1,1 +1,2 @@
-问题：Eligibility check failed: Your current account is not eligible for Antigravity. Verify your account to continue. 答案：cmdkey /delete:gemini:antigravity
+问题：Eligibility check failed: Your current account is not eligible for Antigravity. Verify your account to continue. 
+答案：cmdkey /delete:gemini:antigravity
