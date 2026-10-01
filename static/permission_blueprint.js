@@ -719,11 +719,15 @@
                 }
             });
 
-            // 监听全局主题切换
+            // 监听全局主题切换 (仅针对 data-theme 属性，与全局 220ms CSS 动效平滑对齐)
+            let _themeWireTimer = null;
             const themeObserver = new MutationObserver(() => {
-                this.recalculateAndRenderWires();
+                if (_themeWireTimer) clearTimeout(_themeWireTimer);
+                _themeWireTimer = setTimeout(() => {
+                    this.recalculateAndRenderWires();
+                }, 220);
             });
-            themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
+            themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
             // ── 实时视口尺寸感知 (窗口缩放、分栏拖拽、全屏侧边栏折叠逐帧自适应) ─────
             let _rafFitPending = false;
@@ -2257,7 +2261,7 @@
             }
 
             // 2. 尝试从全局配置或当前已登录的主体中注入自身身份 (若已有记录绝不擅自覆写角色)
-            const liveUser = document.getElementById('set-username')?.value || document.getElementById('set-interactive-username')?.value || localStorage.getItem('pbi_user_name') || '';
+            const liveUser = (window.PermissionBlueprint?._activeAuthUser || localStorage.getItem('pbi_username') || document.getElementById('set-interactive-username')?.value || document.getElementById('set-username')?.value || '').trim();
             if (liveUser) {
                 const cleanKey = `real_${liveUser.replace(/[^a-zA-Z0-9_]/g, '_')}`;
                 const existing = USER_PRESETS[cleanKey];
@@ -2425,7 +2429,7 @@
                 const activeP = USER_PRESETS[this.activePresetKey];
                 const alreadyIncluded = realUsers.some(u => u.id === activeP.id) || customUsers.some(u => u.id === activeP.id);
                 if (!alreadyIncluded) {
-                    appendUserGroup('🎯 当前选定用户主体', [activeP]);
+                    appendUserGroup('当前选定用户主体', [activeP]);
                 }
             }
 
@@ -2448,7 +2452,7 @@
             if (this.activePresetKey && USER_PRESETS[this.activePresetKey]) {
                 const p = USER_PRESETS[this.activePresetKey];
                 if (userDisplayText) {
-                    userDisplayText.textContent = `🎯 ${p.name} (${p.roleTag})`;
+                    userDisplayText.textContent = `${p.name} (${p.roleTag})`;
                     userDisplayText.title = `${p.name} - ${p.upn}`;
                 }
                 if (roleBadge) {
@@ -2533,6 +2537,30 @@
             }
         }
 
+        copyCurrentTargetUser(event, btn) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            const preset = USER_PRESETS[this.activePresetKey];
+            const textToCopy = preset ? (preset.upn || preset.name) : (document.getElementById('pb-user-display-text')?.textContent?.replace(/--\s*选择.*?--/, '') || '').trim();
+            if (!textToCopy) {
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification('未选定有效的目标用户主体', 'warning');
+                }
+                return;
+            }
+            if (typeof window.handleCopyAction === 'function') {
+                window.handleCopyAction(btn, textToCopy);
+            } else {
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    if (typeof window.showNotification === 'function') {
+                        window.showNotification(`已复制目标用户: ${textToCopy}`, 'success');
+                    }
+                });
+            }
+        }
+
         selectUserPreset(presetKey, showToast = true) {
             if (presetKey === 'none') {
                 this.clearSimulatedUser();
@@ -2567,7 +2595,7 @@
             const userListContainer = document.getElementById('pb-user-list');
 
             if (userDisplayText) {
-                userDisplayText.textContent = `🎯 ${preset.name} (${preset.roleTag})`;
+                userDisplayText.textContent = `${preset.name} (${preset.roleTag})`;
                 userDisplayText.title = `${preset.name} - ${preset.upn}`;
             }
 

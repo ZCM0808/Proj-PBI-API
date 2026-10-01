@@ -3363,6 +3363,20 @@ div.CodeMirror-selected,
 .theme-transitioning .main-content *,
 .theme-transitioning .wf-detail-board,
 .theme-transitioning .wf-detail-board *,
+.theme-transitioning .pb-canvas-viewport,
+.theme-transitioning .pb-canvas-viewport *,
+.theme-transitioning .pb-matrix-container,
+.theme-transitioning .pb-matrix-container *,
+.theme-transitioning .pb-user-assets-container,
+.theme-transitioning .pb-user-assets-container *,
+.theme-transitioning .pb-control-card,
+.theme-transitioning .pb-control-card *,
+.theme-transitioning .pb-blueprint-node,
+.theme-transitioning .pb-blueprint-node *,
+.theme-transitioning .pb-asset-tier-card,
+.theme-transitioning .pb-asset-card-row,
+.theme-transitioning .pb-tier-col,
+.theme-transitioning .pb-col-row,
 .theme-transitioning .body-editor-container,
 .theme-transitioning .glass-panel,
 .theme-transitioning .card,
@@ -4975,8 +4989,8 @@ body.topbar-collapsed #gtb-expand-handle .gtb-handle-icon {
     top: 6px;
     right: 6px;
     opacity: 0;
-    transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
-    background: rgba(15, 23, 42, 0.7);
+    transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    background: var(--panel-bg);
     border: 1px solid var(--overlay-20);
     border-radius: 4px;
     padding: 2px 6px;
@@ -4987,8 +5001,16 @@ body.topbar-collapsed #gtb-expand-handle .gtb-handle-icon {
     align-items: center;
     gap: 3px;
     z-index: 5;
+    box-shadow: 0 1px 3px var(--shadow-dark, rgba(0, 0, 0, 0.15));
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
+}
+
+[data-theme="light"] .ai-msg-copy-btn {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    color: #475569;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .ai-msg-bubble:hover .ai-msg-copy-btn {
@@ -4996,9 +5018,9 @@ body.topbar-collapsed #gtb-expand-handle .gtb-handle-icon {
 }
 
 .ai-msg-copy-btn:hover {
-    background: var(--accent);
-    color: var(--accent-text);
-    border-color: var(--accent);
+    background: var(--accent) !important;
+    color: #ffffff !important;
+    border-color: var(--accent) !important;
     transform: scale(1.05);
 }
 
@@ -5835,7 +5857,9 @@ body.is-resizing .body-editor-container {
 }
 
 .gtb-item:hover .gtb-copy-btn,
-.gtb-item:focus-within .gtb-copy-btn {
+.gtb-item:focus-within .gtb-copy-btn,
+.pb-dropdown-box:hover .gtb-copy-btn,
+.pb-dropdown-box:focus-within .gtb-copy-btn {
     opacity: 1;
     pointer-events: auto;
 }

@@ -2973,10 +2973,25 @@ window.renderGlobalTopbar = async function() {
         const authInfoRes = await fetch('/api/auth-info');
         const authInfo = await authInfoRes.json();
         if (authInfo && authInfo.success) {
-            if (authInfo.app_name) appName = authInfo.app_name;
-            if (authInfo.username) username = authInfo.username;
-            if (authInfo.tenant_id) tenantId = authInfo.tenant_id;
-            if (authInfo.tenant_name) tenantName = authInfo.tenant_name;
+            if (authInfo.app_name) {
+                appName = authInfo.app_name;
+                localStorage.setItem('pbi_app_name', appName);
+            }
+            if (authInfo.username) {
+                username = authInfo.username;
+                localStorage.setItem('pbi_username', username);
+                if (window.PermissionBlueprint) {
+                    window.PermissionBlueprint._activeAuthUser = username;
+                }
+            }
+            if (authInfo.tenant_id) {
+                tenantId = authInfo.tenant_id;
+                localStorage.setItem('pbi_tenant_id', tenantId);
+            }
+            if (authInfo.tenant_name) {
+                tenantName = authInfo.tenant_name;
+                localStorage.setItem('pbi_tenant_name', tenantName);
+            }
         }
 
         // 持续化固化最新租户名称与 ID，实现永久 0ms 稳定直出
@@ -4953,8 +4968,14 @@ window.copyGtbItem = function(btn, type) {
             if (appName) detail += `\n应用名称: ${appName}`;
             if (clientId) detail += `\nClient ID: ${clientId}`;
         } else if (mode === 'interactive' || mode === 'personal') {
-            const username = localStorage.getItem('pbi_username') || '';
-            if (username) detail += `\n登录主体: ${username}`;
+            let activeUser = '';
+            if (displayText && displayText.includes('·')) {
+                activeUser = displayText.split('·')[1].trim();
+            }
+            if (!activeUser) {
+                activeUser = localStorage.getItem('pbi_username') || '';
+            }
+            if (activeUser) detail += `\n登录主体: ${activeUser}`;
         }
         if (tenantId) detail += `\nTenant ID: ${tenantId}`;
         lines.push(detail);
@@ -14083,9 +14104,14 @@ window.openNoteModal = function() {
     // 检查并恢复 active note filename (防止打开时 filename 为空)
     const savedFn = (localStorage.getItem('pbi_active_note_filename') || '').trim();
     const fnInput = document.getElementById('note-filename');
-    if (fnInput && !fnInput.value.trim() && savedFn) {
-        fnInput.value = savedFn;
-        window._activeNoteFilename = savedFn;
+    if (fnInput) {
+        if (!fnInput.placeholder || fnInput.placeholder.includes('Note Title') || fnInput.placeholder.includes('optional')) {
+            fnInput.placeholder = window.getNoteDefaultPlaceholder ? window.getNoteDefaultPlaceholder() : '';
+        }
+        if (!fnInput.value.trim() && savedFn) {
+            fnInput.value = savedFn;
+            window._activeNoteFilename = savedFn;
+        }
     }
 
     // 智能拦截与增强工具栏 preview 按钮：若编辑区存在展开的媒体源码，优先一键折叠为所见即所得卡片预览
@@ -14722,6 +14748,32 @@ window.handleNoteFilenameInput = function(inputEl) {
     window.highlightActiveNoteItem();
 };
 
+// 规范化 24 小时制时间格式化函数 (消除 12 小时制截断/无 PM 标识引发的“凌晨 2:33”歧义)
+window.formatNoteDateTime = function(ts) {
+    if (!ts) return '未知';
+    const d = new Date(ts * 1000);
+    if (isNaN(d.getTime())) return '未知';
+    const Y = d.getFullYear();
+    const M = String(d.getMonth() + 1).padStart(2, '0');
+    const D = String(d.getDate()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, '0');
+    const m = String(d.getMinutes()).padStart(2, '0');
+    const s = String(d.getSeconds()).padStart(2, '0');
+    return `${Y}-${M}-${D} ${h}:${m}:${s}`;
+};
+
+// 获取 Quick Note 新建笔记时的默认时间占位符 (YYYY-MM-DD HH:mm:ss)
+window.getNoteDefaultPlaceholder = function() {
+    const d = new Date();
+    const Y = d.getFullYear();
+    const M = String(d.getMonth() + 1).padStart(2, '0');
+    const D = String(d.getDate()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, '0');
+    const m = String(d.getMinutes()).padStart(2, '0');
+    const s = String(d.getSeconds()).padStart(2, '0');
+    return `${Y}-${M}-${D} ${h}:${m}:${s}`;
+};
+
 window.renderSortedNotesList = function() {
     const listEl = document.getElementById('note-history-list');
     const q = (document.getElementById('note-search')?.value || '').trim();
@@ -14766,8 +14818,8 @@ window.renderSortedNotesList = function() {
         const cleanName = (note.filename || '').replace(/\.md$/i, '');
         const updatedTs = Number(note.updated_at || note.mtime || 0);
         const createdTs = Number(note.created_at || note.ctime || updatedTs);
-        const mtimeStr = updatedTs ? new Date(updatedTs * 1000).toLocaleString() : '未知';
-        const ctimeStr = createdTs ? new Date(createdTs * 1000).toLocaleString() : '未知';
+        const mtimeStr = window.formatNoteDateTime(updatedTs);
+        const ctimeStr = window.formatNoteDateTime(createdTs);
         const byteSize = note.size || 0;
         const sizeStr = byteSize > 1024 * 1024 
             ? (byteSize / (1024 * 1024)).toFixed(1) + ' MB' 
@@ -14785,15 +14837,15 @@ window.renderSortedNotesList = function() {
         item.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
                 <div class="note-item-filename" style="font-weight: 600; font-size: 0.88rem; margin-bottom: 3px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;" title="${note.filename}">📄 ${cleanName}</div>
-                <button class="btn-delete-note" style="background: none; border: none; padding: 2px 6px; cursor: pointer; color: var(--error); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; opacity: 0.6; transition: all 0.2s;" title="Delete Note">❌</button>
+                <button class="btn-delete-note" style="background: none; border: none; padding: 2px 6px; cursor: pointer; color: var(--error); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; opacity: 0.6; transition: all 0.2s;" title="Delete Note">✕</button>
             </div>
             <div style="font-size: 0.70rem; color: var(--text-secondary); margin-bottom: 5px; display: flex; flex-direction: column; gap: 2px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span title="最后修改时间: ${mtimeStr}">🕒 改: ${mtimeStr}</span>
-                    <span style="font-family: monospace; opacity: 0.85;">💾 ${sizeStr}</span>
+                    <span title="最后修改时间: ${mtimeStr}">改: ${mtimeStr}</span>
+                    <span style="font-family: monospace; opacity: 0.85;">${sizeStr}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; opacity: 0.75; font-size: 0.67rem;">
-                    <span title="原始创建时间: ${ctimeStr}">🌱 创: ${ctimeStr}</span>
+                    <span title="原始创建时间: ${ctimeStr}">创: ${ctimeStr}</span>
                 </div>
             </div>
             <div style="font-size: 0.8rem; color: var(--text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;">${snippetHtml}</div>
@@ -14909,6 +14961,7 @@ window.createNewNote = function() {
     const fnInput = document.getElementById('note-filename');
     if (fnInput) {
         fnInput.value = '';
+        fnInput.placeholder = window.getNoteDefaultPlaceholder ? window.getNoteDefaultPlaceholder() : '';
         fnInput.focus();
     }
 };
@@ -15046,7 +15099,14 @@ window.autoSaveMarkdownNote = async function() {
     if (!content) return;
     if (window._noteSaveAbortController || window._isAutoSavingNote) return;
 
-    const rawInput = (document.getElementById('note-filename')?.value || '').trim();
+    const fnInput = document.getElementById('note-filename');
+    let rawInput = (fnInput?.value || '').trim();
+    if (!rawInput && fnInput?.placeholder) {
+        const ph = fnInput.placeholder.trim();
+        if (ph && !ph.includes('optional')) {
+            rawInput = ph.replace(/:/g, '-');
+        }
+    }
     let filename = rawInput ? (rawInput.endsWith('.md') ? rawInput : rawInput + '.md') : (window._activeNoteFilename || '');
     if (!filename) return;
 
@@ -15105,7 +15165,14 @@ window.saveMarkdownNote = async function() {
         return;
     }
 
-    const rawFilename = (document.getElementById('note-filename')?.value || '').trim();
+    const fnInput = document.getElementById('note-filename');
+    let rawFilename = (fnInput?.value || '').trim();
+    if (!rawFilename && fnInput?.placeholder) {
+        const ph = fnInput.placeholder.trim();
+        if (ph && !ph.includes('optional')) {
+            rawFilename = ph.replace(/:/g, '-');
+        }
+    }
     const filename = rawFilename ? (rawFilename.endsWith('.md') ? rawFilename : rawFilename + '.md') : (window._activeNoteFilename || '');
 
     
@@ -15717,6 +15784,16 @@ window.updateHarnessStats = function() {
                 return;
             }
             if (!win.contains(e.target) && !fab.contains(e.target)) {
+                window.toggleAIChat();
+            }
+        }
+    });
+
+    // Close AI window when pressing Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const win = document.getElementById('ai-chat-window');
+            if (win && win.style.opacity === '1') {
                 window.toggleAIChat();
             }
         }

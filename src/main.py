@@ -666,13 +666,41 @@ async def ai_chat(req: ChatRequest):
 
     user_prompt = req.message
     if req.attachments:
-        att_lines = []
+        root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        uploads_dir = os.path.join(root_dir, "static", "uploads", "ai")
+        att_sections = []
         for att in req.attachments:
             name = att.get("filename") or att.get("saved_name") or "attachment"
+            saved_name = att.get("saved_name") or os.path.basename(att.get("url", ""))
             mtype = att.get("media_type") or "file"
             url = att.get("url") or ""
-            att_lines.append(f"- [{mtype.upper()}] {name}: {url}")
-        user_prompt = f"{req.message}\n\n[用户随附了以下多模态文件/附件]:\n" + "\n".join(att_lines)
+
+            file_disk_path = os.path.join(uploads_dir, saved_name)
+            if not os.path.exists(file_disk_path) and url:
+                clean_url = url.lstrip("/").replace("/", os.sep)
+                candidate_path = os.path.join(root_dir, clean_url)
+                if os.path.exists(candidate_path):
+                    file_disk_path = candidate_path
+
+            text_content = None
+            if os.path.exists(file_disk_path):
+                lower_name = name.lower()
+                text_exts = ('.md', '.txt', '.json', '.csv', '.tsv', '.py', '.sql', '.js', '.ts', '.html', '.css', '.xml', '.yaml', '.yml', '.log', '.tmdl', '.dax', '.m', '.ini', '.env')
+                if lower_name.endswith(text_exts) or mtype == "file":
+                    try:
+                        with open(file_disk_path, "r", encoding="utf-8", errors="replace") as f:
+                            raw_text = f.read(80000)
+                            if "\x00" not in raw_text[:1024]:
+                                text_content = raw_text
+                    except Exception:
+                        pass
+
+            if text_content is not None:
+                att_sections.append(f"【随附文件: {name} (完整文本内容开始)】\n```\n{text_content}\n```\n【随附文件: {name} (完整文本内容结束)】")
+            else:
+                att_sections.append(f"- [{mtype.upper()}] {name}: {url}")
+
+        user_prompt = f"{req.message}\n\n[用户随附了以下多模态文件/附件内容]:\n" + "\n\n".join(att_sections)
 
     # 1. 如果配置了 OpenAI 兼容平台且目标不是纯 gemini 模型，优先走通用 OpenAI 协议
     if openai_base and openai_key and httpx is not None and not target_model.startswith("gemini-"):
