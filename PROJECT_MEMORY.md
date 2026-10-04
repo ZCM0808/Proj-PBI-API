@@ -2893,7 +2893,10 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
 
 ### 74.4 运维脚本规范与 UTF-8 BOM 防御 (Ops Script Suite)
 - **Windows PowerShell 5.1 编码防御**：为避免中文在默认 ANSI 字符集下被乱码截断引发括号/引号解析异常，所有脚本强制采用带 BOM 的 UTF-8 (`utf-8-sig`) 格式持久化。
-- **三剑客运维脚本集**：
+- **五维全生命周期运维脚本集**：
   - `start_tunnel.ps1`：一键静默拉起 FastAPI 与 cloudflared 守护进程，并自动执行本地与公网 `https://pbi.carman.ccwu.cc` 端到端连通性自检；
   - `stop_tunnel.ps1`：安全检索并终止 FastAPI 与 cloudflared 对应 PID，自动清理 PID 记录文件；
-  - `status_tunnel.ps1`：实时诊断本地端口、进程存活性与公网域名响应状态。
+  - `status_tunnel.ps1`：实时诊断本地端口、进程存活性与公网域名响应状态；
+  - `enable_autostart.ps1`：将静默启动指令注册至 Windows 当前用户 Run 注册表（`HKCU:\Software\Microsoft\Windows\CurrentVersion\Run`），实现开机或重启后 100% 自动隐形拉起；
+  - `disable_autostart.ps1`：一键注销开机自启动项，恢复纯手动按需控制。
+
