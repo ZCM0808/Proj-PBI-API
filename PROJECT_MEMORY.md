@@ -2900,3 +2900,23 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
   - `enable_autostart.ps1`：将静默启动指令注册至 Windows 当前用户 Run 注册表（`HKCU:\Software\Microsoft\Windows\CurrentVersion\Run`），实现开机或重启后 100% 自动隐形拉起；
   - `disable_autostart.ps1`：一键注销开机自启动项，恢复纯手动按需控制。
 
+### 74.5 Windows 登录开机自启与重启自愈架构 (Auto-Start on Boot & Registry Architecture)
+1. **权限边界与系统选型研判**：
+   - 若试图通过 Windows 任务计划程序 (`Register-ScheduledTask`) 创建开机任务，普通开发者权限会直接抛出 `Access is denied (0x80070005)` 权限拒绝异常；
+   - **最优解法**：采用 Windows 当前用户标准启动注册表：`HKCU:\Software\Microsoft\Windows\CurrentVersion\Run`。该通道完全面向当前用户开放读写权限，无需 UAC(用户账户控制) 提权弹窗，且稳定性与自愈性达到企业级标准。
+2. **静默自愈闭环实现**：
+   - 注入注册表项 `PbiApiTunnel`，指令为 `powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File "D:\ZCM\Proj-PBI-API\start_tunnel.ps1"`；
+   - 电脑每次开机或重启登录进桌面后，系统在后台自动调度拉起服务；服务内部再通过 WMI 配合 `SW_HIDE` 彻底剥离控制台宿主窗口，全天候保障桌面 100% 干净，外网随时随地秒开。
+
+### 74.6 故障容错机制与黑匣子排查自愈防线 (Fault Tolerance, Hot-Reload & Post-Mortem Defense)
+1. **代码修改出错时的三端防御形态**：
+   - **桌面端 (Zero Interruption)**：即使新编写的代码存在 `SyntaxError` 或 `ImportError` 导致 Python 崩溃，在 `SW_HIDE` 的强行压制下，桌面绝对不会弹出崩溃黑框，彻底捍卫桌面零干扰铁律；
+   - **外网端 (Security Shield)**：Cloudflare 边缘代理会统一返回标准的 `502 Bad Gateway` 友好错误页，本地代码报错路径与内网拓扑绝不会暴露至公网；
+   - **日志端 (Blackbox Logging)**：所有崩溃调用栈 (Traceback) 毫秒级落盘至 `logs/api_server.log`，精准记录报错文件与代码行号。
+2. **Uvicorn StatReload 热重载容错弹性**：
+   - 服务内部启用 `reload=True`。在日常开发过程中修改已有代码时，即使新保存的文件存在语法错误，Uvicorn 主监听进程并不会当场暴毙退出，而是维持挂起保护；
+   - 一旦将代码修复并重新保存，Uvicorn 会在 0.2 秒内自动捕获变更并热重载生效，公网连接瞬间复活，无需手动介入重启。
+3. **端口抢占与多实例冲突排查真相 (Port Conflict Defense)**：
+   - **核心现象**：在已有后台常驻服务运行时，若开发者在终端前台再次敲入 `python src/main.py`，会出现启动日志输出后瞬间退回终端提示符（`PS >`）的假象；
+   - **根本原因**：`127.0.0.1:8000` 端口早已被后台静默常驻的进程牢牢绑定，新前台进程因端口冲突被操作系统的网络栈强行拒绝并退出，而后台老进程始终稳健在线；
+   - **标准处置流**：若需切换为前台观察模式，必须先执行 `.\stop_tunnel.ps1` 彻底释放端口，再手动拉起 `python src/main.py`；若需切回静默后台，按 `Ctrl+C` 退出后执行 `.\start_tunnel.ps1`。
