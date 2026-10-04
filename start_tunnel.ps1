@@ -1,4 +1,4 @@
-﻿# start_tunnel.ps1 - Launch Proj-PBI-API and Cloudflare Tunnel via Windows WMI Daemon
+﻿# start_tunnel.ps1 - Launch Proj-PBI-API and Cloudflare Tunnel via 100% Silent WMI Daemon
 $ErrorActionPreference = "Stop"
 $ProjectRoot = "D:\ZCM\Proj-PBI-API"
 Set-Location $ProjectRoot
@@ -12,24 +12,28 @@ if (-not (Test-Path $DataDir)) { New-Item -ItemType Directory -Path $DataDir -Fo
 $PidFile = Join-Path $DataDir "tunnel_pids.json"
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "   Proj-PBI-API + Cloudflare Tunnel WMI Daemon Launcher" -ForegroundColor Cyan
+Write-Host "   Proj-PBI-API + Cloudflare Tunnel 100% Silent Launcher" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
-# 2. Check and start FastAPI service via WMI
-$ApiProcess = Get-CimInstance Win32_Process -Filter "CommandLine LIKE '%src/main.py%' or CommandLine LIKE '%src\\main.py%'" -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "python*" }
+# Prepare SW_HIDE (ShowWindow = 0) Startup Info to completely suppress console black windows
+$startup = [wmiclass]"Win32_ProcessStartup"
+$startupInfo = $startup.CreateInstance()
+$startupInfo.ShowWindow = 0 # 0 = SW_HIDE
+
+$processClass = [wmiclass]"Win32_Process"
+
+# 2. Check and start FastAPI service via Silent WMI
+$ApiProcess = Get-CimInstance Win32_Process -Filter "CommandLine LIKE '%src/main.py%' or CommandLine LIKE '%src\\main.py%'" -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "python*" -or $_.Name -eq "cmd.exe" }
 if ($ApiProcess) {
     $ApiPid = $ApiProcess[0].ProcessId
     Write-Host "[+] FastAPI service is already running (PID: $ApiPid)" -ForegroundColor Green
 } else {
-    Write-Host "[*] Launching FastAPI service via Windows WMI..." -ForegroundColor Yellow
-    $wmiArgs = @{
-        CommandLine = 'cmd.exe /c "python src/main.py > logs\api_server.log 2>&1"'
-        CurrentDirectory = $ProjectRoot
-    }
-    $res = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments $wmiArgs
+    Write-Host "[*] Launching FastAPI service in 100% hidden background..." -ForegroundColor Yellow
+    $apiCmd = 'cmd.exe /c "python src/main.py > logs\api_server.log 2>&1"'
+    $res = $processClass.Create($apiCmd, $ProjectRoot, $startupInfo)
     if ($res.ReturnValue -eq 0 -and $res.ProcessId) {
         $ApiPid = $res.ProcessId
-        Write-Host "[+] FastAPI service launched successfully (PID: $ApiPid)" -ForegroundColor Green
+        Write-Host "[+] FastAPI service launched silently (PID: $ApiPid)" -ForegroundColor Green
     } else {
         Write-Host "[-] Failed to launch FastAPI via WMI, ReturnValue: $($res.ReturnValue)" -ForegroundColor Red
         exit 1
@@ -47,27 +51,24 @@ $TunnelInfo = Get-Content $TunnelInfoPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $Token = $TunnelInfo.tunnel_token
 $Hostname = $TunnelInfo.hostname
 
-# 4. Check and start Cloudflare Tunnel via WMI
+# 4. Check and start Cloudflare Tunnel via Silent WMI
 $CfProcess = Get-CimInstance Win32_Process -Filter "Name LIKE 'cloudflared%'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*tunnel run*" }
 if ($CfProcess) {
     $CfPid = $CfProcess[0].ProcessId
     Write-Host "[+] Cloudflare Tunnel is already running (PID: $CfPid)" -ForegroundColor Green
 } else {
-    Write-Host "[*] Launching Cloudflare Tunnel daemon via Windows WMI..." -ForegroundColor Yellow
+    Write-Host "[*] Launching Cloudflare Tunnel in 100% hidden background..." -ForegroundColor Yellow
     $cfPath = "C:\Users\ZCM\.agy_pool\bin\cloudflared.exe"
     if (-not (Test-Path $cfPath)) {
         $cfCmd = Get-Command cloudflared -ErrorAction SilentlyContinue
         if ($cfCmd) { $cfPath = $cfCmd.Source } else { $cfPath = "cloudflared.exe" }
     }
 
-    $wmiCfArgs = @{
-        CommandLine = "`"$cfPath`" tunnel run --token $Token"
-        CurrentDirectory = $ProjectRoot
-    }
-    $resCf = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments $wmiCfArgs
+    $cfCmdLine = "`"$cfPath`" tunnel run --token $Token"
+    $resCf = $processClass.Create($cfCmdLine, $ProjectRoot, $startupInfo)
     if ($resCf.ReturnValue -eq 0 -and $resCf.ProcessId) {
         $CfPid = $resCf.ProcessId
-        Write-Host "[+] Cloudflare Tunnel launched successfully (PID: $CfPid)" -ForegroundColor Green
+        Write-Host "[+] Cloudflare Tunnel launched silently (PID: $CfPid)" -ForegroundColor Green
     } else {
         Write-Host "[-] Failed to launch Cloudflare Tunnel, ReturnValue: $($resCf.ReturnValue)" -ForegroundColor Red
         exit 1
@@ -110,7 +111,7 @@ try {
 }
 
 Write-Host "`n==========================================================" -ForegroundColor Cyan
-Write-Host "   Deployment Ready! Access anytime via:" -ForegroundColor Green
+Write-Host "   Deployment Ready (100% Windowless Background)!" -ForegroundColor Green
 Write-Host "   Public URL : https://$Hostname" -ForegroundColor Cyan
 Write-Host "   Local  URL : http://127.0.0.1:8000" -ForegroundColor Gray
 Write-Host "   Auth Mode  : Native Password + Mobile MFA TOTP" -ForegroundColor Green
