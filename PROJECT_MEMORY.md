@@ -2861,4 +2861,39 @@ equestAnimationFrame 请求下一渲染帧，赋予 	ransition: transform 0.45s 
 5. **服务端心跳防抖 (45 秒阈值免疫多标签页双倍扣时)**：
    - 在 `/api/ping-usage` 中校验 `now_ts - last_ping_at < 45.0`。若用户同浏览器多标签页并发心跳，仅同步状态而不重复累加 60 秒，彻底防御额度被多标签页成倍加速消耗。
 
+---
 
+## 74. Cloudflare Tunnel 极简直通公网部署与 Windows WMI 系统级守护体系 (Cloudflare Tunnel & WMI Daemon Architecture)
+
+### 74.1 架构研判与选型决策 (Architecture & Trade-offs)
+1. **纯云端边缘托管 (Pages/Workers) 的底层死穴**：
+   - Cloudflare Pages / Workers 是基于 Google V8 Isolates(轻量级JavaScript沙箱引擎) 的无服务器边缘运行时，无法运行重度的 Python FastAPI 异步服务 (`uvicorn`, `fastapi`, `msal`)；
+   - 核心业务功能 [src/local_pbi.py](file:///D:/ZCM/Proj-PBI-API/src/local_pbi.py) 深度依赖 Windows 本地环境：需调用 PowerShell 命令 `Get-CimInstance Win32_Process -Filter "Name = 'msmdsrv.exe'"` 探测本地运行的 Power BI Desktop 动态端口，并借助 Windows 专有动态链接库 `Microsoft.PowerBI.AdomdClient.dll` 直连本地 Analysis Services 内存列式引擎执行原生 DAX(数据分析表达式) 查询。纯脱机的云端部署会导致本地实例嗅探与 DAX 执行能力彻底瘫痪。
+2. **极简直通模式 (Direct Tunnel) 确立为生产最佳实践**：
+   - **架构拓扑**：本地电脑后台常驻 FastAPI 服务，通过 Cloudflare 官方客户端 `cloudflared` 建立一条出站双向加密加密隧道 (Argo Tunnel) 直连 Cloudflare 全球边缘 Anycast 网络；
+   - **零多余验证码打扰**：**坚决不启用** Cloudflare Access(零信任身份访问控制) 的外层邮箱验证码拦截，将外部流量直接穿透直达系统原生登录界面；
+   - **原生安全链路完整传承**：系统原有的主密码校验（`9527`）、基于手机 Google/微软 Authenticator 的 TOTP(基于时间的一次性口令) 动态码、单日防沉迷及设备防爆破锁定逻辑 100% 原生接管，实现兼备公网极速直达与企业级安全防线。
+
+### 74.2 云端隧道与 DNS 自动化编排 (Cloudflare Tunnel & DNS Automation)
+1. **隧道基础设施绑定**：
+   - 专属隧道名称：`pbi-api-tunnel`（Tunnel ID: `7936bf8d-17cd-4131-a02f-17af58b4b054`）；
+   - Ingress 映射规则：将 `pbi.carman.ccwu.cc` 流量 100% 转发至本地服务 `http://localhost:8000`；Fallback 规则为 `http_status:404`；
+   - DNS 自动化解析：在 Zone `carman.ccwu.cc`（Zone ID: `ee250a99775e54268986c1782f0e2858`）下配置 CNAME 记录 `pbi` 指向 `7936bf8d-17cd-4131-a02f-17af58b4b054.cfargotunnel.com` 并开启 Cloudflare 橙色小云朵代理。
+2. **安全凭据防泄漏闭环**：
+   - 隧道元数据与 Token 本地持久化于 `.cf_tunnel_info.json`；
+   - 同步将 `.cf_tunnel_info.json`、`logs/`、`data/tunnel_pids.json` 强行纳入 `.gitignore`，杜绝敏感凭据被误提交至公开代码仓库。
+
+### 74.3 Windows WMI 脱壳常驻与 Stdout 管道防御 (WMI Daemon & Stdout Defense)
+1. **普通 Process 进程级联消亡痛点**：
+   - 采用标准 PowerShell `Start-Process` 或 `.NET Process` 创建的子进程会被挂载在当前控制台作业对象 (Job Object) 树下。调用者终端关闭或 VS Code 退出时，子进程被系统级联强杀。
+   - **根治方案**：深度借鉴调度中心最佳实践，全面改用 Windows 原生 WMI 接口 (`Invoke-CimMethod -ClassName Win32_Process -MethodName Create`) 由顶层 RPC 服务代理托管拉起，彻底脱壳断开父子进程链，实现终端关闭、编辑器重启依然后台永久常驻。
+2. **pythonw.exe 导致 FastAPI 秒退排查与 Stdout 管道防御**：
+   - **排查复盘**：最初试图使用 `pythonw.exe` 启动 `src/main.py` 以期隐藏窗口，但服务启动后瞬间闪退。根本原因为 Windows 下 `pythonw.exe` 的 `sys.stdout` 与 `sys.stderr` 均为 `None`；当 `uvicorn` 或启动预热逻辑调用 `print()` 时，会触发 `AttributeError: 'NoneType' object has no attribute 'write'` 致命异常导致进程崩溃。
+   - **终极防御方案**：采用 `cmd.exe /c "python src/main.py > logs\api_server.log 2>&1"` 配合 WMI Create 拉起。既保证了 100% 零桌面黑框弹出，又使日志完整重定向至 `logs/api_server.log` 便于故障回溯与状态追踪。
+
+### 74.4 运维脚本规范与 UTF-8 BOM 防御 (Ops Script Suite)
+- **Windows PowerShell 5.1 编码防御**：为避免中文在默认 ANSI 字符集下被乱码截断引发括号/引号解析异常，所有脚本强制采用带 BOM 的 UTF-8 (`utf-8-sig`) 格式持久化。
+- **三剑客运维脚本集**：
+  - `start_tunnel.ps1`：一键静默拉起 FastAPI 与 cloudflared 守护进程，并自动执行本地与公网 `https://pbi.carman.ccwu.cc` 端到端连通性自检；
+  - `stop_tunnel.ps1`：安全检索并终止 FastAPI 与 cloudflared 对应 PID，自动清理 PID 记录文件；
+  - `status_tunnel.ps1`：实时诊断本地端口、进程存活性与公网域名响应状态。
