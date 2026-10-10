@@ -3330,7 +3330,7 @@
     <script src="/static/vis-network.min.js"></script>
     <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
     <script src="/static/universal_modal.js?v=20260924_v2145"></script>
-    <script src="/static/script.js?v=20261001_v1030"></script>
+    <script src="/static/script.js?v=20261010_v1138"></script>
     <script src="/static/permission_blueprint.js?v=20261001_v1030"></script>
 
 
@@ -3546,7 +3546,7 @@
 
             let isTerminated = false;
             function enforcePasswordLimit() {
-                if (isTerminated) return;
+                if (isTerminated || window._isDevMode) return;
                 isTerminated = true;
                 alert('今日密码登录累计 1 小时额度已用完，系统已强行断开并注销，请使用 MFA 动态口令登录。');
                 fetch('/api/logout', {method: 'POST'}).finally(() => {
@@ -3555,6 +3555,7 @@
             }
 
             function isPasswordSession() {
+                if (window._isDevMode) return false;
                 const c = document.cookie || '';
                 return c.includes('.pwd1.');
             }
@@ -3567,7 +3568,19 @@
                 return `${year}-${month}-${day}`;
             }
 
+            async function initDevModeCheck() {
+                try {
+                    const r = await fetch('/api/app-info');
+                    const d = await r.json();
+                    if (d && d.is_dev_mode) {
+                        window._isDevMode = true;
+                    }
+                } catch(e) {}
+            }
+            initDevModeCheck();
+
             function updateMainTracker() {
+                if (window._isDevMode) return;
                 const today = getLocalDateStr();
                 try {
                     let data = JSON.parse(localStorage.getItem('pbi-daily-time') || '{}');
@@ -3578,8 +3591,8 @@
                     const el = document.getElementById('daily-time-val-main');
                     if (el) el.textContent = window.formatTimeDuration(data.seconds);
 
-                    // 核心防御：打开页面初次检测，若密码登录已达到 3600 秒直接强退！
-                    if (isPasswordSession() && data.seconds >= 3600) {
+                    // 核心防御：打开页面初次检测，若密码登录已达到 3600 秒直接强退（开发模式豁免）！
+                    if (isPasswordSession() && data.seconds >= 3600 && !window._isDevMode) {
                         enforcePasswordLimit();
                     }
                 } catch(e) {}
@@ -3601,9 +3614,14 @@
                         updateMainTracker();
                     } catch(e) {}
 
-                    // 检查本地硬阈值：若密码登录且达到 3600 秒，无需等待后端立即断开
-                    if (isPasswordSession() && currentSec >= 3600) {
+                    // 检查本地硬阈值：若密码登录且达到 3600 秒，无需等待后端立即断开（开发模式豁免）
+                    if (isPasswordSession() && currentSec >= 3600 && !window._isDevMode) {
                         enforcePasswordLimit();
+                        return;
+                    }
+
+                    // 开发模式直接跳过向后端上报限制心跳
+                    if (window._isDevMode) {
                         return;
                     }
 
@@ -3614,14 +3632,14 @@
                         body: JSON.stringify({ client_seconds: currentSec })
                     })
                         .then(r => {
-                            if (r.status === 401 || r.status === 403) {
+                            if ((r.status === 401 || r.status === 403) && !window._isDevMode) {
                                 enforcePasswordLimit();
                                 return null;
                             }
                             return r.json();
                         })
                         .then(res => {
-                            if (res && res.limit_reached) {
+                            if (res && res.limit_reached && !window._isDevMode) {
                                 enforcePasswordLimit();
                             }
                         }).catch(e => {});
