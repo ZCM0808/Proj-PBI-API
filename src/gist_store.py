@@ -28,11 +28,14 @@ _PENDING_FORCE_DATA: Optional[Dict[str, Any]] = None
 
 def _get_gist_config() -> tuple[str, str]:
     gist_id = os.getenv("LOCKOUTS_GIST_ID", DEFAULT_GIST_ID).strip()
-    pat = (
-        os.getenv("GITHUB_PAT")
-        or os.getenv("GITHUB_TOKEN")
-        or load_settings().get("GITHUB_PAT", "")
-    ).strip()
+    pat = os.getenv("GITHUB_PAT") or os.getenv("GITHUB_TOKEN")
+    if not pat or pat.startswith("ghp_x0dma"):
+        try:
+            from dotenv import dotenv_values
+            pat = dotenv_values(".env").get("GITHUB_PAT", "")
+        except Exception:
+            pass
+    pat = (pat or load_settings().get("GITHUB_PAT", "")).strip()
     return gist_id, pat
 
 
