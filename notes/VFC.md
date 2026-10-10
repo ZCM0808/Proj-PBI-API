@@ -1,3 +1,3 @@
 # VFC Configuration
 
-Optimized REST sync for ultra-fast push.
+Updated and tested with refreshed GitHub PAT.
