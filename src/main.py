@@ -2079,11 +2079,15 @@ def is_render_env() -> bool:
 
 
 def _get_github_token() -> str:
-    """获取用于 GitHub 同步的有效 Token"""
-    token = os.getenv("GITHUB_PAT") or os.getenv("GITHUB_TOKEN") or load_settings().get("GITHUB_PAT", "")
-    if not token:
-        token = "".join(["ghp_", "x0dmaY0quTOZwNl", "G2M55vfrRTKSG9F1JCswl"])
-    return token
+    """获取用于 GitHub 同步的有效 Token (严格从环境变量或配置文件读取，禁止硬编码)"""
+    token = os.getenv("GITHUB_PAT") or os.getenv("GITHUB_TOKEN")
+    if not token or token.startswith("ghp_x0dma"):
+        try:
+            from dotenv import dotenv_values
+            token = dotenv_values(".env").get("GITHUB_PAT", "")
+        except Exception:
+            pass
+    return (token or load_settings().get("GITHUB_PAT", "")).strip()
 
 def _get_github_repo() -> str:
     """获取目标 GitHub 仓库名称"""
@@ -2139,8 +2143,30 @@ def _sync_upload_to_github_rest(final_filename: str, content_bytes: bytes) -> tu
         return False, f"GitHub API Exception: {str(e)}"
 
 
+def _sanitize_content_for_github(content: str) -> str:
+    """
+    智能安全脱敏器：在推送到公开 GitHub 仓库前对敏感凭据（如 Databricks Token、PAT 等）进行安全掩码，
+    既保护企业数据不外泄，又彻底免疫 GitHub Secret Scanning Push Protection 拦截。
+    本地磁盘与前端 Web 笔记依然 100% 保持用户的原始明文！
+    """
+    import re
+    # 1. Databricks 个人访问令牌 (dapi[a-f0-9]{32}-[0-9])
+    sanitized = re.sub(
+        r'dapi([a-f0-9]{4})[a-f0-9]{20,28}([a-f0-9]{4}-\d)',
+        r'dapi\1********************\2',
+        content
+    )
+    # 2. GitHub 经典访问令牌 (ghp_[a-zA-Z0-9]{36})
+    sanitized = re.sub(
+        r'ghp_([a-zA-Z0-9]{6})[a-zA-Z0-9]{24}([a-zA-Z0-9]{6})',
+        r'ghp_\1************************\2',
+        sanitized
+    )
+    return sanitized
+
+
 def _sync_note_to_github_rest(filename: str, content: str) -> tuple[bool, str]:
-    """通过 GitHub REST API 自动同步 Note (在无 Git CLI 凭据的 Render 云端环境中保证 100% 成功推送)"""
+    """通过 GitHub REST API 自动同步 Note (带智能透明脱敏，保护凭据安全与零拦截)"""
     import base64
     import urllib.parse
     import requests
@@ -2163,9 +2189,10 @@ def _sync_note_to_github_rest(filename: str, content: str) -> tuple[bool, str]:
     except Exception:
         pass
 
-    # 2. 上传/更新文件内容
+    # 2. 上传/更新文件内容 (云端安全脱敏，本地磁盘与笔记界面 100% 呈现完整明文)
     try:
-        b64_content = base64.b64encode(content.encode("utf-8")).decode("utf-8")
+        safe_content = _sanitize_content_for_github(content)
+        b64_content = base64.b64encode(safe_content.encode("utf-8")).decode("utf-8")
         payload: Dict[str, Any] = {
             "message": f"docs(notes): sync {filename} via API",
             "content": b64_content,
@@ -2342,75 +2369,49 @@ async def save_note(payload: NotePayload):
         file_path = os.path.join(notes_dir, filename)
         is_new_file = not os.path.exists(file_path)
 
+        # ⚡ 核心幂等防御：若文件已存在且写入内容与磁盘完全一致，坚决不刷新 mtime 与更新时间戳，也不触发无谓的远端推送
+        if not is_new_file:
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    existing_content = f.read()
+                if existing_content == payload.content:
+                    return {"success": True, "message": "Content unchanged", "filename": filename, "unchanged": True}
+            except Exception:
+                pass
+
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(payload.content)
 
         _save_note_meta(notes_dir, filename, is_new=is_new_file)
 
-        # ⚡ 关键架构：在 Render 云端容器中，100% 优先且只走 GitHub REST API (直达远端 main，耗时仅 ~300ms，自带 409 SHA 自动重试，彻底免疫本地分支分叉与超时)
-        if is_render_env():
-            ok, msg = await asyncio.to_thread(_sync_note_to_github_rest, filename, payload.content)
-            meta_file = os.path.join(notes_dir, ".notes_meta.json")
-            if os.path.exists(meta_file):
-                try:
-                    with open(meta_file, "r", encoding="utf-8") as mf:
-                        await asyncio.to_thread(_sync_note_to_github_rest, ".notes_meta.json", mf.read())
-                except Exception:
-                    pass
-            if not ok:
-                return {"success": False, "error": f"GitHub REST API Sync Failed: {msg}", "filename": filename, "local_saved": True}
-            return {"success": True, "message": f"Successfully saved {filename} and synced to GitHub via REST API!", "filename": filename}
+        # ⚡ 核心架构优化：全环境统一 100% 优先且只走 GitHub REST API (耗时仅 ~1 秒，自带 409 SHA 自动重试，彻底解决本地 Git CLI 网络超时卡死)
+        ok, msg = await asyncio.to_thread(_sync_note_to_github_rest, filename, payload.content)
+        meta_file = os.path.join(notes_dir, ".notes_meta.json")
+        if os.path.exists(meta_file):
+            try:
+                with open(meta_file, "r", encoding="utf-8") as mf:
+                    await asyncio.to_thread(_sync_note_to_github_rest, ".notes_meta.json", mf.read())
+            except Exception:
+                pass
 
-        # 本地开发环境：优先尝试本地 Git CLI 推送
-        def _try_git_cli_push() -> bool:
+        if not ok:
+            return {"success": False, "error": f"GitHub REST API Sync Failed: {msg}", "filename": filename, "local_saved": True}
+
+        # 后台静默对齐本地 Git 工作区（非阻塞，彻底消除前端等待与超时卡死）
+        def _bg_local_git_commit():
             try:
                 subprocess.run(["git", "config", "user.email", "bot@render.com"], cwd=root_dir, check=False)
                 subprocess.run(["git", "config", "user.name", "Render Bot"], cwd=root_dir, check=False)
-
-                r1 = subprocess.run(["git", "add", f"notes/{filename}", "notes/.notes_meta.json", "static/uploads/notes/"], cwd=root_dir, capture_output=True, text=True, timeout=5)
-                if r1.returncode != 0:
-                    return False
-
-                subprocess.run(["git", "commit", "-m", f"docs(notes): add {filename} and attachments"], cwd=root_dir, capture_output=True, text=True, timeout=5)
-
-                token = _get_github_token()
-                env = os.environ.copy()
-                env["GIT_TERMINAL_PROMPT"] = "0"
-                pat_url = f"https://ZCM0808:{token}@github.com/ZCM0808/Proj-PBI-API.git"
-                r3 = subprocess.run(["git", "push", pat_url, "HEAD:main"], cwd=root_dir, capture_output=True, text=True, timeout=8, env=env)
-                if r3.returncode == 0:
-                    return True
-
-                r4 = subprocess.run(["git", "push", "origin", "main"], cwd=root_dir, capture_output=True, text=True, timeout=5, env=env)
-                if r4.returncode == 0:
-                    return True
-
-                # 若本地 Git CLI push 失败（如远端存在未拉取的新提交），立刻撤销刚才生成的本地 commit，防止本地分支分叉！
-                subprocess.run(["git", "reset", "--mixed", "HEAD~1"], cwd=root_dir, capture_output=True, text=True, timeout=5)
-                return False
+                subprocess.run(["git", "add", f"notes/{filename}", "notes/.notes_meta.json"], cwd=root_dir, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(["git", "commit", "-m", f"docs(notes): sync {filename}"], cwd=root_dir, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             except Exception:
-                try:
-                    subprocess.run(["git", "reset", "--mixed", "HEAD~1"], cwd=root_dir, capture_output=True, text=True, timeout=5)
-                except Exception:
-                    pass
-                return False
+                pass
 
-        git_pushed = await asyncio.to_thread(_try_git_cli_push)
+        if not is_render_env():
+            asyncio.create_task(asyncio.to_thread(_bg_local_git_commit))
 
-        # 若本地 Git CLI 失败，自动无缝切换为 GitHub REST API 直连推送
-        if not git_pushed:
-            ok, msg = await asyncio.to_thread(_sync_note_to_github_rest, filename, payload.content)
-            meta_file = os.path.join(notes_dir, ".notes_meta.json")
-            if os.path.exists(meta_file):
-                try:
-                    with open(meta_file, "r", encoding="utf-8") as mf:
-                        await asyncio.to_thread(_sync_note_to_github_rest, ".notes_meta.json", mf.read())
-                except Exception:
-                    pass
-            if not ok:
-                return {"success": False, "error": f"Git/API Sync Failed: {msg}", "filename": filename, "local_saved": True}
-
-        return {"success": True, "message": f"Successfully saved {filename} and synced to GitHub!", "filename": filename}
+        _invalidate_notes_cache()
+        return {"success": True, "message": f"Successfully saved {filename} and synced to GitHub via REST API!", "filename": filename}
     except Exception as e:
         return {"success": False, "error": f"File Write Error: {str(e)}"}
 
@@ -2440,48 +2441,43 @@ async def delete_note(payload: DeleteNotePayload):
                     pass
 
             def _git_push_note_delete() -> None:
-                if is_render_env():
-                    _delete_note_from_github_rest(filename)
-                    return
-
-                git_pushed = False
-                try:
-                    subprocess.run(["git", "config", "user.email", "bot@render.com"], cwd=root_dir, check=False)
-                    subprocess.run(["git", "config", "user.name", "Render Bot"], cwd=root_dir, check=False)
-                    r = subprocess.run(["git", "rm", f"notes/{filename}"], cwd=root_dir, capture_output=True, text=True, timeout=5)
-                    if r.returncode == 0:
-                        subprocess.run(["git", "commit", "-m", f"docs(notes): delete {filename}"], cwd=root_dir, capture_output=True, text=True, timeout=5)
-                        token = _get_github_token()
-                        env = os.environ.copy()
-                        env["GIT_TERMINAL_PROMPT"] = "0"
-                        pat_url = f"https://ZCM0808:{token}@github.com/ZCM0808/Proj-PBI-API.git"
-                        r3 = subprocess.run(["git", "push", pat_url, "HEAD:main"], cwd=root_dir, capture_output=True, text=True, timeout=8, env=env)
-                        if r3.returncode == 0:
-                            git_pushed = True
-                        else:
-                            subprocess.run(["git", "reset", "--mixed", "HEAD~1"], cwd=root_dir, capture_output=True, text=True, timeout=5)
-                except Exception:
+                _delete_note_from_github_rest(filename)
+                if not is_render_env():
                     try:
-                        subprocess.run(["git", "reset", "--mixed", "HEAD~1"], cwd=root_dir, capture_output=True, text=True, timeout=5)
+                        subprocess.run(["git", "rm", f"notes/{filename}"], cwd=root_dir, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        subprocess.run(["git", "commit", "-m", f"docs(notes): delete {filename}"], cwd=root_dir, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                     except Exception:
                         pass
-                if not git_pushed:
-                    _delete_note_from_github_rest(filename)
 
             asyncio.create_task(asyncio.to_thread(_git_push_note_delete))
+            _invalidate_notes_cache()
             return {"success": True, "message": f"Deleted {filename} and synced deletion to GitHub."}
         else:
             return {"success": False, "error": "File not found"}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+_NOTES_CACHE: Optional[List[Dict[str, Any]]] = None
+_NOTES_CACHE_TIME: float = 0.0
+
+def _invalidate_notes_cache() -> None:
+    global _NOTES_CACHE, _NOTES_CACHE_TIME
+    _NOTES_CACHE = None
+    _NOTES_CACHE_TIME = 0.0
+
 @app.get("/api/search-notes")
 async def search_notes(q: str = ""):
+    global _NOTES_CACHE, _NOTES_CACHE_TIME
+    now = time.time()
     try:
         root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         notes_dir = os.path.join(root_dir, "notes")
         if not os.path.exists(notes_dir):
             return {"success": True, "results": []}
+
+        # 0ms 内存缓存极速命中：无搜索过滤词且缓存未超时 (60s 内) 直接秒回，免除磁盘全量 IO 与元数据扫描
+        if not q and _NOTES_CACHE is not None and (now - _NOTES_CACHE_TIME < 60):
+            return {"success": True, "results": _NOTES_CACHE}
 
         meta = _load_notes_metadata(notes_dir, root_dir)
         results: List[Dict[str, Any]] = []
@@ -2525,6 +2521,9 @@ async def search_notes(q: str = ""):
 
         # Sort by updated_at descending
         results.sort(key=lambda x: x["updated_at"], reverse=True)
+        if not q:
+            _NOTES_CACHE = results
+            _NOTES_CACHE_TIME = now
         return {"success": True, "results": results}
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -2548,39 +2547,15 @@ async def upload_note_file(file: UploadFile = File(...)):
             f.write(content)
 
         def _git_push_upload():
-            if is_render_env():
-                _sync_upload_to_github_rest(final_filename, content)
-                return
-
-            git_pushed = False
-            try:
-                subprocess.run(["git", "config", "user.email", "bot@render.com"], cwd=root_dir, check=False)
-                subprocess.run(["git", "config", "user.name", "Render Bot"], cwd=root_dir, check=False)
-                subprocess.run(["git", "add", f"static/uploads/notes/{final_filename}"], cwd=root_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
-                subprocess.run(["git", "commit", "-m", f"docs(uploads): add note attachment {final_filename}"], cwd=root_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
-
-                token = _get_github_token()
-                env = os.environ.copy()
-                env["GIT_TERMINAL_PROMPT"] = "0"
-                pat_url = f"https://ZCM0808:{token}@github.com/ZCM0808/Proj-PBI-API.git"
-                r = subprocess.run(["git", "push", pat_url, "HEAD:main"], cwd=root_dir, capture_output=True, text=True, timeout=8, env=env)
-                if r.returncode == 0:
-                    git_pushed = True
-                else:
-                    subprocess.run(["git", "reset", "--mixed", "HEAD~1"], cwd=root_dir, capture_output=True, text=True, timeout=5)
-            except Exception:
+            ok, msg = _sync_upload_to_github_rest(final_filename, content)
+            if ok and not is_render_env():
                 try:
-                    subprocess.run(["git", "reset", "--mixed", "HEAD~1"], cwd=root_dir, capture_output=True, text=True, timeout=5)
+                    subprocess.run(["git", "config", "user.email", "bot@render.com"], cwd=root_dir, check=False)
+                    subprocess.run(["git", "config", "user.name", "Render Bot"], cwd=root_dir, check=False)
+                    subprocess.run(["git", "add", f"static/uploads/notes/{final_filename}"], cwd=root_dir, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    subprocess.run(["git", "commit", "-m", f"docs(uploads): add note attachment {final_filename}"], cwd=root_dir, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 except Exception:
                     pass
-
-            if not git_pushed:
-                print(f"Git CLI push failed for {final_filename}, falling back to REST API...")
-                ok, msg = _sync_upload_to_github_rest(final_filename, content)
-                if not ok:
-                    print(f"REST API push also failed: {msg}")
-                else:
-                    print(f"REST API push succeeded for {final_filename}")
 
         asyncio.create_task(asyncio.to_thread(_git_push_upload))
 
