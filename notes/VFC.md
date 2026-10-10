@@ -1,3 +1,3 @@
-# VFC Notes
+# VFC Configuration
 
-Synced via REST API instantly.
+Optimized REST sync for ultra-fast push.
