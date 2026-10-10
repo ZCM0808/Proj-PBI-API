@@ -1,3 +1,3 @@
-# VFC Configuration
+# VFC Notes
 
-Updated and tested with refreshed GitHub PAT.
+Synced via REST API instantly.
