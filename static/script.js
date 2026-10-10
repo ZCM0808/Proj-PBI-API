@@ -19,7 +19,17 @@ window.fetch = async function(...args) {
                 try {
                     const clone = response.clone();
                     clone.json().then(data => {
-                        if (data && (data.limit_reached || (data.message && (data.message.includes('Session expired') || data.message.includes('unauthorized') || data.message.includes('1-hour limit') || data.message.includes('limit reached'))))) {
+                        // 核心防御：仅拦截系统级会话过期提示，杜绝第三方业务 API（如 PowerBI/Graph 权限报错）误杀踢出
+                        const isSystemSessionError = data && (
+                            data.limit_reached ||
+                            (typeof data.message === 'string' && (
+                                data.message.includes('Session expired') ||
+                                data.message.includes('Daily 1-hour limit') ||
+                                data.message.includes('Session terminated') ||
+                                data.message.includes('Session expired or unauthorized. Please login.')
+                            ))
+                        );
+                        if (isSystemSessionError) {
                             window.location.href = '/login?expired=1';
                         }
                     }).catch(() => {});
@@ -13787,24 +13797,18 @@ if (btnLogout) {
 
 
 
-            // 若在开发模式下，显示 DEV MODE 徽章
-
+            // 若在开发模式下，显示 DEV MODE 徽章并设置全局标记，彻底免疫密码 1 小时踢出
             if (data.is_dev_mode) {
-
+                window._isDevMode = true;
                 const mainDevBadge = document.getElementById('main-dev-badge');
-
                 if (mainDevBadge) mainDevBadge.style.display = 'inline-block';
-
             }
 
-
-
             const remaining = data.remaining_seconds;
-
             const mode = data.mode;
 
-            // 核心防御：若当前为密码登录 (pwd1)，检查本地累计用时，若达 1 小时 (3600s) 或剩余时间为 0，立即强退
-            if (mode === 'pwd1') {
+            // 核心防御：若当前为密码登录 (pwd1) 且非开发模式，检查本地累计用时，若达 1 小时 (3600s) 或剩余时间为 0，立即强退
+            if (mode === 'pwd1' && !data.is_dev_mode) {
                 const d = new Date();
                 const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                 let localData = {};
@@ -14046,14 +14050,18 @@ window.openNoteModal = function() {
                 }, delay);
             };
 
-            cm.on('change', () => {
+            cm.on('change', (editor, changeObj) => {
                 debouncedRenderWidgets(120);
+                // ⚡ 核心防护：若为程序化填充 (如点击选中笔记/打开弹窗填充已有内容)，坚决不触发自动保存！
+                if (changeObj && changeObj.origin === 'setValue') {
+                    return;
+                }
                 if (window._noteAutoSaveTimer) clearTimeout(window._noteAutoSaveTimer);
                 window._noteAutoSaveTimer = setTimeout(() => {
                     if (typeof window.autoSaveMarkdownNote === 'function') {
                         window.autoSaveMarkdownNote();
                     }
-                }, 1800);
+                }, 2500);
             });
             cm.on('cursorActivity', () => {
                 if (cm._justOpenedSource && Date.now() - cm._justOpenedSource < 400) {
@@ -14623,7 +14631,14 @@ window.clearNoteSearch = function() {
     window.searchNotes();
 };
 
-window._currentNotesList = [];
+window._currentNotesList = (function() {
+    try {
+        const cached = localStorage.getItem('pbi_cached_notes_list');
+        return cached ? JSON.parse(cached) : [];
+    } catch (_) {
+        return [];
+    }
+})();
 window.noteSortModes = [
     { key: 'updated_desc', label: '修改时间 (新→旧)', field: 'updated_at', desc: true },
     { key: 'updated_asc', label: '修改时间 (旧→新)', field: 'updated_at', desc: false },
@@ -14696,6 +14711,12 @@ window._activeNoteFilename = localStorage.getItem('pbi_active_note_filename') ||
 
 // 设置并激活指定的笔记 (同步文件名、编辑器内容、本地存储与高亮态，自动剥离 .md 后缀展示)
 window.setActiveNote = function(filename, content = null, syncEditor = true) {
+    // 切换或激活笔记时，立即清空任何旧的未完成自动保存定时器，杜绝跨笔记误保存
+    if (window._noteAutoSaveTimer) {
+        clearTimeout(window._noteAutoSaveTimer);
+        window._noteAutoSaveTimer = null;
+    }
+
     const rawFn = (filename || '').trim();
     const cleanFn = rawFn.replace(/\.md$/i, '');
     window._activeNoteFilename = rawFn;
@@ -14709,10 +14730,16 @@ window.setActiveNote = function(filename, content = null, syncEditor = true) {
         fnInput.value = cleanFn;
     }
     if (syncEditor && easyMDE && content !== null && content !== undefined) {
-        easyMDE.value(content);
-        if (window.renderEditorWidgets && easyMDE.codemirror) {
-            setTimeout(() => window.renderEditorWidgets(easyMDE.codemirror), 60);
+        window._activeNoteOriginalContent = content; // 记录原始内容基准，供防误保存比对
+        const curVal = (typeof easyMDE.value === 'function') ? easyMDE.value() : null;
+        if (curVal !== content) {
+            easyMDE.value(content);
+            if (window.renderEditorWidgets && easyMDE.codemirror) {
+                setTimeout(() => window.renderEditorWidgets(easyMDE.codemirror), 60);
+            }
         }
+    } else if (content !== null && content !== undefined) {
+        window._activeNoteOriginalContent = content;
     }
     window.highlightActiveNoteItem();
 };
@@ -14809,13 +14836,22 @@ window.renderSortedNotesList = function() {
         }
     });
 
+    const fnInput = document.getElementById('note-filename');
+    let curFn = (fnInput?.value || window._activeNoteFilename || localStorage.getItem('pbi_active_note_filename') || '').trim();
+    if (!curFn && sorted.length > 0) {
+        curFn = sorted[0].filename;
+    }
+    const cleanTarget = curFn ? curFn.replace(/\.md$/i, '').toLowerCase() : '';
+
     listEl.innerHTML = '';
-    sorted.forEach(note => {
+    sorted.forEach((note, idx) => {
         const item = document.createElement('div');
-        item.className = 'note-history-item';
+        const cleanName = (note.filename || '').replace(/\.md$/i, '');
+        // ⚡ 原生内联高亮防御：节点创建瞬间直接挂载 active，杜绝先默认背景后补加 class 产生的 CSS 过渡闪烁
+        const isMatchedActive = cleanTarget ? (cleanName.toLowerCase() === cleanTarget) : (idx === 0);
+        item.className = 'note-history-item' + (isMatchedActive ? ' active' : '');
         item.setAttribute('data-filename', note.filename);
 
-        const cleanName = (note.filename || '').replace(/\.md$/i, '');
         const updatedTs = Number(note.updated_at || note.mtime || 0);
         const createdTs = Number(note.created_at || note.ctime || updatedTs);
         const mtimeStr = window.formatNoteDateTime(updatedTs);
@@ -14869,29 +14905,32 @@ window.renderSortedNotesList = function() {
     });
 
     // 智能同步活跃笔记与文件名 (以服务端权威笔记最新数据即刻填充编辑器，杜绝显示旧内容或延迟刷新)
-    const fnInput = document.getElementById('note-filename');
-    let curFn = (fnInput?.value || window._activeNoteFilename || localStorage.getItem('pbi_active_note_filename') || '').trim();
-
-    if (!curFn) {
-        // 如果当前 filename 为空且列表中存在笔记，则默认激活第一篇最新笔记
-        if (sorted.length > 0) {
-            window.setActiveNote(sorted[0].filename, sorted[0].content, true);
-            curFn = sorted[0].filename;
-        }
-    } else {
-        // 存在记录的活跃文件名，在服务端返回的列表中查找最新版本
+    if (curFn) {
         const matchedNote = sorted.find(n => n.filename.toLowerCase() === curFn.toLowerCase() || n.filename.toLowerCase() === (curFn + '.md').toLowerCase());
         if (matchedNote) {
-            // 无论编辑区之前是何状态，强制同步权威最新内容，消除点击左侧才能刷新的问题
             window.setActiveNote(matchedNote.filename, matchedNote.content, true);
         } else if (sorted.length > 0) {
-            // 若记录的文件名已不存在，默认激活第一篇
             window.setActiveNote(sorted[0].filename, sorted[0].content, true);
-            curFn = sorted[0].filename;
         }
     }
 
     window.highlightActiveNoteItem();
+};
+
+// 列表指纹深度对比：判断前后两次笔记列表是否完全相同 (消除重复重绘)
+window._areNotesListIdentical = function(listA, listB) {
+    if (!Array.isArray(listA) || !Array.isArray(listB)) return false;
+    if (listA.length !== listB.length) return false;
+    for (let i = 0; i < listA.length; i++) {
+        const a = listA[i];
+        const b = listB[i];
+        if (!a || !b) return false;
+        if (a.filename !== b.filename) return false;
+        if ((a.updated_at || a.mtime) !== (b.updated_at || b.mtime)) return false;
+        if (a.size !== b.size) return false;
+        if (a.content !== b.content) return false;
+    }
+    return true;
 };
 
 window.searchNotes = async function() {
@@ -14901,7 +14940,13 @@ window.searchNotes = async function() {
     const listEl = document.getElementById('note-history-list');
     if (!listEl) return;
 
-    listEl.innerHTML = '<div style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 20px;">Searching...</div>';
+    const hasCache = Array.isArray(window._currentNotesList) && window._currentNotesList.length > 0;
+    if (!q && hasCache) {
+        // SWR 极速渲染：无搜索关键字时，优先 0ms 秒级上屏已缓存笔记列表，彻底根除“Searching...”白屏与闪烁！
+        window.renderSortedNotesList();
+    } else if (!hasCache || q) {
+        listEl.innerHTML = '<div style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 20px;">Searching...</div>';
+    }
 
     try {
         const response = await fetch('/api/search-notes?q=' + encodeURIComponent(q));
@@ -14909,10 +14954,26 @@ window.searchNotes = async function() {
 
         if (!data.success) throw new Error(data.error);
 
-        window._currentNotesList = data.results || [];
+        const newResults = data.results || [];
+
+        // ⚡ 核心防闪烁防御 (Fingerprint Diffing)：
+        // 若当前无搜索关键字且此前已基于缓存上屏，深度比对服务端最新数据与当前数据指纹。
+        // 若数据完全一致（笔记无新增、无删除、无内容或时间戳变更），坚决跳过二次清空重绘！彻底杜绝 5ms 后的全量 DOM 销毁重刷与高亮闪烁！
+        if (!q && hasCache && window._areNotesListIdentical(window._currentNotesList, newResults)) {
+            return;
+        }
+
+        window._currentNotesList = newResults;
+        if (!q && newResults.length > 0) {
+            try {
+                localStorage.setItem('pbi_cached_notes_list', JSON.stringify(newResults));
+            } catch (_) {}
+        }
         window.renderSortedNotesList();
     } catch (e) {
-        listEl.innerHTML = `<div style="text-align: center; color: var(--error); font-size: 0.8rem; margin-top: 20px;">Error loading history</div>`;
+        if (!hasCache) {
+            listEl.innerHTML = `<div style="text-align: center; color: var(--error); font-size: 0.8rem; margin-top: 20px;">Error loading history</div>`;
+        }
     }
 };
 
@@ -15099,6 +15160,13 @@ window.autoSaveMarkdownNote = async function() {
     if (!content) return;
     if (window._noteSaveAbortController || window._isAutoSavingNote) return;
 
+    // ⚡ 核心防护：比对内容是否与初始加载时一致。若无任何实质修改，坚决不保存，绝不刷新时间戳！
+    if (window._activeNoteOriginalContent !== undefined && window._activeNoteOriginalContent !== null) {
+        if (content === window._activeNoteOriginalContent.trim()) {
+            return;
+        }
+    }
+
     const fnInput = document.getElementById('note-filename');
     let rawInput = (fnInput?.value || '').trim();
     if (!rawInput && fnInput?.placeholder) {
@@ -15133,6 +15201,7 @@ window.autoSaveMarkdownNote = async function() {
         });
         const data = await response.json();
         if (data.success) {
+            window._activeNoteOriginalContent = content; // 更新基准
             const savedName = data.filename || filename;
             if (savedName) {
                 window.setActiveNote(savedName, null, false);
@@ -15258,6 +15327,7 @@ window.saveMarkdownNote = async function() {
         const data = await response.json();
 
         if (data.success) {
+            window._activeNoteOriginalContent = content; // 更新基准
             const savedName = data.filename || filename;
             if (savedName) {
                 window.setActiveNote(savedName, null, false);
