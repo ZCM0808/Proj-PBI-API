@@ -1,3 +1,25 @@
+catelog:
+genie_consumer_prod_apac_sql
+
+server hostname:
+adb-1971751593392949.9.azuredatabricks.net
+
+workspace id:
+1971751593392949
+
+HTTP path:
+/sql/1.0/warehouses/79eb3461ff7d121b
+
+JDBC URL:
+jdbc:databricks://adb-1971751593392949.9.azuredatabricks.net:443/default;transportMode=http;ssl=1;AuthMech=3;httpPath=/sql/1.0/warehouses/79eb3461ff7d121b;
+
+OAuth URL:
+https://adb-1971751593392949.9.azuredatabricks.net/oidc
+
+
+
+
+
 1.URL with token
 jdbc:databricks://adb-1971751593392949.9.azuredatabricks.net:443/default;transportMode=http;ssl=1;httpPath=/sql/1.0/warehouses/d2f11f5ccdc76c8d;AuthMech=3;UID=token;PWD=dapif093********************1fa6-2
 
