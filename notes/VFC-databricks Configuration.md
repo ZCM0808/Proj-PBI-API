@@ -17,6 +17,24 @@ OAuth URL:
 https://adb-1971751593392949.9.azuredatabricks.net/oidc
 
 
+catelog:
+gdf_bi_prod_apac_sql
+
+server hostname:
+adb-1971751593392949.9.azuredatabricks.net
+
+workspace id:
+1971751593392949
+
+http path:
+/sql/1.0/warehouses/22c6e39a05b1cd56
+
+JDBC URL:
+jdbc:databricks://adb-1971751593392949.9.azuredatabricks.net:443/default;transportMode=http;ssl=1;AuthMech=3;httpPath=/sql/1.0/warehouses/22c6e39a05b1cd56;
+
+OAuth URL:
+https://adb-1971751593392949.9.azuredatabricks.net/oidc
+
 
 
 
