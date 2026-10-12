@@ -1,5 +1,5 @@
-catelog:
-genie_consumer_prod_apac_sql
+**catelog:
+genie_consumer_prod_apac_sql**
 
 server hostname:
 adb-1971751593392949.9.azuredatabricks.net
@@ -17,8 +17,8 @@ OAuth URL:
 https://adb-1971751593392949.9.azuredatabricks.net/oidc
 
 
-catelog:
-gdf_bi_prod_apac_sql
+**catelog:
+gdf_bi_prod_apac_sql**
 
 server hostname:
 adb-1971751593392949.9.azuredatabricks.net
