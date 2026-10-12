@@ -11,3 +11,4 @@ jdbc:databricks://adb-1971751593392949.9.azuredatabricks.net:443/default;transpo
 FYI:
 
 ![image.png](/static/uploads/notes/20261012_152726_image.png)
+![image.png](/static/uploads/notes/20261012_152744_image.png)
