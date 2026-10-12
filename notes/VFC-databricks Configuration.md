@@ -9,3 +9,5 @@ or
 jdbc:databricks://adb-1971751593392949.9.azuredatabricks.net:443/default;transportMode=http;ssl=1;httpPath=/sql/1.0/warehouses/d2f11f5ccdc76c8d;AuthMech=11;Auth_Flow=2;OAuth2RedirectUrlPort=8021;EnableTokenCache=1;TokenCachePassPhrase=<本地缓存密码>
 
 FYI:
+
+![image.png](/static/uploads/notes/20261012_152726_image.png)
