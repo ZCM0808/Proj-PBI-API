@@ -1,1 +1,1 @@
-1.quick note中，插入图片时，能否
+1.quick note中，插入图片时，能否再同一行插入放置多个图片？qian'ti'shi
