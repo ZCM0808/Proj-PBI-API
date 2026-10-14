@@ -91,14 +91,6 @@
     "created_at": 1790825314.28649,
     "updated_at": 1791597162.109663
   },
-  "VFC-Configuration.md": {
-    "created_at": 1791597320.485025,
-    "updated_at": 1791603135.120206
-  },
-  "VFC.md": {
-    "created_at": 1791599290.706632,
-    "updated_at": 1791603073.635935
-  },
   "VFC-databricks Configuration.md": {
     "created_at": 1791789994.511919,
     "updated_at": 1791790495.307112
@@ -106,10 +98,6 @@
   "2026-10-13 21-37-17.md": {
     "created_at": 1791898649.059275,
     "updated_at": 1791898649.059275
-  },
-  "2026-10-14 09-44-23.md": {
-    "created_at": 1791942275.472763,
-    "updated_at": 1791942275.472763
   },
   "DTP-Track.md": {
     "created_at": 1791942296.32726,
@@ -119,8 +107,8 @@
     "created_at": 1791958930.095718,
     "updated_at": 1791958930.095718
   },
-  "PBI-test2 RLS.md": {
-    "created_at": 1791947016.503492,
-    "updated_at": 1791958960.189935
+  "10-14 improvement.md": {
+    "created_at": 1791969539.982885,
+    "updated_at": 1791969539.982885
   }
 }
