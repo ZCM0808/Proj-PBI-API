@@ -2395,6 +2395,37 @@ body.light-theme .note-history-item.active .note-item-filename,
     user-select: none;
 }
 
+/* Quick Note 搜索框精准样式与防浏览器白色自动填充 (Autofill Defense) */
+#note-search {
+    background: var(--input-bg) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--panel-border) !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#note-search:focus {
+    background: var(--input-bg) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 2px var(--accent-glow) !important;
+}
+
+#note-search::placeholder {
+    color: var(--text-secondary) !important;
+    opacity: 0.65;
+}
+
+/* 坚决防御 Chromium/WebKit 浏览器在搜索输入时由于表单记录强行覆盖为白色背景 */
+#note-search:-webkit-autofill,
+#note-search:-webkit-autofill:hover,
+#note-search:-webkit-autofill:focus,
+#note-search:-webkit-autofill:active {
+    -webkit-text-fill-color: var(--text-primary) !important;
+    -webkit-box-shadow: 0 0 0px 1000px var(--input-bg) inset !important;
+    box-shadow: 0 0 0px 1000px var(--input-bg) inset !important;
+    transition: background-color 5000s ease-in-out 0s !important;
+}
+
 /* 防御单行超长文本撑破编辑器与弹窗 (Robust Word Wrap & Overflow Defense) */
 .note-modal-body {
     min-width: 0 !important;

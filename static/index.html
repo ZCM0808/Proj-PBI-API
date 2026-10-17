@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20261017_v1915">
+    <link rel="stylesheet" href="/static/style.css?v=20261017_v1945">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -3188,7 +3188,7 @@
                     <div>
                           <div style="display: flex; gap: 6px; align-items: center; position: relative;">
                               <div style="position: relative; flex: 1;">
-                                  <input type="text" id="note-search" placeholder="搜索便签历史 (Search notes...)" class="modern-input" style="width: 100%; height: 34px; box-sizing: border-box; padding: 4px 28px 4px 32px; font-size: 0.82rem; border-radius: 6px;" oninput="window.handleNoteSearchInput(this)" onkeyup="debounceSearchNotes()">
+                                  <input type="text" id="note-search" placeholder="搜索便签历史 (Search notes...)" class="modern-input" autocomplete="off" spellcheck="false" autocapitalize="off" style="width: 100%; height: 34px; box-sizing: border-box; padding: 4px 28px 4px 32px; font-size: 0.82rem; border-radius: 6px; background: var(--input-bg); color: var(--text-primary); border: 1px solid var(--panel-border);" oninput="window.handleNoteSearchInput(this)" onkeyup="debounceSearchNotes()">
                                   <svg style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); pointer-events: none;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                                   <button type="button" id="btn-clear-note-search" onclick="window.clearNoteSearch()" title="清空搜索" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: none; background: none; border: none; padding: 2px; cursor: pointer; color: var(--text-secondary); opacity: 0.7; transition: opacity 0.2s, color 0.2s; line-height: 1; align-items: center; justify-content: center;">
                                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
