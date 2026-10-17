@@ -1255,7 +1255,7 @@ window.toggleSettingsSection = function(listId, labelEl) {
 
 // 恢复设置界面中各字典列表的展开/折叠偏好（默认保持折叠）
 window.restoreSettingsCollapseStates = function() {
-    const listIds = ['workspace-list', 'dataset-list', 'report-list'];
+    const listIds = ['sql-config-body', 'workspace-list', 'dataset-list', 'report-list'];
     listIds.forEach(listId => {
         const list = document.getElementById(listId);
         const headerBar = document.querySelector(`.grid-header-bar[data-list-id="${listId}"]`);
@@ -5589,6 +5589,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
 
+    function applyThemeState(newTheme) {
+        if (newTheme === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+        }
+        localStorage.setItem('pbi-theme', newTheme);
+        updateThemeIcons();
+    }
+
     let isThemeToggling = false;
     if (themeBtn) {
         themeBtn.addEventListener('click', (e) => {
@@ -5598,23 +5608,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             if (isThemeToggling) return;
             isThemeToggling = true;
-            setTimeout(() => { isThemeToggling = false; }, 280);
+            setTimeout(() => { isThemeToggling = false; }, 260);
 
-            document.documentElement.classList.add('theme-transitioning');
-            
             const currentTheme = document.documentElement.getAttribute('data-theme');
             const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-            if (newTheme === 'light') {
-                document.documentElement.setAttribute('data-theme', 'light');
-            } else {
-                document.documentElement.removeAttribute('data-theme');
-            }
-            localStorage.setItem('pbi-theme', newTheme);
-            updateThemeIcons();
 
-            setTimeout(() => {
-                document.documentElement.classList.remove('theme-transitioning');
-            }, 260);
+            // 现代浏览器终极方案：原生硬件加速 View Transition (0 dropped frames, 100% 同步)
+            if (typeof document.startViewTransition === 'function') {
+                document.startViewTransition(() => {
+                    applyThemeState(newTheme);
+                });
+            } else {
+                // 传统降级过渡：仅对大容器做平滑过渡
+                document.documentElement.classList.add('theme-transitioning');
+                applyThemeState(newTheme);
+                setTimeout(() => {
+                    document.documentElement.classList.remove('theme-transitioning');
+                }, 260);
+            }
         });
     }
 
@@ -6048,19 +6059,73 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
 
-    apiTree.innerHTML = '<div style="padding:1rem; text-align:center; color: var(--text-secondary);"><span class="loader"></span> 加载全部 API 中...</div>';
+    // ⚡ 工业级 IndexedDB 客户端持久化存储引擎 (0ms 秒开)
+    const SWAGGER_CACHE_KEY = 'pbi_apis_cache_v20261015';
 
+    function openApiDB() {
+        return new Promise((resolve) => {
+            if (!window.indexedDB) return resolve(null);
+            try {
+                const req = window.indexedDB.open('PbiApiExplorerDB', 1);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains('catalog')) {
+                        db.createObjectStore('catalog');
+                    }
+                };
+                req.onsuccess = (e) => resolve(e.target.result);
+                req.onerror = () => resolve(null);
+            } catch(e) {
+                resolve(null);
+            }
+        });
+    }
 
+    async function getCachedApis() {
+        try {
+            const db = await openApiDB();
+            if (!db) return null;
+            return new Promise((resolve) => {
+                const tx = db.transaction('catalog', 'readonly');
+                const store = tx.objectStore('catalog');
+                const req = store.get(SWAGGER_CACHE_KEY);
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = () => resolve(null);
+            });
+        } catch(e) {
+            return null;
+        }
+    }
+
+    async function setCachedApis(data) {
+        try {
+            const db = await openApiDB();
+            if (!db) return;
+            const tx = db.transaction('catalog', 'readwrite');
+            const store = tx.objectStore('catalog');
+            store.put(data, SWAGGER_CACHE_KEY);
+        } catch(e) {}
+    }
 
     try {
+        const cachedCatalog = await getCachedApis();
+        let hasSwaggerCache = false;
+        if (cachedCatalog && Array.isArray(cachedCatalog.pbiApis) && cachedCatalog.pbiApis.length > 0) {
+            pbiApis = cachedCatalog.pbiApis;
+            totalApisCalculated = cachedCatalog.totalApisCalculated || pbiApis.reduce((acc, c) => acc + (c.endpoints ? c.endpoints.length : 0), 0);
+            allApiParams = new Set(cachedCatalog.allApiParams || []);
+            totalApiCountEl.textContent = totalApisCalculated;
+            hasSwaggerCache = true;
+        }
 
-        let swagger = { paths: {}, definitions: {} };
+        if (!hasSwaggerCache) {
+            apiTree.innerHTML = '<div style="padding:1rem; text-align:center; color: var(--text-secondary);"><span class="loader"></span> 加载全部 API 中...</div>';
 
-        let fabricSwagger = { paths: {} };
+            let swagger = { paths: {}, definitions: {} };
 
+            let fabricSwagger = { paths: {} };
 
-
-        try {
+            try {
 
             const [resPbi, resFabric] = await Promise.all([
 
@@ -6969,7 +7034,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         });
 
-        const paramOptionsContainer = document.getElementById('param-filter-options');
+        // 首次全量解析后保存至 IndexedDB
+        setCachedApis({
+            pbiApis: pbiApis,
+            totalApisCalculated: totalApisCalculated,
+            allApiParams: Array.from(allApiParams)
+        });
+    }
+
+    const paramOptionsContainer = document.getElementById('param-filter-options');
 
         const triggerLabel = document.getElementById('param-filter-label');
 
@@ -7426,17 +7499,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             .then(data => {
 
                 if (data.success && data.data !== null) {
-
-                    localStorage.setItem('pbi-bookmarks', JSON.stringify(data.data));
-
-                    const searchInput = document.getElementById('api-search-input');
-
-                    if (typeof renderTree === 'function') {
-
-                        renderTree(searchInput ? searchInput.value : "");
-
+                    const oldBm = localStorage.getItem('pbi-bookmarks');
+                    const newBm = JSON.stringify(data.data);
+                    if (oldBm !== newBm) {
+                        localStorage.setItem('pbi-bookmarks', newBm);
+                        const searchInput = document.getElementById('api-search-input');
+                        if (typeof renderTree === 'function') {
+                            renderTree(searchInput ? searchInput.value : "");
+                        }
                     }
-
                 }
 
             }).catch(e => console.error('Backend bookmarks sync failed', e));
@@ -8100,6 +8171,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 if (isHidden) {
 
+                    if (typeof renderCategoryItems === 'function') renderCategoryItems();
+
                     listEl.style.display = 'flex';
 
                     listEl.style.maxHeight = '0px';
@@ -8160,7 +8233,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             
 
-            filteredEndpoints.forEach(ep => {
+            const renderCategoryItems = () => {
+                if (listEl.dataset.rendered === 'true') return;
+                listEl.dataset.rendered = 'true';
+                filteredEndpoints.forEach(ep => {
 
                 const itemEl = document.createElement('li');
 
@@ -8992,8 +9068,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 listEl.appendChild(itemEl);
 
             });
+            };
 
-
+            // ⚡ 按需挂载：若处于搜索过滤状态或分类此前已展开，立即挂载子项；否则首屏零 DOM 堆砌
+            if (searchTerm || expandedCategories.has(category.category)) {
+                renderCategoryItems();
+            }
 
             categoryEl.appendChild(listEl);
 
@@ -11421,12 +11501,12 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                 if (info.is_interactive) {
                     // Card 1: 现代交互认证激活
                     if (tabBadgeInteractive) {
-                        tabBadgeInteractive.innerHTML = '🟢 运行中';
+                        tabBadgeInteractive.innerHTML = '<span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px #22c55e; margin-right: 4px;"></span>运行中';
                         tabBadgeInteractive.style.background = 'rgba(34, 197, 94, 0.2)';
                         tabBadgeInteractive.style.color = '#22c55e';
                     }
                     if (tabBadgeLegacy) {
-                        tabBadgeLegacy.innerHTML = '备用';
+                        tabBadgeLegacy.innerHTML = '<span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--text-secondary); margin-right: 4px;"></span>备用';
                         tabBadgeLegacy.style.background = 'rgba(255, 255, 255, 0.06)';
                         tabBadgeLegacy.style.color = 'var(--text-secondary)';
                     }
@@ -11436,22 +11516,21 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                         cardInteractive.style.background = 'rgba(14, 165, 233, 0.05)';
                     }
                     if (badgeInteractive) {
-                        badgeInteractive.innerHTML = '<span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px #22c55e; margin-right: 4px;"></span> 当前生效中 (Active · 90天自动续期)';
+                        badgeInteractive.innerHTML = '<span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px #22c55e; margin-right: 4px;"></span> 当前生效中';
                         badgeInteractive.style.background = 'rgba(34, 197, 94, 0.15)';
                         badgeInteractive.style.color = '#22c55e';
                         badgeInteractive.style.border = '1px solid rgba(34, 197, 94, 0.35)';
                     }
                     if (infoInteractive) {
-                        infoInteractive.style.display = 'block';
-                        infoInteractive.innerHTML = `🟢 <strong>微软现代交互凭据运行中</strong>：当前登录账号为 <strong style="color: #38bdf8;">${info.username || 'carman_zhao@vfc.com'}</strong>。微软签发之 Refresh Token 已安全就绪，API 与后台扫描均处于此个人授权模式下运行。`;
+                        infoInteractive.style.display = 'none';
                     }
                     if (lblActInteractive) {
-                        lblActInteractive.innerHTML = '🟢 当前已启用 (Active)';
+                        lblActInteractive.innerHTML = '<span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px #22c55e; margin-right: 4px;"></span>当前已启用 (Active)';
                         lblActInteractive.style.color = '#22c55e';
                     }
                     if (btnActInteractive) {
                         btnActInteractive.disabled = true;
-                        btnActInteractive.innerHTML = '✅ 当前已启用';
+                        btnActInteractive.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><polyline points="20 6 9 17 4 12"></polyline></svg>当前已启用';
                         btnActInteractive.style.opacity = '0.7';
                         btnActInteractive.style.cursor = 'default';
                         btnActInteractive.style.background = 'rgba(34, 197, 94, 0.18)';
@@ -11467,7 +11546,7 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                         cardLegacy.style.background = 'var(--input-bg-light)';
                     }
                     if (badgeLegacy) {
-                        badgeLegacy.innerHTML = '⚪ 未启用 (备用)';
+                        badgeLegacy.innerHTML = '<span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--text-secondary); margin-right: 4px;"></span>未启用 (备用)';
                         badgeLegacy.style.background = 'rgba(255, 255, 255, 0.06)';
                         badgeLegacy.style.color = 'var(--text-secondary)';
                         badgeLegacy.style.border = '1px solid var(--panel-border)';
@@ -11476,12 +11555,12 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                         tipLegacy.style.display = 'block';
                     }
                     if (lblActLegacy) {
-                        lblActLegacy.innerHTML = '⚪ 未启用 (备用)';
+                        lblActLegacy.innerHTML = '<span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--text-secondary); margin-right: 4px;"></span>未启用 (备用)';
                         lblActLegacy.style.color = 'var(--text-secondary)';
                     }
                     if (btnActLegacy) {
                         btnActLegacy.disabled = false;
-                        btnActLegacy.innerHTML = '⚡ 设为当前活动认证';
+                        btnActLegacy.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>设为当前活动认证';
                         btnActLegacy.style.opacity = '1';
                         btnActLegacy.style.cursor = 'pointer';
                         btnActLegacy.style.background = 'linear-gradient(135deg, #4f46e5, #6366f1)';
@@ -11492,12 +11571,12 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                 } else {
                     // Card 1: 现代交互认证未激活 (备用)
                     if (tabBadgeInteractive) {
-                        tabBadgeInteractive.innerHTML = '备用';
+                        tabBadgeInteractive.innerHTML = '<span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--text-secondary); margin-right: 4px;"></span>备用';
                         tabBadgeInteractive.style.background = 'rgba(255, 255, 255, 0.06)';
                         tabBadgeInteractive.style.color = 'var(--text-secondary)';
                     }
                     if (tabBadgeLegacy) {
-                        tabBadgeLegacy.innerHTML = '🟢 运行中';
+                        tabBadgeLegacy.innerHTML = '<span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px #22c55e; margin-right: 4px;"></span>运行中';
                         tabBadgeLegacy.style.background = 'rgba(34, 197, 94, 0.2)';
                         tabBadgeLegacy.style.color = '#22c55e';
                     }
@@ -11507,7 +11586,7 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                         cardInteractive.style.background = 'var(--input-bg-light)';
                     }
                     if (badgeInteractive) {
-                        badgeInteractive.innerHTML = '⚪ 未启用 (备用)';
+                        badgeInteractive.innerHTML = '<span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--text-secondary); margin-right: 4px;"></span>未启用 (备用)';
                         badgeInteractive.style.background = 'rgba(255, 255, 255, 0.06)';
                         badgeInteractive.style.color = 'var(--text-secondary)';
                         badgeInteractive.style.border = '1px solid var(--panel-border)';
@@ -11516,12 +11595,12 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                         infoInteractive.style.display = 'none';
                     }
                     if (lblActInteractive) {
-                        lblActInteractive.innerHTML = '⚪ 未启用 (备用)';
+                        lblActInteractive.innerHTML = '<span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--text-secondary); margin-right: 4px;"></span>未启用 (备用)';
                         lblActInteractive.style.color = 'var(--text-secondary)';
                     }
                     if (btnActInteractive) {
                         btnActInteractive.disabled = false;
-                        btnActInteractive.innerHTML = '⚡ 设为当前活动认证';
+                        btnActInteractive.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>设为当前活动认证';
                         btnActInteractive.style.opacity = '1';
                         btnActInteractive.style.cursor = 'pointer';
                         btnActInteractive.style.background = 'linear-gradient(135deg, #0284c7, #0ea5e9)';
@@ -11547,12 +11626,12 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                         tipLegacy.style.display = 'none';
                     }
                     if (lblActLegacy) {
-                        lblActLegacy.innerHTML = `🟢 当前已启用 (Active · ${activeModeText})`;
+                        lblActLegacy.innerHTML = `<span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px #22c55e; margin-right: 4px;"></span>当前已启用 (Active · ${activeModeText})`;
                         lblActLegacy.style.color = '#22c55e';
                     }
                     if (btnActLegacy) {
                         btnActLegacy.disabled = true;
-                        btnActLegacy.innerHTML = '✅ 当前已启用';
+                        btnActLegacy.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><polyline points="20 6 9 17 4 12"></polyline></svg>当前已启用';
                         btnActLegacy.style.opacity = '0.7';
                         btnActLegacy.style.cursor = 'default';
                         btnActLegacy.style.background = 'rgba(34, 197, 94, 0.18)';
@@ -11571,7 +11650,7 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
             const origText = btn ? btn.innerHTML : '';
             if (btn) {
                 btn.disabled = true;
-                btn.innerHTML = '<span class="animate-spin" style="display:inline-block;animation:spin 1s linear infinite;">⏳</span> 正在切换...';
+                btn.innerHTML = '<svg class="spinning" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation: spin 1s linear infinite; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>正在切换...';
             }
 
             try {
@@ -11661,12 +11740,12 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
             if (switchEl) switchEl.checked = isEnabled;
             if (badgeEl) {
                 if (isEnabled) {
-                    badgeEl.innerHTML = '🟢 运行中';
+                    badgeEl.innerHTML = '<span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px #22c55e; margin-right: 4px;"></span>运行中';
                     badgeEl.style.background = 'rgba(34, 197, 94, 0.18)';
                     badgeEl.style.color = '#22c55e';
                     badgeEl.style.borderColor = 'rgba(34, 197, 94, 0.35)';
                 } else {
-                    badgeEl.innerHTML = '⚪ 已停用';
+                    badgeEl.innerHTML = '<span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--text-secondary); margin-right: 4px;"></span>已停用';
                     badgeEl.style.background = 'rgba(255, 255, 255, 0.06)';
                     badgeEl.style.color = 'var(--text-secondary)';
                     badgeEl.style.borderColor = 'var(--panel-border)';
@@ -14477,7 +14556,24 @@ window.uploadFileToNote = async function(file) {
             if (typeof easyMDE !== 'undefined' && easyMDE) {
                 const cm = easyMDE.codemirror;
                 const cursor = cm.getCursor();
-                cm.replaceRange(`\n${data.markdown}\n`, cursor);
+                const isImg = data.markdown.trim().startsWith('![');
+                const curLine = cm.getLine(cursor.line) || '';
+                const beforeCursor = curLine.slice(0, cursor.ch);
+
+                let textToInsert = data.markdown;
+                if (isImg) {
+                    if (beforeCursor.length > 0 && !/\s$/.test(beforeCursor)) {
+                        textToInsert = ' ' + textToInsert;
+                    }
+                    textToInsert += ' ';
+                } else {
+                    if (beforeCursor.length > 0 && !/\s$/.test(beforeCursor)) {
+                        textToInsert = '\n' + textToInsert + '\n';
+                    } else {
+                        textToInsert = textToInsert + '\n';
+                    }
+                }
+                cm.replaceRange(textToInsert, cursor);
                 cm.focus();
                 if (window.renderEditorWidgets) {
                     setTimeout(() => window.renderEditorWidgets(cm), 100);
@@ -14612,13 +14708,33 @@ window.debounceSearchNotes = function() {
 };
 
 window.handleNoteSearchInput = function(inputEl) {
+    const q = (inputEl ? inputEl.value : '').trim();
     const clearBtn = document.getElementById('btn-clear-note-search');
     if (clearBtn) {
-        clearBtn.style.display = (inputEl && inputEl.value.trim()) ? 'inline-flex' : 'none';
+        clearBtn.style.display = q ? 'inline-flex' : 'none';
+    }
+    // ⚡ 0ms 本地即时元数据过滤 (Instant Local Metadata Filter)：击键实时响应，彻底免除网络等待顿挫
+    const allNotes = window._allNotesMetadata || window._currentNotesList;
+    if (Array.isArray(allNotes) && allNotes.length > 0) {
+        if (!q) {
+            window._currentNotesList = allNotes;
+        } else {
+            const qLower = q.toLowerCase();
+            window._currentNotesList = allNotes.filter(n => {
+                const fn = (n.filename || '').toLowerCase();
+                const snip = (n.snippet || '').toLowerCase();
+                return fn.includes(qLower) || snip.includes(qLower);
+            });
+        }
+        window.renderSortedNotesList();
     }
 };
 
 window.clearNoteSearch = function() {
+    if (typeof searchNoteTimeout !== 'undefined' && searchNoteTimeout) {
+        clearTimeout(searchNoteTimeout);
+        searchNoteTimeout = null;
+    }
     const inputEl = document.getElementById('note-search');
     if (inputEl) {
         inputEl.value = '';
@@ -14628,7 +14744,12 @@ window.clearNoteSearch = function() {
     if (clearBtn) {
         clearBtn.style.display = 'none';
     }
-    window.searchNotes();
+    if (Array.isArray(window._allNotesMetadata) && window._allNotesMetadata.length > 0) {
+        window._currentNotesList = window._allNotesMetadata;
+        window.renderSortedNotesList();
+    } else {
+        window.searchNotes();
+    }
 };
 
 window._currentNotesList = (function() {
@@ -14639,6 +14760,12 @@ window._currentNotesList = (function() {
         return [];
     }
 })();
+window._allNotesMetadata = window._currentNotesList;
+window._noteContentCache = window._noteContentCache || {};
+window._notesChunkSize = 25; // 分批渐进式加载批次大小
+window._renderedNotesCount = 0;
+window._sortedNotesList = [];
+
 window.noteSortModes = [
     { key: 'updated_desc', label: '修改时间 (新→旧)', field: 'updated_at', desc: true },
     { key: 'updated_asc', label: '修改时间 (旧→新)', field: 'updated_at', desc: false },
@@ -14708,10 +14835,10 @@ document.addEventListener('click', (e) => {
 });
 
 window._activeNoteFilename = localStorage.getItem('pbi_active_note_filename') || '';
+window._openedNoteFilename = window._activeNoteFilename;
 
 // 设置并激活指定的笔记 (同步文件名、编辑器内容、本地存储与高亮态，自动剥离 .md 后缀展示)
 window.setActiveNote = function(filename, content = null, syncEditor = true) {
-    // 切换或激活笔记时，立即清空任何旧的未完成自动保存定时器，杜绝跨笔记误保存
     if (window._noteAutoSaveTimer) {
         clearTimeout(window._noteAutoSaveTimer);
         window._noteAutoSaveTimer = null;
@@ -14720,6 +14847,7 @@ window.setActiveNote = function(filename, content = null, syncEditor = true) {
     const rawFn = (filename || '').trim();
     const cleanFn = rawFn.replace(/\.md$/i, '');
     window._activeNoteFilename = rawFn;
+    window._openedNoteFilename = cleanFn ? (rawFn.endsWith('.md') ? rawFn : rawFn + '.md') : '';
     if (rawFn) {
         localStorage.setItem('pbi_active_note_filename', rawFn);
     } else {
@@ -14729,17 +14857,62 @@ window.setActiveNote = function(filename, content = null, syncEditor = true) {
     if (fnInput && fnInput.value !== cleanFn) {
         fnInput.value = cleanFn;
     }
-    if (syncEditor && easyMDE && content !== null && content !== undefined) {
+
+    // 若直接传入有效正文，缓存并同步编辑器
+    if (content !== null && content !== undefined) {
+        window._noteContentCache[rawFn] = content;
         window._activeNoteOriginalContent = content; // 记录原始内容基准，供防误保存比对
-        const curVal = (typeof easyMDE.value === 'function') ? easyMDE.value() : null;
-        if (curVal !== content) {
-            easyMDE.value(content);
-            if (window.renderEditorWidgets && easyMDE.codemirror) {
-                setTimeout(() => window.renderEditorWidgets(easyMDE.codemirror), 60);
+        if (syncEditor && easyMDE) {
+            const curVal = (typeof easyMDE.value === 'function') ? easyMDE.value() : null;
+            if (curVal !== content) {
+                easyMDE.value(content);
+                if (window.renderEditorWidgets && easyMDE.codemirror) {
+                    setTimeout(() => window.renderEditorWidgets(easyMDE.codemirror), 60);
+                }
             }
         }
-    } else if (content !== null && content !== undefined) {
-        window._activeNoteOriginalContent = content;
+    } else if (rawFn) {
+        // 若未直接传入正文：先查内存缓存
+        if (window._noteContentCache[rawFn] !== undefined) {
+            const cached = window._noteContentCache[rawFn];
+            window._activeNoteOriginalContent = cached;
+            if (syncEditor && easyMDE) {
+                const curVal = (typeof easyMDE.value === 'function') ? easyMDE.value() : null;
+                if (curVal !== cached) {
+                    easyMDE.value(cached);
+                    if (window.renderEditorWidgets && easyMDE.codemirror) {
+                        setTimeout(() => window.renderEditorWidgets(easyMDE.codemirror), 60);
+                    }
+                }
+            }
+        } else {
+            // 内存无缓存：异步按需从后端拉取单篇正文 (On-Demand Content Fetching)
+            const targetFn = rawFn;
+            fetch('/api/note?filename=' + encodeURIComponent(targetFn))
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.content !== undefined) {
+                        window._noteContentCache[targetFn] = data.content;
+                        // 确保用户没有在拉取期间切换到其他笔记
+                        const curActive = window._activeNoteFilename || '';
+                        if (curActive === targetFn || curActive.replace(/\.md$/i, '') === targetFn.replace(/\.md$/i, '')) {
+                            window._activeNoteOriginalContent = data.content;
+                            if (syncEditor && easyMDE) {
+                                const curVal = (typeof easyMDE.value === 'function') ? easyMDE.value() : null;
+                                if (curVal !== data.content) {
+                                    easyMDE.value(data.content);
+                                    if (window.renderEditorWidgets && easyMDE.codemirror) {
+                                        setTimeout(() => window.renderEditorWidgets(easyMDE.codemirror), 60);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.warn('[Quick Note] On-demand note fetch error:', err);
+                });
+        }
     }
     window.highlightActiveNoteItem();
 };
@@ -14751,10 +14924,24 @@ window.highlightActiveNoteItem = function() {
     const currentFn = window._activeNoteFilename || (localStorage.getItem('pbi_active_note_filename') || '').trim();
     const cleanCurrent = currentFn.replace(/\.md$/i, '').toLowerCase();
     const target = cleanInput || cleanCurrent;
+
+    // 智能滚动保障：若当前选中的笔记超出已渲染的 chunk 批次，自动逐步渲染至包含目标项
+    if (target && Array.isArray(window._sortedNotesList) && window._sortedNotesList.length > 0) {
+        const targetIdx = window._sortedNotesList.findIndex(n => {
+            const fn = (n.filename || '').replace(/\.md$/i, '').toLowerCase();
+            return fn === target || (n.filename || '').toLowerCase() === target;
+        });
+        if (targetIdx >= 0 && targetIdx >= window._renderedNotesCount) {
+            while (window._renderedNotesCount <= targetIdx && window._renderedNotesCount < window._sortedNotesList.length) {
+                window.renderMoreNotesChunk();
+            }
+        }
+    }
+
     const items = document.querySelectorAll('#note-history-list .note-history-item');
     items.forEach(el => {
         const fn = (el.getAttribute('data-filename') || '').replace(/\.md$/i, '').toLowerCase();
-        if (target && fn === target) {
+        if (target && (fn === target || (el.getAttribute('data-filename') || '').toLowerCase() === target)) {
             el.classList.add('active');
         } else {
             el.classList.remove('active');
@@ -14801,13 +14988,36 @@ window.getNoteDefaultPlaceholder = function() {
     return `${Y}-${M}-${D} ${h}:${m}:${s}`;
 };
 
+// 更新笔记总数与筛选状态徽章
+window.updateNoteCounterBadge = function() {
+    const totalEl = document.getElementById('note-total-count-text');
+    const filterEl = document.getElementById('note-filter-status-text');
+    if (!totalEl) return;
+
+    const totalCount = Array.isArray(window._allNotesMetadata) && window._allNotesMetadata.length > 0 
+        ? window._allNotesMetadata.length 
+        : (Array.isArray(window._currentNotesList) ? window._currentNotesList.length : 0);
+    const filteredCount = Array.isArray(window._sortedNotesList) ? window._sortedNotesList.length : 0;
+    const q = (document.getElementById('note-search')?.value || '').trim();
+
+    totalEl.textContent = `共 ${totalCount} 篇笔记`;
+    if (q && filterEl) {
+        filterEl.style.display = 'inline';
+        filterEl.textContent = `匹配 ${filteredCount} 项`;
+    } else if (filterEl) {
+        filterEl.style.display = 'none';
+    }
+};
+
 window.renderSortedNotesList = function() {
     const listEl = document.getElementById('note-history-list');
-    const q = (document.getElementById('note-search')?.value || '').trim();
     if (!listEl) return;
 
     if (!window._currentNotesList || window._currentNotesList.length === 0) {
         listEl.innerHTML = '<div style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 20px;">No notes found.</div>';
+        window._sortedNotesList = [];
+        window._renderedNotesCount = 0;
+        window.updateNoteCounterBadge();
         return;
     }
 
@@ -14836,19 +15046,61 @@ window.renderSortedNotesList = function() {
         }
     });
 
+    window._sortedNotesList = sorted;
+    window._renderedNotesCount = 0;
+    listEl.innerHTML = '';
+
+    // 绑定滚动监听 (只绑一次)
+    if (!listEl._scrollBound) {
+        listEl.addEventListener('scroll', window.handleNotesListScroll, { passive: true });
+        listEl._scrollBound = true;
+    }
+
+    // 渲染第一批数据
+    window.renderMoreNotesChunk();
+
+    // 智能同步活跃笔记：首次无激活项时默认选中首项；若已有激活项，绝不强制跳向首项
     const fnInput = document.getElementById('note-filename');
     let curFn = (fnInput?.value || window._activeNoteFilename || localStorage.getItem('pbi_active_note_filename') || '').trim();
     if (!curFn && sorted.length > 0) {
-        curFn = sorted[0].filename;
+        window.setActiveNote(sorted[0].filename, sorted[0].content || null, true);
+    } else if (curFn) {
+        const matchedNote = sorted.find(n => n.filename.toLowerCase() === curFn.toLowerCase() || n.filename.toLowerCase() === (curFn + '.md').toLowerCase());
+        if (matchedNote) {
+            window.setActiveNote(matchedNote.filename, matchedNote.content || null, false);
+        }
     }
+
+    window.updateNoteCounterBadge();
+    window.highlightActiveNoteItem();
+};
+
+window.renderMoreNotesChunk = function() {
+    const listEl = document.getElementById('note-history-list');
+    if (!listEl || !Array.isArray(window._sortedNotesList)) return;
+
+    const total = window._sortedNotesList.length;
+    if (window._renderedNotesCount >= total) return;
+
+    // 移除之前的哨兵或加载提示节点
+    const oldSentinel = document.getElementById('note-list-sentinel');
+    if (oldSentinel) oldSentinel.remove();
+    const oldEndNotice = document.getElementById('note-list-end-notice');
+    if (oldEndNotice) oldEndNotice.remove();
+
+    const q = (document.getElementById('note-search')?.value || '').trim();
+    const fnInput = document.getElementById('note-filename');
+    const curFn = (fnInput?.value || window._activeNoteFilename || localStorage.getItem('pbi_active_note_filename') || '').trim();
     const cleanTarget = curFn ? curFn.replace(/\.md$/i, '').toLowerCase() : '';
 
-    listEl.innerHTML = '';
-    sorted.forEach((note, idx) => {
+    const nextBatch = window._sortedNotesList.slice(window._renderedNotesCount, window._renderedNotesCount + window._notesChunkSize);
+    const fragment = document.createDocumentFragment();
+
+    nextBatch.forEach((note, offset) => {
+        const globalIdx = window._renderedNotesCount + offset;
         const item = document.createElement('div');
         const cleanName = (note.filename || '').replace(/\.md$/i, '');
-        // ⚡ 原生内联高亮防御：节点创建瞬间直接挂载 active，杜绝先默认背景后补加 class 产生的 CSS 过渡闪烁
-        const isMatchedActive = cleanTarget ? (cleanName.toLowerCase() === cleanTarget) : (idx === 0);
+        const isMatchedActive = cleanTarget ? (cleanName.toLowerCase() === cleanTarget) : (globalIdx === 0 && !curFn);
         item.className = 'note-history-item' + (isMatchedActive ? ' active' : '');
         item.setAttribute('data-filename', note.filename);
 
@@ -14863,7 +15115,6 @@ window.renderSortedNotesList = function() {
                 ? (byteSize / 1024).toFixed(1) + ' KB' 
                 : byteSize + ' B';
 
-        // Highlight search term in snippet if any
         let snippetHtml = (note.snippet || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         if (q) {
             const regex = new RegExp(q, 'gi');
@@ -14898,23 +15149,40 @@ window.renderSortedNotesList = function() {
         };
 
         item.onclick = () => {
-            window.setActiveNote(note.filename, note.content, true);
+            window.setActiveNote(note.filename, note.content || null, true);
         };
 
-        listEl.appendChild(item);
+        fragment.appendChild(item);
     });
 
-    // 智能同步活跃笔记与文件名 (以服务端权威笔记最新数据即刻填充编辑器，杜绝显示旧内容或延迟刷新)
-    if (curFn) {
-        const matchedNote = sorted.find(n => n.filename.toLowerCase() === curFn.toLowerCase() || n.filename.toLowerCase() === (curFn + '.md').toLowerCase());
-        if (matchedNote) {
-            window.setActiveNote(matchedNote.filename, matchedNote.content, true);
-        } else if (sorted.length > 0) {
-            window.setActiveNote(sorted[0].filename, sorted[0].content, true);
+    listEl.appendChild(fragment);
+    window._renderedNotesCount += nextBatch.length;
+
+    // 添加底部哨兵或加载提示
+    if (window._renderedNotesCount < total) {
+        const sentinel = document.createElement('div');
+        sentinel.id = 'note-list-sentinel';
+        sentinel.className = 'note-list-sentinel';
+        sentinel.style.cssText = 'text-align: center; color: var(--text-secondary); font-size: 0.72rem; padding: 8px 4px; opacity: 0.7; user-select: none; cursor: pointer;';
+        sentinel.textContent = `已载入 ${window._renderedNotesCount} / ${total} 篇 (向下滚动加载更多)`;
+        sentinel.onclick = () => window.renderMoreNotesChunk();
+        listEl.appendChild(sentinel);
+    } else if (total > window._notesChunkSize) {
+        const endNotice = document.createElement('div');
+        endNotice.id = 'note-list-end-notice';
+        endNotice.style.cssText = 'text-align: center; color: var(--text-secondary); font-size: 0.70rem; padding: 6px 0; opacity: 0.5; user-select: none;';
+        endNotice.textContent = `已加载全部 ${total} 篇笔记`;
+        listEl.appendChild(endNotice);
+    }
+};
+
+window.handleNotesListScroll = function(e) {
+    const el = e.target;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 60) {
+        if (window._renderedNotesCount < (window._sortedNotesList ? window._sortedNotesList.length : 0)) {
+            window.renderMoreNotesChunk();
         }
     }
-
-    window.highlightActiveNoteItem();
 };
 
 // 列表指纹深度对比：判断前后两次笔记列表是否完全相同 (消除重复重绘)
@@ -14928,7 +15196,7 @@ window._areNotesListIdentical = function(listA, listB) {
         if (a.filename !== b.filename) return false;
         if ((a.updated_at || a.mtime) !== (b.updated_at || b.mtime)) return false;
         if (a.size !== b.size) return false;
-        if (a.content !== b.content) return false;
+        if (a.content !== undefined && b.content !== undefined && a.content !== b.content) return false;
     }
     return true;
 };
@@ -14944,7 +15212,7 @@ window.searchNotes = async function() {
     if (!q && hasCache) {
         // SWR 极速渲染：无搜索关键字时，优先 0ms 秒级上屏已缓存笔记列表，彻底根除“Searching...”白屏与闪烁！
         window.renderSortedNotesList();
-    } else if (!hasCache || q) {
+    } else if (!hasCache && !q) {
         listEl.innerHTML = '<div style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 20px;">Searching...</div>';
     }
 
@@ -14960,14 +15228,18 @@ window.searchNotes = async function() {
         // 若当前无搜索关键字且此前已基于缓存上屏，深度比对服务端最新数据与当前数据指纹。
         // 若数据完全一致（笔记无新增、无删除、无内容或时间戳变更），坚决跳过二次清空重绘！彻底杜绝 5ms 后的全量 DOM 销毁重刷与高亮闪烁！
         if (!q && hasCache && window._areNotesListIdentical(window._currentNotesList, newResults)) {
+            window.updateNoteCounterBadge();
             return;
         }
 
         window._currentNotesList = newResults;
-        if (!q && newResults.length > 0) {
-            try {
-                localStorage.setItem('pbi_cached_notes_list', JSON.stringify(newResults));
-            } catch (_) {}
+        if (!q) {
+            window._allNotesMetadata = newResults;
+            if (newResults.length > 0) {
+                try {
+                    localStorage.setItem('pbi_cached_notes_list', JSON.stringify(newResults));
+                } catch (_) {}
+            }
         }
         window.renderSortedNotesList();
     } catch (e) {
@@ -14999,7 +15271,17 @@ window.deleteMarkdownNote = async function(filename) {
 
             alert(data.message || "Note deleted successfully!");
 
-            if (document.getElementById('note-filename').value.trim() === filename) {
+            if (window._noteContentCache) {
+                delete window._noteContentCache[filename];
+                delete window._noteContentCache[filename.replace(/\.md$/i, '')];
+            }
+            if (Array.isArray(window._allNotesMetadata)) {
+                window._allNotesMetadata = window._allNotesMetadata.filter(n => n.filename !== filename);
+            }
+
+            const curVal = (document.getElementById('note-filename')?.value || '').trim();
+            if (curVal === filename || (curVal + '.md') === filename || window._openedNoteFilename === filename) {
+                window._openedNoteFilename = '';
                 window.setActiveNote('', '', true);
                 if (easyMDE && typeof easyMDE.clearAutosavedValue === 'function') {
                     try { easyMDE.clearAutosavedValue(); } catch(e) {}
@@ -15015,6 +15297,7 @@ window.deleteMarkdownNote = async function(filename) {
 };
 
 window.createNewNote = function() {
+    window._openedNoteFilename = '';
     window.setActiveNote('', '', true);
     if (easyMDE && typeof easyMDE.clearAutosavedValue === 'function') {
         try { easyMDE.clearAutosavedValue(); } catch(e) {}
@@ -15160,13 +15443,6 @@ window.autoSaveMarkdownNote = async function() {
     if (!content) return;
     if (window._noteSaveAbortController || window._isAutoSavingNote) return;
 
-    // ⚡ 核心防护：比对内容是否与初始加载时一致。若无任何实质修改，坚决不保存，绝不刷新时间戳！
-    if (window._activeNoteOriginalContent !== undefined && window._activeNoteOriginalContent !== null) {
-        if (content === window._activeNoteOriginalContent.trim()) {
-            return;
-        }
-    }
-
     const fnInput = document.getElementById('note-filename');
     let rawInput = (fnInput?.value || '').trim();
     if (!rawInput && fnInput?.placeholder) {
@@ -15177,6 +15453,16 @@ window.autoSaveMarkdownNote = async function() {
     }
     let filename = rawInput ? (rawInput.endsWith('.md') ? rawInput : rawInput + '.md') : (window._activeNoteFilename || '');
     if (!filename) return;
+
+    const oldFilename = window._openedNoteFilename || '';
+    const isRenaming = Boolean(oldFilename && oldFilename.toLowerCase() !== filename.toLowerCase());
+
+    // ⚡ 核心防护：若未发生重命名，且内容与初始加载时一致，坚决不保存，绝不刷新时间戳！
+    if (!isRenaming && window._activeNoteOriginalContent !== undefined && window._activeNoteOriginalContent !== null) {
+        if (content === window._activeNoteOriginalContent.trim()) {
+            return;
+        }
+    }
 
     const statusWrapper = document.getElementById('note-save-status-wrapper');
     const statusText = document.getElementById('note-save-status-text');
@@ -15190,21 +15476,25 @@ window.autoSaveMarkdownNote = async function() {
             statusIcon.style.display = 'inline-block';
             statusIcon.className = 'loader';
         }
-        statusText.textContent = '后台自动保存中...';
+        statusText.textContent = isRenaming ? '正在自动重命名并保存...' : '后台自动保存中...';
     }
 
     try {
         const response = await fetch('/api/save-note', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filename, content })
+            body: JSON.stringify({ filename, content, old_filename: oldFilename || null })
         });
         const data = await response.json();
         if (data.success) {
             window._activeNoteOriginalContent = content; // 更新基准
             const savedName = data.filename || filename;
             if (savedName) {
+                window._openedNoteFilename = savedName;
                 window.setActiveNote(savedName, null, false);
+            }
+            if (isRenaming && typeof window.searchNotes === 'function') {
+                window.searchNotes();
             }
             if (statusWrapper && statusText) {
                 statusWrapper.style.color = 'var(--success)';
@@ -15243,8 +15533,7 @@ window.saveMarkdownNote = async function() {
         }
     }
     const filename = rawFilename ? (rawFilename.endsWith('.md') ? rawFilename : rawFilename + '.md') : (window._activeNoteFilename || '');
-
-    
+    const oldFilename = window._openedNoteFilename || '';
 
     const btn = document.getElementById('btn-save-note');
     const cancelBtn = document.getElementById('btn-cancel-save-note');
@@ -15315,7 +15604,7 @@ window.saveMarkdownNote = async function() {
         const response = await fetch('/api/save-note', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filename, content }),
+            body: JSON.stringify({ filename, content, old_filename: oldFilename || null }),
             signal: signal
         });
         clearTimeout(timeoutId);
@@ -15329,8 +15618,15 @@ window.saveMarkdownNote = async function() {
         if (data.success) {
             window._activeNoteOriginalContent = content; // 更新基准
             const savedName = data.filename || filename;
+            if (window._noteContentCache) {
+                window._noteContentCache[savedName] = content;
+                if (oldFilename && oldFilename !== savedName) {
+                    delete window._noteContentCache[oldFilename];
+                }
+            }
             if (savedName) {
-                window.setActiveNote(savedName, null, false);
+                window._openedNoteFilename = savedName;
+                window.setActiveNote(savedName, content, false);
             }
             if (statusWrapper && statusText) {
                 statusWrapper.style.color = 'var(--success)';

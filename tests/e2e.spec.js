@@ -80,13 +80,21 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
   });
 
   test('设置弹窗与环境变量清洗：必须抹除多行 SQL_CONN_STR 的回车换行符', async ({ page }) => {
-    // 点击设置按钮
+    // 打开全局设置弹窗
     const settingsBtn = page.locator('#btn-settings');
-    await settingsBtn.click();
-
-    // 弹窗可见
     const settingsModal = page.locator('#settings-modal');
-    await expect(settingsModal).toBeVisible();
+    await expect.poll(async () => {
+      if (!await settingsModal.isVisible()) {
+        await settingsBtn.click().catch(() => {});
+      }
+      return await settingsModal.isVisible();
+    }, { timeout: 8000 }).toBe(true);
+
+    // 如果 SQL Database 处于默认折叠状态，点击展开
+    const sqlToggle = page.locator('label[onclick*="sql-config-body"]');
+    if (await sqlToggle.isVisible() && !await page.locator('#set-sql').isVisible()) {
+      await sqlToggle.click();
+    }
 
     // 填入带恶意回车换行的 SQL 字符串
     const sqlInput = page.locator('#set-sql');
@@ -169,9 +177,17 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
     }));
     // 清理本地工作区缓存，确保测试环境使用 mock 的单个已有工作区
     await page.evaluate(() => localStorage.removeItem('pbi_workspaces'));
+    // 等待初始化就绪
+    await expect(page.locator('#api-tree')).toBeVisible();
     // 点击全局设置按钮
-    await page.locator('#btn-settings').click();
-    await expect(page.locator('#settings-modal')).toBeVisible();
+    const settingsBtn = page.locator('#btn-settings');
+    const settingsModal = page.locator('#settings-modal');
+    await expect.poll(async () => {
+      if (!await settingsModal.isVisible()) {
+        await settingsBtn.click().catch(() => {});
+      }
+      return await settingsModal.isVisible();
+    }, { timeout: 8000 }).toBe(true);
 
     // 拦截 scan 接口，返回包含一个已存在的 GUID 和一个新的 GUID
     await page.route('**/api/scan/workspaces', route => route.fulfill({
@@ -1269,6 +1285,37 @@ test.describe('Proj-PBI-API UI e2e tests', () => {
       const clearUserBtn = page.locator('button:has-text("清空")').first();
       await clearUserBtn.click();
     }
+  });
+
+  test('全局环境配置 (Global Settings)：SQL Database 模块默认必须处于折叠状态，且点击可自由展开与再次折叠', async ({ page }) => {
+    // 打开全局设置弹窗
+    const settingsBtn = page.locator('#btn-settings');
+    const settingsModal = page.locator('#settings-modal');
+    await expect.poll(async () => {
+      if (!await settingsModal.isVisible()) {
+        await settingsBtn.click().catch(() => {});
+      }
+      return await settingsModal.isVisible();
+    }, { timeout: 8000 }).toBe(true);
+
+    const sqlToggle = page.locator('label[onclick*="sql-config-body"]');
+    const sqlBody = page.locator('#sql-config-body');
+    const sqlIcon = sqlToggle.locator('.collapse-icon');
+
+    // 1. 默认状态：必须为折叠隐藏，箭头为 ▶
+    await expect(sqlToggle).toBeVisible();
+    await expect(sqlBody).toBeHidden();
+    await expect(sqlIcon).toHaveText('▶');
+
+    // 2. 点击展开：变为可见，箭头为 ▼
+    await sqlToggle.click();
+    await expect(sqlBody).toBeVisible();
+    await expect(sqlIcon).toHaveText('▼');
+
+    // 3. 再次点击折叠：恢复隐藏，箭头变回 ▶
+    await sqlToggle.click();
+    await expect(sqlBody).toBeHidden();
+    await expect(sqlIcon).toHaveText('▶');
   });
 });
 

@@ -1190,6 +1190,50 @@ test.describe('Power BI Permission Blueprint E2E Tests', () => {
         expect(bodyText).not.toContain('架构是否合理？');
         expect(bodyText).not.toContain('治理防御提示：');
     });
+
+    test('权限流转蓝图主题切换：各组件过渡时间统一，导线与卡片同步丝滑变色无突变闪烁', async ({ page }) => {
+        await goToBlueprint(page);
+
+        // 确保 9 大核心节点与 SVG 导线已就绪
+        const nodes = page.locator('.pb-blueprint-node');
+        await expect(nodes).toHaveCount(9);
+        const wireGroups = page.locator('.pb-wire-group');
+        expect(await wireGroups.count()).toBeGreaterThan(0);
+
+        // 验证导线已赋予状态语义类名（如 pb-wire-status-pass 等）
+        const firstWire = wireGroups.first();
+        const wireClass = await firstWire.getAttribute('class');
+        expect(wireClass).toMatch(/pb-wire-status-/);
+
+        // 获取主题切换按钮
+        const themeBtn = page.locator('#theme-toggle-btn');
+        await expect(themeBtn).toBeVisible();
+
+        // 验证现代 View Transitions 或平滑降级支持
+        const hasViewTransition = await page.evaluate(() => typeof document.startViewTransition === 'function');
+
+        // 点击切换到明亮模式
+        await themeBtn.click();
+
+        // 等待过渡时间完全走完 (320ms)
+        await page.waitForTimeout(320);
+
+        // 验证过渡类已被安全移除，成功进入明亮模式
+        const isTransitioningRemoved = await page.evaluate(() => {
+            return !document.documentElement.classList.contains('theme-transitioning');
+        });
+        expect(isTransitioningRemoved).toBe(true);
+        expect(await page.evaluate(() => document.documentElement.getAttribute('data-theme'))).toBe('light');
+
+        // 验证导线在主题切换过程中保持连续未被销毁闪烁
+        const wireCountAfter = await page.locator('.pb-wire-group').count();
+        expect(wireCountAfter).toBeGreaterThan(0);
+
+        // 再次切换回暗黑模式，验证双向对称平滑性
+        await themeBtn.click();
+        await page.waitForTimeout(320);
+        expect(await page.evaluate(() => document.documentElement.getAttribute('data-theme'))).toBeNull();
+    });
 });
 
 

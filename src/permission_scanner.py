@@ -847,6 +847,12 @@ async def scan_candidate_users(
         workspaces = filtered_workspaces
 
     merged_users: Dict[str, Dict[str, Any]] = {}
+    
+    # 提取当前顶栏租户的基础认证主域名 (例如 carman_zhao@vfc.com -> vfc.com)
+    tenant_domain = ""
+    if cfg and cfg.USERNAME and "@" in cfg.USERNAME:
+        tenant_domain = cfg.USERNAME.split("@")[1].strip().lower()
+
     for ws in workspaces:
         wid = ws.get("id") or ""
         wname = ws.get("name") or wid
@@ -857,10 +863,21 @@ async def scan_candidate_users(
             ptype = u.get("principalType") or "User"
             role = u.get("groupUserAccessRight") or "Viewer"
             disp = (u.get("displayName") or email or ident).strip()
+            user_type = str(u.get("userType") or "").strip().lower()
 
             key = (email or ident or gid).lower()
             if not key:
                 continue
+
+            # 🚨 严格租户隔离防线：坚决阻断任何非当前租户的外部访客 (Guest) 或含 #ext# 的跨域实体
+            if user_type == "guest" or "#ext#" in key or "#" in key:
+                continue
+
+            # 若已知当前租户主域名且为主体用户类型 (非内部安全组)，校验域名必须严格对齐当前租户
+            if tenant_domain and "@" in key and ptype.lower() != "group":
+                u_domain = key.split("@")[1].strip()
+                if u_domain != tenant_domain and not u_domain.endswith("." + tenant_domain):
+                    continue
 
             if key not in merged_users:
                 merged_users[key] = {

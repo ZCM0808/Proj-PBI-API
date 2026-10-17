@@ -5,185 +5,8 @@
 (function() {
     'use strict';
 
-    // 预设用户主体数据矩阵
-    const USER_PRESETS = {
-        'preset_admin': {
-            id: 'preset_admin',
-            name: 'Sarah Connor',
-            upn: 'sarah.connor@contoso.com',
-            roleTag: 'Workspace Admin',
-            roleColor: '#60a5fa',
-            description: '组织租户与工作区最高管理员，具备全部特权穿透能力',
-            state: {
-                isGuestUser: false,
-                isTenantAdmin: true,
-                tenantAllowExport: true,
-                tenantAllowWebModeling: true,
-                capacityType: 'fabric_f64',
-                workspaceRole: 'Admin',
-                isModelOwner: true,
-                isInStrictMode: true,
-                hasAccessToAllDataConnections: true,
-                gatewayOnline: true,
-                sharePermission: 'ReadBuild',
-                hasAppAccess: true,
-                rlsEnabled: true,
-                rlsRoleAssigned: 'Region_East',
-                olsEnabled: true,
-                maskedFields: 'Salary, Margin'
-            }
-        },
-        'preset_developer': {
-            id: 'preset_developer',
-            name: 'Alex Developer',
-            upn: 'alex.developer@contoso.com',
-            roleTag: 'Contributor',
-            roleColor: '#34d399',
-            description: '报表核心开发者，具有工作区 Contributor 权限，可穿透豁免 RLS/OLS',
-            state: {
-                isGuestUser: false,
-                tenantAllowExport: true,
-                tenantAllowWebModeling: true,
-                capacityType: 'fabric_f64',
-                workspaceRole: 'Contributor',
-                isModelOwner: false,
-                isInStrictMode: true,
-                hasAccessToAllDataConnections: true,
-                gatewayOnline: true,
-                sharePermission: 'ReadBuild',
-                hasAppAccess: true,
-                rlsEnabled: true,
-                rlsRoleAssigned: 'Region_East',
-                olsEnabled: true,
-                maskedFields: 'Salary, Margin'
-            }
-        },
-        'preset_member': {
-            id: 'preset_member',
-            name: 'David Member',
-            upn: 'david.member@contoso.com',
-            roleTag: 'Workspace Member',
-            roleColor: '#818cf8',
-            description: '工作区协同业务人员，可添加协作者并重命名报表',
-            state: {
-                isGuestUser: false,
-                tenantAllowExport: true,
-                tenantAllowWebModeling: true,
-                capacityType: 'fabric_f64',
-                workspaceRole: 'Member',
-                isModelOwner: false,
-                isInStrictMode: true,
-                hasAccessToAllDataConnections: true,
-                gatewayOnline: true,
-                sharePermission: 'ReadBuild',
-                hasAppAccess: true,
-                rlsEnabled: true,
-                rlsRoleAssigned: 'Region_East',
-                olsEnabled: true,
-                maskedFields: 'Salary, Margin'
-            }
-        },
-        'preset_viewer_rls': {
-            id: 'preset_viewer_rls',
-            name: 'Emma Viewer',
-            upn: 'emma.viewer@contoso.com',
-            roleTag: 'Viewer (RLS Restricted)',
-            roleColor: '#fbbf24',
-            description: '普通只读查看者，严格受 L5 RLS 与 L6 OLS 控制，无穿透特权',
-            state: {
-                isGuestUser: false,
-                tenantAllowExport: true,
-                tenantAllowWebModeling: false,
-                capacityType: 'fabric_f64',
-                workspaceRole: 'Viewer',
-                isModelOwner: false,
-                isInStrictMode: true,
-                hasAccessToAllDataConnections: false,
-                gatewayOnline: true,
-                sharePermission: 'Read',
-                hasAppAccess: true,
-                rlsEnabled: true,
-                rlsRoleAssigned: 'Region_East',
-                olsEnabled: true,
-                maskedFields: 'Salary, Margin'
-            }
-        },
-        'preset_build_user': {
-            id: 'preset_build_user',
-            name: 'Bob Analyst',
-            upn: 'bob.analyst@contoso.com',
-            roleTag: 'Direct Share + Build',
-            roleColor: '#c084fc',
-            description: '无工作区角色，仅通过单品级共享获得 Read + Build 权限',
-            state: {
-                isGuestUser: false,
-                tenantAllowExport: true,
-                tenantAllowWebModeling: false,
-                capacityType: 'pro_shared',
-                workspaceRole: 'None',
-                isModelOwner: false,
-                isInStrictMode: true,
-                hasAccessToAllDataConnections: false,
-                gatewayOnline: true,
-                sharePermission: 'ReadBuild',
-                hasAppAccess: false,
-                rlsEnabled: true,
-                rlsRoleAssigned: 'Region_West',
-                olsEnabled: true,
-                maskedFields: 'Salary, Margin'
-            }
-        },
-        'preset_read_only': {
-            id: 'preset_read_only',
-            name: 'Grace Consumer',
-            upn: 'grace.consumer@contoso.com',
-            roleTag: 'Direct Share (Read Only)',
-            roleColor: '#94a3b8',
-            description: '无工作区角色，仅被授予单份报表链接只读访问',
-            state: {
-                isGuestUser: false,
-                tenantAllowExport: false,
-                tenantAllowWebModeling: false,
-                capacityType: 'pro_shared',
-                workspaceRole: 'None',
-                isModelOwner: false,
-                isInStrictMode: true,
-                hasAccessToAllDataConnections: false,
-                gatewayOnline: true,
-                sharePermission: 'Read',
-                hasAppAccess: false,
-                rlsEnabled: true,
-                rlsRoleAssigned: 'Unassigned',
-                olsEnabled: true,
-                maskedFields: 'Salary, Margin'
-            }
-        },
-        'preset_guest': {
-            id: 'preset_guest',
-            name: 'Tom Guest (External)',
-            upn: 'tom.guest@externalpartner.com',
-            roleTag: 'B2B Guest User',
-            roleColor: '#f43f5e',
-            description: '跨租户外部访客，严格受租户外部共享策略限制',
-            state: {
-                isGuestUser: true,
-                tenantAllowExport: false,
-                tenantAllowWebModeling: false,
-                capacityType: 'pro_shared',
-                workspaceRole: 'Viewer',
-                isModelOwner: false,
-                isInStrictMode: true,
-                hasAccessToAllDataConnections: false,
-                gatewayOnline: true,
-                sharePermission: 'Read',
-                hasAppAccess: true,
-                rlsEnabled: true,
-                rlsRoleAssigned: 'Region_East',
-                olsEnabled: true,
-                maskedFields: 'Salary, Margin'
-            }
-        }
-    };
+    // 用户主体数据字典 (在线模式：由真实租户/工作区扫描及自定义输入动态填充，已移除离线预设)
+    const USER_PRESETS = {};
 
     // 预设模型数据字典
     const MODEL_DEFINITIONS = {
@@ -195,13 +18,7 @@
             tables: ['Dim_Customer', 'Dim_Product', 'Fact_Sales', 'Security_Matrix'],
             hasRLS: true,
             hasOLS: true,
-            users: [
-                { upn: 'sarah.connor@contoso.com', role: 'Admin', presetId: 'preset_admin' },
-                { upn: 'alex.developer@contoso.com', role: 'Contributor', presetId: 'preset_developer' },
-                { upn: 'david.member@contoso.com', role: 'Member', presetId: 'preset_member' },
-                { upn: 'emma.viewer@contoso.com', role: 'Viewer', presetId: 'preset_viewer_rls' },
-                { upn: 'bob.analyst@contoso.com', role: 'Build User', presetId: 'preset_build_user' }
-            ]
+            users: []
         },
         'model_finance': {
             id: 'model_finance',
@@ -211,11 +28,7 @@
             tables: ['GL_Accounts', 'Cost_Centers', 'Journal_Entries'],
             hasRLS: true,
             hasOLS: false,
-            users: [
-                { upn: 'sarah.connor@contoso.com', role: 'Admin', presetId: 'preset_admin' },
-                { upn: 'alex.developer@contoso.com', role: 'Contributor', presetId: 'preset_developer' },
-                { upn: 'grace.consumer@contoso.com', role: 'Direct Share', presetId: 'preset_read_only' }
-            ]
+            users: []
         },
         'model_hr': {
             id: 'model_hr',
@@ -225,10 +38,7 @@
             tables: ['Employee', 'Compensation', 'Performance'],
             hasRLS: true,
             hasOLS: true,
-            users: [
-                { upn: 'sarah.connor@contoso.com', role: 'Admin', presetId: 'preset_admin' },
-                { upn: 'emma.viewer@contoso.com', role: 'Viewer (Restricted)', presetId: 'preset_viewer_rls' }
-            ]
+            users: []
         },
         'model_inventory': {
             id: 'model_inventory',
@@ -238,11 +48,7 @@
             tables: ['Warehouse', 'Stock_Levels', 'Shipments'],
             hasRLS: false,
             hasOLS: false,
-            users: [
-                { upn: 'alex.developer@contoso.com', role: 'Contributor', presetId: 'preset_developer' },
-                { upn: 'bob.analyst@contoso.com', role: 'Build User', presetId: 'preset_build_user' },
-                { upn: 'tom.guest@externalpartner.com', role: 'Guest Viewer', presetId: 'preset_guest' }
-            ]
+            users: []
         }
     };
 
@@ -341,20 +147,27 @@
             this.pendingDrag = null;
             this.pendingPan = null;
 
-            // 恢复本地持久化缓存的真实用户预设对象到 USER_PRESETS，确保页面加载早期状态立即可用
+            // 恢复本地持久化缓存的真实用户预设对象到 USER_PRESETS，确保页面加载早期状态立即可用 (严格仅限当前租户主体)
             try {
                 const cachedUsers = JSON.parse(localStorage.getItem('pb-cached-user-presets') || '{}');
                 if (cachedUsers && typeof cachedUsers === 'object') {
+                    for (const k in cachedUsers) {
+                        if (k.startsWith('real_') && !this.isCurrentTenantUser(cachedUsers[k])) {
+                            delete cachedUsers[k];
+                        }
+                    }
                     Object.assign(USER_PRESETS, cachedUsers);
                 }
             } catch(e) {}
 
-            // 默认基准中立状态，若有上次选中的持久化主体则安全恢复
+            // 默认基准中立状态，若有上次选中的持久化主体则安全恢复 (严格校验属于当前租户)
             this.activePresetKey = null;
             try {
                 const savedPreset = localStorage.getItem('pb-active-preset');
-                if (savedPreset && savedPreset !== 'none') {
-                    this.activePresetKey = savedPreset;
+                if (savedPreset && savedPreset !== 'none' && !savedPreset.startsWith('preset_')) {
+                    if (!savedPreset.startsWith('real_') || this.isCurrentTenantUser(USER_PRESETS[savedPreset])) {
+                        this.activePresetKey = savedPreset;
+                    }
                 }
             } catch(e) {}
             this.currentState = {
@@ -719,13 +532,10 @@
                 }
             });
 
-            // 监听全局主题切换 (仅针对 data-theme 属性，与全局 220ms CSS 动效平滑对齐)
-            let _themeWireTimer = null;
+            // 监听全局主题切换：导线与卡片已完全由 CSS 变量及 View Transitions 硬件级接管，
+            // 严禁在此处销毁重建 DOM，实现 60 FPS 零掉帧与零闪烁。
             const themeObserver = new MutationObserver(() => {
-                if (_themeWireTimer) clearTimeout(_themeWireTimer);
-                _themeWireTimer = setTimeout(() => {
-                    this.recalculateAndRenderWires();
-                }, 220);
+                // 属性已原生响应，无需任何昂贵的重绘计算
             });
             themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
@@ -2199,8 +2009,49 @@
             return impacts;
         }
 
+        // 🛡️ 提取当前顶栏绑定的租户主域名 (如 carman_zhao@vfc.com -> vfc.com)
+        getCurrentTenantDomain() {
+            const liveUser = (window.PermissionBlueprint?._activeAuthUser || localStorage.getItem('pbi_username') || document.getElementById('set-interactive-username')?.value || document.getElementById('set-username')?.value || '').trim();
+            if (liveUser && liveUser.includes('@')) {
+                return liveUser.split('@')[1].trim().toLowerCase();
+            }
+            const tenantText = (document.getElementById('gtb-tenant-name')?.textContent || '').trim().toLowerCase();
+            if (tenantText && tenantText.includes('.')) {
+                return tenantText;
+            }
+            return '';
+        }
+
+        // 🛡️ 严格当前租户归属校验：坚决排除任何其他租户的外部访客 (Guest) 或跨租户 B2B 邀请主体 (#EXT#)
+        isCurrentTenantUser(u) {
+            if (!u) return false;
+            const email = (u.emailAddress || u.userPrincipalName || u.identifier || u.upn || '').trim().toLowerCase();
+            const userType = String(u.userType || '').trim().toLowerCase();
+            const pType = String(u.principalType || '').trim().toLowerCase();
+
+            // 1. 明确标记为外部访客 (Guest) 或含微软 B2B 跨租户外部邀请标记 (#EXT# / #) -> 坚决剔除
+            if (userType === 'guest' || email.includes('#ext#') || email.includes('#') || u.isGuestUser || u.state?.isGuestUser) {
+                return false;
+            }
+
+            // 2. 检查域名与顶栏当前租户的对齐状态
+            const targetDomain = this.getCurrentTenantDomain();
+            if (targetDomain && email.includes('@') && pType !== 'group') {
+                const uDomain = email.split('@')[1].trim();
+                const isDomainMatch = (uDomain === targetDomain || uDomain.endsWith('.' + targetDomain));
+                if (!isDomainMatch) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         _registerRealUser(u) {
             if (!u) return;
+            // 🚨 严格租户隔离防线：仅注册当前顶栏租户下的合法成员，坚决不掺杂任何其他租户的实体
+            if (!this.isCurrentTenantUser(u)) return;
+
             const email = (u.emailAddress || u.userPrincipalName || u.identifier || '').trim();
             if (!email) return;
             const cleanKey = `real_${email.replace(/[^a-zA-Z0-9_]/g, '_')}`;
@@ -2220,7 +2071,7 @@
                 roleTag: `${role} (${isGroup ? 'Security Group' : 'Org Member'})`,
                 roleColor: role === 'Admin' ? '#60a5fa' : (role === 'Contributor' ? '#34d399' : (role === 'Member' ? '#818cf8' : '#fbbf24')),
                 state: {
-                    isGuestUser: Boolean(email.includes('#ext#') || u.userType === 'Guest' || existing?.state?.isGuestUser),
+                    isGuestUser: false,
                     tenantAllowExport: true,
                     tenantAllowWebModeling: role === 'Admin' || role === 'Member' || role === 'Contributor',
                     capacityType: 'fabric_f64',
@@ -2239,7 +2090,7 @@
             };
         }
 
-        async autoFetchTenantUsers() {
+        async autoFetchTenantUsers(force = false) {
             if (this._isFetchingUsers) return;
             this._isFetchingUsers = true;
 
@@ -2274,6 +2125,19 @@
                         principalType: 'User'
                     });
                 }
+            }
+
+            // ⚡ 核心性能防御：若已有本地持久化缓存且非强制刷新，直接 0ms 命中返回，绝不在首屏向云端狂发 16 个穿透请求挂死主线程与连接池
+            if (!force && Array.isArray(cachedUsers) && cachedUsers.length > 0) {
+                this._isFetchingUsers = false;
+                this.populatePresetSelect();
+                if (this.activePresetKey && USER_PRESETS[this.activePresetKey]) {
+                    this.selectUserPreset(this.activePresetKey, false);
+                }
+                if (this.activeMainTab === 'user_assets') {
+                    this.renderUserAssetsMatrix();
+                }
+                return;
             }
 
             // 3. 异步并发拉取：优先 scan-users，同时多源工作区聚合
@@ -2343,8 +2207,8 @@
                 }
             }
 
-            // 5. 持久化最新真实用户快照
-            const allRealPresets = Object.values(USER_PRESETS).filter(u => u.id.startsWith('real_'));
+            // 5. 持久化最新真实用户快照 (严格仅限当前租户)
+            const allRealPresets = Object.values(USER_PRESETS).filter(u => u.id.startsWith('real_') && this.isCurrentTenantUser(u));
             try {
                 localStorage.setItem('pbi_cached_tenant_users', JSON.stringify(allRealPresets.map(p => ({
                     displayName: p.name,
@@ -2357,6 +2221,11 @@
                 try {
                     cachedPresets = JSON.parse(localStorage.getItem('pb-cached-user-presets') || '{}');
                 } catch(e) {}
+                for (const k in cachedPresets) {
+                    if (k.startsWith('real_') && !this.isCurrentTenantUser(cachedPresets[k])) {
+                        delete cachedPresets[k];
+                    }
+                }
                 allRealPresets.forEach(rp => {
                     cachedPresets[rp.id] = rp;
                 });
@@ -2381,7 +2250,7 @@
             const roleBadge = document.getElementById('pb-badge-role-tag');
 
             const allPresets = Object.values(USER_PRESETS);
-            const realUsers = allPresets.filter(u => u.id.startsWith('real_'));
+            const realUsers = allPresets.filter(u => u.id.startsWith('real_') && this.isCurrentTenantUser(u));
             const customUsers = allPresets.filter(u => u.id.startsWith('custom_'));
 
             let html = '';
@@ -2411,8 +2280,10 @@
             };
 
             if (realUsers.length > 0) {
-                html += '<option value="none">-- 请选择真实用户主体 --</option>';
-                appendUserGroup('🏢 真实租户/工作区授权用户', realUsers);
+                const domName = this.getCurrentTenantDomain();
+                const groupTitle = domName ? `🏢 租户用户实体 (@${domName})` : '🏢 当前租户专属授权用户';
+                html += '<option value="none">-- 请选择当前租户用户主体 --</option>';
+                appendUserGroup(groupTitle, realUsers);
             } else {
                 html += '<option value="none">-- 正在全量拉取组织成员... --</option>';
                 if (!listHtml) {
@@ -2424,12 +2295,14 @@
                 appendUserGroup('👤 自定义测试主体', customUsers);
             }
 
-            // 确保当前选定主体若不在已有列表中（例如内置预设或跨工作区成员），独立追加呈现并保持高亮
+            // 确保当前选定主体若不在已有列表中（且属于当前租户），独立追加呈现并保持高亮
             if (this.activePresetKey && USER_PRESETS[this.activePresetKey]) {
                 const activeP = USER_PRESETS[this.activePresetKey];
-                const alreadyIncluded = realUsers.some(u => u.id === activeP.id) || customUsers.some(u => u.id === activeP.id);
-                if (!alreadyIncluded) {
-                    appendUserGroup('当前选定用户主体', [activeP]);
+                if (this.isCurrentTenantUser(activeP) || this.activePresetKey.startsWith('custom_')) {
+                    const alreadyIncluded = realUsers.some(u => u.id === activeP.id) || customUsers.some(u => u.id === activeP.id);
+                    if (!alreadyIncluded) {
+                        appendUserGroup('当前选定用户主体', [activeP]);
+                    }
                 }
             }
 
@@ -3641,7 +3514,7 @@
                 const midY = (p1.y + p2.y) / 2 - 8;
 
                 pathsHtml += `
-                    <g class="pb-wire-group" id="pb_wire_group_${w.id}" data-wire="${w.id}">
+                    <g class="pb-wire-group pb-wire-status-${w.status}" id="pb_wire_group_${w.id}" data-wire="${w.id}">
                         <path id="pb_wire_glow_${w.id}" d="${pathD}" fill="none" stroke="${w.style}" stroke-width="${strokeWidth + 4}" stroke-opacity="0.14" />
                         <path id="pb_wire_main_${w.id}" d="${pathD}" fill="none" stroke="${w.style}" stroke-width="${strokeWidth}" ${strokeDash} class="${strokeClass}" ${w.marker ? `marker-end="url(#${w.marker})"` : ''} />
                         <text id="pb_wire_text_${w.id}" x="${midX}" y="${midY}" fill="${w.style}" font-size="9" text-anchor="middle" font-family="'Inter', sans-serif" font-weight="600" opacity="0.88" style="pointer-events: none; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">${w.label}</text>
@@ -5449,9 +5322,9 @@
             // 标题处只读状态指示器渲染辅助函数 (去按钮化设计：呼吸微点 + 纯净状态文字)
             const renderHeaderStatus = (statusClass, statusText) => {
                 return `
-                    <div class="pb-card-header-status status-${statusClass}">
+                    <div class="pb-card-header-status status-${statusClass}" title="${statusText}">
                         <span class="pb-status-indicator-dot"></span>
-                        <span class="pb-status-indicator-text">${statusText}</span>
+                        <span class="pb-status-indicator-text" title="${statusText}">${statusText}</span>
                     </div>
                 `;
             };
@@ -5524,8 +5397,12 @@
                     };
                     const catLabel = catLabelMap[cat] || 'CAPABILITY';
 
+                    // ⚡ 子卡片折叠策略：实际分配的身份角色卡片 (Hero) 默认展开；具体权限策略子卡片默认紧凑折叠
+                    const isAssignedHero = Boolean(item.isHero);
+                    const collapseClass = isAssignedHero ? 'is-expanded' : 'is-collapsed';
+
                     return `
-                        <div class="pb-asset-card-row ${item.isHero ? 'is-hero-role' : ''} ${item.cat ? 'cat-' + item.cat : 'cat-derived'}" data-row-id="${item.id}" ${item.aliasId ? `data-alias-id="${item.aliasId}"` : ''} data-tier-id="${tierId}">
+                        <div class="pb-asset-card-row ${item.isHero ? 'is-hero-role' : ''} ${item.cat ? 'cat-' + item.cat : 'cat-derived'} ${collapseClass}" data-row-id="${item.id}" ${item.aliasId ? `data-alias-id="${item.aliasId}"` : ''} data-tier-id="${tierId}">
                             <div class="pb-asset-row-top">
                                 <div class="pb-asset-row-title-area">
                                     <span class="pb-row-drag-handle" draggable="true" title="按住拖拽排序">
@@ -5536,6 +5413,11 @@
                                             <circle cx="15" cy="5" r="1.5"></circle>
                                             <circle cx="15" cy="12" r="1.5"></circle>
                                             <circle cx="15" cy="19" r="1.5"></circle>
+                                        </svg>
+                                    </span>
+                                    <span class="pb-row-collapse-icon" title="点击展开/折叠卡片详情">
+                                        <svg class="pb-collapse-arrow" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="6 9 12 15 18 9"></polyline>
                                         </svg>
                                     </span>
                                     <span class="pb-asset-prop-name" title="${cleanName}">
@@ -5646,8 +5528,8 @@
             // 若包含 GUID 连字符且长度大于 20，说明误取为了 ID，不作为副标题文本
             const cleanTenantName = (!isPlaceholder && !(rawTenantName.length > 20 && rawTenantName.includes('-'))) ? rawTenantName : '';
             const tenantSub = cleanTenantName || localStorage.getItem('pbi_tenant_name') || 'VFC Corp / 企业组织租户';
-            const tenantHeaderStatusClass = user ? (isGuest ? 'warn' : 'enabled') : 'disabled';
-            const tenantHeaderStatusText = user ? (isGuest ? '⚠️ B2B GUEST' : '✅ AUTH VALID') : '⚠️ NO PRINCIPAL';
+            const tenantHeaderStatusClass = user ? (isTenantAdmin ? 'bypassed' : (isGuest ? 'warn' : 'enabled')) : 'disabled';
+            const tenantHeaderStatusText = user ? (isTenantAdmin ? '⚡ ADMIN' : (isGuest ? '⚠️ B2B GUEST' : '✅ MEMBER')) : '⚠️ NO USER';
             const tenantRoleName = user ? (isTenantAdmin ? 'Fabric Admin (租户全局管理员)' : (isGuest ? 'B2B Guest (外部访客主体)' : 'Tenant Member (企业组织成员)')) : 'Unspecified Principal (未指定主体)';
             const tenantHeroStatusClass = user ? (isTenantAdmin ? 'bypassed' : (isGuest ? 'warn' : 'enabled')) : 'disabled';
             const tenantHeroStatusText = user ? (isTenantAdmin ? '⚡ ADMIN' : (isGuest ? '⚠️ B2B GUEST' : '✅ MEMBER')) : '❌ NO USER';
@@ -7446,10 +7328,24 @@
                     }
                 });
 
+                const collapseBtn = row.querySelector('.pb-row-collapse-icon');
+                if (collapseBtn) {
+                    collapseBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const isNowCollapsed = row.classList.toggle('is-collapsed');
+                        row.classList.toggle('is-expanded', !isNowCollapsed);
+                        this.recalculateCausalityWires();
+                        requestAnimationFrame(() => this.recalculateCausalityWires());
+                        setTimeout(() => this.recalculateCausalityWires(), 60);
+                        setTimeout(() => this.recalculateCausalityWires(), 180);
+                        setTimeout(() => this.recalculateCausalityWires(), 300);
+                    });
+                }
+
                 // 点击锁定或切换：只有点击小卡片才触发因果图谱与导线连线
                 row.addEventListener('click', (e) => {
                     // 防止点击按钮等其他内嵌控件干扰
-                    if (e.target.closest('button, input, select, a')) return;
+                    if (e.target.closest('button, input, select, a, .pb-row-collapse-icon')) return;
 
                     // ⚡ 文本选区防御：若用户刚刚在卡片内划选了文本准备复制，绝不误触发点击锁定或切换
                     const selection = window.getSelection();
@@ -7461,12 +7357,28 @@
                         this._pinnedCausalityRow = null;
                         this._pinnedCausalityRowId = null;
                         clearCausalityVisuals();
+                        if (!row.classList.contains('is-hero-role')) {
+                            row.classList.add('is-collapsed');
+                            row.classList.remove('is-expanded');
+                        }
                     } else {
-                        // 点击新卡片 -> 锁定新卡片并展示因果脉冲连线与高亮图谱
+                        // 点击新卡片 -> 自动展开折叠卡片以完整展示详情
+                        if (row.classList.contains('is-collapsed')) {
+                            row.classList.remove('is-collapsed');
+                            row.classList.add('is-expanded');
+                        }
+                        // 锁定新卡片并展示因果脉冲连线与高亮图谱
                         this._pinnedCausalityRow = row;
                         this._pinnedCausalityRowId = rowId;
                         applyCausalityVisuals(row, true);
                     }
+
+                    // ⚡ 因果导线坐标多帧自适应校准：随着卡片折叠/展开动画与排版位移，逐帧平滑校准连线锚点！
+                    requestAnimationFrame(() => this.recalculateCausalityWires());
+                    setTimeout(() => this.recalculateCausalityWires(), 60);
+                    setTimeout(() => this.recalculateCausalityWires(), 180);
+                    setTimeout(() => this.recalculateCausalityWires(), 300);
+
                     e.stopPropagation();
                 });
             });

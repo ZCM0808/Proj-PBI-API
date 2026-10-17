@@ -2070,6 +2070,7 @@ class DeleteNotePayload(BaseModel):
 
 class NotePayload(BaseModel):
     filename: Optional[str] = None
+    old_filename: Optional[str] = None
     content: str
 
 
@@ -2327,7 +2328,7 @@ def _load_notes_metadata(notes_dir: str, root_dir: str) -> Dict[str, Dict[str, A
 
     return meta
 
-def _save_note_meta(notes_dir: str, filename: str, is_new: bool = False) -> None:
+def _save_note_meta(notes_dir: str, filename: str, is_new: bool = False, old_filename: Optional[str] = None) -> None:
     meta_file = os.path.join(notes_dir, ".notes_meta.json")
     meta: Dict[str, Dict[str, Any]] = {}
     if os.path.exists(meta_file):
@@ -2337,13 +2338,21 @@ def _save_note_meta(notes_dir: str, filename: str, is_new: bool = False) -> None
         except Exception:
             meta = {}
     now_ts = datetime.now().timestamp()
+
+    inherited_created_at = None
+    if old_filename and old_filename in meta:
+        inherited_created_at = meta[old_filename].get("created_at")
+        del meta[old_filename]
+
     if filename not in meta:
         meta[filename] = {
-            "created_at": now_ts,
+            "created_at": inherited_created_at or now_ts,
             "updated_at": now_ts
         }
     else:
-        if is_new or not meta[filename].get("created_at"):
+        if inherited_created_at:
+            meta[filename]["created_at"] = inherited_created_at
+        elif is_new or not meta[filename].get("created_at"):
             meta[filename]["created_at"] = now_ts
         meta[filename]["updated_at"] = now_ts
 
@@ -2366,11 +2375,18 @@ async def save_note(payload: NotePayload):
         if not filename.endswith(".md"):
             filename += ".md"
 
+        old_filename = None
+        if payload.old_filename and payload.old_filename.strip():
+            old_filename = os.path.basename(payload.old_filename.strip())
+            if not old_filename.endswith(".md"):
+                old_filename += ".md"
+
+        is_renaming = bool(old_filename and old_filename != filename)
         file_path = os.path.join(notes_dir, filename)
         is_new_file = not os.path.exists(file_path)
 
-        # ⚡ 核心幂等防御：若文件已存在且写入内容与磁盘完全一致，坚决不刷新 mtime 与更新时间戳，也不触发无谓的远端推送
-        if not is_new_file:
+        # ⚡ 核心幂等防御：若文件已存在且未重命名，且写入内容与磁盘完全一致，坚决不刷新 mtime 与更新时间戳，也不触发无谓的远端推送
+        if not is_new_file and not is_renaming:
             try:
                 with open(file_path, "r", encoding="utf-8") as f:
                     existing_content = f.read()
@@ -2379,12 +2395,24 @@ async def save_note(payload: NotePayload):
             except Exception:
                 pass
 
+        # 若是重命名操作：清理旧的本地物理文件
+        if is_renaming and old_filename:
+            old_file_path = os.path.join(notes_dir, old_filename)
+            if os.path.exists(old_file_path):
+                try:
+                    os.remove(old_file_path)
+                except Exception:
+                    pass
+
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(payload.content)
 
-        _save_note_meta(notes_dir, filename, is_new=is_new_file)
+        _save_note_meta(notes_dir, filename, is_new=is_new_file, old_filename=old_filename if is_renaming else None)
 
         # ⚡ 核心架构优化：全环境统一 100% 优先且只走 GitHub REST API (耗时仅 ~1 秒，自带 409 SHA 自动重试，彻底解决本地 Git CLI 网络超时卡死)
+        if is_renaming and old_filename:
+            await asyncio.to_thread(_delete_note_from_github_rest, old_filename)
+
         ok, msg = await asyncio.to_thread(_sync_note_to_github_rest, filename, payload.content)
         meta_file = os.path.join(notes_dir, ".notes_meta.json")
         if os.path.exists(meta_file):
@@ -2402,8 +2430,11 @@ async def save_note(payload: NotePayload):
             try:
                 subprocess.run(["git", "config", "user.email", "bot@render.com"], cwd=root_dir, check=False)
                 subprocess.run(["git", "config", "user.name", "Render Bot"], cwd=root_dir, check=False)
+                if is_renaming and old_filename:
+                    subprocess.run(["git", "rm", "-f", f"notes/{old_filename}"], cwd=root_dir, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 subprocess.run(["git", "add", f"notes/{filename}", "notes/.notes_meta.json"], cwd=root_dir, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                subprocess.run(["git", "commit", "-m", f"docs(notes): sync {filename}"], cwd=root_dir, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                commit_msg = f"docs(notes): rename {old_filename} to {filename}" if (is_renaming and old_filename) else f"docs(notes): sync {filename}"
+                subprocess.run(["git", "commit", "-m", commit_msg], cwd=root_dir, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             except Exception:
                 pass
 
@@ -2465,8 +2496,44 @@ def _invalidate_notes_cache() -> None:
     _NOTES_CACHE = None
     _NOTES_CACHE_TIME = 0.0
 
+@app.get("/api/note")
+async def get_single_note(filename: str):
+    """按需拉取单篇笔记完整 Markdown 正文内容 (轻量解耦 + 毫秒级单篇读取)"""
+    try:
+        root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        notes_dir = os.path.join(root_dir, "notes")
+        safe_fn = os.path.basename(filename.strip())
+        if not safe_fn.endswith(".md"):
+            safe_fn += ".md"
+        file_path = os.path.join(notes_dir, safe_fn)
+        if not os.path.exists(file_path):
+            return {"success": False, "error": f"Note '{safe_fn}' not found"}
+
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        meta = _load_notes_metadata(notes_dir, root_dir)
+        file_meta = meta.get(safe_fn, {})
+        u_time = float(file_meta.get("updated_at") or os.path.getmtime(file_path))
+        c_time = float(file_meta.get("created_at") or os.path.getctime(file_path))
+        if u_time < c_time:
+            u_time = c_time
+
+        return {
+            "success": True,
+            "filename": safe_fn,
+            "content": content,
+            "size": os.path.getsize(file_path),
+            "updated_at": u_time,
+            "created_at": c_time,
+            "mtime": u_time,
+            "ctime": c_time
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 @app.get("/api/search-notes")
-async def search_notes(q: str = ""):
+async def search_notes(q: str = "", include_content: bool = False):
     global _NOTES_CACHE, _NOTES_CACHE_TIME
     now = time.time()
     try:
@@ -2476,7 +2543,7 @@ async def search_notes(q: str = ""):
             return {"success": True, "results": []}
 
         # 0ms 内存缓存极速命中：无搜索过滤词且缓存未超时 (60s 内) 直接秒回，免除磁盘全量 IO 与元数据扫描
-        if not q and _NOTES_CACHE is not None and (now - _NOTES_CACHE_TIME < 60):
+        if not q and not include_content and _NOTES_CACHE is not None and (now - _NOTES_CACHE_TIME < 60):
             return {"success": True, "results": _NOTES_CACHE}
 
         meta = _load_notes_metadata(notes_dir, root_dir)
@@ -2484,8 +2551,17 @@ async def search_notes(q: str = ""):
         for filename in os.listdir(notes_dir):
             if filename.endswith(".md"):
                 file_path = os.path.join(notes_dir, filename)
-                with open(file_path, "r", encoding="utf-8") as f:
-                    content = f.read()
+                file_size = os.path.getsize(file_path)
+
+                # 优化读取：若不需要正文且无搜索词，仅需读取前 160 字符提取预览 snippet，极大减少磁盘 IO
+                if not q and not include_content:
+                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                        snippet_raw = f.read(160)
+                    content = ""
+                else:
+                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                        content = f.read()
+                    snippet_raw = content[:160]
 
                 file_meta = meta.get(filename, {})
                 c_time = float(file_meta.get("created_at") or os.path.getctime(file_path))
@@ -2506,22 +2582,24 @@ async def search_notes(q: str = ""):
                         if end < len(content):
                             snippet = snippet + "..."
                     else:
-                        snippet = content[:80].replace('\n', ' ') + ("..." if len(content) > 80 else "")
+                        snippet = snippet_raw[:80].replace('\n', ' ') + ("..." if len(snippet_raw) > 80 else "")
 
-                    results.append({
+                    item: Dict[str, Any] = {
                         "filename": filename,
                         "snippet": snippet,
                         "mtime": u_time,
                         "updated_at": u_time,
                         "ctime": c_time,
                         "created_at": c_time,
-                        "size": os.path.getsize(file_path),
-                        "content": content
-                    })
+                        "size": file_size,
+                    }
+                    if include_content:
+                        item["content"] = content
+                    results.append(item)
 
         # Sort by updated_at descending
         results.sort(key=lambda x: x["updated_at"], reverse=True)
-        if not q:
+        if not q and not include_content:
             _NOTES_CACHE = results
             _NOTES_CACHE_TIME = now
         return {"success": True, "results": results}
