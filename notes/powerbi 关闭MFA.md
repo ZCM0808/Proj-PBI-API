@@ -3,3 +3,4 @@
 3. 找到并点击 管理安全默认值（Manage security defaults）
 4. 将 安全默认值 从"已启用"改为 "已禁用（Disabled）"
 5. 点击 保存（Save）
+6.
