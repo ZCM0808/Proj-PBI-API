@@ -54,7 +54,16 @@
 - 底层利用 PowerShell 指令 `Get-CimInstance Win32_Process -Filter "Name = 'msmdsrv.exe'"` 动态扫描宿主机运行中的 Power BI Desktop 进程与工作区端口；
 - 通过 `pythonnet` 加载 Windows 本地动态链接库 `Microsoft.PowerBI.AdomdClient.dll` 直连本地端口执行原生 DAX 分析查询。
 
-### 3.4 Cloudflare Tunnel 极简直通与 Windows WMI 守护
+### 3.4 数据集分区管理 (Dataset Partitions Manager / DPM) 与跨刷新持久化
+- **精准物理切片与微徽章规范**:
+  - 增量刷新表的分区名称必须严格精确规范为按年切片的物理命名：{t_name}-2024、{t_name}-2025、{t_name}-2026（普通表为 {t_name}），杜绝模糊与中文伪命名；
+  - 弹窗矩阵采用极简高质微徽章：📦 归档 (2024)、🔄 滚动 (2025)、⚡ 增量 (2026)、📄 全量，列宽紧凑且字数严格小于 10 字符；
+  - 矩阵与全屏弹窗支持点击单元格一键复制与平滑滚动穿透防御。
+- **多级扫描与跨会话缓存持久化**:
+  - 遵循与 Global User & Permissions Manager 一致的交互标准：支持全部工作区、指定工作区或指定语义模型三种粒度扫描；
+  - 扫描结果在后端持久化固化至 data/dataset_partitions_cache.json，前端写入 localStorage；页面刷新后自动无感回填 (Hydrate)，仅在用户主动触发 Run/Scan 时拉取并覆盖最新数据。
+
+### 3.5 Cloudflare Tunnel 极简直通与 Windows WMI 守护
 - **极简直通策略**: 专属隧道 `pbi-api-tunnel`（ID: `7936bf8d-17cd-4131-a02f-17af58b4b054`）将 `pbi.carman.ccwu.cc` 直通本地 `127.0.0.1:8000`；坚决不启用外部邮箱验证码门禁，无缝直达系统原生登录页。
 - **Windows WMI 脱壳守护**: 采用 `cmd.exe /c "python src/main.py > logs\api_server.log 2>&1"` 由 WMI Create 拉起，断开父子进程链，终端关闭或编辑器重启依然后台永久常驻。
 - **开机自启自愈**: 配置 `HKCU:\Software\Microsoft\Windows\CurrentVersion\Run` 注册表原生启动项，实现免管理员权限、开机登录即自启。
@@ -92,3 +101,21 @@
    - 云端同步必须强制使用项目专属 [push.ps1](file:///D:/ZCM/Proj-PBI-API/push.ps1)，利用其 OpenSSL / SChannel 智能级联降级策略彻底防御网络连接重置。
 3. **前端缓存清理防御 (Cache Busting)**:
    - 修改静态原生文件（`.js` 或 `.css`）后，必须同步在引用的 `.html` 文件中修改硬编码版本号后缀（如 `?v=20261004_v01`），强制浏览器刷新缓存。
+
+---
+
+## 6. Power BI Desktop 本地 TOM 直连与 PBIP / TMDL 核心规程
+
+### 6.1 Power BI Desktop 本地 TOM 内存直连与热修改规程 (Local TOM Hot Patching)
+- **核心优势**: 彻底摆脱 `.pbix` 解包/重封包风险，直接挂载正在运行的 `msmdsrv.exe` 进程，修改通过 `$model.SaveChanges()` 毫秒级热生效进内存；仅在用户在 Desktop 手动按 `Ctrl+S` 时持久化固化。
+- **程序集定位与端口寻址规程**:
+  1. *进程识别*: 获取 `msmdsrv.exe` 进程，从命令行 `-s` 参数提取数据目录（支持 Store 商店沙盒版 `...\AnalysisServicesWorkspaces\`）；
+  2. *端口解析*: 读取 `$dataDir\msmdsrv.port.txt`，正则匹配纯数字提取当前监听端口；
+  3. *程序集载入*: 从 Desktop 的 `bin` 目录加载 `Microsoft.AnalysisServices.Server.Core.dll` 与 `Microsoft.AnalysisServices.Server.Tabular.dll`；
+  4. *连接与操作标准*: `New-Object Microsoft.AnalysisServices.Tabular.Server; $server.Connect("localhost:$port"); $db = $server.Databases[0]; $model = $db.Model`，完成表/度量值/分区修改后调用 `$model.SaveChanges()`，退出时 `$server.Disconnect()`。
+
+### 6.2 Power BI / PBIP 核心规程
+- `compatibilityLevel` 必须与本地 Power BI Desktop/SSAS 引擎版本完全一致（如 `1606`），严禁写入更低版本以防降级报错。
+- TMDL 列定义语法：M 导入表底层映射列仅使用 `sourceColumn: 列名`；计算表推导列仅使用 `isNameInferred` 与 `sourceColumn: [列名]`，非 DAX 计算列严禁误加 `expression:`。
+- AI 具备通过代码直接操作 PBIP/PBIR 底层文件（`visuals/`、`visual.json`）自动生成包含多表头矩阵等复杂图表的能力，脱离 UI 100% 构建。
+- **零 UI 手动操作原则**: 严禁要求用户在图形界面手动配置/连线/点击，AI 必须承担全部责任通过修改底层代码、配置文件或自动化脚本解决一切。

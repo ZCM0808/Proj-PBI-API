@@ -1374,22 +1374,168 @@ textarea:focus {
         justify-content: center !important;
     }
 
-    .app-container {
-        flex-direction: column;
-        height: auto;
-        min-height: 100vh;
-    }
-
-    .sidebar {
+    /* ═══════════════════════════════════════════════════════════════
+       ⚡ 全局顶部控制台移动端横向流式滑移与防挤压重叠规范
+       ═══════════════════════════════════════════════════════════════ */
+    #global-topbar {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        overflow: visible !important;
+        transform: none !important; /* 彻底解除包含块对浮层的坐标系与裁剪劫持 */
         width: 100% !important;
-        height: 45vh; /* 移动端顶部占 45% 屏幕高度 */
-        min-height: 350px;
-        min-width: 100% !important;
-        overflow-y: auto;
-        z-index: 101;
+        min-width: 1122px !important;
+        height: 38px !important;
+        max-height: 38px !important;
+        white-space: nowrap !important;
+        gap: 8px !important;
+        padding: 2px 4px !important;
+        box-sizing: border-box !important;
+        z-index: 2000 !important;
     }
 
-    /* 移动端改为上下布局，取消原有的鼠标拖拽条 */
+    /* 顶栏左侧卡片组：脱离挤压弹性，按内容完整展开 */
+    .gtb-group {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 6px !important;
+        flex-shrink: 0 !important;
+        min-width: max-content !important;
+    }
+
+    /* 单个顶栏卡片：赋予最小与安全宽度，支持移动端点击响应与反馈 */
+    .gtb-item {
+        flex: none !important;
+        flex-shrink: 0 !important;
+        width: auto !important;
+        min-width: 145px !important;
+        max-width: 220px !important;
+        height: 32px !important;
+        position: relative !important;
+        cursor: pointer !important;
+        touch-action: manipulation !important;
+        user-select: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+    }
+
+    .gtb-ws-trigger {
+        min-width: 85px !important;
+        flex: 1 !important;
+        cursor: pointer !important;
+    }
+
+    .gtb-label {
+        flex-shrink: 0 !important;
+        font-size: 0.68rem !important;
+    }
+
+    .gtb-ws-display-text {
+        font-size: 0.70rem !important;
+        max-width: 100px !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+    }
+
+    /* 顶栏右侧快捷功能区（计时器、便签、刷新、全屏）：自动推至最右侧，像素级严格对齐下方组件右边缘 */
+    #global-topbar > div:last-child {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        flex-shrink: 0 !important;
+        margin-left: auto !important;
+    }
+
+    #gtb-daily-limit {
+        min-width: 75px !important;
+        flex: none !important;
+        height: 32px !important;
+    }
+
+    .gtb-icon-btn {
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+        flex-shrink: 0 !important;
+        cursor: pointer !important;
+    }
+
+    /* 移动端顶栏下拉浮层面板：绝对定位贴合卡片自然弹出，彻底免疫裁剪 */
+    .gtb-ws-dropdown {
+        position: absolute !important;
+        top: calc(100% + 4px) !important;
+        left: 0 !important;
+        right: auto !important;
+        min-width: 280px !important;
+        max-width: min(330px, calc(100vw - 20px)) !important;
+        max-height: 72vh !important;
+        z-index: 999999 !important;
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.85), 0 0 1px 1px var(--overlay-10) !important;
+    }
+
+    /* 全局放开横向平移支持，允许手机端自由左右滑动探索全貌 */
+    html, body {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        width: 100% !important;
+    }
+
+    .app-container {
+        display: flex !important;
+        flex-direction: column !important;
+        height: 100vh !important;
+        min-height: 100vh !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        touch-action: pan-x pan-y !important;
+        padding: 4px 6px !important;
+    }
+
+    .app-main-layout {
+        display: flex !important;
+        flex-direction: row !important;
+        flex: 1 !important;
+        min-height: 0 !important;
+        width: max-content !important;
+        min-width: 1122px !important;
+        overflow-x: visible !important;
+        overflow-y: hidden !important;
+        touch-action: pan-x pan-y !important;
+    }
+
+    /* 侧边栏保持优雅紧凑宽度，不再强制占满 100% 把工作区挤出视口 */
+    .sidebar {
+        width: 280px !important;
+        min-width: 280px !important;
+        height: 100% !important;
+        flex-shrink: 0 !important;
+        overflow-y: auto !important;
+        z-index: 10 !important;
+    }
+
+    #workspace-container {
+        min-width: 780px !important;
+        flex-shrink: 0 !important;
+        height: 100% !important;
+        overflow-x: visible !important;
+        overflow-y: hidden !important;
+        touch-action: pan-x pan-y !important;
+    }
+
+    /* 沉浸全屏模式下工作区占满移动视口 */
+    body.zen-mode #workspace-container {
+        min-width: 100% !important;
+        width: 100% !important;
+    }
+
+    /* 移动端蓝图视口全手势硬件加速 */
+    .pb-canvas-viewport {
+        touch-action: none !important;
+        min-height: 480px !important;
+    }
 
     .resizer, .vertical-resizer {
         display: none !important;
@@ -1591,29 +1737,155 @@ textarea:focus {
 
 .modal-header h3 { margin: 0; font-size: 1.1rem; }
 
+/* ==========================================================================
+   全局弹窗标题复制与按钮外观一致性规范 (Modal UI Consistency Standard)
+   ========================================================================== */
+
+/* 统一弹窗关闭按钮 (Close Button) 视觉与动效表现 */
 .close-btn { 
-    width: 28px; 
-    height: 28px; 
-    border-radius: 50%; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    background: var(--overlay-5); 
-    border: 1px solid var(--overlay-10); 
-    color: var(--text-secondary); 
-    cursor: pointer; 
-    transition: all 0.2s; 
-    padding: 0;
+    width: 28px !important; 
+    height: 28px !important; 
+    border-radius: 6px !important; 
+    display: inline-flex !important; 
+    align-items: center !important; 
+    justify-content: center !important; 
+    background: var(--overlay-5) !important; 
+    border: 1px solid var(--overlay-10) !important; 
+    color: var(--text-secondary) !important; 
+    cursor: pointer !important; 
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important; 
+    padding: 0 !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
 }
 
 .close-btn:hover { 
-    background: rgba(239,68,68,0.2); 
-    color: #ef4444; 
+    background: rgba(239, 68, 68, 0.18) !important; 
+    color: #ef4444 !important; 
+    border-color: rgba(239, 68, 68, 0.3) !important;
+    transform: scale(1.06) !important;
+}
+
+.close-btn:active {
+    transform: scale(0.94) !important;
 }
 
 .close-btn svg {
-    width: 14px;
-    height: 14px;
+    width: 14px !important;
+    height: 14px !important;
+    pointer-events: none !important;
+}
+
+/* 统一弹窗标题文本与复制按钮 (Modal Title Copy & Streamline) */
+.modal-title-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: calc(100% - 320px);
+    min-width: 0;
+    overflow: hidden;
+}
+
+.modal-title-text {
+    font-size: 1.02rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    cursor: text !important;
+    letter-spacing: -0.01em;
+}
+
+.modal-title-copy-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 24px !important;
+    height: 24px !important;
+    border-radius: 5px !important;
+    background: var(--overlay-5) !important;
+    border: 1px solid var(--overlay-10) !important;
+    color: var(--text-secondary) !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    flex-shrink: 0 !important;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.modal-title-copy-btn:hover {
+    background: var(--accent) !important;
+    color: var(--accent-text) !important;
+    border-color: var(--accent) !important;
+    transform: scale(1.08) !important;
+}
+
+.modal-title-copy-btn:active {
+    transform: scale(0.92) !important;
+}
+
+.modal-title-copy-btn.copied {
+    background: rgba(16, 185, 129, 0.2) !important;
+    color: #10b981 !important;
+    border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+/* 统一弹窗底部操作按钮 (Modal Footer Buttons Consistency) */
+.modal-footer button,
+.modal-content .btn-action-primary,
+.modal-content .btn-cancel,
+.modal-content .btn-pipeline {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    height: 32px !important;
+    padding: 0 14px !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    box-sizing: border-box !important;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.modal-footer .btn-action-primary,
+.modal-content .btn-action-primary {
+    background: var(--accent) !important;
+    color: var(--accent-text) !important;
+    border: 1px solid var(--accent) !important;
+}
+
+.modal-footer .btn-action-primary:hover,
+.modal-content .btn-action-primary:hover {
+    filter: brightness(1.1) !important;
+    box-shadow: 0 0 12px var(--accent-glow) !important;
+    transform: translateY(-1px) !important;
+}
+
+.modal-footer .btn-cancel,
+.modal-content .btn-cancel,
+.modal-footer .btn-wf-secondary {
+    background: var(--overlay-8, rgba(255, 255, 255, 0.08)) !important;
+    border: 1px solid var(--panel-border) !important;
+    color: var(--text-secondary) !important;
+}
+
+.modal-footer .btn-cancel:hover,
+.modal-content .btn-cancel:hover,
+.modal-footer .btn-wf-secondary:hover {
+    background: var(--overlay-15, rgba(255, 255, 255, 0.15)) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--text-secondary) !important;
+    transform: translateY(-1px) !important;
+}
+
+.modal-footer button:active,
+.modal-content .btn-action-primary:active,
+.modal-content .btn-cancel:active {
+    transform: scale(0.97) !important;
 }
 
 @keyframes modalFadeOut {
@@ -2220,6 +2492,7 @@ json-viewer {
 }
 
 /* Modal Footer Standardized Action Buttons (Option B) */
+.modal-footer .btn-modal-footer-action,
 .btn-modal-footer-action {
     height: 32px !important;
     width: 34px !important;
@@ -2229,11 +2502,23 @@ json-viewer {
     max-height: 32px !important;
     padding: 0 !important;
     border-radius: 6px !important;
-    display: flex !important;
+    display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     box-sizing: border-box !important;
     flex-shrink: 0 !important;
+}
+
+.modal-footer .btn-modal-footer-action svg,
+.btn-modal-footer-action svg {
+    width: 15px !important;
+    height: 15px !important;
+    min-width: 15px !important;
+    min-height: 15px !important;
+    max-width: 15px !important;
+    max-height: 15px !important;
+    flex-shrink: 0 !important;
+    display: block !important;
 }
 
 /* Modern Input Styling */
@@ -2515,7 +2800,12 @@ body.light-theme .note-history-item.active .note-item-filename,
 .note-editor-wrapper .CodeMirror-lines {
     min-width: 0 !important;
     max-width: 100% !important;
-    padding: 6px 0 !important;
+    padding: 6px 0 24px 0 !important;
+}
+
+.note-right-panel {
+    min-height: 0 !important;
+    overflow: hidden !important;
 }
 
 .note-editor-wrapper .CodeMirror-wrap pre.CodeMirror-line,
@@ -4465,35 +4755,112 @@ div:has(> .collapsed-console) > .wf-copy-btn,
     animation: flash-success 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-/* Hover-visible Action Buttons for PBI Embed Container */
+/* Interactive Viewport, Mobile Gesture & Action Buttons for PBI Embed Container */
 #pbi-embed-wrapper {
     position: relative;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y;
+    border-radius: 8px;
+    max-width: 100%;
 }
-.pbi-action-btn {
-    background: var(--panel-bg);
-    color: var(--text-secondary);
-    border: 1px solid var(--panel-border);
-    border-radius: 6px;
-    padding: 6px;
-    cursor: pointer;
-    opacity: 0;
-    transform: scale(0.9);
-    transition: opacity 0.25s ease, transform 0.25s ease, background 0.2s ease, color 0.2s ease;
+#pbi-embed-wrapper::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+#pbi-embed-wrapper::-webkit-scrollbar-thumb {
+    background: var(--overlay-20, rgba(255, 255, 255, 0.2));
+    border-radius: 3px;
+}
+#pbi-embed-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+#pbi-embed-canvas-layer {
+    display: block;
+    position: relative;
+    transform-origin: top left;
+    transition: width 0.15s ease-out, height 0.15s ease-out;
+    min-width: 100%;
+    box-sizing: border-box;
+}
+#pbi-embed-container {
+    transform-origin: top left;
+    transition: transform 0.15s ease-out;
+    width: 100%;
+    height: 100%;
+}
+.pbi-embed-actions {
+    position: sticky;
+    top: 8px;
+    right: 8px;
+    margin-left: auto;
+    width: fit-content;
     display: flex;
     align-items: center;
+    gap: 6px;
+    z-index: 25;
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 4px 6px;
+    border-radius: 8px;
+    border: 1px solid var(--panel-border);
+    box-shadow: 0 4px 16px var(--shadow-base, rgba(0, 0, 0, 0.2));
+}
+.pbi-zoom-badge {
+    display: inline-flex;
+    align-items: center;
     justify-content: center;
-    backdrop-filter: blur(8px);
-    box-shadow: 0 4px 12px var(--shadow-base);
+    background: var(--panel-bg);
+    color: var(--text-primary);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 3px 7px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    font-family: monospace;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+    min-width: 42px;
+    height: 26px;
+    box-sizing: border-box;
 }
-#pbi-embed-wrapper:hover .pbi-action-btn {
-    opacity: 1;
-    transform: scale(1);
-}
-.pbi-action-btn:hover {
-    background: var(--accent);
-    color: var(--accent-text);
+.pbi-zoom-badge:hover {
     border-color: var(--accent);
-    box-shadow: 0 0 12px var(--accent-glow);
+    color: var(--accent);
+}
+#pbi-embed-wrapper.pbi-pseudo-fullscreen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    z-index: 999999 !important;
+    background: var(--bg-primary, #0f172a) !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+}
+@media (max-width: 768px) {
+    #pbi-embed-wrapper {
+        max-height: 82vh !important;
+    }
+    #pbi-embed-wrapper.pbi-desktop-mode #pbi-embed-canvas-layer {
+        min-width: 1050px !important;
+        min-height: 590px !important;
+    }
+    #pbi-embed-wrapper.pbi-desktop-mode #pbi-embed-container {
+        min-width: 1050px !important;
+        height: 590px !important;
+        aspect-ratio: auto !important;
+    }
+    .pbi-action-btn {
+        opacity: 1 !important;
+        padding: 6px !important;
+    }
 }
 @keyframes spin {
     0% { transform: rotate(0deg); }
@@ -7042,6 +7409,182 @@ body.light-theme .gtb-auth-card.selected,
     color: var(--text-primary);
 }
 
+/* ==========================================================================
+   ⚡ DPM 目标范围三级胶囊卡片 (DPM Audit Target Scope Triple Pills)
+   ========================================================================== */
+.wf-dpm-scope-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.wf-dpm-scope-pill {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    background: var(--input-bg);
+    border: 1.5px solid var(--overlay-10);
+    border-radius: 8px;
+    cursor: pointer;
+    position: relative;
+    user-select: none;
+    min-width: 0;
+    overflow: hidden;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.wf-dpm-scope-pill:hover {
+    background: var(--input-bg-light);
+    border-color: var(--overlay-30);
+    transform: translateY(-1px);
+}
+
+.wf-dpm-scope-pill.active {
+    background: rgba(99, 102, 241, 0.08);
+    border-color: #6366f1;
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.25);
+}
+
+.wf-dpm-scope-pill#wf-dpm-scope-workspace.active {
+    background: rgba(59, 130, 246, 0.08);
+    border-color: #3b82f6;
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.25);
+}
+
+.wf-dpm-scope-pill#wf-dpm-scope-dataset.active {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: #10b981;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
+}
+
+.wf-dpm-scope-radio {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.wf-dpm-scope-pill.active .wf-dpm-scope-radio {
+    border-color: #6366f1;
+}
+
+.wf-dpm-scope-pill#wf-dpm-scope-workspace.active .wf-dpm-scope-radio {
+    border-color: #3b82f6;
+}
+
+.wf-dpm-scope-pill#wf-dpm-scope-dataset.active .wf-dpm-scope-radio {
+    border-color: #10b981;
+}
+
+.wf-dpm-radio-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: transparent;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: scale(0);
+}
+
+.wf-dpm-scope-pill.active .wf-dpm-radio-dot {
+    background: #6366f1;
+    transform: scale(1);
+}
+
+.wf-dpm-scope-pill#wf-dpm-scope-workspace.active .wf-dpm-radio-dot {
+    background: #3b82f6;
+    transform: scale(1);
+}
+
+.wf-dpm-scope-pill#wf-dpm-scope-dataset.active .wf-dpm-radio-dot {
+    background: #10b981;
+    transform: scale(1);
+}
+
+.wf-dpm-scope-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+}
+
+.wf-dpm-scope-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+    min-width: 0;
+}
+
+.wf-dpm-scope-tag {
+    font-size: 0.64rem;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.wf-dpm-scope-tag.tag-all {
+    background: rgba(167, 139, 250, 0.16);
+    color: #a78bfa;
+    border: 1px solid rgba(167, 139, 250, 0.3);
+}
+
+.wf-dpm-scope-tag.tag-ws {
+    background: rgba(59, 130, 246, 0.16);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.wf-dpm-scope-tag.tag-ds {
+    background: rgba(16, 185, 129, 0.16);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.wf-dpm-scope-detail {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.wf-dpm-scope-detail b {
+    color: var(--text-primary);
+}
+
+/* 工作流右侧面板所有标题强制允许鼠标划选与复制 (Supreme Selection & Copy Permission) */
+.wf-detail-board > .modal-header,
+.wf-detail-board > .modal-header > div,
+.wf-detail-board > .modal-header #wf-board-title,
+#wf-board-title,
+.wf-step-title,
+.wf-step-header,
+.wf-step-header span.wf-step-title,
+.wf-config-pane .wf-step-title,
+.wf-config-pane h3,
+.wf-config-pane h4 {
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
+    cursor: text !important;
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    🌟 Global Toast Notification System (全局轻量悬浮提示组件)
    ═══════════════════════════════════════════════════════════════════ */
@@ -7146,6 +7689,7 @@ body.light-theme .gtb-auth-card.selected,
    ========================================================================== */
 
 .pb-canvas-viewport {
+    touch-action: none !important;
     background-color: var(--pb-canvas-bg, #0b0f19) !important;
     background-image: 
         radial-gradient(var(--pb-canvas-grid-dot, rgba(255, 255, 255, 0.08)) 1px, transparent 1px),
@@ -8361,8 +8905,10 @@ body.light-theme .pb-view-tab-btn.active,
     position: relative;
     height: calc(100% - 44px);
     padding: 4px 12px 10px 12px;
-    overflow-x: auto;
+    overflow-x: auto !important;
     overflow-y: hidden;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-x pan-y !important;
     box-sizing: border-box;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
@@ -11016,3 +11562,331 @@ body.light-theme .laya-toggle-slider:before,
 
 
 
+
+/* Modal resize handles interactive feedback */
+.modal-resize-handle {
+    transition: background 0.15s ease;
+}
+.modal-resize-handle.resizer-b:hover,
+.modal-resize-handle.resizer-b:active {
+    background: rgba(242, 200, 17, 0.45);
+}
+
+
+/* ==========================================================================
+   Global Topbar Refresh Micro-Shimmer & Target Indication Animation
+   ========================================================================== */
+@keyframes gtbRefreshPulse {
+    0%, 100% {
+        border-color: var(--gtb-shimmer-color, rgba(56, 189, 248, 0.45));
+        box-shadow: 0 0 0 1px var(--gtb-shimmer-color, rgba(56, 189, 248, 0.3)), 0 0 8px var(--gtb-shimmer-glow, rgba(56, 189, 248, 0.15));
+        background-color: var(--input-bg);
+    }
+    50% {
+        border-color: var(--gtb-shimmer-color, #38bdf8);
+        box-shadow: 0 0 0 2px var(--gtb-shimmer-color, rgba(56, 189, 248, 0.7)), 0 0 16px var(--gtb-shimmer-glow, rgba(56, 189, 248, 0.35));
+        background-color: var(--gtb-shimmer-bg, rgba(56, 189, 248, 0.10));
+    }
+}
+
+@keyframes gtbTextPulse {
+    0%, 100% {
+        opacity: 0.65;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+.gtb-item.gtb-refresh-shimmer {
+    position: relative !important;
+    animation: gtbRefreshPulse 1.0s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
+    pointer-events: none;
+}
+
+.gtb-item.gtb-refresh-shimmer .gtb-label,
+.gtb-item.gtb-refresh-shimmer .gtb-ws-trigger {
+    animation: gtbTextPulse 1.0s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
+}
+
+#gtb-auth-box.gtb-refresh-shimmer {
+    --gtb-shimmer-color: #38bdf8;
+    --gtb-shimmer-glow: rgba(56, 189, 248, 0.45);
+    --gtb-shimmer-bg: rgba(56, 189, 248, 0.12);
+}
+
+#gtb-tenant-box.gtb-refresh-shimmer {
+    --gtb-shimmer-color: #a78bfa;
+    --gtb-shimmer-glow: rgba(167, 139, 250, 0.45);
+    --gtb-shimmer-bg: rgba(167, 139, 250, 0.12);
+}
+
+#gtb-workspace-box.gtb-refresh-shimmer {
+    --gtb-shimmer-color: #60a5fa;
+    --gtb-shimmer-glow: rgba(96, 165, 250, 0.45);
+    --gtb-shimmer-bg: rgba(96, 165, 250, 0.12);
+}
+
+#gtb-dataset-box.gtb-refresh-shimmer {
+    --gtb-shimmer-color: #34d399;
+    --gtb-shimmer-glow: rgba(52, 211, 153, 0.45);
+    --gtb-shimmer-bg: rgba(52, 211, 153, 0.12);
+}
+
+#gtb-report-box.gtb-refresh-shimmer {
+    --gtb-shimmer-color: #fbbf24;
+    --gtb-shimmer-glow: rgba(251, 191, 36, 0.45);
+    --gtb-shimmer-bg: rgba(251, 191, 36, 0.12);
+}
+
+.gtb-item.gtb-refresh-done {
+    transition: all 0.5s ease-out !important;
+    border-color: rgba(52, 211, 153, 0.8) !important;
+    box-shadow: 0 0 0 1.5px rgba(52, 211, 153, 0.6), 0 0 12px rgba(52, 211, 153, 0.25) !important;
+    background-color: rgba(52, 211, 153, 0.08) !important;
+}
+
+/* ==========================================================================
+   Laya Intent Details Popover & Info Button
+   ========================================================================== */
+.laya-intent-info-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.btn-laya-info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--overlay-8);
+    border: 1px solid var(--panel-border);
+    color: var(--accent);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    padding: 0;
+}
+
+.btn-laya-info-icon:hover,
+.laya-intent-info-wrapper:hover .btn-laya-info-icon,
+.laya-intent-popover.is-open ~ .btn-laya-info-icon,
+.laya-intent-info-wrapper:has(.laya-intent-popover.is-open) .btn-laya-info-icon {
+    background: var(--accent-glow, rgba(99, 102, 241, 0.2));
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 8px var(--accent-glow, rgba(99, 102, 241, 0.4));
+    transform: scale(1.08);
+}
+
+/* Laya 意图信息弹窗：全变量主题化适配 */
+.laya-intent-popover {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    width: 320px;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    box-shadow: 0 12px 30px var(--shadow-dark, rgba(0, 0, 0, 0.3)), 0 0 0 1px var(--panel-border);
+    z-index: 10000;
+    pointer-events: auto;
+    font-size: 0.74rem;
+    color: var(--text-primary);
+    backdrop-filter: blur(16px);
+    animation: layaFadeInSlide 0.2s ease-out forwards;
+}
+
+.laya-intent-info-wrapper:hover .laya-intent-popover,
+.laya-intent-popover:hover,
+.laya-intent-popover.is-open {
+    display: block;
+}
+
+.laya-popover-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.laya-popover-title {
+    font-weight: 700;
+    font-size: 0.76rem;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.laya-popover-badge {
+    font-size: 0.62rem;
+    font-weight: 600;
+    background: var(--overlay-10);
+    color: var(--accent);
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--panel-border);
+}
+
+.laya-popover-reason {
+    font-size: 0.70rem;
+    color: var(--text-primary);
+    background: var(--input-bg);
+    padding: 6px 8px;
+    border-radius: 5px;
+    border-left: 3px solid var(--accent);
+    border-top: 1px solid var(--panel-border);
+    border-right: 1px solid var(--panel-border);
+    border-bottom: 1px solid var(--panel-border);
+    margin-bottom: 8px;
+    line-height: 1.45;
+    word-break: break-word;
+}
+
+.laya-popover-divider {
+    height: 1px;
+    background: var(--overlay-10);
+    margin: 6px 0;
+}
+
+.laya-popover-section-title {
+    font-size: 0.66rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.laya-popover-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.laya-prob-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: background 0.15s ease;
+}
+
+.laya-prob-row:hover {
+    background: var(--overlay-8);
+}
+
+.laya-prob-row.top-match {
+    background: var(--accent-glow, rgba(99, 102, 241, 0.12));
+    border: 1px solid var(--accent);
+}
+
+.laya-prob-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.70rem;
+}
+
+.laya-prob-name {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.laya-prob-pct {
+    font-family: 'Fira Code', monospace;
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 0.68rem;
+}
+
+.laya-prob-bar-bg {
+    width: 100%;
+    height: 4px;
+    background: var(--overlay-10);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.laya-prob-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.laya-prob-row.top-match .laya-prob-bar-fill {
+    background: var(--accent-hover, var(--accent));
+}
+
+.laya-prob-desc {
+    font-size: 0.62rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.25;
+}
+
+/* 🌟 明亮主题专属增强 (Light Theme Overrides) */
+[data-theme="light"] .laya-intent-popover {
+    background: #ffffff;
+    border: 1px solid rgba(148, 163, 184, 0.45);
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12), 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .laya-popover-reason {
+    background: #f8fafc;
+    color: #0f172a;
+    border-color: #e2e8f0;
+    border-left-color: #2563eb;
+}
+
+[data-theme="light"] .laya-prob-row.top-match {
+    background: rgba(37, 99, 235, 0.08);
+    border-color: rgba(37, 99, 235, 0.4);
+}
+
+[data-theme="light"] .laya-prob-pct {
+    color: #2563eb;
+}
+
+[data-theme="light"] .laya-prob-bar-fill {
+    background: #2563eb;
+}
+
+[data-theme="light"] .laya-prob-row.top-match .laya-prob-bar-fill {
+    background: #1d4ed8;
+}
+
+[data-theme="light"] .btn-laya-info-icon {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #2563eb;
+}
+
+[data-theme="light"] .btn-laya-info-icon:hover {
+    background: #e0f2fe;
+    border-color: #2563eb;
+}
+
+/* Laya 搜索框空输入震颤反馈 */
+@keyframes layaInputShake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-4px); }
+    40%, 80% { transform: translateX(4px); }
+}
+.laya-input-shake {
+    animation: layaInputShake 0.4s ease-in-out !important;
+    border-color: #818cf8 !important;
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.45) !important;
+}

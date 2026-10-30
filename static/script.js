@@ -251,14 +251,14 @@ window.makeResizable = function(modalContent, minW = 400, minH = 300, onResizeCa
         });
     };
 
-    addResizer('resizer-r', 'e-resize', 'right: -4px; top: 0; width: 8px; height: 100%;');
-    addResizer('resizer-b', 's-resize', 'bottom: -4px; left: 0; height: 8px; width: 100%;');
-    addResizer('resizer-l', 'w-resize', 'left: -4px; top: 0; width: 8px; height: 100%;');
-    addResizer('resizer-t', 'n-resize', 'top: -4px; left: 0; height: 8px; width: 100%;');
-    addResizer('resizer-br', 'se-resize', 'bottom: -4px; right: -4px; width: 14px; height: 14px; z-index: 106;');
-    addResizer('resizer-bl', 'sw-resize', 'bottom: -4px; left: -4px; width: 14px; height: 14px; z-index: 106;');
-    addResizer('resizer-tr', 'ne-resize', 'top: -4px; right: -4px; width: 14px; height: 14px; z-index: 106;');
-    addResizer('resizer-tl', 'nw-resize', 'top: -4px; left: -4px; width: 14px; height: 14px; z-index: 106;');
+    addResizer('resizer-r', 'e-resize', 'right: 0px; top: 0; width: 10px; height: 100%; z-index: 1000;');
+    addResizer('resizer-b', 's-resize', 'bottom: 0px; left: 0; height: 10px; width: 100%; z-index: 1000;');
+    addResizer('resizer-l', 'w-resize', 'left: 0px; top: 0; width: 10px; height: 100%; z-index: 1000;');
+    addResizer('resizer-t', 'n-resize', 'top: 0px; left: 0; height: 10px; width: 100%; z-index: 1000;');
+    addResizer('resizer-br', 'se-resize', 'bottom: 0px; right: 0px; width: 16px; height: 16px; z-index: 1001;');
+    addResizer('resizer-bl', 'sw-resize', 'bottom: 0px; left: 0px; width: 16px; height: 16px; z-index: 1001;');
+    addResizer('resizer-tr', 'ne-resize', 'top: 0px; right: 0px; width: 16px; height: 16px; z-index: 1001;');
+    addResizer('resizer-tl', 'nw-resize', 'top: 0px; left: 0px; width: 16px; height: 16px; z-index: 1001;');
 };
 
 // ─── Global Pin-to-Top State Helpers (Workflows & API Categories) ───
@@ -938,7 +938,7 @@ const WF_PARAM_FIELDS = {
 
     report_view_count:         ['wf-rvc-workspace', 'wf-rvc-report', 'wf-rvc-start', 'wf-rvc-end'],
 
-    dataset_partitions_manager:[],
+    dataset_partitions_manager:['wf-dpm-workspace', 'wf-dpm-dataset'],
 
     xmla_interactive_refresh:     ['wf-xmla-endpoint', 'wf-xmla-token', 'wf-xmla-dataset', 'wf-xmla-table', 'wf-xmla-partition', 'wf-xmla-type'],
 
@@ -2910,7 +2910,9 @@ window.renderEnvIdentity = async function() {
                         authModeText.textContent = '现代交互认证';
                         authModeText.style.color = '#38bdf8';
                     }
-                    authModeEl.title = `当前认证: 微软现代交互认证 (OAuth 2.0 PKCE · 90天自动续期) - ${userName}`;
+                    const dynamicPolicy = (data && data.policy_label) ? data.policy_label : '余30/共30';
+                    const lastAuthTip = (data && data.last_auth_date) ? ` · 上次核验: ${data.last_auth_date}` : '';
+                    authModeEl.title = `当前认证: 微软现代交互认证 (OAuth 2.0 PKCE · ${dynamicPolicy}${lastAuthTip}) - ${userName}`;
                 } else if (data.auth_mode === 'personal') {
                     const userName = data.username || 'User';
                     if (authModeIcon) authModeIcon.textContent = '👤';
@@ -2953,6 +2955,11 @@ window.renderEnvIdentity = async function() {
 window.renderGlobalTopbar = async function() {
     const topbar = document.getElementById('global-topbar');
     if (!topbar) return;
+
+    // ⚡ 0ms 瞬时预热直出：先从本地持久化缓存立即渲染工作区、模型与报表，彻底杜绝刷新页面时的空白或闪烁！
+    if (typeof window.updateGlobalTopbarDropdowns === 'function') {
+        window.updateGlobalTopbarDropdowns();
+    }
 
     // 0. 0ms 瞬时预热直出：先从本地持久化缓存恢复租户名称，彻底杜绝刷新页面时闪烁为 "加载中..." 或一串 ID
     const initialTenantNameEl = document.getElementById('gtb-tenant-name');
@@ -3058,7 +3065,9 @@ window.renderGlobalTopbar = async function() {
         const activeType = isInteractive ? 'interactive' : (authMode === 'personal' ? 'personal' : 'service_principal');
         const spLabel = appName ? `SP · ${appName}` : (clientId ? `SP · ${clientId.slice(0, 8)}...` : 'Service Principal');
         const personalLabel = username ? `个人 · ${username}` : 'Personal (Delegated User)';
-        const interactiveLabel = username ? `交互 · ${username}` : '微软现代交互 (90天长效)';
+        const interactiveLabel = username ? `交互 · ${username}` : '微软现代交互 (长效免密)';
+        const dynamicPolicy = (authInfo && authInfo.policy_label) ? authInfo.policy_label : '余30/共30';
+        const lastAuthTip = (authInfo && authInfo.last_auth_date) ? ` (上次核验: ${authInfo.last_auth_date})` : '';
 
         const authBox = document.getElementById('gtb-auth-box');
         if (authBox) {
@@ -3072,7 +3081,7 @@ window.renderGlobalTopbar = async function() {
         if (authDisplayText) {
             authDisplayText.textContent = isInteractive ? interactiveLabel : (authMode === 'personal' ? personalLabel : spLabel);
             authDisplayText.title = isInteractive
-                ? `微软现代交互认证: ${username || '扫码/通行密钥'} · 90天自动续期`
+                ? `微软现代交互认证: ${username || '扫码/通行密钥'} · ${dynamicPolicy}${lastAuthTip}`
                 : (authMode === 'personal' 
                     ? `传统个人账密认证: ${username || 'Delegated User'}`
                     : `Azure 服务主体认证: ${appName || clientId || 'Client ID + Secret'}`);
@@ -3095,7 +3104,10 @@ window.renderGlobalTopbar = async function() {
                         <span style="color: #38bdf8; font-size: 1rem;">🌐</span>
                         <div style="display: flex; flex-direction: column; min-width: 0;">
                             <span style="font-size: 0.74rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">微软现代交互认证 (推荐)</span>
-                            <span style="font-size: 0.65rem; color: #38bdf8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${username || '扫码/通行密钥'} · 90天自动续期</span>
+                            <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+                                <span style="font-size: 0.65rem; color: #38bdf8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 175px;">${username || '扫码/通行密钥'}</span>
+                                <span style="font-size: 0.62rem; color: #38bdf8; background: rgba(56, 189, 248, 0.15); padding: 1px 5px; border-radius: 4px; flex-shrink: 0; white-space: nowrap;">${dynamicPolicy}</span>
+                            </div>
                         </div>
                     </div>
                     <span class="gtb-auth-badge" style="background: ${isInteractive ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.05)'}; color: ${isInteractive ? '#38bdf8' : 'var(--text-secondary)'}; padding: 3px 6px; display: inline-flex; align-items: center;" title="${isInteractive ? '当前激活模式' : '切换至此认证主体'}">${isInteractive ? SVG_AUTH_ACTIVE : SVG_AUTH_SWITCH}</span>
@@ -3371,7 +3383,7 @@ window.selectGtbAuthMode = async function(mode) {
         const ret = await res.json();
         if (ret && ret.success) {
             let label = 'Service Principal (应用主体)';
-            if (mode === 'interactive') label = '微软现代交互认证 (OAuth 90天长效)';
+            if (mode === 'interactive') label = '微软现代交互认证 (动态租户策略)';
             else if (mode === 'personal') label = 'Personal User (传统个人账密)';
             if (window.showNotification) {
                 window.showNotification(`认证模式已成功切换为: ${label}`, 'success');
@@ -3396,6 +3408,18 @@ window.selectGtbAuthMode = async function(mode) {
 
 // ⚡ 全局资产深度级联同步引擎 (同步工作区 -> 自动并发级联拉取已选工作区下的模型和报表)
 window.cascadeScanWorkspacesAndAssets = async function(customTargetWsId) {
+    const assetTargets = [
+        document.getElementById('gtb-workspace-box'),
+        document.getElementById('gtb-dataset-box'),
+        document.getElementById('gtb-report-box')
+    ].filter(Boolean);
+    const addedShimmer = [];
+    assetTargets.forEach(el => {
+        if (!el.classList.contains('gtb-refresh-shimmer')) {
+            el.classList.add('gtb-refresh-shimmer');
+            addedShimmer.push(el);
+        }
+    });
     try {
         if (window.renderGlobalTopbar) await window.renderGlobalTopbar();
 
@@ -3501,6 +3525,11 @@ window.cascadeScanWorkspacesAndAssets = async function(customTargetWsId) {
                     const otherWsDatasets = curStoredDs.filter(d => d && String(d.workspaceId || '').toLowerCase() !== String(activeWsId).toLowerCase());
                     const mergedDatasets = [...otherWsDatasets, ...formattedDs];
                     localStorage.setItem('pbi_datasets', JSON.stringify(mergedDatasets));
+                    fetch('/api/settings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ PBI_DATASETS: mergedDatasets })
+                    }).catch(e => console.warn('Failed to persist scanned datasets to backend:', e));
                     dsCount = formattedDs.length;
                     if (window.selectedGtbDatasetIds) {
                         const validIds = new Set(mergedDatasets.map(d => String(d.id).toLowerCase()));
@@ -3512,14 +3541,8 @@ window.cascadeScanWorkspacesAndAssets = async function(customTargetWsId) {
                     }
                     if (window._populateDropdown) window._populateDropdown('dataset', mergedDatasets);
                 } else {
-                    // 若拉取失败，仅移除当前工作区失效数据，不抹除其他工作区
-                    let curStoredDs = [];
-                    try {
-                        curStoredDs = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
-                        if (!Array.isArray(curStoredDs)) curStoredDs = [];
-                    } catch(e) { curStoredDs = []; }
-                    const otherWsDatasets = curStoredDs.filter(d => d && String(d.workspaceId || '').toLowerCase() !== String(activeWsId).toLowerCase());
-                    localStorage.setItem('pbi_datasets', JSON.stringify(otherWsDatasets));
+                    // 若拉取失败或超时，坚决保留本地缓存，绝不可抹除已有模型目录！
+                    console.warn(`拉取工作区 [${activeWsId}] 数据集失败或超时，保留本地长效缓存。`);
                 }
 
                 // 处理 Reports (增量合并，保留其他工作区已缓存的报表)
@@ -3538,16 +3561,16 @@ window.cascadeScanWorkspacesAndAssets = async function(customTargetWsId) {
                     const otherWsReports = curStoredRp.filter(r => r && String(r.workspaceId || '').toLowerCase() !== String(activeWsId).toLowerCase());
                     const mergedReports = [...otherWsReports, ...formattedRp];
                     localStorage.setItem('pbi_reports', JSON.stringify(mergedReports));
+                    fetch('/api/settings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ PBI_REPORTS: mergedReports })
+                    }).catch(e => console.warn('Failed to persist scanned reports to backend:', e));
                     rpCount = formattedRp.length;
                     if (window._populateDropdown) window._populateDropdown('report', mergedReports);
                 } else {
-                    let curStoredRp = [];
-                    try {
-                        curStoredRp = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
-                        if (!Array.isArray(curStoredRp)) curStoredRp = [];
-                    } catch(e) { curStoredRp = []; }
-                    const otherWsReports = curStoredRp.filter(r => r && String(r.workspaceId || '').toLowerCase() !== String(activeWsId).toLowerCase());
-                    localStorage.setItem('pbi_reports', JSON.stringify(otherWsReports));
+                    // 若拉取失败或超时，坚决保留本地缓存，绝不可抹除已有报表目录！
+                    console.warn(`拉取工作区 [${activeWsId}] 报表失败或超时，保留本地长效缓存。`);
                 }
             } catch(subErr) {
                 console.warn('Cascade fetch assets warning:', subErr);
@@ -3562,12 +3585,19 @@ window.cascadeScanWorkspacesAndAssets = async function(customTargetWsId) {
         }
         if (window.renderContextDropdowns) window.renderContextDropdowns();
         if (window.syncAllWorkflowSelectors) window.syncAllWorkflowSelectors();
+    if (window.syncDpmScopeDisplay) window.syncDpmScopeDisplay();
 
         return { success: true, activeWsId, wsCount: wsList.length, dsCount, rpCount };
     } catch (e) {
         console.warn('cascadeScanWorkspacesAndAssets error:', e);
         if (window.updateGlobalTopbarDropdowns) window.updateGlobalTopbarDropdowns();
         return { success: false, error: e };
+    } finally {
+        addedShimmer.forEach(el => {
+            el.classList.remove('gtb-refresh-shimmer');
+            el.classList.add('gtb-refresh-done');
+            setTimeout(() => el.classList.remove('gtb-refresh-done'), 500);
+        });
     }
 };
 
@@ -3739,8 +3769,11 @@ window.persistGtbWorkspacesAndSync = function(triggerCascade = true) {
     window.updateGlobalTopbarDropdowns();
     // 同步到工作流
     if (window.syncAllWorkflowSelectors) window.syncAllWorkflowSelectors();
+    if (window.syncDpmScopeDisplay) window.syncDpmScopeDisplay();
     // 联动 GUM 目标范围展示
     if (window.syncGumScopeDisplay) window.syncGumScopeDisplay();
+    // 联动 DPM 目标范围展示
+    if (window.syncDpmScopeDisplay) window.syncDpmScopeDisplay();
     // 联动权限蓝图引擎实时同步
     if (window.PermissionBlueprint && typeof window.PermissionBlueprint.syncFromGtb === 'function') {
         window.PermissionBlueprint.syncFromGtb();
@@ -3813,6 +3846,9 @@ window.getMergedGtbDatasets = function() {
         const stored = JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
         if (Array.isArray(stored)) rawList.push(...stored);
     } catch(e) {}
+    if (typeof backendSettingsCache !== 'undefined' && Array.isArray(backendSettingsCache.PBI_DATASETS)) {
+        rawList.push(...backendSettingsCache.PBI_DATASETS);
+    }
     if (typeof window.getListData === 'function') {
         const liveList = window.getListData('dataset-list');
         if (Array.isArray(liveList)) rawList.push(...liveList);
@@ -3862,6 +3898,51 @@ window.getMergedGtbDatasets = function() {
     if (result.length > 0) {
         try {
             localStorage.setItem('pbi_datasets', JSON.stringify(result));
+        } catch(e) {}
+    }
+    return result;
+};
+
+// 汇聚所有来源的可用报表列表 (localStorage, backendSettingsCache, report-list UI, allReports)
+window.getMergedGtbReports = function() {
+    const rawList = [];
+    try {
+        const stored = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+        if (Array.isArray(stored)) rawList.push(...stored);
+    } catch(e) {}
+    if (typeof backendSettingsCache !== 'undefined' && Array.isArray(backendSettingsCache.PBI_REPORTS)) {
+        rawList.push(...backendSettingsCache.PBI_REPORTS);
+    }
+    if (typeof window.getListData === 'function') {
+        const liveList = window.getListData('report-list');
+        if (Array.isArray(liveList)) rawList.push(...liveList);
+    }
+    if (Array.isArray(window.allReports)) rawList.push(...window.allReports);
+
+    const uniqueMap = new Map();
+    rawList.forEach(r => {
+        if (!r) return;
+        const id = String(r.id || r.reportId || '').trim();
+        if (!id) return;
+        const name = String(r.alias || r.name || r.displayName || r.reportName || id).trim();
+        const wid = String(r.workspaceId || r.wsId || '').trim();
+        const wname = String(r.workspaceName || r.wsName || '').trim();
+        const key = id.toLowerCase();
+        const existing = uniqueMap.get(key);
+        if (!existing) {
+            uniqueMap.set(key, { id: id, alias: name, name: name, workspaceId: wid, workspaceName: wname });
+        } else {
+            if (!existing.workspaceId && wid) {
+                existing.workspaceId = wid;
+                if (wname) existing.workspaceName = wname;
+            }
+        }
+    });
+
+    const result = Array.from(uniqueMap.values());
+    if (result.length > 0) {
+        try {
+            localStorage.setItem('pbi_reports', JSON.stringify(result));
         } catch(e) {}
     }
     return result;
@@ -4060,7 +4141,7 @@ window.toggleGtbWsModels = function(wsId, event) {
 window.toggleGtbWsReports = function(wsId, event) {
     if (event) event.stopPropagation();
     if (!wsId) return;
-    const rpData = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+    const rpData = window.getMergedGtbReports ? window.getMergedGtbReports() : JSON.parse(localStorage.getItem('pbi_reports') || '[]');
     const targetWid = String(wsId).toLowerCase();
     const wsData = window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
     const knownWsIds = new Set(wsData.map(w => String(w.id).toLowerCase()));
@@ -4100,6 +4181,7 @@ window.persistGtbDatasetsAndSync = function() {
 
     window.updateGlobalTopbarDropdowns();
     if (window.syncAllWorkflowSelectors) window.syncAllWorkflowSelectors();
+    if (window.syncDpmScopeDisplay) window.syncDpmScopeDisplay();
     // ⚡ 联动权限蓝图引擎实时同步
     if (window.PermissionBlueprint && typeof window.PermissionBlueprint.syncFromGtb === 'function') {
         window.PermissionBlueprint.syncFromGtb();
@@ -4214,7 +4296,7 @@ window.closeGtbRpDropdown = function() {
 
 // 全选或清空已选报表 (支持联动当前已选工作区)
 window.selectAllGtbReports = function(selectAll = true) {
-    const rpData = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+    const rpData = window.getMergedGtbReports ? window.getMergedGtbReports() : JSON.parse(localStorage.getItem('pbi_reports') || '[]');
     const selectedWsIds = Array.from(window.selectedGtbWorkspaceIds || []);
     const wsData = window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
     const isAllWs = selectedWsIds.length === 0 || (wsData.length > 0 && selectedWsIds.length >= wsData.length);
@@ -4318,6 +4400,7 @@ window.persistGtbReportsAndSync = function() {
 
     window.updateGlobalTopbarDropdowns();
     if (window.syncAllWorkflowSelectors) window.syncAllWorkflowSelectors();
+    if (window.syncDpmScopeDisplay) window.syncDpmScopeDisplay();
     // ⚡ 联动权限蓝图引擎实时同步
     if (window.PermissionBlueprint && typeof window.PermissionBlueprint.syncFromGtb === 'function') {
         window.PermissionBlueprint.syncFromGtb();
@@ -4404,7 +4487,7 @@ if (!window._gtbGlobalClickListenerAdded) {
 window.updateGlobalTopbarDropdowns = function() {
     const rawWsData = window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
     const dsData = window.getMergedGtbDatasets ? window.getMergedGtbDatasets() : JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
-    const rpData = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+    const rpData = window.getMergedGtbReports ? window.getMergedGtbReports() : JSON.parse(localStorage.getItem('pbi_reports') || '[]');
 
     const wsHidden = document.getElementById('gtb-select-workspace');
     const dsHidden = document.getElementById('gtb-select-dataset');
@@ -4521,23 +4604,19 @@ window.updateGlobalTopbarDropdowns = function() {
     const selectedWsSet = new Set(selectedWsIds.map(id => String(id).toLowerCase()));
     const hasWsFilter = selectedWsIds.length > 0;
 
-    // 严格作用域过滤：模型必须明确属于当前选中的工作区，绝对杜绝跨域展示
-    // 🚨 严格级联守卫：工作区是模型和报表的容器！未选择工作区时，下属模型必须为空！
+    // 严格作用域过滤：若选定具体工作区，则优先展示对应工作区模型；未选定工作区时全景呈现全部可用模型
     const scopedDsData = hasWsFilter
         ? dsData.filter(d => d && d.id && selectedWsSet.has(String(d.workspaceId || '').trim().toLowerCase()))
-        : [];
+        : dsData;
 
-    // 清理超出范围的已选模型
-    const validScopedDsIds = new Set(scopedDsData.map(d => String(d.id).toLowerCase()));
-    for (const curSelectedId of Array.from(window.selectedGtbDatasetIds)) {
-        if (!validScopedDsIds.has(String(curSelectedId).toLowerCase())) {
-            window.selectedGtbDatasetIds.delete(curSelectedId);
+    // 清理超出范围的已选模型 (仅在已选定具体工作区时执行)
+    if (hasWsFilter) {
+        const validScopedDsIds = new Set(scopedDsData.map(d => String(d.id).toLowerCase()));
+        for (const curSelectedId of Array.from(window.selectedGtbDatasetIds)) {
+            if (!validScopedDsIds.has(String(curSelectedId).toLowerCase())) {
+                window.selectedGtbDatasetIds.delete(curSelectedId);
+            }
         }
-    }
-
-    // 🚨 严格守卫：未选工作区时强制清空模型选择；选了工作区后也坚决不自动选择任何模型，必须由用户显式手动点选！
-    if (!hasWsFilter) {
-        window.selectedGtbDatasetIds.clear();
     }
 
     const selectedDsList = Array.from(window.selectedGtbDatasetIds);
@@ -4574,7 +4653,7 @@ window.updateGlobalTopbarDropdowns = function() {
 
     if (dsStatTextEl) {
         dsStatTextEl.textContent = hasWsFilter
-            ? `已选 ${selectedDsCount} / ${totalDsCount} 个模型 (联动 ${selectedWsIds.length} 个工作区)`
+            ? `已选 ${selectedDsCount} / ${totalDsCount} 个模型 (焦点工作区 ${scopedDsData.length} 个 · 全域 ${dsData.length} 个)`
             : `已选 ${selectedDsCount} / ${totalDsCount} 个模型`;
     }
 
@@ -4646,17 +4725,20 @@ window.updateGlobalTopbarDropdowns = function() {
                 });
 
                 const isAllGroupSelected = sortedModels.every(m => window.selectedGtbDatasetIds.has(String(m.id)));
-                // 如果启用了工作区过滤且该工作区不在当前过滤作用域内，默认 display: none 并赋予 gtb-ds-ws-other-scope 类，搜索时智能唤醒
-                const defaultDisplay = isScoped ? 'block' : 'none';
-                const scopeClass = isScoped ? '' : 'gtb-ds-ws-other-scope';
+                // 优化呈现：选中的焦点工作区置顶展开；非当前选定工作区赋予 collapsed 折叠态，保留在列表中，绝不设 display:none 误导用户
+                const collapseClass = (!isScoped && hasWsFilter) ? 'collapsed' : '';
+                const scopeBadge = isScoped && hasWsFilter
+                    ? '<span style="font-size:0.62rem; color:var(--accent); background:var(--overlay-10); padding:1px 5px; border-radius:4px; margin-left:4px;">📌 焦点</span>'
+                    : (hasWsFilter ? '<span style="font-size:0.62rem; color:var(--text-secondary); opacity:0.7; margin-left:4px;">(其他工作区)</span>' : '');
 
                 matrixHtml += `
-                    <div class="gtb-ds-ws-group ${scopeClass}" data-ws-id="${wid}" style="display: ${defaultDisplay};">
+                    <div class="gtb-ds-ws-group ${collapseClass}" data-ws-id="${wid}" style="display: block;">
                         <div class="gtb-ds-ws-header" onclick="window.toggleGtbDsGroupCollapse(this)" title="点击折叠/展开该工作区下的模型">
                             <div class="gtb-ds-ws-title">
                                 <svg class="gtb-ds-ws-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect></svg>
                                 <span title="${wname}">${wname}</span>
+                                ${scopeBadge}
                                 <span class="gtb-ds-ws-badge">${sortedModels.length} 个模型</span>
                             </div>
                             <button type="button" class="gtb-ws-btn-sm" style="padding: 1px 6px; font-size: 0.65rem; border-radius: 4px;" onclick="window.toggleGtbWsModels('${wid}', event)" title="全选/取消全选该工作区模型">
@@ -4694,23 +4776,19 @@ window.updateGlobalTopbarDropdowns = function() {
         }
     }
 
-    // 4. 根据所选工作区严格过滤报表 (彻底杜绝跨域混杂)
-    // 🚨 严格级联守卫：工作区是报表的父级容器！未选择工作区时，下属报表必须为空！
+    // 4. 根据所选工作区智能过滤报表 (未指定工作区时全景展示全部可用报表)
     const filteredRp = hasWsFilter
         ? rpData.filter(r => r && r.id && selectedWsSet.has(String(r.workspaceId || '').trim().toLowerCase()))
-        : [];
+        : rpData;
 
-    // 清理超出范围的已选报表
-    const validScopedRpIds = new Set(filteredRp.map(r => String(r.id).toLowerCase()));
-    for (const curSelectedId of Array.from(window.selectedGtbReportIds)) {
-        if (!validScopedRpIds.has(String(curSelectedId).toLowerCase())) {
-            window.selectedGtbReportIds.delete(curSelectedId);
+    // 清理超出范围的已选报表 (仅在限定具体工作区时执行)
+    if (hasWsFilter) {
+        const validScopedRpIds = new Set(filteredRp.map(r => String(r.id).toLowerCase()));
+        for (const curSelectedId of Array.from(window.selectedGtbReportIds)) {
+            if (!validScopedRpIds.has(String(curSelectedId).toLowerCase())) {
+                window.selectedGtbReportIds.delete(curSelectedId);
+            }
         }
-    }
-
-    // 🚨 严格守卫：未选工作区时强制清空报表选择；选了工作区后也坚决不自动选择任何报表，必须由用户显式手动点选！
-    if (!hasWsFilter) {
-        window.selectedGtbReportIds.clear();
     }
 
     const selectedRpList = Array.from(window.selectedGtbReportIds);
@@ -4748,7 +4826,7 @@ window.updateGlobalTopbarDropdowns = function() {
 
     if (rpStatTextEl) {
         rpStatTextEl.textContent = hasWsFilter
-            ? `已选 ${selectedRpCount} / ${totalRpCount} 个报表 (联动 ${selectedWsIds.length} 个工作区)`
+            ? `已选 ${selectedRpCount} / ${totalRpCount} 个报表 (焦点工作区 ${filteredRp.length} 个 · 全域 ${rpData.length} 个)`
             : `已选 ${selectedRpCount} / ${totalRpCount} 个报表`;
     }
 
@@ -4756,15 +4834,9 @@ window.updateGlobalTopbarDropdowns = function() {
         rpSelect.value = selectedRpList[0] || '';
     }
 
-    // 渲染报表下拉面板列表 (严格隔离，杜绝未分配的跨域孤儿报表)
+    // 渲染报表下拉面板列表 (未指定工作区时全景展示所有工作区报表)
     if (rpListContainer) {
-        if (!hasWsFilter) {
-            rpListContainer.innerHTML = `<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 24px 10px;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="opacity: 0.4; margin-bottom: 6px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                <div style="color: #f59e0b; font-weight: 600; margin-bottom: 4px;">未选择目标工作区</div>
-                <div>请先在顶栏指定具体工作区以联动加载其名下的报表</div>
-            </div>`;
-        } else if (filteredRp.length === 0) {
+        if (filteredRp.length === 0) {
             rpListContainer.innerHTML = `<div style="font-size: 0.72rem; color: var(--text-secondary); text-align: center; padding: 24px 10px;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="opacity: 0.4; margin-bottom: 6px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
                 <div>当前已选工作区下暂无可用的报表</div>
@@ -4785,7 +4857,7 @@ window.updateGlobalTopbarDropdowns = function() {
                 }
             });
 
-            filteredRp.forEach(r => {
+            rpData.forEach(r => {
                 const wid = String(r.workspaceId || '').trim().toLowerCase();
                 if (wid && wsMap.has(wid)) {
                     wsMap.get(wid).reports.push(r);
@@ -4824,9 +4896,14 @@ window.updateGlobalTopbarDropdowns = function() {
                 });
 
                 const isAllGroupSelected = sortedReports.every(r => window.selectedGtbReportIds.has(String(r.id)));
+                const isScopedWs = !hasWsFilter || selectedWsSet.has(wid.toLowerCase());
+                const collapseClass = (!isScopedWs && hasWsFilter) ? 'collapsed' : '';
+                const scopeBadge = isScopedWs && hasWsFilter
+                    ? '<span style="font-size:0.62rem; color:var(--accent); background:var(--overlay-10); padding:1px 5px; border-radius:4px; margin-left:4px;">📌 焦点</span>'
+                    : (hasWsFilter ? '<span style="font-size:0.62rem; color:var(--text-secondary); opacity:0.7; margin-left:4px;">(其他工作区)</span>' : '');
 
                 matrixHtml += `
-                    <div class="gtb-ds-ws-group gtb-rp-ws-group" data-ws-id="${wid}">
+                    <div class="gtb-ds-ws-group gtb-rp-ws-group ${collapseClass}" data-ws-id="${wid}" style="display: block;">
                         <div class="gtb-ds-ws-header gtb-rp-ws-header" onclick="window.toggleGtbRpGroupCollapse(this)" title="点击折叠/展开该工作区下的报表">
                             <div class="gtb-ds-ws-title gtb-rp-ws-title">
                                 <svg class="gtb-ds-ws-arrow gtb-rp-ws-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -4886,7 +4963,14 @@ window.updateGlobalTopbarDropdowns = function() {
     if (window.syncGumScopeDisplay) {
         window.syncGumScopeDisplay();
     }
-    window.gumCandidateUsers = [];
+    const currentWsKey = selectedList.slice().sort().join(',');
+    if (window._lastGtbSelectedWsKey !== undefined && window._lastGtbSelectedWsKey !== currentWsKey) {
+        if (window.gumAuditScope === 'workspaces') {
+            window.gumCandidateUsers = [];
+            window._gumCurrentCacheKey = null;
+        }
+    }
+    window._lastGtbSelectedWsKey = currentWsKey;
     if (window.renderGumUserOptions) {
         window.renderGumUserOptions('');
     }
@@ -4947,7 +5031,7 @@ window.copyGtbItem = function(btn, type) {
         });
     } else if (type === 'report') {
         label = '报表';
-        const rpData = JSON.parse(localStorage.getItem('pbi_reports') || '[]');
+        const rpData = window.getMergedGtbReports ? window.getMergedGtbReports() : JSON.parse(localStorage.getItem('pbi_reports') || '[]');
         let selectedIds = Array.from(window.selectedGtbReportIds || []);
         if (selectedIds.length === 0) {
             const fallbackId = document.getElementById('gtb-select-report')?.value;
@@ -5031,12 +5115,31 @@ window.copyGlobalXmlaEndpoint = function(btn) {
     });
 };
 
-// 刷新全局上下文与工作区数据
+// 刷新全局上下文与工作区数据（含目标刷新对象微闪烁提示）
 window.refreshGlobalContext = async function(btn) {
+    if (!btn) btn = document.getElementById('gtb-btn-refresh');
     if (btn) {
         btn.disabled = true;
+        btn.classList.add('refreshing');
         btn.innerHTML = `<svg class="spinning" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation: spin 1s linear infinite;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>`;
     }
+
+    // 明确捕获待刷新的 5 大核心对象 (认证、租户、工作区、模型、报表)
+    const refreshTargets = [
+        document.getElementById('gtb-auth-box'),
+        document.getElementById('gtb-tenant-box'),
+        document.getElementById('gtb-workspace-box'),
+        document.getElementById('gtb-dataset-box'),
+        document.getElementById('gtb-report-box')
+    ].filter(Boolean);
+
+    // 开启刷新目标对象的微闪烁动效提示
+    refreshTargets.forEach(el => {
+        el.classList.remove('gtb-refresh-done');
+        el.classList.add('gtb-refresh-shimmer');
+    });
+
+    const startTime = Date.now();
     try {
         // 1. 先刷新认证状态与顶栏渲染
         if (window.renderGlobalTopbar) await window.renderGlobalTopbar();
@@ -5046,6 +5149,13 @@ window.refreshGlobalContext = async function(btn) {
         // 2. 真正从 API 重新扫描工作区（非缓存），并并发级联拉取 datasets/reports
         const ret = await window.cascadeScanWorkspacesAndAssets();
         const wsCount = (JSON.parse(localStorage.getItem('pbi_workspaces') || '[]')).length;
+
+        // 保证微闪烁至少维持 600ms，让用户视觉明确感知所有刷新对象
+        const elapsed = Date.now() - startTime;
+        if (elapsed < 600) {
+            await new Promise(r => setTimeout(r, 600 - elapsed));
+        }
+
         if (window.showNotification) {
             window.showNotification(`🎉 全局资产已从云端同步: ${wsCount} 个工作区, ${ret?.dsCount || 0} 个模型, ${ret?.rpCount || 0} 个报表`, 'success');
         }
@@ -5055,8 +5165,15 @@ window.refreshGlobalContext = async function(btn) {
     } finally {
         if (btn) {
             btn.disabled = false;
+            btn.classList.remove('refreshing');
             btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>`;
         }
+        // 结束微闪烁，平滑过渡完成态动效
+        refreshTargets.forEach(el => {
+            el.classList.remove('gtb-refresh-shimmer');
+            el.classList.add('gtb-refresh-done');
+            setTimeout(() => el.classList.remove('gtb-refresh-done'), 500);
+        });
     }
 };
 
@@ -5147,6 +5264,22 @@ window.syncAllWorkflowSelectors = function() {
     // 6. Global User Manager Workflow
     if (window.initGumWorkspaceSelector) {
         window.initGumWorkspaceSelector();
+    }
+
+    // 6.1 Dataset Partitions Manager Workflow 自动继承与同步
+    const dpmWs = document.getElementById('wf-dpm-workspace');
+    const dpmDs = document.getElementById('wf-dpm-dataset');
+    if (dpmWs && curWsId && dpmWs.value !== curWsId) {
+        if (Array.from(dpmWs.options).some(o => o.value === curWsId)) {
+            dpmWs.value = curWsId;
+            if (window.wfDpmRefreshDataset) window.wfDpmRefreshDataset();
+        }
+    }
+    if (dpmDs && curDsId && dpmDs.value !== curDsId) {
+        if (Array.from(dpmDs.options).some(o => o.value === curDsId)) dpmDs.value = curDsId;
+    }
+    if (window.syncDpmScopeDisplay) {
+        window.syncDpmScopeDisplay();
     }
 
     // 7. Permission Blueprint Engine (实时从顶栏同步工作区与模型并驱动推演与矩阵重算)
@@ -5915,16 +6048,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                 localStorage.setItem('pbi_workspaces', JSON.stringify(cleanWs));
             }
 
-            if (data.PBI_DATASETS) {
-
-                localStorage.setItem('pbi_datasets', JSON.stringify(data.PBI_DATASETS));
-
+            if (data.PBI_DATASETS && Array.isArray(data.PBI_DATASETS) && data.PBI_DATASETS.length > 0) {
+                let localDs = [];
+                try { localDs = JSON.parse(localStorage.getItem('pbi_datasets') || '[]'); } catch(e){}
+                const merged = [...data.PBI_DATASETS];
+                const idSet = new Set(merged.map(d => String(d.id).toLowerCase()));
+                localDs.forEach(ld => {
+                    if (ld && ld.id && !idSet.has(String(ld.id).toLowerCase())) merged.push(ld);
+                });
+                localStorage.setItem('pbi_datasets', JSON.stringify(merged));
             }
 
-            if (data.PBI_REPORTS) {
-
-                localStorage.setItem('pbi_reports', JSON.stringify(data.PBI_REPORTS));
-
+            if (data.PBI_REPORTS && Array.isArray(data.PBI_REPORTS) && data.PBI_REPORTS.length > 0) {
+                let localRp = [];
+                try { localRp = JSON.parse(localStorage.getItem('pbi_reports') || '[]'); } catch(e){}
+                const mergedRp = [...data.PBI_REPORTS];
+                const idSetRp = new Set(mergedRp.map(r => String(r.id).toLowerCase()));
+                localRp.forEach(lr => {
+                    if (lr && lr.id && !idSetRp.has(String(lr.id).toLowerCase())) mergedRp.push(lr);
+                });
+                localStorage.setItem('pbi_reports', JSON.stringify(mergedRp));
             }
 
             if (data.TENANT_ID) {
@@ -9093,6 +9236,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const layaSearchBtn = document.getElementById('btn-laya-intent-search');
 
     window.handleLayaIntentSearch = async function(query) {
+        // 🔒 防重入与防抖门禁：400ms 内严格抑制连击，杜绝重复弹窗
+        if (window._layaIntentGateActive) return;
+        window._layaIntentGateActive = true;
+        setTimeout(() => { window._layaIntentGateActive = false; }, 400);
+
         if (typeof window.isLayaEnabled === 'function' && !window.isLayaEnabled()) {
             if (window.showNotification) {
                 window.showNotification('⚪ Laya 智能决策引擎当前处于关闭状态，请在全局设置中开启', 'info');
@@ -9102,12 +9250,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const input = document.getElementById('api-search-input');
         const q = (query || (input ? input.value : '')).trim();
-        if (!q) return;
+        if (!q) {
+            // 💡 空输入交互防护：自动聚焦、微动效呼吸，并弹出引导 Toast
+            if (input) {
+                input.focus();
+                input.classList.remove('laya-input-shake');
+                void input.offsetWidth; // trigger reflow
+                input.classList.add('laya-input-shake');
+                setTimeout(() => input.classList.remove('laya-input-shake'), 600);
+            }
+            if (window.showNotification) {
+                window.showNotification('💡 请先在搜索框输入业务意图（如：查看数据集刷新、审计租户日志、本地网关）', 'info', 3000);
+            }
+            return;
+        }
 
         const btn = document.getElementById('btn-laya-intent-search');
         const hintBanner = document.getElementById('laya-search-intent-hint');
         const hintName = document.getElementById('laya-intent-matched-name');
-        const locateBtn = document.getElementById('laya-intent-locate-btn');
+        const clickableArea = document.getElementById('laya-intent-clickable-area');
+        const infoBtn = document.getElementById('laya-intent-info-btn');
 
         if (btn) btn.classList.add('loading');
 
@@ -9144,6 +9306,42 @@ document.addEventListener('DOMContentLoaded', async () => {
                 hintBanner.classList.add('visible');
             }
 
+            // 动态填充悬浮信息卡片 Tooltip
+            const reasonEl = document.getElementById('laya-popover-reason');
+            if (reasonEl) {
+                reasonEl.innerHTML = `<strong>判定依据:</strong> ${data.reason || ('根据语义关联度推导归入 ' + targetCatName)}`;
+            }
+            const engineBadge = document.getElementById('laya-popover-engine-badge');
+            if (engineBadge) {
+                engineBadge.textContent = data.fallback ? '规则引擎' : 'Laya AI';
+            }
+            const listEl = document.getElementById('laya-popover-probs-list');
+            if (listEl) {
+                listEl.innerHTML = '';
+                const probs = data.probabilities || { [catKey]: (data.confidence || 0.5) };
+                const criteria = data.criteria || {};
+                const sortedEntries = Object.entries(probs).sort((a, b) => b[1] - a[1]);
+                sortedEntries.forEach(([key, val]) => {
+                    const isTop = (key === catKey);
+                    const pct = Math.round(val * 100);
+                    const catTitle = categoryMapping[key] || key;
+                    const desc = criteria[key] || '';
+                    const row = document.createElement('div');
+                    row.className = `laya-prob-row ${isTop ? 'top-match' : ''}`;
+                    row.innerHTML = `
+                        <div class="laya-prob-header">
+                            <span class="laya-prob-name">${isTop ? '⭐ ' : ''}${catTitle}</span>
+                            <span class="laya-prob-pct">${pct}%</span>
+                        </div>
+                        <div class="laya-prob-bar-bg">
+                            <div class="laya-prob-bar-fill" style="width: ${pct}%"></div>
+                        </div>
+                        ${desc ? `<span class="laya-prob-desc" title="${desc}">${desc}</span>` : ''}
+                    `;
+                    listEl.appendChild(row);
+                });
+            }
+
             if (typeof expandedCategories !== 'undefined' && expandedCategories.add) {
                 expandedCategories.add(targetCatName);
             }
@@ -9165,8 +9363,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
 
             locateFn();
-            if (locateBtn) {
-                locateBtn.onclick = locateFn;
+            if (clickableArea) {
+                clickableArea.onclick = locateFn;
+            }
+            if (infoBtn) {
+                infoBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    const pop = document.getElementById('laya-intent-popover');
+                    if (pop) pop.classList.toggle('is-open');
+                };
             }
         } catch (e) {
             console.warn('Laya intent search error:', e);
@@ -9174,6 +9379,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (btn) btn.classList.remove('loading');
         }
     };
+
+    
+    // 监听全局点击以关闭 Laya 详情悬浮卡片
+    document.addEventListener('click', (e) => {
+        const pop = document.getElementById('laya-intent-popover');
+        if (pop && pop.classList.contains('is-open')) {
+            if (!pop.contains(e.target) && !e.target.closest('#laya-intent-info-btn')) {
+                pop.classList.remove('is-open');
+            }
+        }
+    });
 
     if (layaSearchBtn) {
         layaSearchBtn.addEventListener('click', () => {
@@ -10578,7 +10794,18 @@ const loadReqHistory = (searchTerm = "") => {
 
             }
 
+            // 视口安全边界防拖出边界防护 (Viewport Clamp)
+            // 确保弹窗标题栏与至少 40px 宽度区域永远留在视口内，杜绝拖出屏幕导致无法拖回
+            const minVisibleHeader = 40;
+            const minLeft = -modalWidth + minVisibleHeader;
+            const maxLeft = window.innerWidth - minVisibleHeader;
+            const minTop = 0; // 顶部决不允许越过视口上界，确保标题栏永远可点可拖
+            const maxTop = window.innerHeight - minVisibleHeader;
 
+            proposedLeft = Math.max(minLeft, Math.min(proposedLeft, maxLeft));
+            proposedTop = Math.max(minTop, Math.min(proposedTop, maxTop));
+            proposedTranslateX = proposedLeft - baseX;
+            proposedTranslateY = proposedTop - baseY;
 
             currentTranslateX = proposedTranslateX;
 
@@ -11333,15 +11560,15 @@ window.setupFLIPModal(btnTestHarness, closeHarnessBtn, testHarnessModal, loadHar
                 }
 
                 window.updateAuthModeVisibility(activeAuthMode);
-                const isInteractive = (data.AUTH_MODE === 'interactive' || data.IS_INTERACTIVE);
-                let targetTab = isInteractive ? 'interactive' : 'legacy';
+                let isInteractive = (data.AUTH_MODE === 'interactive' || data.IS_INTERACTIVE);
                 try {
-                    const savedTab = localStorage.getItem('pbi-settings-active-tab');
-                    if (savedTab === 'interactive' || savedTab === 'legacy') {
-                        targetTab = savedTab;
+                    const authInfoRes = await fetch('/api/auth-info');
+                    const authInfo = await authInfoRes.json();
+                    if (authInfo && authInfo.success) {
+                        isInteractive = Boolean(authInfo.is_interactive);
                     }
                 } catch(e) {}
-
+                let targetTab = isInteractive ? 'interactive' : 'legacy';
                 if (window.switchAuthSettingsTab) {
                     window.switchAuthSettingsTab(targetTab);
                 }
@@ -14079,6 +14306,10 @@ window.openNoteModal = function() {
                 toolbar: ['bold', 'italic', 'heading', '|', 'quote', 'unordered-list', 'ordered-list', '|', 'link', 'image', '|', 'preview', 'side-by-side', 'fullscreen']
             });
             window.easyMDE = easyMDE;
+            if (easyMDE && easyMDE.codemirror) {
+                easyMDE.codemirror.setOption('cursorScrollMargin', 28);
+                easyMDE.codemirror.setOption('scrollPastEnd', true);
+            }
         }
 
         // Initialize drag helper
@@ -14146,6 +14377,12 @@ window.openNoteModal = function() {
                 if (cm._justOpenedSource && Date.now() - cm._justOpenedSource < 400) {
                     return;
                 }
+                const cur = cm.getCursor();
+                const curLine = cm.getLine(cur.line) || '';
+                // ⚡ 核心防护：若当前光标所在行没有 Markdown 媒体或附件特征，且无待恢复预览标记，坚决不触碰重绘，彻底杜绝打字抖动
+                if (!curLine.includes('![') && !curLine.includes('](') && !window._currentRestoreMarker) {
+                    return;
+                }
                 debouncedRenderWidgets(150);
             });
             cm.on('blur', () => debouncedRenderWidgets(100));
@@ -14188,7 +14425,7 @@ window.openNoteModal = function() {
         });
     }
 
-    // 检查并恢复 active note filename (防止打开时 filename 为空)
+    // 检查并恢复 active note filename 与正文 (防止首次打开时 filename 有值但编辑器空白)
     const savedFn = (localStorage.getItem('pbi_active_note_filename') || '').trim();
     const fnInput = document.getElementById('note-filename');
     if (fnInput) {
@@ -14196,8 +14433,15 @@ window.openNoteModal = function() {
             fnInput.placeholder = window.getNoteDefaultPlaceholder ? window.getNoteDefaultPlaceholder() : '';
         }
         if (!fnInput.value.trim() && savedFn) {
-            fnInput.value = savedFn;
+            fnInput.value = savedFn.replace(/\.md$/i, '');
             window._activeNoteFilename = savedFn;
+        }
+    }
+    const currentActiveFn = (fnInput?.value || savedFn || '').trim();
+    if (currentActiveFn && easyMDE) {
+        const editorEmpty = !easyMDE.value || !easyMDE.value().trim();
+        if (editorEmpty) {
+            window.setActiveNote(currentActiveFn, null, true);
         }
     }
 
@@ -14274,85 +14518,145 @@ window.renderEditorWidgets = function(cm, forceRender = false) {
     cm._renderingWidgets = true;
 
     try {
-        // 清理所有历史自定义 Widget 标记
-        const existingMarks = cm.getAllMarks();
-        for (let mark of existingMarks) {
-            if (mark._isCustomNoteWidget) {
-                mark.clear();
-            }
-        }
-
         const cursor = cm.getCursor();
         const lineCount = cm.lineCount();
+
+        // 差量比对核心：收集当前所有存活的自定义 note widget markers，绝不全量清除！
+        const allMarks = cm.getAllMarks() || [];
+        const existingMarks = allMarks.filter(m => m && m._isCustomNoteWidget);
+        const retainedMarks = new Set();
 
         for (let lineIdx = 0; lineIdx < lineCount; lineIdx++) {
             const lineText = cm.getLine(lineIdx);
             if (!lineText) continue;
 
-            // 1. 扫描图片: !\[(.*?)\]\((.*?)\)
-            const imgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
-            let match;
-            while ((match = imgRegex.exec(lineText)) !== null) {
-                const fullMatch = match[0];
-                const alt = match[1] || '图片';
-                const url = match[2].trim();
-                const startCh = match.index;
-                const endCh = match.index + fullMatch.length;
+            const hasImg = lineText.includes('![');
+            const hasLink = lineText.includes('](');
+            if (!hasImg && !hasLink) continue;
 
-                // 若非强制渲染，且光标正在该范围内输入，暂时不折叠以方便用户编辑
-                if (!forceRender && cursor.line === lineIdx && cursor.ch > startCh && cursor.ch < endCh) {
-                    continue;
+            // 1. 扫描图片: !\\[(.*?)\\]\\((.*?)\\)
+            if (hasImg) {
+                const imgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+                let match;
+                while ((match = imgRegex.exec(lineText)) !== null) {
+                    const fullMatch = match[0];
+                    const alt = match[1] || '图片';
+                    const url = match[2].trim();
+                    const startCh = match.index;
+                    const endCh = match.index + fullMatch.length;
+
+                    // 若非强制渲染，且光标正在该范围内输入，暂时不折叠以方便用户编辑
+                    const cursorInside = (!forceRender && cursor.line === lineIdx && cursor.ch > startCh && cursor.ch < endCh);
+                    if (cursorInside) {
+                        continue;
+                    }
+
+                    // 检查是否已存在完全匹配的活跃 marker，若匹配则 100% 保持 DOM 复用，零销毁、零高度震荡！
+                    const existingMarker = existingMarks.find(m => {
+                        if (retainedMarks.has(m)) return false;
+                        const pos = m.find();
+                        return pos &&
+                               pos.from.line === lineIdx &&
+                               pos.from.ch === startCh &&
+                               pos.to.line === lineIdx &&
+                               pos.to.ch === endCh &&
+                               m._targetUrl === url &&
+                               m._fullMatch === fullMatch;
+                    });
+
+                    if (existingMarker) {
+                        retainedMarks.add(existingMarker);
+                        continue;
+                    }
+
+                    // 折叠成功后清除可能存在的行内恢复按钮
+                    if (window._currentRestoreMarker) {
+                        try { window._currentRestoreMarker.clear(); } catch (_) {}
+                        window._currentRestoreMarker = null;
+                    }
+
+                    const widgetEl = window._createEditorImageWidget(cm, lineIdx, startCh, endCh, alt, url);
+                    const marker = cm.markText(
+                        { line: lineIdx, ch: startCh },
+                        { line: lineIdx, ch: endCh },
+                        { replacedWith: widgetEl, clearOnEnter: true, handleMouseEvents: true }
+                    );
+                    marker._isCustomNoteWidget = true;
+                    marker._widgetType = 'image';
+                    marker._targetUrl = url;
+                    marker._fullMatch = fullMatch;
+                    widgetEl._marker = marker;
+                    retainedMarks.add(marker);
                 }
-
-                // 折叠成功后清除可能存在的行内恢复按钮
-                if (window._currentRestoreMarker) {
-                    try { window._currentRestoreMarker.clear(); } catch (_) {}
-                    window._currentRestoreMarker = null;
-                }
-
-                const widgetEl = window._createEditorImageWidget(cm, lineIdx, startCh, endCh, alt, url);
-                const marker = cm.markText(
-                    { line: lineIdx, ch: startCh },
-                    { line: lineIdx, ch: endCh },
-                    { replacedWith: widgetEl, clearOnEnter: true, handleMouseEvents: true }
-                );
-                marker._isCustomNoteWidget = true;
-                widgetEl._marker = marker;
             }
 
             // 2. 扫描附件/文档: [text](url) (排除以 ! 开头的图片链接)
-            const fileRegex = /(^|[^!])\[([^\]]+)\]\(([^)]+)\)/g;
-            while ((match = fileRegex.exec(lineText)) !== null) {
-                const prefix = match[1] || '';
-                const text = match[2];
-                const url = match[3].trim();
-                const startCh = match.index + prefix.length;
-                const endCh = startCh + (match[0].length - prefix.length);
+            if (hasLink) {
+                const fileRegex = /(^|[^!])\[([^\]]+)\]\(([^)]+)\)/g;
+                let match;
+                while ((match = fileRegex.exec(lineText)) !== null) {
+                    const prefix = match[1] || '';
+                    const text = match[2];
+                    const url = match[3].trim();
+                    const startCh = match.index + prefix.length;
+                    const endCh = startCh + (match[0].length - prefix.length);
+                    const fullMatch = match[0].slice(prefix.length);
 
-                // 只对附件/文件链接进行美化：指向 /api/notes/files/ 或具备常见文件后缀
-                const isNoteFile = url.includes('/api/notes/files/') || 
-                    /\.(pdf|xlsx?|docx?|pptx?|zip|rar|7z|tar|gz|csv|pbix?|pbit|ps1|bat|sh|py|sql|json|txt|md)$/i.test(url.split('?')[0]);
+                    // 只对附件/文件链接进行美化：指向 /api/notes/files/ 或具备常见文件后缀
+                    const isNoteFile = url.includes('/api/notes/files/') || 
+                        /\.(pdf|xlsx?|docx?|pptx?|zip|rar|7z|tar|gz|csv|pbix?|pbit|ps1|bat|sh|py|sql|json|txt|md)$/i.test(url.split('?')[0]);
 
-                if (!isNoteFile) continue;
+                    if (!isNoteFile) continue;
 
-                // 若非强制渲染，且光标正在该范围内输入，暂时不折叠
-                if (!forceRender && cursor.line === lineIdx && cursor.ch > startCh && cursor.ch < endCh) {
-                    continue;
+                    // 若非强制渲染，且光标正在该范围内输入，暂时不折叠
+                    const cursorInside = (!forceRender && cursor.line === lineIdx && cursor.ch > startCh && cursor.ch < endCh);
+                    if (cursorInside) {
+                        continue;
+                    }
+
+                    // 检查是否已存在完全匹配的活跃 marker，若匹配则直接复用
+                    const existingMarker = existingMarks.find(m => {
+                        if (retainedMarks.has(m)) return false;
+                        const pos = m.find();
+                        return pos &&
+                               pos.from.line === lineIdx &&
+                               pos.from.ch === startCh &&
+                               pos.to.line === lineIdx &&
+                               pos.to.ch === endCh &&
+                               m._targetUrl === url &&
+                               m._fullMatch === fullMatch;
+                    });
+
+                    if (existingMarker) {
+                        retainedMarks.add(existingMarker);
+                        continue;
+                    }
+
+                    if (window._currentRestoreMarker) {
+                        try { window._currentRestoreMarker.clear(); } catch (_) {}
+                        window._currentRestoreMarker = null;
+                    }
+
+                    const widgetEl = window._createEditorAttachmentWidget(cm, lineIdx, startCh, endCh, text, url);
+                    const marker = cm.markText(
+                        { line: lineIdx, ch: startCh },
+                        { line: lineIdx, ch: endCh },
+                        { replacedWith: widgetEl, clearOnEnter: true, handleMouseEvents: true }
+                    );
+                    marker._isCustomNoteWidget = true;
+                    marker._widgetType = 'attachment';
+                    marker._targetUrl = url;
+                    marker._fullMatch = fullMatch;
+                    widgetEl._marker = marker;
+                    retainedMarks.add(marker);
                 }
+            }
+        }
 
-                if (window._currentRestoreMarker) {
-                    try { window._currentRestoreMarker.clear(); } catch (_) {}
-                    window._currentRestoreMarker = null;
-                }
-
-                const widgetEl = window._createEditorAttachmentWidget(cm, lineIdx, startCh, endCh, text, url);
-                const marker = cm.markText(
-                    { line: lineIdx, ch: startCh },
-                    { line: lineIdx, ch: endCh },
-                    { replacedWith: widgetEl, clearOnEnter: true, handleMouseEvents: true }
-                );
-                marker._isCustomNoteWidget = true;
-                widgetEl._marker = marker;
+        // 仅对未被复用（内容已被删改或需要展开源码）的 marker 执行精确 clear
+        for (let oldMark of existingMarks) {
+            if (!retainedMarks.has(oldMark)) {
+                try { oldMark.clear(); } catch (_) {}
             }
         }
     } catch (err) {
@@ -15067,7 +15371,9 @@ window.renderSortedNotesList = function() {
     } else if (curFn) {
         const matchedNote = sorted.find(n => n.filename.toLowerCase() === curFn.toLowerCase() || n.filename.toLowerCase() === (curFn + '.md').toLowerCase());
         if (matchedNote) {
-            window.setActiveNote(matchedNote.filename, matchedNote.content || null, false);
+            const editorVal = (easyMDE && typeof easyMDE.value === 'function') ? easyMDE.value().trim() : '';
+            const shouldSync = !editorVal || !window._activeNoteOriginalContent;
+            window.setActiveNote(matchedNote.filename, matchedNote.content || null, shouldSync);
         }
     }
 
@@ -17238,7 +17544,10 @@ window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded)
         fillSelect('wf-ds-dataset', 'pbi_datasets');
         fillSelect('wf-rvc-workspace', 'pbi_workspaces');
         fillSelect('wf-inspect-workspace', 'pbi_workspaces');
+        fillSelect('wf-dpm-workspace', 'pbi_workspaces');
+        fillSelect('wf-dpm-dataset', 'pbi_datasets');
         if (window.initGumWorkspaceSelector) window.initGumWorkspaceSelector();
+        if (window.initDpmSelectors) window.initDpmSelectors();
 
         const activeW = document.getElementById('active-workspace')?.value;
         const activeR = document.getElementById('active-report')?.value;
@@ -17282,7 +17591,7 @@ window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded)
         }
 
         // Bind workspace change events to dynamically re-filter reports and cascade refresh
-        ['wf-exp', 'wf-vis', 'wf-rvc', 'wf-inspect'].forEach(prefix => {
+        ['wf-exp', 'wf-vis', 'wf-rvc', 'wf-inspect', 'wf-dpm'].forEach(prefix => {
             const wsElem = document.getElementById(`${prefix}-workspace`);
             if (wsElem && !wsElem._hasCascadeListener) {
                 wsElem._hasCascadeListener = true;
@@ -17306,6 +17615,8 @@ window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded)
     const curInitWf = document.getElementById('wf-selector')?.value || localStorage.getItem('pbi-last-workflow') || 'datasource_inspector';
     if (curInitWf === 'datasource_inspector' && window.initDatasourceInspectorWorkflow) {
         window.initDatasourceInspectorWorkflow(true);
+    } else if (curInitWf === 'dataset_partitions_manager' && window.initDpmSelectors) {
+        window.initDpmSelectors();
     }
 
 
@@ -17734,6 +18045,7 @@ window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded)
             } else if (val === 'dataset_partitions_manager') {
                 if (dpmPane) dpmPane.style.display = 'block';
                 document.getElementById('wf-btn-runall').style.display = 'flex';
+                if (window.initDpmSelectors) window.initDpmSelectors();
 
 
                 // ❌ 已移除：不再自动扫描，用户需点击 Run 才触发
@@ -17936,6 +18248,7 @@ window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded)
                 const embedWrapper = document.getElementById('pbi-embed-wrapper');
 
                 if (embedWrapper) embedWrapper.style.display = 'block';
+                if (window.initPbiEmbedViewportControls) window.initPbiEmbedViewportControls();
 
                 embedContainer.style.display = 'block';
 
@@ -18777,43 +19090,173 @@ window.viewTableMExpression = function(tblNameEncoded, mExprEncoded, sqlEncoded)
 
 
 
-        window.togglePbiEmbedFullscreen = function() {
+        // ==========================================
+        // PBI Embed Viewport Gestures & Zoom Controls
+        // ==========================================
+        window._pbiCurrentZoom = 1.0;
+        window._pbiBaseWidth = null;
+        window._pbiBaseHeight = null;
 
+        window.initPbiEmbedViewportControls = function() {
             const embedWrapper = document.getElementById('pbi-embed-wrapper');
+            const container = document.getElementById('pbi-embed-container');
+            if (!embedWrapper || !container) return;
 
-            const maxBtn = document.getElementById('pbi-embed-max-btn');
-
-            
-
-            if (!embedWrapper) return;
-
-            
-
-            const isFs = document.fullscreenElement || document.webkitFullscreenElement;
-
-            
-
-            if (!isFs) {
-
-                if (embedWrapper.requestFullscreen) embedWrapper.requestFullscreen().catch(() => {});
-
-                else if (embedWrapper.webkitRequestFullscreen) embedWrapper.webkitRequestFullscreen();
-
-                if (maxBtn) maxBtn.title = "Restore / Normal Preview";
-
-            } else {
-
-                if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
-
-                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-
-                if (maxBtn) maxBtn.title = "Maximize / Fullscreen Preview";
-
+            // 移动设备默认启用桌面宽屏滑动模式 (Desktop Viewport)
+            const isMobile = window.innerWidth <= 768;
+            if (isMobile && !embedWrapper.classList.contains('pbi-mode-initialized')) {
+                embedWrapper.classList.add('pbi-desktop-mode');
+                embedWrapper.classList.add('pbi-mode-initialized');
+                const modeIcon = document.getElementById('pbi-layout-mode-icon');
+                if (modeIcon) {
+                    modeIcon.innerHTML = '<rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line>';
+                }
             }
 
+            if (embedWrapper._gesturesInitialized) return;
+            embedWrapper._gesturesInitialized = true;
+
+            // 双指捏合缩放 (Pinch-to-zoom) 手势监听
+            let initialDistance = 0;
+            let initialScale = 1.0;
+
+            embedWrapper.addEventListener('touchstart', function(e) {
+                if (e.touches.length === 2) {
+                    initialDistance = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    initialScale = window._pbiCurrentZoom || 1.0;
+                }
+            }, { passive: true });
+
+            embedWrapper.addEventListener('touchmove', function(e) {
+                if (e.touches.length === 2 && initialDistance > 0) {
+                    const currentDist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    const factor = currentDist / initialDistance;
+                    const newZoom = Math.min(Math.max(initialScale * factor, 0.5), 3.0);
+                    window.applyPbiEmbedZoom(newZoom);
+                    if (e.cancelable) e.preventDefault();
+                }
+            }, { passive: false });
+
+            embedWrapper.addEventListener('touchend', function(e) {
+                if (e.touches.length < 2) {
+                    initialDistance = 0;
+                }
+            }, { passive: true });
+
+            // 桌面滚轮支持 (Ctrl/Cmd + Wheel)
+            embedWrapper.addEventListener('wheel', function(e) {
+                if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault();
+                    const delta = e.deltaY < 0 ? 0.1 : -0.1;
+                    window.zoomPbiEmbed(delta > 0 ? 1 : -1, Math.abs(delta));
+                }
+            }, { passive: false });
         };
 
+        window.applyPbiEmbedZoom = function(scale) {
+            const clamped = Math.round(Math.min(Math.max(scale, 0.5), 3.0) * 100) / 100;
+            window._pbiCurrentZoom = clamped;
 
+            const badge = document.getElementById('pbi-zoom-badge');
+            if (badge) badge.textContent = `${Math.round(clamped * 100)}%`;
+
+            const canvasLayer = document.getElementById('pbi-embed-canvas-layer');
+            const container = document.getElementById('pbi-embed-container');
+            if (!canvasLayer || !container) return;
+
+            if (!window._pbiBaseWidth) {
+                window._pbiBaseWidth = container.offsetWidth || 1050;
+                window._pbiBaseHeight = container.offsetHeight || 590;
+            }
+
+            container.style.transform = `scale(${clamped})`;
+            container.style.transformOrigin = '0 0';
+
+            // 同步画布物理尺寸，驱动外层视口原生顺滑平移
+            const newW = Math.round(window._pbiBaseWidth * clamped);
+            const newH = Math.round(window._pbiBaseHeight * clamped);
+            canvasLayer.style.width = `${newW}px`;
+            canvasLayer.style.height = `${newH}px`;
+        };
+
+        window.zoomPbiEmbed = function(direction, step = 0.15) {
+            const current = window._pbiCurrentZoom || 1.0;
+            const target = current + (direction * step);
+            window.applyPbiEmbedZoom(target);
+        };
+
+        window.resetPbiEmbedZoom = function() {
+            window.applyPbiEmbedZoom(1.0);
+        };
+
+        window.togglePbiLayoutMode = function() {
+            const embedWrapper = document.getElementById('pbi-embed-wrapper');
+            const modeIcon = document.getElementById('pbi-layout-mode-icon');
+            if (!embedWrapper) return;
+
+            const isDesktop = embedWrapper.classList.toggle('pbi-desktop-mode');
+            window._pbiBaseWidth = null;
+            window._pbiBaseHeight = null;
+            window.resetPbiEmbedZoom();
+
+            if (modeIcon) {
+                if (isDesktop) {
+                    modeIcon.innerHTML = '<rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line>';
+                } else {
+                    modeIcon.innerHTML = '<rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line>';
+                }
+            }
+
+            if (window.currentEmbeddedReport && window.currentEmbeddedReport.render) {
+                try {
+                    window.currentEmbeddedReport.render();
+                } catch(e) {}
+            }
+        };
+
+        window.togglePbiEmbedFullscreen = function() {
+            const embedWrapper = document.getElementById('pbi-embed-wrapper');
+            const maxBtn = document.getElementById('pbi-embed-max-btn');
+            if (!embedWrapper) return;
+
+            const isNativeFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+            const isPseudoFs = embedWrapper.classList.contains('pbi-pseudo-fullscreen');
+
+            if (!isNativeFs && !isPseudoFs) {
+                let reqPromise = null;
+                if (embedWrapper.requestFullscreen) {
+                    reqPromise = embedWrapper.requestFullscreen();
+                } else if (embedWrapper.webkitRequestFullscreen) {
+                    embedWrapper.webkitRequestFullscreen();
+                }
+
+                if (reqPromise && reqPromise.catch) {
+                    reqPromise.catch(() => {
+                        embedWrapper.classList.add('pbi-pseudo-fullscreen');
+                    });
+                } else if (!embedWrapper.requestFullscreen && !embedWrapper.webkitRequestFullscreen) {
+                    embedWrapper.classList.add('pbi-pseudo-fullscreen');
+                }
+
+                if (maxBtn) maxBtn.title = "退出全屏 (Exit Fullscreen)";
+            } else {
+                if (isPseudoFs) {
+                    embedWrapper.classList.remove('pbi-pseudo-fullscreen');
+                }
+                if (document.exitFullscreen) {
+                    document.exitFullscreen().catch(() => {});
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
+                if (maxBtn) maxBtn.title = "全屏沉浸预览 (Fullscreen Preview)";
+            }
+        };
 
         // --- End Export Visual Data Logic ---
 
@@ -21197,6 +21640,11 @@ window.initGumWorkspaceSelector = function() {
     if (hiddenScope) hiddenScope.value = currentScope;
 
     window.syncGumScopeDisplay();
+
+    // 关键优化：手机端或新设备首次打开时，若当前无人员名单，静默预读 SQLite 持久化快照
+    if ((!window.gumCandidateUsers || window.gumCandidateUsers.length === 0) && window.fetchGumWorkspaceUsers) {
+        window.fetchGumWorkspaceUsers(false, true);
+    }
 };
 
 window.openGumUserDropdown = function(shouldRender = true) {
@@ -21206,6 +21654,10 @@ window.openGumUserDropdown = function(shouldRender = true) {
         dropdown.style.display = 'flex';
         if (chevron) chevron.style.transform = 'rotate(180deg)';
         if (shouldRender && window.renderGumDropdownUsers) window.renderGumDropdownUsers();
+        // 关键增强：若当前人员列表为空，自动静默从 SQLite 加载已有快照
+        if ((!window.gumCandidateUsers || window.gumCandidateUsers.length === 0) && window.fetchGumWorkspaceUsers) {
+            window.fetchGumWorkspaceUsers(false, true);
+        }
     }
 };
 
@@ -21241,141 +21693,215 @@ if (!window._gumDropdownClickListenerAdded) {
     });
 }
 
-window.fetchGumWorkspaceUsers = async function(forceRefresh = false) {
+window.fetchGumWorkspaceUsers = async function(forceRefresh = false, silent = (!forceRefresh)) {
     const scope = window.gumAuditScope || 'tenant';
     const selectedWss = window.getSelectedWorkspaces ? window.getSelectedWorkspaces() : [];
 
-    const dropdownList = document.getElementById('wf-gum-dropdown-list');
-    const dropdownCount = document.getElementById('wf-gum-dropdown-count');
-    const scanBtn = document.getElementById('wf-gum-scan-users-btn');
-
-    if (scope === 'workspaces' && selectedWss.length === 0) {
-        if (dropdownCount) dropdownCount.innerHTML = '<span style="color:var(--warning); font-size:0.72rem;">未选择工作区</span>';
-        if (dropdownList) {
-            dropdownList.innerHTML = `
-                <div style="font-size: 0.75rem; color: var(--text-secondary); padding: 12px 8px; text-align: center;">
-                    ⚠️ 全局功能区暂未选定工作区。<br>
-                    <a href="javascript:void(0)" onclick="window.toggleGtbWsDropdown(event)" style="color: var(--accent); text-decoration: underline; margin-top: 4px; display: inline-block;">点击展开顶栏工作区多选面板</a>
-                </div>
-            `;
+    // 若当前已有在途请求，并发调用直接复用现有 Promise (Request De-duplication)
+    if (window._gumFetchInFlightPromise) {
+        if (!forceRefresh) {
+            return window._gumFetchInFlightPromise;
         }
-        if (window.showNotification) {
-            window.showNotification('⚠️ 请先在顶栏或配置中选择至少一个目标工作区', 'warning');
-        }
-        if (window.openGumUserDropdown) window.openGumUserDropdown();
-        return;
-    }
-
-    const now = Date.now();
-    if (window._lastGumScanSuccessTime && (now - window._lastGumScanSuccessTime < 3000)) {
-        if (window.showNotification) {
-            window.showNotification('⚡ 刚刚已同步最新人员名单，请勿频繁连续点击（微软 API 保护中）', 'info');
-        }
-        if (window.openGumUserDropdown) window.openGumUserDropdown();
-        return;
+        try { await window._gumFetchInFlightPromise; } catch(e) {}
     }
 
     const cacheKey = (scope === 'tenant') ? '__ALL_TENANT_WORKSPACES__' : `__WORKSPACES_${selectedWss.slice().sort().join('_')}__`;
-    if (!forceRefresh && window.gumWorkspaceUsersCache && window.gumWorkspaceUsersCache.has(cacheKey)) {
-        window.gumCandidateUsers = window.gumWorkspaceUsersCache.get(cacheKey) || [];
-        window.renderGumDropdownUsers();
-        if (window.showNotification) {
-            window.showNotification(`⚡ 已加载最新人员名单 (${window.gumCandidateUsers.length} 人)`, 'info');
+    const storageKey = 'pbi_gum_users_cache_' + cacheKey;
+
+    // 若非强制刷新，且内存中已存在匹配当前作用域的人员名单，直接快速复用
+    if (!forceRefresh && window._gumCurrentCacheKey === cacheKey && Array.isArray(window.gumCandidateUsers) && window.gumCandidateUsers.length > 0) {
+        if (window.renderGumDropdownUsers) window.renderGumDropdownUsers();
+        if (!silent && window.showNotification) {
+            window.showNotification(`⚡ 已加载本地缓存人员名单 (${window.gumCandidateUsers.length} 人，点击【扫描用户】可拉取最新)`, 'info');
         }
-        return;
+        return window.gumCandidateUsers;
     }
 
-    if (scanBtn) {
-        scanBtn.disabled = true;
-        scanBtn.innerHTML = `
-            <svg class="spinning" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation: spin 1s linear infinite;">
-                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-            </svg>
-            <span>正在扫描...</span>
-        `;
-    }
+    const fetchWork = async () => {
+        const dropdownList = document.getElementById('wf-gum-dropdown-list');
+        const dropdownCount = document.getElementById('wf-gum-dropdown-count');
+        const scanBtn = document.getElementById('wf-gum-scan-users-btn');
 
-    const resetScanBtn = () => {
+        if (scope === 'workspaces' && selectedWss.length === 0) {
+            if (dropdownCount) dropdownCount.innerHTML = '<span style="color:var(--warning); font-size:0.72rem;">未选择工作区</span>';
+            if (dropdownList) {
+                dropdownList.innerHTML = `
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); padding: 12px 8px; text-align: center;">
+                        ⚠️ 全局功能区暂未选定工作区。<br>
+                        <a href="javascript:void(0)" onclick="window.toggleGtbWsDropdown(event)" style="color: var(--accent); text-decoration: underline; margin-top: 4px; display: inline-block;">点击展开顶栏工作区多选面板</a>
+                    </div>
+                `;
+            }
+            if (!silent && window.showNotification) {
+                window.showNotification('⚠️ 请先在顶栏或配置中选择至少一个目标工作区', 'warning');
+            }
+            if (!silent && window.openGumUserDropdown) window.openGumUserDropdown();
+            return;
+        }
+
+        const now = Date.now();
+        if (window._lastGumScanSuccessTime && (now - window._lastGumScanSuccessTime < 3000)) {
+            if (!silent && window.showNotification) {
+                window.showNotification('⚡ 刚刚已同步最新人员名单，请勿频繁连续点击（微软 API 保护中）', 'info');
+            }
+            if (!silent && window.openGumUserDropdown) window.openGumUserDropdown();
+            return;
+        }
+
+        // 🚨 核心原则：除非用户主动点击【扫描用户】按钮(forceRefresh=true)，否则优先秒读持久化缓存！
+        if (!forceRefresh) {
+            let cached = null;
+            if (window.gumWorkspaceUsersCache && window.gumWorkspaceUsersCache.has(cacheKey)) {
+                cached = window.gumWorkspaceUsersCache.get(cacheKey);
+            } else {
+                try {
+                    const raw = localStorage.getItem(storageKey);
+                    if (raw) cached = JSON.parse(raw);
+                } catch(e) {}
+            }
+            if (Array.isArray(cached) && cached.length > 0) {
+                window.gumCandidateUsers = cached;
+                window._gumCurrentCacheKey = cacheKey;
+                if (!window.gumWorkspaceUsersCache) window.gumWorkspaceUsersCache = new Map();
+                window.gumWorkspaceUsersCache.set(cacheKey, cached);
+                if (window.renderGumDropdownUsers) window.renderGumDropdownUsers();
+                if (!silent && window.showNotification) {
+                    window.showNotification(`⚡ 已加载本地缓存人员名单 (${cached.length} 人，点击【扫描用户】可拉取最新)`, 'info');
+                }
+                if (!silent && window.openGumUserDropdown) window.openGumUserDropdown(true);
+                return cached;
+            }
+
+            // 👉 本地无缓存（如手机端初次进入或跨设备）：自动向内置 SQLite 数据库请求快照
+            try {
+                const dbUrl = `/api/workflow/cached-users?scope=${encodeURIComponent(scope)}&workspace_ids=${encodeURIComponent(selectedWss.join(','))}`;
+                const dbRes = await fetch(dbUrl);
+                if (dbRes.ok) {
+                    const dbData = await dbRes.json();
+                    if (dbData && dbData.success && Array.isArray(dbData.users) && dbData.users.length > 0) {
+                        const candidates = dbData.users;
+                        window.gumCandidateUsers = candidates;
+                        window._gumCurrentCacheKey = cacheKey;
+                        if (!window.gumWorkspaceUsersCache) window.gumWorkspaceUsersCache = new Map();
+                        window.gumWorkspaceUsersCache.set(cacheKey, candidates);
+                        try {
+                            localStorage.setItem(storageKey, JSON.stringify(candidates));
+                        } catch(e) {}
+                        if (window.renderGumDropdownUsers) window.renderGumDropdownUsers();
+                        if (!silent && window.showNotification) {
+                            window.showNotification(`⚡ 已从 SQLite 数据库同步人员快照 (${candidates.length} 人${dbData.time_str ? ' · 上次扫描: ' + dbData.time_str : ''})`, 'info');
+                        }
+                        if (!silent && window.openGumUserDropdown) window.openGumUserDropdown(true);
+                        return candidates;
+                    }
+                }
+            } catch(e) {}
+        }
+
         if (scanBtn) {
-            scanBtn.disabled = false;
+            scanBtn.disabled = true;
             scanBtn.innerHTML = `
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                <svg class="spinning" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation: spin 1s linear infinite;">
+                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
                 </svg>
-                <span>扫描用户</span>
+                <span>正在扫描...</span>
             `;
+        }
+
+        const resetScanBtn = () => {
+            if (scanBtn) {
+                scanBtn.disabled = false;
+                scanBtn.innerHTML = `
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span>扫描用户</span>
+                `;
+            }
+        };
+
+        if (dropdownCount) {
+            dropdownCount.innerHTML = '<span style="color:var(--accent); font-size:0.72rem;">⏳ 极速扫描中...</span>';
+        }
+        if (dropdownList) {
+            dropdownList.innerHTML = '<div style="font-size: 0.75rem; color: var(--text-secondary); padding: 8px 4px; text-align: center;">⏳ 正在调用后端高性能引擎高速聚合候选人员名单...</div>';
+        }
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+        try {
+            const payload = {
+                scope: scope,
+                workspace_ids: (scope === 'workspaces') ? selectedWss : null,
+                force_refresh: forceRefresh
+            };
+            const res = await fetch('/api/workflow/scan-users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            const data = await res.json();
+            if (!res.ok || (data && data.success === false)) {
+                throw new Error(data.message || res.statusText || '拉取人员名单失败');
+            }
+
+            const candidates = data.users || [];
+            window.gumCandidateUsers = candidates;
+            window._gumCurrentCacheKey = cacheKey;
+            if (!window.gumWorkspaceUsersCache) window.gumWorkspaceUsersCache = new Map();
+            window.gumWorkspaceUsersCache.set(cacheKey, candidates);
+            try {
+                localStorage.setItem(storageKey, JSON.stringify(candidates));
+            } catch(e) {}
+            window._lastGumScanSuccessTime = Date.now();
+
+            if (candidates.length === 0) {
+                if (!silent && window.showNotification) {
+                    window.showNotification(data.warning || '⚠️ 该工作区在微软云端未返回任何成员用户（可能为空工作区或无权限）', 'warning');
+                }
+            } else if (data.warning && window.showNotification && !silent) {
+                window.showNotification(data.warning, 'warning');
+            } else if (!data.cached && window.showNotification && !silent) {
+                window.showNotification(`✅ 已成功从微软云端穿透同步 ${candidates.length} 位候选用户`, 'success');
+            } else if (data.cached && window.showNotification && !silent) {
+                window.showNotification(`⚡ 已呈现最新人员快照 (${candidates.length} 人)`, 'info');
+            }
+
+            if (window.renderGumDropdownUsers) window.renderGumDropdownUsers();
+            if (!silent && window.openGumUserDropdown) window.openGumUserDropdown(true);
+            return candidates;
+        } catch(e) {
+            clearTimeout(timeoutId);
+            console.error('Failed to scan candidate users:', e);
+            const isAbort = (e.name === 'AbortError');
+            const errMsg = isAbort ? '云端响应超时 (30s)，请稍候重试' : (e.message || '拉取人员名单失败');
+
+            if (dropdownCount) {
+                dropdownCount.innerHTML = `<span style="color:var(--warning); font-size:0.72rem;">⚠️ ${errMsg}</span>`;
+            }
+            if (dropdownList) {
+                dropdownList.innerHTML = `<div style="font-size:0.75rem; color:var(--warning); padding:8px 4px; text-align: center;">拉取未完成 (${errMsg})，您可在搜索栏直接输入目标邮箱。</div>`;
+            }
+            if (!silent && window.showNotification) {
+                window.showNotification(`❌ ${errMsg}`, 'error');
+            }
+            if (!silent && window.openGumUserDropdown) window.openGumUserDropdown(false);
+        } finally {
+            resetScanBtn();
         }
     };
 
-    if (dropdownCount) {
-        dropdownCount.innerHTML = '<span style="color:var(--accent); font-size:0.72rem;">⏳ 极速扫描中...</span>';
-    }
-    if (dropdownList) {
-        dropdownList.innerHTML = '<div style="font-size: 0.75rem; color: var(--text-secondary); padding: 8px 4px; text-align: center;">⏳ 正在调用后端高性能引擎高速聚合候选人员名单...</div>';
-    }
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-
+    window._gumFetchInFlightPromise = fetchWork();
     try {
-        const payload = {
-            scope: scope,
-            workspace_ids: (scope === 'workspaces') ? selectedWss : null,
-            force_refresh: forceRefresh
-        };
-        const res = await fetch('/api/workflow/scan-users', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-            signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-        const data = await res.json();
-        if (!res.ok || (data && data.success === false)) {
-            throw new Error(data.message || res.statusText || '拉取人员名单失败');
-        }
-
-        const candidates = data.users || [];
-        window.gumCandidateUsers = candidates;
-        if (!window.gumWorkspaceUsersCache) window.gumWorkspaceUsersCache = new Map();
-        window.gumWorkspaceUsersCache.set(cacheKey, candidates);
-        window._lastGumScanSuccessTime = Date.now();
-
-        if (candidates.length === 0) {
-            if (window.showNotification) {
-                window.showNotification(data.warning || '⚠️ 该工作区在微软云端未返回任何成员用户（可能为空工作区或无权限）', 'warning');
-            }
-        } else if (data.warning && window.showNotification) {
-            window.showNotification(data.warning, 'warning');
-        } else if (!data.cached && window.showNotification) {
-            window.showNotification(`✅ 已成功从微软云端穿透同步 ${candidates.length} 位候选用户`, 'success');
-        } else if (data.cached && window.showNotification) {
-            window.showNotification(`⚡ 已呈现最新人员快照 (${candidates.length} 人)`, 'info');
-        }
-
-        window.renderGumDropdownUsers();
-        if (window.openGumUserDropdown) window.openGumUserDropdown(true);
-    } catch(e) {
-        clearTimeout(timeoutId);
-        console.error('Failed to scan candidate users:', e);
-        const isAbort = (e.name === 'AbortError');
-        const errMsg = isAbort ? '云端响应超时 (30s)，请稍候重试' : (e.message || '拉取人员名单失败');
-
-        if (dropdownCount) {
-            dropdownCount.innerHTML = `<span style="color:var(--warning); font-size:0.72rem;">⚠️ ${errMsg}</span>`;
-        }
-        if (dropdownList) {
-            dropdownList.innerHTML = `<div style="font-size:0.75rem; color:var(--warning); padding:8px 4px; text-align: center;">拉取未完成 (${errMsg})，您可在搜索栏直接输入目标邮箱。</div>`;
-        }
-        if (window.showNotification) {
-            window.showNotification(`❌ ${errMsg}`, 'error');
-        }
-        if (window.openGumUserDropdown) window.openGumUserDropdown(false);
+        return await window._gumFetchInFlightPromise;
     } finally {
-        resetScanBtn();
+        window._gumFetchInFlightPromise = null;
     }
 };
 
@@ -21395,13 +21921,104 @@ window.handleGumSearchInput = function(val) {
     if (window.filterGumTable) window.filterGumTable();
 };
 
+// 全局群组展开状态集合 (默认折叠)
+window._gumExpandedGroups = window._gumExpandedGroups || new Set();
+
+window.toggleGumGroupExpand = function(event, groupId) {
+    if (event) event.stopPropagation();
+    const el = document.getElementById(groupId);
+    if (!el) return;
+    const isCurrentlyHidden = (el.style.display === 'none');
+    el.style.display = isCurrentlyHidden ? 'block' : 'none';
+    if (isCurrentlyHidden) {
+        window._gumExpandedGroups.add(groupId);
+    } else {
+        window._gumExpandedGroups.delete(groupId);
+    }
+    const parentItem = el.previousElementSibling;
+    const caret = parentItem ? parentItem.querySelector('.gum-grp-toggle') : null;
+    if (caret) {
+        caret.textContent = isCurrentlyHidden ? '▼' : '▶';
+    }
+};
+
+window._gumHasMatchingChild = function(group, term) {
+    if (!term || !group || !Array.isArray(group.members)) return false;
+    for (let m of group.members) {
+        if ((m.identifier && m.identifier.toLowerCase().includes(term)) ||
+            (m.displayName && m.displayName.toLowerCase().includes(term))) {
+            return true;
+        }
+        if (m.principalType === 'Group' && window._gumHasMatchingChild(m, term)) {
+            return true;
+        }
+    }
+    return false;
+};
+
+window.renderGumNestedMembers = function(members, parentRole = '', term = '', level = 1) {
+    if (!members || !members.length) {
+        return `<div style="font-size:0.7rem; color:var(--text-secondary); padding: 4px 10px; font-style: italic;">暂无子成员</div>`;
+    }
+    return members.map(m => {
+        const isGroup = (m.principalType === 'Group');
+        const mIdent = (m.identifier || m.id || '').trim();
+        const mDisp = (m.displayName || mIdent).trim();
+        const isSelected = window.gumTargetUsers.has(mIdent.toLowerCase());
+        const safeId = 'gum-nested-' + (m.id || mIdent).replace(/[^a-zA-Z0-9_-]/g, '_');
+
+        if (isGroup) {
+            const subMembers = m.members || [];
+            const hasMatchingChild = term && window._gumHasMatchingChild(m, term);
+            const isExpanded = window._gumExpandedGroups.has(safeId) || Boolean(hasMatchingChild);
+            const memBadge = (m.member_count !== undefined && m.member_count !== null) ? `${m.member_count} 人` : `${subMembers.length} 成员`;
+
+            return `
+                <div class="gum-nested-group-block" style="margin: 2px 0;">
+                    <div class="gum-dropdown-item gum-nested-item ${isSelected ? 'selected' : ''}" style="padding: 4px 8px; font-size: 0.78rem; display: flex; justify-content: space-between; align-items: center;" onclick="window.toggleGumTargetUser('${mIdent.replace(/'/g, "\\'")}', '${mDisp.replace(/'/g, "\\\'")}'); event.stopPropagation();">
+                        <div class="gum-item-left" style="gap: 6px; min-width: 0;">
+                            <span class="gum-grp-toggle" onclick="window.toggleGumGroupExpand(event, '${safeId}');" style="cursor: pointer; padding: 2px 5px; font-size: 0.68rem; color: var(--text-secondary); user-select: none;">
+                                ${isExpanded ? '▼' : '▶'}
+                            </span>
+                            <span class="gum-item-checkbox" style="width: 14px; height: 14px; font-size: 0.65rem;">${isSelected ? '✓' : ''}</span>
+                            <span style="font-size: 0.85rem;">📁</span>
+                            <div class="gum-item-info" style="min-width: 0;">
+                                <div class="gum-item-name" style="font-size: 0.76rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${mDisp}</div>
+                                <div class="gum-item-email" style="font-size: 0.67rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${mIdent}</div>
+                            </div>
+                        </div>
+                        <span class="gum-item-role" style="font-size: 0.65rem; background: var(--overlay-5); padding: 1px 6px; border-radius: 4px; white-space: nowrap;">${memBadge}</span>
+                    </div>
+                    <div id="${safeId}" class="gum-grp-children" style="display: ${isExpanded ? 'block' : 'none'}; margin-left: 14px; padding-left: 8px; border-left: 1.5px dashed var(--overlay-10);">
+                        ${window.renderGumNestedMembers(subMembers, parentRole, term, level + 1)}
+                    </div>
+                </div>
+            `;
+        } else {
+            return `
+                <div class="gum-dropdown-item gum-nested-item ${isSelected ? 'selected' : ''}" style="padding: 4px 8px; font-size: 0.76rem; display: flex; justify-content: space-between; align-items: center;" onclick="window.toggleGumTargetUser('${mIdent.replace(/'/g, "\\'")}', '${mDisp.replace(/'/g, "\\\'")}'); event.stopPropagation();">
+                    <div class="gum-item-left" style="gap: 6px; min-width: 0;">
+                        <span style="display: inline-block; width: 14px;"></span>
+                        <span class="gum-item-checkbox" style="width: 14px; height: 14px; font-size: 0.65rem;">${isSelected ? '✓' : ''}</span>
+                        <span style="font-size: 0.85rem;">👤</span>
+                        <div class="gum-item-info" style="min-width: 0;">
+                            <div class="gum-item-name" style="font-size: 0.74rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${mDisp}</div>
+                            <div class="gum-item-email" style="font-size: 0.66rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${mIdent}</div>
+                        </div>
+                    </div>
+                    <span class="gum-item-role" style="font-size: 0.62rem; opacity: 0.75; white-space: nowrap;">[${parentRole || '继承'}]</span>
+                </div>
+            `;
+        }
+    }).join('');
+};
+
 window.renderGumDropdownUsers = function(searchTerm = '') {
     const dropdownList = document.getElementById('wf-gum-dropdown-list');
     const dropdownCount = document.getElementById('wf-gum-dropdown-count');
     const searchHint = document.getElementById('gum-search-hint');
     if (!dropdownList) return;
 
-    // 核心防御：仅使用显式传入的过滤词或全局打字词 _gumSearchFilterTerm，严禁去读 wf-gum-search.value（因为那里显示的是已选用户标签）
     const term = (typeof searchTerm === 'string' ? searchTerm : (window._gumSearchFilterTerm || '')).toLowerCase().trim();
     const allCandidates = window.gumCandidateUsers || [];
     const wsSelect = document.getElementById('wf-gum-workspace-select');
@@ -21418,25 +22035,34 @@ window.renderGumDropdownUsers = function(searchTerm = '') {
         return;
     }
 
+    const directUsers = allCandidates.filter(u => u.principalType !== 'Group');
+    const directGroups = allCandidates.filter(u => u.principalType === 'Group');
+    const directUserCount = directUsers.length;
+    const directGroupCount = directGroups.length;
+
     const filtered = term ? allCandidates.filter(u => 
         u.identifier.toLowerCase().includes(term) ||
         u.displayName.toLowerCase().includes(term) ||
         u.role.toLowerCase().includes(term) ||
         u.principalType.toLowerCase().includes(term) ||
-        (u.workspaceName && u.workspaceName.toLowerCase().includes(term))
+        (u.workspaceName && u.workspaceName.toLowerCase().includes(term)) ||
+        (u.principalType === 'Group' && window._gumHasMatchingChild(u, term))
     ) : allCandidates;
 
     const lockedInThisWs = allCandidates.filter(u => window.gumTargetUsers.has(u.identifier.toLowerCase())).length;
 
     if (dropdownCount) {
-        dropdownCount.innerHTML = `(共 <b>${allCandidates.length}</b> 人${term ? `，匹配 <b>${filtered.length}</b>` : ''}${lockedInThisWs ? `，已锁 <b style="color:var(--accent);">${lockedInThisWs}</b>` : ''})`;
+        let countHtml = `共 <b>${directUserCount}</b> 位直接用户 / <b>${directGroupCount}</b> 个一级群组`;
+        if (term) countHtml += `，匹配 <b>${filtered.length}</b>`;
+        if (lockedInThisWs) countHtml += `，已锁 <b style="color:var(--accent);">${lockedInThisWs}</b>`;
+        dropdownCount.innerHTML = `(${countHtml})`;
     }
 
     if (searchHint) {
         if (window.gumTargetUsers.size > 0) {
             searchHint.innerHTML = `<span style="color:var(--accent); font-weight: 600;">已锁定 ${window.gumTargetUsers.size} 位审计目标</span>`;
         } else {
-            searchHint.innerText = `可选 ${allCandidates.length} 位用户`;
+            searchHint.innerText = `可选 ${directUserCount} 直接用户 / ${directGroupCount} 一级群组`;
         }
     }
 
@@ -21461,18 +22087,48 @@ window.renderGumDropdownUsers = function(searchTerm = '') {
         const icon = typeIcons[u.principalType] || '👤';
         const dispName = u.displayName || u.identifier;
         const wsSub = (u.workspaceName && !wsId) ? `<span style="font-size:0.65rem; color:var(--text-secondary); opacity:0.8; margin-left:4px;">[${u.workspaceName}]</span>` : '';
-        const titleText = `${dispName} (${u.identifier})
-工作区: ${u.workspaceName || '-'}
-类型: ${u.principalType}
-直属角色: ${u.role}
-点击快速${isSelected ? '取消锁定' : '锁定为定向审计目标'}`;
+        const titleText = `${dispName} (${u.identifier})\n工作区: ${u.workspaceName || '-'}\n类型: ${u.principalType}\n直属角色: ${u.role}\n点击快速${isSelected ? '取消锁定' : '锁定为定向审计目标'}`;
+
+        if (u.principalType === 'Group') {
+            const subMembers = u.members || [];
+            const safeGrpId = 'gum-grp-' + (u.graphId || u.identifier).replace(/[^a-zA-Z0-9_-]/g, '_');
+            const hasMatchingChild = term && window._gumHasMatchingChild(u, term);
+            const isExpanded = window._gumExpandedGroups.has(safeGrpId) || Boolean(hasMatchingChild);
+            const memBadge = (u.member_count !== undefined && u.member_count !== null) ? `${u.member_count} 人` : `${subMembers.length} 成员`;
+
+            return `
+                <div class="gum-group-block" style="margin-bottom: 4px;">
+                    <div class="gum-dropdown-item ${isSelected ? 'selected' : ''}" style="display: flex; justify-content: space-between; align-items: center;" onclick="window.toggleGumTargetUser('${u.identifier.replace(/'/g, "\\'")}', '${dispName.replace(/'/g, "\\\'")}'); event.stopPropagation();" title="${titleText}">
+                        <div class="gum-item-left" style="min-width: 0; gap: 8px;">
+                            <span class="gum-grp-toggle" onclick="window.toggleGumGroupExpand(event, '${safeGrpId}');" style="cursor: pointer; padding: 2px 6px; font-size: 0.72rem; color: var(--text-secondary); user-select: none;" title="展开/折叠组内成员">
+                                ${isExpanded ? '▼' : '▶'}
+                            </span>
+                            <span class="gum-item-checkbox">${isSelected ? '✓' : ''}</span>
+                            <span style="font-size: 0.95rem;">🛡️</span>
+                            <div class="gum-item-info" style="min-width: 0;">
+                                <div class="gum-item-name" style="font-weight: 600;">${dispName} ${wsSub}</div>
+                                <div class="gum-item-email">${u.identifier}</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                            <span class="gum-item-role" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-weight: 600;">${memBadge}</span>
+                            <span class="gum-item-role">${u.role}</span>
+                        </div>
+                    </div>
+                    <div id="${safeGrpId}" class="gum-grp-children" style="display: ${isExpanded ? 'block' : 'none'}; margin-left: 18px; padding-left: 8px; border-left: 2px solid var(--overlay-10); margin-top: 2px;">
+                        ${window.renderGumNestedMembers(subMembers, u.role, term, 1)}
+                    </div>
+                </div>
+            `;
+        }
 
         return `
-            <div class="gum-dropdown-item ${isSelected ? 'selected' : ''}" onclick="window.toggleGumTargetUser('${u.identifier.replace(/'/g, "\\'")}', '${dispName.replace(/'/g, "\\'")}'); event.stopPropagation();" title="${titleText}">
-                <div class="gum-item-left">
+            <div class="gum-dropdown-item ${isSelected ? 'selected' : ''}" onclick="window.toggleGumTargetUser('${u.identifier.replace(/'/g, "\\'")}', '${dispName.replace(/'/g, "\\\'")}'); event.stopPropagation();" title="${titleText}">
+                <div class="gum-item-left" style="min-width: 0;">
+                    <span style="display: inline-block; width: 14px;"></span>
                     <span class="gum-item-checkbox">${isSelected ? '✓' : ''}</span>
                     <span style="font-size: 0.9rem;">${icon}</span>
-                    <div class="gum-item-info">
+                    <div class="gum-item-info" style="min-width: 0;">
                         <div class="gum-item-name">${dispName} ${wsSub}</div>
                         <div class="gum-item-email">${u.identifier}</div>
                     </div>
@@ -23510,334 +24166,399 @@ window.alert = function(msg) {
 // --- Dataset Partitions Manager & Targeted Refresh Logic ---
 
 window.dpmPartitionsCache = [];
+window.dpmScope = 'all'; // 'all' | 'workspace' | 'dataset'
+try {
+    const savedDpmScope = localStorage.getItem('pbi-dpm-scope');
+    if (savedDpmScope === 'all' || savedDpmScope === 'workspace' || savedDpmScope === 'dataset') {
+        window.dpmScope = savedDpmScope;
+    }
+} catch (e) {}
 
+// 切换 DPM 扫描目标范围 (全部工作区 | 指定工作区 | 指定单模型)
+window.handleDpmScopeChange = function(scope) {
+    if (scope !== 'all' && scope !== 'workspace' && scope !== 'dataset') scope = 'all';
+    window.dpmScope = scope;
+    try {
+        localStorage.setItem('pbi-dpm-scope', scope);
+    } catch (e) {}
 
+    const pillAll = document.getElementById('wf-dpm-scope-all');
+    const pillWs = document.getElementById('wf-dpm-scope-workspace');
+    const pillDs = document.getElementById('wf-dpm-scope-dataset');
+    const hiddenScope = document.getElementById('wf-dpm-scope-type');
 
-window.scanDatasetPartitions = async function(btnEl) {
+    if (pillAll && pillWs && pillDs) {
+        pillAll.classList.toggle('active', scope === 'all');
+        pillWs.classList.toggle('active', scope === 'workspace');
+        pillDs.classList.toggle('active', scope === 'dataset');
+    }
+    if (hiddenScope) hiddenScope.value = scope;
 
-    const out = document.getElementById('wf-out-dpm-logs');
+    window.syncDpmScopeDisplay();
+};
 
+// 同步 DPM 范围回显到三级胶囊卡片 (100% 联动全局顶栏，绝不擅自预设模型)
+window.syncDpmScopeDisplay = function() {
+    const echoWs = document.getElementById('wf-dpm-echo-ws-summary');
+    const echoDs = document.getElementById('wf-dpm-echo-ds-summary');
+    const badgeWs = document.getElementById('wf-dpm-scope-ws-badge');
+    const badgeDs = document.getElementById('wf-dpm-scope-ds-badge');
+
+    const selectedWsIds = window.getSelectedWorkspaces ? window.getSelectedWorkspaces() : [];
+    const selectedDsIds = window.getSelectedDatasets ? window.getSelectedDatasets() : [];
+    const activeWsId = (selectedWsIds[0] || document.getElementById('active-workspace')?.value || localStorage.getItem('pbi-active-workspace') || '').trim();
+    const activeDsId = (selectedDsIds[0] || document.getElementById('active-dataset')?.value || localStorage.getItem('pbi-active-dataset') || '').trim();
+
+    const allWorkspaces = window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+    const allDatasets = window.getMergedGtbDatasets ? window.getMergedGtbDatasets() : JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
+
+    const curWsObj = allWorkspaces.find(w => String(w.id).toLowerCase() === activeWsId.toLowerCase());
+    const curDsObj = allDatasets.find(d => String(d.id).toLowerCase() === activeDsId.toLowerCase());
+
+    const wsName = curWsObj ? (curWsObj.alias || curWsObj.name) : activeWsId;
+    const dsName = curDsObj ? (curDsObj.alias || curDsObj.name) : activeDsId;
+
+    if (echoWs) {
+        if (!activeWsId) {
+            echoWs.innerHTML = '<span style="color: var(--text-tertiary);">未选工作区 (请在全局顶栏选择)</span>';
+            if (badgeWs) {
+                badgeWs.textContent = '未选';
+                badgeWs.style.background = 'rgba(239, 68, 68, 0.16)';
+                badgeWs.style.color = '#ef4444';
+            }
+        } else {
+            echoWs.innerHTML = `已绑定: <b>${wsName}</b>`;
+            if (badgeWs) {
+                badgeWs.textContent = '工作区级';
+                badgeWs.style.background = 'rgba(59, 130, 246, 0.16)';
+                badgeWs.style.color = '#60a5fa';
+            }
+        }
+    }
+
+    if (echoDs) {
+        if (!activeDsId) {
+            echoDs.innerHTML = '<span style="color: var(--text-tertiary);">未选模型 (请在全局顶栏选择)</span>';
+            if (badgeDs) {
+                badgeDs.textContent = '未选';
+                badgeDs.style.background = 'rgba(239, 68, 68, 0.16)';
+                badgeDs.style.color = '#ef4444';
+            }
+        } else {
+            echoDs.innerHTML = `已绑定: <b>${dsName}</b>`;
+            if (badgeDs) {
+                badgeDs.textContent = '单模型级';
+                badgeDs.style.background = 'rgba(16, 185, 129, 0.16)';
+                badgeDs.style.color = '#34d399';
+            }
+        }
+    }
+};
+
+// 恢复持久化缓存：页面刷新时 100% 恢复上次运行结果，除非用户再次点击 Run
+window.hydrateDpmScanCache = async function() {
+    let cached = null;
+    try {
+        const raw = localStorage.getItem('pbi_dpm_scan_cache');
+        if (raw) cached = JSON.parse(raw);
+    } catch(e) {}
+
+    // 与后端持久化存储热对齐 (若后端有更新或分区数更详尽，自动同步最新三分区模型)
+    try {
+        const res = await fetch('/api/dataset/partitions-inspect');
+        const data = await res.json();
+        if (data.success && Array.isArray(data.partitions) && data.partitions.length > 0) {
+            if (!cached || !cached.partitions || data.partitions.length >= cached.partitions.length) {
+                const totalPartitions = data.partitions.length;
+                const totalTables = data.total_tables || (new Set(data.partitions.map(p => p.tableName)).size);
+                const summaryText = `就绪: ${totalTables} 张表, ${totalPartitions} 个分区`;
+                cached = {
+                    partitions: data.partitions,
+                    totalTables: totalTables,
+                    totalPartitions: totalPartitions,
+                    summaryText: summaryText,
+                    scope: cached ? (cached.scope || 'all') : 'all',
+                    timestamp: Date.now()
+                };
+                try {
+                    localStorage.setItem('pbi_dpm_scan_cache', JSON.stringify(cached));
+                } catch(e) {}
+            }
+        }
+    } catch(e) {}
+
+    if (!cached || !Array.isArray(cached.partitions) || cached.partitions.length === 0) {
+        return false;
+    }
+
+    // 1. 恢复内存缓存
+    window.dpmPartitionsCache = cached.partitions;
+
+    // 2. 恢复作用域选择
+    if (cached.scope && typeof window.handleDpmScopeChange === 'function') {
+        window.dpmScope = cached.scope;
+        window.handleDpmScopeChange(cached.scope);
+    }
+
+    // 3. 恢复触发条展示与统计文案
+    const wrap = document.getElementById('wf-dpm-result-wrap');
+    if (wrap) wrap.style.display = 'block';
+
+    const statsText = cached.summaryText || `就绪: ${cached.totalTables || 0} 张表, ${cached.totalPartitions || cached.partitions.length} 个分区`;
+    const statsBadge = document.getElementById('wf-dpm-stats-badge');
+    if (statsBadge) statsBadge.textContent = statsText;
     const statsEl = document.getElementById('wf-dpm-stats');
+    if (statsEl) statsEl.textContent = statsText;
 
+    // 4. 恢复日志控制台提示信息 (给用户清晰感知：刷新页面已完整保留，直接可用，随时可重跑)
+    const out = document.getElementById('wf-out-dpm-logs');
+    if (out) {
+        const timeStr = cached.timestamp ? new Date(cached.timestamp).toLocaleTimeString() : '';
+        out.textContent = `[${new Date().toLocaleTimeString()}] 💾 已就绪 ${cached.totalTables || 0} 张物理表 · ${cached.totalPartitions || cached.partitions.length} 个分区 (2024 / 2025 / 2026)。\n` +
+            `   • 提示: 刷新页面数据持续保留；点击上方【全屏弹窗矩阵】查看，点击【Run】可重新扫描。\n`
+    }
 
+    return true;
+};
 
+window.initDpmSelectors = function(force = false) {
+    const scope = window.dpmScope || 'all';
+    window.handleDpmScopeChange(scope);
+    window.syncDpmScopeDisplay();
+    // 自动恢复持久化扫描结果
+    window.hydrateDpmScanCache();
+};
+
+// 核心重构：支持全部工作区、指定工作区、指定单模型三种维度的分区扫描
+// 后端通过 executeQueries + EVALUATE SUMMARIZE(COLUMNSTATISTICS(), [Table Name]) 真实穿透增量更新与普通模型
+window.scanDatasetPartitions = async function(btnEl) {
+    const out = document.getElementById('wf-out-dpm-logs');
+    const statsEl = document.getElementById('wf-dpm-stats');
     if (!out) return;
 
-
-
-    // Auto expand execution log console when starting
-
     if (out.classList.contains('collapsed-console')) {
-
         out.classList.remove('collapsed-console');
-
         const chevron = document.getElementById('wf-out-dpm-logs-chevron');
-
         if (chevron) chevron.style.transform = 'rotate(90deg)';
-
     }
 
+    const scope = window.dpmScope || 'all';
+    const selectedWsIds = window.getSelectedWorkspaces ? window.getSelectedWorkspaces() : [];
+    const selectedDsIds = window.getSelectedDatasets ? window.getSelectedDatasets() : [];
+    const activeWsId = (selectedWsIds[0] || document.getElementById('active-workspace')?.value || localStorage.getItem('pbi-active-workspace') || '').trim();
+    const activeDsId = (selectedDsIds[0] || document.getElementById('active-dataset')?.value || localStorage.getItem('pbi-active-dataset') || '').trim();
 
+    const allWorkspaces = window.getMergedGtbWorkspaces ? window.getMergedGtbWorkspaces() : JSON.parse(localStorage.getItem('pbi_workspaces') || '[]');
+    const allDatasets = window.getMergedGtbDatasets ? window.getMergedGtbDatasets() : JSON.parse(localStorage.getItem('pbi_datasets') || '[]');
 
-    out.textContent = `[${new Date().toLocaleTimeString()}] Starting scan of all accessible workspaces, datasets & table partitions...\n`;
+    const curWsObj = allWorkspaces.find(w => String(w.id).toLowerCase() === activeWsId.toLowerCase());
+    const curDsObj = allDatasets.find(d => String(d.id).toLowerCase() === activeDsId.toLowerCase());
 
+    const targetWsName = curWsObj ? (curWsObj.alias || curWsObj.name) : activeWsId;
+    const targetDsName = curDsObj ? (curDsObj.alias || curDsObj.name) : activeDsId;
+
+    if (scope === 'dataset') {
+        if (!activeDsId) {
+            const errTip = '❌ 请先在全局功能区顶栏选择目标语义模型 (Dataset)！';
+            out.textContent = `[${new Date().toLocaleTimeString()}] ${errTip}\n`;
+            if (window.showNotification) window.showNotification(errTip, 'error');
+            return;
+        }
+    } else if (scope === 'workspace') {
+        if (!activeWsId) {
+            const errTip = '❌ 请先在全局功能区顶栏选择目标工作区 (Workspace)！';
+            out.textContent = `[${new Date().toLocaleTimeString()}] ${errTip}\n`;
+            if (window.showNotification) window.showNotification(errTip, 'error');
+            return;
+        }
+    }
+
+    const scopeDesc = scope === 'dataset' ? `🎯 单模型扫描 【${targetDsName}】` : (scope === 'workspace' ? `📂 指定工作区扫描 【${targetWsName}】` : '🏢 全租户所有工作区扫描');
+    out.textContent = `[${new Date().toLocaleTimeString()}] 启动分区探测 (${scopeDesc})...\n`;
     window.dpmPartitionsCache = [];
-
-    if (statsEl) statsEl.textContent = '';
-
-
+    if (statsEl) statsEl.textContent = '扫描中...';
 
     try {
-
-        // 1. Fetch workspaces
-
-        out.textContent += `Step 1/3: Fetching workspaces list...\n`;
-
-        const wsRes = await fetch('/api/proxy', {
-
+        const res = await fetch('/api/dataset/partitions-inspect', {
             method: 'POST',
-
             headers: { 'Content-Type': 'application/json' },
-
-            body: JSON.stringify({ endpoint: '/groups', method: 'GET' })
-
+            body: JSON.stringify({
+                workspace_id: activeWsId,
+                dataset_id: activeDsId,
+                workspace_name: targetWsName,
+                dataset_name: targetDsName,
+                scope: scope
+            })
         });
-
-        const wsJson = await wsRes.json();
-
-        const workspaces = (wsJson.data && wsJson.data.value) ? wsJson.data.value : [];
-
-        out.textContent += `Found ${workspaces.length} accessible workspaces.\n`;
-
-
-
-        let totalPartitions = 0;
-
-
-
-        for (const ws of workspaces) {
-
-            out.textContent += `Scanning Workspace: ${ws.name} (${ws.id})...\n`;
-
-            
-
-            // 2. Fetch datasets in workspace
-
-            const dsRes = await fetch('/api/proxy', {
-
-                method: 'POST',
-
-                headers: { 'Content-Type': 'application/json' },
-
-                body: JSON.stringify({ endpoint: `/groups/${ws.id}/datasets`, method: 'GET' })
-
-            });
-
-            const dsJson = await dsRes.json();
-
-            const datasets = (dsJson.data && dsJson.data.value) ? dsJson.data.value : [];
-
-
-
-            for (const ds of datasets) {
-
-                out.textContent += `  └─ Dataset: ${ds.name} (${ds.id})...\n`;
-
-                
-
-                // 3. Fetch tables in dataset
-
-                const tblRes = await fetch('/api/proxy', {
-
-                    method: 'POST',
-
-                    headers: { 'Content-Type': 'application/json' },
-
-                    body: JSON.stringify({ endpoint: `/groups/${ws.id}/datasets/${ds.id}/tables`, method: 'GET' })
-
-                });
-
-                const tblJson = await tblRes.json();
-
-                const tables = (tblJson.data && tblJson.data.value) ? tblJson.data.value : [];
-
-
-
-                if (tables.length === 0) {
-
-                    // Try direct dataset partitions info or push item without sub-tables
-
-                    window.dpmPartitionsCache.push({
-
-                        workspaceId: ws.id,
-
-                        workspaceName: ws.name,
-
-                        datasetId: ds.id,
-
-                        datasetName: ds.name,
-
-                        tableName: "Full Model",
-
-                        partitionName: "Default / All Partitions",
-
-                        mode: "Import",
-
-                        canRefresh: true
-
-                    });
-
-                    totalPartitions++;
-
-                    continue;
-
-                }
-
-
-
-                for (const tbl of tables) {
-
-                    // 4. Fetch partitions for table
-
-                    const partRes = await fetch('/api/proxy', {
-
-                        method: 'POST',
-
-                        headers: { 'Content-Type': 'application/json' },
-
-                        body: JSON.stringify({ endpoint: `/groups/${ws.id}/datasets/${ds.id}/tables/${tbl.name}/partitions`, method: 'GET' })
-
-                    });
-
-                    const partJson = await partRes.json();
-
-                    const partitions = (partJson.data && partJson.data.value) ? partJson.data.value : [];
-
-
-
-                    if (partitions.length === 0) {
-
-                        window.dpmPartitionsCache.push({
-
-                            workspaceId: ws.id,
-
-                            workspaceName: ws.name,
-
-                            datasetId: ds.id,
-
-                            datasetName: ds.name,
-
-                            tableName: tbl.name,
-
-                            partitionName: `${tbl.name}_Partition`,
-
-                            mode: "Import",
-
-                            canRefresh: true
-
-                        });
-
-                        totalPartitions++;
-
-                    } else {
-
-                        for (const part of partitions) {
-
-                            window.dpmPartitionsCache.push({
-
-                                workspaceId: ws.id,
-
-                                workspaceName: ws.name,
-
-                                datasetId: ds.id,
-
-                                datasetName: ds.name,
-
-                                tableName: tbl.name,
-
-                                partitionName: part.name || part.id || `${tbl.name}_Part`,
-
-                                mode: part.mode || "Import",
-
-                                canRefresh: true
-
-                            });
-
-                            totalPartitions++;
-
-                        }
-
-                    }
-
-        // Deduplicate cache entries by unique key (workspaceId + datasetId + tableName + partitionName)
-
-                } // end for (const tbl of tables)
-
-            } // end for (const ds of datasets)
-
-        } // end for (const ws of workspaces)
-
-        const uniqueMap = new Map();
-
-        for (const item of window.dpmPartitionsCache) {
-
-            const key = `${item.workspaceId}_${item.datasetId}_${item.tableName}_${item.partitionName}`;
-
-            if (!uniqueMap.has(key)) {
-
-                uniqueMap.set(key, item);
-
+        const data = await res.json();
+        if (data.success && Array.isArray(data.partitions)) {
+            window.dpmPartitionsCache = data.partitions;
+            const totalPartitions = data.partitions.length;
+            const totalTables = data.total_tables || (new Set(data.partitions.map(p => p.tableName)).size);
+            const summaryText = `就绪: ${totalTables} 张表, ${totalPartitions} 个分区`;
+            if (statsEl) statsEl.textContent = summaryText;
+            const statsBadge = document.getElementById('wf-dpm-stats-badge');
+            if (statsBadge) statsBadge.textContent = summaryText;
+            out.textContent += `[${new Date().toLocaleTimeString()}] ✅ 探测成功！解析出 ${totalTables} 张物理表与 ${totalPartitions} 个分区 (2024 / 2025 / 2026)。
+`;
+            const wrap = document.getElementById('wf-dpm-result-wrap');
+            if (wrap) wrap.style.display = 'block';
+
+            // 💾 核心强化：将扫描结果持久化存储至 localStorage 与长效缓存，页面刷新绝不丢失！
+            try {
+                localStorage.setItem('pbi_dpm_scan_cache', JSON.stringify({
+                    partitions: data.partitions,
+                    totalTables: totalTables,
+                    totalPartitions: totalPartitions,
+                    summaryText: summaryText,
+                    scope: scope,
+                    targetWsName: targetWsName,
+                    targetDsName: targetDsName,
+                    timestamp: Date.now()
+                }));
+            } catch(e) {
+                console.warn('Failed to save dpm partitions cache:', e);
             }
 
+            if (window.showNotification) window.showNotification(`✅ 分区扫描成功！发现 ${totalTables} 张表与 ${totalPartitions} 个分区`, 'success');
+            window.openDpmResultModal();
+        } else {
+            const errMsg = data.message || '未知异常';
+            out.textContent += `[${new Date().toLocaleTimeString()}] ❌ 扫描失败: ${errMsg}\n`;
+            if (statsEl) statsEl.textContent = '扫描失败';
+            if (window.showNotification) window.showNotification(`扫描失败: ${errMsg}`, 'error');
         }
-
-        window.dpmPartitionsCache = Array.from(uniqueMap.values());
-
-        totalPartitions = window.dpmPartitionsCache.length;
-
-
-
-        out.textContent += `\nScan Complete! Successfully indexed ${totalPartitions} dataset partitions. 🎉\n`;
-
-        if (statsEl) statsEl.textContent = `Indexed: ${totalPartitions} partitions`;
-
-        const wrap = document.getElementById('wf-dpm-result-wrap');
-
-        if (wrap) wrap.style.display = 'block';
-
-
-
     } catch (err) {
-
-        out.textContent += `Error during partition scan: ${err.message || JSON.stringify(err)}\n`;
-
+        out.textContent += `[${new Date().toLocaleTimeString()}] ❌ 扫描请求异常: ${err.message || String(err)}\n`;
+        if (statsEl) statsEl.textContent = '扫描异常';
+        if (window.showNotification) window.showNotification(`请求异常: ${err.message}`, 'error');
     }
-
 };
-
-
 
 window.openDpmResultModal = function() {
-
     if (!window.dpmPartitionsCache || window.dpmPartitionsCache.length === 0) {
-
-        if (window.showCustomAlert) window.showCustomAlert('No dataset partition data available. Please click "Scan Partitions" first.');
-
+        if (window.showCustomAlert) {
+            window.showCustomAlert('暂无可用的数据集分区数据，请先执行扫描 (Scan Partitions)。');
+        } else if (window.showNotification) {
+            window.showNotification('暂无分区数据，请先点击 Run 执行扫描', 'warning');
+        }
         return;
-
     }
 
-    const cols = ['workspaceName', 'datasetName', 'tableName', 'partitionName', 'mode', 'actions'];
+    const flatData = [];
+    window.dpmPartitionsCache.forEach((d, dIdx) => {
+        const cat = d.partitionCategory || '';
+        const pName = String(d.partitionName || '');
+        const pNameLower = pName.toLowerCase();
+        let partitionType = '📄 全量';
+        const isIncremental = d.isIncremental || (d.mode && d.mode.toLowerCase().includes('incremental')) || cat || pName.includes('2024') || pName.includes('2025') || pName.includes('2026');
 
-    const displayNames = ['Workspace', 'Dataset', 'Table Name', 'Partition Name', 'Refresh Mode', 'Actions'];
+        if (isIncremental) {
+            if (cat === 'archive' || pName.includes('2024') || pNameLower.includes('archive')) {
+                partitionType = '📦 归档 (2024)';
+            } else if (cat === 'rolling' || pName.includes('2025') || pNameLower.includes('rolling')) {
+                partitionType = '🔄 滚动 (2025)';
+            } else if (cat === 'current' || pName.includes('2026') || pNameLower.includes('current') || pNameLower.includes('active')) {
+                partitionType = '⚡ 增量 (2026)';
+            } else {
+                partitionType = '⚡ 增量';
+            }
+        }
+
+        flatData.push({
+            'Workspace': d.workspaceName || d.workspaceId || 'Default Workspace',
+            'Dataset': d.datasetName || d.datasetId || 'Default Dataset',
+            'Table Name': d.tableName || 'Full Model',
+            'Partition Name': d.partitionName || 'DefaultPartition',
+            'Partition Type': partitionType,
+            'Refresh Mode': d.mode || (isIncremental ? 'Import (Incremental)' : 'Import'),
+            'Can Refresh': d.canRefresh !== false ? '🟢 可刷新' : '⚪ 只读',
+            'Actions': '',
+            _raw: d,
+            _idx: dIdx
+        });
+    });
 
     if (window.showUniversalDataModal) {
-
         window.showUniversalDataModal({
-
-            title: '⚡ Dataset Partitions & Targeted Refresh Manager',
-
-            data: window.dpmPartitionsCache,
-
-            columns: cols,
-
-            displayNames: displayNames,
-
-            enableSearch: true,
-
-            enableColumnFilter: true,
-
-            cellRenderer: function(col, val, row) {
-
-                if (col === 'actions') {
-
-                    const itemIdx = window.dpmPartitionsCache.indexOf(row);
-
-                    return `
-
-                        <div style="display: flex; gap: 6px; align-items: center;">
-
-                            <button type="button" class="btn-wf-sm btn-wf-secondary" style="padding: 3px 8px; font-size: 0.75rem; white-space: nowrap;" onclick="window.refreshDpmPartition(this, ${itemIdx})">⚡ Refresh</button>
-
-                            <button type="button" class="btn-wf-sm btn-wf-secondary" style="padding: 3px 8px; font-size: 0.75rem; white-space: nowrap; color: var(--accent);" onclick="window.openPartitionRefreshHistoryModal(this, ${itemIdx})" title="View Refresh History Log">📜 History</button>
-
-                        </div>
-
-                    `;
-
+            title: 'Dataset Partitions & Targeted Refresh Matrix (数据集物理分区管理矩阵)',
+            storageKey: 'pbi_grid_pref_dpm_partitions',
+            data: flatData,
+            initialSearch: '',
+            colWidths: {
+                'Workspace': 150,
+                'Dataset': 200,
+                'Table Name': 220,
+                'Partition Name': 380,
+                'Partition Type': 130,
+                'Refresh Mode': 140,
+                'Can Refresh': 90,
+                'Actions': 130
+            },
+            columns: [
+                'Workspace',
+                'Dataset',
+                'Table Name',
+                'Partition Name',
+                'Partition Type',
+                'Refresh Mode',
+                'Can Refresh',
+                'Actions'
+            ],
+            cellRenderer: (col, val, row) => {
+                if (col === 'Workspace') {
+                    return `<div style="font-weight:600; color:var(--text-primary); font-size:0.76rem;">📂 ${val}</div>`;
                 }
-
+                if (col === 'Dataset') {
+                    return `<div style="font-weight:600; color:var(--text-primary); font-size:0.75rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${val}">📊 ${val}</div>`;
+                }
+                if (col === 'Table Name') {
+                    const isFact = row['Partition Type'].includes('增量') || row['Partition Type'].includes('归档') || row['Partition Type'].includes('滚动');
+                    return `<span style="font-size:0.75rem; font-weight:700; color:${isFact ? 'var(--accent)' : 'var(--text-primary)'}; white-space:nowrap;" title="${val}">📋 ${val}</span>`;
+                }
+                if (col === 'Partition Name') {
+                    return `
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; font-family:'Fira Code',monospace; font-size:0.74rem; color:var(--text-primary); min-width:280px; padding:2px 0;">
+                            <span style="word-break:break-all; white-space:normal; font-weight:600; line-height:1.4;" title="${val}">${val}</span>
+                            <button type="button" class="btn-wf-sm" style="height:19px; padding:0 5px; font-size:0.62rem; flex-shrink:0; cursor:pointer; opacity:0.85;" onclick="if(window.handleCopyAction) window.handleCopyAction(this, '${val}'); event.stopPropagation();" title="复制分区名称">复制</button>
+                        </div>
+                    `;
+                }
+                if (col === 'Partition Type') {
+                    if (val.includes('2026') || val.includes('增量')) {
+                        return `<span style="display:inline-flex; align-items:center; gap:3px; padding:2px 7px; border-radius:5px; background:rgba(16, 185, 129, 0.12); color:#34d399; border:1px solid rgba(16, 185, 129, 0.3); font-size:0.72rem; font-weight:600; white-space:nowrap;">⚡ 增量 (2026)</span>`;
+                    }
+                    if (val.includes('2025') || val.includes('滚动')) {
+                        return `<span style="display:inline-flex; align-items:center; gap:3px; padding:2px 7px; border-radius:5px; background:rgba(59, 130, 246, 0.12); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.3); font-size:0.72rem; font-weight:600; white-space:nowrap;">🔄 滚动 (2025)</span>`;
+                    }
+                    if (val.includes('2024') || val.includes('归档')) {
+                        return `<span style="display:inline-flex; align-items:center; gap:3px; padding:2px 7px; border-radius:5px; background:rgba(168, 85, 247, 0.12); color:#c084fc; border:1px solid rgba(168, 85, 247, 0.3); font-size:0.72rem; font-weight:600; white-space:nowrap;">📦 归档 (2024)</span>`;
+                    }
+                    return `<span style="display:inline-flex; align-items:center; gap:3px; padding:2px 7px; border-radius:5px; background:rgba(148, 163, 184, 0.1); color:#94a3b8; border:1px solid rgba(148, 163, 184, 0.25); font-size:0.72rem; font-weight:600; white-space:nowrap;">📄 全量</span>`;
+                }
+                if (col === 'Refresh Mode') {
+                    if (val.toLowerCase().includes('incremental')) {
+                        return `<span style="padding:2px 6px; border-radius:4px; background:rgba(234, 179, 8, 0.12); color:var(--warning, #eab308); font-size:0.72rem; font-weight:600; border:1px solid rgba(234, 179, 8, 0.3);">⚡ ${val}</span>`;
+                    }
+                    return `<span style="padding:2px 6px; border-radius:4px; background:var(--overlay-10); font-size:0.72rem; color:var(--text-secondary);">${val}</span>`;
+                }
+                if (col === 'Can Refresh') {
+                    return `<span style="font-size:0.74rem; font-weight:600; color:var(--success, #10b981);">${val}</span>`;
+                }
+                if (col === 'Actions') {
+                    const itemIdx = row._idx !== undefined ? row._idx : 0;
+                    return `
+                        <div style="display: flex; gap: 6px; align-items: center; justify-content: center;">
+                            <button type="button" class="btn-wf-sm btn-wf-primary" style="padding: 2px 8px; font-size: 0.72rem; height: 22px; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px;" onclick="window.refreshDpmPartition(this, ${itemIdx})" title="执行针对性增量刷新"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>刷新</button>
+                            <button type="button" class="btn-wf-sm btn-wf-secondary" style="padding: 2px 8px; font-size: 0.72rem; height: 22px; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px;" onclick="window.openPartitionRefreshHistoryModal(this, ${itemIdx})" title="查看刷新历史日志"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>历史</button>
+                        </div>
+                    `;
+                }
                 return undefined;
-
             }
-
         });
-
     }
-
 };
-
-
 
 window.openPartitionRefreshHistoryModal = async function(btnEl, itemIdx) {
 
@@ -24309,7 +25030,9 @@ window.updateWorkflowAuthBadge = async function() {
             if (data.is_interactive) {
                 const userDisplayName = data.username ? data.username : 'User';
                 badgeEl.textContent = `· 现代交互 (${userDisplayName})`;
-                badgeEl.title = `当前认证: 微软现代交互认证 (OAuth 2.0 PKCE · 90天自动续期) - ${data.username || ''}`;
+                const dynamicPolicy = (data && data.policy_label) ? data.policy_label : '余30/共30';
+                const lastAuthTip = (data && data.last_auth_date) ? ` · 上次核验: ${data.last_auth_date}` : '';
+                badgeEl.title = `当前认证: 微软现代交互认证 (OAuth 2.0 PKCE · ${dynamicPolicy}${lastAuthTip}) - ${data.username || ''}`;
                 badgeEl.style.color = '#38bdf8';
             } else if (data.auth_mode === 'personal') {
                 const userDisplayName = data.username ? data.username : 'User';
@@ -26559,3 +27282,13 @@ window.addEventListener('resize', () => {
     }
 });
 
+
+// 页面加载完成后立即尝试恢复分区管理器的持久化扫描结果，并同步渲染顶栏全量下拉框
+try {
+    if (typeof window.updateGlobalTopbarDropdowns === 'function') {
+        window.updateGlobalTopbarDropdowns();
+    }
+    if (typeof window.hydrateDpmScanCache === 'function') {
+        window.hydrateDpmScanCache();
+    }
+} catch(e) {}

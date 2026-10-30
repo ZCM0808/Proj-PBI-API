@@ -1079,12 +1079,17 @@ window.LineageExplorer = (function() {
             <div class="modal-content" style="width: min(96vw, 1380px); height: min(92vh, 880px); display: flex; flex-direction: column; background: var(--panel-bg, #0f172a); border: 1px solid var(--panel-border); border-radius: 12px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); overflow: hidden; position: relative;">
                 <!-- 弹窗顶栏 -->
                 <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--panel-border); background: var(--overlay-5); cursor: move;">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <h3 style="margin: 0; font-size: 1.05rem; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
-                            <span>🕸️</span>
-                            <span>${safeTitle}</span>
-                        </h3>
-                        <div style="display: flex; gap: 6px; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 10px; max-width: calc(100% - 380px); min-width: 0;">
+                        <div class="modal-title-container" style="display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%;" onmousedown="event.stopPropagation()">
+                            <h3 style="margin: 0; font-size: 1.05rem; color: var(--text-primary); display: flex; align-items: center; gap: 6px; min-width: 0;">
+                                <span style="flex-shrink:0;">🕸️</span>
+                                <span class="modal-title-text" style="user-select: text !important; cursor: text; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="完整模型名称 (支持鼠标划选): ${safeTitle.replace(/"/g, '&quot;')}">${window.simplifyModalTitle ? window.simplifyModalTitle(safeTitle, 32) : safeTitle}</span>
+                            </h3>
+                            <button type="button" class="modal-title-copy-btn" data-full-title="${safeTitle.replace(/"/g, '&quot;')}" onclick="window.copyModalTitleText ? window.copyModalTitleText(event, this, '${safeTitle.replace(/'/g, "\\'")}') : navigator.clipboard.writeText('${safeTitle.replace(/'/g, "\\'")}')" title="点击复制完整标题">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            </button>
+                        </div>
+                        <div style="display: flex; gap: 6px; align-items: center; flex-shrink: 0;">
                             <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;">数据源: ${parsed.totalDatasources}</span>
                             <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;">物理表: ${parsed.totalTables}</span>
                             <span class="badge" style="background: rgba(99, 102, 241, 0.15); color: var(--accent); border: 1px solid rgba(99, 102, 241, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;">血缘依赖: ${parsed.edges.length} 条</span>
@@ -1107,8 +1112,8 @@ window.LineageExplorer = (function() {
                             <span>📊</span><span>导出 Excel</span>
                         </button>
 
-                        <button type="button" class="close-btn" onclick="window.LineageExplorer.closeModal()" title="Close" style="background: none; border: none; cursor: pointer; color: var(--text-secondary); display: flex; align-items: center;">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+                        <button type="button" class="close-btn" onclick="window.LineageExplorer.closeModal()" title="Close">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
                         </button>
                     </div>
                 </div>

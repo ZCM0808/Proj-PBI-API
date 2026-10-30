@@ -2,7 +2,7 @@
 <html lang="zh-CN" class="no-transitions">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.5, maximum-scale=5.0, user-scalable=yes">
     <title>Power BI API Explorer</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
@@ -11,7 +11,7 @@
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=20261017_v1945">
+    <link rel="stylesheet" href="/static/style.css?v=20261023_v1535">
     <style>
         /* Prevent CSS transitions during initial page load/refresh */
         .no-transitions,
@@ -246,7 +246,7 @@
                     </button>
 
                     <!-- 全局认证模式自定义下拉面板 -->
-                    <div class="gtb-ws-dropdown gtb-auth-dropdown" id="gtb-auth-dropdown" style="display: none; width: 290px;" onclick="event.stopPropagation()">
+                    <div class="gtb-ws-dropdown gtb-auth-dropdown" id="gtb-auth-dropdown" style="display: none; width: 330px;" onclick="event.stopPropagation()">
                         <div class="gtb-ws-header">
                             <span style="font-size: 0.72rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
@@ -259,7 +259,10 @@
                                     <span style="color: #38bdf8; font-size: 1rem;">🌐</span>
                                     <div style="display: flex; flex-direction: column; min-width: 0;">
                                         <span style="font-size: 0.74rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">微软现代交互认证 (推荐)</span>
-                                        <span style="font-size: 0.65rem; color: #38bdf8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">扫码/通行密钥 · 90天自动续期</span>
+                                        <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+                                            <span style="font-size: 0.65rem; color: #38bdf8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">扫码/通行密钥</span>
+                                            <span style="font-size: 0.62rem; color: #38bdf8; background: rgba(56, 189, 248, 0.15); padding: 1px 5px; border-radius: 4px; flex-shrink: 0; white-space: nowrap;">余30/共30</span>
+                                        </div>
                                     </div>
                                 </div>
                                 <span class="gtb-auth-badge" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; padding: 3px 6px; display: inline-flex; align-items: center;" title="当前激活模式">
@@ -622,7 +625,6 @@
                 <div class="nav-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                     <p class="nav-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
                         <span>🌲 API 资源树</span>
-                        <span style="font-size: 0.62rem; font-weight: 800; background: rgba(99, 102, 241, 0.18); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.35); padding: 1px 5px; border-radius: 4px; letter-spacing: 0.5px;" title="Laya 智能搜索已就绪">LAYA POWERED</span>
                     </p>
                     <span class="api-count-badge" title="Total APIs">共 <span id="total-api-count">0</span> 个</span>
                 </div>
@@ -637,15 +639,34 @@
                     </button>
                 </div>
                 <div id="laya-search-intent-hint" class="laya-intent-hint-banner">
-                    <div style="display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    <div id="laya-intent-clickable-area" style="display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex: 1; min-width: 0;" title="点击在资源树中定位并高亮此分类">
                         <span style="color: #818cf8; font-weight: 700; display: inline-flex; align-items: center; gap: 5px;">
                             <span style="background: rgba(99, 102, 241, 0.25); color: #a5b4fc; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.5px;">LAYA</span>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                            <span>Laya 意图直达:</span>
+                            <span>意图直达:</span>
                         </span>
-                        <span id="laya-intent-matched-name" style="font-weight: 600; color: var(--text-primary);">...</span>
+                        <span id="laya-intent-matched-name" style="font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">...</span>
                     </div>
-                    <button type="button" class="btn-wf-sm" id="laya-intent-locate-btn" style="height: 20px; padding: 0 6px; font-size: 0.68rem; cursor: pointer; flex-shrink: 0;">定位</button>
+                    <div class="laya-intent-info-wrapper" id="laya-intent-info-wrapper">
+                        <button type="button" class="btn-laya-info-icon" id="laya-intent-info-btn" title="查看所有候选置信度与推导依据" aria-label="查看意图详情">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                        </button>
+                        <div class="laya-intent-popover" id="laya-intent-popover">
+                            <div class="laya-popover-header">
+                                <span class="laya-popover-title">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                                    Laya 意图识别全量依据
+                                </span>
+                                <span class="laya-popover-badge" id="laya-popover-engine-badge">AI 识别</span>
+                            </div>
+                            <div class="laya-popover-reason" id="laya-popover-reason">
+                                正在分析意图依据...
+                            </div>
+                            <div class="laya-popover-divider"></div>
+                            <div class="laya-popover-section-title">全部分类置信度分布 (Probabilities)</div>
+                            <div class="laya-popover-list" id="laya-popover-probs-list"></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="flag-filter-container" style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 1rem; padding: 2px 0;">
                     <span class="flag-badge active" data-flag="ALL">ALL</span>
@@ -828,7 +849,7 @@
                 <div class="wf-detail-board glass-panel">
                     <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0 0 8px 0; border-bottom: 1px solid var(--overlay-10); margin-bottom: 8px;">
                         <div style="display: flex; align-items: baseline; gap: 8px; flex: 1; min-width: 0; overflow: hidden;">
-                            <h3 id="wf-board-title" style="font-size: 0.95rem; margin: 0; white-space: nowrap; color: var(--text-primary); font-weight: 700;">⚡ Report &amp; Dataset Datasource Inspector</h3>
+                            <h3 id="wf-board-title" style="font-size: 0.95rem; margin: 0; white-space: nowrap; color: var(--text-primary); font-weight: 700; user-select: text !important; -webkit-user-select: text !important; cursor: text;">⚡ Report &amp; Dataset Datasource Inspector</h3>
                         </div>
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <!-- Run Workflow Primary Action Button -->
@@ -1708,13 +1729,73 @@
 
                 <div id="wf-config-dataset_partitions_manager" class="wf-config-pane" style="display: none;">
 
+                    <!-- DPM Scope Control: 三级扫描范围胶囊卡片 (类似 Global User Manager) -->
+                    <div style="margin-bottom: 12px;">
+                        <label style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500; display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; user-select: text; -webkit-user-select: text;">
+                            <span style="font-weight: 600;">🎯 扫描目标范围 (Scan Target Scope)</span>
+                            <span style="font-size: 0.70rem; color: var(--accent); font-weight: normal;">支持全部工作区、指定工作区或精准单模型</span>
+                        </label>
+                        <div class="wf-dpm-scope-container" id="wf-dpm-scope-container">
+                            <!-- 选项1：全部工作区级别 (All Workspaces - 全量扫描) -->
+                            <div class="wf-dpm-scope-pill active" id="wf-dpm-scope-all" onclick="window.handleDpmScopeChange('all')" title="扫描租户下所有可访问工作区及模型">
+                                <div class="wf-dpm-scope-radio">
+                                    <div class="wf-dpm-radio-dot"></div>
+                                </div>
+                                <div class="wf-dpm-scope-info">
+                                    <div class="wf-dpm-scope-title">
+                                        <span>🏢 全部工作区</span>
+                                        <span class="wf-dpm-scope-tag tag-all">全量扫描</span>
+                                    </div>
+                                    <div class="wf-dpm-scope-detail" id="wf-dpm-scope-all-detail">
+                                        范围: <b>扫描租户下所有工作区及模型</b>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 选项2：指定工作区级别 (Workspace Level) -->
+                            <div class="wf-dpm-scope-pill" id="wf-dpm-scope-workspace" onclick="window.handleDpmScopeChange('workspace')" title="仅扫描指定工作区下的所有语义模型">
+                                <div class="wf-dpm-scope-radio">
+                                    <div class="wf-dpm-radio-dot"></div>
+                                </div>
+                                <div class="wf-dpm-scope-info">
+                                    <div class="wf-dpm-scope-title">
+                                        <span>📂 指定工作区</span>
+                                        <span class="wf-dpm-scope-tag tag-ws" id="wf-dpm-scope-ws-badge">工作区级</span>
+                                    </div>
+                                    <div class="wf-dpm-scope-detail" id="wf-dpm-scope-ws-detail">
+                                        <span id="wf-dpm-echo-ws-summary">未选工作区 (请在全局顶栏选择)</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 选项3：指定模型级别 (Dataset Level) -->
+                            <div class="wf-dpm-scope-pill" id="wf-dpm-scope-dataset" onclick="window.handleDpmScopeChange('dataset')" title="精准秒级仅扫描指定语义模型">
+                                <div class="wf-dpm-scope-radio">
+                                    <div class="wf-dpm-radio-dot"></div>
+                                </div>
+                                <div class="wf-dpm-scope-info">
+                                    <div class="wf-dpm-scope-title">
+                                        <span>🎯 指定模型</span>
+                                        <span class="wf-dpm-scope-tag tag-ds" id="wf-dpm-scope-ds-badge">极速单模型</span>
+                                    </div>
+                                    <div class="wf-dpm-scope-detail" id="wf-dpm-scope-ds-detail">
+                                        <span id="wf-dpm-echo-ds-summary">未选模型 (请在全局顶栏选择)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="wf-dpm-scope-type" value="all">
+                    </div>
+
+
+
                     <div class="wf-steps-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
 
                         <div class="wf-step active">
 
                             <div class="wf-step-header" style="display: flex; justify-content: space-between; align-items: center;">
 
-                                <span class="wf-step-title">🔍 全工作区数据集表与分区扫描 (Scan Dataset Partitions)</span>
+                                <span class="wf-step-title" id="wf-dpm-step-title" style="user-select: text !important; -webkit-user-select: text !important; cursor: text;">🔍 数据集表与分区扫描 (Scan Dataset Partitions)</span>
 
                                 <span id="wf-dpm-stats" style="font-size: 0.8rem; color: var(--accent); font-weight: 500;"></span>
 
@@ -1740,24 +1821,17 @@
 
                                 </div>
 
-                                <!-- Result header: click to open expand modal -->
-
-                                <div id="wf-dpm-result-wrap" style="display: none; margin-top: 14px; position: relative;">
-
-                                    <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 4px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
-
-                                        <button type="button" onclick="window.openDpmResultModal()" style="background:none;border:none;padding:0;color:var(--accent);font-size:0.78rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:underline dotted;" title="放大查看分区表">
-
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-
-                                            View Detailed Table & Refresh Partitions
-
-                                        </button>
-
-                                        <span id="wf-dpm-badge-stats" style="color: var(--success); font-weight: 500;"></span>
-
+                                <!-- Result Table Trigger (Standardized with Universal Modal) -->
+                                <div id="wf-dpm-result-wrap" style="display: none; margin-top: 10px; position: relative;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--overlay-5); border-radius: 6px; border: 1px solid var(--overlay-10);">
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <button type="button" class="btn-wf-sm btn-wf-primary" onclick="window.openDpmResultModal()" title="以全屏/大弹窗打开数据集表与分区管理矩阵" style="display: flex; align-items: center; gap: 6px;">
+                                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                                                全屏弹窗矩阵 (Universal Modal)
+                                            </button>
+                                            <span id="wf-dpm-stats-badge" style="color: var(--accent); font-size: 0.8rem; font-weight: 500;"></span>
+                                        </div>
                                     </div>
-
                                 </div>
 
                             </div>
@@ -1918,11 +1992,23 @@
 
                     </div>
 
-                    <div id="pbi-embed-wrapper" style="position: relative; margin: 12px 0; display: none;">
+                    <div id="pbi-embed-wrapper" class="pbi-embed-viewport" style="position: relative; margin: 12px 0; display: none;">
 
-                        <div id="pbi-embed-container" style="width: 100%; aspect-ratio: 16 / 9; border: 1px solid var(--panel-border); border-radius: 6px; background: var(--input-bg);"></div>
+                        <div id="pbi-embed-canvas-layer" class="pbi-embed-canvas-layer">
+                            <div id="pbi-embed-container" style="width: 100%; aspect-ratio: 16 / 9; border: 1px solid var(--panel-border); border-radius: 6px; background: var(--input-bg);"></div>
+                        </div>
 
-                        <div class="pbi-embed-actions" style="position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; z-index: 10;">
+                        <div class="pbi-embed-actions" style="position: absolute; top: 8px; right: 8px; display: flex; align-items: center; gap: 6px; z-index: 10;">
+                            <button type="button" class="pbi-action-btn" onclick="window.zoomPbiEmbed(-1)" title="缩小报表 (Zoom Out)">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            </button>
+                            <span id="pbi-zoom-badge" class="pbi-zoom-badge" onclick="window.resetPbiEmbedZoom()" title="点击恢复 100% 原始比例">100%</span>
+                            <button type="button" class="pbi-action-btn" onclick="window.zoomPbiEmbed(1)" title="放大报表 (Zoom In)">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            </button>
+                            <button type="button" id="pbi-layout-mode-btn" class="pbi-action-btn" onclick="window.togglePbiLayoutMode()" title="切换视口模式 (桌面宽屏滑动 / 手机等比自适应)">
+                                <svg id="pbi-layout-mode-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                            </button>
 
                             <button type="button" class="pbi-action-btn" onclick="window.refreshEmbeddedReport(this)" title="Refresh Report Data">
 
@@ -3343,10 +3429,10 @@
     <script src="/static/paramHints.js?v=20260906_v1225"></script>
     <script src="/static/translations.js?v=20260906_v1225"></script>
     <script src="/static/vis-network.min.js"></script>
-    <script src="/static/lineage_graph.js?v=20260916_v0755"></script>
-    <script src="/static/universal_modal.js?v=20260924_v2145"></script>
-    <script src="/static/script.js?v=20261017_v1915"></script>
-    <script src="/static/permission_blueprint.js?v=20261015_v0818"></script>
+    <script src="/static/lineage_graph.js?v=20261022_v1320"></script>
+    <script src="/static/universal_modal.js?v=20261022_v1320"></script>
+    <script src="/static/script.js?v=20261023_v1535"></script>
+    <script src="/static/permission_blueprint.js?v=20261020_v1920"></script>
 
 
 

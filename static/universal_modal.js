@@ -1,4 +1,53 @@
 /**
+ * 全局弹窗标题智能精简与一键复制助手 (Global Modal Title Helper)
+ */
+if (!window.simplifyModalTitle) {
+    window.simplifyModalTitle = function(rawTitle, maxLen = 38) {
+        if (!rawTitle) return '';
+        let str = String(rawTitle).trim();
+        // 1. 压缩 36 位标准 GUID 为 [GUID_前4...后4]
+        const guidRegex = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g;
+        str = str.replace(guidRegex, (m) => `${m.slice(0, 4)}...${m.slice(-4)}`);
+        // 2. 超长折叠保护
+        if (str.length > maxLen) {
+            const head = str.slice(0, 22);
+            const tail = str.slice(-12);
+            return `${head}...${tail}`;
+        }
+        return str;
+    };
+}
+
+if (!window.copyModalTitleText) {
+    window.copyModalTitleText = function(event, btnEl, fullTitle) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        if (!fullTitle && btnEl) {
+            fullTitle = btnEl.getAttribute('data-full-title') || '';
+        }
+        if (!fullTitle) return;
+
+        navigator.clipboard.writeText(fullTitle).then(() => {
+            if (btnEl) {
+                btnEl.classList.add('copied');
+                const origHtml = btnEl.innerHTML;
+                btnEl.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                btnEl.title = '✅ 完整标题已复制到剪贴板！';
+                setTimeout(() => {
+                    btnEl.classList.remove('copied');
+                    btnEl.innerHTML = origHtml;
+                    btnEl.title = '点击复制完整标题';
+                }, 1600);
+            }
+        }).catch(() => {
+            prompt('请按 Ctrl+C 复制完整标题：', fullTitle);
+        });
+    };
+}
+
+/**
  * Universal Data Modal Component
  * Dynamically generates a premium data grid modal with search, column selection, sorting, and export.
  */
@@ -365,10 +414,22 @@ window.showUniversalDataModal = function(options) {
 hdr.className = 'modal-header';
     hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--overlay-10);cursor:move;user-select:none;flex-shrink:0;background:var(--bg-color);';
     
-    const hdrTitle = document.createElement('span');
-    hdrTitle.style.cssText = 'font-size:1.05rem;font-weight:bold;color:var(--text-primary);display:flex;align-items:center;gap:8px;';
-    hdrTitle.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg> 
-        ${title} <span id="uni-modal-stats" style="color:var(--accent);font-weight:normal;font-size:0.8rem;margin-left:8px;"></span>`;
+    const simplifiedTitle = window.simplifyModalTitle(title, 40);
+    const escapedFullTitle = String(title).replace(/"/g, '&quot;');
+    const escapedJsTitle = String(title).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
+    const hdrTitle = document.createElement('div');
+    hdrTitle.className = 'modal-title-container';
+    hdrTitle.style.cssText = 'display:flex;align-items:center;gap:8px;max-width:calc(100% - 320px);min-width:0;user-select:text !important;-webkit-user-select:text !important;cursor:text;';
+    hdrTitle.addEventListener('mousedown', (e) => e.stopPropagation());
+
+    hdrTitle.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" style="flex-shrink:0;"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg> 
+        <span class="modal-title-text" title="完整标题 (支持鼠标划选复制): ${escapedFullTitle}">${simplifiedTitle}</span>
+        <button type="button" class="modal-title-copy-btn" data-full-title="${escapedFullTitle}" onclick="window.copyModalTitleText(event, this, '${escapedJsTitle}')" title="点击复制完整标题">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+        </button>
+        <span id="uni-modal-stats" style="color:var(--accent);font-weight:normal;font-size:0.8rem;margin-left:4px;white-space:nowrap;flex-shrink:0;"></span>`;
 
     const hdrActions = document.createElement('div');
     hdrActions.style.cssText = 'display:flex;align-items:center;gap:12px;';
@@ -730,10 +791,11 @@ hdr.className = 'modal-header';
 
         const copyColsBtn = document.createElement('button');
         copyColsBtn.type = 'button';
-        copyColsBtn.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:5px 12px;font-size:0.8rem;cursor:pointer;background:#4f46e5;color:#ffffff;border:1px solid rgba(165,180,252,0.4);border-radius:6px;font-weight:600;transition:all 0.2s;box-shadow:0 2px 8px rgba(79,70,229,0.35);letter-spacing:0.2px;';
+        copyColsBtn.className = 'btn-action-primary';
+        copyColsBtn.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:5px 14px;font-size:0.8rem;cursor:pointer;background:var(--accent);color:var(--accent-text);border:1px solid var(--accent);border-radius:6px;font-weight:600;transition:all 0.2s;box-shadow:0 2px 8px var(--accent-glow);letter-spacing:0.2px;';
         copyColsBtn.title = '复制当前选中列（包含表头列名，支持快捷键 Ctrl+C）';
-        copyColsBtn.onmouseover = () => { copyColsBtn.style.background = '#4338ca'; copyColsBtn.style.transform = 'translateY(-1px)'; copyColsBtn.style.boxShadow = '0 4px 14px rgba(79,70,229,0.5)'; };
-        copyColsBtn.onmouseout = () => { copyColsBtn.style.background = '#4f46e5'; copyColsBtn.style.transform = 'none'; copyColsBtn.style.boxShadow = '0 2px 8px rgba(79,70,229,0.35)'; };
+        copyColsBtn.onmouseover = () => { copyColsBtn.style.filter = 'brightness(1.1)'; copyColsBtn.style.transform = 'translateY(-1px)'; copyColsBtn.style.boxShadow = '0 4px 14px var(--accent-glow)'; };
+        copyColsBtn.onmouseout = () => { copyColsBtn.style.filter = 'none'; copyColsBtn.style.transform = 'none'; copyColsBtn.style.boxShadow = '0 2px 8px var(--accent-glow)'; };
         copyColsBtn.onclick = copySelectedColumnsData;
         filterRight.appendChild(copyColsBtn);
 

@@ -18,6 +18,19 @@ if "HF_ENDPOINT" not in os.environ:
     os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
 
+API_CATEGORY_CRITERIA: Dict[str, str] = {
+    "activity_events": "审计日志、活动追踪、管理员操作历史与变更事件",
+    "groups": "工作区创建、列表检索、用户成员授权与权限角色",
+    "datasets": "语义模型查询、数据刷新历史、计算参数与表结构",
+    "reports": "报表清单、页面切片、PBIX文件导出与报表克隆",
+    "gateways": "本地数据网关集群、网络连接与数据源凭据",
+    "pipelines": "部署管道、ALM生命周期环境对比与阶段同步",
+    "imports": "导入PBIX文件、大型模型文件上传与状态追踪",
+    "capacities": "Fabric/Premium 计算容量状态与工作区负载绑定",
+    "admin": "全局租户级管理员设置、加密密钥与安全导出策略",
+}
+
+
 class LayaDecisionEngine:
     """Thread-safe, lazy-loading singleton decision engine powered by Laya."""
 
@@ -131,13 +144,23 @@ class LayaDecisionEngine:
             ans = res["answers"]["category"]
             choice = str(ans.get("choice", "groups"))
             confidence = float(ans.get("confidence", 0.0))
-            probabilities = {k: round(float(v), 3) for k, v in ans.get("probabilities", {}).items()}
+            raw_probs = ans.get("probabilities", {})
+
+            all_probs: Dict[str, float] = {k: 0.02 for k in API_CATEGORY_CRITERIA.keys()}
+            for k, v in raw_probs.items():
+                all_probs[k] = round(float(v), 2)
+            all_probs[choice] = round(confidence, 2)
+
+            category_desc = API_CATEGORY_CRITERIA.get(choice, choice)
+            reason = f"Laya AI 意图理解器高置信度命中: {choice} ({category_desc})"
 
             return {
                 "category": choice,
                 "title": choice.replace("_", " ").title(),
                 "confidence": confidence,
-                "probabilities": probabilities,
+                "probabilities": all_probs,
+                "reason": reason,
+                "criteria": API_CATEGORY_CRITERIA,
                 "fallback": False,
             }
         except Exception as e:
@@ -147,24 +170,53 @@ class LayaDecisionEngine:
     def _fallback_route(self, query: str) -> Dict[str, Any]:
         """Rule-based fallback when Laya is not loaded."""
         q = query.lower()
-        cat = "groups"
-        conf = 0.5
-        if any(k in q for k in ["audit", "log", "history", "who", "delete", "modified", "审计", "日志", "活动"]):
-            cat = "activity_events"
-            conf = 0.8
-        elif any(k in q for k in ["gateway", "connect", "datasource", "网关", "连接", "数据源"]):
-            cat = "gateways"
-            conf = 0.8
-        elif any(k in q for k in ["dataset", "model", "refresh", "dax", "模型", "刷新", "计算"]):
-            cat = "datasets"
-            conf = 0.8
-        elif any(k in q for k in ["report", "visual", "export", "page", "报表", "导出"]):
-            cat = "reports"
-            conf = 0.8
-        elif any(k in q for k in ["pipeline", "stage", "deploy", "管道", "部署"]):
-            cat = "pipelines"
-            conf = 0.8
-        return {"category": cat, "title": cat.replace("_", " ").title(), "confidence": conf, "fallback": True}
+        rules = [
+            ("activity_events", ["audit", "log", "history", "who", "delete", "modified", "审计", "日志", "活动", "事件", "追踪"]),
+            ("gateways", ["gateway", "connect", "datasource", "网关", "连接", "数据源", "集群"]),
+            ("datasets", ["dataset", "model", "refresh", "dax", "模型", "刷新", "计算", "参数", "表"]),
+            ("reports", ["report", "visual", "export", "page", "报表", "导出", "页面", "克隆", "视觉"]),
+            ("pipelines", ["pipeline", "stage", "deploy", "管道", "部署", "阶段"]),
+            ("capacities", ["capacity", "fabric", "premium", "sku", "cu", "容量", "负载", "配额"]),
+            ("imports", ["import", "pbix", "upload", "导入", "上传"]),
+            ("admin", ["admin", "tenant", "security", "key", "policy", "租户", "全局", "管理员", "密钥", "策略"]),
+            ("groups", ["group", "workspace", "user", "permission", "role", "access", "member", "工作区", "用户", "权限", "角色", "成员"])
+        ]
+
+        scores: Dict[str, float] = {k: 0.05 for k in API_CATEGORY_CRITERIA.keys()}
+        matched_category = "groups"
+        matched_keywords = []
+        highest_score = 0.0
+
+        for cat, kws in rules:
+            hits = [kw for kw in kws if kw in q]
+            if hits:
+                s = min(0.95, 0.50 + len(hits) * 0.15)
+                scores[cat] = s
+                if s > highest_score:
+                    highest_score = s
+                    matched_category = cat
+                    matched_keywords = hits
+
+        if matched_keywords:
+            kw_str = ", ".join(matched_keywords)
+            reason = f"命中关键词 [{kw_str}]，判定归入类别 {matched_category} ({API_CATEGORY_CRITERIA.get(matched_category, '')})"
+            confidence = highest_score
+        else:
+            reason = "输入需求未命中细分领域关键词，默认匹配工作区与权限通用管理 (Groups)"
+            confidence = 0.50
+            scores["groups"] = 0.50
+
+        probabilities = {k: round(v, 2) for k, v in scores.items()}
+
+        return {
+            "category": matched_category,
+            "title": matched_category.replace("_", " ").title(),
+            "confidence": round(confidence, 2),
+            "probabilities": probabilities,
+            "reason": reason,
+            "criteria": API_CATEGORY_CRITERIA,
+            "fallback": True
+        }
 
     # =========================================================================
     # 场景 2: 报错信息快速归因分流与自愈建议 (Error Triage)

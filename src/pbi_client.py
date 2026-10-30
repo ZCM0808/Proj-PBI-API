@@ -1,6 +1,7 @@
 import base64
 import json
 import os
+import threading
 import time
 from typing import Any, Dict, Optional
 
@@ -21,6 +22,7 @@ _GLOBAL_MSAL_CACHE: Optional[SerializableTokenCache] = None
 _CURRENT_ACTIVE_ACCOUNT: Optional[str] = None
 _LAST_SUCCESSFUL_ACCOUNT: Optional[str] = None
 _FAILED_401_ACCOUNTS: set[str] = set()
+_TOKEN_ACQUISITION_LOCK = threading.RLock()
 
 
 def verify_jwt_token(token: Optional[str], buffer_seconds: int = 60) -> bool:
@@ -68,16 +70,18 @@ def get_jwt_expiration(token: Optional[str]) -> float:
 
 
 def reset_failed_accounts() -> None:
-    """重置 401 失败账号隔离名单"""
-    global _FAILED_401_ACCOUNTS
+    """重置 401 失败账号隔离名单与活跃账号状态"""
+    global _FAILED_401_ACCOUNTS, _CURRENT_ACTIVE_ACCOUNT
     _FAILED_401_ACCOUNTS.clear()
+    _CURRENT_ACTIVE_ACCOUNT = None
 
 
 def reset_token_cache() -> None:
     """清理全局内存 Token 缓存与失败记录"""
-    global _GLOBAL_TOKEN_CACHE, _FAILED_401_ACCOUNTS
+    global _GLOBAL_TOKEN_CACHE, _FAILED_401_ACCOUNTS, _CURRENT_ACTIVE_ACCOUNT
     _GLOBAL_TOKEN_CACHE.clear()
     _FAILED_401_ACCOUNTS.clear()
+    _CURRENT_ACTIVE_ACCOUNT = None
 
 
 
@@ -177,166 +181,180 @@ class PBIClient:
                 f.write(self.cache.serialize())
 
     def _get_token(self, api_type: str = "powerbi") -> str:
-        """获取访问令牌 (优先内存缓存 0ms 瞬间返回)"""
+        """获取访问令牌 (优先内存缓存 0ms 瞬间返回，全局并发互斥锁防御多弹窗)"""
         global _CURRENT_ACTIVE_ACCOUNT, _LAST_SUCCESSFUL_ACCOUNT, _FAILED_401_ACCOUNTS
         api_type_clean = api_type.strip().lower()
         scope = ["https://api.fabric.microsoft.com/.default"] if api_type_clean == "fabric" else self.config.SCOPE
 
-        now = time.time()
-        active_user = (_CURRENT_ACTIVE_ACCOUNT or self.config.USERNAME or "").strip().lower()
-        if not (active_user and active_user in _FAILED_401_ACCOUNTS):
-            auth_identity = _CURRENT_ACTIVE_ACCOUNT or (self.config.USERNAME if self.config.AUTH_MODE == "personal" else self.config.CLIENT_ID)
-            cache_key = f"{self.config.AUTH_MODE}_{api_type_clean}_{auth_identity}"
-            cached_entry = _GLOBAL_TOKEN_CACHE.get(cache_key)
-            if cached_entry and cached_entry.get("expires_at", 0) > now + 180:
-                cached_acc = str(cached_entry.get("account") or "").strip().lower()
-                if not (cached_acc and cached_acc in _FAILED_401_ACCOUNTS):
-                    return str(cached_entry["token"])
+        def _check_memory_cache() -> Optional[str]:
+            now = time.time()
+            active_user = (_CURRENT_ACTIVE_ACCOUNT or self.config.USERNAME or "").strip().lower()
+            if not (active_user and active_user in _FAILED_401_ACCOUNTS):
+                auth_identity = _CURRENT_ACTIVE_ACCOUNT or (self.config.USERNAME if self.config.AUTH_MODE == "personal" else self.config.CLIENT_ID)
+                cache_key = f"{self.config.AUTH_MODE}_{api_type_clean}_{auth_identity}"
+                cached_entry = _GLOBAL_TOKEN_CACHE.get(cache_key)
+                if cached_entry and cached_entry.get("expires_at", 0) > now + 180:
+                    cached_acc = str(cached_entry.get("account") or "").strip().lower()
+                    if not (cached_acc and cached_acc in _FAILED_401_ACCOUNTS):
+                        return str(cached_entry["token"])
 
-            # 兜底：通用 key 与同模式可用 Token 借用探测 (严格校验账号一致性，坚决防止多账号串号)
-            generic_key = f"{self.config.AUTH_MODE}_{api_type_clean}_"
-            gen_entry = _GLOBAL_TOKEN_CACHE.get(generic_key)
-            if gen_entry and gen_entry.get("expires_at", 0) > now + 180:
-                gen_acc = str(gen_entry.get("account") or "").strip().lower()
-                if active_user and gen_acc and active_user != gen_acc:
-                    # 账号不匹配，坚决拒绝借用，防止串号污染
-                    pass
-                elif not (gen_acc and gen_acc in _FAILED_401_ACCOUNTS):
-                    return str(gen_entry["token"])
-
-
-        result = None
-        if self.config.AUTH_MODE == "personal":
-            # 1. 优先执行全自动跨租户静默穿透提取 (Silent Cache Fast-Path)
-            # 无论目标工作区是哪个租户，公共客户端与组织端点都能自动完成跨租户静默刷新
-            cids = [
-                self.config.CLIENT_ID,
-                "04b07795-8ddb-461a-bbee-02f9e1bf7b46",
-                "1846a56a-668f-405d-9ffd-574db4da5ce4",
-            ]
-            authorities = [
-                "https://login.microsoftonline.com/organizations",
-                self.config.authority_url,
-                "https://login.microsoftonline.com/common",
-            ]
-            unique_cids = [c for i, c in enumerate(cids) if c and c not in cids[:i]]
-            unique_auths = [a for i, a in enumerate(authorities) if a and a not in authorities[:i]]
-
-            silent_result = None
-            chosen_username: Optional[str] = None
-
-            def _score_account(acc_item: dict) -> int:
-                u_name = str(acc_item.get("username") or "").strip().lower()
-                r_name = str(acc_item.get("realm") or "").strip().lower()
-                score = 0
-                if _CURRENT_ACTIVE_ACCOUNT and u_name == _CURRENT_ACTIVE_ACCOUNT.strip().lower():
-                    score += 300
-                elif _LAST_SUCCESSFUL_ACCOUNT and u_name == _LAST_SUCCESSFUL_ACCOUNT.strip().lower():
-                    score += 200
-                tgt_tenant = (self.config.TENANT_ID or "").strip().lower()
-                if tgt_tenant and r_name == tgt_tenant:
-                    score += 100
-                tgt_user = (self.config.USERNAME or "").strip().lower()
-                if tgt_user and u_name == tgt_user:
-                    score += 50
-                if u_name in _FAILED_401_ACCOUNTS:
-                    score -= 500
-                return score
-
-            for cid in unique_cids:
-                for auth in unique_auths:
-                    try:
-                        app_try = PublicClientApplication(
-                            client_id=cid,
-                            authority=auth,
-                            token_cache=self.cache
-                        )
-                        raw_accs = app_try.get_accounts()
-                        sorted_accs = sorted(raw_accs, key=_score_account, reverse=True)
-                        for acc in sorted_accs:
-                            acc_u = str(acc.get("username") or "").strip().lower()
-                            if acc_u in _FAILED_401_ACCOUNTS and len(_FAILED_401_ACCOUNTS) < len(raw_accs):
-                                continue
-                            try:
-                                s_res = app_try.acquire_token_silent(scope, account=acc)
-                                if s_res and "access_token" in s_res:
-                                    silent_result = s_res
-                                    chosen_username = acc.get("username")
-                                    break
-                            except Exception:
-                                pass
-                    except Exception:
+                # 兜底：通用 key 与同模式可用 Token 借用探测 (严格校验账号一致性，坚决防止多账号串号)
+                generic_key = f"{self.config.AUTH_MODE}_{api_type_clean}_"
+                gen_entry = _GLOBAL_TOKEN_CACHE.get(generic_key)
+                if gen_entry and gen_entry.get("expires_at", 0) > now + 180:
+                    gen_acc = str(gen_entry.get("account") or "").strip().lower()
+                    if active_user and gen_acc and active_user != gen_acc:
+                        # 账号不匹配，坚决拒绝借用，防止串号污染
                         pass
+                    elif not (gen_acc and gen_acc in _FAILED_401_ACCOUNTS):
+                        return str(gen_entry["token"])
+            return None
+
+        # 1. 锁外快速检查 (Fast-Path: 0ms 瞬间返回)
+        cached_tok = _check_memory_cache()
+        if cached_tok:
+            return cached_tok
+
+        # 2. 缓存未命中时，进入全局排队互斥锁 (Double-Checked Locking 彻底防御多并发同时拉起多个登录弹窗)
+        with _TOKEN_ACQUISITION_LOCK:
+            # 进入临界区后二次检查内存缓存（若排队等待期间其他并发线程已成功鉴权并写入缓存，直接瞬间返回）
+            cached_tok_post_lock = _check_memory_cache()
+            if cached_tok_post_lock:
+                return cached_tok_post_lock
+
+            now = time.time()
+            result = None
+            if self.config.AUTH_MODE == "personal":
+                # 1. 优先执行全自动跨租户静默穿透提取 (Silent Cache Fast-Path)
+                # 无论目标工作区是哪个租户，公共客户端与组织端点都能自动完成跨租户静默刷新
+                cids = [
+                    self.config.CLIENT_ID,
+                    "04b07795-8ddb-461a-bbee-02f9e1bf7b46",
+                    "1846a56a-668f-405d-9ffd-574db4da5ce4",
+                ]
+                authorities = [
+                    "https://login.microsoftonline.com/organizations",
+                    self.config.authority_url,
+                    "https://login.microsoftonline.com/common",
+                ]
+                unique_cids = [c for i, c in enumerate(cids) if c and c not in cids[:i]]
+                unique_auths = [a for i, a in enumerate(authorities) if a and a not in authorities[:i]]
+
+                silent_result = None
+                chosen_username: Optional[str] = None
+
+                def _score_account(acc_item: dict) -> int:
+                    u_name = str(acc_item.get("username") or "").strip().lower()
+                    r_name = str(acc_item.get("realm") or "").strip().lower()
+                    score = 0
+                    if _CURRENT_ACTIVE_ACCOUNT and u_name == _CURRENT_ACTIVE_ACCOUNT.strip().lower():
+                        score += 300
+                    elif _LAST_SUCCESSFUL_ACCOUNT and u_name == _LAST_SUCCESSFUL_ACCOUNT.strip().lower():
+                        score += 200
+                    tgt_tenant = (self.config.TENANT_ID or "").strip().lower()
+                    if tgt_tenant and r_name == tgt_tenant:
+                        score += 100
+                    tgt_user = (self.config.USERNAME or "").strip().lower()
+                    if tgt_user and u_name == tgt_user:
+                        score += 50
+                    if u_name in _FAILED_401_ACCOUNTS:
+                        score -= 500
+                    return score
+
+                for cid in unique_cids:
+                    for auth in unique_auths:
+                        try:
+                            app_try = PublicClientApplication(
+                                client_id=cid,
+                                authority=auth,
+                                token_cache=self.cache
+                            )
+                            raw_accs = app_try.get_accounts()
+                            sorted_accs = sorted(raw_accs, key=_score_account, reverse=True)
+                            for acc in sorted_accs:
+                                acc_u = str(acc.get("username") or "").strip().lower()
+                                if acc_u in _FAILED_401_ACCOUNTS and len(_FAILED_401_ACCOUNTS) < len(raw_accs):
+                                    continue
+                                try:
+                                    s_res = app_try.acquire_token_silent(scope, account=acc)
+                                    if s_res and "access_token" in s_res:
+                                        silent_result = s_res
+                                        chosen_username = acc.get("username")
+                                        break
+                                except Exception:
+                                    pass
+                        except Exception:
+                            pass
+                        if silent_result:
+                            break
                     if silent_result:
                         break
+
                 if silent_result:
-                    break
-
-            if silent_result:
-                _CURRENT_ACTIVE_ACCOUNT = chosen_username
-                result = silent_result
-            else:
-                # 2. 静默缓存未命中时，尝试账密登录
-                if self.config.PASSWORD and self.config.USERNAME:
-                    app = PublicClientApplication(
-                        client_id=self.config.CLIENT_ID or "04b07795-8ddb-461a-bbee-02f9e1bf7b46",
-                        authority=self.config.authority_url,
-                        token_cache=self.cache
-                    )
-                    result = app.acquire_token_by_username_password(
-                        username=self.config.USERNAME,
-                        password=self.config.PASSWORD,
-                        scopes=scope
-                    )
-
-                # 3. 错误与环境防御处理
-                if result and "error" in result:
-                    error_codes = result.get("error_codes", [])
-                    error_msg = result.get("error", "").lower()
-                    if 50076 in error_codes or 50158 in error_codes or 65001 in error_codes or "interaction_required" in error_msg or "invalid_grant" in error_msg:
-                        is_headless = (os.name != "nt") and not os.getenv("DISPLAY")
-                        if is_headless:
-                            for k, v in _GLOBAL_TOKEN_CACHE.items():
-                                if k.startswith("personal_") and v.get("expires_at", 0) > now + 60:
-                                    return str(v["token"])
-                            raise Exception(
-                                "云端 MSAL 缓存中未找到当前账号的有效授权凭据，且当前为云端无头容器无法进行交互式验证。"
-                                "请确保已在 Render 环境变量中配置正确的 MSAL_TOKEN_CACHE_B64。"
-                            )
-                        result = app.acquire_token_interactive(
-                            scopes=scope,
-                            login_hint=self.config.USERNAME
+                    _CURRENT_ACTIVE_ACCOUNT = chosen_username
+                    result = silent_result
+                else:
+                    # 2. 静默缓存未命中时，尝试账密登录
+                    if self.config.PASSWORD and self.config.USERNAME:
+                        app = PublicClientApplication(
+                            client_id=self.config.CLIENT_ID or "04b07795-8ddb-461a-bbee-02f9e1bf7b46",
+                            authority=self.config.authority_url,
+                            token_cache=self.cache
                         )
-                elif not result:
-                    for k, v in _GLOBAL_TOKEN_CACHE.items():
-                        if k.startswith("personal_") and v.get("expires_at", 0) > now + 60:
-                            return str(v["token"])
-                    raise Exception(
-                        "云端 MSAL 缓存中未找到当前账号的有效授权凭据。"
-                        "请检查 Render 环境变量 MSAL_TOKEN_CACHE_B64 是否配置完整。"
-                    )
-        else:
-            app = ConfidentialClientApplication(
-                client_id=self.config.CLIENT_ID,
-                client_credential=self.config.CLIENT_SECRET,
-                authority=self.config.authority_url,
-                token_cache=self.cache
-            )
-            result = app.acquire_token_for_client(scopes=scope)
+                        result = app.acquire_token_by_username_password(
+                            username=self.config.USERNAME,
+                            password=self.config.PASSWORD,
+                            scopes=scope
+                        )
 
-        self._save_cache()
-        if result and "access_token" in result:
-            token_val = result["access_token"]
-            expires_in = int(result.get("expires_in", 3600))
-            auth_identity = _CURRENT_ACTIVE_ACCOUNT or (self.config.USERNAME if self.config.AUTH_MODE == "personal" else self.config.CLIENT_ID)
-            real_cache_key = f"{self.config.AUTH_MODE}_{api_type_clean}_{auth_identity}"
-            _GLOBAL_TOKEN_CACHE[real_cache_key] = {
-                "token": token_val,
-                "expires_at": now + expires_in,
-                "account": _CURRENT_ACTIVE_ACCOUNT,
-            }
-            return token_val
-        raise Exception(f"获取令牌失败: {result.get('error_description', '未知错误') if result else '未返回结果'}")
+                    # 3. 错误与环境防御处理
+                    if result and "error" in result:
+                        error_codes = result.get("error_codes", [])
+                        error_msg = result.get("error", "").lower()
+                        if 50076 in error_codes or 50158 in error_codes or 65001 in error_codes or "interaction_required" in error_msg or "invalid_grant" in error_msg:
+                            is_headless = (os.name != "nt") and not os.getenv("DISPLAY")
+                            if is_headless:
+                                for k, v in _GLOBAL_TOKEN_CACHE.items():
+                                    if k.startswith("personal_") and v.get("expires_at", 0) > now + 60:
+                                        return str(v["token"])
+                                raise Exception(
+                                    "云端 MSAL 缓存中未找到当前账号的有效授权凭据，且当前为云端无头容器无法进行交互式验证。"
+                                    "请确保已在 Render 环境变量中配置正确的 MSAL_TOKEN_CACHE_B64。"
+                                )
+                            result = app.acquire_token_interactive(
+                                scopes=scope,
+                                login_hint=self.config.USERNAME
+                            )
+                    elif not result:
+                        for k, v in _GLOBAL_TOKEN_CACHE.items():
+                            if k.startswith("personal_") and v.get("expires_at", 0) > now + 60:
+                                return str(v["token"])
+                        raise Exception(
+                            "云端 MSAL 缓存中未找到当前账号的有效授权凭据。"
+                            "请检查 Render 环境变量 MSAL_TOKEN_CACHE_B64 是否配置完整。"
+                        )
+            else:
+                app = ConfidentialClientApplication(
+                    client_id=self.config.CLIENT_ID,
+                    client_credential=self.config.CLIENT_SECRET,
+                    authority=self.config.authority_url,
+                    token_cache=self.cache
+                )
+                result = app.acquire_token_for_client(scopes=scope)
+
+            self._save_cache()
+            if result and "access_token" in result:
+                token_val = result["access_token"]
+                expires_in = int(result.get("expires_in", 3600))
+                auth_identity = _CURRENT_ACTIVE_ACCOUNT or (self.config.USERNAME if self.config.AUTH_MODE == "personal" else self.config.CLIENT_ID)
+                real_cache_key = f"{self.config.AUTH_MODE}_{api_type_clean}_{auth_identity}"
+                _GLOBAL_TOKEN_CACHE[real_cache_key] = {
+                    "token": token_val,
+                    "expires_at": now + expires_in,
+                    "account": _CURRENT_ACTIVE_ACCOUNT,
+                }
+                return token_val
+            raise Exception(f"获取令牌失败: {result.get('error_description', '未知错误') if result else '未返回结果'}")
 
     @property
     def headers(self) -> dict:
@@ -423,8 +441,16 @@ class PBIClient:
                 if cur_user:
                     _tried_users.add(cur_user)
 
+                # 🚨 核心防御：若当前为 Admin API 接口调用，401/403 属于租户管理员特权缺失 (Permission Deficit)，
+                # 绝非 Token 过期或账号失效！严禁执行 Phase A 静默刷新或 Phase B 跨账号盲目轮换（避免触发交互弹窗与假死），
+                # 必须立即抛出原始 401 异常，让上层业务（如 permission_scanner）瞬间触发标准非 Admin 通道降级！
+                if is_admin_call:
+                    if is_top_level:
+                        _CURRENT_ACTIVE_ACCOUNT = orig_active_user
+                    raise e
+
                 # 阶段 A：若非 Admin 接口拒绝且本请求尚未强制刷新过 Token，尝试静默强制刷新当前账号凭据
-                if not _refreshed and cur_user and not is_admin_call:
+                if not _refreshed and cur_user:
                     for k in list(_GLOBAL_TOKEN_CACHE.keys()):
                         if cur_user in k:
                             _GLOBAL_TOKEN_CACHE.pop(k, None)
@@ -451,18 +477,26 @@ class PBIClient:
                         except Exception:
                             pass
 
-                # 阶段 B：当前账号无权或刷新后仍 401，尝试在多账号池中轮换其他账号重试
+                # 阶段 B：当前账号无权或刷新后仍 401，尝试在多账号池中轮换其他账号重试 (仅限 100% 静默命中的账号，坚决阻断弹窗与假死)
                 app_check = PublicClientApplication(
                     client_id="04b07795-8ddb-461a-bbee-02f9e1bf7b46",
                     authority="https://login.microsoftonline.com/organizations",
                     token_cache=self.cache
                 )
                 try:
-                    all_avail = [str(a.get("username") or "").strip().lower() for a in app_check.get_accounts()]
-                    remaining = [u for u in all_avail if u and u not in _tried_users]
-                    if remaining:
-                        _CURRENT_ACTIVE_ACCOUNT = remaining[0]
-                        return self.request(method, endpoint, api_type, raw_response, _refreshed=False, _tried_users=_tried_users, **kwargs)
+                    scope_check = ["https://api.fabric.microsoft.com/.default"] if api_type.strip().lower() == "fabric" else self.config.SCOPE
+                    all_avail = [a for a in app_check.get_accounts() if str(a.get("username") or "").strip().lower() not in _tried_users]
+                    for candidate_acc in all_avail:
+                        cand_u = str(candidate_acc.get("username") or "").strip().lower()
+                        if not cand_u or cand_u in _FAILED_401_ACCOUNTS:
+                            continue
+                        try:
+                            s_tok = app_check.acquire_token_silent(scope_check, account=candidate_acc)
+                            if s_tok and "access_token" in s_tok:
+                                _CURRENT_ACTIVE_ACCOUNT = cand_u
+                                return self.request(method, endpoint, api_type, raw_response, _refreshed=False, _tried_users=_tried_users, **kwargs)
+                        except Exception:
+                            continue
                 except Exception:
                     pass
 
@@ -496,7 +530,7 @@ class PBIClient:
                     error_msg = f"{error_msg}\n{error_detail}"
                 except ValueError:
                     error_msg = f"{error_msg}\n{e.response.text}"
-            if is_top_level and orig_active_user is not None:
+            if is_top_level:
                 _CURRENT_ACTIVE_ACCOUNT = orig_active_user
             raise Exception(error_msg)
 

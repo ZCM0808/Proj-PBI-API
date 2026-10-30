@@ -1778,7 +1778,7 @@ def main():
     print("=== Power BI API Web Explorer Starting ===")
     port = int(os.environ.get("PORT", 8000))
     print(f"Please visit: http://127.0.0.1:{port}")
-    uvicorn.run("src.main:app", host="127.0.0.1", port=port, reload=True)
+    uvicorn.run("src.main:app", host="127.0.0.1", port=port, reload=True, reload_dirs=["src"])
 
 
 @app.post("/api/test/guid")

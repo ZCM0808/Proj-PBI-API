@@ -57,6 +57,7 @@ class Config:
     CLIENT_ID: str = os.getenv("PBI_CLIENT_ID", "")
     CLIENT_SECRET: str = os.getenv("PBI_CLIENT_SECRET", "")
     AUTH_MODE: str = _settings.get("PBI_AUTH_MODE", os.getenv("PBI_AUTH_MODE", "service_principal"))
+    AUTH_VALIDITY_DAYS: int = int(_settings.get("PBI_AUTH_VALIDITY_DAYS", os.getenv("PBI_AUTH_VALIDITY_DAYS", "30")))
     USERNAME: str = os.getenv("PBI_USERNAME", "")
     PASSWORD: str = os.getenv("PBI_PASSWORD", "")
     TENANT_ID: str = _settings.get("PBI_TENANT_ID", os.getenv("PBI_TENANT_ID", ""))

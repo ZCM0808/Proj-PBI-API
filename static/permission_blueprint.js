@@ -521,6 +521,101 @@
                 this.zoomAtPoint(delta, e.clientX, e.clientY);
             }, { passive: false });
 
+            // ==========================================
+            // 移动端全手势交互引擎 (Touch Pan & Pinch Zoom)
+            // ==========================================
+            let touchStartX = 0;
+            let touchStartY = 0;
+            let initialPinchDist = 0;
+            let initialPinchZoom = 1.0;
+            let pinchCenter = { x: 0, y: 0 };
+            let isTouchPanning = false;
+
+            this.viewportEl.addEventListener('touchstart', (e) => {
+                if (e.target.closest('button') || e.target.closest('select') || e.target.closest('input') || e.target.closest('#pb-radar-notice') || e.target.closest('.pb-collapsible-legend')) {
+                    return;
+                }
+
+                if (e.touches.length === 1) {
+                    if (!e.target.closest('.pb-node-header')) {
+                        isTouchPanning = true;
+                        touchStartX = e.touches[0].clientX - this.panX;
+                        touchStartY = e.touches[0].clientY - this.panY;
+                    }
+                } else if (e.touches.length === 2) {
+                    isTouchPanning = false;
+                    initialPinchDist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    initialPinchZoom = this.zoom;
+                    pinchCenter = {
+                        x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+                        y: (e.touches[0].clientY + e.touches[1].clientY) / 2
+                    };
+                }
+            }, { passive: false });
+
+            this.viewportEl.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 1 && isTouchPanning) {
+                    if (e.cancelable) e.preventDefault();
+                    this.pendingPan = {
+                        x: e.touches[0].clientX - touchStartX,
+                        y: e.touches[0].clientY - touchStartY
+                    };
+                    this.scheduleRAF();
+                } else if (e.touches.length === 2 && initialPinchDist > 0) {
+                    if (e.cancelable) e.preventDefault();
+                    const currentDist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    const factor = currentDist / initialPinchDist;
+                    const targetZoom = Math.min(1.8, Math.max(0.35, initialPinchZoom * factor));
+                    const delta = targetZoom - this.zoom;
+                    if (Math.abs(delta) > 0.005) {
+                        this.zoomAtPoint(delta, pinchCenter.x, pinchCenter.y);
+                    }
+                }
+            }, { passive: false });
+
+            this.viewportEl.addEventListener('touchend', (e) => {
+                if (e.touches.length === 0) {
+                    if (isTouchPanning) {
+                        isTouchPanning = false;
+                        this.checkRadarVisibility();
+                    }
+                    initialPinchDist = 0;
+                } else if (e.touches.length === 1) {
+                    touchStartX = e.touches[0].clientX - this.panX;
+                    touchStartY = e.touches[0].clientY - this.panY;
+                    initialPinchDist = 0;
+                }
+            }, { passive: true });
+
+            // 移动端卡片拖拽全局跟踪
+            window.addEventListener('touchmove', (e) => {
+                if (this.draggedNodeId && e.touches.length === 1) {
+                    if (e.cancelable) e.preventDefault();
+                    if (!this.cachedContentRect) {
+                        this.cachedContentRect = this.contentEl.getBoundingClientRect();
+                    }
+                    const newX = (e.touches[0].clientX - this.cachedContentRect.left) / this.zoom - this.dragOffset.x;
+                    const newY = (e.touches[0].clientY - this.cachedContentRect.top) / this.zoom - this.dragOffset.y;
+                    this.pendingDrag = { nodeId: this.draggedNodeId, x: Math.round(newX), y: Math.round(newY) };
+                    this.scheduleRAF();
+                }
+            }, { passive: false });
+
+            window.addEventListener('touchend', (e) => {
+                if (this.draggedNodeId && e.touches.length === 0) {
+                    this.draggedNodeId = null;
+                    this.cachedContentRect = null;
+                    this.checkRadarVisibility();
+                    this.saveNodePositionsToStorage();
+                }
+            }, { passive: true });
+
             // 抽屉拖拽初始化
             this.initDrawerDraggable();
             this.renderModelUsersList();
@@ -3267,7 +3362,7 @@
                 const pos = this.nodePositions[n.id] || { x: 60, y: 80 };
                 return `
                     <div id="${n.id}" class="pb-blueprint-node glass-panel" style="left: ${pos.x}px; top: ${pos.y}px;">
-                        <div class="pb-node-header" onmousedown="window.PermissionBlueprint.startNodeDrag(event, '${n.id}')">
+                        <div class="pb-node-header" onmousedown="window.PermissionBlueprint.startNodeDrag(event, '${n.id}')" ontouchstart="window.PermissionBlueprint.startNodeTouchDrag(event, '${n.id}')">
                             <div style="display: flex; flex-direction: column; min-width: 0;">
                                 <span class="pb-node-title">${n.title}</span>
                                 <span class="pb-node-subtitle">${n.subtitle}</span>
@@ -3311,6 +3406,20 @@
             this.dragOffset = {
                 x: (e.clientX - this.cachedContentRect.left) / this.zoom - (this.nodePositions[nodeId] ? this.nodePositions[nodeId].x : 0),
                 y: (e.clientY - this.cachedContentRect.top) / this.zoom - (this.nodePositions[nodeId] ? this.nodePositions[nodeId].y : 0)
+            };
+            e.stopPropagation();
+        }
+
+        startNodeTouchDrag(e, nodeId) {
+            if (e.target.closest('select') || e.target.closest('input') || e.target.closest('button')) return;
+            if (e.touches.length !== 1) return;
+            this.draggedNodeId = nodeId;
+            const nodeEl = document.getElementById(nodeId);
+            if (!nodeEl || !this.contentEl) return;
+            this.cachedContentRect = this.contentEl.getBoundingClientRect();
+            this.dragOffset = {
+                x: (e.touches[0].clientX - this.cachedContentRect.left) / this.zoom - (this.nodePositions[nodeId] ? this.nodePositions[nodeId].x : 0),
+                y: (e.touches[0].clientY - this.cachedContentRect.top) / this.zoom - (this.nodePositions[nodeId] ? this.nodePositions[nodeId].y : 0)
             };
             e.stopPropagation();
         }

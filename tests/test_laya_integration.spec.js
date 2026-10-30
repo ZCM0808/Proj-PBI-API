@@ -74,7 +74,8 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     // 验证提示条浮现并显示意图解析
     await expect(intentHint).toBeVisible({ timeout: 15000 });
     const hintText = await intentHint.innerText();
-    expect(hintText).toContain('Laya 意图直达');
+    expect(hintText).toContain('意图直达:');
+    expect(hintText).not.toContain('Laya 意图直达');
   });
 
   test('UI: Error triage card displays properly when triggered', async ({ page }) => {
@@ -159,7 +160,7 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
 
     // 验证标题微标与按钮文字
     const title = page.locator('#sidebar-pane-api_tree .nav-title');
-    await expect(title).toContainText('LAYA POWERED');
+    await expect(title).not.toContainText('LAYA POWERED');
 
     const layaBtn = page.locator('#btn-laya-intent-search');
     await expect(layaBtn).toContainText('Laya');
@@ -706,9 +707,9 @@ test.describe('Laya System 1 Decision Engine Integration Tests', () => {
     const legendRows = legendCard.locator('.pb-legend-row');
     expect(await legendRows.count()).toBeGreaterThanOrEqual(3);
     const legendText = await legendCard.textContent();
-    expect(legendText).toContain('官方分配身份');
-    expect(legendText).toContain('衍生能力权限');
-    expect(legendText).toContain('承载环境资产');
+    expect(legendText).toContain('分配身份');
+    expect(legendText).toContain('派生能力');
+    expect(legendText).toContain('环境载体');
 
     // 再次点击图钉按钮 -> 取消锁定并收缩
     const pinBtn = legendContainer.locator('.pb-legend-pin-hint');

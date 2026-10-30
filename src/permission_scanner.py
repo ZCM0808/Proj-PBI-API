@@ -4,6 +4,9 @@ Power BI Full-Spectrum Permission Scanner & Governance Engine
 """
 
 import asyncio
+import json
+from pathlib import Path
+import sqlite3
 import time
 from typing import Any, Dict, List, Optional, Set
 
@@ -657,6 +660,362 @@ class CandidateUsersScanRequest(BaseModel):
     force_refresh: bool = False
 
 
+# 模块级 Graph 组结构缓存 (TTL 15 分钟)
+_GRAPH_GROUP_MEMBERS_CACHE: Dict[str, Dict[str, Any]] = {}
+
+
+async def _get_graph_token(config: Config, client: PBIClient) -> Optional[str]:
+    """获取用于调用 Microsoft Graph API 的 Access Token (支持 MSAL 共享缓存与凭据)"""
+    tenant_id = config.TENANT_ID or "organizations"
+    authority = f"https://login.microsoftonline.com/{tenant_id}"
+    try:
+        from msal import PublicClientApplication  # type: ignore[import-untyped]
+        app = PublicClientApplication(
+            client_id="04b07795-8ddb-461a-bbee-02f9e1bf7b46",
+            authority=authority,
+            token_cache=client.cache
+        )
+        accounts = app.get_accounts()
+        if accounts:
+            target_acc = accounts[0]
+            if config.USERNAME:
+                u_match = [a for a in accounts if a.get("username", "").lower() == config.USERNAME.lower()]
+                if u_match:
+                    target_acc = u_match[0]
+            for acc in ([target_acc] + [a for a in accounts if a != target_acc]):
+                res = await asyncio.to_thread(app.acquire_token_silent, ["https://graph.microsoft.com/.default"], account=acc)
+                if res and "access_token" in res:
+                    return str(res["access_token"])
+    except Exception:
+        pass
+
+    if config.CLIENT_ID and config.CLIENT_SECRET:
+        try:
+            from msal import ConfidentialClientApplication
+            app_conf = ConfidentialClientApplication(
+                client_id=config.CLIENT_ID,
+                client_credential=config.CLIENT_SECRET,
+                authority=authority,
+            )
+            res = await asyncio.to_thread(app_conf.acquire_token_for_client, scopes=["https://graph.microsoft.com/.default"])
+            if res and "access_token" in res:
+                return str(res["access_token"])
+        except Exception:
+            pass
+
+    return None
+
+
+async def _fetch_group_members_tree(
+    group_id: str,
+    token: str,
+    session: Any,
+    sem: asyncio.Semaphore,
+    depth: int = 0,
+    max_depth: int = 3,
+    visited: Optional[Set[str]] = None,
+    force_refresh: bool = False
+) -> List[Dict[str, Any]]:
+    """递归穿透拉取安全组及其子群组的层级成员树"""
+    if visited is None:
+        visited = set()
+    if group_id in visited or depth >= max_depth:
+        return []
+    visited.add(group_id)
+
+    now = time.time()
+    cache_entry = _GRAPH_GROUP_MEMBERS_CACHE.get(group_id)
+    if not force_refresh and cache_entry and (now - cache_entry.get("timestamp", 0) < 900):
+        return list(cache_entry.get("members", []))
+
+    url = f"https://graph.microsoft.com/v1.0/groups/{group_id}/members?$top=100&$select=id,displayName,userPrincipalName,mail"
+    headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+
+    items: List[Dict[str, Any]] = []
+    async with sem:
+        try:
+            def _do_get():
+                return session.get(url, headers=headers, timeout=6)
+            resp = await asyncio.to_thread(_do_get)
+            if resp.status_code == 200:
+                data = resp.json()
+                items = data.get("value", []) if isinstance(data, dict) else []
+        except Exception:
+            items = []
+
+    members: List[Dict[str, Any]] = []
+    subgroups: List[Dict[str, Any]] = []
+
+    for item in items:
+        odata = item.get("@odata.type", "")
+        disp = (item.get("displayName") or "").strip()
+        mail = (item.get("mail") or item.get("userPrincipalName") or "").strip()
+        mid = (item.get("id") or "").strip()
+        if "group" in odata.lower():
+            sg: Dict[str, Any] = {
+                "id": mid,
+                "displayName": disp or mail or mid,
+                "identifier": mail or mid,
+                "principalType": "Group",
+                "depth": depth + 1,
+                "members": [],
+                "member_count": 0,
+                "subgroup_count": 0
+            }
+            subgroups.append(sg)
+            members.append(sg)
+        else:
+            members.append({
+                "id": mid,
+                "displayName": disp or mail or mid,
+                "identifier": mail or mid,
+                "principalType": "User",
+                "depth": depth + 1
+            })
+
+    if subgroups and depth + 1 < max_depth:
+        sub_tasks = [
+            _fetch_group_members_tree(
+                sg["id"], token, session, sem, depth + 1, max_depth, visited, force_refresh
+            )
+            for sg in subgroups
+        ]
+        sub_results = await asyncio.gather(*sub_tasks)
+        for sg, sm in zip(subgroups, sub_results):
+            sg["members"] = sm
+            nested_users = sum(1 for m in sm if m.get("principalType") == "User") + sum(m.get("member_count", 0) for m in sm if m.get("principalType") == "Group")
+            nested_groups = sum(1 for m in sm if m.get("principalType") == "Group") + sum(m.get("subgroup_count", 0) for m in sm if m.get("principalType") == "Group")
+            sg["member_count"] = nested_users
+            sg["subgroup_count"] = nested_groups
+
+    _GRAPH_GROUP_MEMBERS_CACHE[group_id] = {
+        "timestamp": now,
+        "members": members
+    }
+    return members
+
+
+async def _enrich_candidate_groups_with_members(
+    candidates: List[Dict[str, Any]],
+    config: Config,
+    client: PBIClient,
+    force_refresh: bool = False
+) -> tuple[List[Dict[str, Any]], int, int, int]:
+    """为主体列表补充一级群组的穿透成员树，并统计直接用户数与一级群组数"""
+    import requests
+
+    direct_users = [c for c in candidates if c.get("principalType") != "Group"]
+    direct_groups = [c for c in candidates if c.get("principalType") == "Group"]
+
+    token = await _get_graph_token(config, client)
+    all_unique_member_emails: Set[str] = set()
+
+    if token and direct_groups:
+        sem = asyncio.Semaphore(10)
+        session = requests.Session()
+
+        async def _enrich_group(grp: Dict[str, Any]):
+            gid = grp.get("graphId") or grp.get("identifier") or ""
+            if not gid:
+                grp["members"] = []
+                grp["member_count"] = 0
+                grp["subgroup_count"] = 0
+                return
+            tree = await _fetch_group_members_tree(
+                gid, token, session, sem, depth=0, max_depth=3, visited=None, force_refresh=force_refresh
+            )
+            grp["members"] = tree
+
+            def _collect_users(m_list: List[Dict[str, Any]]):
+                for m in m_list:
+                    if m.get("principalType") == "User":
+                        ident = (m.get("identifier") or "").lower()
+                        if ident:
+                            all_unique_member_emails.add(ident)
+                    elif m.get("principalType") == "Group":
+                        _collect_users(m.get("members", []))
+
+            _collect_users(tree)
+            nested_users = sum(1 for m in tree if m.get("principalType") == "User") + sum(m.get("member_count", 0) for m in tree if m.get("principalType") == "Group")
+            nested_groups = sum(1 for m in tree if m.get("principalType") == "Group") + sum(m.get("subgroup_count", 0) for m in tree if m.get("principalType") == "Group")
+            grp["member_count"] = nested_users
+            grp["subgroup_count"] = nested_groups
+
+        await asyncio.gather(*[_enrich_group(g) for g in direct_groups])
+    else:
+        for g in direct_groups:
+            g["members"] = g.get("members", [])
+            g["member_count"] = g.get("member_count", 0)
+            g["subgroup_count"] = g.get("subgroup_count", 0)
+
+    # 排序：优先呈现一级群组，次之呈现直接用户
+    enriched = direct_groups + direct_users
+    return enriched, len(direct_users), len(direct_groups), len(all_unique_member_emails)
+
+
+_DB_FILE = Path(__file__).resolve().parent.parent / "data" / "pbi_app.db"
+_USER_SCAN_CACHE_FILE = Path(__file__).resolve().parent.parent / "data" / "scanned_users_cache.json"
+
+
+def _init_user_scan_db() -> None:
+    """初始化 SQLite 数据库表并自动迁移历史平铺 JSON 缓存至 SQLite (0ms 零感知迁移)"""
+    try:
+        _DB_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with sqlite3.connect(str(_DB_FILE)) as conn:
+            c = conn.cursor()
+            c.execute("""
+                CREATE TABLE IF NOT EXISTS gum_user_scan_cache (
+                    cache_key TEXT PRIMARY KEY,
+                    scope TEXT,
+                    workspace_ids TEXT,
+                    users_json TEXT,
+                    direct_user_count INTEGER DEFAULT 0,
+                    direct_group_count INTEGER DEFAULT 0,
+                    total_member_count INTEGER DEFAULT 0,
+                    time_str TEXT,
+                    timestamp REAL
+                )
+            """)
+            conn.commit()
+
+            # 平滑迁移历史 JSON 缓存至 SQLite
+            if _USER_SCAN_CACHE_FILE.exists():
+                try:
+                    with open(_USER_SCAN_CACHE_FILE, "r", encoding="utf-8") as f:
+                        old_data = json.load(f)
+                    if isinstance(old_data, dict):
+                        for k, v in old_data.items():
+                            if isinstance(v, dict) and "users" in v:
+                                c.execute("SELECT 1 FROM gum_user_scan_cache WHERE cache_key=?", (k,))
+                                if not c.fetchone():
+                                    u_json = json.dumps(v.get("users", []), ensure_ascii=False, default=str)
+                                    c.execute("""
+                                        INSERT INTO gum_user_scan_cache
+                                        (cache_key, scope, workspace_ids, users_json, direct_user_count, direct_group_count, total_member_count, time_str, timestamp)
+                                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    """, (
+                                        k,
+                                        "tenant" if "tenant" in k else "workspaces",
+                                        "",
+                                        u_json,
+                                        int(v.get("direct_user_count", 0)),
+                                        int(v.get("direct_group_count", 0)),
+                                        int(v.get("total_member_count", 0)),
+                                        str(v.get("time_str", "")),
+                                        float(v.get("timestamp", 0.0))
+                                    ))
+                        conn.commit()
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+
+def _load_user_scan_db_cache(key: str) -> Optional[Dict[str, Any]]:
+    """从内置 SQLite 数据库 (data/pbi_app.db) 秒级读取人员扫描快照"""
+    _init_user_scan_db()
+    try:
+        with sqlite3.connect(str(_DB_FILE)) as conn:
+            c = conn.cursor()
+            c.execute("""
+                SELECT users_json, direct_user_count, direct_group_count, total_member_count, time_str, timestamp
+                FROM gum_user_scan_cache WHERE cache_key=?
+            """, (key,))
+            row = c.fetchone()
+            if row:
+                users_list = json.loads(row[0]) if row[0] else []
+                return {
+                    "users": users_list,
+                    "direct_user_count": row[1] or 0,
+                    "direct_group_count": row[2] or 0,
+                    "total_member_count": row[3] or 0,
+                    "time_str": row[4] or "",
+                    "timestamp": row[5] or 0.0
+                }
+    except Exception:
+        pass
+    return None
+
+
+def _save_user_scan_db_cache(
+    key: str,
+    entry: Dict[str, Any],
+    scope: str = "tenant",
+    workspace_ids: Optional[List[str]] = None
+) -> None:
+    """持久化保存人员扫描结果至内置 SQLite 数据库 (data/pbi_app.db) 并双写平铺 JSON 容灾"""
+    _init_user_scan_db()
+    try:
+        users = entry.get("users", [])
+        users_json = json.dumps(users, ensure_ascii=False, default=str)
+        ws_ids_str = ",".join(workspace_ids) if workspace_ids else ""
+        with sqlite3.connect(str(_DB_FILE)) as conn:
+            c = conn.cursor()
+            c.execute("""
+                INSERT OR REPLACE INTO gum_user_scan_cache
+                (cache_key, scope, workspace_ids, users_json, direct_user_count, direct_group_count, total_member_count, time_str, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                key,
+                scope,
+                ws_ids_str,
+                users_json,
+                int(entry.get("direct_user_count", 0)),
+                int(entry.get("direct_group_count", 0)),
+                int(entry.get("total_member_count", 0)),
+                str(entry.get("time_str", "")),
+                float(entry.get("timestamp", 0.0))
+            ))
+            conn.commit()
+    except Exception:
+        pass
+
+    # 双写保持兼容
+    try:
+        _USER_SCAN_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        data = {}
+        if _USER_SCAN_CACHE_FILE.exists():
+            try:
+                with open(_USER_SCAN_CACHE_FILE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            except Exception:
+                data = {}
+        data[key] = entry
+        with open(_USER_SCAN_CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2, default=str)
+    except Exception:
+        pass
+
+
+def get_cached_candidate_users(
+    scope: Optional[str] = "tenant",
+    workspace_ids: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """供外部 API 秒级读取 SQLite 数据库已有人员快照 (供多设备与手机端 0ms 秒开)"""
+    target_ws_set = {str(w).strip().lower() for w in (workspace_ids or []) if str(w).strip()}
+    cache_key = f"ws_{'_'.join(sorted(target_ws_set))}" if (scope == "workspaces" and target_ws_set) else f"tenant_{scope}"
+    cached = _load_user_scan_db_cache(cache_key)
+    if cached and cached.get("users"):
+        users_list = cached["users"]
+        time_str = cached.get("time_str", "")
+        return {
+            "success": True,
+            "users": users_list,
+            "count": len(users_list),
+            "direct_user_count": cached.get("direct_user_count", 0),
+            "direct_group_count": cached.get("direct_group_count", 0),
+            "total_member_count": cached.get("total_member_count", 0),
+            "time_str": time_str,
+            "cached": True,
+            "message": f"从 SQLite 成功读取 {len(users_list)} 位已持久化人员快照"
+        }
+    return {
+        "success": False,
+        "message": "未在 SQLite 数据库中发现已有人员扫描快照",
+        "users": []
+    }
+
+
 async def scan_candidate_users(
     scope: Optional[str] = "tenant",
     workspace_ids: Optional[List[str]] = None,
@@ -666,7 +1025,7 @@ async def scan_candidate_users(
 ) -> Dict[str, Any]:
     """
     极速扫描工作区候选用户名单 (用于 GUM 搜索下拉列表人员快速填充与定向审计)
-    1. 内存缓存优先复用 (0ms 极速响应)
+    1. 内存/磁盘持久化缓存优先复用 (0ms 极速响应，直到显式点击扫描按钮才更新)
     2. 后端异步并发拉取 Admin API
     3. 支持全租户与指定工作区智能过滤
     """
@@ -674,15 +1033,33 @@ async def scan_candidate_users(
     cli = client or PBIClient(cfg)
     now = time.time()
 
+    # 规范化目标工作区集合与缓存 Key
+    target_ws_set = {str(w).strip().lower() for w in (workspace_ids or []) if str(w).strip()}
+    cache_key = f"ws_{'_'.join(sorted(target_ws_set))}" if (scope == "workspaces" and target_ws_set) else f"tenant_{scope}"
+
+    # 🚨 核心原则：除非用户主动点击【扫描用户】按钮(force_refresh=True)，否则持久化复用上次扫描结果
+    if not force_refresh:
+        db_cached = _load_user_scan_db_cache(cache_key)
+        if db_cached and db_cached.get("users"):
+            users_list = db_cached["users"]
+            time_str = db_cached.get("time_str", "")
+            return {
+                "success": True,
+                "users": users_list,
+                "count": len(users_list),
+                "direct_user_count": db_cached.get("direct_user_count", 0),
+                "direct_group_count": db_cached.get("direct_group_count", 0),
+                "total_member_count": db_cached.get("total_member_count", 0),
+                "cached": True,
+                "warning": f"⚡ 已呈现内置 SQLite 数据库持久化缓存快照 ({len(users_list)} 人" + (f"，上次扫描: {time_str}" if time_str else "") + "，点击【扫描用户】可拉取最新云端数据)"
+            }
+
     cached_workspaces = _TENANT_WORKSPACES_CACHE.get("workspaces", [])
     cache_age = now - _TENANT_WORKSPACES_CACHE.get("timestamp", 0.0)
     has_valid_cache = bool(cached_workspaces and cache_age < 180 and not force_refresh)
 
     warning_msg: Optional[str] = None
     rate_limited = False
-
-    # 规范化目标工作区集合
-    target_ws_set = {str(w).strip().lower() for w in (workspace_ids or []) if str(w).strip()}
 
     # ─── 核心优化：工作区级精准直连通道 (Direct Workspace Fast-Path) ───
     # 若明确指定了工作区范围，无需请求全租户 Admin API，直接并发直连各目标工作区成员接口 (/groups/{wid}/users)
@@ -728,12 +1105,32 @@ async def scan_candidate_users(
                             "workspaceName": wname
                         }
             candidates = list(merged_direct.values())
+            enriched_users, direct_u_cnt, direct_g_cnt, total_mem_cnt = await _enrich_candidate_groups_with_members(
+                candidates, cfg, cli, force_refresh
+            )
+            time_str = time.strftime("%Y-%m-%d %H:%M:%S")
+            _save_user_scan_db_cache(
+                cache_key,
+                {
+                    "users": enriched_users,
+                    "direct_user_count": direct_u_cnt,
+                    "direct_group_count": direct_g_cnt,
+                    "total_member_count": total_mem_cnt,
+                    "timestamp": now,
+                    "time_str": time_str
+                },
+                scope=scope or "workspaces",
+                workspace_ids=list(target_ws_set)
+            )
             return {
                 "success": True,
-                "users": candidates,
-                "count": len(candidates),
+                "users": enriched_users,
+                "count": len(enriched_users),
+                "direct_user_count": direct_u_cnt,
+                "direct_group_count": direct_g_cnt,
+                "total_member_count": total_mem_cnt,
                 "cached": False,
-                "warning": f"💡 已直连同步 {len(direct_workspaces)} 个工作区的 {len(candidates)} 位授权成员"
+                "warning": f"💡 已直连同步 {len(direct_workspaces)} 个工作区的 {direct_u_cnt} 位直接用户与 {direct_g_cnt} 个一级群组"
             }
         else:
             errors = [w.get("error") for w in direct_results if w and w.get("error")]
@@ -891,10 +1288,30 @@ async def scan_candidate_users(
                 }
 
     candidates = list(merged_users.values())
+    enriched_users, direct_u_cnt, direct_g_cnt, total_mem_cnt = await _enrich_candidate_groups_with_members(
+        candidates, cfg, cli, force_refresh
+    )
+    time_str = time.strftime("%Y-%m-%d %H:%M:%S")
+    _save_user_scan_db_cache(
+        cache_key,
+        {
+            "users": enriched_users,
+            "direct_user_count": direct_u_cnt,
+            "direct_group_count": direct_g_cnt,
+            "total_member_count": total_mem_cnt,
+            "timestamp": now,
+            "time_str": time_str
+        },
+        scope=scope or "tenant",
+        workspace_ids=list(target_ws_set)
+    )
     res_dict: Dict[str, Any] = {
         "success": True,
-        "users": candidates,
-        "count": len(candidates),
+        "users": enriched_users,
+        "count": len(enriched_users),
+        "direct_user_count": direct_u_cnt,
+        "direct_group_count": direct_g_cnt,
+        "total_member_count": total_mem_cnt,
         "cached": has_valid_cache
     }
     if warning_msg:
